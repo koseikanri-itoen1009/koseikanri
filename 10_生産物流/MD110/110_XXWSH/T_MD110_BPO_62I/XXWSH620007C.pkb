@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫払出指示書（配送先明細）
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 倉庫払出指示書（配送先明細） T_MD070_BPO_62I
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/07/04    1.2   Satoshi Yunba      禁則文字対応
  *  2008/07/10    1.3   Naoki Fukuda       ロットNo.がNULLだと品目が違っても一括りで出力される
  *  2008/08/05    1.4   Akiyoshi Shiina    ST不具合#519対応
+ *  2008/10/23    1.5   Yuko Kawano        課題#32,#62 変更#183対応
  *
  *****************************************************************************************/
 --
@@ -126,6 +127,9 @@ AS
   -- 移動ステータス
   gc_move_status_ordered     CONSTANT  VARCHAR2(2)  := '02' ;       -- 依頼済
   gc_move_status_delete      CONSTANT  VARCHAR2(2)  := '99' ;       -- 取消
+-- 2008/10/23 Y.Kawano Mod Start
+  gc_class_y                 CONSTANT  VARCHAR2(2)  := 'Y' ;        -- 指示なし実績
+-- 2008/10/23 Y.Kawano Mod End
   ------------------------------
   -- クイックコード関連
   ------------------------------
@@ -397,10 +401,17 @@ AS
         ,xott2v.transaction_type_name      AS  trans_type_name        -- 出庫形態名
         ,xoha.deliver_from                 AS  shipped_code           -- 出庫元コード
         ,xil2v.description                 AS  shipped_name           -- 出庫元名称
-        ,xic3v.item_class_code             AS  item_class_code        -- 品目区分コード
-        ,xic3v.item_class_name             AS  item_class_name        -- 品目区分名称
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        ,xic3v.item_class_code             AS  item_class_code        -- 品目区分コード
+--        ,xic3v.item_class_name             AS  item_class_name        -- 品目区分名称
+        ,xic5v.item_class_code             AS  item_class_code        -- 品目区分コード
+        ,xic5v.item_class_name             AS  item_class_name        -- 品目区分名称
+-- 2008/10/23 Y.Kawano Mod End #183
         ,xoha.schedule_ship_date           AS  shipped_date           -- 出庫日
-        ,xic3v.int_ext_class               AS  int_ext_class_code     -- 内外区分コード
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        ,xic3v.int_ext_class               AS  int_ext_class_code     -- 内外区分コード
+        ,mcb.attribute1                    AS  int_ext_class_code     -- 内外区分コード
+-- 2008/10/23 Y.Kawano Mod End #183
         ,xlv2v.meaning                     AS  int_ext_class_name     -- 内外区分名
         ,xola.shipping_item_code           AS  item_code              -- 品目コード
         ,xim2v.item_short_name             AS  item_name              -- 品目名称
@@ -419,7 +430,10 @@ AS
          -- 引当されている場合
          WHEN ( xola.reserved_quantity > 0 ) THEN
            CASE 
-             WHEN  ((xic3v.item_class_code = gc_item_cd_prod)
+-- 2008/10/23 Y.Kawano Mod Start #183
+--             WHEN  ((xic3v.item_class_code = gc_item_cd_prod)
+             WHEN  ((xic5v.item_class_code = gc_item_cd_prod)
+-- 2008/10/23 Y.Kawano Mod End #183
                AND  (xim2v.conv_unit IS NOT NULL)) THEN
                xmld.actual_quantity / TO_NUMBER(
                                         CASE
@@ -435,7 +449,10 @@ AS
          -- 引当されていない場合
          WHEN  ( (xola.reserved_quantity IS NULL) OR (xola.reserved_quantity = 0) ) THEN
            CASE 
-             WHEN  ((xic3v.item_class_code = gc_item_cd_prod)
+-- 2008/10/23 Y.Kawano Mod Start #183
+--             WHEN  ((xic3v.item_class_code = gc_item_cd_prod)
+             WHEN  ((xic5v.item_class_code = gc_item_cd_prod)
+-- 2008/10/23 Y.Kawano Mod End #183
                AND  (xim2v.conv_unit IS NOT NULL) ) THEN
                xola.quantity / TO_NUMBER(
                                  CASE
@@ -448,7 +465,13 @@ AS
              END
          END                               AS  qty            -- 数量
         ,CASE
-          WHEN ( (xic3v.item_class_code = gc_item_cd_prod) AND (xim2v.conv_unit IS NOT NULL) ) THEN
+-- 2008/10/23 Y.Kawano Mod Start #32,#183
+--          WHEN ( (xic3v.item_class_code = gc_item_cd_prod) AND (xim2v.conv_unit IS NOT NULL) ) THEN
+          WHEN ( (xic5v.item_class_code = gc_item_cd_prod)
+            AND  (xim2v.conv_unit IS NOT NULL)
+            AND  (xim2v.num_of_cases > '0') )
+          THEN
+-- 2008/10/23 Y.Kawano Mod End #32,#183
             xim2v.conv_unit
           ELSE
             xim2v.item_um
@@ -458,7 +481,15 @@ AS
         ,xxwsh_oe_transaction_types2_v    xott2v    -- 受注タイプ情報VIEW2
         ,xxwsh_order_lines_all            xola      -- 受注明細アドオン
         ,xxcmn_item_mst2_v                xim2v     -- OPM品目情報VIEW2
-        ,xxcmn_item_categories3_v         xic3v     -- OPM品目カテゴリ割当情報VIEW3
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        ,xxcmn_item_categories3_v         xic3v     -- OPM品目カテゴリ割当情報VIEW3
+        ,xxcmn_item_categories5_v         xic5v -- OPM品目カテゴリ割当情報VIEW5
+        ,gmi_item_categories              gic
+        ,mtl_categories_b                 mcb
+        ,mtl_categories_tl                mct
+        ,mtl_category_sets_b              mcsb
+        ,mtl_category_sets_tl             mcst
+-- 2008/10/23 Y.Kawano Mod End #183
         ,xxinv_mov_lot_details            xmld      -- 移動ロット詳細(アドオン)
         ,ic_lots_mst                      ilm       -- OPMロットマスタ
         ,xxcmn_item_locations2_v          xil2v     -- OPM保管場所情報VIEW2
@@ -480,6 +511,9 @@ AS
         )
         AND  xoha.schedule_ship_date    =  gt_param.shipped_date
         AND  xoha.latest_external_flag  =  gc_new_flg
+-- 2008/10/23 Y.Kawano Mod Start #62
+        AND  xoha.schedule_ship_date   IS NOT NULL
+-- 2008/10/23 Y.Kawano Mod End #62
         ------------------------------------------------
         -- 受注タイプ情報VIEW2
         ------------------------------------------------
@@ -502,14 +536,24 @@ AS
         AND  (xim2v.end_date_active           >= xoha.schedule_ship_date
           OR  xim2v.end_date_active IS NULL
         )
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        -------------------------------------------------------------------------------
+--        -- OPM品目カテゴリ割当情報VIEW3
+--        -------------------------------------------------------------------------------
+--        AND  xim2v.item_id            =  xic3v.item_id
+--        AND  (gt_param.item_class IS NULL
+--          OR  xic3v.item_class_code   =  gt_param.item_class
+--        )
+--        AND  xic3v.prod_class_code    =  gt_param.prod_class
         -------------------------------------------------------------------------------
-        -- OPM品目カテゴリ割当情報VIEW3
+        -- OPM品目カテゴリ割当情報VIEW5
         -------------------------------------------------------------------------------
-        AND  xim2v.item_id            =  xic3v.item_id
+        AND  xim2v.item_id            =  xic5v.item_id
         AND  (gt_param.item_class IS NULL
-          OR  xic3v.item_class_code   =  gt_param.item_class
+          OR  xic5v.item_class_code   =  gt_param.item_class
         )
-        AND  xic3v.prod_class_code    =  gt_param.prod_class
+        AND  xic5v.prod_class_code    =  gt_param.prod_class
+-- 2008/10/23 Y.Kawano Mod End #183
         -------------------------------------------------------------------------------
         -- 移動ロット詳細(アドオン)
         -------------------------------------------------------------------------------
@@ -544,8 +588,22 @@ AS
         -------------------------------------------------------------------------------
         -- クイックコード情報VIEW2
         -------------------------------------------------------------------------------
-        AND  xlv2v.lookup_type  =  gc_lookup_cd_int_ext
-        AND  xlv2v.lookup_code  =  xic3v.int_ext_class   -- 自社他社区分(1:自社、2:他社）
+        AND  xlv2v.lookup_type          =  gc_lookup_cd_int_ext
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        AND  xlv2v.lookup_code  =  xic3v.int_ext_class   -- 自社他社区分(1:自社、2:他社）
+        AND  xlv2v.lookup_code          = mcb.attribute1
+        AND  mct.source_lang            = 'JA'
+        AND  mct.language               = 'JA'
+        AND  mcb.category_id            = mct.category_id
+        AND  mcsb.structure_id          = mcb.structure_id
+        AND  gic.category_id            = mcb.category_id
+        AND  mcst.source_lang           = 'JA'
+        AND  mcst.language              = 'JA'
+        AND  mcst.category_set_name     = '内外区分'
+        AND  mcsb.category_set_id       = mcst.category_set_id
+        AND  gic.category_set_id        = mcsb.category_set_id
+        AND  xim2v.item_id              = gic.item_id
+-- 2008/10/23 Y.Kawano Mod End #183
       ORDER BY
          trans_type_id       ASC   -- 出庫形態
         ,shipped_code        ASC   -- 出庫元(コード)
@@ -570,10 +628,17 @@ AS
         ,xott2v.transaction_type_name      AS  trans_type_name        -- 出庫形態名
         ,xoha.deliver_from                 AS  shipped_code           -- 出庫元コード
         ,xil2v.description                 AS  shipped_name           -- 出庫元名称
-        ,xic3v.item_class_code             AS  item_class_code        -- 品目区分コード
-        ,xic3v.item_class_name             AS  item_class_name        -- 品目区分名称
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        ,xic3v.item_class_code             AS  item_class_code        -- 品目区分コード
+--        ,xic3v.item_class_name             AS  item_class_name        -- 品目区分名称
+        ,xic5v.item_class_code             AS  item_class_code        -- 品目区分コード
+        ,xic5v.item_class_name             AS  item_class_name        -- 品目区分名称
+-- 2008/10/23 Y.Kawano Mod End #183
         ,xoha.schedule_ship_date           AS  shipped_date           -- 出庫日
-        ,xic3v.int_ext_class               AS  int_ext_class_code     -- 内外区分コード
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        ,xic3v.int_ext_class               AS  int_ext_class_code     -- 内外区分コード
+        ,mcb.attribute1                    AS  int_ext_class_code     -- 内外区分コード
+-- 2008/10/23 Y.Kawano Mod End #183
         ,xlv2v.meaning                     AS  int_ext_class_name     -- 内外区分名
         ,xola.shipping_item_code           AS  item_code              -- 品目コード
         ,xim2v.item_short_name             AS  item_name              -- 品目名称
@@ -602,7 +667,15 @@ AS
         ,xxwsh_oe_transaction_types2_v   xott2v     -- 受注タイプ情報VIEW2
         ,xxwsh_order_lines_all           xola       -- 受注明細アドオン
         ,xxcmn_item_mst2_v               xim2v      -- OPM品目情報VIEW2
-        ,xxcmn_item_categories3_v        xic3v      -- OPM品目カテゴリ割当情報VIEW3
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        ,xxcmn_item_categories3_v        xic3v      -- OPM品目カテゴリ割当情報VIEW3
+        ,xxcmn_item_categories5_v        xic5v      -- OPM品目カテゴリ割当情報VIEW5
+        ,gmi_item_categories             gic
+        ,mtl_categories_b                mcb
+        ,mtl_categories_tl               mct
+        ,mtl_category_sets_b             mcsb
+        ,mtl_category_sets_tl            mcst
+-- 2008/10/23 Y.Kawano Mod End #183
         ,xxinv_mov_lot_details           xmld       -- 移動ロット詳細(アドオン)
         ,ic_lots_mst                     ilm        -- OPMロットマスタ
         ,xxcmn_item_locations2_v         xil2v      -- OPM保管場所情報VIEW2
@@ -649,14 +722,24 @@ AS
         AND  (xim2v.end_date_active   >=  xoha.schedule_ship_date
           OR  xim2v.end_date_active IS NULL
         )
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        -------------------------------------------------------------------------------
+--        -- OPM品目カテゴリ割当情報VIEW3
+--        -------------------------------------------------------------------------------
+--        AND  xim2v.item_id           =  xic3v.item_id
+--        AND  xic3v.prod_class_code   =  gt_param.prod_class
+--        AND  (gt_param.item_class IS NULL
+--          OR  xic3v.item_class_code  =  gt_param.item_class
+--        )
         -------------------------------------------------------------------------------
-        -- OPM品目カテゴリ割当情報VIEW3
+        -- OPM品目カテゴリ割当情報VIEW5
         -------------------------------------------------------------------------------
-        AND  xim2v.item_id           =  xic3v.item_id
-        AND  xic3v.prod_class_code   =  gt_param.prod_class
+        AND  xim2v.item_id           =  xic5v.item_id
+        AND  xic5v.prod_class_code   =  gt_param.prod_class
         AND  (gt_param.item_class IS NULL
-          OR  xic3v.item_class_code  =  gt_param.item_class
+          OR  xic5v.item_class_code  =  gt_param.item_class
         )
+-- 2008/10/23 Y.Kawano Mod End #183
         -------------------------------------------------------------------------------
         -- 移動ロット詳細(アドオン)
         -------------------------------------------------------------------------------
@@ -691,8 +774,22 @@ AS
         -------------------------------------------------------------------------------
         -- クイックコード情報VIEW2
         -------------------------------------------------------------------------------
-        AND  xlv2v.lookup_type  =  gc_lookup_cd_int_ext
-        AND  xlv2v.lookup_code  =  xic3v.int_ext_class    -- 自社他社区分(1:自社、2:他社）
+        AND  xlv2v.lookup_type          =  gc_lookup_cd_int_ext
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        AND  xlv2v.lookup_code  =  xic3v.int_ext_class    -- 自社他社区分(1:自社、2:他社）
+        AND  xlv2v.lookup_code          = mcb.attribute1
+        AND  mct.source_lang            = 'JA'
+        AND  mct.language               = 'JA'
+        AND  mcb.category_id            = mct.category_id
+        AND  mcsb.structure_id          = mcb.structure_id
+        AND  gic.category_id            = mcb.category_id
+        AND  mcst.source_lang           = 'JA'
+        AND  mcst.language              = 'JA'
+        AND  mcst.category_set_name     = '内外区分'
+        AND  mcsb.category_set_id       = mcst.category_set_id
+        AND  gic.category_set_id        = mcsb.category_set_id
+        AND  xim2v.item_id              = gic.item_id
+-- 2008/10/23 Y.Kawano Mod End #183
       ORDER BY
          trans_type_id       ASC   -- 出庫形態
         ,shipped_code        ASC   -- 出庫元(コード)
@@ -717,10 +814,17 @@ AS
         ,NULL                              AS  trans_type_name        -- 出庫形態名
         ,xmrih.shipped_locat_code          AS  shipped_code           -- 出庫元コード
         ,xil2v1.description                AS  shipped_name           -- 出庫元名称
-        ,xic3v.item_class_code             AS  item_class_code        -- 品目区分コード
-        ,xic3v.item_class_name             AS  item_class_name        -- 品目区分名称
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        ,xic3v.item_class_code             AS  item_class_code        -- 品目区分コード
+--        ,xic3v.item_class_name             AS  item_class_name        -- 品目区分名称
+        ,xic5v.item_class_code             AS  item_class_code        -- 品目区分コード
+        ,xic5v.item_class_name             AS  item_class_name        -- 品目区分名称
+-- 2008/10/23 Y.Kawano Mod End #183
         ,xmrih.schedule_ship_date          AS  shipped_date           -- 出庫日
-        ,xic3v.int_ext_class               AS  int_ext_class_code     -- 内外区分コード
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        ,xic3v.int_ext_class               AS  int_ext_class_code     -- 内外区分コード
+        ,mcb.attribute1                    AS  int_ext_class_code     -- 内外区分コード
+-- 2008/10/23 Y.Kawano Mod End #183
         ,xlv2v.meaning                     AS  int_ext_class_name     -- 内外区分名
         ,xmril.item_code                   AS  item_code              -- 品目コード
         ,xim2v.item_short_name             AS  item_name              -- 品目名称
@@ -739,8 +843,12 @@ AS
          -- 引当されている場合
          WHEN ( xmril.reserved_quantity > 0 ) THEN
            CASE 
-             WHEN  (xic3v.prod_class_code = gc_prod_cd_drink
-               AND  xic3v.item_class_code = gc_item_cd_prod
+-- 2008/10/23 Y.Kawano Mod Start #183
+--             WHEN  (xic3v.prod_class_code = gc_prod_cd_drink
+--               AND  xic3v.item_class_code = gc_item_cd_prod
+             WHEN  (xic5v.prod_class_code = gc_prod_cd_drink
+               AND  xic5v.item_class_code = gc_item_cd_prod
+-- 2008/10/23 Y.Kawano Mod End #183
                AND  xim2v.conv_unit IS NOT NULL ) THEN
                xmld.actual_quantity / TO_NUMBER(
                                         CASE
@@ -756,8 +864,12 @@ AS
          -- 引当されていない場合
          WHEN  ( (xmril.reserved_quantity IS NULL) OR (xmril.reserved_quantity = 0) ) THEN
            CASE 
-             WHEN  (xic3v.prod_class_code = gc_prod_cd_drink
-               AND  xic3v.item_class_code = gc_item_cd_prod
+-- 2008/10/23 Y.Kawano Mod Start #183
+--             WHEN  (xic3v.prod_class_code = gc_prod_cd_drink
+--               AND  xic3v.item_class_code = gc_item_cd_prod
+             WHEN  (xic5v.prod_class_code = gc_prod_cd_drink
+               AND  xic5v.item_class_code = gc_item_cd_prod
+-- 2008/10/23 Y.Kawano Mod End #183
                AND  xim2v.conv_unit IS NOT NULL ) THEN
                xmril.instruct_qty / TO_NUMBER(
                                       CASE
@@ -772,9 +884,16 @@ AS
              END
          END                               AS  qty            -- 数量
         ,CASE
-          WHEN  (xic3v.prod_class_code = gc_prod_cd_drink
-            AND  xic3v.item_class_code = gc_item_cd_prod
-            AND  xim2v.conv_unit IS NOT NULL ) THEN
+-- 2008/10/23 Y.Kawano Mod Start #32
+--          WHEN  (xic3v.prod_class_code = gc_prod_cd_drink
+--            AND  xic3v.item_class_code = gc_item_cd_prod
+--            AND  xim2v.conv_unit IS NOT NULL ) THEN
+          WHEN  (xic5v.prod_class_code = gc_prod_cd_drink
+            AND  xic5v.item_class_code = gc_item_cd_prod
+            AND  xim2v.conv_unit IS NOT NULL
+            AND  xim2v.num_of_cases > '0' )
+          THEN
+-- 2008/10/23 Y.Kawano Mod End #32
             xim2v.conv_unit
           ELSE
             xim2v.item_um
@@ -783,7 +902,15 @@ AS
          xxinv_mov_req_instr_headers   xmrih      -- 移動依頼/指示ヘッダアドオン
         ,xxinv_mov_req_instr_lines     xmril      -- 移動依頼/指示明細(アドオン)
         ,xxcmn_item_mst2_v             xim2v      -- OPM品目情報VIEW2
-        ,xxcmn_item_categories3_v      xic3v      -- OPM品目カテゴリ割当情報VIEW3
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        ,xxcmn_item_categories3_v      xic3v      -- OPM品目カテゴリ割当情報VIEW3
+        ,xxcmn_item_categories5_v      xic5v      -- OPM品目カテゴリ割当情報VIEW5
+        ,gmi_item_categories           gic
+        ,mtl_categories_b              mcb
+        ,mtl_categories_tl             mct
+        ,mtl_category_sets_b           mcsb
+        ,mtl_category_sets_tl          mcst
+-- 2008/10/23 Y.Kawano Mod End #183
         ,xxinv_mov_lot_details         xmld       -- 移動ロット詳細(アドオン)
         ,ic_lots_mst                   ilm        -- OPMロットマスタ
         ,xxcmn_item_locations2_v       xil2v1     -- OPM保管場所情報VIEW2-1
@@ -804,6 +931,10 @@ AS
           OR  xil2v1.distribution_block  =  gt_param.block
         )
         AND  xmrih.schedule_ship_date  =  gt_param.shipped_date
+-- 2008/10/23 Y.Kawano Mod Start #62
+        AND ((xmrih.no_instr_actual_class IS NULL)
+         OR  (xmrih.no_instr_actual_class <>  gc_class_y)) -- 指示なし実績は対象外
+-- 2008/10/23 Y.Kawano Mod End #62
         -------------------------------------------------------------------------------
         -- 移動依頼/指示明細(アドオン)
         -------------------------------------------------------------------------------
@@ -817,14 +948,24 @@ AS
         AND  (xim2v.end_date_active IS NULL
           OR  xim2v.end_date_active   >=  xmrih.schedule_ship_date
         )
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        -------------------------------------------------------------------------------
+--        -- OPM品目カテゴリ割当情報VIEW3
+--        -------------------------------------------------------------------------------
+--        AND  xim2v.item_id           =  xic3v.item_id
+--        AND  xic3v.prod_class_code   =  gt_param.prod_class
+--        AND  (gt_param.item_class IS NULL
+--          OR  xic3v.item_class_code  =  gt_param.item_class
+--        )
         -------------------------------------------------------------------------------
-        -- OPM品目カテゴリ割当情報VIEW3
+        -- OPM品目カテゴリ割当情報VIEW5
         -------------------------------------------------------------------------------
-        AND  xim2v.item_id           =  xic3v.item_id
-        AND  xic3v.prod_class_code   =  gt_param.prod_class
+        AND  xim2v.item_id           =  xic5v.item_id
+        AND  xic5v.prod_class_code   =  gt_param.prod_class
         AND  (gt_param.item_class IS NULL
-          OR  xic3v.item_class_code  =  gt_param.item_class
-        )
+          OR  xic5v.item_class_code  =  gt_param.item_class
+             )
+-- 2008/10/23 Y.Kawano Mod End #183
         -------------------------------------------------------------------------------
         -- 移動ロット詳細(アドオン)
         -------------------------------------------------------------------------------
@@ -847,8 +988,22 @@ AS
         -------------------------------------------------------------------------------
         -- クイックコード情報VIEW2
         -------------------------------------------------------------------------------
-        AND  xlv2v.lookup_type  =  gc_lookup_cd_int_ext
-        AND  xlv2v.lookup_code  =  xic3v.int_ext_class       -- 自社他社区分(1:自社、2:他社）
+        AND  xlv2v.lookup_type        =  gc_lookup_cd_int_ext
+-- 2008/10/23 Y.Kawano Mod Start #183
+--        AND  xlv2v.lookup_code  =  xic3v.int_ext_class       -- 自社他社区分(1:自社、2:他社）
+        AND  xlv2v.lookup_code        = mcb.attribute1
+        AND  mct.source_lang          = 'JA'
+        AND  mct.language             = 'JA'
+        AND  mcb.category_id          = mct.category_id
+        AND  mcsb.structure_id        = mcb.structure_id
+        AND  gic.category_id          = mcb.category_id
+        AND  mcst.source_lang         = 'JA'
+        AND  mcst.language            = 'JA'
+        AND  mcst.category_set_name   = '内外区分'
+        AND  mcsb.category_set_id     = mcst.category_set_id
+        AND  gic.category_set_id      = mcsb.category_set_id
+        AND  xim2v.item_id            = gic.item_id
+-- 2008/10/23 Y.Kawano Mod End #183
       ORDER BY
          shipped_code        ASC   -- 出庫元(コード)
         ,item_class_code     ASC   -- 品目区分

@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                       されない現象への対応
  *  2008/10/22    1.9   I.Higa           取引先の取得項目が不正（仕入先名⇒正式名）
  *  2008/10/24    1.10  T.Ohashi         T_S_432対応（敬称の付与）
+ *  2008/11/04    1.11  Y.Yamamoto       統合障害#471
  *
  *****************************************************************************************/
 --
@@ -1417,7 +1418,10 @@ AS
       ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
       ot_xml_data_table(lt_xml_idx).tag_value := TO_CHAR(ln_quantity);
       -- 仕入金額
-      ln_purchase_amount := ROUND(it_data_rec(i).purchase_amount);
+-- 2008/11/04 v1.11 Y.Yamamoto update start
+--      ln_purchase_amount := ROUND(it_data_rec(i).purchase_amount);
+      ln_purchase_amount := TRUNC(it_data_rec(i).purchase_amount);
+-- 2008/11/04 v1.11 Y.Yamamoto update end
       lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
       ot_xml_data_table(lt_xml_idx).tag_name  := 'purchase_amount' ;
       ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
