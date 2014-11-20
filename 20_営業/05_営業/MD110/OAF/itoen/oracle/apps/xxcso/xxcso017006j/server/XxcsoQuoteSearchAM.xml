@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoQuoteSearchAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso017006j.server.XxcsoQuoteSearchAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoQuoteSearch1VO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017006j.server.XxcsoQuoteSearch1VO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteSearch2VO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017006j.server.XxcsoQuoteSearch2VO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteSearchTermsVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017006j.server.XxcsoQuoteSearchTermsVO" >
+   </ViewUsage>
+</AppModule>

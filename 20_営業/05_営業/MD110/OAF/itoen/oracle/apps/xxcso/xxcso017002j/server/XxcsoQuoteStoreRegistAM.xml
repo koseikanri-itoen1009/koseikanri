@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoQuoteStoreRegistAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteStoreRegistAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoQuoteHeadersFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeadersFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteLinesStoreFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteLinesStoreFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteHeaderSalesSumVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeaderSalesSumVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteLineSalesSumVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteLineSalesSumVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteStoreInitVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteStoreInitVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteTypeLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteStatusLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoDelivPriceTaxTypeLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoUnitPriceSalesLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoUnitPriceStoreLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoCsvDownVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoCsvDownVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteDivLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteHeadersFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeadersFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteLinesStoreFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteLinesStoreFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteHeaderStoreSumVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeaderStoreSumVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteLineStoreSumVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteLineStoreSumVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoCsvQueryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoCsvQueryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoReferenceQuotationPriceVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoReferenceQuotationPriceVO" >
+   </ViewUsage>
+   <ViewLinkUsage
+      Name="XxcsoQuoteHeaderLineStoreVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeaderLineStoreVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteStoreRegistAM.XxcsoQuoteHeadersFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteStoreRegistAM.XxcsoQuoteLinesStoreFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoQuoteHeaderLineStoreVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeaderLineStoreVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteStoreRegistAM.XxcsoQuoteHeadersFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteStoreRegistAM.XxcsoQuoteLinesStoreFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoQuoteHeaderLineStoreSumVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeaderLineStoreSumVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteStoreRegistAM.XxcsoQuoteHeaderStoreSumVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteStoreRegistAM.XxcsoQuoteLineStoreSumVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+</AppModule>

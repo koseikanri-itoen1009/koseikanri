@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoQuoteLineStoreSumVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteLineStoreSumVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteLineStoreSumVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoQuoteLinesStoreVEO.QUOTE_LINE_ID, 
+       XxcsoQuoteLinesStoreVEO.QUOTE_HEADER_ID, 
+       XxcsoQuoteLinesStoreVEO.REFERENCE_QUOTE_LINE_ID, 
+       XxcsoQuoteLinesStoreVEO.INVENTORY_ITEM_ID, 
+       XxcsoQuoteLinesStoreVEO.QUOTE_DIV, 
+       XxcsoQuoteLinesStoreVEO.USUALLY_DELIV_PRICE, 
+       XxcsoQuoteLinesStoreVEO.USUALLY_STORE_SALE_PRICE, 
+       XxcsoQuoteLinesStoreVEO.THIS_TIME_DELIV_PRICE, 
+       XxcsoQuoteLinesStoreVEO.THIS_TIME_STORE_SALE_PRICE, 
+       XxcsoQuoteLinesStoreVEO.QUOTATION_PRICE, 
+       XxcsoQuoteLinesStoreVEO.SALES_DISCOUNT_PRICE, 
+       XxcsoQuoteLinesStoreVEO.USUALL_NET_PRICE, 
+       XxcsoQuoteLinesStoreVEO.THIS_TIME_NET_PRICE, 
+       XxcsoQuoteLinesStoreVEO.AMOUNT_OF_MARGIN, 
+       XxcsoQuoteLinesStoreVEO.MARGIN_RATE, 
+       XxcsoQuoteLinesStoreVEO.QUOTE_START_DATE, 
+       XxcsoQuoteLinesStoreVEO.QUOTE_END_DATE, 
+       XxcsoQuoteLinesStoreVEO.REMARKS, 
+       XxcsoQuoteLinesStoreVEO.LINE_ORDER, 
+       XxcsoQuoteLinesStoreVEO.BUSINESS_PRICE, 
+       XxcsoQuoteLinesStoreVEO.CREATED_BY, 
+       XxcsoQuoteLinesStoreVEO.CREATION_DATE, 
+       XxcsoQuoteLinesStoreVEO.LAST_UPDATED_BY, 
+       XxcsoQuoteLinesStoreVEO.LAST_UPDATE_DATE, 
+       XxcsoQuoteLinesStoreVEO.LAST_UPDATE_LOGIN, 
+       XxcsoQuoteLinesStoreVEO.SORT_CODE, 
+       XxcsoQuoteLinesStoreVEO.SELECT_FLAG
+      ,xiiv.inventory_item_code
+      ,xiiv.item_short_name
+FROM XXCSO_QUOTE_LINES_STORE_V XxcsoQuoteLinesStoreVEO
+      ,xxcso_inventory_items_v2  xiiv
+WHERE  xiiv.inventory_item_id = XxcsoQuoteLinesStoreVEO.INVENTORY_ITEM_ID
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoQuoteLinesStoreVEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteLinesStoreVEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="QuoteLineId"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="QuoteLineId"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="QUOTE_LINE_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteHeaderId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="QuoteHeaderId"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="QUOTE_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReferenceQuoteLineId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ReferenceQuoteLineId"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="REFERENCE_QUOTE_LINE_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InventoryItemId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="InventoryItemId"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="INVENTORY_ITEM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteDiv"
+      Precision="1"
+      EntityAttrName="QuoteDiv"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="QUOTE_DIV" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UsuallyDelivPrice"
+      Precision="9"
+      EntityAttrName="UsuallyDelivPrice"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="USUALLY_DELIV_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UsuallyStoreSalePrice"
+      Precision="10"
+      EntityAttrName="UsuallyStoreSalePrice"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="USUALLY_STORE_SALE_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ThisTimeDelivPrice"
+      Precision="9"
+      EntityAttrName="ThisTimeDelivPrice"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="THIS_TIME_DELIV_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ThisTimeStoreSalePrice"
+      Precision="10"
+      EntityAttrName="ThisTimeStoreSalePrice"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="THIS_TIME_STORE_SALE_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuotationPrice"
+      Precision="9"
+      EntityAttrName="QuotationPrice"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="QUOTATION_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesDiscountPrice"
+      Precision="9"
+      EntityAttrName="SalesDiscountPrice"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="SALES_DISCOUNT_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UsuallNetPrice"
+      Precision="9"
+      EntityAttrName="UsuallNetPrice"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="USUALL_NET_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ThisTimeNetPrice"
+      Precision="9"
+      EntityAttrName="ThisTimeNetPrice"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="THIS_TIME_NET_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AmountOfMargin"
+      Precision="9"
+      EntityAttrName="AmountOfMargin"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="AMOUNT_OF_MARGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MarginRate"
+      Precision="6"
+      EntityAttrName="MarginRate"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="MARGIN_RATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteStartDate"
+      EntityAttrName="QuoteStartDate"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="QUOTE_START_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteEndDate"
+      EntityAttrName="QuoteEndDate"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="QUOTE_END_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Remarks"
+      Precision="20"
+      EntityAttrName="Remarks"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="REMARKS" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineOrder"
+      Precision="2"
+      EntityAttrName="LineOrder"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="LINE_ORDER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BusinessPrice"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="BusinessPrice"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="BUSINESS_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SortCode"
+      EntityAttrName="SortCode"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="SORT_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SelectFlag"
+      Precision="1"
+      EntityAttrName="SelectFlag"
+      EntityUsage="XxcsoQuoteLinesStoreVEO"
+      AliasName="SELECT_FLAG" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InventoryItemCode"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INVENTORY_ITEM_CODE"
+      Expression="INVENTORY_ITEM_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemShortName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_SHORT_NAME"
+      Expression="ITEM_SHORT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

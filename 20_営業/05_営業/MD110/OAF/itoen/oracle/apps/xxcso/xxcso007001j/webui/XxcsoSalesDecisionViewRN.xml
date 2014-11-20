@@ -1,0 +1,154 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+View sales decision information page.
+This page is included by personalize OpptyDetPG(producted).
+
+@see oracle.apps.asn.opportunity.webui.OpptyDetPG.xml
+@see itoen.oracle.apps.xxcso.xxcso007001j.webui.XxcsoSalesDecisionViewCO.java
+@see itoen.oracle.apps.xxcso.xxcso007001j.server.XxcsoSalesDecisionViewAM.xml
+@see itoen.oracle.apps.xxcso.xxcso007001j.server.XxcsoSalesDecisionViewAMImpl.java
+
+HISTORY
+2009/01/08  H.Ogawa        new-->
+<oa:stackLayout version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso007001j.server.XxcsoSalesDecisionViewAM" controllerClass="itoen.oracle.apps.xxcso.xxcso007001j.webui.XxcsoSalesDecisionViewCO">
+   <ui:contents>
+      <oa:stackLayout id="XxcsoMainSlRN">
+         <ui:contents>
+            <oa:header id="XxcsoSalesDecisionHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/SalesDecisionHdrRN">
+               <ui:contents>
+                  <oa:tableLayout id="XxcsoSalesDecisionTlRN" hAlign="center" width="100%">
+                     <ui:contents>
+                        <oa:rowLayout id="XxcsoSalesDecisionRlRN01" width="100%">
+                           <ui:contents>
+                              <oa:cellFormat id="XxcsoSalesDecisionCfRN0101" width="100%" hAlign="end">
+                                 <ui:contents>
+                                    <oa:submitButton id="XxcsoForwardButton" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/ForwardButton" rendered="${oa.XxcsoSalesHeaderSummaryVO1.ForwardButtonRender}"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="XxcsoSalesDecisionRlRN02">
+                           <ui:contents>
+                              <oa:cellFormat id="XxcsoSalesDecisionCfRN0201">
+                                 <ui:contents>
+                                    <oa:advancedTable id="XxcsoSalesDecisionAdvTblRN" viewName="XxcsoSalesLineSummaryVO1" tableBanding="rowBanding" width="100%">
+                                       <ui:contents>
+                                          <oa:column id="XxcsoQuoteNumberCol" width="7%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="XxcsoQuoteNumberColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/QuoteNumberColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="XxcsoQuoteNumber" viewAttr="QuoteNumber" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="XxcsoQuoteRevisionNumberCol" width="1%" columnDataFormat="numberFormat">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="XxcsoQuoteRevisionNumberColHdr" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/QuoteRevisionNumberColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="XxcsoQuoteRevisionNumber" viewAttr="QuoteRevisionNumber" dataType="NUMBER" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="XxcsoSalesItemCol">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="XxcsoSalesItemColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/SalesItemColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageComponentLayout id="XxcsoSalesItemMclRN" columns="1">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="XxcsoInventoryItemCode" viewAttr="InventoryItemCode" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/InventoryItemCode" styleClass="OraInstructionText"/>
+                                                      <oa:messageStyledText id="XxcsoItemShortName" viewAttr="ItemShortName" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/ItemShortName"/>
+                                                      <oa:messageStyledText id="XxcsoCaseIncNum" viewAttr="CaseIncNum" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/CaseIncNum"/>
+                                                      <oa:messageStyledText id="XxcsoJanCode" viewAttr="JanCode" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/JanCode"/>
+                                                      <oa:messageStyledText id="XxcsoItfCode" viewAttr="ItfCode" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/ItfCode"/>
+                                                   </ui:contents>
+                                                </oa:messageComponentLayout>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="XxcsoSalesMeaningCol" width="20%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="XxcsoSalesMeaningColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/SalesMeaningColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageComponentLayout id="XxcsoSalesMeaningMclRN">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="XxcsoSalesClassName" dataType="VARCHAR2" viewAttr="SalesClassName" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/SalesClassName" styleClass="OraInstructionText"/>
+                                                      <oa:messageStyledText id="XxcsoSalesAdoptClassName" dataType="VARCHAR2" viewAttr="SalesAdoptClassName" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/SalesAdoptClassName" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineSummaryVO1.SalesAdoptClassRender}"/>
+                                                      <oa:messageStyledText id="XxcsoSalesAreaName" dataType="VARCHAR2" viewAttr="SalesAreaName" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/SalesAreaName" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineSummaryVO1.SalesAreaRender}"/>
+                                                      <oa:messageStyledText id="XxcsoSalesScheduleDate" dataType="DATE" viewAttr="SalesScheduleDate" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/SalesScheduleDate" styleClass="OraInstructionText"/>
+                                                   </ui:contents>
+                                                </oa:messageComponentLayout>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="XxcsoPriceCol" width="20%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="XxcsoPriceColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/PriceColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageComponentLayout id="XxcsoPriceMclRN" columns="1">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="XxcsoDelivPrice" dataType="VARCHAR2" viewAttr="DelivPrice" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/DelivPrice" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineSummaryVO1.DelivPriceRender}"/>
+                                                      <oa:messageStyledText id="XxcsoStoreSalesPrice" dataType="VARCHAR2" viewAttr="StoreSalesPrice" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/StoreSalesPrice" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineSummaryVO1.StoreSalesPriceRender}"/>
+                                                      <oa:messageStyledText id="XxcsoStoreSalesPriceIncTax" dataType="VARCHAR2" viewAttr="StoreSalesPriceIncTax" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/StoreSalesPriceIncTax" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineSummaryVO1.StoreSalesPriceIncTaxRender}"/>
+                                                      <oa:messageStyledText id="XxcsoQuotationPrice" dataType="VARCHAR2" viewAttr="QuotationPrice" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/QuotationPrice" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineSummaryVO1.QuotationPriceRender}"/>
+                                                   </ui:contents>
+                                                </oa:messageComponentLayout>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="XxcsoIntroduceTermsCol" width="15%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="XxcsoIntroduceTermsColHdr" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/IntroduceTermsColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageTextInput id="XxcsoIntroduceTerms" dataType="VARCHAR2" viewAttr="IntroduceTerms" rows="7" columns="14" maximumLength="60"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="XxcsoNotifiedFlagCol" columnDataFormat="iconButtonFormat" width="3%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="XxcsoNotifiedFlagColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/NotifiedFlagColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageCheckBox id="XxcsoNotifiedFlag" checkedValue="Y" unCheckedValue="N" viewAttr="NotifiedFlag" readOnly="true"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                       </ui:contents>
+                                    </oa:advancedTable>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:tableLayout>
+               </ui:contents>
+            </oa:header>
+            <oa:tableLayout id="XxcsoOtherContentTlRN" hAlign="center" width="100%">
+               <ui:contents>
+                  <oa:rowLayout id="XxcsoOtherContentRlRN01">
+                     <ui:contents>
+                        <oa:cellFormat id="XxcsoOtherContentCfRN0101" width="20%">
+                           <ui:contents>
+                              <oa:spacer id="XxcsoSpacer01"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="XxcsoOtherContentCfRN0102" width="80%">
+                           <ui:contents>
+                              <oa:header id="XxcsoOtherContentHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/OtherContentHdrRN">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="XxcsoOtherContent" viewName="XxcsoSalesHeaderSummaryVO1" viewAttr="OtherContent" rows="7" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/OtherContent" columns="100" maximumLength="1200"/>
+                                 </ui:contents>
+                              </oa:header>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+               </ui:contents>
+            </oa:tableLayout>
+         </ui:contents>
+      </oa:stackLayout>
+   </ui:contents>
+</oa:stackLayout>

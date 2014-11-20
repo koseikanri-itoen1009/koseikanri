@@ -1,0 +1,43 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Regist SP-DECISION information page.
+
+@param ntfId notification ID of Workflow
+
+@see itoen.oracle.apps.xxcso.xxcso020001j.webui.XxcsoSpDecisionNotificationCO.java
+@see itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionNotificationAM.xml
+@see itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionNotificationAMImpl.java
+
+HISTORY
+2009/01/05  H.Ogawa        new-->
+<oa:stackLayout version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionNotificationAM" controllerClass="itoen.oracle.apps.xxcso.xxcso020001j.webui.XxcsoSpDecisionNotificationCO">
+   <ui:contents>
+      <oa:spacer id="Spacer01" height="20"/>
+      <oa:formattedText id="MessageText" viewName="XxcsoSpDecisionNotificationVO1" viewAttr="MessageText" styleClass="OraDataText"/>
+      <oa:tip id="MessageHint" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionNotificationAttrSets/MessageHint"/>
+      <oa:messageStyledText id="SpDecisionNumber" viewName="XxcsoSpDecisionNotificationVO1" viewAttr="SpDecisionNumMessage" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionNotificationAttrSets/SpDecisionNumber">
+         <ui:primaryClientAction>
+            <ui:fireAction event="SpDecisionLink">
+               <ui:parameters>
+                  <ui:parameter key="SpDecisionHeaderId" value="${oa.XxcsoSpDecisionNotificationVO1.SpDecisionHeaderId}"/>
+               </ui:parameters>
+            </ui:fireAction>
+         </ui:primaryClientAction>
+      </oa:messageStyledText>
+      <oa:spacer id="Spacer02" height="20"/>
+      <oa:defaultSingleColumn id="ApplyInfoDscRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionNotificationAttrSets/ApplyInfoDscRN">
+         <ui:contents>
+            <oa:messageStyledText id="ApplyDate" viewName="XxcsoSpDecisionNotificationVO1" viewAttr="ApplicationDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionNotificationAttrSets/ApplyDate" styleClass="OraDataText"/>
+            <oa:messageStyledText id="ApplyBaseName" viewName="XxcsoSpDecisionNotificationVO1" viewAttr="ApplyBaseName" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionNotificationAttrSets/ApplyBaseName" styleClass="OraDataText"/>
+            <oa:messageStyledText id="ApplyUserName" viewName="XxcsoSpDecisionNotificationVO1" viewAttr="ApplyUserName" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionNotificationAttrSets/ApplyUserName" styleClass="OraDataText"/>
+            <oa:messageStyledText id="ApplyClassName" viewName="XxcsoSpDecisionNotificationVO1" viewAttr="ApplyClassName" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionNotificationAttrSets/ApplyClassName" styleClass="OraDataText"/>
+         </ui:contents>
+      </oa:defaultSingleColumn>
+      <oa:spacer id="Spacer03" height="20"/>
+   </ui:contents>
+</oa:stackLayout>

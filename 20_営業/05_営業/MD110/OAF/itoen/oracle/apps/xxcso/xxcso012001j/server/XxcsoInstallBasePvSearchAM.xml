@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoInstallBasePvSearchAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBasePvSearchAMImpl"
+   LoadComponentsLazily="true" >
+   <Properties>
+      <Property Name ="RETENTION_LEVEL" Value ="MANAGE_STATE" />
+   </Properties>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="InstallBasePvDesignVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBasePvDesignVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="InstallBaseExtractTermVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBaseExtractTermVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="InstallBaseSortColumnVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBaseSortColumnVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="InstallBaseViewColumnVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBaseViewColumnVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="SeedViewColumnLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="InstallBasePvSumVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBasePvSumVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="InstallBaseViewSizeVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBaseViewSizeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="InstallBasePvChoiceVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBasePvChoiceVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="SeedExtractTermVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="PvExtractDispInitVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvExtractDispInitVO" >
+   </ViewUsage>
+</AppModule>

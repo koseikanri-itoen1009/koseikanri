@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSalesRequestFullVO"
+   SelectList="XxcsoSalesRequestEO.HEADER_HISTORY_ID, 
+       XxcsoSalesRequestEO.LEAD_ID, 
+
+       XxcsoSalesRequestEO.OPERATION_MODE, 
+       XxcsoSalesRequestEO.NOTIFY_SUBJECT, 
+
+       XxcsoSalesRequestEO.NOTIFY_COMMENT, 
+       XxcsoSalesRequestEO.CREATED_BY, 
+
+       XxcsoSalesRequestEO.CREATION_DATE, 
+       XxcsoSalesRequestEO.LAST_UPDATED_BY, 
+
+       XxcsoSalesRequestEO.LAST_UPDATE_DATE, 
+       XxcsoSalesRequestEO.LAST_UPDATE_LOGIN, 
+
+       XxcsoSalesRequestEO.APPROVAL_USER_NAME"
+   FromList="XXCSO_TMP_SALES_REQUEST XxcsoSalesRequestEO"
+   BindingStyle="Oracle"
+   CustomQuery="false"
+   RowClass="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRequestFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRequestFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoSalesRequestEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSalesRequestEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="HeaderHistoryId"
+      EntityAttrName="HeaderHistoryId"
+      EntityUsage="XxcsoSalesRequestEO"
+      AliasName="HEADER_HISTORY_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeadId"
+      EntityAttrName="LeadId"
+      EntityUsage="XxcsoSalesRequestEO"
+      AliasName="LEAD_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OperationMode"
+      Precision="30"
+      EntityAttrName="OperationMode"
+      EntityUsage="XxcsoSalesRequestEO"
+      AliasName="OPERATION_MODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NotifySubject"
+      Precision="100"
+      EntityAttrName="NotifySubject"
+      EntityUsage="XxcsoSalesRequestEO"
+      AliasName="NOTIFY_SUBJECT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NotifyComment"
+      Precision="250"
+      EntityAttrName="NotifyComment"
+      EntityUsage="XxcsoSalesRequestEO"
+      AliasName="NOTIFY_COMMENT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoSalesRequestEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoSalesRequestEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoSalesRequestEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoSalesRequestEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoSalesRequestEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApprovalUserName"
+      Precision="100"
+      EntityAttrName="ApprovalUserName"
+      EntityUsage="XxcsoSalesRequestEO"
+      AliasName="APPROVAL_USER_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApprovalEmployeeNumber"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApprovalName"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewLinkAccessor
+      Name="XxcsoSalesNotifyFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRequestNotifyVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+</ViewObject>

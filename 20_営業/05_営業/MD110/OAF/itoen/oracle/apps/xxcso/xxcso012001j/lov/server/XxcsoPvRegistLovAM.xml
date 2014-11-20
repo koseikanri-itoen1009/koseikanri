@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoPvRegistLovAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoPvRegistLovAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoBaseItemLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoBaseItemLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoModelTypeSearchLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoModelTypeSearchLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoAccountItemLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoAccountItemLovVO" >
+   </ViewUsage>
+</AppModule>

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE Entity SYSTEM "jbo_03_01.dtd">
+
+<Entity
+   Name="XxcsoDeptMonthlyPlansVEO"
+   DBObjectType="view"
+   DBObjectName="XXCSO_DEPT_MONTHLY_PLANS_V"
+   AliasName="XxcsoDeptMonthlyPlansVEO"
+   BindingStyle="Oracle"
+   UseGlueCode="false"
+   CodeGenFlag="4"
+   RowClass="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDeptMonthlyPlansVEOImpl"
+   DefClass="oracle.apps.fnd.framework.server.OAEntityDefImpl"
+   CollClass="oracle.apps.fnd.framework.server.OAEntityCache" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_superClass" Value="oracle.apps.fnd.framework.server.OAPlsqlEntityImpl" />
+      <AttrArray Name="_publishEvents">
+      </AttrArray>
+   </DesignTime>
+   <Attribute
+      Name="BaseCode"
+      IsNotNull="true"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnName="BASE_CODE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_DEPT_MONTHLY_PLANS_V"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TargetYear"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnName="TARGET_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_DEPT_MONTHLY_PLANS_V"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TargetMonth"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnName="TARGET_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_DEPT_MONTHLY_PLANS_V"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="DeptMonthlyPlanId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="DEPT_MONTHLY_PLAN_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_DEPT_MONTHLY_PLANS_V"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SalesPlanRelDiv"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="SALES_PLAN_REL_DIV"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_DEPT_MONTHLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreatedBy"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="CREATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_DEPT_MONTHLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreationDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="CREATION_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_DEPT_MONTHLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdatedBy"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_DEPT_MONTHLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="LAST_UPDATE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_DEPT_MONTHLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateLogin"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATE_LOGIN"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_DEPT_MONTHLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="BaseName"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnName="BASE_NAME"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_DEPT_MONTHLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </Attribute>
+   <Key
+      Name="XxcsodeptmonthlyplansveoPrimaryKey" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDeptMonthlyPlansVEO.BaseCode" />
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDeptMonthlyPlansVEO.TargetYear" />
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDeptMonthlyPlansVEO.TargetMonth" />
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDeptMonthlyPlansVEO.DeptMonthlyPlanId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="XXCSODEPTMONTHLYPLANSVEO_PRIMA" />
+         <Attr Name="_isPrimary" Value="true" />
+      </DesignTime>
+   </Key>
+</Entity>

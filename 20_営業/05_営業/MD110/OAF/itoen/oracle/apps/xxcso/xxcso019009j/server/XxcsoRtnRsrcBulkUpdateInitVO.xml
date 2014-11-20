@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoRtnRsrcBulkUpdateInitVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019009j.server.XxcsoRtnRsrcBulkUpdateInitVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019009j.server.XxcsoRtnRsrcBulkUpdateInitVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   Passivate="All"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  TRUNC(xxcso_util_common_pkg.get_online_sysdate)  current_date
+       ,xxcso_util_common_pkg.get_emp_parameter(
+          xev.work_base_code_new
+         ,xev.work_base_code_old
+         ,xev.issue_date
+         ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        ) base_code
+       ,NULL  employee_number
+       ,NULL  full_name
+       ,NULL  route_no
+       ,NULL  reflect_method
+       ,TRUNC(xxcso_util_common_pkg.get_online_sysdate, 'MM') first_date
+       ,ADD_MONTHS(TRUNC(xxcso_util_common_pkg.get_online_sysdate, 'MM'), 1) next_date
+FROM    xxcso_employees_v2  xev
+WHERE   xev.user_id = fnd_global.user_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="CurrentDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="CURRENT_DATE"
+      Expression="CURRENT_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCode"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_CODE"
+      Expression="BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      IsPersistent="false"
+      Precision="5"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EMPLOYEE_NUMBER"
+      Expression="EMPLOYEE_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RouteNo"
+      IsPersistent="false"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ROUTE_NO"
+      Expression="ROUTE_NO"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReflectMethod"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ReflectMethod"
+      Expression="ReflectMethod"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AddCustomerButtonRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FirstDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="FIRST_DATE"
+      Expression="FIRST_DATE"
+      SQLType="DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="NEXT_DATE"
+      Expression="NEXT_DATE"
+      SQLType="DATE" >
+   </ViewAttribute>
+</ViewObject>

@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSpDecisionAllCcLineFullVO"
+   OrderBy="sort_code"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionAllCcLineFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionAllCcLineFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   Passivate="All"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoSpDecisionLinesVEO.SP_DECISION_LINE_ID, 
+       XxcsoSpDecisionLinesVEO.SP_DECISION_HEADER_ID, 
+       XxcsoSpDecisionLinesVEO.SP_CONTAINER_TYPE, 
+       XxcsoSpDecisionLinesVEO.FIXED_PRICE, 
+       XxcsoSpDecisionLinesVEO.SALES_PRICE, 
+       XxcsoSpDecisionLinesVEO.DISCOUNT_AMT, 
+       XxcsoSpDecisionLinesVEO.BM_RATE_PER_SALES_PRICE, 
+       XxcsoSpDecisionLinesVEO.BM_AMOUNT_PER_SALES_PRICE, 
+       XxcsoSpDecisionLinesVEO.BM_CONV_RATE_PER_SALES_PRICE, 
+       XxcsoSpDecisionLinesVEO.BM1_BM_RATE, 
+       XxcsoSpDecisionLinesVEO.BM1_BM_AMOUNT, 
+       XxcsoSpDecisionLinesVEO.BM2_BM_RATE, 
+       XxcsoSpDecisionLinesVEO.BM2_BM_AMOUNT, 
+       XxcsoSpDecisionLinesVEO.BM3_BM_RATE, 
+       XxcsoSpDecisionLinesVEO.BM3_BM_AMOUNT, 
+       XxcsoSpDecisionLinesVEO.CREATED_BY, 
+       XxcsoSpDecisionLinesVEO.CREATION_DATE, 
+       XxcsoSpDecisionLinesVEO.LAST_UPDATED_BY, 
+       XxcsoSpDecisionLinesVEO.LAST_UPDATE_DATE, 
+       XxcsoSpDecisionLinesVEO.LAST_UPDATE_LOGIN, 
+       XxcsoSpDecisionLinesVEO.REQUEST_ID, 
+       XxcsoSpDecisionLinesVEO.PROGRAM_APPLICATION_ID, 
+       XxcsoSpDecisionLinesVEO.PROGRAM_ID, 
+       XxcsoSpDecisionLinesVEO.PROGRAM_UPDATE_DATE
+      ,flvv.attribute4  sort_code
+      ,TO_NUMBER(flvv.attribute2)    defined_fixed_price
+      ,TO_NUMBER(flvv.attribute3)    defined_cost_rate
+      ,TO_NUMBER(flvv.attribute2 * flvv.attribute3) cost_price
+FROM XXCSO_SP_DECISION_LINES_V XxcsoSpDecisionLinesVEO
+    ,fnd_lookup_values_vl flvv
+WHERE XxcsoSpDecisionLinesVEO.SP_CONTAINER_TYPE IS NOT NULL
+AND flvv.lookup_type                                                              = 'XXCSO1_SP_RULE_BOTTLE'
+AND flvv.lookup_code                                                              = XxcsoSpDecisionLinesVEO.SP_CONTAINER_TYPE
+AND flvv.enabled_flag                                                             = 'Y'
+AND NVL(flvv.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))   >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND SUBSTRB(flvv.attribute6, 1, 1)                                                = '1'
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoSpDecisionLinesVEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionLinesVEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="true" />
+         <Attr Name="_queryWhere" Value="XxcsoSpDecisionLinesVEO.SP_CONTAINER_TYPE IS NOT NULL AND XxcsoSpDecisionLinesVEO.SP_CONTAINER_TYPE = &#39;ALL&#39;" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="SpDecisionLineId"
+      IsNotNull="true"
+      EntityAttrName="SpDecisionLineId"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="SP_DECISION_LINE_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionHeaderId"
+      IsNotNull="true"
+      EntityAttrName="SpDecisionHeaderId"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="SP_DECISION_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpContainerType"
+      Precision="10"
+      EntityAttrName="SpContainerType"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="SP_CONTAINER_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FixedPrice"
+      Precision="6"
+      EntityAttrName="FixedPrice"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="FIXED_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesPrice"
+      Precision="6"
+      EntityAttrName="SalesPrice"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="SALES_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DiscountAmt"
+      Precision="7"
+      EntityAttrName="DiscountAmt"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="DISCOUNT_AMT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmRatePerSalesPrice"
+      Precision="7"
+      EntityAttrName="BmRatePerSalesPrice"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="BM_RATE_PER_SALES_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmAmountPerSalesPrice"
+      Precision="9"
+      EntityAttrName="BmAmountPerSalesPrice"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="BM_AMOUNT_PER_SALES_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmConvRatePerSalesPrice"
+      Precision="7"
+      EntityAttrName="BmConvRatePerSalesPrice"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="BM_CONV_RATE_PER_SALES_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1BmRate"
+      Precision="6"
+      EntityAttrName="Bm1BmRate"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="BM1_BM_RATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1BmAmount"
+      Precision="7"
+      EntityAttrName="Bm1BmAmount"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="BM1_BM_AMOUNT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm2BmRate"
+      EntityAttrName="Bm2BmRate"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="Bm2BmRate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm2BmAmount"
+      EntityAttrName="Bm2BmAmount"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="Bm2BmAmount" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm3BmRate"
+      EntityAttrName="Bm3BmRate"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="Bm3BmRate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm3BmAmount"
+      EntityAttrName="Bm3BmAmount"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="Bm3BmAmount" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="CreatedBy" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="CreationDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="LastUpdatedBy" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="LastUpdateDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="LastUpdateLogin" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="RequestId" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="ProgramApplicationId" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="ProgramId" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoSpDecisionLinesVEO"
+      AliasName="ProgramUpdateDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SortCode"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SORT_CODE"
+      Expression="SORT_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DefinedFixedPrice"
+      IsPersistent="false"
+      Precision="7"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="DEFINED_FIXED_PRICE"
+      Expression="DEFINED_FIXED_PRICE"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DefinedCostRate"
+      IsPersistent="false"
+      Precision="6"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="DEFINED_COST_RATE"
+      Expression="DEFINED_COST_RATE"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CostPrice"
+      IsPersistent="false"
+      Precision="7"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="COST_PRICE"
+      Expression="COST_PRICE"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AllDiscountAmtReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AllCcBm1BmRateReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AllCcBm1BmAmountReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AllCcBm2BmRateReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AllCcBm2BmAmountReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AllCcBm3BmRateReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AllCcBm3BmAmountReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+</ViewObject>

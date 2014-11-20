@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoApprovalUserLovVO"
+   OrderBy="position_sort_code, employee_number"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoApprovalUserLovVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoApprovalUserLovVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  xev.employee_number
+       ,xev.full_name
+       ,xxcso_util_common_pkg.get_emp_parameter(
+          xev.position_name_new
+         ,xev.position_name_old
+         ,xev.issue_date
+         ,xxcso_util_common_pkg.get_online_sysdate
+        ) position_name
+       ,xxcso_util_common_pkg.get_emp_parameter(
+          xev.work_base_code_new
+         ,xev.work_base_code_old
+         ,xev.issue_date
+         ,xxcso_util_common_pkg.get_online_sysdate
+        ) base_code
+       ,xxcso_util_common_pkg.get_emp_parameter(
+          xev.work_base_name_new
+         ,xev.work_base_name_old
+         ,xev.issue_date
+         ,xxcso_util_common_pkg.get_online_sysdate
+        ) base_name
+       ,xxcso_util_common_pkg.get_emp_parameter(
+          xev.position_sort_code_new
+         ,xev.position_sort_code_old
+         ,xev.issue_date
+         ,xxcso_util_common_pkg.get_online_sysdate
+        ) position_sort_code
+       ,xev.user_name
+       ,xxcso_007003j_pkg.get_baseline_base_code(
+          xxcso_util_common_pkg.get_emp_parameter(
+            xev.work_base_code_new
+           ,xev.work_base_code_old
+           ,xev.issue_date
+           ,xxcso_util_common_pkg.get_online_sysdate
+          )
+        ) baseline_base_code
+FROM    xxcso_employees_v2  xev
+WHERE   (
+         (
+          (TO_DATE(xev.issue_date, 'YYYYMMDD') >= TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+          AND
+          (xev.position_code_new IN ('000', '001', '007', '009', '030', '047'))
+         )
+         OR
+         (
+          (TO_DATE(xev.issue_date, 'YYYYMMDD')  < TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+          AND
+          (xev.position_code_old IN ('000', '001', '007', '009', '030', '047'))
+         )
+        )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EMPLOYEE_NUMBER"
+      Expression="EMPLOYEE_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PositionName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="POSITION_NAME"
+      Expression="POSITION_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCode"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_CODE"
+      Expression="BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_NAME"
+      Expression="BASE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PositionSortCode"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="POSITION_SORT_CODE"
+      Expression="POSITION_SORT_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UserName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="100"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="USER_NAME"
+      Expression="USER_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="100" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaselineBaseCode"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASELINE_BASE_CODE"
+      Expression="BASELINE_BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

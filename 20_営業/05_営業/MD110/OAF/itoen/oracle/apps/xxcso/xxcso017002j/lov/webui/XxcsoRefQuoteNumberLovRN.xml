@@ -1,0 +1,15 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso017002j.lov.server.XxcsoQuoteStoreRegistLovAM" advancedSearchAllowed="true" scope="/">
+   <ui:contents>
+      <oa:table name="XxcsoRefQuoteNumberLovRN" id="ResultTblRN" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/ResultTblRN">
+         <ui:contents>
+            <oa:formValue id="QuoteHeaderId" dataType="NUMBER" viewName="XxcsoRefQuoteNumberLovVO1" viewAttr="QuoteHeaderId"/>
+            <oa:messageStyledText id="QuoteNumber" dataType="VARCHAR2" viewName="XxcsoRefQuoteNumberLovVO1" viewAttr="QuoteNumber" maximumLength="12" queryable="true" sortState="yes" initSortSeq="first" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/QuoteNumber"/>
+            <oa:messageStyledText id="QuoteRevisionNumber" dataType="NUMBER" viewName="XxcsoRefQuoteNumberLovVO1" viewAttr="QuoteRevisionNumber" maximumLength="2" queryable="true" sortState="yes" initSortSeq="second" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/QuoteRevisionNumber"/>
+            <oa:messageStyledText id="AccountNumber" dataType="VARCHAR2" viewName="XxcsoRefQuoteNumberLovVO1" viewAttr="AccountNumber" maximumLength="9" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/AccountNumber"/>
+            <oa:messageStyledText id="PartyName" dataType="VARCHAR2" viewName="XxcsoRefQuoteNumberLovVO1" viewAttr="PartyName" maximumLength="360" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/PartyName"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

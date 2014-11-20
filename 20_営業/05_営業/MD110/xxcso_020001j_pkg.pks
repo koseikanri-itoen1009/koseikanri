@@ -1,0 +1,294 @@
+CREATE OR REPLACE PACKAGE apps.xxcso_020001j_pkg
+AS
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Package Name     : xxcso_020001j_pkg(SPEC)
+ * Description      : フルベンダーSP専決
+ * MD.050/070       : 
+ * Version          : 1.0
+ *
+ * Program List
+ *  ------------------------- ---- ----- --------------------------------------------------
+ *   Name                     Type  Ret   Description
+ *  ------------------------- ---- ----- --------------------------------------------------
+ *  initialize_transaction    P    -     トランザクション初期化処理
+ *  process_request           P    -     通知ワークフロー起動処理
+ *  process_lock              P    -     トランザクションロック処理
+ *  get_inst_info_parameter   F    V     設置先情報判定
+ *  get_cntr_info_parameter   F    V     契約先情報判定
+ *  get_bm1_info_parameter    F    V     BM1情報判定
+ *  get_bm2_info_parameter    F    V     BM2情報判定
+ *  get_bm3_info_parameter    F    V     BM3情報判定
+ *  calculate_sc_line         P    -     売価別条件計算（明細行ごと）
+ *  calculate_cc_line         P    -     一律条件・容器別条件計算（明細行ごと）
+ *  get_gross_profit_rate     F    V     粗利率取得
+ *  calculate_est_year_profit P    -     概算年間損益計算
+ *  get_appr_auth_level_num_1 F    N     承認権限レベル番号１取得
+ *  get_appr_auth_level_num_2 F    N     承認権限レベル番号２取得
+ *  get_appr_auth_level_num_3 F    N     承認権限レベル番号３取得
+ *  get_appr_auth_level_num_4 F    N     承認権限レベル番号４取得
+ *  get_appr_auth_level_num_0 F    N     承認権限レベル番号（デフォルト）取得
+ *  chk_double_byte_kana      F    V     全角カナチェック（共通関数ラッピング）
+ *  chk_tel_format            F    V     電話番号チェック（共通関数ラッピング）
+ *  conv_number_separate      P    -     数値セパレート変換
+ *  conv_line_number_separate P    -     数値セパレート変換（明細）
+ *
+ * Change Record
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2008/12/23    1.0   H.Ogawa          新規作成
+ *
+ *****************************************************************************************/
+--
+  -- トランザクション初期化処理
+  PROCEDURE initialize_transaction(
+    iv_sp_decision_header_id       IN  VARCHAR2
+   ,iv_app_base_code               IN  VARCHAR2
+   ,ov_errbuf                      OUT VARCHAR2
+   ,ov_retcode                     OUT VARCHAR2
+   ,ov_errmsg                      OUT VARCHAR2
+  );
+--
+  -- 通知ワークフロー起動処理
+  PROCEDURE process_request(
+    ov_errbuf                      OUT VARCHAR2
+   ,ov_retcode                     OUT VARCHAR2
+   ,ov_errmsg                      OUT VARCHAR2
+  );
+--
+  -- トランザクションロック処理
+  PROCEDURE process_lock(
+    in_sp_decision_header_id       IN  NUMBER
+   ,iv_sp_decision_number          IN  VARCHAR2
+   ,id_last_update_date            IN  DATE
+   ,ov_errbuf                      OUT VARCHAR2
+   ,ov_retcode                     OUT VARCHAR2
+   ,ov_errmsg                      OUT VARCHAR2
+  );
+--
+  -- 設置先情報判定
+  FUNCTION get_inst_info_parameter(
+    in_cust_account_id             IN  NUMBER
+   ,iv_customer_status             IN  VARCHAR2
+   ,iv_sp_inst_cust_param          IN  VARCHAR2
+   ,iv_cust_acct_param             IN  VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 契約先情報判定
+  FUNCTION get_cntr_info_parameter(
+    in_contract_customer_id        IN  NUMBER
+   ,iv_same_install_account_flag   IN  VARCHAR2
+   ,in_cust_account_id             IN  NUMBER
+   ,iv_customer_status             IN  VARCHAR2
+   ,iv_sp_cntr_cust_param          IN  VARCHAR2
+   ,iv_cntrct_cust_param           IN  VARCHAR2
+   ,iv_sp_inst_cust_param          IN  VARCHAR2
+   ,iv_cust_acct_param             IN  VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- BM1情報判定
+  FUNCTION get_bm1_info_parameter(
+    in_vendor_id                   IN  NUMBER
+   ,iv_bm_payment_type             IN  VARCHAR2
+   ,iv_bm1_send_type               IN  VARCHAR2
+   ,in_cust_account_id             IN  NUMBER
+   ,iv_customer_status             IN  VARCHAR2
+   ,in_contract_customer_id        IN  NUMBER
+   ,iv_same_install_account_flag   IN  VARCHAR2
+   ,iv_sp_vend_cust_param          IN  VARCHAR2
+   ,iv_vendor_param                IN  VARCHAR2
+   ,iv_sp_inst_cust_param          IN  VARCHAR2
+   ,iv_cust_acct_param             IN  VARCHAR2
+   ,iv_sp_cntr_cust_param          IN  VARCHAR2
+   ,iv_cntrct_cust_param           IN  VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- BM2情報判定
+  FUNCTION get_bm2_info_parameter(
+    in_vendor_id                   IN  NUMBER
+   ,iv_bm_payment_type             IN  VARCHAR2
+   ,iv_sp_vend_cust_param          IN  VARCHAR2
+   ,iv_vendor_param                IN  VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- BM3情報判定
+  FUNCTION get_bm3_info_parameter(
+    in_vendor_id                   IN  NUMBER
+   ,iv_bm_payment_type             IN  VARCHAR2
+   ,iv_sp_vend_cust_param          IN  VARCHAR2
+   ,iv_vendor_param                IN  VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 売価別条件計算（明細行ごと）
+  PROCEDURE calculate_sc_line(
+    iv_fixed_price                 IN  VARCHAR2
+   ,iv_sales_price                 IN  VARCHAR2
+   ,iv_bm1_bm_rate                 IN  VARCHAR2
+   ,iv_bm1_bm_amt                  IN  VARCHAR2
+   ,iv_bm2_bm_rate                 IN  VARCHAR2
+   ,iv_bm2_bm_amt                  IN  VARCHAR2
+   ,iv_bm3_bm_rate                 IN  VARCHAR2
+   ,iv_bm3_bm_amt                  IN  VARCHAR2
+   ,on_gross_profit                OUT NUMBER
+   ,on_sales_price                 OUT NUMBER
+   ,ov_bm_rate                     OUT VARCHAR2
+   ,ov_bm_amount                   OUT VARCHAR2
+   ,ov_bm_conv_rate                OUT VARCHAR2
+   ,ov_errbuf                      OUT VARCHAR2
+   ,ov_retcode                     OUT VARCHAR2
+   ,ov_errmsg                      OUT VARCHAR2
+  );
+--
+  -- 一律条件・容器別条件計算（明細行ごと）
+  PROCEDURE calculate_cc_line(
+    iv_container_type              IN  VARCHAR2
+   ,iv_discount_amt                IN  VARCHAR2
+   ,iv_bm1_bm_rate                 IN  VARCHAR2
+   ,iv_bm1_bm_amt                  IN  VARCHAR2
+   ,iv_bm2_bm_rate                 IN  VARCHAR2
+   ,iv_bm2_bm_amt                  IN  VARCHAR2
+   ,iv_bm3_bm_rate                 IN  VARCHAR2
+   ,iv_bm3_bm_amt                  IN  VARCHAR2
+   ,on_gross_profit                OUT NUMBER
+   ,on_sales_price                 OUT NUMBER
+   ,ov_bm_rate                     OUT VARCHAR2
+   ,ov_bm_amount                   OUT VARCHAR2
+   ,ov_bm_conv_rate                OUT VARCHAR2
+   ,ov_errbuf                      OUT VARCHAR2
+   ,ov_retcode                     OUT VARCHAR2
+   ,ov_errmsg                      OUT VARCHAR2
+  );
+  -- 粗利率取得
+  FUNCTION get_gross_profit_rate(
+    in_total_gross_profit          IN  NUMBER
+   ,in_total_sales_price           IN  NUMBER
+  ) RETURN VARCHAR2;
+--
+  -- 概算年間損益計算
+  PROCEDURE calculate_est_year_profit(
+    iv_sales_month                 IN  VARCHAR2
+   ,iv_sales_gross_margin_rate     IN  VARCHAR2
+   ,iv_bm_rate                     IN  VARCHAR2
+   ,iv_lease_charge_month          IN  VARCHAR2
+   ,iv_construction_charge         IN  VARCHAR2
+   ,iv_contract_year_date          IN  VARCHAR2
+   ,iv_install_support_amt         IN  VARCHAR2
+   ,iv_electricity_amount          IN  VARCHAR2
+   ,iv_electricity_amt_month       IN  VARCHAR2
+   ,ov_sales_year                  OUT VARCHAR2
+   ,ov_year_gross_margin_amt       OUT VARCHAR2
+   ,ov_vd_sales_charge             OUT VARCHAR2
+   ,ov_install_support_amt_year    OUT VARCHAR2
+   ,ov_vd_lease_charge             OUT VARCHAR2
+   ,ov_electricity_amt_month       OUT VARCHAR2
+   ,ov_electricity_amt_year        OUT VARCHAR2
+   ,ov_transportation_charge       OUT VARCHAR2
+   ,ov_labor_cost_other            OUT VARCHAR2
+   ,ov_total_cost                  OUT VARCHAR2
+   ,ov_operating_profit            OUT VARCHAR2
+   ,ov_operating_profit_rate       OUT VARCHAR2
+   ,ov_break_even_point            OUT VARCHAR2
+   ,ov_errbuf                      OUT VARCHAR2
+   ,ov_retcode                     OUT VARCHAR2
+   ,ov_errmsg                      OUT VARCHAR2
+  );
+--
+  -- 承認権限レベル番号１取得
+  FUNCTION get_appr_auth_level_num_1(
+    iv_fixed_price                 IN  VARCHAR2
+   ,iv_sales_price                 IN  VARCHAR2
+   ,iv_discount_amt                IN  VARCHAR2
+   ,iv_bm_conv_rate                IN  VARCHAR2
+  ) RETURN NUMBER;
+--
+  -- 承認権限レベル番号２取得
+  FUNCTION get_appr_auth_level_num_2(
+    iv_install_support_amt         IN  VARCHAR2
+  ) RETURN NUMBER;
+--
+  -- 承認権限レベル番号３取得
+  FUNCTION get_appr_auth_level_num_3(
+    iv_electricity_amt             IN  VARCHAR2
+  ) RETURN NUMBER;
+--
+  -- 承認権限レベル番号４取得
+  FUNCTION get_appr_auth_level_num_4(
+    iv_construction_charge         IN  VARCHAR2
+  ) RETURN NUMBER;
+--
+  -- 承認権限レベル番号（デフォルト）取得
+  PROCEDURE get_appr_auth_level_num_0(
+    on_appr_auth_level_num         OUT NUMBER
+   ,ov_errbuf                      OUT VARCHAR2
+   ,ov_retcode                     OUT VARCHAR2
+   ,ov_errmsg                      OUT VARCHAR2
+  );
+--
+  -- 全角カナチェック（共通関数ラッピング）
+  FUNCTION chk_double_byte_kana(
+    iv_value                       IN  VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 電話番号チェック（共通関数ラッピング）
+  FUNCTION chk_tel_format(
+    iv_value                       IN  VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 数値セパレート変換
+  PROCEDURE conv_number_separate(
+    iv_sele_number                 IN  VARCHAR2
+   ,iv_contract_year_date          IN  VARCHAR2
+   ,iv_install_support_amt         IN  VARCHAR2
+   ,iv_install_support_amt2        IN  VARCHAR2
+   ,iv_payment_cycle               IN  VARCHAR2
+   ,iv_electricity_amount          IN  VARCHAR2
+   ,iv_sales_month                 IN  VARCHAR2
+   ,iv_bm_rate                     IN  VARCHAR2
+   ,iv_vd_sales_charge             IN  VARCHAR2
+   ,iv_lease_charge_month          IN  VARCHAR2
+   ,iv_contruction_charge          IN  VARCHAR2
+   ,iv_electricity_amt_month       IN  VARCHAR2
+   ,ov_sele_number                 OUT VARCHAR2
+   ,ov_contract_year_date          OUT VARCHAR2
+   ,ov_install_support_amt         OUT VARCHAR2
+   ,ov_install_support_amt2        OUT VARCHAR2
+   ,ov_payment_cycle               OUT VARCHAR2
+   ,ov_electricity_amount          OUT VARCHAR2
+   ,ov_sales_month                 OUT VARCHAR2
+   ,ov_bm_rate                     OUT VARCHAR2
+   ,ov_vd_sales_charge             OUT VARCHAR2
+   ,ov_lease_charge_month          OUT VARCHAR2
+   ,ov_contruction_charge          OUT VARCHAR2
+   ,ov_electricity_amt_month       OUT VARCHAR2
+  );
+--
+  -- 数値セパレート変換（明細）
+  PROCEDURE conv_line_number_separate(
+    iv_sales_price                  IN  VARCHAR2
+   ,iv_discount_amt                 IN  VARCHAR2
+   ,iv_total_bm_rate                IN  VARCHAR2
+   ,iv_total_bm_amount              IN  VARCHAR2
+   ,iv_total_bm_conv_rate           IN  VARCHAR2
+   ,iv_bm1_bm_rate                  IN  VARCHAR2
+   ,iv_bm1_bm_amount                IN  VARCHAR2
+   ,iv_bm2_bm_rate                  IN  VARCHAR2
+   ,iv_bm2_bm_amount                IN  VARCHAR2
+   ,iv_bm3_bm_rate                  IN  VARCHAR2
+   ,iv_bm3_bm_amount                IN  VARCHAR2
+   ,ov_sales_price                  OUT VARCHAR2
+   ,ov_discount_amt                 OUT VARCHAR2
+   ,ov_total_bm_rate                OUT VARCHAR2
+   ,ov_total_bm_amount              OUT VARCHAR2
+   ,ov_total_bm_conv_rate           OUT VARCHAR2
+   ,ov_bm1_bm_rate                  OUT VARCHAR2
+   ,ov_bm1_bm_amount                OUT VARCHAR2
+   ,ov_bm2_bm_rate                  OUT VARCHAR2
+   ,ov_bm2_bm_amount                OUT VARCHAR2
+   ,ov_bm3_bm_rate                  OUT VARCHAR2
+   ,ov_bm3_bm_amount                OUT VARCHAR2
+  );
+--
+END xxcso_020001j_pkg;
+/

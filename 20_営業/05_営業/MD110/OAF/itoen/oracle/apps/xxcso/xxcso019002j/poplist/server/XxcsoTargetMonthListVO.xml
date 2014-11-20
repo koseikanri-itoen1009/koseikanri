@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoTargetMonthListVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019002j.poplist.server.XxcsoTargetMonthListVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019002j.poplist.server.XxcsoTargetMonthListVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  '01'  AS target_month
+       ,'1月' AS target_month_view
+       ,1     AS target_month_index
+  FROM  DUAL
+UNION ALL
+SELECT  '02'
+       ,'2月'
+       ,2
+  FROM  DUAL
+UNION ALL
+SELECT  '03'
+       ,'3月'
+       ,3
+  FROM  DUAL
+UNION ALL
+SELECT  '04'
+       ,'4月'
+       ,4
+  FROM  DUAL
+UNION ALL
+SELECT  '05'
+       ,'5月'
+       ,5
+  FROM  DUAL
+UNION ALL
+SELECT  '06'
+       ,'6月'
+       ,6
+  FROM  DUAL
+UNION ALL
+SELECT  '07'
+       ,'7月'
+       ,7
+  FROM  DUAL
+UNION ALL
+SELECT  '08'
+       ,'8月'
+       ,8
+  FROM  DUAL
+UNION ALL
+SELECT  '09'
+       ,'9月'
+       ,9
+  FROM  DUAL
+UNION ALL
+SELECT  '10'
+       ,'10月'
+       ,10
+  FROM  DUAL
+UNION ALL
+SELECT  '11'
+       ,'11月'
+       ,11
+  FROM  DUAL
+UNION ALL
+SELECT  '12'
+       ,'12月'
+       ,12
+  FROM  DUAL
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="TargetMonth"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="CHAR"
+      AliasName="TARGET_MONTH"
+      Expression="TARGET_MONTH"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetMonthView"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TARGET_MONTH_VIEW"
+      Expression="TARGET_MONTH_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetMonthIndex"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="TARGET_MONTH_INDEX"
+      Expression="TARGET_MONTH_INDEX"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

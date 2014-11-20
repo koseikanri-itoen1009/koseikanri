@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoMonthListVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoMonthListVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoMonthListVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT '01'  month_date
+      ,'1月' month_name
+FROM   DUAL
+UNION
+SELECT '02'  month_date
+      ,'2月' month_name
+FROM   DUAL
+UNION
+SELECT '03'  month_date
+      ,'3月' month_name
+FROM   DUAL
+UNION
+SELECT '04'  month_date
+      ,'4月' month_name
+FROM   DUAL
+UNION
+SELECT '05'  month_date
+      ,'5月' month_name
+FROM   DUAL
+UNION
+SELECT '06'  month_date
+      ,'6月' month_name
+FROM   DUAL
+UNION
+SELECT '07'  month_date
+      ,'7月' month_name
+FROM   DUAL
+UNION
+SELECT '08'  month_date
+      ,'8月' month_name
+FROM   DUAL
+UNION
+SELECT '09'  month_date
+      ,'9月' month_name
+FROM   DUAL
+UNION
+SELECT '10'   month_date
+      ,'10月' month_name
+FROM   DUAL
+UNION
+SELECT '11'   month_date
+      ,'11月' month_name
+FROM   DUAL
+UNION
+SELECT '12'   month_date
+      ,'12月' month_name
+FROM   DUAL
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="MonthDate"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="CHAR"
+      AliasName="MONTH_DATE"
+      Expression="MONTH_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MonthName"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="MONTH_NAME"
+      Expression="MONTH_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

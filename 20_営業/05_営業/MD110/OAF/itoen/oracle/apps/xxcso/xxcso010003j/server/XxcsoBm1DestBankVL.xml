@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewLink SYSTEM "jbo_03_01.dtd">
+
+<ViewLink
+   Name="XxcsoBm1DestBankVL"
+   EntityAssociation="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationBankAO" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+   </DesignTime>
+   <ViewLinkDefEnd
+      Name="XxcsoBm1DestinationFullVO"
+      Cardinality="1"
+      Owner="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1DestinationFullVO"
+      Source="true" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1DestinationFullVO.DeliveryId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_minCardinality" Value="1" />
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoBm1DestinationFullVO" />
+         <Attr Name="_accessor" Value="false" />
+      </DesignTime>
+   </ViewLinkDefEnd>
+   <ViewLinkDefEnd
+      Name="XxcsoBm1BankAccountFullVO"
+      Cardinality="0"
+      Owner="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1BankAccountFullVO" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1BankAccountFullVO.DeliveryId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoBm1BankAccountFullVO" />
+         <Attr Name="_accessor" Value="true" />
+      </DesignTime>
+   </ViewLinkDefEnd>
+</ViewLink>

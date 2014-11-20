@@ -1,0 +1,111 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Regist quote information page for sales.
+
+@see itoen.oracle.apps.xxcso.xxcso001001j.webui.XxcsoSalesPlanOutCO.java
+@see itoen.oracle.apps.xxcso.xxcso001001j.server.XxcsoSalesPlanOutAMImpl.xml
+@see itoen.oracle.apps.xxcso.xxcso001001j.server.XxcsoSalesPlanOutAMImpl.java
+
+HISTORY
+2008/12/19  K.boku        new-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso001001j.server.XxcsoSalesPlanOutAM" controllerClass="itoen.oracle.apps.xxcso.xxcso001001j.webui.XxcsoSalesPlanOutCO" use="/itoen/oracle/apps/xxcso/xxcso001001j/attributesets/XxcsoSalesPlanOutAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="BackButton" use="/itoen/oracle/apps/xxcso/xxcso001001j/attributesets/XxcsoSalesPlanOutAttrSets/BackButton"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainRN">
+               <ui:contents>
+                  <oa:tableLayout id="SearchItemTlRN" hAlign="center" width="100%">
+                     <ui:contents>
+                        <oa:rowLayout id="SearchItemRlRN01">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchItemCfRN0101">
+                                 <ui:contents>
+                                    <oa:messageComponentLayout id="SearchItemMclRN0101">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="BaseCode" viewName="XxcsoSalesPlanSearchVO1" viewAttr="BaseCode" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso001001j/attributesets/XxcsoSalesPlanOutAttrSets/BaseCode"/>
+                                       </ui:contents>
+                                    </oa:messageComponentLayout>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchItemCfRN0102">
+                                 <ui:contents>
+                                    <oa:messageComponentLayout id="SearchItemMclRN0102">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="BaseName" viewName="XxcsoSalesPlanSearchVO1" viewAttr="BaseName" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso001001j/attributesets/XxcsoSalesPlanOutAttrSets/BaseName" cellNoWrapFormat="true"/>
+                                       </ui:contents>
+                                    </oa:messageComponentLayout>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="SearchItemRlRN02">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchItemCfRN0201">
+                                 <ui:contents>
+                                    <oa:messageComponentLayout id="SearchItemMclRN0201">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="BusinessYearInput" viewName="XxcsoSalesPlanSearchVO1" viewAttr="BusinessYear" maximumLength="4" required="uiOnly" dataType="VARCHAR2" columns="4" use="/itoen/oracle/apps/xxcso/xxcso001001j/attributesets/XxcsoSalesPlanOutAttrSets/BusinessYearInput"/>
+                                       </ui:contents>
+                                    </oa:messageComponentLayout>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="SearchItemCfRN0202">
+                                 <ui:contents>
+                                    <oa:messageComponentLayout id="SearchItemMclRN0202"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="SearchItemRlRN03">
+                           <ui:contents>
+                              <oa:cellFormat id="SearchItemCfRN0301" columnSpan="2" hAlign="center">
+                                 <ui:contents>
+                                    <oa:flowLayout id="SearchItemButtonFlRN">
+                                       <ui:contents>
+                                          <oa:rowLayout id="SearchItemButtonRlRN">
+                                             <ui:contents>
+                                                <oa:submitButton id="CsvCreateButton" hAlign="right" use="/itoen/oracle/apps/xxcso/xxcso001001j/attributesets/XxcsoSalesPlanOutAttrSets/CsvCreateButton"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:flowLayout>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:tableLayout>
+                  <oa:separator id="SearchResultSeparator"/>
+                  <oa:table id="CsvDwnTblRN" width="30%" use="/itoen/oracle/apps/xxcso/xxcso001001j/attributesets/XxcsoSalesPlanOutAttrSets/CsvDwnTblRN">
+                     <ui:contents>
+                        <oa:messageStyledText id="CsvBaseName" viewAttr="BaseName" viewName="XxcsoCsvDownVO1" use="/itoen/oracle/apps/xxcso/xxcso001001j/attributesets/XxcsoSalesPlanOutAttrSets/CsvBaseName" cellNoWrapFormat="true"/>
+                        <oa:messageStyledText id="CsvBusinessYear" viewAttr="BusinessYear" viewName="XxcsoCsvDownVO1" use="/itoen/oracle/apps/xxcso/xxcso001001j/attributesets/XxcsoSalesPlanOutAttrSets/CsvBusinessYear" cellNoWrapFormat="true"/>
+                        <oa:messageDownload id="FileNameDwn" viewAttr="FileName" contentViewAttributeName="FileData" viewName="XxcsoCsvDownVO1" use="/itoen/oracle/apps/xxcso/xxcso001001j/attributesets/XxcsoSalesPlanOutAttrSets/FileNameDwn" cellNoWrapFormat="true"/>
+                     </ui:contents>
+                  </oa:table>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+         <ui:pageStatus>
+            <oa:flowLayout id="RequiredKeyFlRN">
+               <ui:contents>
+                  <oa:tableLayout id="RequiredKeyTlRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG" hAlign="center" width="100%"/>
+               </ui:contents>
+            </oa:flowLayout>
+         </ui:pageStatus>
+      </oa:pageLayout>
+   </content>
+</page>

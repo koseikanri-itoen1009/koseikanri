@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoQuoteItemLovVO"
+   OrderBy="quote_number desc, quote_line_id asc"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoQuoteItemLovVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoQuoteItemLovVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  xiiv.inventory_item_id
+       ,xiiv.inventory_item_code
+       ,xiiv.item_short_name
+       ,xiiv.case_inc_num
+       ,xqh.quote_number
+       ,xqh.quote_revision_number
+       ,xqh.publish_date
+       ,xiiv.jan_code
+       ,xiiv.itf_code
+       ,xql.quote_start_date
+       ,TO_CHAR(
+          DECODE(xql.this_time_deliv_price
+           ,NULL, xql.usually_deliv_price
+           ,xql.this_time_deliv_price
+          )
+         ,'FM99G990D90'
+        ) deliv_price
+       ,TO_CHAR(
+         DECODE(xqh.store_price_tax_type
+           ,1, DECODE(xql.this_time_store_sale_price
+                ,NULL, xql.usually_store_sale_price
+                ,xql.this_time_store_sale_price
+               )
+           ,NULL
+          )
+         ,'FM999G990D90'
+        ) store_sales_price
+       ,TO_CHAR(
+         DECODE(xqh.store_price_tax_type
+           ,2, DECODE(xql.this_time_store_sale_price
+                ,NULL, xql.usually_store_sale_price
+                ,xql.this_time_store_sale_price
+               )
+           ,NULL
+          )
+         ,'FM999G990D90'
+        ) store_sales_price_inc_tax
+       ,TO_CHAR(
+          xxcso_007003j_pkg.get_quotation_price(
+            xql.quote_line_id
+          )
+         ,'FM99G990D90'
+        ) quotation_price
+       ,xql.remarks
+       ,DECODE(xqh.quote_submit_name
+         ,NULL,xcav.party_name
+         ,xqh.quote_submit_name
+        ) quote_submit_name
+       ,'DeleteEnabled' deleted_enabled_value
+       ,xql.quote_line_id
+FROM    xxcso_quote_headers       xqh
+       ,xxcso_quote_lines         xql
+       ,xxcso_inventory_items_v2  xiiv
+       ,xxcso_cust_accounts_v     xcav
+WHERE   xqh.quote_type            = '1'
+  AND   xqh.status                = '2'
+  AND   xql.quote_header_id       = xqh.quote_header_id
+  AND   xiiv.inventory_item_id    = xql.inventory_item_id
+  AND   xiiv.item_status IN ('20','30','40','50')
+  AND   xcav.account_number       = xqh.account_number
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="InventoryItemId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="INVENTORY_ITEM_ID"
+      Expression="INVENTORY_ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InventoryItemCode"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INVENTORY_ITEM_CODE"
+      Expression="INVENTORY_ITEM_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemShortName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_SHORT_NAME"
+      Expression="ITEM_SHORT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CaseIncNum"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CASE_INC_NUM"
+      Expression="CASE_INC_NUM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="12"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_NUMBER"
+      Expression="QUOTE_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="12" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteRevisionNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="2"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="QUOTE_REVISION_NUMBER"
+      Expression="QUOTE_REVISION_NUMBER"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PublishDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="PUBLISH_DATE"
+      Expression="PUBLISH_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="JanCode"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="JAN_CODE"
+      Expression="JAN_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItfCode"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITF_CODE"
+      Expression="ITF_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteStartDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="QUOTE_START_DATE"
+      Expression="QUOTE_START_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DelivPrice"
+      IsPersistent="false"
+      Precision="9"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELIV_PRICE"
+      Expression="DELIV_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StoreSalesPrice"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STORE_SALES_PRICE"
+      Expression="STORE_SALES_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StoreSalesPriceIncTax"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STORE_SALES_PRICE_INC_TAX"
+      Expression="STORE_SALES_PRICE_INC_TAX"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuotationPrice"
+      IsPersistent="false"
+      Precision="9"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTATION_PRICE"
+      Expression="QUOTATION_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Remarks"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="REMARKS"
+      Expression="REMARKS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteSubmitName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_SUBMIT_NAME"
+      Expression="QUOTE_SUBMIT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeleteEnabledValue"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELETE_ENABLED_VALUE"
+      Expression="DELETE_ENABLED_VALUE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteLineId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="QUOTE_LINE_ID"
+      Expression="QUOTE_LINE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

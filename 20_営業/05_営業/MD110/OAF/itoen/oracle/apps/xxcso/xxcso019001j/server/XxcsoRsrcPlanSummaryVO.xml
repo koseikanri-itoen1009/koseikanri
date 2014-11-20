@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoRsrcPlanSummaryVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoRsrcPlanSummaryVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoRsrcPlanSummaryVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  :1 employee_number
+       ,:2 full_name
+       ,xxcso_rsrc_sales_plans_pkg.get_rsrc_monthly_plan(
+          tmp.base_code
+         ,tmp.employee_number
+         ,year_month
+        )  rsrc_monthly_plan
+       ,xxcso_rsrc_sales_plans_pkg.get_acct_monthly_plan_sum(
+          tmp.base_code
+         ,tmp.employee_number
+         ,year_month
+        )  rsrc_acct_monthly_plan_sum
+       ,xxcso_rsrc_sales_plans_pkg.get_rsrc_monthly_differ(
+          tmp.base_code
+         ,tmp.employee_number
+         ,year_month
+        )  rsrc_monthly_differ
+FROM    (SELECT  :3  base_code
+                ,:4  employee_number
+                ,:5  year_month
+         FROM    DUAL
+        ) tmp
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EMPLOYEE_NUMBER"
+      Expression="EMPLOYEE_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsrcMonthlyPlan"
+      IsPersistent="false"
+      Precision="13"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RSRC_MONTHLY_PLAN"
+      Expression="RSRC_MONTHLY_PLAN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsrcAcctMonthlyPlanSum"
+      IsPersistent="false"
+      Precision="13"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RSRC_ACCT_MONTHLY_PLAN_SUM"
+      Expression="RSRC_ACCT_MONTHLY_PLAN_SUM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsrcMonthlyDiffer"
+      IsPersistent="false"
+      Precision="13"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RSRC_MONTHLY_DIFFER"
+      Expression="RSRC_MONTHLY_DIFFER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

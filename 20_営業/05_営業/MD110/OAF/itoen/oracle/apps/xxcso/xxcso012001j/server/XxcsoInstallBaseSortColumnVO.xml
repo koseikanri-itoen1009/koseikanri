@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoInstallBaseSortColumnVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBaseSortColumnVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBaseSortColumnVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT   XXCSO_UTIL_COMMON_PKG.get_lookup_meaning(
+           'XXCSO1_IB_PV_COLUMN_DEF'
+          ,xpscd.column_code
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         ) AS sort_column
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_meaning(
+           'XXCSO1_IB_PV_SORT_TYPE'
+          ,xpscd.sort_direction_code
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         ) AS sort_direction
+        ,SUBSTRB(
+           XXCSO_UTIL_COMMON_PKG.get_lookup_attribute(
+             'XXCSO1_IB_PV_COLUMN_DEF'
+            ,xpscd.column_code
+            ,1
+            ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+           )
+         , :1, 1) AS enable_flag
+FROM     xxcso_pv_sort_column_def xpscd
+WHERE    xpscd.view_id = :2
+ORDER BY xpscd.setup_number
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="SortColumn"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SORTCOLUMN"
+      Passivate="true"
+      Expression="SortColumn"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SortDirection"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SORTDIRECTION"
+      Passivate="true"
+      Expression="SortDirection"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EnableFlag"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ENABLE_FLAG"
+      Passivate="true"
+      Expression="ENABLE_FLAG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

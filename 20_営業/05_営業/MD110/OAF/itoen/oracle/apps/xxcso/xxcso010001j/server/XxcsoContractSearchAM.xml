@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoContractSearchAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractSearchAMImpl"
+   LoadComponentsLazily="true" >
+   <Properties>
+      <Property Name ="RETENTION_LEVEL" Value ="MANAGE_STATE" />
+   </Properties>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoContractQueryTermsVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractQueryTermsVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractNewVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractNewVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractAuthorityCheckVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractAuthorityCheckVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractRenderVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractRenderVO" >
+   </ViewUsage>
+</AppModule>

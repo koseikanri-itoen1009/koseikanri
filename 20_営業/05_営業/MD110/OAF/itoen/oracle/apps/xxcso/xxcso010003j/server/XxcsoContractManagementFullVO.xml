@@ -1,0 +1,574 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoContractManagementFullVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractManagementFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractManagementFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoContractManagementsEO.CONTRACT_MANAGEMENT_ID
+      ,XxcsoContractManagementsEO.CONTRACT_NUMBER
+      ,XxcsoContractManagementsEO.CONTRACT_FORMAT
+      ,XxcsoContractManagementsEO.STATUS
+      ,XxcsoContractManagementsEO.EMPLOYEE_NUMBER
+      ,XxcsoContractManagementsEO.SP_DECISION_HEADER_ID
+      ,XxcsoContractManagementsEO.CONTRACT_EFFECT_DATE
+      ,XxcsoContractManagementsEO.TRANSFER_MONTH_CODE
+      ,XxcsoContractManagementsEO.TRANSFER_DAY_CODE
+      ,XxcsoContractManagementsEO.CLOSE_DAY_CODE
+      ,XxcsoContractManagementsEO.CONTRACT_PERIOD
+      ,XxcsoContractManagementsEO.CANCELLATION_OFFER_CODE
+      ,XxcsoContractManagementsEO.CONTRACT_CUSTOMER_ID
+      ,xxcso_010003j_pkg.decode_cont_manage_info(
+         XxcsoContractManagementsEO.STATUS
+        ,XxcsoContractManagementsEO.COOPERATE_FLAG
+        ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+        ,XxcsoContractManagementsEO.INSTALL_ACCOUNT_ID
+        ,xcasv.cust_account_id
+       )                         AS install_account_id
+      ,xxcso_010003j_pkg.decode_cont_manage_info(
+         XxcsoContractManagementsEO.STATUS
+        ,XxcsoContractManagementsEO.COOPERATE_FLAG
+        ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+        ,XxcsoContractManagementsEO.INSTALL_ACCOUNT_NUMBER
+        ,xcasv.account_number
+       )                         AS install_account_number
+      ,xxcso_010003j_pkg.decode_cont_manage_info(
+         XxcsoContractManagementsEO.STATUS
+        ,XxcsoContractManagementsEO.COOPERATE_FLAG
+        ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+        ,XxcsoContractManagementsEO.INSTALL_PARTY_NAME
+        ,xcasv.party_name
+       )                         AS install_party_name
+      ,xxcso_010003j_pkg.decode_cont_manage_info(
+         XxcsoContractManagementsEO.STATUS
+        ,XxcsoContractManagementsEO.COOPERATE_FLAG
+        ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+        ,XxcsoContractManagementsEO.INSTALL_POSTAL_CODE
+        ,xcasv.postal_code
+       )                         AS install_postal_code
+      ,xxcso_010003j_pkg.decode_cont_manage_info(
+         XxcsoContractManagementsEO.STATUS
+        ,XxcsoContractManagementsEO.COOPERATE_FLAG
+        ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+        ,XxcsoContractManagementsEO.INSTALL_STATE
+        ,xcasv.state
+       )                         AS install_state
+      ,xxcso_010003j_pkg.decode_cont_manage_info(
+         XxcsoContractManagementsEO.STATUS
+        ,XxcsoContractManagementsEO.COOPERATE_FLAG
+        ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+        ,XxcsoContractManagementsEO.INSTALL_CITY
+        ,xcasv.city
+       )                         AS install_city
+      ,xxcso_010003j_pkg.decode_cont_manage_info(
+         XxcsoContractManagementsEO.STATUS
+        ,XxcsoContractManagementsEO.COOPERATE_FLAG
+        ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+        ,XxcsoContractManagementsEO.INSTALL_ADDRESS1
+        ,xcasv.address1
+       )                         AS install_address1
+      ,xxcso_010003j_pkg.decode_cont_manage_info(
+         XxcsoContractManagementsEO.STATUS
+        ,XxcsoContractManagementsEO.COOPERATE_FLAG
+        ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+        ,XxcsoContractManagementsEO.INSTALL_ADDRESS2
+        ,xcasv.address2
+       )                         AS install_address2
+      ,XxcsoContractManagementsEO.INSTALL_DATE
+      ,XxcsoContractManagementsEO.INSTALL_LOCATION
+      ,xxcso_010003j_pkg.decode_cont_manage_info(
+         XxcsoContractManagementsEO.STATUS
+        ,XxcsoContractManagementsEO.COOPERATE_FLAG
+        ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+        ,XxcsoContractManagementsEO.PUBLISH_DEPT_CODE
+        ,xcasv.sale_base_code
+       )                         AS publish_dept_code
+      ,XxcsoContractManagementsEO.INSTALL_CODE
+      ,XxcsoContractManagementsEO.COOPERATE_FLAG
+      ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+      ,XxcsoContractManagementsEO.CREATED_BY
+      ,XxcsoContractManagementsEO.CREATION_DATE
+      ,XxcsoContractManagementsEO.LAST_UPDATED_BY
+      ,XxcsoContractManagementsEO.LAST_UPDATE_DATE
+      ,XxcsoContractManagementsEO.LAST_UPDATE_LOGIN
+      ,XxcsoContractManagementsEO.REQUEST_ID
+      ,XxcsoContractManagementsEO.PROGRAM_APPLICATION_ID
+      ,XxcsoContractManagementsEO.PROGRAM_ID
+      ,XxcsoContractManagementsEO.PROGRAM_UPDATE_DATE
+      ,xev.full_name
+      ,xxcso_util_common_pkg.get_emp_parameter(
+         xev.work_base_code_new
+        ,xev.work_base_code_old
+        ,xev.issue_date
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       )                         AS base_code
+      ,xxcso_util_common_pkg.get_emp_parameter(
+         xev.work_base_name_new
+        ,xev.work_base_name_old
+        ,xev.issue_date
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       )                         AS base_name
+      ,xxcso_util_common_pkg.get_base_name(
+         xxcso_010003j_pkg.decode_cont_manage_info(
+           XxcsoContractManagementsEO.STATUS
+          ,XxcsoContractManagementsEO.COOPERATE_FLAG
+          ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+          ,XxcsoContractManagementsEO.PUBLISH_DEPT_CODE
+          ,xcasv.sale_base_code
+         )
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       )                         AS publish_dept_name
+      ,xlv.address_line1 location_address
+      ,xxcso_010003j_pkg.get_base_leader_name(
+         xxcso_010003j_pkg.decode_cont_manage_info(
+           XxcsoContractManagementsEO.STATUS
+          ,XxcsoContractManagementsEO.COOPERATE_FLAG
+          ,XxcsoContractManagementsEO.BATCH_PROC_STATUS
+          ,XxcsoContractManagementsEO.PUBLISH_DEPT_CODE
+          ,xcasv.sale_base_code
+         )
+       ) base_leader_name
+      ,xsdh.sp_decision_number
+      ,xsdh.other_content
+      ,xsdh.contract_year_date
+      ,xxcso_010003j_pkg.get_base_leader_pos_name(
+         XxcsoContractManagementsEO.PUBLISH_DEPT_CODE
+       )                         AS base_leader_position_name
+FROM   XXCSO_CONTRACT_MANAGEMENTS XxcsoContractManagementsEO
+      ,xxcso_employees_v2         xev
+      ,xxcso_locations_v2         xlv
+      ,xxcso_cust_acct_sites_v    xcasv
+      ,xxcso_sp_decision_custs    xsdc
+      ,xxcso_sp_decision_headers  xsdh
+WHERE XxcsoContractManagementsEO.CONTRACT_MANAGEMENT_ID = :1
+AND   xev.employee_number             = XxcsoContractManagementsEO.EMPLOYEE_NUMBER
+AND   xlv.dept_code(+)                = XxcsoContractManagementsEO.PUBLISH_DEPT_CODE
+AND   xsdh.sp_decision_header_id      = XxcsoContractManagementsEO.SP_DECISION_HEADER_ID
+AND   xsdc.sp_decision_header_id      = xsdh.sp_decision_header_id
+AND   xsdc.sp_decision_customer_class = '1'
+AND   xcasv.cust_account_id           = xsdc.customer_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoContractManagementsEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="true" />
+         <Attr Name="_queryWhere" Value="XxcsoContractManagementsEO.CONTRACT_MANAGEMENT_ID = :1" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="ContractManagementId"
+      IsNotNull="true"
+      EntityAttrName="ContractManagementId"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="CONTRACT_MANAGEMENT_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractNumber"
+      IsNotNull="true"
+      Precision="12"
+      EntityAttrName="ContractNumber"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="CONTRACT_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractFormat"
+      Precision="1"
+      EntityAttrName="ContractFormat"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="CONTRACT_FORMAT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Status"
+      Precision="1"
+      EntityAttrName="Status"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="STATUS" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      Precision="5"
+      EntityAttrName="EmployeeNumber"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="EMPLOYEE_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionHeaderId"
+      IsNotNull="true"
+      EntityAttrName="SpDecisionHeaderId"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="SP_DECISION_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractEffectDate"
+      EntityAttrName="ContractEffectDate"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="CONTRACT_EFFECT_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransferMonthCode"
+      Precision="2"
+      EntityAttrName="TransferMonthCode"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="TRANSFER_MONTH_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransferDayCode"
+      Precision="2"
+      EntityAttrName="TransferDayCode"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="TRANSFER_DAY_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CloseDayCode"
+      Precision="2"
+      EntityAttrName="CloseDayCode"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="CLOSE_DAY_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractPeriod"
+      EntityAttrName="ContractPeriod"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="CONTRACT_PERIOD" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CancellationOfferCode"
+      Precision="1"
+      EntityAttrName="CancellationOfferCode"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="CANCELLATION_OFFER_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractCustomerId"
+      EntityAttrName="ContractCustomerId"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="CONTRACT_CUSTOMER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAccountId"
+      EntityAttrName="InstallAccountId"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="INSTALL_ACCOUNT_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAccountNumber"
+      Precision="9"
+      EntityAttrName="InstallAccountNumber"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="INSTALL_ACCOUNT_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallPartyName"
+      Precision="240"
+      EntityAttrName="InstallPartyName"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="INSTALL_PARTY_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallPostalCode"
+      Precision="60"
+      EntityAttrName="InstallPostalCode"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="INSTALL_POSTAL_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallState"
+      Precision="60"
+      EntityAttrName="InstallState"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="INSTALL_STATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallCity"
+      Precision="60"
+      EntityAttrName="InstallCity"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="INSTALL_CITY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAddress1"
+      Precision="240"
+      EntityAttrName="InstallAddress1"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="INSTALL_ADDRESS1" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAddress2"
+      Precision="240"
+      EntityAttrName="InstallAddress2"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="INSTALL_ADDRESS2" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallDate"
+      EntityAttrName="InstallDate"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="INSTALL_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallLocation"
+      Precision="1"
+      EntityAttrName="InstallLocation"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="INSTALL_LOCATION" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PublishDeptCode"
+      Precision="4"
+      EntityAttrName="PublishDeptCode"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="PUBLISH_DEPT_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallCode"
+      Precision="10"
+      EntityAttrName="InstallCode"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="INSTALL_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CooperateFlag"
+      Precision="1"
+      EntityAttrName="CooperateFlag"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="COOPERATE_FLAG" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BatchProcStatus"
+      Precision="1"
+      EntityAttrName="BatchProcStatus"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="BATCH_PROC_STATUS" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCode"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_CODE"
+      Expression="BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_NAME"
+      Expression="BASE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PublishDeptName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PUBLISH_DEPT_NAME"
+      Expression="PUBLISH_DEPT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LocationAddress"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LOCATION_ADDRESS"
+      Expression="LOCATION_ADDRESS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="60" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseLeaderName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_LEADER_NAME"
+      Expression="BASE_LEADER_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SP_DECISION_NUMBER"
+      Expression="SP_DECISION_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OtherContent"
+      IsPersistent="false"
+      Precision="500"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="OTHER_CONTENT"
+      Expression="OTHER_CONTENT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="500" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractYearDate"
+      IsPersistent="false"
+      Precision="2"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CONTRACT_YEAR_DATE"
+      Expression="CONTRACT_YEAR_DATE"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseLeaderPositionName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_LEADER_POSITION_NAME"
+      Expression="BASE_LEADER_POSITION_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewLinkAccessor
+      Name="XxcsoBm1DestinationFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractMngBm1DestVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoBm2DestinationFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractMngBm2DestVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoBm3DestinationFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractMngBm3DestVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+</ViewObject>

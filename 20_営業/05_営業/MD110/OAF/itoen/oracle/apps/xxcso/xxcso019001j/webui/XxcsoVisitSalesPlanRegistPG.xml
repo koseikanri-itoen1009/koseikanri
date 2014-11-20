@@ -1,0 +1,311 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Regist quote information page for sales.
+
+@see itoen.oracle.apps.xxcso.xxcso019001j.webui.XxcsoVisitSalesPlanRegistCO.java
+@see itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoVisitSalesPlanRegistAMImpl.xml
+@see itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoVisitSalesPlanRegistAMImpl.java
+
+HISTORY
+2009/01/07  K.boku        new-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoVisitSalesPlanRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso019001j.webui.XxcsoVisitSalesPlanRegistCO" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="CancelButton" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/CancelButton"/>
+                  <oa:submitButton id="SubmitButton" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/SubmitButton"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:header id="SearchHdrRN" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/SearchHdrRN">
+                     <ui:contents>
+                        <oa:messageComponentLayout id="SearchMclRN">
+                           <ui:contents>
+                              <oa:messageLayout id="SearchAccountLayout" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/SearchAccountLayout">
+                                 <ui:contents>
+                                    <oa:rowLayout id="SearchAccountRlRN">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="SearchAccountNumber" viewName="XxcsoAcctSalesInitVO1" viewAttr="AccountNumber" prompt="" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso019001j/lov/webui/XxcsoAccountNumberLovRN" columns="10" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/SearchAccountNumber" maximumLength="9">
+                                             <lovMappings>
+                                                <lovMap id="SearchAccountNumberMap" lovItem="AccountNumber" resultTo="SearchAccountNumber" criteriaFrom="SearchAccountNumber"/>
+                                                <lovMap id="SearchPartyNameViewMap" lovItem="PartyName" resultTo="SearchPartyNameView"/>
+                                                <lovMap id="SearchPartyNameMap" lovItem="PartyName" resultTo="SearchPartyName"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:spacer id="SearchAccountSep" width="20"/>
+                                          <oa:messageStyledText id="SearchPartyNameView" styleClass="OraDataText" viewName="XxcsoAcctSalesInitVO1" viewAttr="PartyName" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/SearchPartyNameView"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                              <oa:messageLayout id="SearchPlanYearMonthLayout" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/SearchPlanYearMonthLayout">
+                                 <ui:contents>
+                                    <oa:rowLayout id="SearchPlanYearMonthRlRN">
+                                       <ui:contents>
+                                          <oa:messageChoice id="SearchPlanYear" viewName="XxcsoAcctSalesInitVO1" viewAttr="PlanYear" pickListViewName="XxcsoPlanYearListVO1" pickListDispAttr="PlanYearView" pickListValAttr="PlanYear" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/SearchPlanYear"/>
+                                          <oa:messageChoice id="SearchPlanMonth" viewName="XxcsoAcctSalesInitVO1" viewAttr="PlanMonth" pickListViewName="XxcsoPlanMonthListVO1" pickListDispAttr="PlanMonthView" pickListValAttr="PlanMonth" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/SearchPlanMonth"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                           </ui:contents>
+                           <ui:footer>
+                              <oa:flowLayout id="SearchActionFlRN">
+                                 <ui:contents>
+                                    <oa:submitButton id="SearchButton" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/SearchButton"/>
+                                 </ui:contents>
+                              </oa:flowLayout>
+                           </ui:footer>
+                        </oa:messageComponentLayout>
+                        <oa:formValue id="SearchPartyName" viewName="XxcsoAcctSalesInitVO1" viewAttr="PartyName"/>
+                        <oa:separator id="SearchResultSeparator" rendered="${oa.XxcsoAcctSalesInitVO1.ResultRender}"/>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:stackLayout id="ResultSlRN" rendered="${oa.XxcsoAcctSalesInitVO1.ResultRender}">
+                     <ui:contents>
+                        <oa:header id="ResultHdrRN" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/ResultHdrRN">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="ResultMclRN">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ResultAccountNumber" viewName="XxcsoAcctSalesSummaryVO1" viewAttr="AccountNumber" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/ResultAccountNumber"/>
+                                    <oa:messageStyledText id="ResultPartyName" viewName="XxcsoAcctSalesSummaryVO1" viewAttr="PartyName" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/ResultPartyName"/>
+                                    <oa:messageStyledText id="ResultPlanYearMonth" viewName="XxcsoAcctSalesSummaryVO1" viewAttr="YearMonthView" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/ResultPlanYearMonth"/>
+                                    <oa:messageStyledText id="PartyId" viewName="XxcsoAcctSalesSummaryVO1" viewAttr="PartyId" rendered="false"/>
+                                    <oa:messageStyledText id="VistTargetDiv" viewName="XxcsoAcctSalesSummaryVO1" viewAttr="VistTargetDiv" rendered="false"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:header>
+                        <oa:header id="RouteNoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/RouteNoHdrRN">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="RouteNoMclRN">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="TargetRouteNo" viewName="XxcsoRtnRsrcFullVO1" viewAttr="TrgtRouteNo" maximumLength="7" columns="8" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/TargetRouteNo"/>
+                                    <oa:messageTextInput id="NextRouteNo" viewName="XxcsoRtnRsrcFullVO1" viewAttr="NextRouteNo" maximumLength="7" columns="8" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/NextRouteNo" prompt="ルートNo（翌月以降）"/>
+                                    <oa:messageStyledText id="TrgtRouteNoStartDate" viewName="XxcsoRtnRsrcFullVO1" viewAttr="TrgtRouteNoStartDate" maximumLength="7" columns="8" prompt="" dataType="DATE" rendered="false"/>
+                                    <oa:messageStyledText id="TrgtRouteNoExtensionId" viewName="XxcsoRtnRsrcFullVO1" viewAttr="TrgtRouteNoExtensionId" maximumLength="7" columns="8" prompt="" dataType="NUMBER" rendered="false"/>
+                                    <oa:messageStyledText id="NextRouteNoStartDate" viewName="XxcsoRtnRsrcFullVO1" viewAttr="NextRouteNoStartDate" maximumLength="7" columns="8" prompt="" dataType="DATE" rendered="false"/>
+                                    <oa:messageStyledText id="NextRouteNoExtensionId" viewName="XxcsoRtnRsrcFullVO1" viewAttr="NextRouteNoExtensionId" maximumLength="7" columns="8" prompt="" dataType="NUMBER" rendered="false"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:header>
+                        <oa:header id="ResourceInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/ResourceInfoHdrRN">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="ResourceInfoMclRN">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="EmployeeNumber" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="EmployeeNumber" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/EmployeeNumber"/>
+                                    <oa:messageStyledText id="FullName" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="FullName" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/FullName"/>
+                                    <oa:messageLayout id="RsrcMonthlyPlanLayout" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/RsrcMonthlyPlanLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="RsrcMonthlyPlanRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="RsrcMonthlyPlan" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="RsrcMonthlyPlan" styleClass="OraDataText"/>
+                                                <oa:staticStyledText id="RsrcMonthlyPlanLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/RsrcMonthlyPlanLabel"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="RsrcAcctMonthlyPlanSumLayout" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/RsrcAcctMonthlyPlanSumLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="RsrcAcctMonthlyPlanSumRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="RsrcAcctMonthlyPlanSum" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="RsrcAcctMonthlyPlanSum" styleClass="OraDataText"/>
+                                                <oa:staticStyledText id="RsrcAcctMonthlyPlanSumLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/RsrcAcctMonthlyPlanSumLabel"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="RsrcAcctDifferLayout" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/RsrcAcctDifferLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="RsrcAcctDifferRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="RsrcAcctDiffer" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="RsrcMonthlyDiffer" styleClass="OraDataText"/>
+                                                <oa:staticStyledText id="RsrcAcctDifferLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/RsrcAcctDifferLabel"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:header>
+                        <oa:header id="AcctMonthlyPlanHdrRN" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/AcctMonthlyPlanHdrRN">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="AcctMonthlyPlanMclRN">
+                                 <ui:contents>
+                                    <oa:messageLayout id="TargetMonthSalesPlanAmtLayout" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/TargetMonthSalesPlanAmtLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="TargetMonthSalesPlanAmtRlRN">
+                                             <ui:contents>
+                                                <oa:messageTextInput id="TargetMonthSalesPlanAmt" viewName="XxcsoAcctMonthlyPlanFullVO1" viewAttr="TargetMonthSalesPlanAmt" maximumLength="10" dataType="VARCHAR2" columns="8" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/TargetMonthSalesPlanAmt">
+                                                   <ui:primaryClientAction>
+                                                      <ui:firePartialAction event="TargetMonthSalesPlanAmtChange"/>
+                                                   </ui:primaryClientAction>
+                                                </oa:messageTextInput>
+                                                <oa:staticStyledText id="TargetMonthSalesPlanAmtLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/TargetMonthSalesPlanAmtLabel"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="AcctDailyPlanSumLayout" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/AcctDailyPlanSumLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="AcctDailyPlanSumRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="AcctDailyPlanSum" viewName="XxcsoAcctMonthlyPlanFullVO1" viewAttr="AcctDailyPlanSum" dataType="VARCHAR2" styleClass="OraDataText"/>
+                                                <oa:staticStyledText id="AcctDailyPlanSumLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/AcctDailyPlanSumLabel"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="AcctDailyPlanDifferLayout" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/AcctDailyPlanDifferLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="AcctDailyPlanDifferRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="AcctDailyPlanDiffer" viewName="XxcsoAcctMonthlyPlanFullVO1" viewAttr="RsrcAcctDailyDiffer" dataType="VARCHAR2" styleClass="OraDataText"/>
+                                                <oa:staticStyledText id="AcctDailyPlanDifferLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/AcctDailyPlanDifferLabel"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:header>
+                        <oa:header id="AcctDailyPlanHdrRN" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/AcctDailyPlanHdrRN">
+                           <ui:contents>
+                              <oa:tableLayout id="AcctDailyPlanTlRN" hAlign="center" width="100%">
+                                 <ui:contents>
+                                    <oa:rowLayout id="AcctDailyPlanRlRN" width="100%" hAlign="center">
+                                       <ui:contents>
+                                          <oa:cellFormat id="AcctDailyPlanCfRN" width="100%" hAlign="center">
+                                             <ui:contents>
+                                                <oa:advancedTable id="AcctDailyPlanAdvTblRN" viewName="XxcsoAcctWeeklyPlanFullVO1">
+                                                   <ui:contents>
+                                                      <oa:column id="MondayCol" columnDataFormat="iconButtonFormat">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="MondayColHdr" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/MondayColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageComponentLayout id="MondayMclRN">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="MondayColumn" viewAttr="MondayColumn" styleClass="OraDataText"/>
+                                                                  <oa:messageTextInput id="MondayValue" viewAttr="MondayValue" maximumLength="7" columns="7" rendered="${oa.XxcsoAcctWeeklyPlanFullVO1.MondayRender}" dataType="VARCHAR2"/>
+                                                                  <oa:messageStyledText id="MondaySalesPlanId" viewAttr="MondaySalesPlanId" rendered="false" warnAboutChanges="false" dataType="NUMBER"/>
+                                                               </ui:contents>
+                                                            </oa:messageComponentLayout>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="TuesdayCol" columnDataFormat="iconButtonFormat">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="TuesdayColHdr" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/TuesdayColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageComponentLayout id="TuesdayMclRN">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="TuesdayColumn" viewAttr="TuesdayColumn" styleClass="OraDataText"/>
+                                                                  <oa:messageTextInput id="TuesdayValue" viewAttr="TuesdayValue" maximumLength="7" columns="7" rendered="${oa.XxcsoAcctWeeklyPlanFullVO1.TuesdayRender}"/>
+                                                                  <oa:messageStyledText id="TuesdaySalesPlanId" viewAttr="TuesdaySalesPlanId" rendered="false" warnAboutChanges="false" dataType="NUMBER"/>
+                                                               </ui:contents>
+                                                            </oa:messageComponentLayout>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="WednesdayCol" columnDataFormat="iconButtonFormat">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="WednesdayColHdr" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/WednesdayColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageComponentLayout id="WednesdayMclRN">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="WednesdayColumn" viewAttr="WednesdayColumn" styleClass="OraDataText"/>
+                                                                  <oa:messageTextInput id="WednesdayValue" viewAttr="WednesdayValue" maximumLength="7" columns="7" rendered="${oa.XxcsoAcctWeeklyPlanFullVO1.WednesdayRender}"/>
+                                                                  <oa:messageStyledText id="WednesdaySalesPlanId" viewAttr="WednesdaySalesPlanId" rendered="false" warnAboutChanges="false" dataType="NUMBER"/>
+                                                               </ui:contents>
+                                                            </oa:messageComponentLayout>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="ThursdayCol" columnDataFormat="iconButtonFormat">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="ThursdayColHdr" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/ThursdayColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageComponentLayout id="ThursdayMclRN">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="ThursdayColumn" viewAttr="ThursdayColumn" styleClass="OraDataText"/>
+                                                                  <oa:messageTextInput id="ThursdayValue" viewAttr="ThursdayValue" maximumLength="7" columns="7" rendered="${oa.XxcsoAcctWeeklyPlanFullVO1.ThursdayRender}"/>
+                                                                  <oa:messageStyledText id="ThursdaySalesPlanId" viewAttr="TuesdaySalesPlanId" rendered="false" warnAboutChanges="false" dataType="NUMBER"/>
+                                                               </ui:contents>
+                                                            </oa:messageComponentLayout>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="FridayCol" columnDataFormat="iconButtonFormat">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="FridayColHdr" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/FridayColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageComponentLayout id="FridayMclRN">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="FridayColumn" viewAttr="FridayColumn" styleClass="OraDataText"/>
+                                                                  <oa:messageTextInput id="FridayValue" viewAttr="FridayValue" maximumLength="7" columns="7" rendered="${oa.XxcsoAcctWeeklyPlanFullVO1.FridayRender}"/>
+                                                                  <oa:messageStyledText id="FridaySalesPlanId" viewAttr="FridaySalesPlanId" rendered="false" warnAboutChanges="false" dataType="NUMBER"/>
+                                                               </ui:contents>
+                                                            </oa:messageComponentLayout>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="SaturdayCol" columnDataFormat="iconButtonFormat">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="SaturdayColHdr" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/SaturdayColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageComponentLayout id="SaturdayMclRN">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="SaturdayColumn" viewAttr="SaturdayColumn" styleClass="OraDataText"/>
+                                                                  <oa:messageTextInput id="SaturdayValue" viewAttr="SaturdayValue" maximumLength="7" columns="7" rendered="${oa.XxcsoAcctWeeklyPlanFullVO1.SaturdayRender}"/>
+                                                                  <oa:messageStyledText id="SaturSalesPlanId" viewAttr="SaturdaySalesPlanId" rendered="false" warnAboutChanges="false" dataType="NUMBER"/>
+                                                               </ui:contents>
+                                                            </oa:messageComponentLayout>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="SundayCol" columnDataFormat="iconButtonFormat">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="SundayColHdr" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/SundayColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageComponentLayout id="SundayMclRN">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="SundayColumn" viewAttr="SundayColumn" styleClass="OraDataText"/>
+                                                                  <oa:messageTextInput id="SundayValue" viewAttr="SundayValue" maximumLength="7" columns="7" rendered="${oa.XxcsoAcctWeeklyPlanFullVO1.SundayRender}"/>
+                                                                  <oa:messageStyledText id="SunSalesPlanId" viewAttr="SundaySalesPlanId" rendered="false" warnAboutChanges="false" dataType="NUMBER"/>
+                                                               </ui:contents>
+                                                            </oa:messageComponentLayout>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                   </ui:contents>
+                                                </oa:advancedTable>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:tableLayout>
+                           </ui:contents>
+                        </oa:header>
+                     </ui:contents>
+                  </oa:stackLayout>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

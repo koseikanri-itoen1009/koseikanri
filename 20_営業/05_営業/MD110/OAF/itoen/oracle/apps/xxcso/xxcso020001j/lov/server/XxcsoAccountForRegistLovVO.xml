@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoAccountForRegistLovVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoAccountForRegistLovVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoAccountForRegistLovVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  '1'  application_type
+       ,xcasv.cust_account_id
+       ,xcasv.account_number
+       ,xcasv.party_name
+       ,xcasv.organization_name_phonetic
+       ,xcasv.established_site_name
+       ,SUBSTRB(xcasv.postal_code, 1, 3) postal_code_first
+       ,SUBSTRB(xcasv.postal_code, 4, 4) postal_code_second
+       ,xcasv.postal_code
+       ,xcasv.state
+       ,xcasv.city
+       ,xcasv.address1
+       ,xcasv.address2
+       ,xcasv.phone_number
+       ,xcasv.business_low_type
+       ,xcasv.industry_div
+       ,xcasv.establishment_location
+       ,xcasv.open_close_div
+       ,xcasv.employees
+       ,xcasv.sale_base_code
+       ,xxcso_util_common_pkg.get_base_name(
+          xcasv.sale_base_code
+         ,xxcso_util_common_pkg.get_online_sysdate
+        ) sale_base_name
+       ,xcasv.customer_status
+FROM    xxcso_employees_v2      xev
+       ,xxcso_resource_custs_v2 xrcv
+       ,xxcso_cust_acct_sites_v xcasv
+WHERE   xev.user_id            = fnd_global.user_id
+  AND   xrcv.employee_number   = xev.employee_number
+  AND   xcasv.cust_account_id  = xrcv.cust_account_id
+  AND   xcasv.customer_status IN ('10','20','25','30','40','50')
+  AND   (
+         (
+          (xcasv.customer_status IN ('10', '20'))
+          AND
+          (
+           (xcasv.business_low_type IS NULL)
+           OR
+           (
+            EXISTS (
+              SELECT  1
+              FROM    fnd_lookup_values_vl  flvv1
+                     ,fnd_lookup_values_vl  flvv2
+              WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
+                AND   flvv1.enabled_flag  = 'Y'
+                AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         <= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         >= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
+                AND   flvv2.enabled_flag  = 'Y'
+                AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         <= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         >= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   flvv2.lookup_code   = flvv1.lookup_code
+                AND   flvv2.lookup_code   = xcasv.business_low_type
+            )
+           )
+          )
+         )
+         OR
+         (
+          (xcasv.customer_class_code = '10')
+          AND
+          (
+           EXISTS (
+             SELECT  1
+             FROM    fnd_lookup_values_vl  flvv1
+                    ,fnd_lookup_values_vl  flvv2
+             WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
+               AND   flvv1.enabled_flag  = 'Y'
+               AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        <= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        >= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
+               AND   flvv2.enabled_flag  = 'Y'
+               AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        <= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        >= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   flvv2.lookup_code   = flvv1.lookup_code
+               AND   flvv2.lookup_code   = xcasv.business_low_type
+           )
+          )
+         )
+        )
+  AND   NOT EXISTS (
+          SELECT  1
+          FROM    po_hazard_classes_vl  phcv
+                 ,po_un_numbers_vl      punv
+                 ,csi_item_instances    cii
+          WHERE   phcv.hazard_class          = '販売機'
+            AND   punv.hazard_class_id       = phcv.hazard_class_id
+            AND   cii.attribute1             = punv.un_number
+            AND   cii.owner_party_id         = xcasv.party_id
+            AND   cii.owner_party_account_id = xcasv.cust_account_id
+        )
+UNION ALL
+SELECT  '2'  application_type
+       ,xcasv.cust_account_id
+       ,xcasv.account_number
+       ,xcasv.party_name
+       ,xcasv.organization_name_phonetic
+       ,xcasv.established_site_name
+       ,SUBSTRB(xcasv.postal_code, 1, 3) postal_code_first
+       ,SUBSTRB(xcasv.postal_code, 4, 4) postal_code_second
+       ,xcasv.postal_code
+       ,xcasv.state
+       ,xcasv.city
+       ,xcasv.address1
+       ,xcasv.address2
+       ,xcasv.phone_number
+       ,xcasv.business_low_type
+       ,xcasv.industry_div
+       ,xcasv.establishment_location
+       ,xcasv.open_close_div
+       ,xcasv.employees
+       ,xcasv.sale_base_code
+       ,xxcso_util_common_pkg.get_base_name(
+          xcasv.sale_base_code
+         ,xxcso_util_common_pkg.get_online_sysdate
+        ) sale_base_name
+       ,xcasv.customer_status
+FROM    xxcso_employees_v2      xev
+       ,xxcso_resource_custs_v2 xrcv
+       ,xxcso_cust_acct_sites_v xcasv
+WHERE   xev.user_id            = fnd_global.user_id
+  AND   xrcv.employee_number   = xev.employee_number
+  AND   xcasv.cust_account_id  = xrcv.cust_account_id
+  AND   xcasv.customer_status IN ('10','20','25','30','40','50')
+  AND   (
+         (
+          (xcasv.customer_status IN ('10', '20'))
+          AND
+          (
+           (xcasv.business_low_type IS NULL)
+           OR
+           (
+            EXISTS (
+              SELECT  1
+              FROM    fnd_lookup_values_vl  flvv1
+                     ,fnd_lookup_values_vl  flvv2
+              WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
+                AND   flvv1.enabled_flag  = 'Y'
+                AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         <= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         >= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
+                AND   flvv2.enabled_flag  = 'Y'
+                AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         <= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         >= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   flvv2.lookup_code   = flvv1.lookup_code
+                AND   flvv2.lookup_code   = xcasv.business_low_type
+            )
+           )
+          )
+         )
+         OR
+         (
+          (xcasv.customer_class_code = '10')
+          AND
+          (
+           EXISTS (
+             SELECT  1
+             FROM    fnd_lookup_values_vl  flvv1
+                    ,fnd_lookup_values_vl  flvv2
+             WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
+               AND   flvv1.enabled_flag  = 'Y'
+               AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        <= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        >= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
+               AND   flvv2.enabled_flag  = 'Y'
+               AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        <= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        >= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   flvv2.lookup_code   = flvv1.lookup_code
+               AND   flvv2.lookup_code   = xcasv.business_low_type
+           )
+          )
+         )
+        )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="ApplicationType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHA2"
+      AliasName="APPLICATION_TYPE"
+      Expression="APPLICATION_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustAccountId"
+      IsPersistent="false"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CUST_ACCOUNT_ID"
+      Expression="CUST_ACCOUNT_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AccountNumber"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ACCOUNT_NUMBER"
+      Expression="ACCOUNT_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyName"
+      IsPersistent="false"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PARTY_NAME"
+      Expression="PARTY_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrganizationNamePhonetic"
+      IsPersistent="false"
+      Precision="320"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ORGANIZATION_NAME_PHONETIC"
+      Expression="ORGANIZATION_NAME_PHONETIC"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="320" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EstablishedSiteName"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ESTABLISHED_SITE_NAME"
+      Expression="ESTABLISHED_SITE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PostalCodeFirst"
+      IsPersistent="false"
+      Precision="3"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="POSTAL_CODE_FIRST"
+      Expression="POSTAL_CODE_FIRST"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="3" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PostalCodeSecond"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="POSTAL_CODE_SECOND"
+      Expression="POSTAL_CODE_SECOND"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PostalCode"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="POSTAL_CODE"
+      Expression="POSTAL_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="60" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="State"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STATE"
+      Expression="STATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="60" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="City"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CITY"
+      Expression="CITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="60" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Address1"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ADDRESS1"
+      Expression="ADDRESS1"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Address2"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ADDRESS2"
+      Expression="ADDRESS2"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PhoneNumber"
+      IsPersistent="false"
+      Precision="560"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PHONE_NUMBER"
+      Expression="PHONE_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="560" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BusinessLowType"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BUSINESS_LOW_TYPE"
+      Expression="BUSINESS_LOW_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IndustryDiv"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INDUSTRY_DIV"
+      Expression="INDUSTRY_DIV"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EstablishmentLocation"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ESTABLISHMENT_LOCATION"
+      Expression="ESTABLISHMENT_LOCATION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OpenCloseDiv"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="OPEN_CLOSE_DIV"
+      Expression="OPEN_CLOSE_DIV"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Employees"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EMPLOYEES"
+      Expression="EMPLOYEES"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SaleBaseCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SALE_BASE_CODE"
+      Expression="SALE_BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SaleBaseName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SALE_BASE_NAME"
+      Expression="SALE_BASE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustomerStatus"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CUSTOMER_STATUS"
+      Expression="CUSTOMER_STATUS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

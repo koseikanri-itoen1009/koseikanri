@@ -1,0 +1,117 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**注意
+* KROWN:124532により、1ファイルが32Kバイトを超えないようにしてください。
+* 超えてしまう場合は、ファイルを分割してください。
+
+詳細
+パーソナライズ・ビュー作成画面の属性セットファイルです。
+
+修正履歴
+2008/12/27  柳平直人        新規作成-->
+<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <attributeSet docName="PageLayoutRN" windowTitle="ビューの作成" title="ビューの作成"/>
+   <attributeSet docName="CancelButton" text="取消" prompt="取消"/>
+   <attributeSet docName="AppliAndSearchButton" text="適用および検索実行" prompt="適用および検索実行"/>
+   <attributeSet docName="ApplicationButton" text="適用" prompt="適用"/>
+   <attributeSet docName="GeneralPropertyRN" text="一般プロパティ"/>
+   <attributeSet docName="ViewName" prompt="ビュー名"/>
+   <attributeSet docName="ViewSize" prompt="表示行数"/>
+   <attributeSet docName="DefaultFlag" text="デフォルトとして設定" prompt="デフォルトとして設定"/>
+   <attributeSet docName="Description" prompt="摘要"/>
+   <attributeSet docName="LinePropertyHdrRN" text="列プロパティ"/>
+   <attributeSet docName="LineOrderSubHdrRN" text="表示列および列順序"/>
+   <attributeSet docName="LineOrderStlRN" leadingHeader="使用可能列" trailingHeader="表示列"/>
+   <attributeSet docName="EnableLine" shortDesc="使用可能列"/>
+   <attributeSet docName="DisplayLine" shortDesc="表示列"/>
+   <attributeSet docName="SortSettingSubHdrRN" text="ソート設定"/>
+   <attributeSet docName="LineNameColHdr" prompt="列名"/>
+   <attributeSet docName="SortOrderColHdr" prompt="ソート順"/>
+   <attributeSet docName="SearchConditionHdrRN" text="表のデータをフィルタするための問合わせの検索"/>
+   <attributeSet docName="ConditionAndOr" shortDesc="AND／OR条件指定"/>
+   <attributeSet docName="AddCondition" prompt="条件追加"/>
+   <attributeSet docName="AddtionButton" text="追加" prompt="追加"/>
+   <attributeSet docName="SelectFlag" shortDesc="選択"/>
+   <attributeSet docName="DeleteButton" prompt="削除"/>
+   <attributeSet docName="ExtractLineNameColHdr" prompt="抽出列名"/>
+   <attributeSet docName="ExtractColumnName010" text="拠点コード"/>
+   <attributeSet docName="ExtractColumnName020" text="機器区分"/>
+   <attributeSet docName="ExtractColumnName030" text="物件コード"/>
+   <attributeSet docName="ExtractColumnName040" text="機種／形式"/>
+   <attributeSet docName="ExtractColumnName050" text="セレ数"/>
+   <attributeSet docName="ExtractColumnName060" text="機器状態1"/>
+   <attributeSet docName="ExtractColumnName070" text="機器状態2"/>
+   <attributeSet docName="ExtractColumnName080" text="機器状態3"/>
+   <attributeSet docName="ExtractColumnName090" text="顧客コード"/>
+   <attributeSet docName="ExtractColumnName100" text="顧客名"/>
+   <attributeSet docName="ExtractColumnName110" text="引揚先（保管先）会社コード"/>
+   <attributeSet docName="ExtractColumnName120" text="引揚先（保管先）事業所コード"/>
+   <attributeSet docName="ExtractColumnName130" text="機番／製造番号"/>
+   <attributeSet docName="ExtractColumnName140" text="年式"/>
+   <attributeSet docName="ExtractColumnName150" text="メーカーコード"/>
+   <attributeSet docName="ExtractColumnName160" text="リース開始年月日"/>
+   <attributeSet docName="ExtractColumnName170" text="初回月額リース料"/>
+   <attributeSet docName="ExtractColumnName180" text="２回目以降月額リース料"/>
+   <attributeSet docName="ExtractColumnName190" text="最終設置予定年月日"/>
+   <attributeSet docName="ExtractColumnName200" text="設置住所１"/>
+   <attributeSet docName="ExtractColumnName210" text="設置住所２"/>
+   <attributeSet docName="ExtractColumnName220" text="設置業種区分"/>
+   <attributeSet docName="ExtractColumnName230" text="幅"/>
+   <attributeSet docName="ExtractColumnName240" text="奥行き"/>
+   <attributeSet docName="ExtractColumnName250" text="高さ"/>
+   <attributeSet docName="ExtractColumnName260" text="契約書番号"/>
+   <attributeSet docName="ExtractColumnName270" text="担当者名"/>
+   <attributeSet docName="ExtractColumnName280" text="カウンター（値）"/>
+   <attributeSet docName="ExtractColumnName290" text="入庫年月日"/>
+   <attributeSet docName="ExtractColumnName300" text="特殊機１"/>
+   <attributeSet docName="ExtractColumnName310" text="特殊機２"/>
+   <attributeSet docName="ExtractColumnName320" text="特殊機３"/>
+   <attributeSet docName="ExtractColumnName330" text="地区コード"/>
+   <attributeSet docName="ExtractColumnName340" text="所有者"/>
+   <attributeSet docName="ExtractColumnName350" text="原契約番号"/>
+   <attributeSet docName="ExtractColumnName360" text="原契約番号-枝番"/>
+   <attributeSet docName="ExtractColumnName370" text="現契約年月日"/>
+   <attributeSet docName="ExtractColumnName380" text="リース現契約番号"/>
+   <attributeSet docName="ExtractColumnName390" text="現契約番号-枝番"/>
+   <attributeSet docName="ExtractColumnName400" text="顧客名（カナ）"/>
+   <attributeSet docName="ExtractColumnName410" text="他社コード１"/>
+   <attributeSet docName="ExtractColumnName420" text="他社台数１"/>
+   <attributeSet docName="ExtractColumnName430" text="他社コード２"/>
+   <attributeSet docName="ExtractColumnName440" text="他社台数２"/>
+   <attributeSet docName="ExtractColumnName450" text="他社コード３"/>
+   <attributeSet docName="ExtractColumnName460" text="他社台数３"/>
+   <attributeSet docName="ExtractColumnName470" text="他社コード４"/>
+   <attributeSet docName="ExtractColumnName480" text="他社台数４"/>
+   <attributeSet docName="ExtractColumnName490" text="他社コード５"/>
+   <attributeSet docName="ExtractColumnName500" text="他社台数５"/>
+   <attributeSet docName="ExtractColumnName510" text="リース状態（再リース）"/>
+   <attributeSet docName="ExtractColumnName520" text="支払回数"/>
+   <attributeSet docName="ExtractColumnName530" text="リース終了年月日"/>
+   <attributeSet docName="ExtractColumnName540" text="SP専決書番号"/>
+   <attributeSet docName="ExtractColumnName550" text="設置場所屋外屋内"/>
+   <attributeSet docName="ExtractColumnName560" text="業態（小分類）"/>
+   <attributeSet docName="ExtractColumnName570" text="顧客名（引揚前）"/>
+   <attributeSet docName="ExtractColumnName580" text="顧客コード（引揚前）"/>
+   <attributeSet docName="ExtractColumnName590" text="設置先名（引揚前）"/>
+   <attributeSet docName="ExtractColumnName600" text="最終設置区分"/>
+   <attributeSet docName="ExtractColumnName610" text="最終設置進捗"/>
+   <attributeSet docName="ExtractColumnName620" text="最終整備内容"/>
+   <attributeSet docName="ExtractColumnName630" text="作業会社コード"/>
+   <attributeSet docName="ExtractColumnName640" text="引揚作業会社事業所コード"/>
+   <attributeSet docName="ExtractColumnName650" text="最終作業伝票No."/>
+   <attributeSet docName="ExtractColumnName660" text="最終作業区分"/>
+   <attributeSet docName="ExtractColumnName670" text="最終作業進捗"/>
+   <attributeSet docName="ExtractColumnName680" text="最終作業完了予定年月日"/>
+   <attributeSet docName="ExtractColumnName690" text="最終設置伝票№"/>
+   <attributeSet docName="ExtractColumnName700" text="廃棄決裁年月日"/>
+   <attributeSet docName="ExtractColumnName710" text="転売廃棄業者"/>
+   <attributeSet docName="ExtractColumnName720" text="転売廃棄伝票№"/>
+   <attributeSet docName="ExtractColumnName730" text="転売廃棄状況フラグ"/>
+   <attributeSet docName="ExtractColumnName740" text="転売完了区分"/>
+   <attributeSet docName="ExtractColumnName750" text="購入金額"/>
+   <attributeSet docName="ExtractColumnName760" text="リース解約年月日"/>
+   <attributeSet docName="ExtractColumnName770" text="メーカー名"/>
+   <attributeSet docName="ExtractColumnName780" text="安全設置基準"/>
+   <attributeSet docName="ExtractModeColHdr" prompt="抽出方法"/>
+   <attributeSet docName="ExtractConditionColHdr" prompt="抽出条件"/>
+</package>

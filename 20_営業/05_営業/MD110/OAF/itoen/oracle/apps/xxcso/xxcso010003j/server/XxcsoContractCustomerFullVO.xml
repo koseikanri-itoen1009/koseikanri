@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoContractCustomerFullVO"
+   SelectList="XxcsoContractCustomersEO.CONTRACT_CUSTOMER_ID, 
+       XxcsoContractCustomersEO.CONTRACT_NUMBER, 
+
+       XxcsoContractCustomersEO.CONTRACT_NAME, 
+       XxcsoContractCustomersEO.CONTRACT_NAME_KANA, 
+
+       XxcsoContractCustomersEO.DELEGATE_NAME, 
+       XxcsoContractCustomersEO.POST_CODE, 
+
+       XxcsoContractCustomersEO.PREFECTURES, 
+       XxcsoContractCustomersEO.CITY_WARD, 
+
+       XxcsoContractCustomersEO.ADDRESS_1, 
+       XxcsoContractCustomersEO.ADDRESS_2, 
+
+       XxcsoContractCustomersEO.PHONE_NUMBER, 
+       XxcsoContractCustomersEO.CREATED_BY, 
+
+       XxcsoContractCustomersEO.CREATION_DATE, 
+       XxcsoContractCustomersEO.LAST_UPDATED_BY, 
+
+       XxcsoContractCustomersEO.LAST_UPDATE_DATE, 
+       XxcsoContractCustomersEO.LAST_UPDATE_LOGIN, 
+
+       XxcsoContractCustomersEO.REQUEST_ID, 
+       XxcsoContractCustomersEO.PROGRAM_APPLICATION_ID, 
+
+       XxcsoContractCustomersEO.PROGRAM_ID, 
+       XxcsoContractCustomersEO.PROGRAM_UPDATE_DATE"
+   FromList="XXCSO_CONTRACT_CUSTOMERS XxcsoContractCustomersEO"
+   Where="XxcsoContractCustomersEO.CONTRACT_CUSTOMER_ID = :1"
+   BindingStyle="Oracle"
+   CustomQuery="false"
+   RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractCustomerFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractCustomerFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoContractCustomersEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractCustomersEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="true" />
+         <Attr Name="_queryWhere" Value="XxcsoContractCustomersEO.CONTRACT_CUSTOMER_ID = :1" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="ContractCustomerId"
+      IsNotNull="true"
+      EntityAttrName="ContractCustomerId"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="CONTRACT_CUSTOMER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractNumber"
+      IsNotNull="true"
+      Precision="9"
+      EntityAttrName="ContractNumber"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="CONTRACT_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractName"
+      Precision="360"
+      EntityAttrName="ContractName"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="CONTRACT_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractNameKana"
+      Precision="320"
+      EntityAttrName="ContractNameKana"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="CONTRACT_NAME_KANA" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DelegateName"
+      Precision="20"
+      EntityAttrName="DelegateName"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="DELEGATE_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PostCode"
+      Precision="7"
+      EntityAttrName="PostCode"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="POST_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Prefectures"
+      Precision="30"
+      EntityAttrName="Prefectures"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="PREFECTURES" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CityWard"
+      Precision="30"
+      EntityAttrName="CityWard"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="CITY_WARD" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Address1"
+      Precision="240"
+      EntityAttrName="Address1"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="ADDRESS_1" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Address2"
+      Precision="240"
+      EntityAttrName="Address2"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="ADDRESS_2" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PhoneNumber"
+      Precision="30"
+      EntityAttrName="PhoneNumber"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="PHONE_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoContractCustomersEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+</ViewObject>

@@ -1,0 +1,12 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso019001j.lov.server.XxcsoAccountNumberLovAM" advancedSearchAllowed="true" scope="/">
+   <ui:contents>
+      <oa:table name="XxcsoAccountNumberLovRN" id="AccountNumberTblRN" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/AccountNumberTblRN">
+         <ui:contents>
+            <oa:messageStyledText id="AccountNumber" dataType="VARCHAR2" prompt="顧客コード" viewName="XxcsoAccountNumberLovVO1" viewAttr="AccountNumber" maximumLength="30" queryable="true" sortState="yes" initSortSeq="first" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/AccountNumber"/>
+            <oa:messageStyledText id="PartyName" dataType="VARCHAR2" prompt="顧客名" viewName="XxcsoAccountNumberLovVO1" viewAttr="PartyName" maximumLength="360" queryable="true" use="/itoen/oracle/apps/xxcso/xxcso019001j/attributesets/XxcsoVisitSalesPlanRegistAttrSets/PartyName" sortState="yes"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

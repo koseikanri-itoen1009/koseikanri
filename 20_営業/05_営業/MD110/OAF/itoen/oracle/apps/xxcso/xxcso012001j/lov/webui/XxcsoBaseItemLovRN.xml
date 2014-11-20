@@ -1,0 +1,23 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+The code and the name are acquired.
+
+@see itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoPvRegistLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoPvRegistLovAM.java
+
+HISTORY 2008/12/27  N.Yanagitaira        Initialcode drop.-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" advancedSearchAllowed="true" amDefName="itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoPvRegistLovAM">
+   <ui:contents>
+      <oa:table name="XxcsoBaseItemLovRN" id="XxcsoBaseItemLovVO1" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistLovAttrSets/XxcsoBaseItemLovRN">
+         <ui:contents>
+            <oa:messageStyledText id="BaseCode" dataType="VARCHAR2" viewName="XxcsoBaseItemLovVO1" viewAttr="BaseCode" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistLovAttrSets/BaseCode" initSortSeq="first"/>
+            <oa:messageStyledText id="BaseName" dataType="VARCHAR2" viewName="XxcsoBaseItemLovVO1" viewAttr="BaseName" maximumLength="240" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistLovAttrSets/BaseName" initSortSeq="first"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

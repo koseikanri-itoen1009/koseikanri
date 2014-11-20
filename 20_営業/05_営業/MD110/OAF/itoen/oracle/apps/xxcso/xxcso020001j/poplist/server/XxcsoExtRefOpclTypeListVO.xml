@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoExtRefOpclTypeListVO"
+   OrderBy="lookup_code"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso020001j.poplist.server.XxcsoExtRefOpclTypeListVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.poplist.server.XxcsoExtRefOpclTypeListVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  flvv2.lookup_code
+       ,flvv2.meaning
+FROM    fnd_lookup_values_vl  flvv1
+       ,fnd_lookup_values_vl  flvv2
+WHERE   flvv1.lookup_type                                                              = 'XXCMM_CUST_OPEN_CLOSE_KBN'
+AND     flvv1.enabled_flag                                                             = 'Y'
+AND     NVL(flvv1.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv1.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))   >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     flvv2.lookup_type                                                              = 'XXCSO1_SP_OPEN_CLOSE_TYPE'
+AND     flvv2.enabled_flag                                                             = 'Y'
+AND     NVL(flvv2.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL(flvv2.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))   >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     flvv2.lookup_code                                                              = flvv1.lookup_code
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="LookupCode"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LOOKUP_CODE"
+      Expression="LOOKUP_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Meaning"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="MEANING"
+      Expression="MEANING"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

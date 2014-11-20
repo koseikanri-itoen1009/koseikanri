@@ -1,0 +1,7831 @@
+CREATE OR REPLACE PACKAGE BODY XXCSO019A05C
+AS
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Package Name            : XXCSO019A05C(body)
+ * Description             : —v‹‚Ì”­s‰æ–Ê‚©‚ç
+ *                           –K–â”„ãŒv‰æŠÇ—•\‚ğ’ •[‚Éo—Í‚µ‚Ü‚·B
+ * MD.050                  : ‰c‹ÆƒVƒXƒeƒ€\’zƒvƒƒWƒFƒNƒgƒAƒhƒIƒ“F
+ *                           –K–â”„ãŒv‰æŠÇ—•\
+ * Version                 : 1.1
+ *
+ * Program List
+ * ---------------------- ----------------------------------------------------------
+ *  Name                   Description
+ * ---------------------- ----------------------------------------------------------
+ *  init                   ‰Šúˆ— (A-1)
+ *  chek_param             ƒpƒ‰ƒ[ƒ^ƒ`ƒFƒbƒN (A-2)
+ *  get_ticket1            ’ •[í•Ê1-‰c‹Æˆõ•Ê (A-3-1,A-3-2)
+ *  up_plsql_tab1          ‰c‹Æˆõ•Ê-PLSQL•\‚ÌXV (A-3-3)
+ *  get_ticket2            ’ •[í•Ê2-‰c‹ÆˆõƒOƒ‹[ƒv•Ê (A-4-1,A-4-2)
+ *  up_plsql_tab2          ‰c‹ÆˆõƒOƒ‹[ƒv•Ê-PLSQL•\‚ÌXV (A-4-3)
+ *  get_ticket3            ’ •[í•Ê3-‰c‹Æˆõ‹’“_/‰Û•Ê (A-5-1,A-5-2)
+ *  up_plsql_tab3          ‹’“_/‰Û•Ê-PLSQL•\‚ÌXV (A-5-3)
+ *  get_ticket4            ’ •[í•Ê4-’n‹æ‰c‹Æ•”/•”•Ê (A-6-1,A-6-2)
+ *  up_plsql_tab4          ’n‹æ‰c‹Æ•”/•”•Ê-PLSQL•\‚ÌXV (A-6-3)
+ *  get_ticket5            ’ •[í•Ê5-’n‹æ‰c‹Æ–{•”•Ê (A-7-1,A-7-2)
+ *  up_plsql_tab5          ’nˆæ‰c‹Æ–{•”•Ê•Ê-PLSQL•\‚ÌXV (A-7-3)
+ *  insert_wrk_table       ƒ[ƒNƒe[ƒuƒ‹‚Ö‚Ìo—Í (A-3-4,A-4-4,A-5-4,A-6-4,A-7-4)
+ *  act_svf                SVF‹N“® (A-8)
+ *  del_wrk_tbl_data       ƒ[ƒNƒe[ƒuƒ‹ƒf[ƒ^íœ (A-9)
+ *  submain                ƒƒCƒ“ˆ—ƒvƒƒV[ƒWƒƒ
+ *                         SVF‹N“®APIƒGƒ‰[ƒ`ƒFƒbƒN(A-10)
+ *  main                   ƒRƒ“ƒJƒŒƒ“ƒgÀsƒtƒ@ƒCƒ‹“o˜^ƒvƒƒV[ƒWƒƒ
+ *                         I—¹ˆ— (A-11)
+ *  debug                  ƒfƒoƒbƒOƒƒOo—Í
+ *
+ * Change Record
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2009-01-10    1.0   Seirin.Kin        V‹Kì¬
+ *  2009-03-03    1.1   Kazuyo.Hosoi      SVF‹N“®API–„‚ß‚İ
+ *  2009-03-13    1.1   Kazuyo.Hosoi      yáŠQ‘Î‰047E057zŒÚ‹q‹æ•ªAƒXƒe[ƒ^ƒX’ŠoğŒ•ÏX
+ *
+ *****************************************************************************************/
+--
+--#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
+--
+  --TODO’P‘ÌƒeƒXƒgI—¹‚ÉFALSE‚É•ÏX
+  --ƒfƒoƒbƒOƒƒOo—Í‚·‚é^‚µ‚È‚¢
+  CB_DEBUG_LOG              CONSTANT BOOLEAN      := FALSE;
+  --ƒGƒ‰[”­¶ˆ—”Ô†
+  CB_DO_ERROR_NO            CONSTANT VARCHAR2(10) := 'NULL';
+  --’ •[ƒ[ƒNƒe[ƒuƒ‹íœ‚·‚é^‚µ‚È‚¢
+  CB_DO_DELETE         CONSTANT BOOLEAN           := TRUE;
+--
+  --ƒXƒe[ƒ^ƒXEƒR[ƒh
+  cv_status_normal          CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_normal; --³í:0
+  cv_status_warn            CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_warn;   --Œx:1
+  cv_status_error           CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_error;  --ˆÙí:2
+  --WHOƒJƒ‰ƒ€
+  cn_created_by             CONSTANT NUMBER      := fnd_global.user_id;         --CREATED_BY
+  cd_creation_date          CONSTANT DATE        := SYSDATE;                    --CREATION_DATE
+  cn_last_updated_by        CONSTANT NUMBER      := fnd_global.user_id;         --LAST_UPDATED_BY
+  cd_last_update_date       CONSTANT DATE        := SYSDATE;                    --LAST_UPDATE_DATE
+  cn_last_update_login      CONSTANT NUMBER      := fnd_global.login_id;        --LAST_UPDATE_LOGIN
+  cn_request_id             CONSTANT NUMBER      := fnd_global.conc_request_id; --REQUEST_ID
+  cn_program_application_id CONSTANT NUMBER      := fnd_global.prog_appl_id;    --PROGRAM_APPLICATION_ID
+  cn_program_id             CONSTANT NUMBER      := fnd_global.conc_program_id; --PROGRAM_ID
+  cd_program_update_date    CONSTANT DATE        := SYSDATE;                    --PROGRAM_UPDATE_DATE
+  cv_msg_part               CONSTANT VARCHAR2(3) := ' : ';
+  cv_msg_cont               CONSTANT VARCHAR2(3) := '.';
+  cv_msg_pnt                CONSTANT VARCHAR2(3) := ',';
+  cv_lf                     CONSTANT VARCHAR2(1) := CHR(10);
+--
+--################################  ŒÅ’è•” END   ##################################
+--
+--#######################  ŒÅ’èƒOƒ[ƒoƒ‹•Ï”éŒ¾•” START   #######################
+--
+  gv_out_msg       VARCHAR2(2000);
+  gv_sep_msg       VARCHAR2(2000);
+  gv_exec_user     VARCHAR2(100);
+  gv_conc_name     VARCHAR2(30);
+  gv_conc_status   VARCHAR2(30);
+  gn_target_cnt    NUMBER;                    -- ‘ÎÛŒ”
+  gn_normal_cnt    NUMBER;                    -- ³íŒ”
+  gn_error_cnt     NUMBER;                    -- ƒGƒ‰[Œ”
+  gn_warn_cnt      NUMBER;                    -- ƒXƒLƒbƒvŒ”
+--
+--################################  ŒÅ’è•” END   ##################################
+--
+--##########################  ŒÅ’è‹¤’Ê—áŠOéŒ¾•” START  ###########################
+--
+  --*** ˆ—•”‹¤’Ê—áŠO ***
+  global_process_expt       EXCEPTION;
+  --*** ‹¤’ÊŠÖ”—áŠO ***
+  global_api_expt           EXCEPTION;
+  --*** ‹¤’ÊŠÖ”OTHERS—áŠO ***
+  global_api_others_expt    EXCEPTION;
+--
+  PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000);
+--
+--################################  ŒÅ’è•” END   ##################################
+--
+  -- ===============================
+  -- ƒ†[ƒU[’è‹`ƒOƒ[ƒoƒ‹’è”
+  -- ===============================
+  cv_resp_id                CONSTANT VARCHAR2(10)  := 'resp_id';           -- EÓID
+  cv_pkg_name               CONSTANT VARCHAR2(100) := 'XXCSO019A05C';      -- ƒpƒbƒP[ƒW–¼
+  cv_app_name               CONSTANT VARCHAR2(5)   := 'XXCSO';             -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+  cv_tab_samari             CONSTANT VARCHAR2(100) := 'XXCSO_SUM_VISIT_SALE_REP';-- ƒTƒ}ƒŠƒe[ƒuƒ‹
+  cv_gvm_g                  CONSTANT VARCHAR2(1)   := '1';                 -- ˆê”Ê
+  cv_gvm_v                  CONSTANT VARCHAR2(1)   := '2';                 -- ©”Ì‹@
+  cv_gvm_m                  CONSTANT VARCHAR2(1)   := '3';                 -- MC
+  cv_true                   CONSTANT VARCHAR2(4)   := 'TRUE';              -- VARCHAR2Œ^‚ÌTRUE
+  cv_false                  CONSTANT VARCHAR2(5)   := 'FALSE';             -- VARCHAR2Œ^‚ÌFALSE
+  cv_cust_class_cd1         CONSTANT VARCHAR2(2)   := '13';                -- –@lŒÚ‹q
+  cv_cust_class_cd2         CONSTANT VARCHAR2(2)   := '14';                -- ”„Š|ŠÇ—ŒÚ‹q
+  cv_cust_class_cd3         CONSTANT VARCHAR2(2)   := '10';                -- ŒÚ‹q
+  cv_cust_class_cd4         CONSTANT VARCHAR2(2)   := '12';                -- ã—lŒÚ‹q
+  cv_cust_class_cd5         CONSTANT VARCHAR2(2)   := '15';                -- „‰ñ
+  cv_cust_class_cd6         CONSTANT VARCHAR2(2)   := '16';                -- –â‰®’ ‡æ
+  cv_cust_class_cd7         CONSTANT VARCHAR2(2)   := '17';                -- Œv‰æ
+  cv_cust_status1           CONSTANT VARCHAR2(2)   := '80';                -- ŒÚ‹qƒXƒe[ƒ^ƒX(X³ÂŒ )
+  cv_cust_status2           CONSTANT VARCHAR2(2)   := '90';                -- ŒÚ‹qƒXƒe[ƒ^ƒX(’†~ŒˆÙ)
+  cv_cust_status3           CONSTANT VARCHAR2(2)   := '99';                -- ŒÚ‹qƒXƒe[ƒ^ƒX(‘ÎÛŠO)
+  cv_cust_status4           CONSTANT VARCHAR2(2)   := '20';                -- ŒÚ‹qƒXƒe[ƒ^ƒXMC)
+  cv_cust_status5           CONSTANT VARCHAR2(2)   := '25';                -- ŒÚ‹qƒXƒe[ƒ^ƒX(SP³”F)
+  cv_cust_status6           CONSTANT VARCHAR2(2)   := '30';                -- ŒÚ‹qƒXƒe[ƒ^ƒX(³”FÏ)
+  cv_cust_status7           CONSTANT VARCHAR2(2)   := '10';                -- ŒÚ‹qƒXƒe[ƒ^ƒX(MCŒó•â)
+  cv_cust_status8           CONSTANT VARCHAR2(2)   := '40';                -- ŒÚ‹qƒXƒe[ƒ^ƒX(ŒÚ‹q)
+  cv_cust_status9           CONSTANT VARCHAR2(2)   := '50';                -- ŒÚ‹qƒXƒe[ƒ^ƒX(‹x~)
+  cv_sum_org_type1          CONSTANT VARCHAR2(1)   := '1';                 -- ŒÚ‹qƒR[ƒh
+  cv_sum_org_type2          CONSTANT VARCHAR2(1)   := '2';                 -- ]‹Æˆõ”Ô†
+  cv_sum_org_type3          CONSTANT VARCHAR2(1)   := '3';                 -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+  cv_sum_org_type4          CONSTANT VARCHAR2(1)   := '4';                 -- ‹’“_ƒR[ƒh
+  cv_sum_org_type5          CONSTANT VARCHAR2(1)   := '5';                 -- ’n‹æ‰c‹Æ•”ƒR[ƒh
+  cv_month_date_div1        CONSTANT VARCHAR2(1)   := '1';                 -- Œ“ú‹æ•ª(Œ•Ê)
+  cv_month_date_div2        CONSTANT VARCHAR2(1)   := '2';                 -- Œ“ú‹æ•ª(“ú•Ê)
+  cv_report_1               CONSTANT VARCHAR2(1)   := '1';                 -- ’ •[í•Ê1-‰c‹Æˆõ•Ê
+  cv_report_2               CONSTANT VARCHAR2(1)   := '2';                 -- ’ •[í•Ê2-‰c‹ÆƒOƒ‹[ƒv•Ê
+  cv_report_3               CONSTANT VARCHAR2(1)   := '3';                 -- ’ •[í•Ê3-‹’“_/‰Û•Ê
+  cv_report_4               CONSTANT VARCHAR2(1)   := '4';                 -- ’ •[í•Ê4-’n‹æ‰c‹Æ•”•Ê/•”•Ê
+  cv_report_5               CONSTANT VARCHAR2(1)   := '5';                 -- ’ •[í•Ê5-’nˆæ‰c‹Æ–{•”
+  cn_line_kind1             CONSTANT NUMBER(5)     := 1;                   -- ’ •[o—ÍˆÊ’uƒwƒbƒ_•”
+  cn_line_kind2             CONSTANT NUMBER(5)     := 2;                   -- ’ •[o—ÍˆÊ’u”„‚èã‚°–¾×•”
+  cn_line_kind3             CONSTANT NUMBER(5)     := 3;                   -- ’ •[o—ÍˆÊ’u”„‚èã‚°’†Œv•”
+  cn_line_kind4             CONSTANT NUMBER(5)     := 4;                   -- ’ •[o—ÍˆÊ’u”„‚èã‚°‡Œv•”
+  cn_line_kind5             CONSTANT NUMBER(5)     := 5;                   -- ’ •[o—ÍˆÊ’u–K–â’†Œv•”
+  cn_line_kind6             CONSTANT NUMBER(5)     := 6;                   -- ’ •[o—ÍˆÊ’u–K–â‡Œv•”
+  cn_line_kind7             CONSTANT NUMBER(5)     := 7;                   -- ’ •[o—ÍˆÊ’u–K–â“à—e‡Œv•”
+  cn_idx_sales_ippn         CONSTANT NUMBER(1)     := 1;                   -- –{‘Ì•””z—ñ”Ô†i”„ã’†Œv•”Fˆê”Êj
+  cn_idx_sales_vd           CONSTANT NUMBER(1)     := 2;                   -- –{‘Ì•””z—ñ”Ô†i”„ã’†Œv•”F©”Ì‹@j
+  cn_idx_sales_sum          CONSTANT NUMBER(1)     := 3;                   -- –{‘Ì•””z—ñ”Ô†i”„ã’†Œv•”F‡Œvj
+  cn_idx_visit_ippn         CONSTANT NUMBER(1)     := 4;                   -- –{‘Ì•””z—ñ”Ô†i–K–â’†Œv•”Fˆê”Êj
+  cn_idx_visit_vd           CONSTANT NUMBER(1)     := 5;                   -- –{‘Ì•””z—ñ”Ô†i–K–â’†Œv•”F©”Ì‹@j
+  cn_idx_visit_mc           CONSTANT NUMBER(1)     := 6;                   -- –{‘Ì•””z—ñ”Ô†i–K–â’†Œv•”F‚l‚bj
+  cn_idx_visit_sum          CONSTANT NUMBER(1)     := 7;                   -- –{‘Ì•””z—ñ”Ô†i–K–â’†Œv•”F‡Œvj
+  cn_idx_visit_dsc          CONSTANT NUMBER(1)     := 8;                   -- –{‘Ì•””z—ñ”Ô†i–K–â“à—ej
+  cn_idx_max                CONSTANT NUMBER(1)     := cn_idx_visit_dsc;    -- Å‘å’l
+  cv_flg_y                  CONSTANT VARCHAR2(1)   := 'Y';                 -- ‰c‹ÆƒOƒ‹[ƒvƒŠ[ƒ_(ƒtƒ‰ƒO)
+  cv_flg_n                  CONSTANT VARCHAR2(1)   := 'N';                 -- ‰c‹Æˆõ(ƒtƒ‰ƒO)
+  cv_mc                     CONSTANT VARCHAR2(2)   := 'MC';
+      -- –K–â”„ãŒv‰æŠÇ—•\’ •[í•ÊQÆƒ^ƒCƒv 
+  cv_rep_lookup_type_code   CONSTANT VARCHAR2(100) := 'XXCSO1_VST_SLS_REP_KIND';  
+  cv_lookup_type_dai        CONSTANT VARCHAR2(100) := 'XXCMM_CUST_GYOTAI_DAI';
+  cv_lookup_type_chu        CONSTANT VARCHAR2(100) := 'XXCMM_CUST_GYOTAI_CHU';
+  cv_lookup_type_syo        CONSTANT VARCHAR2(100) := 'XXCMM_CUST_GYOTAI_SHO';
+  cv_svf_form_def_no        CONSTANT VARCHAR2(100) := '1';                 -- ƒtƒH[ƒ€—l®ƒtƒ@ƒCƒ‹–¼DEF”Ô†  
+  cv_svf_query_def_no       CONSTANT VARCHAR2(100) := '2';                 -- ƒNƒGƒŠ[—l®ƒtƒ@ƒCƒ‹–¼DEF”Ô†
+--
+  -- ƒƒbƒZ[ƒWƒR[ƒh
+  cv_tkn_number_01          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00411';  -- Šî€”NŒ
+  cv_tkn_number_02          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00412';  -- ’ •[í•Ê
+  cv_tkn_number_03          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00130';  -- ‹’“_ƒR[ƒh  
+  cv_tkn_number_04          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00133';  -- ‹’“_ƒR[ƒh‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢B
+  cv_tkn_number_05          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00508';  -- ŠúŠÔ‚ÍYYYYMM‚ÌŒ^‚Åw’è‚µ‚Ä‚­‚¾‚³‚¢B
+  cv_tkn_number_06          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00157';  -- Šî€”NŒ‚Í–¢—ˆ“ú•t‚Í“ü—Í‚Å‚«‚Ü‚¹‚ñB
+  cv_tkn_number_07          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00134';  -- XXXX‚ÍÀsŒ ŒÀ‚ª‚ ‚è‚Ü‚¹‚ñB
+  cv_tkn_number_08          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00024';
+  -- –¢–K–âŒÚ‹qˆê——‚Ìƒf[ƒ^’Šo‚É¸”s‚µ‚Ü‚µ‚½Aˆ—‚ğI—¹‚µ‚Ü‚·BiSQLƒGƒ‰[FORA-XXXX EEEjƒVƒXƒeƒ€ŠÇ—Ò‚É˜A—‚µ‚Ä      ‚­‚¾‚³‚¢B
+  cv_tkn_number_09          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00135';  
+  -- SVF‹N“®API‚ÅƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½BƒVƒXƒeƒ€ŠÇ—Ò‚É˜A—‚µ‚Ä‚­‚¾‚³‚¢B
+  cv_tkn_number_10          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00119';  
+  -- –¢–K–âŒÚ‹qˆê——’ •[ƒ[ƒNƒe[ƒuƒ‹‚Ìƒf[ƒ^íœ‚É¸”s‚µ‚Ü‚µ‚½Aˆ—‚ğI—¹‚µ‚Ü‚·BiSQLƒGƒ‰[FORA-XXXX EEEjƒVƒXƒe      ƒ€ŠÇ—Ò‚É˜A—‚µ‚Ä‚­‚¾‚³‚¢B
+  cv_tkn_number_11          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00140';  -- (ƒf[ƒ^‚ª‚ ‚è‚Ü‚¹‚ñB)
+  cv_tkn_number_12          CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00173';  -- QÆƒ^ƒCƒv‚È‚µ
+--
+  -- ƒg[ƒNƒ“ƒR[ƒh
+  cv_tkn_entry              CONSTANT VARCHAR2(5)   := 'ENTRY' ;             -- ENTRY
+  cv_tkn_table              CONSTANT VARCHAR2(5)   := 'TABLE' ;             -- TABLE
+  cv_tkn_api_name           CONSTANT VARCHAR2(10)  := 'API_NAME' ;          -- API_NAME
+  cv_tkn_errmsg             CONSTANT VARCHAR2(10)  := 'ERR_MSG' ;           -- ERR_MSG
+  cv_tkn_cnt                CONSTANT VARCHAR2(10)  := 'COUNT' ;             -- COUNT
+  cv_tkn_task_name          CONSTANT VARCHAR2(10)  := 'TASK_NAME' ;         -- TASK_NAME
+  cv_tkn_lookup_type_name   CONSTANT VARCHAR2(20)  := 'LOOKUP_TYPE_NAME' ;  -- LOOKUP_TYPE_NAME
+  -- DEBUG_LOG—pƒƒbƒZ[ƒW
+--
+  -- ===============================
+  -- ƒ†[ƒU[’è‹`ƒOƒ[ƒoƒ‹•Ï”
+  -- ===============================
+--
+  -- ===============================
+  -- ƒ†[ƒU[’è‹`ƒOƒ[ƒoƒ‹Œ^
+  -- ===============================
+  -- ƒOƒ[ƒoƒ‹•Ï”
+  gn_resp_id                NUMBER(9);                                              -- EÓID
+  gv_report_meaning         VARCHAR2(100);                                          -- ’ •[í•Ê–¼
+  gv_svf_form_name          VARCHAR2(50);                                           -- ƒtƒH[ƒ€—l®ƒtƒ@ƒCƒ‹–¼
+  gv_svf_query_name         VARCHAR2(50);                                           -- ƒNƒGƒŠ[—l®ƒtƒ@ƒCƒ‹–¼  
+  gt_employee_number        xxcso_resource_relations_v2.employee_number%TYPE;       -- ]‹Æˆõ”Ô†
+  gt_work_base_code         xxcso_resource_relations_v2.work_base_code_new%TYPE;    -- ‹Î–±’n‹’“_ƒR[ƒh
+  gt_group_number           xxcso_resource_relations_v2.group_number_new%TYPE;      -- ƒOƒ‹[ƒv”Ô†
+  gt_position_code          xxcso_resource_relations_v2.position_code_new%TYPE;     -- EˆÊƒR[ƒh
+  gt_job_type_code          xxcso_resource_relations_v2.job_type_code_new%TYPE;     -- EíƒR[ƒh
+  gt_group_leader_flag      xxcso_resource_relations_v2.group_leader_flag_new%TYPE; -- ƒOƒ‹[ƒv’·‹æ•ª
+  gv_report_type            VARCHAR2(9);                                            -- “ü—Í‚³‚ê‚½’ •[í•Ê
+  gv_base_code              VARCHAR2(9);                                            -- “ü—Í‚³‚ê‚½‹’“_ƒR[ƒh
+  gd_year_month_day         DATE;                                                   -- Šî€”NŒ‚Ì‚P“ú
+  gd_year_month_lastday     DATE;                                                   -- Šî€”NŒ‚Ì––“ú
+  gd_online_sysdate         DATE;                                                   -- ”­—ß“ú”»’f—p
+  gv_online_sysdate         VARCHAR2(8);                                            -- ”­—ß“ú”»’fƒeƒXƒg—p
+  gv_year_month             VARCHAR2(6);                                            -- “ü—Í‚³‚ê‚½Šî€”NŒ
+  gd_year_month             DATE;                                                   -- “ü—Í‚³‚ê‚½Šî€”NŒ‚ÌDateŒ^
+  gv_year_month_prev        VARCHAR2(6);                                            -- Šî€”NŒ‚ÌæŒ
+  gv_year_prev              VARCHAR2(6);                                            -- Šî€”NŒ‚Ìæ”N
+  gn_operation_days         NUMBER(5);                                              -- ‰Ò“®“ú”
+  gn_operation_all_days     NUMBER(5);                                              -- ‰Ò“®‰Â”\“ú”
+  gv_work_base_code         xxcso_resource_relations_v2.work_base_code_new%TYPE;    -- ‹Î–±’n‹’“_ƒR[ƒh
+  gv_is_salesman            VARCHAR2(6);                                            -- ƒƒOƒCƒ“ƒ†[ƒU‚ª‰c‹Æˆõ
+  gv_is_groupleader         VARCHAR2(6);                                            -- ƒƒOƒCƒ“ƒ†[ƒU‚ªƒOƒ‹[ƒvƒŠ[ƒ_
+  -- 1“ú•ª”„ãŒv‰æA”„ãÀÑ‚È‚Ç‚Ì€–Ú‚ğ•Û‚·‚éƒŒƒR[ƒhŒ^’è‹`
+  TYPE g_get_one_day_date_rtype IS RECORD(
+    plan_vs_amt             xxcso_rep_visit_sale_plan.plan_vs_amt_1%TYPE,           -- ”„ãŒv‰æ,–K–âŒv‰æ
+    rslt_vs_amt             xxcso_rep_visit_sale_plan.rslt_vs_amt_1%TYPE,           -- ”„ãÀÑ,–K–âÀÑ
+    rslt_other_sales_amt    xxcso_rep_visit_sale_plan.rslt_other_sales_amt_1%TYPE,  -- ”„ãÀÑi‘¼‹’“_”[•i•ªj
+    effective_num           xxcso_rep_visit_sale_plan.effective_num_1%TYPE,         -- —LŒøŒ¬”
+    visit_sign              VARCHAR2(20)                                            -- Œ‹‡–K–â‹L†
+  );
+  -- ‚Pƒ•Œ•ª‚Ì”„ãŒv‰æA”„ãÀÑ‚È‚Ç‚Ì€–Ú‚ğ•Û‚·‚éƒe[ƒuƒ‹Œ^’è‹`
+  TYPE g_get_one_day_ttype IS TABLE OF g_get_one_day_date_rtype INDEX BY PLS_INTEGER;
+  -- ’Šoƒf[ƒ^î•ñŠi”[ƒŒƒR[ƒhŒ^’è‹`
+  TYPE g_get_month_data_rtype IS RECORD(
+    up_base_code               xxcso_rep_visit_sale_plan.up_base_code%TYPE,              -- ‹’“_ƒR[ƒhiej
+    up_hub_name                xxcso_rep_visit_sale_plan.up_hub_name%TYPE,               -- ‹’“_–¼Ìiej
+    base_code                  xxcso_rep_visit_sale_plan.base_code%TYPE,                 -- ‹’“_ƒR[ƒh
+    hub_name                   xxcso_rep_visit_sale_plan.hub_name%TYPE,                  -- ‹’“_–¼Ì
+    group_number               xxcso_rep_visit_sale_plan.group_number%TYPE,              -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+    group_name                 xxcso_rep_visit_sale_plan.group_name%TYPE,                -- ‰c‹ÆƒOƒ‹[ƒv–¼
+    employee_number            xxcso_rep_visit_sale_plan.employee_number%TYPE,           -- ‰c‹ÆˆõƒR[ƒh
+    employee_name              xxcso_rep_visit_sale_plan.employee_name%TYPE,             -- ‰c‹Æˆõ–¼
+    business_high_type         xxcso_rep_visit_sale_plan.business_high_type%TYPE,        -- ‹Æ‘Ôi‘å•ª—Şj
+    business_high_name         xxcso_rep_visit_sale_plan.business_high_name%TYPE,        -- ‹Æ‘Ôi‘å•ª—Şj–¼
+    gvm_type                   xxcso_rep_visit_sale_plan.gvm_type%TYPE,                  -- ˆê”Ê^©”Ì‹@^‚l‚b
+    account_number             xxcso_rep_visit_sale_plan.account_number%TYPE,            -- ŒÚ‹qƒR[ƒh
+    customer_name              xxcso_rep_visit_sale_plan.customer_name%TYPE,             -- ŒÚ‹q–¼
+    route_no                   xxcso_rep_visit_sale_plan.route_no%TYPE,                  -- ƒ‹[ƒgNo
+    last_year_rslt_sales_amt   xxcso_rep_visit_sale_plan.last_year_rslt_sales_amt%TYPE,  -- ‘O”NÀÑ
+    last_mon_rslt_sales_amt    xxcso_rep_visit_sale_plan.last_mon_rslt_sales_amt%TYPE,   -- æŒÀÑ
+    new_customer_num           xxcso_rep_visit_sale_plan.new_customer_num%TYPE,          -- V‹KŒÚ‹qŒ”
+    new_vendor_num             xxcso_rep_visit_sale_plan.new_vendor_num%TYPE,            -- V‹K‚u‚cŒ”
+    new_customer_amt           xxcso_rep_visit_sale_plan.new_customer_amt%TYPE,          -- V‹KŒÚ‹q”„ãÀÑ
+    new_vendor_amt             xxcso_rep_visit_sale_plan.new_vendor_amt%TYPE,            -- V‹K‚u‚c”„ãÀÑ
+    plan_sales_amt             xxcso_rep_visit_sale_plan.plan_sales_amt%TYPE,            -- ”„ã—\Z
+    l_get_one_day_tab          g_get_one_day_ttype,                                      -- “ú•Êƒf[ƒ^Ši”[ƒe[ƒuƒ‹Œ^
+    vis_a_num                  NUMBER(9),                                                -- –K–â‚`Œ”
+    vis_b_num                  NUMBER(9),                                                -- –K–â‚aŒ”
+    vis_c_num                  NUMBER(9),                                                -- –K–â‚bŒ”
+    vis_d_num                  NUMBER(9),                                                -- –K–â‚cŒ”
+    vis_e_num                  NUMBER(9),                                                -- –K–â‚dŒ”
+    vis_f_num                  NUMBER(9),                                                -- –K–â‚eŒ”
+    vis_g_num                  NUMBER(9),                                                -- –K–â‚fŒ”
+    vis_h_num                  NUMBER(9),                                                -- –K–â‚gŒ”
+    vis_i_num                  NUMBER(9),                                                -- –K–âú@Œ”
+    vis_j_num                  NUMBER(9),                                                -- –K–â‚iŒ”
+    vis_k_num                  NUMBER(9),                                                -- –K–â‚jŒ”
+    vis_l_num                  NUMBER(9),                                                -- –K–â‚kŒ”
+    vis_m_num                  NUMBER(9),                                                -- –K–â‚lŒ”
+    vis_n_num                  NUMBER(9),                                                -- –K–â‚mŒ”
+    vis_o_num                  NUMBER(9),                                                -- –K–â‚nŒ”
+    vis_p_num                  NUMBER(9),                                                -- –K–â‚oŒ”
+    vis_q_num                  NUMBER(9),                                                -- –K–â‚pŒ”
+    vis_r_num                  NUMBER(9),                                                -- –K–â‚qŒ”
+    vis_s_num                  NUMBER(9),                                                -- –K–â‚rŒ”
+    vis_t_num                  NUMBER(9),                                                -- –K–â‚sŒ”
+    vis_u_num                  NUMBER(9),                                                -- –K–â‚tŒ”
+    vis_v_num                  NUMBER(9),                                                -- –K–â‚uŒ”
+    vis_w_num                  NUMBER(9),                                                -- –K–â‚vŒ”
+    vis_x_num                  NUMBER(9),                                                -- –K–â‚wŒ”
+    vis_y_num                  NUMBER(9),                                                -- –K–â‚xŒ”
+    vis_z_num                  NUMBER(9)                                                 -- –K–â‚yŒ”
+  );
+  -- ’Šoƒf[ƒ^î•ñŠi”[ƒe[ƒuƒ‹Œ^’è‹`
+  TYPE g_get_month_square_ttype IS TABLE OF g_get_month_data_rtype INDEX BY PLS_INTEGER;
+  -- ‰c‹Æˆõ•Ê’ •[ƒŒƒR[ƒhi’ •[‚Pj
+  TYPE g_one_day_rtype1 IS RECORD(
+    tgt_amt             xxcso_sum_visit_sale_rep.tgt_amt%TYPE,                -- ”„ãŒv‰æ
+    rslt_amt            xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- ”„ãÀÑ
+    rslt_center_amt     xxcso_sum_visit_sale_rep.rslt_center_amt%TYPE,        -- “à‘¼‹’“_Q”„ãÀÑ
+    tgt_vis_num         xxcso_sum_visit_sale_rep.tgt_vis_num%TYPE,            -- –K–âŒv‰æ
+    vis_num             xxcso_sum_visit_sale_rep.vis_num%TYPE,                -- –K–âÀÑ
+    vis_sales_num       xxcso_sum_visit_sale_rep.vis_sales_num%TYPE,          -- —LŒøŒ¬”
+    vis_new_num         xxcso_sum_visit_sale_rep.vis_new_num%TYPE,            -- –K–âÀÑiV‹K)
+    vis_vd_new_num      xxcso_sum_visit_sale_rep.vis_vd_new_num%TYPE,         -- –K–âÀÑiVDFV‹Kj
+    visit_sign          VARCHAR2(20),                                         -- Œ‹‡–K–â‹L†
+    vis_a_num           NUMBER(9),                                            -- –K–â‚`Œ”
+    vis_b_num           NUMBER(9),                                            -- –K–â‚aŒ”
+    vis_c_num           NUMBER(9),                                            -- –K–â‚bŒ”
+    vis_d_num           NUMBER(9),                                            -- –K–â‚cŒ”
+    vis_e_num           NUMBER(9),                                            -- –K–â‚dŒ”
+    vis_f_num           NUMBER(9),                                            -- –K–â‚eŒ”
+    vis_g_num           NUMBER(9),                                            -- –K–â‚fŒ”
+    vis_h_num           NUMBER(9),                                            -- –K–â‚gŒ”
+    vis_i_num           NUMBER(9),                                            -- –K–âú@Œ”
+    vis_j_num           NUMBER(9),                                            -- –K–â‚iŒ”
+    vis_k_num           NUMBER(9),                                            -- –K–â‚jŒ”
+    vis_l_num           NUMBER(9),                                            -- –K–â‚kŒ”
+    vis_m_num           NUMBER(9),                                            -- –K–â‚lŒ”
+    vis_n_num           NUMBER(9),                                            -- –K–â‚mŒ”
+    vis_o_num           NUMBER(9),                                            -- –K–â‚nŒ”
+    vis_p_num           NUMBER(9),                                            -- –K–â‚oŒ”
+    vis_q_num           NUMBER(9),                                            -- –K–â‚pŒ”
+    vis_r_num           NUMBER(9),                                            -- –K–â‚qŒ”
+    vis_s_num           NUMBER(9),                                            -- –K–â‚rŒ”
+    vis_t_num           NUMBER(9),                                            -- –K–â‚sŒ”
+    vis_u_num           NUMBER(9),                                            -- –K–â‚tŒ”
+    vis_v_num           NUMBER(9),                                            -- –K–â‚uŒ”
+    vis_w_num           NUMBER(9),                                            -- –K–â‚vŒ”
+    vis_x_num           NUMBER(9),                                            -- –K–â‚wŒ”
+    vis_y_num           NUMBER(9),                                            -- –K–â‚xŒ”
+    vis_z_num           NUMBER(9)                                             -- –K–â‚yŒ”
+  );
+  TYPE g_one_day_ttype1 IS TABLE OF g_one_day_rtype1 INDEX BY PLS_INTEGER;
+  TYPE g_month_rtype1 IS RECORD(
+    work_base_code      xxcso_resource_relations_v2.work_base_code_new%TYPE,  -- ‹Î–±’n‹’“_ƒR[ƒh
+    base_name           xxcso_resource_relations_v2.work_base_name_new%TYPE,  -- ‹Î–±’n‹’“_–¼
+    employee_number     xxcso_resource_relations_v2.employee_number%TYPE,     -- ]‹Æˆõ”Ô†
+    name                xxcso_resource_relations_v2.full_name%TYPE,           -- ]‹Æˆõ–¼
+    gvm_type            xxcso_rep_visit_sale_plan.gvm_type%TYPE,              -- ˆê”Ê^©”Ì‹@^‚l‚b
+    account_number      xxcso_cust_accounts_v.account_number%TYPE,            -- ŒÚ‹qƒR[ƒh
+    party_name          xxcso_cust_accounts_v.party_name%TYPE,                -- ŒÚ‹q–¼
+    route_number        xxcso_cust_routes_v2.route_number%TYPE,               -- ƒ‹[ƒgNo
+    business_high_type  xxcso_rep_visit_sale_plan.business_high_type%TYPE,    -- ‹Æ‘Ôi‘å•ª—Şj
+    business_high_name  xxcso_rep_visit_sale_plan.business_high_name%TYPE,    -- ‹Æ‘Ôi‘å•ª—Şj–¼
+    l_one_day_tab       g_one_day_ttype1,                                     -- “ú•Êƒf[ƒ^Ši”[
+    cust_new_num        xxcso_sum_visit_sale_rep.cust_new_num%TYPE,           -- ŒÚ‹qŒ”iV‹Kj
+    cust_vd_new_num     xxcso_sum_visit_sale_rep.cust_vd_new_num%TYPE,        -- ŒÚ‹qŒ”iVDFV‹Kj
+    rslt_amty           xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- ‘O”NÀÑ
+    rslt_amtm           xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- æŒÀÑ
+    tgt_sales_prsn_total_amt xxcso_sum_visit_sale_rep.tgt_sales_prsn_total_amt%TYPE   -- Œ•Ê”„ã—\Z
+  );
+  -- ‰c‹ÆƒOƒ‹[ƒv•Êi’ •[‚Qj
+  TYPE g_one_day_rtype2 IS RECORD(
+    tgt_amt             xxcso_sum_visit_sale_rep.tgt_amt%TYPE,                -- ”„ãŒv‰æ
+    tgt_new_amt         xxcso_sum_visit_sale_rep.tgt_new_amt%TYPE,            -- ”„ãŒv‰æiV‹Kj
+    tgt_vd_new_amt      xxcso_sum_visit_sale_rep.tgt_vd_new_amt%TYPE,         -- ”„ãŒv‰æiVDFV‹Kj
+    tgt_vd_amt          xxcso_sum_visit_sale_rep.tgt_vd_amt%TYPE,             -- ”„ãŒv‰æiVDj
+    tgt_other_new_amt   xxcso_sum_visit_sale_rep.tgt_other_new_amt%TYPE,      -- ”„ãŒv‰æiVDˆÈŠOFV‹Kj
+    tgt_other_amt       xxcso_sum_visit_sale_rep.tgt_other_amt%TYPE,          -- ”„ãŒv‰æiVDˆÈŠOj
+    rslt_amt            xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- ”„ãÀÑ
+    rslt_new_amt        xxcso_sum_visit_sale_rep.rslt_new_amt%TYPE,           -- ”„ãÀÑiV‹Kj
+    rslt_vd_new_amt     xxcso_sum_visit_sale_rep.rslt_vd_new_amt%TYPE,        -- ”„ãÀÑiVDFV‹Kj
+    rslt_vd_amt         xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,            -- ”„ãÀÑiVDj
+    rslt_other_new_amt  xxcso_sum_visit_sale_rep.rslt_other_new_amt%TYPE,     -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+    rslt_other_amt      xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,         -- ”„ãÀÑiVDˆÈŠOj
+    rslt_center_amt     xxcso_sum_visit_sale_rep.rslt_center_amt%TYPE,        -- “à‘¼‹’“_Q”„ãÀÑ
+    tgt_vis_num         xxcso_sum_visit_sale_rep.tgt_vis_num%TYPE,            -- –K–âŒv‰æ
+    tgt_vis_new_num     xxcso_sum_visit_sale_rep.tgt_vis_new_num%TYPE,        -- –K–âŒv‰æiV‹Kj
+    tgt_vis_vd_new_num  xxcso_sum_visit_sale_rep.tgt_vis_vd_new_num%TYPE,     -- –K–âŒv‰æiVDFV‹Kj
+    tgt_vis_vd_num      xxcso_sum_visit_sale_rep.tgt_vis_vd_num%TYPE,         -- –K–âŒv‰æiVDj
+    tgt_vis_other_new_num     xxcso_sum_visit_sale_rep.tgt_vis_other_new_num%TYPE,  -- –K–âŒv‰æiVDˆÈŠOFV‹Kj
+    tgt_vis_mc_num      xxcso_sum_visit_sale_rep.tgt_vis_mc_num%TYPE,         -- –K–âŒv‰æ(MC)
+    tgt_vis_other_num   xxcso_sum_visit_sale_rep.tgt_vis_other_num%TYPE,      -- –K–âŒv‰æiVDˆÈŠOj
+    vis_num             xxcso_sum_visit_sale_rep.vis_num%TYPE,                -- –K–âÀÑ
+    vis_new_num         xxcso_sum_visit_sale_rep.vis_new_num%TYPE,            -- –K–âÀÑiV‹Kj
+    vis_vd_new_num      xxcso_sum_visit_sale_rep.vis_vd_new_num%TYPE,         -- –K–âÀÑiVDFV‹Kj
+    vis_vd_num          xxcso_sum_visit_sale_rep.vis_vd_num%TYPE,             -- –K–âÀÑiVDj
+    vis_other_new_num   xxcso_sum_visit_sale_rep.vis_other_new_num%TYPE,      -- –K–âÀÑiVDˆÈŠOFV‹Kj
+    vis_other_num       xxcso_sum_visit_sale_rep.vis_other_num%TYPE,          -- –K–âÀÑiVDˆÈŠOj
+    vis_mc_num          xxcso_sum_visit_sale_rep.vis_mc_num%TYPE,             -- –K–âÀÑ(MC)
+    vis_sales_num       xxcso_sum_visit_sale_rep.vis_sales_num%TYPE,          -- —LŒøŒ¬”
+    vis_a_num           NUMBER(9),                                            -- –K–â‚`Œ”
+    vis_b_num           NUMBER(9),                                            -- –K–â‚aŒ”
+    vis_c_num           NUMBER(9),                                            -- –K–â‚bŒ”
+    vis_d_num           NUMBER(9),                                            -- –K–â‚cŒ”
+    vis_e_num           NUMBER(9),                                            -- –K–â‚dŒ”
+    vis_f_num           NUMBER(9),                                            -- –K–â‚eŒ”
+    vis_g_num           NUMBER(9),                                            -- –K–â‚fŒ”
+    vis_h_num           NUMBER(9),                                            -- –K–â‚gŒ”
+    vis_i_num           NUMBER(9),                                            -- –K–âú@Œ”
+    vis_j_num           NUMBER(9),                                            -- –K–â‚iŒ”
+    vis_k_num           NUMBER(9),                                            -- –K–â‚jŒ”
+    vis_l_num           NUMBER(9),                                            -- –K–â‚kŒ”
+    vis_m_num           NUMBER(9),                                            -- –K–â‚lŒ”
+    vis_n_num           NUMBER(9),                                            -- –K–â‚mŒ”
+    vis_o_num           NUMBER(9),                                            -- –K–â‚nŒ”
+    vis_p_num           NUMBER(9),                                            -- –K–â‚oŒ”
+    vis_q_num           NUMBER(9),                                            -- –K–â‚pŒ”
+    vis_r_num           NUMBER(9),                                            -- –K–â‚qŒ”
+    vis_s_num           NUMBER(9),                                            -- –K–â‚rŒ”
+    vis_t_num           NUMBER(9),                                            -- –K–â‚sŒ”
+    vis_u_num           NUMBER(9),                                            -- –K–â‚tŒ”
+    vis_v_num           NUMBER(9),                                            -- –K–â‚uŒ”
+    vis_w_num           NUMBER(9),                                            -- –K–â‚vŒ”
+    vis_x_num           NUMBER(9),                                            -- –K–â‚wŒ”
+    vis_y_num           NUMBER(9),                                            -- –K–â‚xŒ”
+    vis_z_num           NUMBER(9)                                             -- –K–â‚yŒ”
+  );
+  TYPE g_one_day_ttype2 IS TABLE OF g_one_day_rtype2 INDEX BY PLS_INTEGER;
+  TYPE g_month_rtype2 IS RECORD(
+    work_base_code      xxcso_resource_relations_v2.work_base_code_new%TYPE,  -- ‹Î–±’n‹’“_ƒR[ƒh
+    base_name           xxcso_resource_relations_v2.work_base_name_new%TYPE,  -- ‹Î–±’n‹’“_–¼
+    group_number        xxcso_resource_relations_v2.group_number_new%TYPE,    -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+    group_name          VARCHAR2(160),                                        -- ‰c‹ÆƒOƒ‹[ƒv–¼
+    employee_number     xxcso_resource_relations_v2.employee_number%TYPE,     -- ]‹Æˆõ”Ô†
+    name                xxcso_resource_relations_v2.full_name%TYPE,           -- ]‹Æˆõ–¼
+    gvm_type            xxcso_rep_visit_sale_plan.gvm_type%TYPE,              -- ˆê”Ê^©”Ì‹@^‚l‚b
+    l_one_day_tab       g_one_day_ttype2,                                     -- “ú•Êƒf[ƒ^Ši”[iƒe[ƒuƒ‹Œ^j
+    rslt_amty           xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- ‘O”NÀÑ
+    rslt_vd_amty        xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,            -- ‘O”NÀÑiVDj
+    rslt_other_amty     xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,         -- ‘O”NÀÑiVDˆÈŠOj
+    rslt_amtm           xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- æŒÀÑ
+    rslt_vd_amtm        xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,            -- æŒÀÑiVDj
+    rslt_other_amtm     xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,         -- æŒÀÑiVDˆÈŠOj
+    cust_new_num        xxcso_sum_visit_sale_rep.cust_new_num%TYPE,           -- ŒÚ‹qŒ”iV‹Kj
+    cust_vd_new_num     xxcso_sum_visit_sale_rep.cust_vd_new_num%TYPE,        -- ŒÚ‹qŒ”iVDFV‹Kj
+    cust_other_new_num  xxcso_sum_visit_sale_rep.cust_other_new_num%TYPE,     -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+    tgt_sales_prsn_total_amt xxcso_sum_visit_sale_rep.tgt_sales_prsn_total_amt%TYPE   -- Œ•Ê”„ã—\Z
+  );
+  -- ‹’“_/‰Û•Êi’ •[‚Rj
+  TYPE g_one_day_rtype3 IS RECORD(
+    tgt_amt                   xxcso_sum_visit_sale_rep.tgt_amt%TYPE,           -- ”„ãŒv‰æ
+    tgt_new_amt               xxcso_sum_visit_sale_rep.tgt_new_amt%TYPE,       -- ”„ãŒv‰æiV‹Kj
+    tgt_vd_new_amt            xxcso_sum_visit_sale_rep.tgt_vd_new_amt%TYPE,    -- ”„ãŒv‰æiVDFV‹Kj
+    tgt_vd_amt                xxcso_sum_visit_sale_rep.tgt_vd_amt%TYPE,        -- ”„ãŒv‰æiVDj
+    tgt_other_new_amt         xxcso_sum_visit_sale_rep.tgt_other_new_amt%TYPE, -- ”„ãŒv‰æiVDˆÈŠOFV‹Kj
+    tgt_other_amt             xxcso_sum_visit_sale_rep.tgt_other_amt%TYPE,     -- ”„ãŒv‰æiVDˆÈŠOj
+    rslt_amt                  xxcso_sum_visit_sale_rep.rslt_amt%TYPE,          -- ”„ãÀÑ
+    rslt_new_amt              xxcso_sum_visit_sale_rep.rslt_new_amt%TYPE,      -- ”„ãÀÑiV‹Kj
+    rslt_vd_new_amt           xxcso_sum_visit_sale_rep.rslt_vd_new_amt%TYPE,   -- ”„ãÀÑiVDFV‹Kj
+    rslt_vd_amt               xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,       -- ”„ãÀÑiVDj
+    rslt_other_new_amt        xxcso_sum_visit_sale_rep.rslt_other_new_amt%TYPE,-- ”„ãÀÑiVDˆÈŠOFV‹Kj
+    rslt_other_amt            xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,    -- ”„ãÀÑiVDˆÈŠOj
+    rslt_center_amt           xxcso_sum_visit_sale_rep.rslt_center_amt%TYPE,   -- “à‘¼‹’“_Q”„ãÀÑ
+    rslt_center_vd_amt        xxcso_sum_visit_sale_rep.rslt_center_vd_amt%TYPE,    -- “à‘¼‹’“_Q”„ãÀÑiVDj
+    rslt_center_other_amt     xxcso_sum_visit_sale_rep.rslt_center_other_amt%TYPE, -- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+    tgt_vis_num               xxcso_sum_visit_sale_rep.tgt_vis_num%TYPE,       -- –K–âŒv‰æ
+    tgt_vis_new_num           xxcso_sum_visit_sale_rep.tgt_vis_new_num%TYPE,   -- –K–âŒv‰æiV‹Kj
+    tgt_vis_vd_new_num        xxcso_sum_visit_sale_rep.tgt_vis_vd_new_num%TYPE,-- –K–âŒv‰æiVDFV‹Kj
+    tgt_vis_vd_num            xxcso_sum_visit_sale_rep.tgt_vis_vd_num%TYPE,    -- –K–âŒv‰æiVDj
+    tgt_vis_other_new_num     xxcso_sum_visit_sale_rep.tgt_vis_other_new_num%TYPE,-- –K–âŒv‰æiVDˆÈŠOFV‹Kj
+    tgt_vis_other_num         xxcso_sum_visit_sale_rep.tgt_vis_other_num%TYPE, -- –K–âŒv‰æiVDˆÈŠOj
+    tgt_vis_mc_num            xxcso_sum_visit_sale_rep.tgt_vis_mc_num%TYPE,    -- –K–âŒv‰æ(MC)
+    vis_num                   xxcso_sum_visit_sale_rep.vis_num%TYPE,           -- –K–âÀÑ
+    vis_new_num               xxcso_sum_visit_sale_rep.vis_new_num%TYPE,       -- –K–âÀÑiV‹Kj
+    vis_vd_new_num            xxcso_sum_visit_sale_rep.vis_vd_new_num%TYPE,    -- –K–âÀÑiVDFV‹Kj
+    vis_vd_num                xxcso_sum_visit_sale_rep.vis_vd_num%TYPE,        -- –K–âÀÑiVDj
+    vis_other_new_num         xxcso_sum_visit_sale_rep.vis_other_new_num%TYPE, -- –K–âÀÑiVDˆÈŠOFV‹Kj
+    vis_other_num             xxcso_sum_visit_sale_rep.vis_other_num%TYPE,     -- –K–âÀÑiVDˆÈŠOj
+    vis_mc_num                xxcso_sum_visit_sale_rep.vis_mc_num%TYPE,        -- –K–âÀÑ(MC)
+    vis_sales_num             xxcso_sum_visit_sale_rep.vis_sales_num%TYPE,     -- —LŒøŒ¬”
+    vis_a_num                 NUMBER(9),                                       -- –K–â‚`Œ”
+    vis_b_num                 NUMBER(9),                                       -- –K–â‚aŒ”
+    vis_c_num                 NUMBER(9),                                       -- –K–â‚bŒ”
+    vis_d_num                 NUMBER(9),                                       -- –K–â‚cŒ”
+    vis_e_num                 NUMBER(9),                                       -- –K–â‚dŒ”
+    vis_f_num                 NUMBER(9),                                       -- –K–â‚eŒ”
+    vis_g_num                 NUMBER(9),                                       -- –K–â‚fŒ”
+    vis_h_num                 NUMBER(9),                                       -- –K–â‚gŒ”
+    vis_i_num                 NUMBER(9),                                       -- –K–âú@Œ”
+    vis_j_num                 NUMBER(9),                                       -- –K–â‚iŒ”
+    vis_k_num                 NUMBER(9),                                       -- –K–â‚jŒ”
+    vis_l_num                 NUMBER(9),                                       -- –K–â‚kŒ”
+    vis_m_num                 NUMBER(9),                                       -- –K–â‚lŒ”
+    vis_n_num                 NUMBER(9),                                       -- –K–â‚mŒ”
+    vis_o_num                 NUMBER(9),                                       -- –K–â‚nŒ”
+    vis_p_num                 NUMBER(9),                                       -- –K–â‚oŒ”
+    vis_q_num                 NUMBER(9),                                       -- –K–â‚pŒ”
+    vis_r_num                 NUMBER(9),                                       -- –K–â‚qŒ”
+    vis_s_num                 NUMBER(9),                                       -- –K–â‚rŒ”
+    vis_t_num                 NUMBER(9),                                       -- –K–â‚sŒ”
+    vis_u_num                 NUMBER(9),                                       -- –K–â‚tŒ”
+    vis_v_num                 NUMBER(9),                                       -- –K–â‚uŒ”
+    vis_w_num                 NUMBER(9),                                       -- –K–â‚vŒ”
+    vis_x_num                 NUMBER(9),                                       -- –K–â‚wŒ”
+    vis_y_num                 NUMBER(9),                                       -- –K–â‚xŒ”
+    vis_z_num                 NUMBER(9)                                        -- –K–â‚yŒ”
+  );
+  TYPE g_one_day_ttype3 IS TABLE OF g_one_day_rtype3 INDEX BY PLS_INTEGER;
+  TYPE g_month_rtype3 IS RECORD(
+    work_base_code            xxcso_resource_relations_v2.work_base_code_new%TYPE,  -- ‹Î–±’n‹’“_ƒR[ƒh
+    base_name                 xxcso_resource_relations_v2.work_base_name_new%TYPE,  -- ‹Î–±’n‹’“_–¼
+    group_number              xxcso_resource_relations_v2.group_number_new%TYPE,    -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+    group_name                VARCHAR2(160),                                        -- ‰c‹ÆƒOƒ‹[ƒv–¼
+    gvm_type                  xxcso_rep_visit_sale_plan.gvm_type%TYPE,              -- ˆê”Ê^©”Ì‹@^‚l‚b
+    l_one_day_tab             g_one_day_ttype3,                                     -- “ú•Êƒf[ƒ^Ši”[iƒe[ƒuƒ‹Œ^j
+    cust_new_num              xxcso_sum_visit_sale_rep.cust_new_num%TYPE,           -- ŒÚ‹qŒ”iV‹Kj
+    cust_vd_new_num           xxcso_sum_visit_sale_rep.cust_vd_new_num%TYPE,        -- ŒÚ‹qŒ”iVDFV‹Kj
+    cust_other_new_num        xxcso_sum_visit_sale_rep.cust_other_new_num%TYPE,     -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+    rslt_amty                 xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- ‘O”NÀÑ
+    rslt_vd_amty              xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,            -- ‘O”NÀÑiVDj
+    rslt_other_amty           xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,         -- ‘O”NÀÑiVDˆÈŠOj
+    rslt_amtm                 xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- æŒÀÑ
+    rslt_vd_amtm              xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,            -- æŒÀÑiVDj
+    rslt_other_amtm           xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,         -- æŒÀÑiVDˆÈŠOj
+    tgt_sales_prsn_total_amt  xxcso_sum_visit_sale_rep.tgt_sales_prsn_total_amt%TYPE   -- Œ•Ê”„ã—\Z
+  );
+  -- ’n‹æ‰c‹Æ•”•Êi’ •[‚Sj
+  TYPE g_one_day_rtype4 IS RECORD(
+    rslt_amt                  xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- ”„ãÀÑ
+    rslt_new_amt              xxcso_sum_visit_sale_rep.rslt_new_amt%TYPE,           -- ”„ãÀÑiV‹Kj
+    rslt_vd_new_amt           xxcso_sum_visit_sale_rep.rslt_vd_new_amt%TYPE,        -- ”„ãÀÑiVDFV‹Kj
+    rslt_vd_amt               xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,            -- ”„ãÀÑiVDj
+    rslt_other_new_amt        xxcso_sum_visit_sale_rep.rslt_other_new_amt%TYPE,     -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+    rslt_other_amt            xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,         -- ”„ãÀÑiVDˆÈŠOj
+    rslt_center_amt           xxcso_sum_visit_sale_rep.rslt_center_amt%TYPE,        -- “à‘¼‹’“_Q”„ãÀÑ
+    rslt_center_vd_amt        xxcso_sum_visit_sale_rep.rslt_center_vd_amt%TYPE,     -- “à‘¼‹’“_Q”„ãÀÑiVDj
+    rslt_center_other_amt     xxcso_sum_visit_sale_rep.rslt_center_other_amt%TYPE,  -- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+    vis_num                   xxcso_sum_visit_sale_rep.vis_num%TYPE,                -- –K–âÀÑ
+    vis_new_num               xxcso_sum_visit_sale_rep.vis_new_num%TYPE,            -- –K–âÀÑiV‹Kj
+    vis_vd_new_num            xxcso_sum_visit_sale_rep.vis_vd_new_num%TYPE,         -- –K–âÀÑiVDFV‹Kj
+    vis_vd_num                xxcso_sum_visit_sale_rep.vis_vd_num%TYPE,             -- –K–âÀÑiVDj
+    vis_other_new_num         xxcso_sum_visit_sale_rep.vis_other_new_num%TYPE,      -- –K–âÀÑiVDˆÈŠOFV‹Kj
+    vis_other_num             xxcso_sum_visit_sale_rep.vis_other_num%TYPE,          -- –K–âÀÑiVDˆÈŠOj
+    vis_mc_num                xxcso_sum_visit_sale_rep.vis_mc_num%TYPE,             -- –K–âÀÑ(MC)
+    vis_sales_num             xxcso_sum_visit_sale_rep.vis_sales_num%TYPE,          -- —LŒøŒ¬”
+    vis_a_num                 NUMBER(9),                                            -- –K–â‚`Œ”
+    vis_b_num                 NUMBER(9),                                            -- –K–â‚aŒ”
+    vis_c_num                 NUMBER(9),                                            -- –K–â‚bŒ”
+    vis_d_num                 NUMBER(9),                                            -- –K–â‚cŒ”
+    vis_e_num                 NUMBER(9),                                            -- –K–â‚dŒ”
+    vis_f_num                 NUMBER(9),                                            -- –K–â‚eŒ”
+    vis_g_num                 NUMBER(9),                                            -- –K–â‚fŒ”
+    vis_h_num                 NUMBER(9),                                            -- –K–â‚gŒ”
+    vis_i_num                 NUMBER(9),                                            -- –K–âú@Œ”
+    vis_j_num                 NUMBER(9),                                            -- –K–â‚iŒ”
+    vis_k_num                 NUMBER(9),                                            -- –K–â‚jŒ”
+    vis_l_num                 NUMBER(9),                                            -- –K–â‚kŒ”
+    vis_m_num                 NUMBER(9),                                            -- –K–â‚lŒ”
+    vis_n_num                 NUMBER(9),                                            -- –K–â‚mŒ”
+    vis_o_num                 NUMBER(9),                                            -- –K–â‚nŒ”
+    vis_p_num                 NUMBER(9),                                            -- –K–â‚oŒ”
+    vis_q_num                 NUMBER(9),                                            -- –K–â‚pŒ”
+    vis_r_num                 NUMBER(9),                                            -- –K–â‚qŒ”
+    vis_s_num                 NUMBER(9),                                            -- –K–â‚rŒ”
+    vis_t_num                 NUMBER(9),                                            -- –K–â‚sŒ”
+    vis_u_num                 NUMBER(9),                                            -- –K–â‚tŒ”
+    vis_v_num                 NUMBER(9),                                            -- –K–â‚uŒ”
+    vis_w_num                 NUMBER(9),                                            -- –K–â‚vŒ”
+    vis_x_num                 NUMBER(9),                                            -- –K–â‚wŒ”
+    vis_y_num                 NUMBER(9),                                            -- –K–â‚xŒ”
+    vis_z_num                 NUMBER(9)                                             -- –K–â‚yŒ”
+  );
+  TYPE g_one_day_ttype4 IS TABLE OF g_one_day_rtype4 INDEX BY PLS_INTEGER;
+  TYPE g_month_rtype4 IS RECORD(
+    base_code_par             xxcso_aff_base_level_v.base_code%TYPE,                -- ‹Î–±’n‹’“_ƒR[ƒh(e)(‹’“_ƒR[ƒh)
+    base_name_par             xxcso_aff_base_v2.base_name%TYPE,                     -- ‹Î–±’n‹’“_–¼(e)(‹’“_–¼)
+    base_code_chi             xxcso_aff_base_level_v.child_base_code%TYPE,          -- ‹Î–±’n‹’“_ƒR[ƒh
+    base_name_chi             xxcso_aff_base_v2.base_name%TYPE,                     -- ‹Î–±’n‹’“_–¼
+    gvm_type                  xxcso_rep_visit_sale_plan.gvm_type%TYPE,              -- ˆê”Ê^©”Ì‹@^‚l‚b
+    l_one_day_tab             g_one_day_ttype4,                                     -- “ú•Êƒf[ƒ^Ši”[iƒe[ƒuƒ‹Œ^j
+    cust_new_num              xxcso_sum_visit_sale_rep.cust_new_num%TYPE,           -- ŒÚ‹qŒ”iV‹Kj
+    cust_vd_new_num           xxcso_sum_visit_sale_rep.cust_vd_new_num%TYPE,        -- ŒÚ‹qŒ”iVDFV‹Kj
+    cust_other_new_num        xxcso_sum_visit_sale_rep.cust_other_new_num%TYPE,     -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+    rslt_amty                 xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- ‘O”NÀÑ
+    rslt_vd_amty              xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,            -- ‘O”NÀÑiVDj
+    rslt_other_amty           xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,         -- ‘O”NÀÑiVDˆÈŠOj
+    rslt_amtm                 xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- æŒÀÑ
+    rslt_vd_amtm              xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,            -- æŒÀÑiVDj
+    rslt_other_amtm           xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,         -- æŒÀÑiVDˆÈŠOj
+    tgt_sales_prsn_total_amt  xxcso_sum_visit_sale_rep.tgt_sales_prsn_total_amt%TYPE   -- Œ•Ê”„ã—\Z
+  );
+  -- ’nˆæ‰c‹Æ–{•”i’ •[‚Tj
+  TYPE g_one_day_rtype5 IS RECORD(
+    rslt_amt                  xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- ”„ãÀÑ
+    rslt_new_amt              xxcso_sum_visit_sale_rep.rslt_new_amt%TYPE,           -- ”„ãÀÑiV‹Kj
+    rslt_vd_new_amt           xxcso_sum_visit_sale_rep.rslt_vd_new_amt%TYPE,        -- ”„ãÀÑiVDFV‹Kj
+    rslt_vd_amt               xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,            -- ”„ãÀÑiVDj
+    rslt_other_new_amt        xxcso_sum_visit_sale_rep.rslt_other_new_amt%TYPE,     -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+    rslt_other_amt            xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,         -- ”„ãÀÑiVDˆÈŠOj
+    rslt_center_amt           xxcso_sum_visit_sale_rep.rslt_center_amt%TYPE,        -- “à‘¼‹’“_Q”„ãÀÑ
+    rslt_center_vd_amt        xxcso_sum_visit_sale_rep.rslt_center_vd_amt%TYPE,     -- “à‘¼‹’“_Q”„ãÀÑiVDj
+    rslt_center_other_amt     xxcso_sum_visit_sale_rep.rslt_center_other_amt%TYPE,  -- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+    vis_num                   xxcso_sum_visit_sale_rep.vis_num%TYPE,                -- –K–âÀÑ
+    vis_new_num               xxcso_sum_visit_sale_rep.vis_new_num%TYPE,            -- –K–âÀÑiV‹Kj
+    vis_vd_new_num            xxcso_sum_visit_sale_rep.vis_vd_new_num%TYPE,         -- –K–âÀÑiVDFV‹Kj
+    vis_vd_num                xxcso_sum_visit_sale_rep.vis_vd_num%TYPE,             -- –K–âÀÑiVDj
+    vis_other_new_num         xxcso_sum_visit_sale_rep.vis_other_new_num%TYPE,      -- –K–âÀÑiVDˆÈŠOFV‹Kj
+    vis_other_num             xxcso_sum_visit_sale_rep.vis_other_num%TYPE,          -- –K–âÀÑiVDˆÈŠOj
+    vis_mc_num                xxcso_sum_visit_sale_rep.vis_mc_num%TYPE,             -- –K–âÀÑ(MC)
+    vis_sales_num             xxcso_sum_visit_sale_rep.vis_sales_num%TYPE,          -- —LŒøŒ¬”
+    vis_a_num                 NUMBER(9),                                            -- –K–â‚`Œ”
+    vis_b_num                 NUMBER(9),                                            -- –K–â‚aŒ”
+    vis_c_num                 NUMBER(9),                                            -- –K–â‚bŒ”
+    vis_d_num                 NUMBER(9),                                            -- –K–â‚cŒ”
+    vis_e_num                 NUMBER(9),                                            -- –K–â‚dŒ”
+    vis_f_num                 NUMBER(9),                                            -- –K–â‚eŒ”
+    vis_g_num                 NUMBER(9),                                            -- –K–â‚fŒ”
+    vis_h_num                 NUMBER(9),                                            -- –K–â‚gŒ”
+    vis_i_num                 NUMBER(9),                                            -- –K–âú@Œ”
+    vis_j_num                 NUMBER(9),                                            -- –K–â‚iŒ”
+    vis_k_num                 NUMBER(9),                                            -- –K–â‚jŒ”
+    vis_l_num                 NUMBER(9),                                            -- –K–â‚kŒ”
+    vis_m_num                 NUMBER(9),                                            -- –K–â‚lŒ”
+    vis_n_num                 NUMBER(9),                                            -- –K–â‚mŒ”
+    vis_o_num                 NUMBER(9),                                            -- –K–â‚nŒ”
+    vis_p_num                 NUMBER(9),                                            -- –K–â‚oŒ”
+    vis_q_num                 NUMBER(9),                                            -- –K–â‚pŒ”
+    vis_r_num                 NUMBER(9),                                            -- –K–â‚qŒ”
+    vis_s_num                 NUMBER(9),                                            -- –K–â‚rŒ”
+    vis_t_num                 NUMBER(9),                                            -- –K–â‚sŒ”
+    vis_u_num                 NUMBER(9),                                            -- –K–â‚tŒ”
+    vis_v_num                 NUMBER(9),                                            -- –K–â‚uŒ”
+    vis_w_num                 NUMBER(9),                                            -- –K–â‚vŒ”
+    vis_x_num                 NUMBER(9),                                            -- –K–â‚wŒ”
+    vis_y_num                 NUMBER(9),                                            -- –K–â‚xŒ”
+    vis_z_num                 NUMBER(9)                                             -- –K–â‚yŒ”
+  );
+  TYPE g_one_day_ttype5 IS TABLE OF g_one_day_rtype5 INDEX BY PLS_INTEGER;
+  TYPE g_month_rtype5 IS RECORD(
+    base_code_par             xxcso_aff_base_level_v.base_code%TYPE,                -- ‹Î–±’n‹’“_ƒR[ƒh(e)(‹’“_ƒR[ƒh)
+    base_name_par             xxcso_aff_base_v2.base_name%TYPE,                     -- ‹Î–±’n‹’“_–¼(e)(‹’“_–¼)
+    base_code_chi             xxcso_aff_base_level_v.child_base_code%TYPE,          -- ‹Î–±’n‹’“_ƒR[ƒh
+    base_name_chi             xxcso_aff_base_v2.base_name%TYPE,                     -- ‹Î–±’n‹’“_–¼
+    gvm_type                  xxcso_rep_visit_sale_plan.gvm_type%TYPE,              -- ˆê”Ê^©”Ì‹@^‚l‚b
+    l_one_day_tab             g_one_day_ttype5,                                     -- “ú•Êƒf[ƒ^Ši”[iƒe[ƒuƒ‹Œ^j
+    cust_new_num              xxcso_sum_visit_sale_rep.cust_new_num%TYPE,           -- ŒÚ‹qŒ”iV‹Kj
+    cust_vd_new_num           xxcso_sum_visit_sale_rep.cust_vd_new_num%TYPE,        -- ŒÚ‹qŒ”iVDFV‹Kj
+    cust_other_new_num        xxcso_sum_visit_sale_rep.cust_other_new_num%TYPE,     -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+    rslt_amty                 xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- ‘O”NÀÑ
+    rslt_vd_amty              xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,            -- ‘O”NÀÑiVDj
+    rslt_other_amty           xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,         -- ‘O”NÀÑiVDˆÈŠOj
+    rslt_amtm                 xxcso_sum_visit_sale_rep.rslt_amt%TYPE,               -- æŒÀÑ
+    rslt_vd_amtm              xxcso_sum_visit_sale_rep.rslt_vd_amt%TYPE,            -- æŒÀÑiVDj
+    rslt_other_amtm           xxcso_sum_visit_sale_rep.rslt_other_amt%TYPE,         -- æŒÀÑiVDˆÈŠOj
+    tgt_sales_prsn_total_amt  xxcso_sum_visit_sale_rep.tgt_sales_prsn_total_amt%TYPE   -- Œ•Ê”„ã—\Z
+  );
+--
+  /***********************************************************************************
+   * Procedure Name   : debug
+   * Description      : ƒfƒoƒbƒOƒƒOo—Í
+   ***********************************************************************************/
+  PROCEDURE debug(
+    buff                IN         VARCHAR2     -- ƒfƒoƒbƒOƒƒO
+  )
+  IS
+  BEGIN
+    IF ( CB_DEBUG_LOG = TRUE ) THEN
+      fnd_file.put_line(
+        which  => FND_FILE.LOG
+       ,buff   => buff || cv_lf || ''   -- ‹ós‚Ì‘}“ü
+      );
+    END IF;
+  END debug;
+--
+  /***********************************************************************************
+   * Procedure Name   : do_error
+   * Description      : —áŠO”­¶
+   ***********************************************************************************/
+  PROCEDURE do_error(
+    proc_no               IN         VARCHAR2     -- ˆ—”Ô†
+  )
+  IS
+    ln_cnt                NUMBER  := 1;
+  BEGIN
+    IF ( CB_DO_ERROR_NO =  proc_no ) THEN
+      debug(
+        buff  => '—áŠOƒeƒXƒg' || cv_lf ||
+                 'ˆ—”Ô†' || proc_no || 
+                 cv_lf || ''
+      );
+      ln_cnt  :=  ln_cnt / 0;
+    END IF;
+  END do_error;
+--
+  /***********************************************************************************
+   * Procedure Name   : init_month_square_hon_tab
+   * Description      : PL/SQL•\i–{‘Ì•”j‚Ì€–Ú‚Ì‰Šú‰»
+   ***********************************************************************************/
+  PROCEDURE init_month_square_hon_tab(
+    io_tab            IN OUT NOCOPY  g_get_month_square_ttype           -- ”z—ñ
+  )
+  IS
+  BEGIN
+      FOR j IN 1..8 LOOP
+        io_tab(j).last_year_rslt_sales_amt := 0;
+        io_tab(j).last_mon_rslt_sales_amt  := 0;
+        io_tab(j).new_customer_num         := 0;
+        io_tab(j).new_vendor_num           := 0;
+        io_tab(j).new_customer_amt         := 0;
+        io_tab(j).new_vendor_amt           := 0;
+        io_tab(j).plan_sales_amt           := 0;
+        io_tab(j).vis_a_num                := 0;
+        io_tab(j).vis_b_num                := 0;
+        io_tab(j).vis_c_num                := 0;
+        io_tab(j).vis_d_num                := 0;
+        io_tab(j).vis_e_num                := 0;
+        io_tab(j).vis_f_num                := 0;
+        io_tab(j).vis_g_num                := 0;
+        io_tab(j).vis_h_num                := 0;
+        io_tab(j).vis_i_num                := 0;
+        io_tab(j).vis_j_num                := 0;
+        io_tab(j).vis_k_num                := 0;
+        io_tab(j).vis_l_num                := 0;
+        io_tab(j).vis_m_num                := 0;
+        io_tab(j).vis_n_num                := 0;
+        io_tab(j).vis_o_num                := 0;
+        io_tab(j).vis_p_num                := 0;
+        io_tab(j).vis_q_num                := 0;
+        io_tab(j).vis_r_num                := 0;
+        io_tab(j).vis_s_num                := 0;
+        io_tab(j).vis_t_num                := 0;
+        io_tab(j).vis_u_num                := 0;
+        io_tab(j).vis_v_num                := 0;
+        io_tab(j).vis_w_num                := 0;
+        io_tab(j).vis_x_num                := 0;
+        io_tab(j).vis_y_num                := 0;
+        io_tab(j).vis_z_num                := 0;
+        FOR i IN 1..31 LOOP
+          io_tab(j).l_get_one_day_tab(i).plan_vs_amt           := 0;
+          io_tab(j).l_get_one_day_tab(i).rslt_vs_amt           := 0;
+          io_tab(j).l_get_one_day_tab(i).rslt_other_sales_amt  := 0;
+          io_tab(j).l_get_one_day_tab(i).effective_num         := 0;
+        END LOOP;
+      END LOOP;
+  END init_month_square_hon_tab;
+--
+  /***********************************************************************************
+   * Procedure Name   : init_month_square_rec1
+   * Description      : PL/SQL•\iˆêƒ–Œ•ªj‚Ì€–Ú‚Ì‰Šú‰»
+   ***********************************************************************************/
+  PROCEDURE init_month_square_rec1(
+    io_month_square_rec  IN  OUT NOCOPY     g_month_rtype1  -- ˆêƒ–Œ•ªƒf[ƒ^
+  )
+  IS
+  BEGIN
+      FOR i IN 1..31 LOOP
+        io_month_square_rec.l_one_day_tab(i).tgt_amt                 :=0;
+        io_month_square_rec.l_one_day_tab(i).rslt_amt                :=0;
+        io_month_square_rec.l_one_day_tab(i).rslt_center_amt         :=0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_num             :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_num                 :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_sales_num           :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_new_num             :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_vd_new_num          :=0;
+        io_month_square_rec.l_one_day_tab(i).visit_sign              :=NULL;
+        io_month_square_rec.l_one_day_tab(i).vis_a_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_b_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_c_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_d_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_e_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_f_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_g_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_h_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_i_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_j_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_k_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_l_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_m_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_n_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_o_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_p_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_q_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_r_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_s_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_t_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_u_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_v_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_w_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_x_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_y_num               :=0;
+        io_month_square_rec.l_one_day_tab(i).vis_z_num               :=0;
+      END LOOP;
+  END init_month_square_rec1;
+--
+  /***********************************************************************************
+   * Procedure Name   : init_month_square_rec2
+   * Description      : PL/SQL•\iˆêƒ–Œ•ªj‚Ì€–Ú‚Ì‰Šú‰»
+   ***********************************************************************************/
+  PROCEDURE init_month_square_rec2(
+    io_month_square_rec  IN  OUT NOCOPY     g_month_rtype2  -- ˆêƒ–Œ•ªƒf[ƒ^
+  )
+  IS
+  BEGIN
+      FOR i IN 1..31 LOOP
+        io_month_square_rec.l_one_day_tab(i).tgt_amt                             := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_new_amt                         := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vd_new_amt                      := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vd_amt                          := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_other_new_amt                   := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_other_amt                       := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_amt                            := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_new_amt                        := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_vd_new_amt                     := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_vd_amt                         := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_other_new_amt                  := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_other_amt                      := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_center_amt                     := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_num                         := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_new_num                     := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_vd_new_num                  := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_vd_num                      := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_other_new_num               := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_other_num                   := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_mc_num                      := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_new_num                         := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_vd_new_num                      := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_vd_num                          := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_other_new_num                   := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_other_num                       := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_mc_num                          := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_sales_num                       := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_a_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_b_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_c_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_d_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_e_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_f_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_g_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_h_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_i_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_j_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_k_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_l_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_m_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_n_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_o_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_p_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_q_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_r_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_s_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_t_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_u_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_v_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_w_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_x_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_y_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_z_num                           := 0;
+      END LOOP;
+  END init_month_square_rec2;
+--
+  /***********************************************************************************
+   * Procedure Name   : init_month_square_rec3
+   * Description      : PL/SQL•\iˆêƒ–Œ•ªj‚Ì€–Ú‚Ì‰Šú‰»
+   ***********************************************************************************/
+  PROCEDURE init_month_square_rec3(
+    io_month_square_rec  IN  OUT NOCOPY     g_month_rtype3  -- ˆêƒ–Œ•ªƒf[ƒ^
+  )
+  IS
+  BEGIN
+      FOR i IN 1..31 LOOP
+        io_month_square_rec.l_one_day_tab(i).tgt_amt                               := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_new_amt                           := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vd_new_amt                        := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vd_amt                            := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_other_new_amt                     := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_other_amt                         := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_amt                              := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_new_amt                          := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_vd_new_amt                       := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_vd_amt                           := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_other_new_amt                    := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_other_amt                        := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_center_amt                       := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_center_vd_amt                    := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_center_other_amt                 := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_new_num                       := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_vd_new_num                    := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_vd_num                        := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_other_new_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_other_num                     := 0;
+        io_month_square_rec.l_one_day_tab(i).tgt_vis_mc_num                        := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_num                               := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_new_num                           := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_vd_new_num                        := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_vd_num                            := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_other_new_num                     := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_other_num                         := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_mc_num                            := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_sales_num                         := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_a_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_b_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_c_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_d_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_e_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_f_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_g_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_h_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_i_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_j_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_k_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_l_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_m_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_n_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_o_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_p_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_q_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_r_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_s_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_t_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_u_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_v_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_w_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_x_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_y_num                             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_z_num                             := 0;
+      END LOOP;
+  END init_month_square_rec3;
+--
+  /***********************************************************************************
+   * Procedure Name   : init_month_square_rec4
+   * Description      : PL/SQL•\iˆêƒ–Œ•ªj‚Ì€–Ú‚Ì‰Šú‰»
+   ***********************************************************************************/
+  PROCEDURE init_month_square_rec4(
+    io_month_square_rec  IN  OUT NOCOPY     g_month_rtype4  -- ˆêƒ–Œ•ªƒf[ƒ^
+  )
+  IS
+  BEGIN
+      FOR i IN 1..31 LOOP
+        io_month_square_rec.l_one_day_tab(i).rslt_amt                  := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_new_amt              := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_vd_new_amt           := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_vd_amt               := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_other_new_amt        := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_other_amt            := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_center_amt           := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_center_vd_amt        := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_center_other_amt     := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_num                   := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_new_num               := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_vd_new_num            := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_vd_num                := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_other_new_num         := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_other_num             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_mc_num                := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_sales_num             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_a_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_b_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_c_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_d_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_e_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_f_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_g_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_h_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_i_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_j_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_k_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_l_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_m_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_n_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_o_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_p_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_q_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_r_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_s_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_t_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_u_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_v_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_w_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_x_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_y_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_z_num                 := 0;
+      END LOOP;
+  END init_month_square_rec4;
+--
+  /***********************************************************************************
+   * Procedure Name   : init_month_square_rec5
+   * Description      : PL/SQL•\iˆêƒ–Œ•ªj‚Ì€–Ú‚Ì‰Šú‰»
+   ***********************************************************************************/
+  PROCEDURE init_month_square_rec5(
+    io_month_square_rec  IN  OUT NOCOPY     g_month_rtype5  -- ˆêƒ–Œ•ªƒf[ƒ^
+  )
+  IS
+  BEGIN
+      FOR i IN 1..31 LOOP
+        io_month_square_rec.l_one_day_tab(i).rslt_amt                  := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_new_amt              := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_vd_new_amt           := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_vd_amt               := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_other_new_amt        := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_other_amt            := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_center_amt           := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_center_vd_amt        := 0;
+        io_month_square_rec.l_one_day_tab(i).rslt_center_other_amt     := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_num                   := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_new_num               := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_vd_new_num            := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_vd_num                := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_other_new_num         := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_other_num             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_mc_num                := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_sales_num             := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_a_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_b_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_c_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_d_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_e_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_f_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_g_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_h_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_i_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_j_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_k_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_l_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_m_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_n_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_o_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_p_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_q_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_r_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_s_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_t_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_u_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_v_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_w_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_x_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_y_num                 := 0;
+        io_month_square_rec.l_one_day_tab(i).vis_z_num                 := 0;
+      END LOOP;
+  END init_month_square_rec5;
+--
+  /***********************************************************************************
+   * Procedure Name   : init
+   * Description      : ‰Šúˆ—(A-1)
+   ***********************************************************************************/
+  PROCEDURE init(
+    iv_year_month       IN         VARCHAR2     -- Šî€”NŒ
+   ,iv_report_type      IN         VARCHAR2     -- ’ •[í•Ê
+   ,iv_base_code        IN         VARCHAR2     -- ‹’“_ƒR[ƒh
+   ,ov_errbuf           OUT NOCOPY VARCHAR2     -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+   ,ov_retcode          OUT NOCOPY VARCHAR2     -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+   ,ov_errmsg           OUT NOCOPY VARCHAR2     -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
+  )
+  IS
+    -- ===============================
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_prg_name         CONSTANT VARCHAR2(100) := 'init';              -- ƒvƒƒOƒ‰ƒ€–¼
+    cv_table            CONSTANT VARCHAR2(30)  := 'XXCSO_RESOURCE_RALATIONS_V'; -- ƒŠƒ\[ƒXŠÖ˜Aƒ}ƒXƒ^ƒrƒ…[
+
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+  -- ƒ[ƒJƒ‹•Ï”
+    lv_employee_number     xxcso_resource_relations_v2.employee_number%TYPE;      -- ]‹Æˆõ”Ô†Ši”[
+    lv_work_base_code      xxcso_resource_relations_v2.work_base_code_new%TYPE;   -- ‹Î–±’n‹’“_ƒR[ƒhŠi”[
+    lv_group_number        xxcso_resource_relations_v2.group_number_new%TYPE;     -- ƒOƒ‹[ƒv”Ô†Ši”[
+    lv_position_code       xxcso_resource_relations_v2.position_code_new%TYPE;    -- EˆÊƒR[ƒhŠi”[
+    lv_job_type_code       xxcso_resource_relations_v2.job_type_code_new%TYPE;    -- EíƒR[ƒhŠi”[
+    lv_group_leader_flag   xxcso_resource_relations_v2.group_leader_flag_new%TYPE;-- ƒOƒ‹[ƒv’·‹æ•ª
+  BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+--
+    -- ƒƒbƒZ[ƒWo—Í
+    -- “ü—Í‚³‚ê‚½Šî€”NŒƒƒO‚Éo—Í
+    lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                    ,iv_name         => cv_tkn_number_01         --ƒƒbƒZ[ƒWƒR[ƒh
+                    ,iv_token_name1  => cv_tkn_entry             --ƒg[ƒNƒ“ƒR[ƒh1
+                    ,iv_token_value1 => iv_year_month            --ƒg[ƒNƒ“’l1
+                   );
+    fnd_file.put_line(
+          which  => FND_FILE.LOG,
+          buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                  lv_errmsg || cv_lf || 
+                   ''                         -- ‹ós‚Ì‘}“ü
+        );
+--
+    -- ==============================================================================
+    -- ’ •[í•Ê”Ô†‚É‚æ‚èA’ •[IDA’ •[í•Ê–¼AƒtƒH[ƒ€—l®ƒtƒ@ƒCƒ‹–¼AƒNƒGƒŠ[—l®ƒtƒ@ƒCƒ‹–¼‚ğæ“¾ 
+    -- ==============================================================================    
+    -- ’ •[í•Ê–¼‚ğæ“¾
+    gv_report_meaning  := XXCSO_UTIL_COMMON_PKG.get_lookup_meaning(
+                            iv_lookup_type           => cv_rep_lookup_type_code,  -- ƒ^ƒCƒv
+                            iv_lookup_code           => iv_report_type,           -- ƒR[ƒh
+                            id_standard_date         => SYSDATE);                 -- Šî€“ú
+    IF ( gv_report_meaning IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                      ,iv_name         => cv_tkn_number_12         -- ƒƒbƒZ[ƒWƒR[ƒh
+                      ,iv_token_name1  => cv_tkn_task_name         -- ƒg[ƒNƒ“ƒR[ƒh1
+                      ,iv_token_value1 => iv_report_type           -- ƒg[ƒNƒ“’l1
+                      ,iv_token_name2  => cv_tkn_lookup_type_name  -- ƒg[ƒNƒ“ƒR[ƒh2
+                      ,iv_token_value2 => cv_rep_lookup_type_code  -- ƒg[ƒNƒ“’l2
+                   );
+      RAISE global_api_expt;
+    END IF;
+    -- ƒtƒH[ƒ€—l®ƒtƒ@ƒCƒ‹–¼‚ğæ“¾
+    gv_svf_form_name   := XXCSO_UTIL_COMMON_PKG.get_lookup_attribute(
+                            iv_lookup_type           => cv_rep_lookup_type_code,  -- ƒ^ƒCƒv
+                            iv_lookup_code           => iv_report_type,           -- ƒR[ƒh
+                            in_dff_number            => cv_svf_form_def_no,       -- DFF”Ô†
+                            id_standard_date         => SYSDATE);                 -- Šî€“ú
+    IF ( gv_svf_form_name IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                      ,iv_name         => cv_tkn_number_12         -- ƒƒbƒZ[ƒWƒR[ƒh
+                      ,iv_token_name1  => cv_tkn_task_name         -- ƒg[ƒNƒ“ƒR[ƒh1
+                      ,iv_token_value1 => iv_report_type           -- ƒg[ƒNƒ“’l1
+                      ,iv_token_name2  => cv_tkn_lookup_type_name  -- ƒg[ƒNƒ“ƒR[ƒh2
+                      ,iv_token_value2 => cv_rep_lookup_type_code  -- ƒg[ƒNƒ“’l2
+                   );
+      RAISE global_api_expt;
+    END IF;
+    -- ƒNƒGƒŠ[—l®ƒtƒ@ƒCƒ‹–¼‚ğæ“¾
+    gv_svf_query_name  := XXCSO_UTIL_COMMON_PKG.get_lookup_attribute(
+                            iv_lookup_type           => cv_rep_lookup_type_code,  -- ƒ^ƒCƒv
+                            iv_lookup_code           => iv_report_type,           -- ƒR[ƒh
+                            in_dff_number            => cv_svf_query_def_no,      -- DFF”Ô†
+                            id_standard_date         => SYSDATE);                 -- Šî€“ú
+    IF ( gv_svf_query_name IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                      ,iv_name         => cv_tkn_number_12         -- ƒƒbƒZ[ƒWƒR[ƒh
+                      ,iv_token_name1  => cv_tkn_task_name         -- ƒg[ƒNƒ“ƒR[ƒh1
+                      ,iv_token_value1 => iv_report_type           -- ƒg[ƒNƒ“’l1
+                      ,iv_token_name2  => cv_tkn_lookup_type_name  -- ƒg[ƒNƒ“ƒR[ƒh2
+                      ,iv_token_value2 => cv_rep_lookup_type_code  -- ƒg[ƒNƒ“’l2
+                   );
+      RAISE global_api_expt;
+    END IF;
+--
+    -- ’ •[í•Ê–¼‚ğƒƒO‚Éo—Í
+    fnd_file.put_line(
+          which  => FND_FILE.LOG,
+          buff   => ''      || cv_lf ||                        -- ‹ós‚Ì‘}“ü
+                  gv_report_meaning || cv_lf ||
+                   ''                                            -- ‹ós‚Ì‘}“ü
+        );
+    -- “ü—Í‚³‚ê‚½‹’“_ƒR[ƒh‚ğƒƒO‚Éo—Í
+    lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                    ,iv_name         => cv_tkn_number_03         --ƒƒbƒZ[ƒWƒR[ƒh
+                    ,iv_token_name1  => cv_tkn_entry             --ƒg[ƒNƒ“ƒR[ƒh1
+                    ,iv_token_value1 => iv_base_code             --ƒg[ƒNƒ“’l1
+                   );
+    fnd_file.put_line(
+          which  => FND_FILE.LOG,
+          buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                  lv_errmsg || cv_lf ||
+                   ''                         -- ‹ós‚Ì‘}“ü
+        );
+    -- ƒtƒH[ƒ€—l®ƒtƒ@ƒCƒ‹–¼
+    lv_errmsg := 'ƒtƒH[ƒ€—l®ƒtƒ@ƒCƒ‹–¼F' || gv_svf_form_name;
+    fnd_file.put_line(
+          which  => FND_FILE.LOG,
+          buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                  lv_errmsg || cv_lf ||
+                   ''                       -- ‹ós‚Ì‘}“ü
+    );
+    -- ƒNƒGƒŠ[—l®ƒtƒ@ƒCƒ‹–¼
+    lv_errmsg := 'ƒNƒGƒŠ[—l®ƒtƒ@ƒCƒ‹–¼F' || gv_svf_query_name;
+    fnd_file.put_line(
+          which  => FND_FILE.LOG,
+          buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                  lv_errmsg || cv_lf ||
+                   ''                       -- ‹ós‚Ì‘}“ü
+    );
+    -- DEBUGƒƒbƒZ[ƒW
+    -- ƒ†[ƒUID
+    debug(
+          buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                  'ƒ†[ƒUIDF'||cn_created_by
+    );
+    -- ŠÖ˜Aƒf[ƒ^‚ğ’Šo‚µ‚Ü‚·B
+    SELECT  xrrv.employee_number employee_number,    -- ]‹Æˆõ”Ô†
+            (CASE
+               WHEN TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                 THEN xrrv.work_base_code_new
+               ELSE xrrv.work_base_code_old
+             END 
+            ) work_base_code,                        -- ‹Î–±’n‹’“_ƒR[ƒh
+            (CASE
+               WHEN TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                 THEN xrrv.group_number_new
+               ELSE xrrv.group_number_old
+             END  
+            ) group_number                           -- ƒOƒ‹[ƒv”Ô†
+    INTO    lv_employee_number,                      -- ]‹Æˆõ”Ô†
+            lv_work_base_code,                       -- ‹Î–±’n‹’“_ƒR[ƒh
+            lv_group_number                          -- ƒOƒ‹[ƒv”Ô†
+    FROM    xxcso_resource_relations_v2 xrrv         -- ƒŠƒ\[ƒXŠÖ˜Aƒ}ƒXƒ^(ÅV)VIEW
+    WHERE   xrrv.user_id = cn_created_by;            -- ƒƒOƒCƒ“ƒ†[ƒUID
+--
+DO_ERROR('A-1');
+--
+    -- æ“¾‚³‚ê‚½ƒf[ƒ^‚ğƒOƒ[ƒoƒ‹•Ï”‚Éİ’è
+    gt_employee_number   := NVL(lv_employee_number,' ');                -- ]‹Æˆõ”Ô†
+    gt_work_base_code    := NVL(lv_work_base_code,' ');                 -- ‹Î–±’n‹’“_ƒR[ƒh
+    gt_group_number      := NVL(lv_group_number,' ');                   -- ƒOƒ‹[ƒv”Ô†
+    -- “ü—Í‚³‚ê‚½ƒpƒ‰ƒ[ƒ^‚ğƒOƒ[ƒoƒ‹•Ï”‚ÉŠi”[
+    gv_year_month        := iv_year_month;                     -- Šî€”NŒ
+    gd_year_month        := TO_DATE(gv_year_month,'YYYYMM');
+    gv_report_type       := iv_report_type;                    -- ’ •[í•Ê
+    gv_base_code         := iv_base_code;                      -- ‹’“_ƒR[ƒh
+--
+    -- ƒƒOƒCƒ“ƒ†[ƒU‚ª‰c‹Æˆõ
+    gv_is_salesman := xxcso_util_common_pkg.chk_responsibility(      -- ƒƒOƒCƒ“ƒ†[ƒU‚ª‰c‹Æˆõ‚Ìê‡‚Ì‚İ
+                        cn_created_by
+                       ,fnd_global.resp_id
+                       ,'1'
+                      );
+    -- ƒƒOƒCƒ“ƒ†[ƒU‚ªƒOƒ‹[ƒvƒŠ[ƒ_
+    gv_is_groupleader := xxcso_util_common_pkg.chk_responsibility(      -- ƒƒOƒCƒ“ƒ†[ƒU‚ªƒOƒ‹[ƒvƒŠ[ƒ_‚Ìê‡‚Ì‚İ
+                           cn_created_by
+                          ,fnd_global.resp_id
+                          ,'2'
+                         );
+--
+    -- DEBUGƒƒbƒZ[ƒW
+    -- æ“¾‚µ‚½ƒf[ƒ^‚ğƒƒO‚Éo—Í
+    debug(
+       buff   => 'A-1 ‰Šúˆ—Fæ“¾‚³‚ê‚½ƒf[ƒ^F'  || cv_lf ||
+                  ']‹Æˆõ”Ô†:'       || gt_employee_number   || cv_lf || 
+                  '‹Î–±’n‹’“_ƒR[ƒh:' || gt_work_base_code    || cv_lf || 
+                  'ƒOƒ‹[ƒv”Ô†:'     || gt_group_number      || cv_lf || 
+                  'Šî€”NŒ:'         || gv_year_month        ||  cv_lf || 
+                  '’ •[í•Ê:'         || gv_report_type       ||  cv_lf || 
+                  '‹’“_ƒR[ƒh:'       || gv_base_code         ||  cv_lf || 
+                  '’ •[í•Ê–¼:'       || gv_report_meaning    ||  cv_lf || 
+                  'ƒtƒH[ƒ€—l®ƒtƒ@ƒCƒ‹–¼:' || gv_svf_form_name  ||  cv_lf || 
+                  'ƒNƒGƒŠ[—l®ƒtƒ@ƒCƒ‹–¼:' || gv_svf_query_name || cv_lf || 
+                  'ƒƒOƒCƒ“ID:'       || cn_created_by || cv_lf || 
+                  'is‰c‹Æˆõ:'         || gv_is_salesman || cv_lf || 
+                  'isƒOƒ‹[ƒvƒŠ[ƒ_:' || gv_is_groupleader
+     );
+--
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+  END init;
+--
+  /**********************************************************************************
+   * Procedure Name   : chek_param
+   * Description      : ƒpƒ‰ƒ[ƒ^ƒ`ƒFƒbƒN (A-2)
+  ***********************************************************************************/
+   PROCEDURE chek_param(
+      ov_errbuf         OUT NOCOPY VARCHAR2     -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+     ,ov_retcode        OUT NOCOPY VARCHAR2     -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+     ,ov_errmsg         OUT NOCOPY VARCHAR2     -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'chek_param';     -- ƒvƒƒOƒ‰ƒ€–¼
+  --
+  --#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+  --###########################  ŒÅ’è•” END   ####################################
+--
+  -- ===============================
+  -- ƒ†[ƒU[éŒ¾•”
+  -- ===============================
+  -- *** ƒ[ƒJƒ‹’è” ***
+  -- *** ƒ[ƒJƒ‹•Ï” ***    
+    lv_boolean                    VARCHAR2(5);              -- ‹¤’ÊŠÖ”ƒŠƒ^[ƒ“’l‚ğŠi”[
+    ld_year_month_lastday         DATE;                     -- Šî€”NŒŒ––“úiƒIƒ“ƒ‰ƒCƒ““ú•tl—¶j
+  --
+  BEGIN
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################ 
+    -- ====================
+    -- •Ï”‰Šú‰»ˆ— 
+    -- ====================
+    -- EÓID‚ğæ“¾‚µ‚Ü‚·B
+    gn_resp_id         := fnd_global.resp_id;
+    -- Šî€”NŒ‚Ì‚P“ú‚ğæ“¾‚µ‚ÄƒOƒ[ƒoƒ‹•Ï”‚ÉŠi”[
+    gd_year_month_day  := TO_DATE(gv_year_month || '01','YYYYMMDD'); 
+    -- Šî€”NŒ‚Ì––“ú‚ğæ“¾‚µ‚ÄƒOƒ[ƒoƒ‹•Ï”‚ÉŠi”[
+    gd_year_month_lastday := LAST_DAY(gd_year_month_day);
+    -- “ü—Í‚³‚ê‚½Šî€”NŒ‚ªASYSDATE‚ğŠÜ‚ß‰ß‹‚Å‚ ‚é‚©‚ğƒ`ƒFƒbƒN‚µ‚Ü‚·B
+    IF (gd_year_month_day > XXCSO_UTIL_COMMON_PKG.GET_ONLINE_SYSDATE()) THEN
+      -- ƒƒbƒZ[ƒWo—Í
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                      ,iv_name         => cv_tkn_number_06         --ƒƒbƒZ[ƒWƒR[ƒh
+                      ,iv_token_name1  => cv_tkn_entry             --ƒg[ƒNƒ“ƒR[ƒh1
+                      ,iv_token_value1 => 'Šî€”NŒ'               --ƒg[ƒNƒ“’l1
+                     );
+      fnd_file.put_line(
+            which  => FND_FILE.LOG,
+            buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                    lv_errmsg || cv_lf ||
+                     ''                         -- ‹ós‚Ì‘}“ü
+          );
+      RAISE global_api_expt;
+    END IF;
+    -- DEBUGƒƒbƒZ[ƒW
+    -- Šî€”NŒ‚Ì‚P“ú‚ğƒƒO‚Éo—Í
+    debug(
+       buff   => 'Šî€”NŒ‚Ì‚P“ú' || gd_year_month_day
+     );
+
+    -- “ü—Í‚³‚ê‚½‹’“_ƒR[ƒhA’ •[í•Ê‚ÉÀsŒ ŒÀ‚ªA‚ ‚é‚©‚ğƒ`ƒFƒbƒN‚µ‚Ü‚·B
+    xxcso_util_common_pkg.chk_exe_report_visite_sales(
+       in_user_id     => fnd_global.user_id
+      ,in_resp_id     => gn_resp_id
+      ,iv_base_code   => gv_base_code
+      ,iv_report_type => gv_report_type
+      ,ov_ret_code    => lv_boolean
+      ,ov_err_msg     => lv_errmsg
+    );
+--
+DO_ERROR('A-2-2');
+--
+-- TODO ƒeƒXƒg‚Ì‚½‚ßˆê‚É’Ê‰ß‚³‚¹‚Ü‚·B
+--    lv_boolean := cv_true;
+--
+    IF lv_boolean = cv_false THEN
+      debug(
+        buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                lv_errmsg
+      );
+      RAISE global_api_expt;
+    END IF;
+    -- “ü—Íƒpƒ‰ƒ[ƒ^‚ÌŠî€”NŒ‚æ‚èA‰Ò“®“ú”“™‚ğæ“¾‚µ‚Ü‚·B
+    -- Šî€”NŒ‚Ì––“ú‚ğæ“¾‚µ‚ÄƒOƒ[ƒoƒ‹•Ï”‚ÉŠi”[
+    SELECT
+          (CASE 
+            WHEN XXCSO_UTIL_COMMON_PKG.GET_ONLINE_SYSDATE() < LAST_DAY(gd_year_month_day)  
+              THEN XXCSO_UTIL_COMMON_PKG.GET_ONLINE_SYSDATE()
+          ELSE
+          LAST_DAY(gd_year_month_day)
+          END)
+    INTO      ld_year_month_lastday             -- Šî€”NŒ‚Ì––“ú
+    FROM      DUAL;
+--
+DO_ERROR('A-2-3');
+--
+    -- Šî€”NŒ‚ÌæŒ‚ğæ“¾‚µ‚ÄƒOƒ[ƒoƒ‹•Ï”‚ÉŠi”[
+    gv_year_month_prev    := TO_CHAR(add_months(gd_year_month_day,-1),'YYYYMM');
+    -- Šî€”NŒ‚Ì‘O”N‚ğæ“¾‚µ‚ÄƒOƒ[ƒoƒ‹•Ï”‚ÉŠi”[
+    gv_year_prev          := TO_CHAR(add_months(gd_year_month_day,-12),'YYYYMM');
+    -- ‰Ò“®“ú”‚ğæ“¾‚µ‚ÄƒOƒ[ƒoƒ‹•Ï”‚ÉŠi”[
+    gn_operation_days     := xxcso_util_common_pkg.get_working_days(
+                              gd_year_month_day,TRUNC(ld_year_month_lastday));
+    -- ‰Ò“®‰Â”\“ú”‚ğæ“¾‚µ‚ÄƒOƒ[ƒoƒ‹•Ï”‚ÉŠi”[
+    gn_operation_all_days := xxcso_util_common_pkg.get_working_days(
+                              gd_year_month_day,gd_year_month_lastday);
+    -- DEBUGƒƒbƒZ[ƒW
+    -- æ“¾‚³‚ê‚½“ú•t‚¯‚ğƒƒO‚Éo—Í
+    debug(
+       buff   => 'Šî€”NŒ‚Ì––“ú:' ||gd_year_month_lastday || 
+                 'Šî€”NŒ‚ÌæŒ:' ||gv_year_month_prev || 
+                 'Šî€”NŒ‚Ì‘O”N:' ||gv_year_prev ||
+                 '‰Ò“®“ú”:'||gn_operation_days || 
+                 '‰Ò“®‰Â”\“ú”:'||gn_operation_all_days
+     );
+--
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END chek_param;
+--
+  /**********************************************************************************
+   * Procedure Name   : insert_wrk_table
+   * Description      : ƒ[ƒNƒe[ƒuƒ‹‚Ö‚Ìo—Í (A-3-4,A-4-4,A-5-4,A-6-4,A-7-4)
+  ***********************************************************************************/
+  PROCEDURE insert_wrk_table(
+     ir_m_tab            IN  g_get_month_square_ttype         -- –¾×•”ƒŒƒR[ƒh
+    ,ir_hon_tab          IN  g_get_month_square_ttype         -- –{‘Ì•”ƒŒƒR[ƒh
+    ,in_m_cnt            IN         NUMBER                           -- –¾×•”s”
+    ,in_report_output_no IN         NUMBER                           -- ’ •[o—ÍƒZƒbƒg”Ô†
+    ,ov_errbuf           OUT NOCOPY VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+    ,ov_retcode          OUT NOCOPY VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+    ,ov_errmsg           OUT NOCOPY VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+  cv_prg_name             CONSTANT VARCHAR2(100)   := 'insert_wrk_table';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+  lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+  lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+  lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+  -- ƒ[ƒJƒ‹’è”
+  -- ƒ[ƒJƒ‹•Ï”
+  lv_up_base_code            xxcso_rep_visit_sale_plan.up_base_code%TYPE;           -- ‹’“_ƒR[ƒhiej
+  lv_up_hub_name             xxcso_rep_visit_sale_plan.up_hub_name%TYPE;            -- ‹’“_–¼Ìiej
+  lv_base_code               xxcso_rep_visit_sale_plan.base_code%TYPE;              -- ‹’“_ƒR[ƒh
+  lv_hub_name                xxcso_rep_visit_sale_plan.hub_name%TYPE;               -- ‹’“_–¼Ì
+  lv_group_number            xxcso_rep_visit_sale_plan.group_number%TYPE;           -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+  lv_group_name              xxcso_rep_visit_sale_plan.group_name%TYPE;             -- ‰c‹ÆƒOƒ‹[ƒv–¼
+  lv_employee_number         xxcso_rep_visit_sale_plan.employee_number%TYPE;        -- ‰c‹ÆˆõƒR[ƒh
+  lv_employee_name           xxcso_rep_visit_sale_plan.employee_name%TYPE;          -- ‰c‹Æˆõ–¼
+  lv_report_id               xxcso_rep_visit_sale_plan.report_id%TYPE;              -- ’ •[ID
+  lv_report_name             xxcso_rep_visit_sale_plan.report_name%TYPE;            -- ’ •[ƒ^ƒCƒgƒ‹
+  ln_line_kind               xxcso_rep_visit_sale_plan.line_kind%TYPE;              -- ’ •[o—ÍˆÊ’u
+  ln_line_num                xxcso_rep_visit_sale_plan.line_num%TYPE;               -- s”Ô†
+  ln_m_cnt                   NUMBER;
+  BEGIN
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+    -- ƒ[ƒJƒ‹•Ï”‚Ì‰Šú‰»
+    -- ’ •[id‚É‚æ‚Á‚Ä’ •[ƒ^ƒCƒgƒ‹‚ğ”»’f‚µ‚Ü‚·B
+    -- DEBUGƒƒbƒZ[ƒW
+    -- ƒ[ƒNƒe[ƒuƒ‹‚Ö‚Ìo—Í
+    debug(
+       buff   => 'ƒ[ƒNƒe[ƒuƒ‹‚Ö‚Ìo—ÍŠJn :' || '–¾×•””z—ñF' || TO_CHAR(in_m_cnt)
+     );
+    IF(gv_report_type = cv_report_1) THEN
+      lv_report_name := 'á'|| SUBSTR(gv_year_month,1,4) ||'”N' ||
+      SUBSTR(gv_year_month,5,2) || 'Œ' || '”„ã–K–âŒv‰æŠÇ—•\i‰c‹Æˆõ•Êj' || 'â';
+      lv_report_id   := cv_pkg_name;
+    ELSIF(gv_report_type = cv_report_2) THEN
+      lv_report_name := 'á'|| SUBSTR(gv_year_month,1,4) ||'”N' ||
+      SUBSTR(gv_year_month,5,2) || 'Œ' || '”„ã–K–âŒv‰æŠÇ—•\i‰c‹ÆˆõƒOƒ‹[ƒv•Êj' || 'â';
+      lv_report_id   := cv_pkg_name;
+    ELSIF(gv_report_type = cv_report_3) THEN
+      lv_report_name := 'á'|| SUBSTR(gv_year_month,1,4) ||'”N' ||
+      SUBSTR(gv_year_month,5,2) || 'Œ' || '”„ã–K–âŒv‰æŠÇ—•\i‹’“_/‰Û•Êj' || 'â';
+      lv_report_id   := cv_pkg_name;
+    ELSIF(gv_report_type = cv_report_4) THEN
+      lv_report_name := 'á'|| SUBSTR(gv_year_month,1,4) ||'”N' ||
+      SUBSTR(gv_year_month,5,2) || 'Œ' || '”„ã–K–âŒv‰æŠÇ—•\i’n‹æ‰c‹Æ•”/•”•Êj' || 'â';
+      lv_report_id   := cv_pkg_name;
+    ELSIF(gv_report_type = cv_report_5) THEN
+      lv_report_name := 'á'|| SUBSTR(gv_year_month,1,4) ||'”N' ||
+      SUBSTR(gv_year_month,5,2) || 'Œ' || '”„ã–K–âŒv‰æŠÇ—•\i’nˆæ‰c‹Æ–{•”•Êj' || 'â';
+      lv_report_id   := cv_pkg_name;
+    END IF;
+    -- DEBUGƒƒbƒZ[ƒW
+    -- ’ •[ƒ^ƒCƒgƒ‹
+    debug(
+       buff   => '’ •[ƒ^ƒCƒgƒ‹ :' || lv_report_name
+     );
+    -- –K–â’ •[ƒ[ƒNƒe[ƒuƒ‹‚Éo—Í
+    -- –¾×•”
+    FOR i IN 1..(in_m_cnt) LOOP
+      BEGIN
+        ln_line_kind              := cn_line_kind2;              -- ’ •[o—ÍˆÊ’u
+        ln_line_num               := i;                          -- s”Ô†
+        INSERT INTO xxcso_rep_visit_sale_plan(
+           report_output_no               -- ’ •[o—ÍƒZƒbƒg”Ô†
+          ,line_kind                      -- ’ •[o—ÍˆÊ’u
+          ,line_num                       -- s”Ô†
+          ,report_id                      -- ’ •[‚h‚c
+          ,report_name                    -- ’ •[ƒ^ƒCƒgƒ‹
+          ,output_date                    -- o—Í“ú
+          ,year_month                     -- Šî€”NŒ
+          ,operation_days                 -- ‰Ò“®“ú”
+          ,operation_all_days             -- ‰Ò“®‰Â”\“ú”
+          ,up_base_code                   -- ‹’“_ƒR[ƒhiej
+          ,up_hub_name                    -- ‹’“_–¼Ìiej
+          ,base_code                      -- ‹’“_ƒR[ƒh
+          ,hub_name                       -- ‹’“_–¼Ì
+          ,group_number                   -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+          ,group_name                     -- ‰c‹ÆƒOƒ‹[ƒv–¼
+          ,employee_number                -- ‰c‹ÆˆõƒR[ƒh
+          ,employee_name                  -- ‰c‹Æˆõ–¼
+          ,business_high_type             -- ‹Æ‘Ôi‘å•ª—Şj
+          ,business_high_name             -- ‹Æ‘Ôi‘å•ª—Şj–¼
+          ,gvm_type                       -- ˆê”Ê^©”Ì‹@^‚l‚b
+          ,account_number                 -- ŒÚ‹qƒR[ƒh
+          ,customer_name                  -- ŒÚ‹q–¼
+          ,route_no                       -- ƒ‹[ƒgNo
+          ,last_year_rslt_sales_amt       -- ‘O”NÀÑ
+          ,last_mon_rslt_sales_amt        -- æŒÀÑ
+          ,new_customer_num               -- V‹KŒÚ‹qŒ”
+          ,new_vendor_num                 -- V‹K‚u‚cŒ”
+          ,new_customer_amt               -- V‹KŒÚ‹q”„ãÀÑ
+          ,new_vendor_amt                 -- V‹K‚u‚c”„ãÀÑ
+          ,plan_sales_amt                 -- ”„ã—\Z
+          ,plan_vs_amt_1                  -- ‚P“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_1                  -- ‚P“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_1         -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_1                -- ‚P“ú|—LŒøŒ¬”
+          ,visit_sign_1                   -- ‚P“ú|–K–â‹L†
+          ,plan_vs_amt_2                  -- ‚Q“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_2                  -- ‚Q“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_2         -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_2                -- ‚Q“ú|—LŒøŒ¬”
+          ,visit_sign_2                   -- ‚Q“ú|–K–â‹L†
+          ,plan_vs_amt_3                  -- ‚R“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_3                  -- ‚R“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_3         -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_3                -- ‚R“ú|—LŒøŒ¬”
+          ,visit_sign_3                   -- ‚R“ú|–K–â‹L†
+          ,plan_vs_amt_4                  -- ‚S“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_4                  -- ‚S“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_4         -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_4                -- ‚S“ú|—LŒøŒ¬”
+          ,visit_sign_4                   -- ‚S“ú|–K–â‹L†
+          ,plan_vs_amt_5                  -- ‚T“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_5                  -- ‚T“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_5         -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_5                -- ‚T“ú|—LŒøŒ¬”
+          ,visit_sign_5                   -- ‚T“ú|–K–â‹L†
+          ,plan_vs_amt_6                  -- ‚U“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_6                  -- ‚U“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_6         -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_6                -- ‚U“ú|—LŒøŒ¬”
+          ,visit_sign_6                   -- ‚U“ú|–K–â‹L†
+          ,plan_vs_amt_7                  -- ‚V“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_7                  -- ‚V“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_7         -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_7                -- ‚V“ú|—LŒøŒ¬”
+          ,visit_sign_7                   -- ‚V“ú|–K–â‹L†
+          ,plan_vs_amt_8                  -- ‚W“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_8                  -- ‚W“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_8         -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_8                -- ‚W“ú|—LŒøŒ¬”
+          ,visit_sign_8                   -- ‚W“ú|–K–â‹L†
+          ,plan_vs_amt_9                  -- ‚X“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_9                  -- ‚X“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_9         -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_9                -- ‚X“ú|—LŒøŒ¬”
+          ,visit_sign_9                   -- ‚X“ú|–K–â‹L†
+          ,plan_vs_amt_10                 -- ‚P‚O“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_10                 -- ‚P‚O“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_10        -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_10               -- ‚P‚O“ú|—LŒøŒ¬”
+          ,visit_sign_10                  -- ‚P‚O“ú|–K–â‹L†
+          ,plan_vs_amt_11                 -- ‚P‚P“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_11                 -- ‚P‚P“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_11        -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_11               -- ‚P‚P“ú|—LŒøŒ¬”
+          ,visit_sign_11                  -- ‚P‚P“ú|–K–â‹L†
+          ,plan_vs_amt_12                 -- ‚P‚Q“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_12                 -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_12        -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_12               -- ‚P‚Q“ú|—LŒøŒ¬”
+          ,visit_sign_12                  -- ‚P‚Q“ú|–K–â‹L†
+          ,plan_vs_amt_13                 -- ‚P‚R“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_13                 -- ‚P‚R“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_13        -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_13               -- ‚P‚R“ú|—LŒøŒ¬”
+          ,visit_sign_13                  -- ‚P‚R“ú|–K–â‹L†
+          ,plan_vs_amt_14                 -- ‚P‚S“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_14                 -- ‚P‚S“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_14        -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_14               -- ‚P‚S“ú|—LŒøŒ¬”
+          ,visit_sign_14                  -- ‚P‚S“ú|–K–â‹L†
+          ,plan_vs_amt_15                 -- ‚P‚T“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_15                 -- ‚P‚T“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_15        -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_15               -- ‚P‚T“ú|—LŒøŒ¬”
+          ,visit_sign_15                  -- ‚P‚T“ú|–K–â‹L†
+          ,plan_vs_amt_16                 -- ‚P‚U“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_16                 -- ‚P‚U“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_16        -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_16               -- ‚P‚U“ú|—LŒøŒ¬”
+          ,visit_sign_16                  -- ‚P‚U“ú|–K–â‹L†
+          ,plan_vs_amt_17                 -- ‚P‚V“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_17                 -- ‚P‚V“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_17        -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_17               -- ‚P‚V“ú|—LŒøŒ¬”
+          ,visit_sign_17                  -- ‚P‚V“ú|–K–â‹L†
+          ,plan_vs_amt_18                 -- ‚P‚W“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_18                 -- ‚P‚W“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_18        -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_18               -- ‚P‚W“ú|—LŒøŒ¬”
+          ,visit_sign_18                  -- ‚P‚W“ú|–K–â‹L†
+          ,plan_vs_amt_19                 -- ‚P‚X“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_19                 -- ‚P‚X“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_19        -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_19               -- ‚P‚X“ú|—LŒøŒ¬”
+          ,visit_sign_19                  -- ‚P‚X“ú|–K–â‹L†
+          ,plan_vs_amt_20                 -- ‚Q‚O“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_20                 -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_20        -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_20               -- ‚Q‚O“ú|—LŒøŒ¬”
+          ,visit_sign_20                  -- ‚Q‚O“ú|–K–â‹L†
+          ,plan_vs_amt_21                 -- ‚Q‚P“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_21                 -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_21        -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_21               -- ‚Q‚P“ú|—LŒøŒ¬”
+          ,visit_sign_21                  -- ‚Q‚P“ú|–K–â‹L†
+          ,plan_vs_amt_22                 -- ‚Q‚Q“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_22                 -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_22        -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_22               -- ‚Q‚Q“ú|—LŒøŒ¬”
+          ,visit_sign_22                  -- ‚Q‚Q“ú|–K–â‹L†
+          ,plan_vs_amt_23                 -- ‚Q‚R“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_23                 -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_23        -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_23               -- ‚Q‚R“ú|—LŒøŒ¬”
+          ,visit_sign_23                  -- ‚Q‚R“ú|–K–â‹L†
+          ,plan_vs_amt_24                 -- ‚Q‚S“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_24                 -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_24        -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_24               -- ‚Q‚S“ú|—LŒøŒ¬”
+          ,visit_sign_24                  -- ‚Q‚S“ú|–K–â‹L†
+          ,plan_vs_amt_25                 -- ‚Q‚T“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_25                 -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_25        -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_25               -- ‚Q‚T“ú|—LŒøŒ¬”
+          ,visit_sign_25                  -- ‚Q‚T“ú|–K–â‹L†
+          ,plan_vs_amt_26                 -- ‚Q‚U“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_26                 -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_26        -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_26               -- ‚Q‚U“ú|—LŒøŒ¬”
+          ,visit_sign_26                  -- ‚Q‚U“ú|–K–â‹L†
+          ,plan_vs_amt_27                 -- ‚Q‚V“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_27                 -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_27        -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_27               -- ‚Q‚V“ú|—LŒøŒ¬”
+          ,visit_sign_27                  -- ‚Q‚V“ú|–K–â‹L†
+          ,plan_vs_amt_28                 -- ‚Q‚W“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_28                 -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_28        -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_28               -- ‚Q‚W“ú|—LŒøŒ¬”
+          ,visit_sign_28                  -- ‚Q‚W“ú|–K–â‹L†
+          ,plan_vs_amt_29                 -- ‚Q‚X“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_29                 -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_29        -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_29               -- ‚Q‚X“ú|—LŒøŒ¬”
+          ,visit_sign_29                  -- ‚Q‚X“ú|–K–â‹L†
+          ,plan_vs_amt_30                 -- ‚R‚O“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_30                 -- ‚R‚O“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_30        -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_30               -- ‚R‚O“ú|—LŒøŒ¬”
+          ,visit_sign_30                  -- ‚R‚O“ú|–K–â‹L†
+          ,plan_vs_amt_31                 -- ‚R‚P“ú|”„ã^–K–âŒv‰æ
+          ,rslt_vs_amt_31                 -- ‚R‚P“ú|”„ã^–K–âÀÑ
+          ,rslt_other_sales_amt_31        -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,effective_num_31               -- ‚R‚P“ú|—LŒøŒ¬”
+          ,visit_sign_31                  -- ‚R‚P“ú|–K–â‹L†
+          ,vis_a_num                      -- –K–â‚`Œ”
+          ,vis_b_num                      -- –K–â‚aŒ”
+          ,vis_c_num                      -- –K–â‚bŒ”
+          ,vis_d_num                      -- –K–â‚cŒ”
+          ,vis_e_num                      -- –K–â‚dŒ”
+          ,vis_f_num                      -- –K–â‚eŒ”
+          ,vis_g_num                      -- –K–â‚fŒ”
+          ,vis_h_num                      -- –K–â‚gŒ”
+          ,vis_i_num                      -- –K–âú@Œ”
+          ,vis_j_num                      -- –K–â‚iŒ”
+          ,vis_k_num                      -- –K–â‚jŒ”
+          ,vis_l_num                      -- –K–â‚kŒ”
+          ,vis_m_num                      -- –K–â‚lŒ”
+          ,vis_n_num                      -- –K–â‚mŒ”
+          ,vis_o_num                      -- –K–â‚nŒ”
+          ,vis_p_num                      -- –K–â‚oŒ”
+          ,vis_q_num                      -- –K–â‚pŒ”
+          ,vis_r_num                      -- –K–â‚qŒ”
+          ,vis_s_num                      -- –K–â‚rŒ”
+          ,vis_t_num                      -- –K–â‚sŒ”
+          ,vis_u_num                      -- –K–â‚tŒ”
+          ,vis_v_num                      -- –K–â‚uŒ”
+          ,vis_w_num                      -- –K–â‚vŒ”
+          ,vis_x_num                      -- –K–â‚wŒ”
+          ,vis_y_num                      -- –K–â‚xŒ”
+          ,vis_z_num                      -- –K–â‚yŒ”
+          ,created_by                     -- ì¬Ò
+          ,creation_date                  -- ì¬“ú
+          ,last_updated_by                -- ÅIXVÒ
+          ,last_update_date               -- ÅIXV“ú
+          ,last_update_login              -- ÅIXVƒƒOƒCƒ“
+          ,request_id                     -- —v‹ID
+          ,program_application_id         -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+          ,program_id                     -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+          ,program_update_date            -- ƒvƒƒOƒ‰ƒ€XV“ú
+          )
+          VALUES(
+           in_report_output_no                              -- ’ •[o—ÍƒZƒbƒg”Ô†
+          ,ln_line_kind                                     -- ’ •[o—ÍˆÊ’u
+          ,ln_line_num                                      -- s”Ô†
+          ,NULL                                             -- ’ •[‚h‚c
+          ,NULL                                             -- ’ •[ƒ^ƒCƒgƒ‹
+          ,NULL                                             -- o—Í“ú
+          ,NULL                                             -- Šî€”NŒ
+          ,NULL                                             -- ‰Ò“®“ú”
+          ,NULL                                             -- ‰Ò“®‰Â”\“ú”
+          ,ir_m_tab(i).up_base_code                         -- ‹’“_ƒR[ƒhiej
+          ,ir_m_tab(i).up_hub_name                          -- ‹’“_–¼Ìiej
+          ,ir_m_tab(i).base_code                            -- ‹’“_ƒR[ƒh
+          ,ir_m_tab(i).hub_name                             -- ‹’“_–¼Ì
+          ,ir_m_tab(i).group_number                         -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+          ,ir_m_tab(i).group_name                           -- ‰c‹ÆƒOƒ‹[ƒv–¼
+          ,ir_m_tab(i).employee_number                      -- ‰c‹ÆˆõƒR[ƒh
+          ,ir_m_tab(i).employee_name                        -- ‰c‹Æˆõ–¼
+          ,ir_m_tab(i).business_high_type                   -- ‹Æ‘Ôi‘å•ª—Şj
+          ,ir_m_tab(i).business_high_name                   -- ‹Æ‘Ôi‘å•ª—Şj–¼
+          ,ir_m_tab(i).gvm_type                             -- ˆê”Ê^©”Ì‹@^‚l‚b
+          ,ir_m_tab(i).account_number                       -- ŒÚ‹qƒR[ƒh
+          ,ir_m_tab(i).customer_name                        -- ŒÚ‹q–¼
+          ,ir_m_tab(i).route_no                             -- ƒ‹[ƒgNo
+          ,ir_m_tab(i).last_year_rslt_sales_amt             -- ‘O”NÀÑ
+          ,ir_m_tab(i).last_mon_rslt_sales_amt              -- æŒÀÑ
+          ,ir_m_tab(i).new_customer_num                     -- V‹KŒÚ‹qŒ”
+          ,ir_m_tab(i).new_vendor_num                       -- V‹K‚u‚cŒ”
+          ,ir_m_tab(i).new_customer_amt                     -- V‹KŒÚ‹q”„ãÀÑ
+          ,ir_m_tab(i).new_vendor_amt                       -- V‹K‚u‚c”„ãÀÑ
+          ,ir_m_tab(i).plan_sales_amt                       -- ”„ã—\Z
+          ,ir_m_tab(i).l_get_one_day_tab(1).plan_vs_amt             -- ‚P“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(1).rslt_vs_amt             -- ‚P“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(1).rslt_other_sales_amt    -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(1).effective_num           -- ‚P“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(1).visit_sign              -- ‚P“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(2).plan_vs_amt             -- ‚Q“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(2).rslt_vs_amt             -- ‚Q“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(2).rslt_other_sales_amt    -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(2).effective_num           -- ‚Q“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(2).visit_sign              -- ‚Q“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(3).plan_vs_amt             -- ‚R“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(3).rslt_vs_amt             -- ‚R“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(3).rslt_other_sales_amt    -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(3).effective_num           -- ‚R“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(3).visit_sign              -- ‚R“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(4).plan_vs_amt             -- ‚S“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(4).rslt_vs_amt             -- ‚S“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(4).rslt_other_sales_amt    -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(4).effective_num           -- ‚S“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(4).visit_sign              -- ‚S“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(5).plan_vs_amt             -- ‚T“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(5).rslt_vs_amt             -- ‚T“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(5).rslt_other_sales_amt    -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(5).effective_num           -- ‚T“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(5).visit_sign              -- ‚T“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(6).plan_vs_amt             -- ‚U“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(6).rslt_vs_amt             -- ‚U“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(6).rslt_other_sales_amt    -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(6).effective_num           -- ‚U“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(6).visit_sign              -- ‚U“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(7).plan_vs_amt             -- ‚V“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(7).rslt_vs_amt             -- ‚V“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(7).rslt_other_sales_amt    -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(7).effective_num           -- ‚V“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(7).visit_sign              -- ‚V“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(8).plan_vs_amt             -- ‚W“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(8).rslt_vs_amt             -- ‚W“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(8).rslt_other_sales_amt    -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(8).effective_num           -- ‚W“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(8).visit_sign              -- ‚W“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(9).plan_vs_amt             -- ‚X“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(9).rslt_vs_amt             -- ‚X“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(9).rslt_other_sales_amt    -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(9).effective_num           -- ‚X“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(9).visit_sign              -- ‚X“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(10).plan_vs_amt            -- ‚P‚O“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(10).rslt_vs_amt            -- ‚P‚O“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(10).rslt_other_sales_amt   -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(10).effective_num          -- ‚P‚O“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(10).visit_sign             -- ‚P‚O“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(11).plan_vs_amt            -- ‚P‚P“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(11).rslt_vs_amt            -- ‚P‚P“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(11).rslt_other_sales_amt   -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(11).effective_num          -- ‚P‚P“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(11).visit_sign             -- ‚P‚P“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(12).plan_vs_amt            -- ‚P‚Q“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(12).rslt_vs_amt            -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(12).rslt_other_sales_amt   -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(12).effective_num          -- ‚P‚Q“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(12).visit_sign             -- ‚P‚Q“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(13).plan_vs_amt            -- ‚P‚R“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(13).rslt_vs_amt            -- ‚P‚R“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(13).rslt_other_sales_amt   -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(13).effective_num          -- ‚P‚R“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(13).visit_sign             -- ‚P‚R“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(14).plan_vs_amt            -- ‚P‚S“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(14).rslt_vs_amt            -- ‚P‚S“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(14).rslt_other_sales_amt   -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(14).effective_num          -- ‚P‚S“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(14).visit_sign             -- ‚P‚S“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(15).plan_vs_amt            -- ‚P‚T“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(15).rslt_vs_amt            -- ‚P‚T“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(15).rslt_other_sales_amt   -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(15).effective_num          -- ‚P‚T“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(15).visit_sign             -- ‚P‚T“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(16).plan_vs_amt            -- ‚P‚U“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(16).rslt_vs_amt            -- ‚P‚U“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(16).rslt_other_sales_amt   -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(16).effective_num          -- ‚P‚U“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(16).visit_sign             -- ‚P‚U“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(17).plan_vs_amt            -- ‚P‚V“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(17).rslt_vs_amt            -- ‚P‚V“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(17).rslt_other_sales_amt   -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(17).effective_num          -- ‚P‚V“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(17).visit_sign             -- ‚P‚V“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(18).plan_vs_amt            -- ‚P‚W“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(18).rslt_vs_amt            -- ‚P‚W“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(18).rslt_other_sales_amt   -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(18).effective_num          -- ‚P‚W“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(18).visit_sign             -- ‚P‚W“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(19).plan_vs_amt            -- ‚P‚X“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(19).rslt_vs_amt            -- ‚P‚X“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(19).rslt_other_sales_amt   -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(19).effective_num          -- ‚P‚X“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(19).visit_sign             -- ‚P‚X“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(20).plan_vs_amt            -- ‚Q‚O“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(20).rslt_vs_amt            -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(20).rslt_other_sales_amt   -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(20).effective_num          -- ‚Q‚O“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(20).visit_sign             -- ‚Q‚O“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(21).plan_vs_amt            -- ‚Q‚P“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(21).rslt_vs_amt            -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(21).rslt_other_sales_amt   -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(21).effective_num          -- ‚Q‚P“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(21).visit_sign             -- ‚Q‚P“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(22).plan_vs_amt            -- ‚Q‚Q“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(22).rslt_vs_amt            -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(22).rslt_other_sales_amt   -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(22).effective_num          -- ‚Q‚Q“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(22).visit_sign             -- ‚Q‚Q“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(23).plan_vs_amt            -- ‚Q‚R“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(23).rslt_vs_amt            -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(23).rslt_other_sales_amt   -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(23).effective_num          -- ‚Q‚R“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(23).visit_sign             -- ‚Q‚R“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(24).plan_vs_amt            -- ‚Q‚S“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(24).rslt_vs_amt            -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(24).rslt_other_sales_amt   -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(24).effective_num          -- ‚Q‚S“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(24).visit_sign             -- ‚Q‚S“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(25).plan_vs_amt            -- ‚Q‚T“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(25).rslt_vs_amt            -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(25).rslt_other_sales_amt   -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(25).effective_num          -- ‚Q‚T“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(25).visit_sign             -- ‚Q‚T“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(26).plan_vs_amt            -- ‚Q‚U“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(26).rslt_vs_amt            -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(26).rslt_other_sales_amt   -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(26).effective_num          -- ‚Q‚U“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(26).visit_sign             -- ‚Q‚U“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(27).plan_vs_amt            -- ‚Q‚V“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(27).rslt_vs_amt            -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(27).rslt_other_sales_amt   -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(27).effective_num          -- ‚Q‚V“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(27).visit_sign             -- ‚Q‚V“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(28).plan_vs_amt            -- ‚Q‚W“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(28).rslt_vs_amt            -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(28).rslt_other_sales_amt   -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(28).effective_num          -- ‚Q‚W“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(28).visit_sign             -- ‚Q‚W“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(29).plan_vs_amt            -- ‚Q‚X“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(29).rslt_vs_amt            -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(29).rslt_other_sales_amt   -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(29).effective_num          -- ‚Q‚X“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(29).visit_sign             -- ‚Q‚X“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(30).plan_vs_amt            -- ‚R‚O“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(30).rslt_vs_amt            -- ‚R‚O“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(30).rslt_other_sales_amt   -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(30).effective_num          -- ‚R‚O“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(30).visit_sign             -- ‚R‚O“ú|–K–â‹L†
+          ,ir_m_tab(i).l_get_one_day_tab(31).plan_vs_amt            -- ‚R‚P“ú|”„ã^–K–âŒv‰æ
+          ,ir_m_tab(i).l_get_one_day_tab(31).rslt_vs_amt            -- ‚R‚P“ú|”„ã^–K–âÀÑ
+          ,ir_m_tab(i).l_get_one_day_tab(31).rslt_other_sales_amt   -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+          ,ir_m_tab(i).l_get_one_day_tab(31).effective_num          -- ‚R‚P“ú|—LŒøŒ¬”
+          ,ir_m_tab(i).l_get_one_day_tab(31).visit_sign             -- ‚R‚P“ú|–K–â‹L†
+          ,ir_m_tab(i).vis_a_num                                    -- –K–â‚`Œ”
+          ,ir_m_tab(i).vis_b_num                                    -- –K–â‚aŒ”
+          ,ir_m_tab(i).vis_c_num                                    -- –K–â‚bŒ”
+          ,ir_m_tab(i).vis_d_num                                    -- –K–â‚cŒ”
+          ,ir_m_tab(i).vis_e_num                                    -- –K–â‚dŒ”
+          ,ir_m_tab(i).vis_f_num                                    -- –K–â‚eŒ”
+          ,ir_m_tab(i).vis_g_num                                    -- –K–â‚fŒ”
+          ,ir_m_tab(i).vis_h_num                                    -- –K–â‚gŒ”
+          ,ir_m_tab(i).vis_i_num                                    -- –K–âú@Œ”
+          ,ir_m_tab(i).vis_j_num                                    -- –K–â‚iŒ”
+          ,ir_m_tab(i).vis_k_num                                    -- –K–â‚jŒ”
+          ,ir_m_tab(i).vis_l_num                                    -- –K–â‚kŒ”
+          ,ir_m_tab(i).vis_m_num                                    -- –K–â‚lŒ”
+          ,ir_m_tab(i).vis_n_num                                    -- –K–â‚mŒ”
+          ,ir_m_tab(i).vis_o_num                                    -- –K–â‚nŒ”
+          ,ir_m_tab(i).vis_p_num                                    -- –K–â‚oŒ”
+          ,ir_m_tab(i).vis_q_num                                    -- –K–â‚pŒ”
+          ,ir_m_tab(i).vis_r_num                                    -- –K–â‚qŒ”
+          ,ir_m_tab(i).vis_s_num                                    -- –K–â‚rŒ”
+          ,ir_m_tab(i).vis_t_num                                    -- –K–â‚sŒ”
+          ,ir_m_tab(i).vis_u_num                                    -- –K–â‚tŒ”
+          ,ir_m_tab(i).vis_v_num                                    -- –K–â‚uŒ”
+          ,ir_m_tab(i).vis_w_num                                    -- –K–â‚vŒ”
+          ,ir_m_tab(i).vis_x_num                                    -- –K–â‚wŒ”
+          ,ir_m_tab(i).vis_y_num                                    -- –K–â‚xŒ”
+          ,ir_m_tab(i).vis_z_num                                    -- –K–â‚yŒ”
+          ,cn_created_by                                            -- ì¬Ò
+          ,cd_creation_date                                         -- ì¬“ú
+          ,cn_last_updated_by                                       -- ÅIXVÒ
+          ,cd_last_update_date                                      -- ÅIXV“ú
+          ,cn_last_update_login                                     -- ÅIXVƒƒOƒCƒ“
+          ,cn_request_id                                            -- —v‹ID
+          ,cn_program_application_id                                -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+          ,cn_program_id                                            -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+          ,cd_program_update_date                                   -- ƒvƒƒOƒ‰ƒ€XV“ú
+          );
+--
+DO_ERROR('A-X-4-1');
+--
+        gn_normal_cnt := gn_normal_cnt + 1;
+      EXCEPTION
+        WHEN OTHERS THEN
+        -- DEBUGƒƒbƒZ[ƒW
+        -- ’ •[ƒ^ƒCƒgƒ‹
+        fnd_file.put_line(
+           which  => FND_FILE.LOG,
+           buff   => '–¾×•””z—ño—Í‚É¸”s‚µ‚Ü‚µ‚½B :' || TO_CHAR(ln_line_num) || SQLERRM ||
+                    ''                         -- ‹ós‚Ì‘}“ü
+        );
+        RAISE global_api_others_expt;
+      END;
+    END LOOP;
+    -- ’ •[–{‘Ì•”
+    FOR i IN 1..cn_idx_max LOOP
+      IF( i < cn_idx_sales_sum )  THEN               -- ”„‚èã‚°’†Œv•”
+        ln_line_kind              := cn_line_kind3;              -- ’ •[o—ÍˆÊ’u
+        ln_line_num               := i;                          -- s”Ô†
+      ELSIF( i = cn_idx_sales_sum ) THEN            -- ”„‚èã‚°‡Œv•”
+        ln_line_kind              := cn_line_kind4;              -- ’ •[o—ÍˆÊ’u
+        ln_line_num               := 1;                          -- s”Ô†
+        lv_up_base_code           := ir_hon_tab(i).up_base_code;   
+        lv_up_hub_name            := ir_hon_tab(i).up_hub_name;    
+        lv_base_code              := ir_hon_tab(i).base_code;      
+        lv_hub_name               := ir_hon_tab(i).hub_name;       
+        lv_group_number           := ir_hon_tab(i).group_number;   
+        lv_group_name             := ir_hon_tab(i).group_name;  
+        lv_employee_number        := ir_hon_tab(i).employee_number;
+        lv_employee_name          := ir_hon_tab(i).employee_name;  
+      ELSIF( i BETWEEN cn_idx_visit_ippn AND cn_idx_visit_mc )  THEN    -- –K–â’†Œv•”
+        ln_line_kind              := cn_line_kind5;              -- ’ •[o—ÍˆÊ’u
+        ln_line_num               := i -3;                       -- s”Ô†
+      ELSIF( i = cn_idx_visit_sum ) THEN            -- –K–â‡Œv•”
+        ln_line_kind              := cn_line_kind6;              -- ’ •[o—ÍˆÊ’u
+        ln_line_num               := 1;                          -- s”Ô†
+      ELSIF( i = cn_idx_visit_dsc ) THEN            -- –K–â“à—e‡Œv•”
+        ln_line_kind              := cn_line_kind7;              -- ’ •[o—ÍˆÊ’u
+        ln_line_num               := 1;                          -- s”Ô†    
+      END IF;
+      INSERT INTO xxcso_rep_visit_sale_plan(
+         report_output_no                                 -- ’ •[o—ÍƒZƒbƒg”Ô†
+        ,line_kind                                        -- ’ •[o—ÍˆÊ’u
+        ,line_num                                         -- s”Ô†
+        ,report_id                                        -- ’ •[‚h‚c
+        ,report_name                                      -- ’ •[ƒ^ƒCƒgƒ‹
+        ,output_date                                      -- o—Í“ú
+        ,year_month                                       -- Šî€”NŒ
+        ,operation_days                                   -- ‰Ò“®“ú”
+        ,operation_all_days                               -- ‰Ò“®‰Â”\“ú”
+        ,up_base_code                                     -- ‹’“_ƒR[ƒhiej
+        ,up_hub_name                                      -- ‹’“_–¼Ìiej
+        ,base_code                                        -- ‹’“_ƒR[ƒh
+        ,hub_name                                         -- ‹’“_–¼Ì
+        ,group_number                                     -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+        ,group_name                                       -- ‰c‹ÆƒOƒ‹[ƒv–¼
+        ,employee_number                                  -- ‰c‹ÆˆõƒR[ƒh
+        ,employee_name                                    -- ‰c‹Æˆõ–¼
+        ,business_high_type                               -- ‹Æ‘Ôi‘å•ª—Şj
+        ,business_high_name                               -- ‹Æ‘Ôi‘å•ª—Şj–¼
+        ,gvm_type                                         -- ˆê”Ê^©”Ì‹@^‚l‚b
+        ,account_number                                   -- ŒÚ‹qƒR[ƒh
+        ,customer_name                                    -- ŒÚ‹q–¼
+        ,route_no                                         -- ƒ‹[ƒgNo
+        ,last_year_rslt_sales_amt                         -- ‘O”NÀÑ
+        ,last_mon_rslt_sales_amt                          -- æŒÀÑ
+        ,new_customer_num                                 -- V‹KŒÚ‹qŒ”
+        ,new_vendor_num                                   -- V‹K‚u‚cŒ”
+        ,new_customer_amt                                 -- V‹KŒÚ‹q”„ãÀÑ
+        ,new_vendor_amt                                   -- V‹K‚u‚c”„ãÀÑ
+        ,plan_sales_amt                                   -- ”„ã—\Z
+        ,plan_vs_amt_1                                    -- ‚P“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_1                                    -- ‚P“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_1                           -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_1                                  -- ‚P“ú|—LŒøŒ¬”
+        ,visit_sign_1                                     -- ‚P“ú|–K–â‹L†
+        ,plan_vs_amt_2                                    -- ‚Q“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_2                                    -- ‚Q“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_2                           -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_2                                  -- ‚Q“ú|—LŒøŒ¬”
+        ,visit_sign_2                                     -- ‚Q“ú|–K–â‹L†
+        ,plan_vs_amt_3                                    -- ‚R“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_3                                    -- ‚R“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_3                           -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_3                                  -- ‚R“ú|—LŒøŒ¬”
+        ,visit_sign_3                                     -- ‚R“ú|–K–â‹L†
+        ,plan_vs_amt_4                                    -- ‚S“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_4                                    -- ‚S“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_4                           -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_4                                  -- ‚S“ú|—LŒøŒ¬”
+        ,visit_sign_4                                     -- ‚S“ú|–K–â‹L†
+        ,plan_vs_amt_5                                    -- ‚T“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_5                                    -- ‚T“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_5                           -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_5                                  -- ‚T“ú|—LŒøŒ¬”
+        ,visit_sign_5                                     -- ‚T“ú|–K–â‹L†
+        ,plan_vs_amt_6                                    -- ‚U“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_6                                    -- ‚U“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_6                           -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_6                                  -- ‚U“ú|—LŒøŒ¬”
+        ,visit_sign_6                                     -- ‚U“ú|–K–â‹L†
+        ,plan_vs_amt_7                                    -- ‚V“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_7                                    -- ‚V“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_7                           -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_7                                  -- ‚V“ú|—LŒøŒ¬”
+        ,visit_sign_7                                     -- ‚V“ú|–K–â‹L†
+        ,plan_vs_amt_8                                    -- ‚W“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_8                                    -- ‚W“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_8                           -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_8                                  -- ‚W“ú|—LŒøŒ¬”
+        ,visit_sign_8                                     -- ‚W“ú|–K–â‹L†
+        ,plan_vs_amt_9                                    -- ‚X“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_9                                    -- ‚X“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_9                           -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_9                                  -- ‚X“ú|—LŒøŒ¬”
+        ,visit_sign_9                                     -- ‚X“ú|–K–â‹L†
+        ,plan_vs_amt_10                                   -- ‚P‚O“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_10                                   -- ‚P‚O“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_10                          -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_10                                 -- ‚P‚O“ú|—LŒøŒ¬”
+        ,visit_sign_10                                    -- ‚P‚O“ú|–K–â‹L†
+        ,plan_vs_amt_11                                   -- ‚P‚P“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_11                                   -- ‚P‚P“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_11                          -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_11                                 -- ‚P‚P“ú|—LŒøŒ¬”
+        ,visit_sign_11                                    -- ‚P‚P“ú|–K–â‹L†
+        ,plan_vs_amt_12                                   -- ‚P‚Q“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_12                                   -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_12                          -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_12                                 -- ‚P‚Q“ú|—LŒøŒ¬”
+        ,visit_sign_12                                    -- ‚P‚Q“ú|–K–â‹L†
+        ,plan_vs_amt_13                                   -- ‚P‚R“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_13                                   -- ‚P‚R“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_13                          -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_13                                 -- ‚P‚R“ú|—LŒøŒ¬”
+        ,visit_sign_13                                    -- ‚P‚R“ú|–K–â‹L†
+        ,plan_vs_amt_14                                   -- ‚P‚S“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_14                                   -- ‚P‚S“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_14                          -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_14                                 -- ‚P‚S“ú|—LŒøŒ¬”
+        ,visit_sign_14                                    -- ‚P‚S“ú|–K–â‹L†
+        ,plan_vs_amt_15                                   -- ‚P‚T“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_15                                   -- ‚P‚T“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_15                          -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_15                                 -- ‚P‚T“ú|—LŒøŒ¬”
+        ,visit_sign_15                                    -- ‚P‚T“ú|–K–â‹L†
+        ,plan_vs_amt_16                                   -- ‚P‚U“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_16                                   -- ‚P‚U“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_16                          -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_16                                 -- ‚P‚U“ú|—LŒøŒ¬”
+        ,visit_sign_16                                    -- ‚P‚U“ú|–K–â‹L†
+        ,plan_vs_amt_17                                   -- ‚P‚V“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_17                                   -- ‚P‚V“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_17                          -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_17                                 -- ‚P‚V“ú|—LŒøŒ¬”
+        ,visit_sign_17                                    -- ‚P‚V“ú|–K–â‹L†
+        ,plan_vs_amt_18                                   -- ‚P‚W“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_18                                   -- ‚P‚W“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_18                          -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_18                                 -- ‚P‚W“ú|—LŒøŒ¬”
+        ,visit_sign_18                                    -- ‚P‚W“ú|–K–â‹L†
+        ,plan_vs_amt_19                                   -- ‚P‚X“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_19                                   -- ‚P‚X“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_19                          -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_19                                 -- ‚P‚X“ú|—LŒøŒ¬”
+        ,visit_sign_19                                    -- ‚P‚X“ú|–K–â‹L†
+        ,plan_vs_amt_20                                   -- ‚Q‚O“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_20                                   -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_20                          -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_20                                 -- ‚Q‚O“ú|—LŒøŒ¬”
+        ,visit_sign_20                                    -- ‚Q‚O“ú|–K–â‹L†
+        ,plan_vs_amt_21                                   -- ‚Q‚P“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_21                                   -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_21                          -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_21                                 -- ‚Q‚P“ú|—LŒøŒ¬”
+        ,visit_sign_21                                    -- ‚Q‚P“ú|–K–â‹L†
+        ,plan_vs_amt_22                                   -- ‚Q‚Q“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_22                                   -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_22                          -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_22                                 -- ‚Q‚Q“ú|—LŒøŒ¬”
+        ,visit_sign_22                                    -- ‚Q‚Q“ú|–K–â‹L†
+        ,plan_vs_amt_23                                   -- ‚Q‚R“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_23                                   -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_23                          -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_23                                 -- ‚Q‚R“ú|—LŒøŒ¬”
+        ,visit_sign_23                                    -- ‚Q‚R“ú|–K–â‹L†
+        ,plan_vs_amt_24                                   -- ‚Q‚S“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_24                                   -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_24                          -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_24                                 -- ‚Q‚S“ú|—LŒøŒ¬”
+        ,visit_sign_24                                    -- ‚Q‚S“ú|–K–â‹L†
+        ,plan_vs_amt_25                                   -- ‚Q‚T“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_25                                   -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_25                          -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_25                                 -- ‚Q‚T“ú|—LŒøŒ¬”
+        ,visit_sign_25                                    -- ‚Q‚T“ú|–K–â‹L†
+        ,plan_vs_amt_26                                   -- ‚Q‚U“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_26                                   -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_26                          -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_26                                 -- ‚Q‚U“ú|—LŒøŒ¬”
+        ,visit_sign_26                                    -- ‚Q‚U“ú|–K–â‹L†
+        ,plan_vs_amt_27                                   -- ‚Q‚V“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_27                                   -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_27                          -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_27                                 -- ‚Q‚V“ú|—LŒøŒ¬”
+        ,visit_sign_27                                    -- ‚Q‚V“ú|–K–â‹L†
+        ,plan_vs_amt_28                                   -- ‚Q‚W“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_28                                   -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_28                          -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_28                                 -- ‚Q‚W“ú|—LŒøŒ¬”
+        ,visit_sign_28                                    -- ‚Q‚W“ú|–K–â‹L†
+        ,plan_vs_amt_29                                   -- ‚Q‚X“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_29                                   -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_29                          -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_29                                 -- ‚Q‚X“ú|—LŒøŒ¬”
+        ,visit_sign_29                                    -- ‚Q‚X“ú|–K–â‹L†
+        ,plan_vs_amt_30                                   -- ‚R‚O“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_30                                   -- ‚R‚O“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_30                          -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_30                                 -- ‚R‚O“ú|—LŒøŒ¬”
+        ,visit_sign_30                                    -- ‚R‚O“ú|–K–â‹L†
+        ,plan_vs_amt_31                                   -- ‚R‚P“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_31                                   -- ‚R‚P“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_31                          -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,effective_num_31                                 -- ‚R‚P“ú|—LŒøŒ¬”
+        ,visit_sign_31                                    -- ‚R‚P“ú|–K–â‹L†
+        ,vis_a_num                                        -- –K–â‚`Œ”
+        ,vis_b_num                                        -- –K–â‚aŒ”
+        ,vis_c_num                                        -- –K–â‚bŒ”
+        ,vis_d_num                                        -- –K–â‚cŒ”
+        ,vis_e_num                                        -- –K–â‚dŒ”
+        ,vis_f_num                                        -- –K–â‚eŒ”
+        ,vis_g_num                                        -- –K–â‚fŒ”
+        ,vis_h_num                                        -- –K–â‚gŒ”
+        ,vis_i_num                                        -- –K–âú@Œ”
+        ,vis_j_num                                        -- –K–â‚iŒ”
+        ,vis_k_num                                        -- –K–â‚jŒ”
+        ,vis_l_num                                        -- –K–â‚kŒ”
+        ,vis_m_num                                        -- –K–â‚lŒ”
+        ,vis_n_num                                        -- –K–â‚mŒ”
+        ,vis_o_num                                        -- –K–â‚nŒ”
+        ,vis_p_num                                        -- –K–â‚oŒ”
+        ,vis_q_num                                        -- –K–â‚pŒ”
+        ,vis_r_num                                        -- –K–â‚qŒ”
+        ,vis_s_num                                        -- –K–â‚rŒ”
+        ,vis_t_num                                        -- –K–â‚sŒ”
+        ,vis_u_num                                        -- –K–â‚tŒ”
+        ,vis_v_num                                        -- –K–â‚uŒ”
+        ,vis_w_num                                        -- –K–â‚vŒ”
+        ,vis_x_num                                        -- –K–â‚wŒ”
+        ,vis_y_num                                        -- –K–â‚xŒ”
+        ,vis_z_num                                        -- –K–â‚yŒ”
+        ,created_by                                       -- ì¬Ò
+        ,creation_date                                    -- ì¬“ú
+        ,last_updated_by                                  -- ÅIXVÒ
+        ,last_update_date                                 -- ÅIXV“ú
+        ,last_update_login                                -- ÅIXVƒƒOƒCƒ“
+        ,request_id                                       -- —v‹ID
+        ,program_application_id                           -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+        ,program_id                                       -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+        ,program_update_date                               -- ƒvƒƒOƒ‰ƒ€XV“ú
+      )
+      VALUES(
+        in_report_output_no                              -- ’ •[o—ÍƒZƒbƒg”Ô†
+       ,ln_line_kind                                     -- ’ •[o—ÍˆÊ’u
+       ,ln_line_num                                      -- s”Ô†
+       ,NULL                                             -- ’ •[‚h‚c
+       ,NULL                                             -- ’ •[ƒ^ƒCƒgƒ‹
+       ,NULL                                             -- o—Í“ú
+       ,NULL                                             -- Šî€”NŒ
+       ,NULL                                             -- ‰Ò“®“ú”
+       ,NULL                                             -- ‰Ò“®‰Â”\“ú”
+       ,ir_hon_tab(i).up_base_code                       -- ‹’“_ƒR[ƒhiej
+       ,ir_hon_tab(i).up_hub_name                        -- ‹’“_–¼Ìiej
+       ,ir_hon_tab(i).base_code                          -- ‹’“_ƒR[ƒh
+       ,ir_hon_tab(i).hub_name                           -- ‹’“_–¼Ì
+       ,ir_hon_tab(i).group_number                       -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+       ,ir_hon_tab(i).group_name                         -- ‰c‹ÆƒOƒ‹[ƒv–¼
+       ,ir_hon_tab(i).employee_number                    -- ‰c‹ÆˆõƒR[ƒh
+       ,ir_hon_tab(i).employee_name                      -- ‰c‹Æˆõ–¼
+       ,ir_hon_tab(i).business_high_type                 -- ‹Æ‘Ôi‘å•ª—Şj
+       ,ir_hon_tab(i).business_high_name                 -- ‹Æ‘Ôi‘å•ª—Şj–¼
+       ,ir_hon_tab(i).gvm_type                           -- ˆê”Ê^©”Ì‹@^‚l‚b
+       ,ir_hon_tab(i).account_number                     -- ŒÚ‹qƒR[ƒh
+       ,ir_hon_tab(i).customer_name                      -- ŒÚ‹q–¼
+       ,ir_hon_tab(i).route_no                           -- ƒ‹[ƒgNo
+       ,ir_hon_tab(i).last_year_rslt_sales_amt           -- ‘O”NÀÑ
+       ,ir_hon_tab(i).last_mon_rslt_sales_amt            -- æŒÀÑ
+       ,ir_hon_tab(i).new_customer_num                   -- V‹KŒÚ‹qŒ”
+       ,ir_hon_tab(i).new_vendor_num                     -- V‹K‚u‚cŒ”
+       ,ir_hon_tab(i).new_customer_amt                   -- V‹KŒÚ‹q”„ãÀÑ
+       ,ir_hon_tab(i).new_vendor_amt                     -- V‹K‚u‚c”„ãÀÑ
+       ,ir_hon_tab(i).plan_sales_amt                     -- ”„ã—\Z
+       ,ir_hon_tab(i).l_get_one_day_tab(1).plan_vs_amt             -- ‚P“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(1).rslt_vs_amt             -- ‚P“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(1).rslt_other_sales_amt    -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(1).effective_num           -- ‚P“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(1).visit_sign              -- ‚P“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(2).plan_vs_amt             -- ‚Q“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(2).rslt_vs_amt             -- ‚Q“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(2).rslt_other_sales_amt    -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(2).effective_num           -- ‚Q“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(2).visit_sign              -- ‚Q“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(3).plan_vs_amt             -- ‚R“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(3).rslt_vs_amt             -- ‚R“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(3).rslt_other_sales_amt    -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(3).effective_num           -- ‚R“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(3).visit_sign              -- ‚R“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(4).plan_vs_amt             -- ‚S“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(4).rslt_vs_amt             -- ‚S“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(4).rslt_other_sales_amt    -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(4).effective_num           -- ‚S“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(4).visit_sign              -- ‚S“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(5).plan_vs_amt             -- ‚T“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(5).rslt_vs_amt             -- ‚T“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(5).rslt_other_sales_amt    -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(5).effective_num           -- ‚T“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(5).visit_sign              -- ‚T“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(6).plan_vs_amt             -- ‚U“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(6).rslt_vs_amt             -- ‚U“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(6).rslt_other_sales_amt    -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(6).effective_num           -- ‚U“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(6).visit_sign              -- ‚U“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(7).plan_vs_amt             -- ‚V“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(7).rslt_vs_amt             -- ‚V“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(7).rslt_other_sales_amt    -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(7).effective_num           -- ‚V“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(7).visit_sign              -- ‚V“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(8).plan_vs_amt             -- ‚W“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(8).rslt_vs_amt             -- ‚W“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(8).rslt_other_sales_amt    -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(8).effective_num           -- ‚W“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(8).visit_sign              -- ‚W“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(9).plan_vs_amt             -- ‚X“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(9).rslt_vs_amt             -- ‚X“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(9).rslt_other_sales_amt    -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(9).effective_num           -- ‚X“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(9).visit_sign              -- ‚X“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(10).plan_vs_amt            -- ‚P‚O“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(10).rslt_vs_amt            -- ‚P‚O“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(10).rslt_other_sales_amt   -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(10).effective_num          -- ‚P‚O“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(10).visit_sign             -- ‚P‚O“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(11).plan_vs_amt            -- ‚P‚P“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(11).rslt_vs_amt            -- ‚P‚P“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(11).rslt_other_sales_amt   -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(11).effective_num          -- ‚P‚P“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(11).visit_sign             -- ‚P‚P“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(12).plan_vs_amt            -- ‚P‚Q“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(12).rslt_vs_amt            -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(12).rslt_other_sales_amt   -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(12).effective_num          -- ‚P‚Q“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(12).visit_sign             -- ‚P‚Q“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(13).plan_vs_amt            -- ‚P‚R“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(13).rslt_vs_amt            -- ‚P‚R“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(13).rslt_other_sales_amt   -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(13).effective_num          -- ‚P‚R“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(13).visit_sign             -- ‚P‚R“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(14).plan_vs_amt            -- ‚P‚S“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(14).rslt_vs_amt            -- ‚P‚S“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(14).rslt_other_sales_amt   -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(14).effective_num          -- ‚P‚S“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(14).visit_sign             -- ‚P‚S“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(15).plan_vs_amt            -- ‚P‚T“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(15).rslt_vs_amt            -- ‚P‚T“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(15).rslt_other_sales_amt   -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(15).effective_num          -- ‚P‚T“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(15).visit_sign             -- ‚P‚T“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(16).plan_vs_amt            -- ‚P‚U“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(16).rslt_vs_amt            -- ‚P‚U“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(16).rslt_other_sales_amt   -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(16).effective_num          -- ‚P‚U“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(16).visit_sign             -- ‚P‚U“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(17).plan_vs_amt            -- ‚P‚V“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(17).rslt_vs_amt            -- ‚P‚V“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(17).rslt_other_sales_amt   -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(17).effective_num          -- ‚P‚V“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(17).visit_sign             -- ‚P‚V“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(18).plan_vs_amt            -- ‚P‚W“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(18).rslt_vs_amt            -- ‚P‚W“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(18).rslt_other_sales_amt   -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(18).effective_num          -- ‚P‚W“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(18).visit_sign             -- ‚P‚W“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(19).plan_vs_amt            -- ‚P‚X“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(19).rslt_vs_amt            -- ‚P‚X“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(19).rslt_other_sales_amt   -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(19).effective_num          -- ‚P‚X“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(19).visit_sign             -- ‚P‚X“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(20).plan_vs_amt            -- ‚Q‚O“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(20).rslt_vs_amt            -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(20).rslt_other_sales_amt   -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(20).effective_num          -- ‚Q‚O“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(20).visit_sign             -- ‚Q‚O“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(21).plan_vs_amt            -- ‚Q‚P“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(21).rslt_vs_amt            -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(21).rslt_other_sales_amt   -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(21).effective_num          -- ‚Q‚P“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(21).visit_sign             -- ‚Q‚P“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(22).plan_vs_amt            -- ‚Q‚Q“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(22).rslt_vs_amt            -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(22).rslt_other_sales_amt   -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(22).effective_num          -- ‚Q‚Q“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(22).visit_sign             -- ‚Q‚Q“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(23).plan_vs_amt            -- ‚Q‚R“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(23).rslt_vs_amt            -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(23).rslt_other_sales_amt   -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(23).effective_num          -- ‚Q‚R“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(23).visit_sign             -- ‚Q‚R“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(24).plan_vs_amt            -- ‚Q‚S“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(24).rslt_vs_amt            -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(24).rslt_other_sales_amt   -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(24).effective_num          -- ‚Q‚S“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(24).visit_sign             -- ‚Q‚S“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(25).plan_vs_amt            -- ‚Q‚T“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(25).rslt_vs_amt            -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(25).rslt_other_sales_amt   -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(25).effective_num          -- ‚Q‚T“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(25).visit_sign             -- ‚Q‚T“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(26).plan_vs_amt            -- ‚Q‚U“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(26).rslt_vs_amt            -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(26).rslt_other_sales_amt   -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(26).effective_num          -- ‚Q‚U“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(26).visit_sign             -- ‚Q‚U“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(27).plan_vs_amt            -- ‚Q‚V“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(27).rslt_vs_amt            -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(27).rslt_other_sales_amt   -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(27).effective_num          -- ‚Q‚V“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(27).visit_sign             -- ‚Q‚V“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(28).plan_vs_amt            -- ‚Q‚W“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(28).rslt_vs_amt            -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(28).rslt_other_sales_amt   -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(28).effective_num          -- ‚Q‚W“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(28).visit_sign             -- ‚Q‚W“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(29).plan_vs_amt            -- ‚Q‚X“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(29).rslt_vs_amt            -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(29).rslt_other_sales_amt   -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(29).effective_num          -- ‚Q‚X“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(29).visit_sign             -- ‚Q‚X“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(30).plan_vs_amt            -- ‚R‚O“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(30).rslt_vs_amt            -- ‚R‚O“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(30).rslt_other_sales_amt   -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(30).effective_num          -- ‚R‚O“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(30).visit_sign             -- ‚R‚O“ú|–K–â‹L†
+       ,ir_hon_tab(i).l_get_one_day_tab(31).plan_vs_amt            -- ‚R‚P“ú|”„ã^–K–âŒv‰æ
+       ,ir_hon_tab(i).l_get_one_day_tab(31).rslt_vs_amt            -- ‚R‚P“ú|”„ã^–K–âÀÑ
+       ,ir_hon_tab(i).l_get_one_day_tab(31).rslt_other_sales_amt   -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+       ,ir_hon_tab(i).l_get_one_day_tab(31).effective_num          -- ‚R‚P“ú|—LŒøŒ¬”
+       ,ir_hon_tab(i).l_get_one_day_tab(31).visit_sign             -- ‚R‚P“ú|–K–â‹L†
+       ,ir_hon_tab(i).vis_a_num                                    -- –K–â‚`Œ”
+       ,ir_hon_tab(i).vis_b_num                                    -- –K–â‚aŒ”
+       ,ir_hon_tab(i).vis_c_num                                    -- –K–â‚bŒ”
+       ,ir_hon_tab(i).vis_d_num                                    -- –K–â‚cŒ”
+       ,ir_hon_tab(i).vis_e_num                                    -- –K–â‚dŒ”
+       ,ir_hon_tab(i).vis_f_num                                    -- –K–â‚eŒ”
+       ,ir_hon_tab(i).vis_g_num                                    -- –K–â‚fŒ”
+       ,ir_hon_tab(i).vis_h_num                                    -- –K–â‚gŒ”
+       ,ir_hon_tab(i).vis_i_num                                    -- –K–âú@Œ”
+       ,ir_hon_tab(i).vis_j_num                                    -- –K–â‚iŒ”
+       ,ir_hon_tab(i).vis_k_num                                    -- –K–â‚jŒ”
+       ,ir_hon_tab(i).vis_l_num                                    -- –K–â‚kŒ”
+       ,ir_hon_tab(i).vis_m_num                                    -- –K–â‚lŒ”
+       ,ir_hon_tab(i).vis_n_num                                    -- –K–â‚mŒ”
+       ,ir_hon_tab(i).vis_o_num                                    -- –K–â‚nŒ”
+       ,ir_hon_tab(i).vis_p_num                                    -- –K–â‚oŒ”
+       ,ir_hon_tab(i).vis_q_num                                    -- –K–â‚pŒ”
+       ,ir_hon_tab(i).vis_r_num                                    -- –K–â‚qŒ”
+       ,ir_hon_tab(i).vis_s_num                                    -- –K–â‚rŒ”
+       ,ir_hon_tab(i).vis_t_num                                    -- –K–â‚sŒ”
+       ,ir_hon_tab(i).vis_u_num                                    -- –K–â‚tŒ”
+       ,ir_hon_tab(i).vis_v_num                                    -- –K–â‚uŒ”
+       ,ir_hon_tab(i).vis_w_num                                    -- –K–â‚vŒ”
+       ,ir_hon_tab(i).vis_x_num                                    -- –K–â‚wŒ”
+       ,ir_hon_tab(i).vis_y_num                                    -- –K–â‚xŒ”
+       ,ir_hon_tab(i).vis_z_num                                    -- –K–â‚yŒ”
+       ,cn_created_by                                              -- ì¬Ò
+       ,cd_creation_date                                           -- ì¬“ú
+       ,cn_last_updated_by                                         -- ÅIXVÒ
+       ,cd_last_update_date                                        -- ÅIXV“ú
+       ,cn_last_update_login                                       -- ÅIXVƒƒOƒCƒ“
+       ,cn_request_id                                              -- —v‹ID
+       ,cn_program_application_id                                  -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+       ,cn_program_id                                              -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+       ,cd_program_update_date                                     -- ƒvƒƒOƒ‰ƒ€XV“ú
+      );
+--
+DO_ERROR('A-X-4-2');
+--
+      gn_normal_cnt := gn_normal_cnt + 1;
+    END LOOP;
+    -- ƒwƒbƒ_[•”
+    INSERT INTO xxcso_rep_visit_sale_plan(
+       report_output_no                                 -- ’ •[o—ÍƒZƒbƒg”Ô†
+      ,line_kind                                        -- ’ •[o—ÍˆÊ’u
+      ,line_num                                         -- s”Ô†
+      ,report_id                                        -- ’ •[‚h‚c
+      ,report_name                                      -- ’ •[ƒ^ƒCƒgƒ‹
+      ,output_date                                      -- o—Í“ú
+      ,year_month                                       -- Šî€”NŒ
+      ,operation_days                                   -- ‰Ò“®“ú”
+      ,operation_all_days                               -- ‰Ò“®‰Â”\“ú”
+      ,up_base_code                                     -- ‹’“_ƒR[ƒhiej
+      ,up_hub_name                                      -- ‹’“_–¼Ìiej
+      ,base_code                                        -- ‹’“_ƒR[ƒh
+      ,hub_name                                         -- ‹’“_–¼Ì
+      ,group_number                                     -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+      ,group_name                                       -- ‰c‹ÆƒOƒ‹[ƒv–¼
+      ,employee_number                                  -- ‰c‹ÆˆõƒR[ƒh
+      ,employee_name                                    -- ‰c‹Æˆõ–¼
+      ,business_high_type                               -- ‹Æ‘Ôi‘å•ª—Şj
+      ,business_high_name                               -- ‹Æ‘Ôi‘å•ª—Şj–¼
+      ,gvm_type                                         -- ˆê”Ê^©”Ì‹@^‚l‚b
+      ,account_number                                   -- ŒÚ‹qƒR[ƒh
+      ,customer_name                                    -- ŒÚ‹q–¼
+      ,route_no                                         -- ƒ‹[ƒgNo
+      ,last_year_rslt_sales_amt                         -- ‘O”NÀÑ
+      ,last_mon_rslt_sales_amt                          -- æŒÀÑ
+      ,new_customer_num                                 -- V‹KŒÚ‹qŒ”
+      ,new_vendor_num                                   -- V‹K‚u‚cŒ”
+      ,new_customer_amt                                 -- V‹KŒÚ‹q”„ãÀÑ
+      ,new_vendor_amt                                   -- V‹K‚u‚c”„ãÀÑ
+      ,plan_sales_amt                                   -- ”„ã—\Z
+      ,plan_vs_amt_1                                    -- ‚P“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_1                                    -- ‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_1                           -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_1                                  -- ‚P“ú|—LŒøŒ¬”
+      ,visit_sign_1                                     -- ‚P“ú|–K–â‹L†
+      ,plan_vs_amt_2                                    -- ‚Q“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_2                                    -- ‚Q“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_2                           -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_2                                  -- ‚Q“ú|—LŒøŒ¬”
+      ,visit_sign_2                                     -- ‚Q“ú|–K–â‹L†
+      ,plan_vs_amt_3                                    -- ‚R“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_3                                    -- ‚R“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_3                           -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_3                                  -- ‚R“ú|—LŒøŒ¬”
+      ,visit_sign_3                                     -- ‚R“ú|–K–â‹L†
+      ,plan_vs_amt_4                                    -- ‚S“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_4                                    -- ‚S“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_4                           -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_4                                  -- ‚S“ú|—LŒøŒ¬”
+      ,visit_sign_4                                     -- ‚S“ú|–K–â‹L†
+      ,plan_vs_amt_5                                    -- ‚T“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_5                                    -- ‚T“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_5                           -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_5                                  -- ‚T“ú|—LŒøŒ¬”
+      ,visit_sign_5                                     -- ‚T“ú|–K–â‹L†
+      ,plan_vs_amt_6                                    -- ‚U“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_6                                    -- ‚U“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_6                           -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_6                                  -- ‚U“ú|—LŒøŒ¬”
+      ,visit_sign_6                                     -- ‚U“ú|–K–â‹L†
+      ,plan_vs_amt_7                                    -- ‚V“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_7                                    -- ‚V“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_7                           -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_7                                  -- ‚V“ú|—LŒøŒ¬”
+      ,visit_sign_7                                     -- ‚V“ú|–K–â‹L†
+      ,plan_vs_amt_8                                    -- ‚W“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_8                                    -- ‚W“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_8                           -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_8                                  -- ‚W“ú|—LŒøŒ¬”
+      ,visit_sign_8                                     -- ‚W“ú|–K–â‹L†
+      ,plan_vs_amt_9                                    -- ‚X“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_9                                    -- ‚X“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_9                           -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_9                                  -- ‚X“ú|—LŒøŒ¬”
+      ,visit_sign_9                                     -- ‚X“ú|–K–â‹L†
+      ,plan_vs_amt_10                                   -- ‚P‚O“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_10                                   -- ‚P‚O“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_10                          -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_10                                 -- ‚P‚O“ú|—LŒøŒ¬”
+      ,visit_sign_10                                    -- ‚P‚O“ú|–K–â‹L†
+      ,plan_vs_amt_11                                   -- ‚P‚P“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_11                                   -- ‚P‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_11                          -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_11                                 -- ‚P‚P“ú|—LŒøŒ¬”
+      ,visit_sign_11                                    -- ‚P‚P“ú|–K–â‹L†
+      ,plan_vs_amt_12                                   -- ‚P‚Q“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_12                                   -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_12                          -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_12                                 -- ‚P‚Q“ú|—LŒøŒ¬”
+      ,visit_sign_12                                    -- ‚P‚Q“ú|–K–â‹L†
+      ,plan_vs_amt_13                                   -- ‚P‚R“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_13                                   -- ‚P‚R“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_13                          -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_13                                 -- ‚P‚R“ú|—LŒøŒ¬”
+      ,visit_sign_13                                    -- ‚P‚R“ú|–K–â‹L†
+      ,plan_vs_amt_14                                   -- ‚P‚S“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_14                                   -- ‚P‚S“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_14                          -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_14                                 -- ‚P‚S“ú|—LŒøŒ¬”
+      ,visit_sign_14                                    -- ‚P‚S“ú|–K–â‹L†
+      ,plan_vs_amt_15                                   -- ‚P‚T“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_15                                   -- ‚P‚T“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_15                          -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_15                                 -- ‚P‚T“ú|—LŒøŒ¬”
+      ,visit_sign_15                                    -- ‚P‚T“ú|–K–â‹L†
+      ,plan_vs_amt_16                                   -- ‚P‚U“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_16                                   -- ‚P‚U“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_16                          -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_16                                 -- ‚P‚U“ú|—LŒøŒ¬”
+      ,visit_sign_16                                    -- ‚P‚U“ú|–K–â‹L†
+      ,plan_vs_amt_17                                   -- ‚P‚V“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_17                                   -- ‚P‚V“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_17                          -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_17                                 -- ‚P‚V“ú|—LŒøŒ¬”
+      ,visit_sign_17                                    -- ‚P‚V“ú|–K–â‹L†
+      ,plan_vs_amt_18                                   -- ‚P‚W“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_18                                   -- ‚P‚W“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_18                          -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_18                                 -- ‚P‚W“ú|—LŒøŒ¬”
+      ,visit_sign_18                                    -- ‚P‚W“ú|–K–â‹L†
+      ,plan_vs_amt_19                                   -- ‚P‚X“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_19                                   -- ‚P‚X“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_19                          -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_19                                 -- ‚P‚X“ú|—LŒøŒ¬”
+      ,visit_sign_19                                    -- ‚P‚X“ú|–K–â‹L†
+      ,plan_vs_amt_20                                   -- ‚Q‚O“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_20                                   -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_20                          -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_20                                 -- ‚Q‚O“ú|—LŒøŒ¬”
+      ,visit_sign_20                                    -- ‚Q‚O“ú|–K–â‹L†
+      ,plan_vs_amt_21                                   -- ‚Q‚P“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_21                                   -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_21                          -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_21                                 -- ‚Q‚P“ú|—LŒøŒ¬”
+      ,visit_sign_21                                    -- ‚Q‚P“ú|–K–â‹L†
+      ,plan_vs_amt_22                                   -- ‚Q‚Q“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_22                                   -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_22                          -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_22                                 -- ‚Q‚Q“ú|—LŒøŒ¬”
+      ,visit_sign_22                                    -- ‚Q‚Q“ú|–K–â‹L†
+      ,plan_vs_amt_23                                   -- ‚Q‚R“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_23                                   -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_23                          -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_23                                 -- ‚Q‚R“ú|—LŒøŒ¬”
+      ,visit_sign_23                                    -- ‚Q‚R“ú|–K–â‹L†
+      ,plan_vs_amt_24                                   -- ‚Q‚S“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_24                                   -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_24                          -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_24                                 -- ‚Q‚S“ú|—LŒøŒ¬”
+      ,visit_sign_24                                    -- ‚Q‚S“ú|–K–â‹L†
+      ,plan_vs_amt_25                                   -- ‚Q‚T“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_25                                   -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_25                          -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_25                                 -- ‚Q‚T“ú|—LŒøŒ¬”
+      ,visit_sign_25                                    -- ‚Q‚T“ú|–K–â‹L†
+      ,plan_vs_amt_26                                   -- ‚Q‚U“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_26                                   -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_26                          -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_26                                 -- ‚Q‚U“ú|—LŒøŒ¬”
+      ,visit_sign_26                                    -- ‚Q‚U“ú|–K–â‹L†
+      ,plan_vs_amt_27                                   -- ‚Q‚V“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_27                                   -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_27                          -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_27                                 -- ‚Q‚V“ú|—LŒøŒ¬”
+      ,visit_sign_27                                    -- ‚Q‚V“ú|–K–â‹L†
+      ,plan_vs_amt_28                                   -- ‚Q‚W“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_28                                   -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_28                          -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_28                                 -- ‚Q‚W“ú|—LŒøŒ¬”
+      ,visit_sign_28                                    -- ‚Q‚W“ú|–K–â‹L†
+      ,plan_vs_amt_29                                   -- ‚Q‚X“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_29                                   -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_29                          -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_29                                 -- ‚Q‚X“ú|—LŒøŒ¬”
+      ,visit_sign_29                                    -- ‚Q‚X“ú|–K–â‹L†
+      ,plan_vs_amt_30                                   -- ‚R‚O“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_30                                   -- ‚R‚O“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_30                          -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_30                                 -- ‚R‚O“ú|—LŒøŒ¬”
+      ,visit_sign_30                                    -- ‚R‚O“ú|–K–â‹L†
+      ,plan_vs_amt_31                                   -- ‚R‚P“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_31                                   -- ‚R‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_31                          -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,effective_num_31                                 -- ‚R‚P“ú|—LŒøŒ¬”
+      ,visit_sign_31                                    -- ‚R‚P“ú|–K–â‹L†
+      ,vis_a_num                                        -- –K–â‚`Œ”
+      ,vis_b_num                                        -- –K–â‚aŒ”
+      ,vis_c_num                                        -- –K–â‚bŒ”
+      ,vis_d_num                                        -- –K–â‚cŒ”
+      ,vis_e_num                                        -- –K–â‚dŒ”
+      ,vis_f_num                                        -- –K–â‚eŒ”
+      ,vis_g_num                                        -- –K–â‚fŒ”
+      ,vis_h_num                                        -- –K–â‚gŒ”
+      ,vis_i_num                                        -- –K–âú@Œ”
+      ,vis_j_num                                        -- –K–â‚iŒ”
+      ,vis_k_num                                        -- –K–â‚jŒ”
+      ,vis_l_num                                        -- –K–â‚kŒ”
+      ,vis_m_num                                        -- –K–â‚lŒ”
+      ,vis_n_num                                        -- –K–â‚mŒ”
+      ,vis_o_num                                        -- –K–â‚nŒ”
+      ,vis_p_num                                        -- –K–â‚oŒ”
+      ,vis_q_num                                        -- –K–â‚pŒ”
+      ,vis_r_num                                        -- –K–â‚qŒ”
+      ,vis_s_num                                        -- –K–â‚rŒ”
+      ,vis_t_num                                        -- –K–â‚sŒ”
+      ,vis_u_num                                        -- –K–â‚tŒ”
+      ,vis_v_num                                        -- –K–â‚uŒ”
+      ,vis_w_num                                        -- –K–â‚vŒ”
+      ,vis_x_num                                        -- –K–â‚wŒ”
+      ,vis_y_num                                        -- –K–â‚xŒ”
+      ,vis_z_num                                        -- –K–â‚yŒ”
+      ,created_by                                       -- ì¬Ò
+      ,creation_date                                    -- ì¬“ú
+      ,last_updated_by                                  -- ÅIXVÒ
+      ,last_update_date                                 -- ÅIXV“ú
+      ,last_update_login                                -- ÅIXVƒƒOƒCƒ“
+      ,request_id                                       -- —v‹ID
+      ,program_application_id                           -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      ,program_id                                       -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+      ,program_update_date                               -- ƒvƒƒOƒ‰ƒ€XV“ú
+    )
+    VALUES(
+       in_report_output_no                              -- ’ •[o—ÍƒZƒbƒg”Ô†
+      ,cn_line_kind1                                    -- ’ •[o—ÍˆÊ’u
+      ,1                                                -- s”Ô†
+      ,lv_report_id                                     -- ’ •[‚h‚c
+      ,lv_report_name                                   -- ’ •[ƒ^ƒCƒgƒ‹
+      ,SYSDATE                                          -- o—Í“ú
+      ,gd_year_month                                    -- Šî€”NŒ
+      ,gn_operation_days                                -- ‰Ò“®“ú”
+      ,gn_operation_all_days                            -- ‰Ò“®‰Â”\“ú”
+      ,lv_up_base_code                                  -- ‹’“_ƒR[ƒhiej
+      ,lv_up_hub_name                                   -- ‹’“_–¼Ìiej
+      ,lv_base_code                                     -- ‹’“_ƒR[ƒh
+      ,lv_hub_name                                      -- ‹’“_–¼Ì
+      ,lv_group_number                                  -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+      ,lv_group_name                                    -- ‰c‹ÆƒOƒ‹[ƒv–¼
+      ,lv_employee_number                               -- ‰c‹ÆˆõƒR[ƒh
+      ,lv_employee_name                                 -- ‰c‹Æˆõ–¼
+      ,NULL                                             -- ‹Æ‘Ôi‘å•ª—Şj
+      ,NULL                                             -- ‹Æ‘Ôi‘å•ª—Şj–¼
+      ,NULL                                             -- ˆê”Ê^©”Ì‹@^‚l‚b
+      ,NULL                                             -- ŒÚ‹qƒR[ƒh
+      ,NULL                                             -- ŒÚ‹q–¼
+      ,NULL                                             -- ƒ‹[ƒgNo
+      ,NULL                                             -- ‘O”NÀÑ
+      ,NULL                                             -- æŒÀÑ
+      ,NULL                                             -- V‹KŒÚ‹qŒ”
+      ,NULL                                             -- V‹K‚u‚cŒ”
+      ,NULL                                             -- V‹KŒÚ‹q”„ãÀÑ
+      ,NULL                                             -- V‹K‚u‚c”„ãÀÑ
+      ,NULL                                             -- ”„ã—\Z
+      ,NULL                                             -- ‚P“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚P“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,NULL                                             -- ‚P“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚P“ú|–K–â‹L†
+      ,NULL                                             -- ‚Q“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚Q“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,NULL                                             -- ‚Q“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚Q“ú|–K–â‹L†
+      ,NULL                                             -- ‚R“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚R“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,NULL                                             -- ‚R“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚R“ú|–K–â‹L†
+      ,NULL                                             -- ‚S“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚S“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,NULL                                             -- ‚S“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚S“ú|–K–â‹L†
+      ,NULL                                             -- ‚T“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚T“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,NULL                                             -- ‚T“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚T“ú|–K–â‹L†
+      ,NULL                                             -- ‚U“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚U“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,NULL                                             -- ‚U“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚U“ú|–K–â‹L†
+      ,NULL                                             -- ‚V“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚V“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,NULL                                             -- ‚V“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚V“ú|–K–â‹L†
+      ,NULL                                             -- ‚W“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚W“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,NULL                                             -- ‚W“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚W“ú|–K–â‹L†
+      ,NULL                                             -- ‚X“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚X“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,NULL                                             -- ‚X“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚X“ú|–K–â‹L†
+      ,NULL                                             -- ‚P‚O“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚P‚O“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚P‚O“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚P‚O“ú|–K–â‹L†
+      ,NULL                                             -- ‚P‚P“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚P‚P“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚P‚P“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚P‚P“ú|–K–â‹L†
+      ,NULL                                             -- ‚P‚Q“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚P‚Q“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚P‚Q“ú|–K–â‹L†
+      ,NULL                                             -- ‚P‚R“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚P‚R“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚P‚R“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚P‚R“ú|–K–â‹L†
+      ,NULL                                             -- ‚P‚S“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚P‚S“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚P‚S“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚P‚S“ú|–K–â‹L†
+      ,NULL                                             -- ‚P‚T“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚P‚T“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚P‚T“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚P‚T“ú|–K–â‹L†
+      ,NULL                                             -- ‚P‚U“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚P‚U“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚P‚U“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚P‚U“ú|–K–â‹L†
+      ,NULL                                             -- ‚P‚V“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚P‚V“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚P‚V“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚P‚V“ú|–K–â‹L†
+      ,NULL                                             -- ‚P‚W“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚P‚W“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚P‚W“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚P‚W“ú|–K–â‹L†
+      ,NULL                                             -- ‚P‚X“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚P‚X“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚P‚X“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚P‚X“ú|–K–â‹L†
+      ,NULL                                             -- ‚Q‚O“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚Q‚O“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚Q‚O“ú|–K–â‹L†
+      ,NULL                                             -- ‚Q‚P“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚Q‚P“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚Q‚P“ú|–K–â‹L†
+      ,NULL                                             -- ‚Q‚Q“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚Q‚Q“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚Q‚Q“ú|–K–â‹L†
+      ,NULL                                             -- ‚Q‚R“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚Q‚R“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚Q‚R“ú|–K–â‹L†
+      ,NULL                                             -- ‚Q‚S“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚Q‚S“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚Q‚S“ú|–K–â‹L†
+      ,NULL                                             -- ‚Q‚T“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚Q‚T“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚Q‚T“ú|–K–â‹L†
+      ,NULL                                             -- ‚Q‚U“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚Q‚U“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚Q‚U“ú|–K–â‹L†
+      ,NULL                                             -- ‚Q‚V“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚Q‚V“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚Q‚V“ú|–K–â‹L†
+      ,NULL                                             -- ‚Q‚W“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚Q‚W“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚Q‚W“ú|–K–â‹L†
+      ,NULL                                             -- ‚Q‚X“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚Q‚X“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚Q‚X“ú|–K–â‹L†
+      ,NULL                                             -- ‚R‚O“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚R‚O“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚R‚O“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚R‚O“ú|–K–â‹L†
+      ,NULL                                             -- ‚R‚P“ú|”„ã^–K–âŒv‰æ
+      ,NULL                                             -- ‚R‚P“ú|”„ã^–K–âÀÑ
+      ,NULL                                             -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ª
+      ,NULL                                             -- ‚R‚P“ú|—LŒøŒ¬”
+      ,NULL                                             -- ‚R‚P“ú|–K–â‹L†
+      ,NULL                                             -- –K–â‚`Œ”
+      ,NULL                                             -- –K–â‚aŒ”
+      ,NULL                                             -- –K–â‚bŒ”
+      ,NULL                                             -- –K–â‚cŒ”
+      ,NULL                                             -- –K–â‚dŒ”
+      ,NULL                                             -- –K–â‚eŒ”
+      ,NULL                                             -- –K–â‚fŒ”
+      ,NULL                                             -- –K–â‚gŒ”
+      ,NULL                                             -- –K–âú@Œ”
+      ,NULL                                             -- –K–â‚iŒ”
+      ,NULL                                             -- –K–â‚jŒ”
+      ,NULL                                             -- –K–â‚kŒ”
+      ,NULL                                             -- –K–â‚lŒ”
+      ,NULL                                             -- –K–â‚mŒ”
+      ,NULL                                             -- –K–â‚nŒ”
+      ,NULL                                             -- –K–â‚oŒ”
+      ,NULL                                             -- –K–â‚pŒ”
+      ,NULL                                             -- –K–â‚qŒ”
+      ,NULL                                             -- –K–â‚rŒ”
+      ,NULL                                             -- –K–â‚sŒ”
+      ,NULL                                             -- –K–â‚tŒ”
+      ,NULL                                             -- –K–â‚uŒ”
+      ,NULL                                             -- –K–â‚vŒ”
+      ,NULL                                             -- –K–â‚wŒ”
+      ,NULL                                             -- –K–â‚xŒ”
+      ,NULL                                             -- –K–â‚yŒ”
+      ,cn_created_by                                    -- ì¬Ò
+      ,cd_creation_date                                 -- ì¬“ú
+      ,cn_last_updated_by                               -- ÅIXVÒ
+      ,cd_last_update_date                              -- ÅIXV“ú
+      ,cn_last_update_login                             -- ÅIXVƒƒOƒCƒ“
+      ,cn_request_id                                    -- —v‹ID
+      ,cn_program_application_id                        -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      ,cn_program_id                                    -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+      ,cd_program_update_date                           -- ƒvƒƒOƒ‰ƒ€XV“ú
+    );
+--
+DO_ERROR('A-X-4-3');
+--
+    gn_normal_cnt := gn_normal_cnt + 1;
+        debug(
+          buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                  'ƒ[ƒNƒe[ƒuƒ‹‚Ö‚Ìo—ÍŠ®—¹'
+        );
+--
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END insert_wrk_table;
+--
+  /**********************************************************************************
+   * Procedure Name   : up_plsql_tab1
+   * Description      : ’ •[í•Ê1-‰c‹Æˆõ•Ê-PLSQL•\‚ÌXV (A-3-3)
+  ***********************************************************************************/
+  PROCEDURE up_plsql_tab1(
+     i_month_square_rec  IN             g_month_rtype1                     -- ˆêƒ–Œ•ªƒf[ƒ^
+    ,in_m_cnt            IN             NUMBER                             -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+    ,io_m_tab            IN OUT NOCOPY  g_get_month_square_ttype           -- –¾×•””z—ñ
+    ,io_hon_tab          IN OUT NOCOPY  g_get_month_square_ttype           -- –{‘Ì•””z—ñ
+    ,ov_errbuf           OUT NOCOPY     VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+    ,ov_retcode          OUT NOCOPY     VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+    ,ov_errmsg           OUT NOCOPY     VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'up_plsql_tab1';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+    ln_m_cnt     NUMBER(5);                         -- –¾×•”ƒJƒEƒ“ƒ^[
+    lv_gvm_type  xxcso_rep_visit_sale_plan.gvm_type%TYPE;
+    BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+      ln_m_cnt    := in_m_cnt;
+      -- DEBUGƒƒbƒZ[ƒW
+      -- PL/SQL•\‚ÌXV
+      debug(
+         buff   => '‰c‹Æˆõ•Ê-PL/SQL•\‚ÌXVˆ—:' || TO_CHAR(ln_m_cnt)
+      );
+      -- ”„‚èã‚°–¾×•”
+      BEGIN
+        io_m_tab(ln_m_cnt).base_code       := i_month_square_rec.work_base_code;            -- ‹Î–±’n‹’“_ƒR[ƒh
+        io_m_tab(ln_m_cnt).hub_name        := i_month_square_rec.base_name;                 -- ‹Î–±’n‹’“_–¼
+        io_m_tab(ln_m_cnt).employee_number := i_month_square_rec.employee_number;           -- ]‹Æˆõ”Ô†
+        io_m_tab(ln_m_cnt).employee_name   := i_month_square_rec.name;                      -- ]‹Æˆõ–¼
+        io_m_tab(ln_m_cnt).account_number  := i_month_square_rec.account_number;            -- ŒÚ‹qƒR[ƒh
+        io_m_tab(ln_m_cnt).customer_name   := i_month_square_rec.party_name;                -- ŒÚ‹q–¼
+        io_m_tab(ln_m_cnt).route_no        := i_month_square_rec.route_number;              -- ƒ‹[ƒgNo
+        io_m_tab(ln_m_cnt).last_year_rslt_sales_amt := i_month_square_rec.rslt_amty;        -- ‘O”NÀÑ
+        io_m_tab(ln_m_cnt).last_mon_rslt_sales_amt  := i_month_square_rec.rslt_amtm;        -- æŒÀÑ
+        io_m_tab(ln_m_cnt).plan_sales_amt  := i_month_square_rec.tgt_sales_prsn_total_amt;  -- Œ•Ê”„ã—\Z
+        io_m_tab(ln_m_cnt).gvm_type        := i_month_square_rec.gvm_type;                  -- ˆê”Ê/©”Ì‹@/‚‚ƒ
+        io_m_tab(ln_m_cnt).business_high_type := i_month_square_rec.business_high_type;     -- ‹Æ‘Ôi‘å•ª—Şj
+        io_m_tab(ln_m_cnt).business_high_name := i_month_square_rec.business_high_name;     -- ‹Æ‘Ôi‘å•ª—Şj–¼
+        -- DEBUGƒƒbƒZ[ƒW
+        -- PL/SQL•\‚ÌXV
+        debug(
+           buff   => '‰c‹Æˆõ•Ê-PL/SQL•\‚ÌXVˆ—' || '”„‚èã‚°–¾×•”ŒÅ’è•”Š®—¹'
+        );
+      EXCEPTION
+        WHEN OTHERS THEN
+          fnd_file.put_line(
+             which  => FND_FILE.LOG,
+             buff   => '‰c‹Æˆõ•Ê-PL/SQL•\‚ÌXVˆ—¸”s:' || SQLERRM 
+          );
+        RAISE global_api_others_expt;
+      END;  
+      -- ”„‚èã‚°’†Œv•”
+      IF(ln_m_cnt = 1) THEN
+        -- DEBUGƒƒbƒZ[ƒW
+        -- PL/SQL•\‚ÌXV
+        debug(
+           buff   => '‰c‹Æˆõ•Ê-PL/SQL•\‚ÌXVˆ—' || '–{‘Ì•”‚ÌŒÅ’è•”'
+        );
+        FOR i IN 1..cn_idx_max LOOP 
+          IF (i = cn_idx_sales_ippn) THEN
+            io_hon_tab(i).gvm_type := cv_gvm_g;    -- ˆê”Ê
+          ELSIF(i = cn_idx_sales_vd) THEN
+            io_hon_tab(i).gvm_type := cv_gvm_v;    -- ©”Ì‹@
+          ELSIF(i = cn_idx_sales_sum) THEN
+            io_hon_tab(i).plan_sales_amt     := i_month_square_rec.tgt_sales_prsn_total_amt;-- ”„ã—\Z
+          ELSIF(i = cn_idx_visit_ippn) THEN
+            io_hon_tab(i).gvm_type           := cv_gvm_g;                          -- ˆê”Ê
+          ELSIF(i = cn_idx_visit_vd) THEN
+            io_hon_tab(i).gvm_type           := cv_gvm_v;                          -- ©”Ì‹@
+          ELSIF(i = cn_idx_visit_mc) THEN
+            io_hon_tab(i).gvm_type           := cv_gvm_m;                          --^‚l‚b
+          END IF;
+          io_hon_tab(i).base_code       := i_month_square_rec.work_base_code;   -- ‹Æ–±’n‹’“_ƒR[ƒh
+          io_hon_tab(i).hub_name        := i_month_square_rec.base_name;        -- ‹Æ–±’n‹’“_–¼    
+          io_hon_tab(i).employee_number := i_month_square_rec.employee_number;  -- ]‹Æˆõ”Ô†
+          io_hon_tab(i).employee_name   := i_month_square_rec.name;             -- ]‹Æˆõ–¼
+          -- DEBUGƒƒbƒZ[ƒW
+          -- PL/SQL•\‚ÌXV
+          debug(
+             buff   =>  '‹Æ–±’n‹’“_ƒR[ƒh:' || io_hon_tab(i).base_code ||
+                          '‹Æ–±’n‹’“_–¼:' || io_hon_tab(i).hub_name ||
+                            ']‹Æˆõ”Ô†:' || io_hon_tab(i).employee_number ||
+                              ']‹Æˆõ–¼:' || io_hon_tab(i).employee_name
+          );
+        END LOOP;
+      END IF;
+--
+      -- ”„ã’†Œv•”(ˆê”Ê)
+      IF(i_month_square_rec.gvm_type = cv_gvm_g) THEN      -- ˆê”Ê
+        io_hon_tab(cn_idx_sales_ippn).last_year_rslt_sales_amt := 
+          io_hon_tab(cn_idx_sales_ippn).last_year_rslt_sales_amt +
+          NVL(i_month_square_rec.rslt_amty, 0);    -- ‘O”NÀÑ
+        io_hon_tab(cn_idx_sales_ippn).last_mon_rslt_sales_amt  :=
+          io_hon_tab(cn_idx_sales_ippn).last_mon_rslt_sales_amt +
+          NVL(i_month_square_rec.rslt_amtm, 0);    -- æŒÀÑ
+      END IF;
+      -- ”„ã’†Œv•”(©”Ì‹@)
+      IF(i_month_square_rec.gvm_type = cv_gvm_v) THEN      -- ©”Ì‹@
+        io_hon_tab(cn_idx_sales_vd).last_year_rslt_sales_amt :=
+          io_hon_tab(cn_idx_sales_vd).last_year_rslt_sales_amt +
+          NVL(i_month_square_rec.rslt_amty, 0);       -- ‘O”NÀÑ
+        io_hon_tab(cn_idx_sales_vd).last_mon_rslt_sales_amt :=
+          io_hon_tab(cn_idx_sales_vd).last_mon_rslt_sales_amt +
+          NVL(i_month_square_rec.rslt_amtm, 0);       -- æŒÀÑ
+      END IF;
+      -- ”„ã‡Œv•”
+      io_hon_tab(cn_idx_sales_sum).new_customer_num   := 
+        io_hon_tab(cn_idx_sales_sum).new_customer_num +
+        NVL(i_month_square_rec.cust_new_num, 0);    -- ŒÚ‹qŒ”iV‹Kj
+      io_hon_tab(cn_idx_sales_sum).new_vendor_num     :=
+        io_hon_tab(cn_idx_sales_sum).new_vendor_num +
+        NVL(i_month_square_rec.cust_vd_new_num, 0); -- V‹K‚u‚cŒ”
+--
+      -- ’ •[–¾×•”
+      FOR i IN 1..31 LOOP
+        BEGIN
+          -- DEBUGƒƒbƒZ[ƒW
+          -- PL/SQL•\‚ÌXV
+          debug(
+             buff   => '‰c‹Æˆõ•Ê-PL/SQL•\‚ÌXVˆ—' || '1ƒ–Œ•ª‚Ìƒf[ƒ^XV'
+          );
+          IF(i_month_square_rec.gvm_type = cv_gvm_g) THEN      -- ˆê”Ê
+            -- ”„‚èã‚°–¾×•”
+            -- DEBUGƒƒbƒZ[ƒW
+            -- PL/SQL•\‚ÌXV
+            debug(
+               buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-”„‚èã‚°–¾×•”(ˆê”Ê)‚ÌXVˆ—' ||
+                          '”„‚èã‚°Œv‰æ' || TO_CHAR(i_month_square_rec.l_one_day_tab(i).tgt_amt)
+            );
+            io_m_tab(ln_m_cnt).l_get_one_day_tab(i).plan_vs_amt
+              := i_month_square_rec.l_one_day_tab(i).tgt_amt;                 -- ”„‚èã‚°Œv‰æ
+            io_m_tab(ln_m_cnt).l_get_one_day_tab(i).rslt_vs_amt
+              := i_month_square_rec.l_one_day_tab(i).rslt_amt;                -- ”„‚èã‚°ÀÑ
+            io_m_tab(ln_m_cnt).l_get_one_day_tab(i).rslt_other_sales_amt
+              := i_month_square_rec.l_one_day_tab(i).rslt_center_amt;         -- “à‘¼‹’“_Q”„ãÀÑ
+            IF(i_month_square_rec.l_one_day_tab(i).visit_sign IS NOT NULL)THEN
+              io_m_tab(ln_m_cnt).l_get_one_day_tab(i).visit_sign
+              := SUBSTR('*' || i_month_square_rec.l_one_day_tab(i).visit_sign, 1, 20);       -- Œ‹‡–K–â‹L†
+            END IF;
+            -- ”„‚èã‚°’†Œv•”
+            -- DEBUGƒƒbƒZ[ƒW
+            -- PL/SQL•\‚ÌXV
+            debug(
+               buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-”„‚èã‚°’†Œv•”(ˆê”Ê)‚ÌXVˆ—'
+            );
+            io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).plan_vs_amt :=
+              io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).plan_vs_amt + 
+              NVL(i_month_square_rec.l_one_day_tab(i).tgt_amt,0);             -- ”„‚èã‚°Œv‰æ
+            io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_vs_amt :=
+              io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_vs_amt + 
+              NVL(i_month_square_rec.l_one_day_tab(i).rslt_amt,0);            -- ”„‚èã‚°ÀÑ
+            -- –K–â’†Œv•”iˆê”Êj
+            io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).plan_vs_amt :=
+              io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).plan_vs_amt + 
+              NVL(i_month_square_rec.l_one_day_tab(i).tgt_vis_num,0);         -- –K–âŒv‰æ
+            io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).rslt_vs_amt :=
+              io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).rslt_vs_amt + 
+              NVL(i_month_square_rec.l_one_day_tab(i).vis_num,0);             -- –K–âÀÑ
+          ELSIF (i_month_square_rec.gvm_type = cv_gvm_v) THEN          -- ©”Ì‹@
+            -- ”„‚èã‚°–¾×•”
+            -- DEBUGƒƒbƒZ[ƒW
+            -- PL/SQL•\‚ÌXV
+            debug(
+               buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-”„‚èã‚°–¾×•”(©”Ì‹@)‚ÌXVˆ—' ||
+                          '”„‚èã‚°Œv‰æ' || TO_CHAR(i_month_square_rec.l_one_day_tab(i).tgt_amt)
+            );
+            io_m_tab(ln_m_cnt).l_get_one_day_tab(i).plan_vs_amt
+              := i_month_square_rec.l_one_day_tab(i).tgt_amt;                 -- ”„‚èã‚°Œv‰æ
+            io_m_tab(ln_m_cnt).l_get_one_day_tab(i).rslt_vs_amt
+              := i_month_square_rec.l_one_day_tab(i).rslt_amt;                -- ”„‚èã‚°ÀÑ
+            io_m_tab(ln_m_cnt).l_get_one_day_tab(i).rslt_other_sales_amt
+              := i_month_square_rec.l_one_day_tab(i).rslt_center_amt;         -- “à‘¼‹’“_Q”„ãÀÑ
+            IF(i_month_square_rec.l_one_day_tab(i).visit_sign IS NOT NULL)THEN
+              io_m_tab(ln_m_cnt).l_get_one_day_tab(i).visit_sign
+              := SUBSTR('*' || i_month_square_rec.l_one_day_tab(i).visit_sign, 1, 20);       -- Œ‹‡–K–â‹L†
+            END IF;
+            -- ”„‚èã‚°’†Œv•”
+            -- DEBUGƒƒbƒZ[ƒW
+            -- PL/SQL•\‚ÌXV
+            debug(
+               buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-”„‚èã‚°’†Œv•”(©”Ì‹@)‚ÌXVˆ—'
+            );
+            io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).plan_vs_amt :=
+              io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).plan_vs_amt + 
+              NVL(i_month_square_rec.l_one_day_tab(i).tgt_amt,0);             -- ”„‚èã‚°Œv‰æ
+            io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_vs_amt :=
+              io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_vs_amt + 
+              NVL(i_month_square_rec.l_one_day_tab(i).rslt_amt,0);            -- ”„‚èã‚°ÀÑ
+            -- –K–â’†Œv•”
+            -- DEBUGƒƒbƒZ[ƒW
+            -- PL/SQL•\‚ÌXV
+            debug(
+               buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-–K–â’†Œv•”(©”Ì‹@)‚ÌXVˆ—'
+            );
+            io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).plan_vs_amt :=
+              io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).plan_vs_amt + 
+              NVL(i_month_square_rec.l_one_day_tab(i).tgt_vis_num,0);         -- –K–âŒv‰æ
+            io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).rslt_vs_amt :=
+              io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).rslt_vs_amt + 
+              NVL(i_month_square_rec.l_one_day_tab(i).vis_num,0);             -- –K–âÀÑ
+          ELSIF (i_month_square_rec.gvm_type = cv_gvm_m) THEN                 -- MC
+            -- ”„‚èã‚°–¾×•”
+            -- DEBUGƒƒbƒZ[ƒW
+            -- PL/SQL•\‚ÌXV
+            debug(
+               buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-”„‚èã‚°–¾×•”(MC)‚ÌXVˆ—' ||
+                          '”„‚èã‚°Œv‰æ' || TO_CHAR(i_month_square_rec.l_one_day_tab(i).tgt_amt)
+            );
+            io_m_tab(ln_m_cnt).l_get_one_day_tab(i).plan_vs_amt
+              := i_month_square_rec.l_one_day_tab(i).tgt_vis_num;            -- –K–âŒv‰æ
+            io_m_tab(ln_m_cnt).l_get_one_day_tab(i).rslt_vs_amt
+              := i_month_square_rec.l_one_day_tab(i).vis_num;                -- –K–âÀÑ
+            IF(i_month_square_rec.l_one_day_tab(i).vis_num > 0)THEN
+              io_m_tab(ln_m_cnt).l_get_one_day_tab(i).visit_sign
+              := '*';                                                        -- Œ‹‡–K–â‹L†
+            END IF;
+            -- –K–â’†Œv•”
+            -- DEBUGƒƒbƒZ[ƒW
+            -- PL/SQL•\‚ÌXV
+            debug(
+               buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-–K–â’†Œv•”(MC)‚ÌXVˆ—'
+            );
+            io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).plan_vs_amt :=
+              io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).plan_vs_amt + 
+              NVL(i_month_square_rec.l_one_day_tab(i).tgt_vis_num,0);         -- –K–âŒv‰æ
+            io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).rslt_vs_amt :=
+              io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).rslt_vs_amt + 
+              NVL(i_month_square_rec.l_one_day_tab(i).vis_num,0);             -- –K–âÀÑ
+          END IF;
+          -- ”„‚èã‚°‡Œv•”
+          -- DEBUGƒƒbƒZ[ƒW
+          -- PL/SQL•\‚ÌXV
+          debug(
+             buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-”„‚èã‚°‡Œv•”‚ÌXVˆ—'
+          );
+          -- –K–â‡Œv•”
+          -- DEBUGƒƒbƒZ[ƒW
+          -- PL/SQL•\‚ÌXV
+          debug(
+             buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-–K–â‡Œv•”‚ÌXVˆ—'
+          );
+          io_hon_tab(cn_idx_visit_sum).l_get_one_day_tab(i).effective_num :=
+            io_hon_tab(cn_idx_visit_sum).l_get_one_day_tab(i).effective_num +
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_sales_num,0);              -- —LŒøŒ¬”
+          -- –K–â“à—e‡Œv•”
+          -- DEBUGƒƒbƒZ[ƒW
+          -- PL/SQL•\‚ÌXV
+          debug(
+             buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-–K–â“à—e‡Œv•”‚ÌXVˆ—'
+          );
+          -- A0Z–K–âŒ”
+          io_hon_tab(cn_idx_visit_dsc).vis_a_num := 
+             io_hon_tab(cn_idx_visit_dsc).vis_a_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_a_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_b_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_b_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_b_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_c_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_c_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_c_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_d_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_d_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_d_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_e_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_e_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_e_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_f_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_f_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_f_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_g_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_g_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_g_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_h_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_h_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_h_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_i_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_i_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_i_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_j_num := 
+             io_hon_tab(cn_idx_visit_dsc).vis_j_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_j_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_k_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_k_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_k_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_l_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_l_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_l_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_m_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_m_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_m_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_n_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_n_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_n_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_o_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_o_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_o_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_p_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_p_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_p_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_q_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_q_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_q_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_r_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_r_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_r_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_s_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_s_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_s_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_t_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_t_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_t_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_u_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_u_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_u_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_v_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_v_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_v_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_w_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_w_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_w_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_x_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_x_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_x_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_y_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_y_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_y_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_z_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_z_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_z_num,0);
+          -- DEBUGƒƒbƒZ[ƒW
+          -- PL/SQL•\‚ÌXV
+          debug(
+             buff   => '‰c‹Æˆõ•Ê-PL/SQL•\‚Ì–K–â“à—e‡Œv•”•ªXVˆ—Š®—¹' || 'LOOPŒ”:'|| TO_CHAR(i)
+          );
+        EXCEPTION
+          WHEN OTHERS THEN
+          fnd_file.put_line(
+             which  => FND_FILE.LOG,
+             buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-–{‘Ì•”‚ÌXVˆ—‚ÅƒGƒ‰[‚É‚È‚è‚Ü‚µ‚½B' || SQLERRM ||
+                      ''                         -- ‹ós‚Ì‘}“ü
+           );
+          RAISE global_api_others_expt;
+        END;
+      END LOOP;
+      -- DEBUGƒƒbƒZ[ƒW
+      -- PL/SQL•\‚ÌXV
+      debug(
+         buff   => '‰c‹Æˆõ•Ê-PL/SQL•\‚ÌXVˆ—Š®—¹'
+      );
+    EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+            fnd_file.put_line(
+               which  => FND_FILE.LOG,
+               buff   => '‰c‹Æˆõ•Ê-PL/SQL•\-–K–â“à—e‡Œv•”‚ÌXVˆ—‚ÅƒGƒ‰[‚É‚È‚è‚Ü‚µ‚½B' || SQLERRM ||
+                        ''                         -- ‹ós‚Ì‘}“ü
+             );
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END up_plsql_tab1;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_ticket1
+   * Description      : ’ •[í•Ê1-‰c‹Æˆõ•Ê (A-3-1,A-3-2)
+  ***********************************************************************************/
+  PROCEDURE get_ticket1(
+    ov_errbuf         OUT NOCOPY VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+   ,ov_retcode        OUT NOCOPY VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+   ,ov_errmsg         OUT NOCOPY VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'get_ticket1';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ƒ[ƒJƒ‹’è”
+    -- ƒ[ƒJƒ‹•Ï”
+    lb_boolean            BOOLEAN;      -- ”»’f—p
+    ln_m_cnt              NUMBER(9);    -- –¾×•”ƒJƒEƒ“ƒ^[”Ši”[
+    ln_cnt                NUMBER(9);    -- ’Šo‚³‚ê‚½ƒŒƒR[ƒhŒ”
+    ln_date               NUMBER(2);    -- “ú•t‚Ìƒiƒ“ƒo[Œ^
+    ln_report_output_no   NUMBER(9);    -- ’ •[o—ÍƒZƒbƒg”Ô†
+    lv_gvm_type           VARCHAR2(1);                                        -- ˆê”Ê^©”Ì‹@^‚l‚b
+    lv_bf_employee_number xxcso_resource_relations_v2.employee_number%TYPE;   -- ‰c‹Æˆõ”Ô†Ši”[
+    lv_bf_account_number  xxcso_cust_accounts_v.account_number%TYPE;          -- ŒÚ‹qƒR[ƒhŠi”[
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+    CURSOR ticket_data_cur
+    IS
+      SELECT  
+              (CASE
+                WHEN TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                  THEN xrrv.work_base_code_new
+                ELSE xrrv.work_base_code_old
+              END 
+              ) work_base_code,                             -- ‹Î–±’n‹’“_ƒR[ƒh
+              (CASE
+                WHEN TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                  THEN xrrv.work_base_name_new
+                ELSE xrrv.work_base_name_old
+              END
+              ) base_name,                                  -- ‹Î–±’n‹’“_–¼
+              xrrv.employee_number employee_number,         -- ]‹Æˆõ”Ô†
+              xrrv.full_name name,                          -- ]‹Æˆõ–¼
+             (CASE
+                WHEN xcav.customer_status IN (cv_cust_status4,cv_cust_status5,cv_cust_status6)-- ŒÚ‹qƒXƒe[ƒ^ƒX(ŒÚ‹q)
+                  THEN cv_gvm_m                             -- MC
+                WHEN (XXCSO_ROUTE_COMMON_PKG.ISCUSTOMERVENDOR(xcav.business_low_type) = cv_true)
+                  THEN cv_gvm_v                             -- ©”Ì‹@
+                ELSE
+                       cv_gvm_g                             -- ˆê”Ê
+                END
+              )                     gvm_type,               -- ˆê”Ê^©”Ì‹@^‚l‚b
+              xcav.business_low_type business_low_type,     -- ‹Æ‘Ôi¬•ª—Şj
+              xcav.account_number   account_number,         -- ŒÚ‹qƒR[ƒh
+              xcav.party_name       party_name,             -- ŒÚ‹q–¼
+              xcrv.route_number     route_number,           -- ƒ‹[ƒgNo
+              xsvsr.sales_date      sales_date,             -- ”Ì”„”NŒ“ú
+              xsvsr.tgt_amt         tgt_amt,                -- ”„ãŒv‰æ
+              xsvsr.rslt_amt        rslt_amt,               -- ”„ãÀÑ
+              xsvsr.rslt_center_amt rslt_center_amt,        -- “à‘¼‹’“_Q”„ãÀÑ
+              xsvsr.tgt_vis_num     tgt_vis_num,            -- –K–âŒv‰æ
+              xsvsr.vis_num         vis_num,                -- –K–âÀÑ
+              xsvsr.vis_sales_num   vis_sales_num,          -- —LŒøŒ¬”
+              xsvsr.vis_new_num     vis_new_num,            -- –K–âÀÑiV‹K)
+              xsvsr.vis_vd_new_num  vis_vd_new_num,         -- –K–âÀÑiVDFV‹Kj
+              xsvsr.vis_a_num       vis_a_num,              -- –K–â‚`Œ”
+              xsvsr.vis_b_num       vis_b_num,              -- –K–â‚aŒ”
+              xsvsr.vis_c_num       vis_c_num,              -- –K–â‚bŒ”
+              xsvsr.vis_d_num       vis_d_num,              -- –K–â‚cŒ”
+              xsvsr.vis_e_num       vis_e_num,              -- –K–â‚dŒ”
+              xsvsr.vis_f_num       vis_f_num,              -- –K–â‚eŒ”
+              xsvsr.vis_g_num       vis_g_num,              -- –K–â‚fŒ”
+              xsvsr.vis_h_num       vis_h_num,              -- –K–â‚gŒ”
+              xsvsr.vis_i_num       vis_i_num,              -- –K–âú@Œ”
+              xsvsr.vis_j_num       vis_j_num,              -- –K–â‚iŒ”
+              xsvsr.vis_k_num       vis_k_num,              -- –K–â‚jŒ”
+              xsvsr.vis_l_num       vis_l_num,              -- –K–â‚kŒ”
+              xsvsr.vis_m_num       vis_m_num,              -- –K–â‚lŒ”
+              xsvsr.vis_n_num       vis_n_num,              -- –K–â‚mŒ”
+              xsvsr.vis_o_num       vis_o_num,              -- –K–â‚nŒ”
+              xsvsr.vis_p_num       vis_p_num,              -- –K–â‚oŒ”
+              xsvsr.vis_q_num       vis_q_num,              -- –K–â‚pŒ”
+              xsvsr.vis_r_num       vis_r_num,              -- –K–â‚qŒ”
+              xsvsr.vis_s_num       vis_s_num,              -- –K–â‚rŒ”
+              xsvsr.vis_t_num       vis_t_num,              -- –K–â‚sŒ”
+              xsvsr.vis_u_num       vis_u_num,              -- –K–â‚tŒ”
+              xsvsr.vis_v_num       vis_v_num,              -- –K–â‚uŒ”
+              xsvsr.vis_w_num       vis_w_num,              -- –K–â‚vŒ”
+              xsvsr.vis_x_num       vis_x_num,              -- –K–â‚wŒ”
+              xsvsr.vis_y_num       vis_y_num,              -- –K–â‚xŒ”
+              xsvsr.vis_z_num       vis_z_num,              -- –K–â‚yŒ”
+              xsvsry.rslt_amt       rslt_amty,              -- ‘O”NÀÑ
+              xsvsrm.rslt_amt       rslt_amtm,              -- æŒÀÑ
+              (CASE
+                WHEN (0 < xsvsr.vis_a_num) THEN 'A'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_b_num) THEN 'B'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_c_num) THEN 'C'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_d_num) THEN 'D'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_e_num) THEN 'E'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_f_num) THEN 'F'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_g_num) THEN 'G'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_h_num) THEN 'H'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_i_num) THEN 'I'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_j_num) THEN 'J'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_k_num) THEN 'K'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_l_num) THEN 'L'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_m_num) THEN 'M'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_n_num) THEN 'N'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_o_num) THEN 'O'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_p_num) THEN 'P'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_q_num) THEN 'Q'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_r_num) THEN 'R'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_s_num) THEN 'S'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_t_num) THEN 'T'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_u_num) THEN 'U'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_v_num) THEN 'V'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_w_num) THEN 'W'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_x_num) THEN 'X'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_y_num) THEN 'Y'
+              END
+              ) || (CASE
+                WHEN (0 < xsvsr.vis_z_num) THEN 'Z'
+              END
+              ) visit_sign,                                 -- Œ‹‡–K–â‹L†
+              xsvsrn.cust_new_num         cust_new_num,     -- ŒÚ‹qŒ”iV‹Kj
+              xsvsrn.cust_vd_new_num      cust_vd_new_num,  -- ŒÚ‹qŒ”iVDFV‹Kj
+              xsvsre.tgt_sales_prsn_total_amt tgt_sales_prsn_total_amt --Œ•Ê”„ã—\Z
+      FROM    xxcso_resource_relations_v2 xrrv              -- ƒŠƒ\[ƒXŠÖ˜Aƒ}ƒXƒ^(ÅV)VIEW
+             ,xxcso_resource_custs_v2     xrcv              -- ‰c‹Æˆõ’S“–ŒÚ‹q(ÅV)VIEW
+             ,xxcso_cust_accounts_v       xcav              -- ŒÚ‹qƒ}ƒXƒ^VIEW
+             ,xxcso_cust_routes_v2        xcrv              -- ŒÚ‹qƒ‹[ƒgNo(ÅV)VIEW
+             ,xxcso_sum_visit_sale_rep    xsvsr             -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠƒe[ƒuƒ‹
+             ,xxcso_sum_visit_sale_rep    xsvsry            -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠ‘O”N
+             ,xxcso_sum_visit_sale_rep    xsvsrm            -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠæŒ
+             ,xxcso_sum_visit_sale_rep    xsvsrn            -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠ“–Œ
+             ,xxcso_sum_visit_sale_rep    xsvsre            -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠ‰c‹Æˆõ
+      WHERE   (CASE
+                WHEN TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                  THEN xrrv.work_base_code_new
+                ELSE xrrv.work_base_code_old
+              END 
+              )  = gv_base_code
+        AND   ( gv_is_groupleader = cv_false
+                OR
+                ( gv_is_groupleader = cv_true
+                  AND
+                  ( CASE 
+                      WHEN xrrv.issue_date <= gv_online_sysdate
+                        THEN xrrv.group_number_new
+                      ELSE xrrv.group_number_old
+                    END
+                  ) = gt_group_number
+                )
+              )
+        AND   ( gv_is_salesman = cv_false
+                OR
+                ( gv_is_salesman = cv_true
+                  AND
+                  xrrv.employee_number = gt_employee_number
+                )
+              )
+        AND   xrrv.employee_number = xrcv.employee_number
+        AND   xrcv.account_number  = xcav.account_number
+        AND   xcav.account_number  = xcrv.account_number(+)
+        AND   ((( xcav.customer_class_code IS NULL  -- ŒÚ‹q‹æ•ª
+                )
+                AND
+                ( xcav.customer_status IN ( cv_cust_status7, cv_cust_status4 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+                )
+               )
+           OR  (( xcav.customer_class_code = cv_cust_class_cd3 -- ŒÚ‹q‹æ•ª
+                )
+                AND
+                ( xcav.customer_status IN ( cv_cust_status5
+                                           ,cv_cust_status6
+                                           ,cv_cust_status8
+                                           ,cv_cust_status9
+                                          )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+                )
+               )
+           OR  (( xcav.customer_class_code = cv_cust_class_cd4 -- ŒÚ‹q‹æ•ª
+                )
+                AND
+                ( xcav.customer_status IN ( cv_cust_status6
+                                           ,cv_cust_status8
+                                          )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+                ))
+           OR  (( xcav.customer_class_code = cv_cust_class_cd5 -- ŒÚ‹q‹æ•ª
+                )
+                AND
+                ( xcav.customer_status = cv_cust_status3 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+                ))
+           OR  (( xcav.customer_class_code = cv_cust_class_cd6 -- ŒÚ‹q‹æ•ª
+                )
+                AND
+                ( xcav.customer_status = cv_cust_status3 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+                ))
+           OR  (( xcav.customer_class_code = cv_cust_class_cd7 -- ŒÚ‹q‹æ•ª
+                )
+                AND
+                (xcav.customer_status = cv_cust_status3 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+                )
+               )
+              )
+        AND   xcav.account_number  = xsvsr.sum_org_code
+        AND   xsvsr.sum_org_type   = cv_sum_org_type1
+        AND   xsvsr.month_date_div = cv_month_date_div2
+        AND   xsvsr.sales_date
+                BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        AND   xsvsr.sum_org_type   = xsvsry.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsry.sum_org_code(+)
+        AND   xsvsry.month_date_div(+)= cv_month_date_div1
+        AND   xsvsry.sales_date(+) = gv_year_prev
+        AND   xsvsr.sum_org_type   = xsvsrm.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsrm.sum_org_code(+)
+        AND   xsvsrm.month_date_div(+)= cv_month_date_div1
+        AND   xsvsrm.sales_date(+) = gv_year_month_prev
+        AND   xsvsr.sum_org_type   = xsvsrn.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsrn.sum_org_code(+)
+        AND   xsvsrn.month_date_div(+)= cv_month_date_div1
+        AND   xsvsrn.sales_date(+) = gv_year_month
+        AND   xsvsre.sum_org_type(+) = cv_sum_org_type2
+        AND   xsvsre.sum_org_code(+) = xrrv.employee_number
+        AND   xsvsre.month_date_div(+)= cv_month_date_div1
+        AND   xsvsre.sales_date(+)= gv_year_month
+      ORDER BY  work_base_code     ASC,
+                employee_number    ASC,
+                account_number     ASC;
+    -- ƒ[ƒJƒ‹ƒŒƒR[ƒh
+    l_cur_rec                  ticket_data_cur%ROWTYPE;
+    l_month_square_rec         g_month_rtype1;
+    l_get_month_square_tab     g_get_month_square_ttype;
+    l_get_month_square_hon_tab g_get_month_square_ttype;
+    -- ’ •[•Ï”Ši”[—p
+    -- *** ƒ[ƒJƒ‹—áŠO ***
+    error_get_data_expt        EXCEPTION;
+    BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+      ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+      -- ƒ[ƒJƒ‹•Ï”‰Šú‰»
+      lb_boolean                := TRUE;        -- ‰Šúˆ—”»’f
+      ln_m_cnt                  := 1;           -- –¾×•”‚Ìs”
+      ln_report_output_no       := 1;           -- ”z—ñs”
+      ln_cnt                    := 0;           -- LOOPŒ”(’ŠoŒ”)
+      -- PL/SQL•\i–{‘Ì•”j‚Ì€–Ú‚Ì‰Šú‰»
+      init_month_square_hon_tab(l_get_month_square_hon_tab);
+      -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ì‰Šú‰»
+      init_month_square_rec1(l_month_square_rec);
+      BEGIN
+        --ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
+        OPEN ticket_data_cur;
+--
+DO_ERROR('A-3-2-1');
+--
+        <<get_data_loop>>
+        LOOP 
+          l_cur_rec                           := NULL;          -- ƒJ[ƒ\ƒ‹ƒŒƒR[ƒh‚Ì‰Šú‰»
+--
+          FETCH ticket_data_cur INTO l_cur_rec;                 -- ƒJ[ƒ\ƒ‹‚Ìƒf[ƒ^‚ğƒŒƒR[ƒh‚ÉŠi”[
+--
+          -- ‘ÎÛŒ”‚ªOŒ‚Ìê‡
+          EXIT WHEN ticket_data_cur%NOTFOUND
+            OR  ticket_data_cur%ROWCOUNT = 0;
+--
+DO_ERROR('A-3-2-2');
+--
+          debug(
+            buff   =>l_cur_rec.work_base_code ||  ',' ||
+                     l_cur_rec.base_name ||  ',' ||
+                     l_cur_rec.employee_number ||  ',' ||
+                     l_cur_rec.gvm_type ||  ',' ||
+                     l_cur_rec.account_number ||  ',' ||
+                     l_cur_rec.party_name ||  ',' ||
+                     l_cur_rec.route_number ||  ',' ||
+                     l_cur_rec.business_low_type ||  ',' ||
+                     l_cur_rec.sales_date ||  ',' ||
+                     TO_CHAR(l_cur_rec.tgt_amt)          ||  ',' ||
+                     TO_CHAR(l_cur_rec.rslt_amt)         ||  ',' ||
+                     TO_CHAR(l_cur_rec.rslt_center_amt)  ||  ',' ||
+                     TO_CHAR(l_cur_rec.tgt_vis_num)      ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_num)          ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_sales_num)    ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_new_num)      ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_vd_new_num)   ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_a_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_b_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_c_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_d_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_e_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_f_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_g_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_h_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_i_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_j_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_k_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_l_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_m_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_n_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_o_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_p_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_q_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_r_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_s_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_t_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_u_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_v_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_w_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_x_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_y_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.vis_z_num)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.rslt_amty)        ||  ',' ||
+                     TO_CHAR(l_cur_rec.rslt_amtm)        ||  ',' ||
+                     l_cur_rec.visit_sign                ||  ',' ||
+                     TO_CHAR(l_cur_rec.cust_new_num)     ||  ',' ||
+                     TO_CHAR(l_cur_rec.cust_vd_new_num)  ||  ',' ||
+                     TO_CHAR(l_cur_rec.tgt_sales_prsn_total_amt) ||  ',' ||
+                     cv_lf 
+          );
+          -- ‘O‰ñƒŒƒR[ƒh‚Æ‰c‹Æˆõ”Ô†‚ª“¯‚¶‚ÅŒÚ‹qƒR[ƒh‚ªˆá‚¤ê‡A–¾×•””z—ñ‚Æ–{‘Ì•””z—ñ‚ğXVB
+          IF (lb_boolean = FALSE) THEN
+            IF ((lv_bf_employee_number = l_cur_rec.employee_number) AND
+                (lv_bf_account_number <> l_cur_rec.account_number))
+              THEN
+              -- DEBUGƒƒbƒZ[ƒW
+              debug(
+                 buff   => 'ŒÚ‹qƒR[ƒh‚ªˆá‚¢‚Ü‚·B :' ||'‘O‰ñF '|| lv_bf_account_number ||
+                            '¡‰ñF' || l_cur_rec.account_number ||
+                            '–¾×•””z—ñ' || TO_CHAR(ln_m_cnt)
+              );
+              -- =================================================
+              -- A-3-3.PLSQL•\‚ÌXV
+              -- =================================================
+              up_plsql_tab1(
+                 i_month_square_rec   => l_month_square_rec          -- 1ƒ–Œ•ªƒf[ƒ^
+                ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+                ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+                ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+                ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+                ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+                ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+              );
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+              l_month_square_rec.l_one_day_tab.DELETE;  -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+              l_month_square_rec      := NULL;          -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+              -- ƒŒƒR[ƒh‚Ì‰Šú‰»
+              init_month_square_rec1(l_month_square_rec);
+              ln_m_cnt          := ln_m_cnt + 1;       -- –¾×•””z—ñ‚ğ{‚P‚·‚éB
+              lb_boolean        := TRUE;               -- ‰Šúˆ—‚Ìƒtƒ‰ƒOƒIƒ“‚·‚éB
+            ELSIF (lv_bf_employee_number <> l_cur_rec.employee_number)
+              THEN
+                -- =================================================
+                -- A-3-3.PLSQL•\‚ÌXV
+                -- =================================================
+                up_plsql_tab1(
+                   i_month_square_rec   => l_month_square_rec          -- 1ƒ–Œ•ªƒf[ƒ^
+                  ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+                  ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+                  ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+                  ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+                  ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+                  ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+                );
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+                l_month_square_rec.l_one_day_tab.DELETE;  -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+                l_month_square_rec      := NULL;          -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+                -- ƒŒƒR[ƒh‚Ì‰Šú‰»
+                init_month_square_rec1(l_month_square_rec);
+                lb_boolean        := TRUE;               -- ‰Šúˆ—‚Ìƒtƒ‰ƒOƒIƒ“‚·‚éB
+            END IF;
+          END IF;
+          -- o—Íƒtƒ‰ƒO‚ªƒIƒ“‚Ìó‘Ô‚Å‰c‹Æˆõ”Ô†‚ª‘O‰ñæ“¾‚µ‚½‰c‹Æˆõ”Ô†‚Æˆá‚¤ê‡ƒ[ƒNƒe[ƒuƒ‹‚Éo—Í‚µ‚Ü‚·B
+          IF ((ln_cnt > 0) AND
+              (lv_bf_employee_number <> l_cur_rec.employee_number))
+            THEN
+              -- DEBUGƒƒbƒZ[ƒW
+              debug(
+                 buff   => ']‹Æˆõ‚ªˆá‚¢‚Ü‚·B :' ||'‘O‰ñF '|| lv_bf_employee_number ||
+                            '¡‰ñF' || l_cur_rec.employee_number
+              );
+              -- =================================================
+              -- A-3-4,A-4-4,A-5-4,A-6-4,A-7-4.ƒ[ƒNƒe[ƒuƒ‹‚Öo—Í
+              -- =================================================
+              insert_wrk_table(
+                 ir_m_tab            => l_get_month_square_tab                      -- –¾×•”ƒŒƒR[ƒh
+                ,ir_hon_tab          => l_get_month_square_hon_tab                  -- –{‘Ì•”ƒŒƒR[ƒh
+                ,in_m_cnt            => ln_m_cnt                                    -- –¾×•”s”
+                ,in_report_output_no => ln_report_output_no                         -- ’ •[o—ÍƒZƒbƒg”Ô†
+                ,ov_errbuf           => lv_errbuf            -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+                ,ov_retcode          => lv_retcode           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+                ,ov_errmsg           => lv_errmsg            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+              );
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+              -- ƒŒƒR[ƒh‚Ì‰Šú‰»
+              l_get_month_square_tab.DELETE;
+              l_get_month_square_hon_tab.DELETE;
+              init_month_square_hon_tab(l_get_month_square_hon_tab);
+              ln_m_cnt            := 1;                       -- –¾×•””z—ñ‚Ìs”‚Ì‰Šú‰»
+              ln_report_output_no := ln_report_output_no + 1; -- o—Í‚³‚ê‚½’ •[ŒÂ”‚É{‚P‚·‚é
+              lb_boolean          := TRUE;                    -- ‰Šúˆ—‚Ìó‘Ô‚É–ß‚·
+          END IF;
+          -- ‰Šúˆ—‚Ìê‡
+          IF (lb_boolean) THEN
+            -- DEBUGƒƒbƒZ[ƒW
+            -- ‰Šúˆ—‚Ìê‡
+            debug(
+               buff   => '‰Šúˆ—‚Ìê‡' || 'ŒÚ‹qƒR[ƒh:' || l_cur_rec.account_number ||
+                         ']‹Æˆõ”Ô†:'     || l_cur_rec.employee_number ||
+                         'ˆê”Ê^©”Ì‹@^‚l‚b:' || l_cur_rec.gvm_type
+            );
+            -- ‘O‰ñ]‹Æˆõ”Ô†AŒÚ‹qƒR[ƒh‚ğƒ[ƒJƒ‹•Ï”‚ÉŠi”[
+            lv_bf_account_number       := l_cur_rec.account_number;          -- ŒÚ‹qƒR[ƒh
+            lv_bf_employee_number      := l_cur_rec.employee_number;         -- ]‹Æˆõ”Ô†
+            lv_gvm_type             := l_cur_rec.gvm_type;                -- ˆê”Ê^©”Ì‹@^‚l‚b
+            -- æ“¾‚³‚ê‚½ƒf[ƒ^‚ğƒ[ƒJƒ‹ƒŒƒR[ƒh‚ÉŠi”[
+            -- ŒÚ‹qƒR[ƒh
+            l_month_square_rec.account_number     := l_cur_rec.account_number;
+            -- ŒÚ‹q–¼
+            l_month_square_rec.party_name         := l_cur_rec.party_name;
+            -- ]‹Æˆõ”Ô†
+            l_month_square_rec.employee_number    := l_cur_rec.employee_number;
+            -- ˆê”Ê^©”Ì‹@^‚l‚b
+            l_month_square_rec.gvm_type           := l_cur_rec.gvm_type;
+            -- ‹Î–±’n‹’“_ƒR[ƒh
+            l_month_square_rec.work_base_code     := l_cur_rec.work_base_code;
+            -- ‹Î–±’n‹’“_–¼
+            l_month_square_rec.base_name          := l_cur_rec.base_name;
+            -- ]‹Æˆõ–¼
+            l_month_square_rec.name               := l_cur_rec.name;
+            -- ƒ‹[ƒgNo
+            l_month_square_rec.route_number       := l_cur_rec.route_number;
+            -- ‘O”NÀÑ
+            l_month_square_rec.rslt_amty          := l_cur_rec.rslt_amty;
+            -- æŒÀÑ
+            l_month_square_rec.rslt_amtm          := l_cur_rec.rslt_amtm;
+            -- Œ•Ê”„ã—\Z
+            l_month_square_rec.tgt_sales_prsn_total_amt := l_cur_rec.tgt_sales_prsn_total_amt;
+            -- V‹KŒÚ‹qŒ”
+            l_month_square_rec.cust_new_num       := l_cur_rec.cust_new_num;
+            -- V‹KVDŒ”
+            l_month_square_rec.cust_vd_new_num    := l_cur_rec.cust_vd_new_num;
+            BEGIN
+              IF (l_cur_rec.business_low_type IS NOT NULL) THEN
+                --‹Æ‘Ôi¬•ª—Şj‚©‚ç‹Æ‘ÔƒR[ƒh‚Æ‹Æ‘Ô–¼‚ğæ“¾
+                SELECT dai.lookup_code lookup_code                      -- ‹Æ‘ÔƒR[ƒh
+                ,      dai.meaning     meaning                          -- ‹Æ‘Ô–¼
+                INTO   l_month_square_rec.business_high_type
+                ,      l_month_square_rec.business_high_name
+                FROM   fnd_lookup_values_vl dai
+                ,      fnd_lookup_values_vl chu
+                ,      fnd_lookup_values_vl syo
+                WHERE  syo.lookup_type = cv_lookup_type_syo
+                AND    chu.lookup_type = cv_lookup_type_chu
+                AND    dai.lookup_type = cv_lookup_type_dai
+                AND    syo.lookup_code = l_cur_rec.business_low_type    --‹Æ‘Ôi¬•ª—Şj
+                AND    chu.lookup_code = syo.attribute1
+                AND    dai.lookup_code = chu.attribute1
+                AND    syo.enabled_flag   = cv_flg_y
+                AND    chu.enabled_flag   = cv_flg_y
+                AND    dai.enabled_flag   = cv_flg_y
+                AND    NVL(dai.start_date_active, TRUNC(gd_online_sysdate)) <= TRUNC(gd_online_sysdate)
+                AND    NVL(dai.end_date_active,   TRUNC(gd_online_sysdate)) >= TRUNC(gd_online_sysdate)
+                AND    NVL(chu.start_date_active, TRUNC(gd_online_sysdate)) <= TRUNC(gd_online_sysdate)
+                AND    NVL(chu.end_date_active,   TRUNC(gd_online_sysdate)) >= TRUNC(gd_online_sysdate)
+                AND    NVL(syo.start_date_active, TRUNC(gd_online_sysdate)) <= TRUNC(gd_online_sysdate)
+                AND    NVL(syo.end_date_active,   TRUNC(gd_online_sysdate)) >= TRUNC(gd_online_sysdate);
+              ELSE
+                l_month_square_rec.business_high_type   := NULL;
+                l_month_square_rec.business_high_name   := cv_mc;
+              END IF;
+            EXCEPTION
+              WHEN OTHERS THEN
+                -- ƒƒbƒZ[ƒWo—Í
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                                ,iv_name         => cv_tkn_number_08         --ƒƒbƒZ[ƒWƒR[ƒh
+                                ,iv_token_name1  => cv_tkn_table             --ƒg[ƒNƒ“ƒR[ƒh1
+                                ,iv_token_value1 => '‹Æ‘Ôi¬•ª—ŞjF'||l_cur_rec.business_low_type||
+                                                    '‚©‚çQÆƒ^ƒCƒv‹Æ‘Ôi‘å•ª—Şj'--ƒg[ƒNƒ“’l1
+                                ,iv_token_name2  => cv_tkn_errmsg            --ƒg[ƒNƒ“ƒR[ƒh‚Q
+                                ,iv_token_value2 => SQLERRM                  --ƒg[ƒNƒ“’l‚Q
+                );
+                fnd_file.put_line(
+                      which  => FND_FILE.LOG,
+                      buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                              lv_errmsg || cv_lf || 
+                               ''                         -- ‹ós‚Ì‘}“ü
+                );
+                l_month_square_rec.business_high_type   := NULL;
+                l_month_square_rec.business_high_name   := cv_mc;
+            END;
+          END IF;
+          -- “ú•t‚ğæ“¾
+          ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
+          -- DEBUGƒƒbƒZ[ƒW
+          -- ‰Šúˆ—‚Ìê‡
+          debug(
+             buff   => '“ú•t:' || l_cur_rec.sales_date || cv_lf ||
+                       '“ú•t‚¯‚Ìƒiƒ“ƒo[Œ^:'     || TO_CHAR(ln_date)
+          );
+          -- ”„ãŒv‰æ
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_amt          := l_cur_rec.tgt_amt;
+          -- ”„ãÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_amt         := l_cur_rec.rslt_amt;
+          -- “à‘¼‹’“_Q”„ãÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt  := l_cur_rec.rslt_center_amt;
+          -- –K–âŒv‰æ
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_num      := l_cur_rec.tgt_vis_num;
+          -- –K–âÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).vis_num          := l_cur_rec.vis_num;
+          -- —LŒøŒ¬”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num    := l_cur_rec.vis_sales_num;
+          -- –K–âÀÑiV‹K)
+          l_month_square_rec.l_one_day_tab(ln_date).vis_new_num      := l_cur_rec.vis_new_num;
+          -- –K–âÀÑiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num   := l_cur_rec.vis_vd_new_num;
+          -- Œ‹‡–K–â‹L†
+          l_month_square_rec.l_one_day_tab(ln_date).visit_sign       := SUBSTR(l_cur_rec.visit_sign, 1, 20);
+          -- –K–âA0ZŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- –K–âAŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- –K–âBŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- –K–âCŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- –K–âDŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- –K–âEŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- –K–âFŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- –K–âGŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- –K–âHŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- –K–âIŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- –K–âJŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- –K–âKŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- –K–âLŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- –K–âMŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- –K–âNŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- –K–âOŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- –K–âPŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- –K–âQŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- –K–âRŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- –K–âSŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- –K–âTŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- –K–âUŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- –K–âVŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- –K–âWŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- –K–âXŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- –K–âYŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- –K–âZŒ”
+          -- Å‰‚ÌƒŒƒR[ƒh‚Ìê‡
+          IF(lb_boolean) THEN
+            lb_boolean              := FALSE;                  -- ‰Šúˆ—‚Ìƒtƒ‰ƒO‚ğƒIƒt‚·‚éB
+          END IF;
+          -- ’ŠoŒ”ƒJƒEƒ“ƒ^‚É‚P‚ğ‘«‚·B
+          ln_cnt         := ln_cnt + 1;
+          gn_target_cnt  := ln_cnt;
+          -- loopŒ”
+          debug(
+                buff   => 'loopŒ”' || TO_CHAR(ln_cnt)
+          );
+        END LOOP;
+        -- ÅŒã‚Ìƒf[ƒ^“o˜^
+        IF (ln_cnt > 0) THEN
+            debug(
+                  buff   => 'ÅŒã‚Ìƒf[ƒ^‚Ì“o˜^'
+            );
+          -- =================================================
+          -- A-3-3.PLSQL•\‚ÌXV
+          -- =================================================
+          up_plsql_tab1(
+             i_month_square_rec   => l_month_square_rec          -- ˆêƒ–Œ•ªƒf[ƒ^
+            ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+            ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+            ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+            ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+            ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+            ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- =================================================
+          -- A-3-4,A-4-4,A-5-4,A-6-4,A-7-4.ƒ[ƒNƒe[ƒuƒ‹‚Öo—Í
+          -- =================================================
+          insert_wrk_table(
+             ir_m_tab            => l_get_month_square_tab                      -- –¾×•”ƒŒƒR[ƒh
+            ,ir_hon_tab          => l_get_month_square_hon_tab                  -- –{‘Ì•”ƒŒƒR[ƒh
+            ,in_m_cnt            => ln_m_cnt                                    -- –¾×•”s”
+            ,in_report_output_no => ln_report_output_no                         -- ’ •[o—ÍƒZƒbƒg”Ô†
+            ,ov_errbuf           => lv_errbuf            -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+            ,ov_retcode          => lv_retcode           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+            ,ov_errmsg           => lv_errmsg            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+      EXCEPTION
+        WHEN error_get_data_expt THEN
+          RAISE global_api_expt;
+        WHEN OTHERS THEN
+          -- ƒƒbƒZ[ƒWo—Í
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                          ,iv_name         => cv_tkn_number_08         --ƒƒbƒZ[ƒWƒR[ƒh
+                          ,iv_token_name1  => cv_tkn_table             --ƒg[ƒNƒ“ƒR[ƒh1
+                          ,iv_token_value1 => cv_tab_samari            --ƒg[ƒNƒ“’l1
+                          ,iv_token_name2  => cv_tkn_errmsg            --ƒg[ƒNƒ“ƒR[ƒh‚Q
+                          ,iv_token_value2 => SQLERRM                  --ƒg[ƒNƒ“’l‚Q
+          );
+          fnd_file.put_line(
+                which  => FND_FILE.LOG,
+                buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                        lv_errmsg || cv_lf || 
+                         ''                         -- ‹ós‚Ì‘}“ü
+          );
+          RAISE global_api_expt;
+      END;
+    -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
+    CLOSE ticket_data_cur;
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END get_ticket1;
+--
+  /**********************************************************************************
+   * Procedure Name   : up_plsql_tab2
+   * Description      : ’ •[í•Ê2-‰c‹ÆˆõƒOƒ‹[ƒv•Ê-PLSQL•\‚ÌXV (A-4-3)
+  ***********************************************************************************/
+  PROCEDURE up_plsql_tab2(
+     i_month_square_rec  IN         g_month_rtype2                     -- ˆêƒ–Œ•ªƒf[ƒ^
+    ,in_m_cnt            IN         NUMBER                             -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+    ,io_m_tab            IN  OUT    NOCOPY    g_get_month_square_ttype           -- –¾×•””z—ñ
+    ,io_hon_tab          IN  OUT    NOCOPY    g_get_month_square_ttype           -- –{‘Ì•””z—ñ
+    ,ov_errbuf           OUT NOCOPY VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+    ,ov_retcode          OUT NOCOPY VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+    ,ov_errmsg           OUT NOCOPY VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'up_plsql_tab2';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+    -- ƒ[ƒJƒ‹•Ï”
+    lv_gvm_type           VARCHAR2(1);                                       -- ˆê”Ê^©”Ì‹@^‚l‚b
+    ln_m_cnt              NUMBER(9);                                         -- INƒpƒ‰ƒ[ƒ^‚ğŠi”[
+    BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+      ln_m_cnt                            := in_m_cnt;                       -- INƒpƒ‰ƒ[ƒ^‚ğŠi”[
+      -- DEBUGƒƒbƒZ[ƒW
+      -- PL/SQL•\‚ÌXV
+      debug(
+         buff   => '‰c‹ÆƒOƒ‹[ƒv•Ê-PL/SQL•\‚ÌXVˆ—:' || TO_CHAR(ln_m_cnt)
+      );
+      
+      BEGIN
+        -- ”„‚èã‚°–¾×•”
+        io_m_tab(ln_m_cnt).base_code        := i_month_square_rec.work_base_code; -- ‹Æ–±’n‹’“_ƒR[ƒh
+        io_m_tab(ln_m_cnt).hub_name         := i_month_square_rec.base_name;     -- ‹Æ–±’n‹’“_–¼  
+        io_m_tab(in_m_cnt).group_number     := i_month_square_rec.group_number;  -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+        io_m_tab(in_m_cnt).group_name       := i_month_square_rec.group_name;    -- ‰c‹ÆƒOƒ‹[ƒv–¼
+        io_m_tab(ln_m_cnt).employee_number  := i_month_square_rec.employee_number;-- ]‹Æˆõ”Ô†
+        io_m_tab(ln_m_cnt).employee_name    := i_month_square_rec.name;          -- ]‹Æˆõ–¼
+        io_m_tab(in_m_cnt).last_year_rslt_sales_amt := i_month_square_rec.rslt_amty;   -- ‘O”NÀÑ
+        io_m_tab(in_m_cnt).last_mon_rslt_sales_amt  := i_month_square_rec.rslt_amtm;   -- æŒÀÑ
+        io_m_tab(in_m_cnt).new_customer_num := i_month_square_rec.cust_new_num;     -- ŒÚ‹qŒ”iV‹Kj
+        io_m_tab(in_m_cnt).new_vendor_num   := i_month_square_rec.cust_vd_new_num;  -- ŒÚ‹qŒ”iVDFV‹Kj
+        io_m_tab(in_m_cnt).plan_sales_amt   := i_month_square_rec.tgt_sales_prsn_total_amt;  -- Œ•Ê”„ã—\Z
+        -- DEBUGƒƒbƒZ[ƒW
+        -- PL/SQL•\‚ÌXV
+        debug(
+           buff   => '‰c‹ÆƒOƒ‹[ƒv•Ê-PL/SQL•\‚ÌXVˆ—' || '”„‚èã‚°–¾×•”ŒÅ’è•”Š®—¹'
+        );
+      EXCEPTION
+        WHEN OTHERS THEN
+          fnd_file.put_line(
+           which  => FND_FILE.LOG,
+           buff   => '‰c‹ÆƒOƒ‹[ƒv•Ê-PL/SQL•\‚ÌXVˆ—¸”s:' || SQLERRM 
+         );
+         RAISE global_api_others_expt;
+      END;
+      -- –{‘Ì•”
+      IF(ln_m_cnt = 1) THEN
+        FOR i IN 1..cn_idx_max LOOP 
+          IF (i = cn_idx_sales_ippn) THEN   --”„‚èã‚°’†Œv•”(ˆê”Ê)
+            io_hon_tab(i).gvm_type                 := cv_gvm_g;                              -- ˆê”Ê
+          ELSIF(i=cn_idx_sales_vd) THEN      --”„‚èã‚°’†Œv•”(©”Ì‹@)
+            io_hon_tab(i).gvm_type                 := cv_gvm_v;                              -- ©”Ì‹@
+          ELSIF(i = cn_idx_sales_sum) THEN
+            NULL;
+          ELSIF(i=cn_idx_visit_ippn)THEN       --–K–â’†Œv•”
+            io_hon_tab(i).gvm_type                 := cv_gvm_g;                              -- ˆê”Ê
+          ELSIF(i=cn_idx_visit_vd)THEN       --–K–â’†Œv•”
+            io_hon_tab(i).gvm_type                 := cv_gvm_v;                              -- ©”Ì‹@
+          ELSIF(i=cn_idx_visit_mc)THEN       --–K–â’†Œv•”
+            io_hon_tab(i).gvm_type                 := cv_gvm_m;                              -- MC
+          END IF;
+          io_hon_tab(i).base_code      :=i_month_square_rec.work_base_code;-- ‹Æ–±’n‹’“_ƒR[ƒh
+          io_hon_tab(i).hub_name       :=i_month_square_rec.base_name;    -- ‹Æ–±’n‹’“_–¼
+          io_hon_tab(i).group_number   :=i_month_square_rec.group_number; -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+          io_hon_tab(i).group_name     :=i_month_square_rec.group_name;   -- ‰c‹ÆƒOƒ‹[ƒv–¼
+        END LOOP;
+      END IF;
+--
+      -- ”„ã’†Œv•”(ˆê”Ê)
+      io_hon_tab(cn_idx_sales_ippn).last_year_rslt_sales_amt := 
+        io_hon_tab(cn_idx_sales_ippn).last_year_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_other_amty, 0);    -- ‘O”NÀÑ
+      io_hon_tab(cn_idx_sales_ippn).last_mon_rslt_sales_amt  :=
+        io_hon_tab(cn_idx_sales_ippn).last_mon_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_other_amtm, 0);    -- æŒÀÑ
+      io_hon_tab(cn_idx_sales_ippn).new_customer_num :=
+        io_hon_tab(cn_idx_sales_ippn).new_customer_num +
+        NVL(i_month_square_rec.cust_other_new_num, 0); -- ŒÚ‹qŒ”iV‹Kjiˆê”Êj
+      -- ”„ã’†Œv•”(©”Ì‹@)
+      io_hon_tab(cn_idx_sales_vd).last_year_rslt_sales_amt :=
+        io_hon_tab(cn_idx_sales_vd).last_year_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_vd_amty, 0);       -- ‘O”NÀÑ
+      io_hon_tab(cn_idx_sales_vd).last_mon_rslt_sales_amt :=
+        io_hon_tab(cn_idx_sales_vd).last_mon_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_vd_amtm, 0);       -- æŒÀÑ
+      io_hon_tab(cn_idx_sales_vd).new_customer_num :=
+        io_hon_tab(cn_idx_sales_vd).new_customer_num +
+        i_month_square_rec.cust_vd_new_num;            -- ŒÚ‹qŒ”iV‹Kj(©”Ì‹@)
+--
+      FOR i IN 1..31 LOOP
+        BEGIN
+          -- DEBUGƒƒbƒZ[ƒW
+          -- PL/SQL•\‚ÌXV
+          debug(
+             buff   => '‰c‹ÆƒOƒ‹[ƒv•Ê-PL/SQL•\‚ÌXVˆ—' || '1ƒ–Œ•ª‚Ìƒf[ƒ^XV'
+          );
+          -- ”„‚èã‚°–¾×•”
+          io_m_tab(ln_m_cnt).l_get_one_day_tab(i).plan_vs_amt
+            := i_month_square_rec.l_one_day_tab(i).tgt_amt;               -- ”„‚èã‚°Œv‰æ
+          io_m_tab(ln_m_cnt).l_get_one_day_tab(i).rslt_vs_amt
+            := i_month_square_rec.l_one_day_tab(i).rslt_amt;              -- ”„‚èã‚°ÀÑ
+          io_m_tab(ln_m_cnt).l_get_one_day_tab(i).rslt_other_sales_amt
+            := i_month_square_rec.l_one_day_tab(i).rslt_center_amt;       -- “à‘¼‹’“_Q”„ãÀÑ
+          -- ”„‚èã‚°’†Œv•”(ˆê”Ê)
+          io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).plan_vs_amt :=
+            io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).plan_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).tgt_other_amt,0);     --”„ãŒv‰æ,–K–âŒv‰æ
+          io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_other_amt,0);    -- ”„ãÀÑ,–K–âÀÑ
+          -- ”„‚èã‚°’†Œv•”(©”Ì‹@)
+          io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).plan_vs_amt :=
+            io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).plan_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).tgt_vd_amt,0);        --”„ãŒv‰æ,–K–âŒv‰æ
+          io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_vd_amt,0);       -- ”„ãÀÑ,–K–âÀÑ
+          -- ”„‚èã‚°‡Œv•”
+          -- –K–â’†Œv•”(ˆê”Ê)
+          io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).plan_vs_amt :=
+            io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).plan_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).tgt_vis_other_num,0); --”„ãŒv‰æ,–K–âŒv‰æ
+          io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_other_num,0);         -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â’†Œv•”(©”Ì‹@)
+          io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).plan_vs_amt :=
+            io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).plan_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).tgt_vis_vd_num,0);        --”„ãŒv‰æ,–K–âŒv‰æ
+          io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_vd_num,0);            -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â’†Œv•”(MC)
+          io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).plan_vs_amt :=
+            io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).plan_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).tgt_vis_mc_num,0);        --”„ãŒv‰æ,–K–âŒv‰æ
+          io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_mc_num,0);            -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â‡Œv•”
+          io_hon_tab(cn_idx_visit_sum).l_get_one_day_tab(i).effective_num :=
+            io_hon_tab(cn_idx_visit_sum).l_get_one_day_tab(i).effective_num + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_sales_num,0);         -- —LŒøŒ¬”
+          -- –K–â“à—e‡Œv•”
+          io_hon_tab(cn_idx_visit_dsc).vis_a_num := 
+             io_hon_tab(cn_idx_visit_dsc).vis_a_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_a_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_b_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_b_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_b_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_c_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_c_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_c_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_d_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_d_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_d_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_e_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_e_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_e_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_f_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_f_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_f_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_g_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_g_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_g_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_h_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_h_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_h_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_i_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_i_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_i_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_j_num := 
+             io_hon_tab(cn_idx_visit_dsc).vis_j_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_j_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_k_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_k_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_k_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_l_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_l_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_l_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_m_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_m_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_m_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_n_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_n_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_n_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_o_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_o_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_o_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_p_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_p_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_p_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_q_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_q_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_q_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_r_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_r_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_r_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_s_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_s_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_s_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_t_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_t_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_t_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_u_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_u_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_u_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_v_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_v_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_v_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_w_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_w_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_w_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_x_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_x_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_x_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_y_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_y_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_y_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_z_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_z_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_z_num,0);
+        EXCEPTION
+          WHEN OTHERS THEN
+          fnd_file.put_line(
+             which  => FND_FILE.LOG,
+             buff   => '‰c‹ÆƒOƒ‹[ƒv•Ê-PL/SQL•\-–{‘Ì•”‚ÌXVˆ—‚ÅƒGƒ‰[‚É‚È‚è‚Ü‚µ‚½B' || SQLERRM ||
+                      ''                         -- ‹ós‚Ì‘}“ü
+           );
+        END;
+      END LOOP;
+    EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END up_plsql_tab2;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_ticket2
+   * Description      : ’ •[í•Ê2-‰c‹ÆˆõƒOƒ‹[ƒv•Ê (A-4-1,A-4-2)
+  ***********************************************************************************/
+  PROCEDURE get_ticket2(
+    ov_errbuf         OUT NOCOPY VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+   ,ov_retcode        OUT NOCOPY VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+   ,ov_errmsg         OUT NOCOPY VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'get_ticket2';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ƒ[ƒJƒ‹’è”
+    -- ƒ[ƒJƒ‹•Ï”
+    lb_boolean            BOOLEAN;      -- ”»’f—p
+    ln_m_cnt              NUMBER(9);    -- –¾×•”ƒJƒEƒ“ƒ^[”Ši”[
+    ln_cnt                NUMBER(9);    -- ’Šo‚³‚ê‚½ƒŒƒR[ƒhŒ”
+    ln_date               NUMBER(2);    -- “ú•t‚Ìƒiƒ“ƒo[Œ^
+    ln_report_output_no   NUMBER(9);    -- ’ •[o—ÍƒZƒbƒg”Ô†
+    lv_bf_group_number    xxcso_resource_relations_v2.group_number_new%TYPE;
+    lv_bf_employee_number xxcso_resource_relations_v2.employee_number%TYPE;
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+    CURSOR ticket_data_cur
+    IS
+      SELECT
+              (CASE
+                WHEN TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                  THEN xrrv.work_base_code_new
+                ELSE xrrv.work_base_code_old
+              END 
+              ) work_base_code,                         -- ‹Î–±’n‹’“_ƒR[ƒh
+              (CASE
+                WHEN TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                  THEN xrrv.work_base_name_new
+                ELSE xrrv.work_base_name_old
+              END
+              ) base_name,                              -- ‹Î–±’n‹’“_–¼
+              (CASE
+                WHEN TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                  THEN xrrv.group_number_new
+                ELSE xrrv.group_number_old
+              END 
+              ) group_number,                                     -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+              (xrrv.last_name || 'ƒOƒ‹[ƒv') group_name,          -- ‰c‹ÆƒOƒ‹[ƒv–¼
+              xrrv.employee_number           employee_number,     -- ]‹Æˆõ”Ô†
+              xrrv.full_name              name,                   -- ]‹Æˆõ–¼
+              xsvsr.sales_date            sales_date,             -- ”Ì”„”NŒ“ú
+              xsvsr.tgt_amt               tgt_amt,                -- ”„ãŒv‰æ
+              xsvsr.tgt_new_amt           tgt_new_amt,            -- ”„ãŒv‰æiV‹Kj
+              xsvsr.tgt_vd_new_amt        tgt_vd_new_amt,         -- ”„ãŒv‰æiVDFV‹Kj
+              xsvsr.tgt_vd_amt            tgt_vd_amt,             -- ”„ãŒv‰æiVDj
+              xsvsr.tgt_other_new_amt     tgt_other_new_amt,      -- ”„ãŒv‰æiVDˆÈŠOFV‹Kj
+              xsvsr.tgt_other_amt         tgt_other_amt,          -- ”„ãŒv‰æiVDˆÈŠOj
+              xsvsr.rslt_amt              rslt_amt,               -- ”„ãÀÑ
+              xsvsr.rslt_new_amt          rslt_new_amt,           -- ”„ãÀÑiV‹Kj
+              xsvsr.rslt_vd_new_amt       rslt_vd_new_amt,        -- ”„ãÀÑiVDFV‹Kj
+              xsvsr.rslt_vd_amt           rslt_vd_amt,            -- ”„ãÀÑiVDj
+              xsvsr.rslt_other_new_amt    rslt_other_new_amt,     -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+              xsvsr.rslt_other_amt        rslt_other_amt,         -- ”„ãÀÑiVDˆÈŠOj
+              xsvsr.rslt_center_amt       rslt_center_amt,        -- “à‘¼‹’“_Q”„ãÀÑ
+              xsvsr.tgt_vis_num           tgt_vis_num,            -- –K–âŒv‰æ
+              xsvsr.tgt_vis_new_num       tgt_vis_new_num,        -- –K–âŒv‰æiV‹Kj
+              xsvsr.tgt_vis_vd_new_num    tgt_vis_vd_new_num,     -- –K–âŒv‰æiVDFV‹Kj
+              xsvsr.tgt_vis_vd_num        tgt_vis_vd_num,         -- –K–âŒv‰æiVDj
+              xsvsr.tgt_vis_other_new_num tgt_vis_other_new_num,  -- –K–âŒv‰æiVDˆÈŠOFV‹Kj
+              xsvsr.tgt_vis_other_num     tgt_vis_other_num,      -- –K–âŒv‰æiVDˆÈŠOj
+              xsvsr.tgt_vis_mc_num        tgt_vis_mc_num,         -- –K–âŒv‰æiMCj
+              xsvsr.vis_num               vis_num,                -- –K–âÀÑ
+              xsvsr.vis_new_num           vis_new_num,            -- –K–âÀÑiV‹Kj
+              xsvsr.vis_vd_new_num        vis_vd_new_num,         -- –K–âÀÑiVDFV‹Kj
+              xsvsr.vis_vd_num            vis_vd_num,             -- –K–âÀÑiVDj
+              xsvsr.vis_other_new_num     vis_other_new_num,      -- –K–âÀÑiVDˆÈŠOFV‹Kj
+              xsvsr.vis_other_num         vis_other_num,          -- –K–âÀÑiVDˆÈŠOj
+              xsvsr.vis_mc_num            vis_mc_num,             -- –K–âÀÑiMCj
+              xsvsr.vis_sales_num         vis_sales_num,          -- —LŒøŒ¬”
+              xsvsr.vis_a_num             vis_a_num,              -- –K–â‚`Œ”
+              xsvsr.vis_b_num             vis_b_num,              -- –K–â‚aŒ”
+              xsvsr.vis_c_num             vis_c_num,              -- –K–â‚bŒ”
+              xsvsr.vis_d_num             vis_d_num,              -- –K–â‚cŒ”
+              xsvsr.vis_e_num             vis_e_num,              -- –K–â‚dŒ”
+              xsvsr.vis_f_num             vis_f_num,              -- –K–â‚eŒ”
+              xsvsr.vis_g_num             vis_g_num,              -- –K–â‚fŒ”
+              xsvsr.vis_h_num             vis_h_num,              -- –K–â‚gŒ”
+              xsvsr.vis_i_num             vis_i_num,              -- –K–âú@Œ”
+              xsvsr.vis_j_num             vis_j_num,              -- –K–â‚iŒ”
+              xsvsr.vis_k_num             vis_k_num,              -- –K–â‚jŒ”
+              xsvsr.vis_l_num             vis_l_num,              -- –K–â‚kŒ”
+              xsvsr.vis_m_num             vis_m_num,              -- –K–â‚lŒ”
+              xsvsr.vis_n_num             vis_n_num,              -- –K–â‚mŒ”
+              xsvsr.vis_o_num             vis_o_num,              -- –K–â‚nŒ”
+              xsvsr.vis_p_num             vis_p_num,              -- –K–â‚oŒ”
+              xsvsr.vis_q_num             vis_q_num,              -- –K–â‚pŒ”
+              xsvsr.vis_r_num             vis_r_num,              -- –K–â‚qŒ”
+              xsvsr.vis_s_num             vis_s_num,              -- –K–â‚rŒ”
+              xsvsr.vis_t_num             vis_t_num,              -- –K–â‚sŒ”
+              xsvsr.vis_u_num             vis_u_num,              -- –K–â‚tŒ”
+              xsvsr.vis_v_num             vis_v_num,              -- –K–â‚uŒ”
+              xsvsr.vis_w_num             vis_w_num,              -- –K–â‚vŒ”
+              xsvsr.vis_x_num             vis_x_num,              -- –K–â‚wŒ”
+              xsvsr.vis_y_num             vis_y_num,              -- –K–â‚xŒ”
+              xsvsr.vis_z_num             vis_z_num,              -- –K–â‚yŒ”
+              xsvsry.rslt_amt             rslt_amty,              -- ‘O”NÀÑ
+              xsvsry.rslt_vd_amt          rslt_vd_amty,           -- ‘O”NÀÑiVDj
+              xsvsry.rslt_other_amt       rslt_other_amty,        -- ‘O”NÀÑiVDˆÈŠOj
+              xsvsrm.rslt_amt             rslt_amtm,              -- æŒÀÑ
+              xsvsrm.rslt_vd_amt          rslt_vd_amtm,           -- æŒÀÑiVDj
+              xsvsrm.rslt_other_amt       rslt_other_amtm,        -- æŒÀÑiVDˆÈŠOj
+              xsvsrn.cust_new_num         cust_new_num,           -- ŒÚ‹qŒ”iV‹Kj
+              xsvsrn.cust_vd_new_num      cust_vd_new_num,        -- ŒÚ‹qŒ”iVDFV‹Kj
+              xsvsrn.cust_other_new_num   cust_other_new_num,     -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+              xsvsrn.tgt_sales_prsn_total_amt  tgt_sales_prsn_total_amt  -- Œ•Ê”„ã—\Z
+      FROM    xxcso_resource_relations_v2 xrrv                    -- ƒŠƒ\[ƒXŠÖ˜Aƒ}ƒXƒ^(ÅV)VIEW
+             ,xxcso_sum_visit_sale_rep    xsvsr                   -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠƒe[ƒuƒ‹
+             ,xxcso_sum_visit_sale_rep    xsvsry                  -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠ‘O”N
+             ,xxcso_sum_visit_sale_rep    xsvsrm                  -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠæŒ
+             ,xxcso_sum_visit_sale_rep    xsvsrn                  -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠ“–Œ
+      WHERE  (CASE
+                WHEN TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                  THEN xrrv.work_base_code_new
+                ELSE xrrv.work_base_code_old
+              END 
+              )  = gv_base_code
+        AND   ( 
+                ( gv_is_groupleader = cv_true
+                  AND
+                  ( CASE 
+                      WHEN xrrv.issue_date IS NULL
+                        THEN xrrv.group_number_new
+                      WHEN xrrv.issue_date <= gv_online_sysdate
+                        THEN xrrv.group_number_new
+                      ELSE xrrv.group_number_old
+                    END
+                  ) = gt_group_number
+                )
+                OR
+                ( gv_is_groupleader = cv_false
+                  AND
+                  1 = 1
+                )
+              )
+        AND   xrrv.employee_number = xsvsr.sum_org_code
+        AND   xsvsr.sum_org_type   = cv_sum_org_type2
+        AND   xsvsr.month_date_div = cv_month_date_div2
+        AND   xsvsr.sales_date
+                BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        AND   xsvsr.sum_org_type   = xsvsry.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsry.sum_org_code(+)
+        AND   xsvsry.month_date_div(+)= cv_month_date_div1
+        AND   xsvsry.sales_date(+) = gv_year_prev
+        AND   xsvsr.sum_org_type   = xsvsrm.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsrm.sum_org_code(+)
+        AND   xsvsrm.month_date_div(+)= cv_month_date_div1
+        AND   xsvsrm.sales_date(+) = gv_year_month_prev
+        AND   xsvsr.sum_org_type   = xsvsrn.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsrn.sum_org_code(+)
+        AND   xsvsrn.month_date_div(+)= cv_month_date_div1
+        AND   xsvsrn.sales_date(+) = gv_year_month
+      ORDER BY  work_base_code     ASC,
+                group_number       ASC,
+                employee_number    ASC;
+    -- ƒ[ƒJƒ‹ƒŒƒR[ƒh
+    l_cur_rec               ticket_data_cur%ROWTYPE;
+    -- ’ •[•Ï”Ši”[—p
+    l_month_square_rec         g_month_rtype2;
+    l_get_month_square_tab     g_get_month_square_ttype;
+    l_get_month_square_hon_tab g_get_month_square_ttype;
+    BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+      -- ƒ[ƒJƒ‹•Ï”‰Šú‰»
+      lb_boolean                := TRUE;        -- ‰Šúˆ—”»’f
+      ln_m_cnt                  := 1;           -- –¾×•”‚Ìs”
+      ln_report_output_no       := 1;           -- ”z—ñs”
+      ln_cnt                    := 0;           -- LOOPŒ”
+      -- PL/SQL•\i–{‘Ì•”j‚Ì‰Šú‰»
+      init_month_square_hon_tab(l_get_month_square_hon_tab);
+      -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ì‰Šú‰»
+      init_month_square_rec2(l_month_square_rec);
+      BEGIN
+        --ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
+        OPEN ticket_data_cur;
+--
+DO_ERROR('A-4-2-1');
+        debug(
+          buff   => 'ticket_data_curƒJ[ƒ\ƒ‹ƒI[ƒvƒ“'
+        );
+--
+        <<get_data_loop>>
+        LOOP 
+          l_cur_rec                           := NULL;          -- ƒJ[ƒ\ƒ‹ƒŒƒR[ƒh‚Ì‰Šú‰»
+--
+          FETCH ticket_data_cur INTO l_cur_rec;                 -- ƒJ[ƒ\ƒ‹‚Ìƒf[ƒ^‚ğƒŒƒR[ƒh‚ÉŠi”[
+--
+DO_ERROR('A-4-2-2');
+          debug(
+            buff   => '@ƒJ[ƒ\ƒ‹FETCH'
+          );
+--
+          debug(
+            buff   => l_cur_rec.work_base_code                    ||','||
+                      l_cur_rec.base_name                         ||','||
+                      l_cur_rec.group_number                      ||','||
+                      l_cur_rec.group_name                        ||','||
+                      l_cur_rec.employee_number                   ||','||
+                      l_cur_rec.name                              ||','||
+                      l_cur_rec.sales_date                        ||','||
+                      TO_CHAR(l_cur_rec.tgt_amt)                  ||','||
+                      TO_CHAR(l_cur_rec.tgt_new_amt)              ||','||
+                      TO_CHAR(l_cur_rec.tgt_vd_new_amt)           ||','||
+                      TO_CHAR(l_cur_rec.tgt_vd_amt)               ||','||
+                      TO_CHAR(l_cur_rec.tgt_other_new_amt)        ||','||
+                      TO_CHAR(l_cur_rec.tgt_other_amt)            ||','||
+                      TO_CHAR(l_cur_rec.rslt_amt)                 ||','||
+                      TO_CHAR(l_cur_rec.rslt_new_amt)             ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_new_amt)          ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amt)              ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_new_amt)       ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amt)           ||','||
+                      TO_CHAR(l_cur_rec.rslt_center_amt)          ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_num)              ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_new_num)          ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_vd_new_num)       ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_vd_num)           ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_other_new_num)    ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_other_num)        ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_mc_num)           ||','||
+                      TO_CHAR(l_cur_rec.vis_num)                  ||','||
+                      TO_CHAR(l_cur_rec.vis_new_num)              ||','||
+                      TO_CHAR(l_cur_rec.vis_vd_new_num)           ||','||
+                      TO_CHAR(l_cur_rec.vis_vd_num)               ||','||
+                      TO_CHAR(l_cur_rec.vis_other_new_num)        ||','||
+                      TO_CHAR(l_cur_rec.vis_other_num)            ||','||
+                      TO_CHAR(l_cur_rec.vis_mc_num)               ||','||
+                      TO_CHAR(l_cur_rec.vis_sales_num)            ||','||
+                      TO_CHAR(l_cur_rec.vis_a_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_b_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_c_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_d_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_e_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_f_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_g_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_h_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_i_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_j_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_k_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_l_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_m_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_n_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_o_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_p_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_q_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_r_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_s_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_t_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_u_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_v_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_w_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_x_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_y_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_z_num)                ||','||
+                      TO_CHAR(l_cur_rec.rslt_amty)                ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amty)             ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amty)          ||','||
+                      TO_CHAR(l_cur_rec.rslt_amtm)                ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amtm)             ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amtm)          ||','||
+                      TO_CHAR(l_cur_rec.cust_new_num)             ||','||
+                      TO_CHAR(l_cur_rec.cust_other_new_num)       ||','||
+                      TO_CHAR(l_cur_rec.tgt_sales_prsn_total_amt) ||','||
+                     cv_lf 
+          );
+          -- ‘ÎÛŒ”‚ªOŒ‚Ìê‡
+          EXIT WHEN ticket_data_cur%NOTFOUND
+            OR  ticket_data_cur%ROWCOUNT = 0;
+--
+          -- ‘O‰ñƒŒƒR[ƒh‚Æ‰c‹ÆƒOƒ‹[ƒv‚ª“¯‚¶‚Å‰c‹Æˆõ”Ô†‚ªˆá‚¤ê‡A–¾×•””z—ñ‚Æ–{‘Ì•””z—ñ‚ğXVB
+          IF(lb_boolean=FALSE) THEN
+            IF((lv_bf_group_number = l_cur_rec.group_number)AND(lv_bf_employee_number <> l_cur_rec.employee_number))
+              THEN
+              -- DEBUGƒƒbƒZ[ƒW
+              debug(
+                 buff   => ']‹Æˆõ”Ô†‚ªˆá‚¢‚Ü‚·B :' ||'‘O‰ñF '|| lv_bf_employee_number ||
+                            '¡‰ñF' || l_cur_rec.employee_number ||
+                            '–¾×•””z—ñ' || TO_CHAR(ln_m_cnt)
+              );
+              -- =================================================
+              -- A-4-3.PLSQL•\‚ÌXV
+              -- =================================================
+                up_plsql_tab2(
+                   i_month_square_rec   => l_month_square_rec          -- ˆêƒ–Œ•ªƒf[ƒ^
+                  ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+                  ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+                  ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+                  ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+                  ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+                  ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+                );
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+                l_month_square_rec.l_one_day_tab.DELETE;  -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+                l_month_square_rec      := NULL;          -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+                init_month_square_rec2(l_month_square_rec);
+                ln_m_cnt          := ln_m_cnt + 1;       -- –¾×•””z—ñ‚ğ{‚P‚·‚éB
+                lb_boolean        := TRUE;               -- ‰Šúˆ—‚Ìƒtƒ‰ƒOƒIƒ“‚·‚éB
+            ELSIF(lv_bf_group_number <> l_cur_rec.group_number)THEN
+              -- =================================================
+              -- A-4-3.PLSQL•\‚ÌXV
+              -- =================================================
+              up_plsql_tab2(
+                 i_month_square_rec   => l_month_square_rec          -- ˆêƒ–Œ•ªƒf[ƒ^
+                ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+                ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+                ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+                ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+                ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+                ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+              );
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+              l_month_square_rec.l_one_day_tab.DELETE;  -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+              l_month_square_rec      := NULL;          -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+              init_month_square_rec2(l_month_square_rec);
+              lb_boolean        := TRUE;               -- ‰Šúˆ—‚Ìƒtƒ‰ƒOƒIƒ“‚·‚éB
+            END IF;
+          END IF;
+          -- ‰c‹ÆƒOƒ‹[ƒv”Ô†‚ª‘O‰ñæ“¾‚µ‚½‰c‹ÆƒOƒ‹[ƒv”Ô†‚Æˆá‚¤ê‡ƒ[ƒNƒe[ƒuƒ‹‚Éo—Í‚µ‚Ü‚·B
+          IF ((ln_cnt > 0) AND
+              (lv_bf_group_number <> l_cur_rec.group_number)) THEN
+            debug(
+               buff   => '‰c‹ÆˆõƒOƒ‹[ƒv”Ô†‚ªˆá‚¢‚Ü‚·B :' ||'‘O‰ñF '|| lv_bf_group_number || ''||
+                          '¡‰ñF' || l_cur_rec.group_number
+            );
+            -- =================================================
+            -- A-3-4,A-4-4,A-5-4,A-6-4,A-7-4.ƒ[ƒNƒe[ƒuƒ‹‚Öo—Í
+            -- =================================================
+            insert_wrk_table(
+               ir_m_tab            => l_get_month_square_tab                      -- –¾×•”ƒŒƒR[ƒh
+              ,ir_hon_tab          => l_get_month_square_hon_tab                  -- –{‘Ì•”ƒŒƒR[ƒh
+              ,in_m_cnt            => ln_m_cnt                                    -- –¾×•”s”
+              ,in_report_output_no => ln_report_output_no                         -- ’ •[o—ÍƒZƒbƒg”Ô†
+              ,ov_errbuf           => lv_errbuf            -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+              ,ov_retcode          => lv_retcode           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+              ,ov_errmsg           => lv_errmsg            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+            );
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+            -- ƒŒƒR[ƒh‚Ì‰Šú‰»
+            l_get_month_square_tab.DELETE;
+            l_get_month_square_hon_tab.DELETE;
+            init_month_square_hon_tab(l_get_month_square_hon_tab);
+            ln_m_cnt            := 1;                       -- –¾×•””z—ñ‚Ìs”‚Ì‰Šú‰»
+            ln_report_output_no := ln_report_output_no + 1; -- o—Í‚³‚ê‚½’ •[ŒÂ”‚É{‚P‚·‚é
+            lb_boolean          := TRUE;                    -- ‰Šúˆ—‚Ìó‘Ô‚É–ß‚·
+          END IF;
+          -- ‰Šúˆ—‚Ìê‡
+          IF(lb_boolean) THEN
+            -- ‰c‹Æˆõ”Ô†‚Æ‰c‹ÆˆõƒOƒ‹[ƒv”Ô†‚ğƒ[ƒJƒ‹•Ï”‚ÉŠi”[
+            lv_bf_group_number         := l_cur_rec.group_number;          -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+            lv_bf_employee_number      := l_cur_rec.employee_number;       -- ]‹Æˆõ”Ô†
+            -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚ÉŠi”[
+            -- ‹Î–±’n‹’“_ƒR[ƒh
+            l_month_square_rec.work_base_code     := l_cur_rec.work_base_code;
+            -- ‹Î–±’n‹’“_–¼
+            l_month_square_rec.base_name          := l_cur_rec.base_name;
+            -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+            l_month_square_rec.group_number       := l_cur_rec.group_number;
+            -- ‰c‹ÆƒOƒ‹[ƒv–¼
+            l_month_square_rec.group_name         := l_cur_rec.group_name;
+            -- ]‹Æˆõ”Ô†
+            l_month_square_rec.employee_number    := l_cur_rec.employee_number;
+            -- ]‹Æˆõ–¼
+            l_month_square_rec.name               := l_cur_rec.name;
+            -- V‹KŒÚ‹qŒ”
+            l_month_square_rec.cust_new_num    := l_cur_rec.cust_new_num;
+            -- V‹KVDŒ”
+            l_month_square_rec.cust_vd_new_num    := l_cur_rec.cust_vd_new_num;
+            -- V‹KVDˆÈŠOŒ”
+            l_month_square_rec.cust_other_new_num := l_cur_rec.cust_other_new_num;
+            -- ‘O”NÀÑ
+            l_month_square_rec.rslt_amty          := l_cur_rec.rslt_amty;
+            -- ‘O”NÀÑiVDj
+            l_month_square_rec.rslt_vd_amty       := l_cur_rec.rslt_vd_amty;
+            -- ‘O”NÀÑiVDˆÈŠOj
+            l_month_square_rec.rslt_other_amty    := l_cur_rec.rslt_other_amty;
+            -- æŒÀÑ
+            l_month_square_rec.rslt_amtm          := l_cur_rec.rslt_amtm;
+            -- æŒÀÑiVDj
+            l_month_square_rec.rslt_vd_amtm       := l_cur_rec.rslt_vd_amtm;
+            -- æŒÀÑiVDˆÈŠOj
+            l_month_square_rec.rslt_other_amtm    := l_cur_rec.rslt_other_amtm;
+            -- Œ•Ê”„ã—\Z
+            l_month_square_rec.tgt_sales_prsn_total_amt := l_cur_rec.tgt_sales_prsn_total_amt;
+            lb_boolean := FALSE;                  -- ‰Šúˆ—‚Ìƒtƒ‰ƒO‚ğƒIƒt‚·‚éB
+            -- DEBUGƒƒbƒZ[ƒW
+            -- ‰Šúˆ—‚Ìê‡
+            debug(
+               buff   => '‰Šúˆ—ƒtƒ‰ƒO:' || 'FALSE'
+            );
+          END IF;
+          -- “ú•t‚ğæ“¾
+          ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
+          -- DEBUGƒƒbƒZ[ƒW
+          -- ‰Šúˆ—‚Ìê‡
+          debug(
+             buff   => '“ú•t:' || l_cur_rec.sales_date || cv_lf ||
+                       '“ú•t‚¯‚Ìƒiƒ“ƒo[Œ^:'     || TO_CHAR(ln_date)
+          );
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_amt               
+            := l_cur_rec.tgt_amt;              -- ”„ãŒv‰æ
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_new_amt           
+            := l_cur_rec.tgt_new_amt;          -- ”„ãŒv‰æiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_new_amt        
+            := l_cur_rec.tgt_vd_new_amt;       -- ”„ãŒv‰æiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_amt            
+            := l_cur_rec.tgt_vd_amt;           -- ”„ãŒv‰æiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_other_new_amt     
+            := l_cur_rec.tgt_other_new_amt;    -- ”„ãŒv‰æiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_other_amt         
+            := l_cur_rec.tgt_other_amt;        -- ”„ãŒv‰æiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_amt              
+            := l_cur_rec.rslt_amt;             -- ”„ãÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt          
+            := l_cur_rec.rslt_new_amt;         -- ”„ãÀÑiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt       
+            := l_cur_rec.rslt_vd_new_amt;      -- ”„ãÀÑiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt           
+            := l_cur_rec.rslt_vd_amt;          -- ”„ãÀÑiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt    
+            := l_cur_rec.rslt_other_new_amt;   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt        
+            := l_cur_rec.rslt_other_amt;       -- ”„ãÀÑiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt       
+            := l_cur_rec.rslt_center_amt;      -- “à‘¼‹’“_Q”„ãÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_num           
+            := l_cur_rec.tgt_vis_num;          -- –K–âŒv‰æ
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_new_num       
+            := l_cur_rec.tgt_vis_new_num;      -- –K–âŒv‰æiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_new_num    
+            := l_cur_rec.tgt_vis_vd_new_num;   -- –K–âŒv‰æiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_num        
+            := l_cur_rec.tgt_vis_vd_num;       -- –K–âŒv‰æiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_new_num 
+            := l_cur_rec.tgt_vis_other_new_num;-- –K–âŒv‰æiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_num     
+            := l_cur_rec.tgt_vis_other_num;    -- –K–âŒv‰æiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_mc_num     
+            := l_cur_rec.tgt_vis_mc_num;        -- –K–âŒv‰æiMCj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_num               
+            := l_cur_rec.vis_num;               -- –K–âÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).vis_new_num           
+            := l_cur_rec.vis_new_num;           -- –K–âÀÑiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num        
+            := l_cur_rec.vis_vd_new_num;        -- –K–âÀÑiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num            
+            := l_cur_rec.vis_vd_num;            -- –K–âÀÑiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num     
+            := l_cur_rec.vis_other_new_num;     -- –K–âÀÑiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_other_num         
+            := l_cur_rec.vis_other_num;         -- –K–âÀÑiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num         
+            := l_cur_rec.vis_mc_num;            -- –K–âÀÑiMCj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num         
+            := l_cur_rec.vis_sales_num;         -- —LŒøŒ¬”
+          -- A0Z–K–âŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- –K–âAŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- –K–âBŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- –K–âCŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- –K–âDŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- –K–âEŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- –K–âFŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- –K–âGŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- –K–âHŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- –K–âIŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- –K–âJŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- –K–âKŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- –K–âLŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- –K–âMŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- –K–âNŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- –K–âOŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- –K–âPŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- –K–âQŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- –K–âRŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- –K–âSŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- –K–âTŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- –K–âUŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- –K–âVŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- –K–âWŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- –K–âXŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- –K–âYŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- –K–âZŒ”
+          -- Å‰‚ÌƒŒƒR[ƒh‚Ìê‡
+          IF(lb_boolean) THEN
+            lb_boolean              := FALSE;                  -- ‰Šúˆ—‚Ìƒtƒ‰ƒO‚ğƒIƒt‚·‚éB
+          END IF;
+          -- ’ŠoŒ”ƒJƒEƒ“ƒ^‚É‚P‚ğ‘«‚·B
+          ln_cnt := ln_cnt + 1;
+          gn_target_cnt  := ln_cnt;
+          -- loopŒ”
+          debug(
+                buff   => 'loopŒ”' || TO_CHAR(ln_cnt)
+          );
+        END LOOP;
+        -- ÅŒã‚Ìƒf[ƒ^“o˜^
+        IF (ln_cnt > 0) THEN
+            debug(
+                  buff   => 'ÅŒã‚Ìƒf[ƒ^‚Ì“o˜^'
+            );
+        -- =================================================
+        -- A-4-3.PLSQL•\‚ÌXV
+        -- =================================================
+        up_plsql_tab2(
+          i_month_square_rec   => l_month_square_rec          -- ˆêƒ–Œ•ªƒf[ƒ^
+         ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+         ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+         ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+         ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+         ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+         ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+        -- =================================================
+        -- A-3-4,A-4-4,A-5-4,A-6-4,A-7-4.ƒ[ƒNƒe[ƒuƒ‹‚Öo—Í
+        -- =================================================
+        insert_wrk_table(
+           ir_m_tab            => l_get_month_square_tab                      -- –¾×•”ƒŒƒR[ƒh
+          ,ir_hon_tab          => l_get_month_square_hon_tab                  -- –{‘Ì•”ƒŒƒR[ƒh
+          ,in_m_cnt            => ln_m_cnt                                    -- –¾×•”s”
+          ,in_report_output_no => ln_report_output_no                         -- ’ •[o—ÍƒZƒbƒg”Ô†                      
+          ,ov_errbuf           => lv_errbuf            -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+          ,ov_retcode          => lv_retcode           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+          ,ov_errmsg           => lv_errmsg            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+          );
+        END IF;
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- ƒƒbƒZ[ƒWo—Í
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                          ,iv_name         => cv_tkn_number_08         --ƒƒbƒZ[ƒWƒR[ƒh
+                          ,iv_token_name1  => cv_tkn_table             --ƒg[ƒNƒ“ƒR[ƒh1
+                          ,iv_token_value1 => cv_tab_samari            --ƒg[ƒNƒ“’l1
+                          ,iv_token_name2  => cv_tkn_errmsg            --ƒg[ƒNƒ“ƒR[ƒh‚Q
+                          ,iv_token_value2 => SQLERRM                  --ƒg[ƒNƒ“’l‚Q
+          );
+          fnd_file.put_line(
+                which  => FND_FILE.LOG,
+                buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                        lv_errmsg || cv_lf || 
+                         ''                         -- ‹ós‚Ì‘}“ü
+          );
+          RAISE global_api_expt;
+      END;
+    -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
+    CLOSE ticket_data_cur;
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END get_ticket2;
+--
+  /**********************************************************************************
+   * Procedure Name   : up_plsql_tab3
+   * Description      : ’ •[í•Ê3-‹’“_/‰Û•Ê-PLSQL•\‚ÌXV (A-5-3)
+  ***********************************************************************************/
+  PROCEDURE up_plsql_tab3(
+     i_month_square_rec  IN         g_month_rtype3                     -- 1ƒ–Œ•ªƒf[ƒ^
+    ,in_m_cnt            IN         NUMBER                             -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+    ,io_m_tab            IN OUT NOCOPY    g_get_month_square_ttype           -- –¾×•””z—ñ
+    ,io_hon_tab          IN OUT NOCOPY    g_get_month_square_ttype           -- –{‘Ì•””z—ñ
+    ,ov_errbuf           OUT NOCOPY VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+    ,ov_retcode          OUT NOCOPY VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+    ,ov_errmsg           OUT NOCOPY VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'up_plsql_tab3';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+    -- ƒ[ƒJƒ‹•Ï”
+    lv_gvm_type           VARCHAR2(1);                                       -- ˆê”Ê^©”Ì‹@^‚l‚b
+    ln_m_cnt              NUMBER(9);                                         -- INƒpƒ‰ƒ[ƒ^‚ğŠi”[
+    BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+      ln_m_cnt                            := in_m_cnt;                       -- INƒpƒ‰ƒ[ƒ^‚ğŠi”[
+      -- DEBUGƒƒbƒZ[ƒW
+      -- PL/SQL•\‚ÌXV
+      debug(
+         buff   => '‹’“_/‰Û•Ê-PL/SQL•\‚ÌXVˆ—:' || TO_CHAR(ln_m_cnt)
+      );
+      BEGIN
+        -- ”„‚èã‚°–¾×•”
+        io_m_tab(ln_m_cnt).base_code        := i_month_square_rec.work_base_code;    -- ‹Æ–±’n‹’“_ƒR[ƒh
+        io_m_tab(ln_m_cnt).hub_name         := i_month_square_rec.base_name;         -- ‹Æ–±’n‹’“_–¼  
+        io_m_tab(in_m_cnt).group_number     := i_month_square_rec.group_number;      -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+        io_m_tab(in_m_cnt).group_name       := i_month_square_rec.group_name;        -- ‰c‹ÆƒOƒ‹[ƒv–¼
+        io_m_tab(in_m_cnt).last_year_rslt_sales_amt := i_month_square_rec.rslt_amty; -- ‘O”NÀÑ
+        io_m_tab(in_m_cnt).last_mon_rslt_sales_amt  := i_month_square_rec.rslt_amtm; -- æŒÀÑ
+        io_m_tab(in_m_cnt).new_customer_num := i_month_square_rec.cust_new_num;      -- ŒÚ‹qŒ”
+        io_m_tab(in_m_cnt).new_vendor_num   := i_month_square_rec.cust_vd_new_num;   -- ŒÚ‹qŒ”iVD V‹Kj
+        io_m_tab(in_m_cnt).plan_sales_amt   := i_month_square_rec.tgt_sales_prsn_total_amt;  -- Œ•Ê”„ã—\Z
+        -- DEBUGƒƒbƒZ[ƒW
+        -- PL/SQL•\‚ÌXV6u
+        debug(
+           buff   => '‹’“_/‰Û•Ê-PL/SQL•\‚ÌXVˆ—' || '”„‚èã‚°–¾×•”ŒÅ’è•”Š®—¹'
+        );
+      EXCEPTION
+        WHEN OTHERS THEN
+          fnd_file.put_line(
+           which  => FND_FILE.LOG,
+           buff   => '‹’“_/‰Û•Ê-PL/SQL•\‚ÌXVˆ—¸”s:' || SQLERRM 
+         );
+         RAISE global_api_others_expt;
+      END;
+      -- –{‘Ì•”
+      IF(ln_m_cnt = 1) THEN
+        FOR i IN 1..cn_idx_max LOOP 
+          IF(i = cn_idx_sales_ippn) THEN         --”„‚èã‚°’†Œv•”(ˆê”Ê)
+            io_hon_tab(i).gvm_type                 := cv_gvm_g;                              -- ˆê”Ê
+          ELSIF(i = cn_idx_sales_vd) THEN      --”„‚èã‚°’†Œv•”(©”Ì‹@)
+            io_hon_tab(i).gvm_type                 := cv_gvm_v;                              -- ©”Ì‹@
+          ELSIF(i = cn_idx_sales_sum) THEN      -- ”„‚èã‚°‡Œv•”
+            NULL;
+          ELSIF(i=cn_idx_visit_ippn)THEN       --–K–â’†Œv•”
+            io_hon_tab(i).gvm_type                 := cv_gvm_g;                              -- ˆê”Ê
+          ELSIF(i=cn_idx_visit_vd)THEN       --–K–â’†Œv•”
+            io_hon_tab(i).gvm_type                 := cv_gvm_v;                              -- ©”Ì‹@
+          ELSIF(i=cn_idx_visit_mc)THEN       --–K–â’†Œv•”
+            io_hon_tab(i).gvm_type                 := cv_gvm_m;                              -- MC
+          END IF;
+          io_hon_tab(i).base_code        := i_month_square_rec.work_base_code;  -- ‹Æ–±’n‹’“_ƒR[ƒh
+          io_hon_tab(i).hub_name         := i_month_square_rec.base_name;       -- ‹Æ–±’n‹’“_–¼  
+        END LOOP;
+      END IF;
+--
+      -- ”„ã’†Œv•”(ˆê”Ê)
+      io_hon_tab(cn_idx_sales_ippn).last_year_rslt_sales_amt := 
+        io_hon_tab(cn_idx_sales_ippn).last_year_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_other_amty, 0);    -- ‘O”NÀÑ
+      io_hon_tab(cn_idx_sales_ippn).last_mon_rslt_sales_amt  :=
+        io_hon_tab(cn_idx_sales_ippn).last_mon_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_other_amtm, 0);    -- æŒÀÑ
+      io_hon_tab(cn_idx_sales_ippn).new_customer_num :=
+        io_hon_tab(cn_idx_sales_ippn).new_customer_num +
+        NVL(i_month_square_rec.cust_other_new_num, 0); -- ŒÚ‹qŒ”iV‹Kjiˆê”Êj
+      -- ”„ã’†Œv•”(©”Ì‹@)
+      io_hon_tab(cn_idx_sales_vd).last_year_rslt_sales_amt :=
+        io_hon_tab(cn_idx_sales_vd).last_year_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_vd_amty, 0);       -- ‘O”NÀÑ
+      io_hon_tab(cn_idx_sales_vd).last_mon_rslt_sales_amt :=
+        io_hon_tab(cn_idx_sales_vd).last_mon_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_vd_amtm, 0);       -- æŒÀÑ
+      io_hon_tab(cn_idx_sales_vd).new_customer_num :=
+        io_hon_tab(cn_idx_sales_vd).new_customer_num +
+        i_month_square_rec.cust_vd_new_num;            -- ŒÚ‹qŒ”iV‹Kj(©”Ì‹@)
+--
+      FOR i IN 1..31 LOOP
+        BEGIN
+          -- DEBUGƒƒbƒZ[ƒW
+            -- PL/SQL•\‚ÌXV
+            debug(
+               buff   => '‹’“_/‰Û•Ê-PL/SQL•\‚ÌXVˆ—' || '1ƒ–Œ•ª‚Ìƒf[ƒ^XV'
+            );
+          -- ”„‚èã‚°–¾×•”
+          io_m_tab(in_m_cnt).l_get_one_day_tab(i).plan_vs_amt
+            := i_month_square_rec.l_one_day_tab(i).tgt_amt;                   -- ”„‚èã‚°Œv‰æ
+          io_m_tab(in_m_cnt).l_get_one_day_tab(i).rslt_vs_amt
+            := i_month_square_rec.l_one_day_tab(i).rslt_amt;                  -- ”„‚èã‚°ÀÑ
+          io_m_tab(in_m_cnt).l_get_one_day_tab(i).rslt_other_sales_amt
+            := i_month_square_rec.l_one_day_tab(i).rslt_center_amt;           -- “à‘¼‹’“_Q”„ãÀÑ
+          -- ”„‚èã‚°’†Œv•”(ˆê”Ê)
+          io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).plan_vs_amt :=
+            io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).plan_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).tgt_other_amt,0);         --”„ãŒv‰æ,–K–âŒv‰æ
+          io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_other_amt,0);        -- ”„ãÀÑ,–K–âÀÑ
+          io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_other_sales_amt :=
+            io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_other_sales_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_center_other_amt,0); -- “à‘¼‹’“_Q”„ãÀÑ
+          -- ”„‚èã‚°’†Œv•”(©”Ì‹@)
+          io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).plan_vs_amt :=
+            io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).plan_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).tgt_vd_amt,0);            --”„ãŒv‰æ,–K–âŒv‰æ
+          io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_vd_amt,0);           -- ”„ãÀÑ,–K–âÀÑ
+          io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_other_sales_amt :=
+            io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_other_sales_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_center_vd_amt,0);    -- “à‘¼‹’“_Q”„ãÀÑ
+          -- ”„‚èã‚°‡Œv•”
+          -- –K–â’†Œv•”(ˆê”Ê)
+          io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).plan_vs_amt :=
+            io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).plan_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).tgt_vis_other_num,0);     --”„ãŒv‰æ,–K–âŒv‰æ
+          io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_other_num,0);         -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â’†Œv•”(©”Ì‹@)
+          io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).plan_vs_amt :=
+            io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).plan_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).tgt_vis_vd_num,0);        --”„ãŒv‰æ,–K–âŒv‰æ
+          io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_vd_num,0);            -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â’†Œv•”(MC)
+          io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).plan_vs_amt :=
+            io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).plan_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).tgt_vis_mc_num,0);        --”„ãŒv‰æ,–K–âŒv‰æ
+          io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_mc_num,0);            -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â‡Œv•”
+          io_hon_tab(cn_idx_visit_sum).l_get_one_day_tab(i).effective_num :=
+            io_hon_tab(cn_idx_visit_sum).l_get_one_day_tab(i).effective_num + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_sales_num,0);         -- —LŒøŒ¬”
+          -- –K–â“à—e‡Œv•”
+          io_hon_tab(cn_idx_visit_dsc).vis_a_num := 
+             io_hon_tab(cn_idx_visit_dsc).vis_a_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_a_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_b_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_b_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_b_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_c_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_c_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_c_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_d_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_d_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_d_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_e_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_e_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_e_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_f_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_f_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_f_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_g_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_g_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_g_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_h_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_h_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_h_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_i_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_i_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_i_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_j_num := 
+             io_hon_tab(cn_idx_visit_dsc).vis_j_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_j_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_k_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_k_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_k_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_l_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_l_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_l_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_m_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_m_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_m_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_n_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_n_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_n_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_o_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_o_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_o_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_p_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_p_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_p_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_q_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_q_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_q_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_r_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_r_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_r_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_s_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_s_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_s_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_t_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_t_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_t_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_u_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_u_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_u_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_v_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_v_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_v_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_w_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_w_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_w_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_x_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_x_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_x_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_y_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_y_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_y_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_z_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_z_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_z_num,0);
+        EXCEPTION
+          WHEN OTHERS THEN
+          fnd_file.put_line(
+             which  => FND_FILE.LOG,
+             buff   => '‹’“_/‰Û•Ê-PL/SQL•\-–{‘Ì•”‚ÌXVˆ—‚ÅƒGƒ‰[‚É‚È‚è‚Ü‚µ‚½B' || SQLERRM ||
+                      ''                         -- ‹ós‚Ì‘}“ü
+           );
+        END;
+      END LOOP;
+    EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END up_plsql_tab3;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_ticket3
+   * Description      : ’ •[í•Ê3-‹’“_/‰Û•Ê (A-5-1,A-5-2)
+  ***********************************************************************************/
+  PROCEDURE get_ticket3(
+     ov_errbuf         OUT NOCOPY VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+    ,ov_retcode        OUT NOCOPY VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+    ,ov_errmsg         OUT NOCOPY VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'get_ticket3';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ƒ[ƒJƒ‹’è”
+    -- ƒ[ƒJƒ‹•Ï”
+    lb_boolean            BOOLEAN;      -- ”»’f—p
+    ln_m_cnt              NUMBER(9);    -- –¾×•”ƒJƒEƒ“ƒ^[”Ši”[
+    ln_cnt                NUMBER(9);    -- ’Šo‚³‚ê‚½ƒŒƒR[ƒhŒ”
+    ln_date               NUMBER(2);    -- “ú•t‚Ìƒiƒ“ƒo[Œ^
+    ln_report_output_no   NUMBER(9);    -- ’ •[o—ÍƒZƒbƒg”Ô†
+    lv_bf_group_number    xxcso_resource_relations_v2.group_number_new%TYPE;
+    lv_bf_work_base_code  xxcso_resource_relations_v2.work_base_code_new%TYPE;
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+    CURSOR ticket_data_cur
+    IS
+      SELECT
+              gnv.gnv_work_base_code      work_base_code,         -- ‹Î–±’n‹’“_ƒR[ƒh
+              xabv.base_name              base_name,              -- ‹Î–±’n‹’“_–¼
+              gnv.gnv_group_number        group_number,           -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+              (SELECT
+                 (last_name || 'ƒOƒ‹[ƒv')       
+               FROM
+                 xxcso_resource_relations_v2
+               WHERE
+                    (CASE
+                       WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
+                         THEN work_base_code_new
+                       ELSE work_base_code_old
+                    END 
+                    ) = gnv.gnv_work_base_code
+               AND  (CASE
+                       WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
+                         THEN group_number_new
+                       ELSE group_number_old
+                    END 
+                    ) = gnv.gnv_group_number
+               AND  (CASE
+                       WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
+                         THEN group_leader_flag_new
+                       ELSE group_leader_flag_old
+                    END 
+                    ) = cv_flg_y
+               AND  ROWNUM = 1
+              )     group_name,                                   -- ƒOƒ‹[ƒv–¼
+              xsvsr.sales_date            sales_date,             -- ”Ì”„”NŒ“ú
+              xsvsr.tgt_amt               tgt_amt,                -- ”„ãŒv‰æ
+              xsvsr.tgt_new_amt           tgt_new_amt,            -- ”„ãŒv‰æiV‹Kj
+              xsvsr.tgt_vd_new_amt        tgt_vd_new_amt,         -- ”„ãŒv‰æiVDFV‹Kj
+              xsvsr.tgt_vd_amt            tgt_vd_amt,             -- ”„ãŒv‰æiVDj
+              xsvsr.tgt_other_new_amt     tgt_other_new_amt,      -- ”„ãŒv‰æiVDˆÈŠOFV‹Kj
+              xsvsr.tgt_other_amt         tgt_other_amt,          -- ”„ãŒv‰æiVDˆÈŠOj
+              xsvsr.rslt_amt              rslt_amt,               -- ”„ãÀÑ
+              xsvsr.rslt_new_amt          rslt_new_amt,           -- ”„ãÀÑiV‹Kj
+              xsvsr.rslt_vd_new_amt       rslt_vd_new_amt,        -- ”„ãÀÑiVDFV‹Kj
+              xsvsr.rslt_vd_amt           rslt_vd_amt,            -- ”„ãÀÑiVDj
+              xsvsr.rslt_other_new_amt    rslt_other_new_amt,     -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+              xsvsr.rslt_other_amt        rslt_other_amt,         -- ”„ãÀÑiVDˆÈŠOj
+              xsvsr.rslt_center_amt       rslt_center_amt,        -- “à‘¼‹’“_Q”„ãÀÑ
+              xsvsr.rslt_center_vd_amt    rslt_center_vd_amt,     -- “à‘¼‹’“_Q”„ãÀÑiVDj
+              xsvsr.rslt_center_other_amt rslt_center_other_amt,  -- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+              xsvsr.tgt_vis_num           tgt_vis_num,            -- –K–âŒv‰æ
+              xsvsr.tgt_vis_new_num       tgt_vis_new_num,        -- –K–âŒv‰æiV‹Kj
+              xsvsr.tgt_vis_vd_new_num    tgt_vis_vd_new_num,     -- –K–âŒv‰æiVDFV‹Kj
+              xsvsr.tgt_vis_vd_num        tgt_vis_vd_num,         -- –K–âŒv‰æiVDj
+              xsvsr.tgt_vis_other_new_num tgt_vis_other_new_num,  -- –K–âŒv‰æiVDˆÈŠOFV‹Kj
+              xsvsr.tgt_vis_other_num     tgt_vis_other_num,      -- –K–âŒv‰æiVDˆÈŠOj
+              xsvsr.tgt_vis_mc_num        tgt_vis_mc_num,         -- –K–âŒv‰æiMCj
+              xsvsr.vis_num               vis_num,                -- –K–âÀÑ
+              xsvsr.vis_new_num           vis_new_num,            -- –K–âÀÑiV‹Kj
+              xsvsr.vis_vd_new_num        vis_vd_new_num,         -- –K–âÀÑiVDFV‹Kj
+              xsvsr.vis_vd_num            vis_vd_num,             -- –K–âÀÑiVDj
+              xsvsr.vis_other_new_num     vis_other_new_num,      -- –K–âÀÑiVDˆÈŠOFV‹Kj
+              xsvsr.vis_other_num         vis_other_num,          -- –K–âÀÑiVDˆÈŠOj
+              xsvsr.vis_mc_num            vis_mc_num,             -- –K–âÀÑiMCj
+              xsvsr.vis_sales_num         vis_sales_num,          -- —LŒøŒ¬”
+              xsvsr.vis_a_num             vis_a_num,              -- –K–â‚`Œ”
+              xsvsr.vis_b_num             vis_b_num,              -- –K–â‚aŒ”
+              xsvsr.vis_c_num             vis_c_num,              -- –K–â‚bŒ”
+              xsvsr.vis_d_num             vis_d_num,              -- –K–â‚cŒ”
+              xsvsr.vis_e_num             vis_e_num,              -- –K–â‚dŒ”
+              xsvsr.vis_f_num             vis_f_num,              -- –K–â‚eŒ”
+              xsvsr.vis_g_num             vis_g_num,              -- –K–â‚fŒ”
+              xsvsr.vis_h_num             vis_h_num,              -- –K–â‚gŒ”
+              xsvsr.vis_i_num             vis_i_num,              -- –K–âú@Œ”
+              xsvsr.vis_j_num             vis_j_num,              -- –K–â‚iŒ”
+              xsvsr.vis_k_num             vis_k_num,              -- –K–â‚jŒ”
+              xsvsr.vis_l_num             vis_l_num,              -- –K–â‚kŒ”
+              xsvsr.vis_m_num             vis_m_num,              -- –K–â‚lŒ”
+              xsvsr.vis_n_num             vis_n_num,              -- –K–â‚mŒ”
+              xsvsr.vis_o_num             vis_o_num,              -- –K–â‚nŒ”
+              xsvsr.vis_p_num             vis_p_num,              -- –K–â‚oŒ”
+              xsvsr.vis_q_num             vis_q_num,              -- –K–â‚pŒ”
+              xsvsr.vis_r_num             vis_r_num,              -- –K–â‚qŒ”
+              xsvsr.vis_s_num             vis_s_num,              -- –K–â‚rŒ”
+              xsvsr.vis_t_num             vis_t_num,              -- –K–â‚sŒ”
+              xsvsr.vis_u_num             vis_u_num,              -- –K–â‚tŒ”
+              xsvsr.vis_v_num             vis_v_num,              -- –K–â‚uŒ”
+              xsvsr.vis_w_num             vis_w_num,              -- –K–â‚vŒ”
+              xsvsr.vis_x_num             vis_x_num,              -- –K–â‚wŒ”
+              xsvsr.vis_y_num             vis_y_num,              -- –K–â‚xŒ”
+              xsvsr.vis_z_num             vis_z_num,              -- –K–â‚yŒ”
+              xsvsry.rslt_amt             rslt_amty,              -- ‘O”NÀÑ
+              xsvsry.rslt_vd_amt          rslt_vd_amty,           -- ‘O”NÀÑiVDj
+              xsvsry.rslt_other_amt       rslt_other_amty,        -- ‘O”NÀÑiVDˆÈŠOj
+              xsvsrm.rslt_amt             rslt_amtm,              -- æŒÀÑ
+              xsvsrm.rslt_vd_amt          rslt_vd_amtm,           -- æŒÀÑiVDj
+              xsvsrm.rslt_other_amt       rslt_other_amtm,        -- æŒÀÑiVDˆÈŠOj
+              xsvsrn.cust_new_num         cust_new_num,           -- ŒÚ‹qŒ”iV‹Kj
+              xsvsrn.cust_vd_new_num      cust_vd_new_num,        -- ŒÚ‹qŒ”iVDFV‹Kj
+              xsvsrn.cust_other_new_num   cust_other_new_num,     -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+              xsvsrn.tgt_sales_prsn_total_amt  tgt_sales_prsn_total_amt  -- Œ•Ê”„ã—\Z
+      FROM    xxcso_sum_visit_sale_rep    xsvsr                   -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠƒe[ƒuƒ‹
+             ,xxcso_sum_visit_sale_rep    xsvsry                  -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠ‘O”N
+             ,xxcso_sum_visit_sale_rep    xsvsrm                  -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠæŒ
+             ,xxcso_sum_visit_sale_rep    xsvsrn                  -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠ“–Œ
+             ,(SELECT  distinct 
+                       (CASE
+                          WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
+                            THEN work_base_code_new
+                          ELSE work_base_code_old
+                        END 
+         	               )  gnv_work_base_code
+                      ,(CASE
+                          WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
+                            THEN group_number_new
+                          ELSE group_number_old
+                        END 
+                        )  gnv_group_number
+               FROM    xxcso_resource_relations_v2
+               WHERE   (CASE
+                          WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
+                            THEN work_base_code_new
+                          ELSE work_base_code_old
+                        END 
+                        )  = gv_base_code)       gnv               -- ƒOƒ‹[ƒv”Ô†ƒrƒ…[
+             ,xxcso_aff_base_v2                  xabv              -- AFF•”–åƒ}ƒXƒ^iÅVjƒrƒ…[
+      WHERE   xsvsr.group_base_code = gv_base_code
+        AND   xsvsr.sum_org_code    = gnv.gnv_group_number
+        AND   xabv.base_code        = gnv.gnv_work_base_code
+        AND   xsvsr.sum_org_type =cv_sum_org_type3
+        AND   xsvsr.month_date_div = cv_month_date_div2
+        AND   xsvsr.sales_date
+                BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        AND   xsvsr.sum_org_type   = xsvsry.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsry.sum_org_code(+)
+        AND   xsvsry.month_date_div(+)= cv_month_date_div1
+        AND   xsvsry.sales_date(+) = gv_year_prev
+        AND   xsvsr.sum_org_type   = xsvsrm.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsrm.sum_org_code(+)
+        AND   xsvsrm.month_date_div(+)= cv_month_date_div1
+        AND   xsvsrm.sales_date(+) = gv_year_month_prev
+        AND   xsvsr.sum_org_type   = xsvsrn.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsrn.sum_org_code(+)
+        AND   xsvsrn.month_date_div(+)= cv_month_date_div1
+        AND   xsvsrn.sales_date(+) = gv_year_month
+      ORDER BY  work_base_code     ASC,
+                group_number       ASC;
+    -- ƒ[ƒJƒ‹ƒŒƒR[ƒh
+    -- ’ •[•Ï”Ši”[—p
+    l_cur_rec                  ticket_data_cur%ROWTYPE;
+    l_month_square_rec         g_month_rtype3;
+    l_get_month_square_tab     g_get_month_square_ttype;
+    l_get_month_square_hon_tab g_get_month_square_ttype;
+    BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+      -- ƒ[ƒJƒ‹•Ï”‰Šú‰»
+      lb_boolean                := TRUE;        -- ‰Šúˆ—”»’f
+      ln_m_cnt                  := 1;           -- –¾×•”‚Ìs”
+      ln_report_output_no       := 1;           -- ”z—ñs”
+      ln_cnt                    := 0;           -- LOOPŒ”
+      -- PL/SQL•\i–{‘Ì•”j‚Ì‰Šú‰»
+      init_month_square_hon_tab(l_get_month_square_hon_tab);
+      -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ì‰Šú‰»
+      init_month_square_rec3(l_month_square_rec);
+      BEGIN
+        --ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
+        OPEN ticket_data_cur;
+--
+DO_ERROR('A-5-2-1');
+--
+        <<get_data_loop>>
+        LOOP 
+          l_cur_rec                           := NULL;          -- ƒJ[ƒ\ƒ‹ƒŒƒR[ƒh‚Ì‰Šú‰»
+--
+          FETCH ticket_data_cur INTO l_cur_rec;                 -- ƒJ[ƒ\ƒ‹‚Ìƒf[ƒ^‚ğƒŒƒR[ƒh‚ÉŠi”[
+--
+          -- ‘ÎÛŒ”‚ªOŒ‚Ìê‡
+          EXIT WHEN ticket_data_cur%NOTFOUND
+            OR  ticket_data_cur%ROWCOUNT = 0;
+--
+DO_ERROR('A-5-2-2');
+--
+          debug(
+            buff   => l_cur_rec.work_base_code                    ||','||
+                      l_cur_rec.base_name                         ||','||
+                      l_cur_rec.group_number                      ||','||
+                      l_cur_rec.group_name                        ||','||
+                      l_cur_rec.sales_date                        ||','||
+                      TO_CHAR(l_cur_rec.tgt_amt)                  ||','||
+                      TO_CHAR(l_cur_rec.tgt_new_amt)              ||','||
+                      TO_CHAR(l_cur_rec.tgt_vd_new_amt)           ||','||
+                      TO_CHAR(l_cur_rec.tgt_vd_amt)               ||','||
+                      TO_CHAR(l_cur_rec.tgt_other_new_amt)        ||','||
+                      TO_CHAR(l_cur_rec.tgt_other_amt)            ||','||
+                      TO_CHAR(l_cur_rec.rslt_amt)                 ||','||
+                      TO_CHAR(l_cur_rec.rslt_new_amt)             ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_new_amt)          ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amt)              ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_new_amt)       ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amt)           ||','||
+                      TO_CHAR(l_cur_rec.rslt_center_amt)          ||','||
+                      TO_CHAR(l_cur_rec.rslt_center_vd_amt)       ||','||
+                      TO_CHAR(l_cur_rec.rslt_center_other_amt)    ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_num)              ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_new_num)          ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_vd_new_num)       ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_vd_num)           ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_other_new_num)    ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_other_num)        ||','||
+                      TO_CHAR(l_cur_rec.tgt_vis_mc_num)           ||','||
+                      TO_CHAR(l_cur_rec.vis_num)                  ||','||
+                      TO_CHAR(l_cur_rec.vis_new_num)              ||','||
+                      TO_CHAR(l_cur_rec.vis_vd_new_num)           ||','||
+                      TO_CHAR(l_cur_rec.vis_vd_num)               ||','||
+                      TO_CHAR(l_cur_rec.vis_other_new_num)        ||','||
+                      TO_CHAR(l_cur_rec.vis_other_num)            ||','||
+                      TO_CHAR(l_cur_rec.vis_mc_num)               ||','||
+                      TO_CHAR(l_cur_rec.vis_sales_num)            ||','||
+                      TO_CHAR(l_cur_rec.vis_a_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_b_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_c_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_d_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_e_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_f_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_g_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_h_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_i_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_j_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_k_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_l_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_m_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_n_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_o_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_p_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_q_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_r_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_s_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_t_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_u_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_v_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_w_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_x_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_y_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_z_num)                ||','||
+                      TO_CHAR(l_cur_rec.rslt_amty)                ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amty)             ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amty)          ||','||
+                      TO_CHAR(l_cur_rec.rslt_amtm)                ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amtm)             ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amtm)          ||','||
+                      TO_CHAR(l_cur_rec.cust_new_num)             ||','||
+                      TO_CHAR(l_cur_rec.cust_vd_new_num)          ||','||
+                      TO_CHAR(l_cur_rec.cust_other_new_num)       ||','||
+                      TO_CHAR(l_cur_rec.tgt_sales_prsn_total_amt) ||','||
+                     cv_lf 
+          );
+          -- ‘O‰ñƒŒƒR[ƒh‚Æ‹’“_ƒR[ƒh‚ª“¯‚¶‚ÅƒOƒ‹[ƒv”Ô†‚ªˆá‚¤ê‡A–¾×•””z—ñ‚Æ–{‘Ì•””z—ñ‚ğXVB
+          IF(lb_boolean=FALSE) THEN
+            IF((lv_bf_work_base_code = l_cur_rec.work_base_code)AND(lv_bf_group_number <> l_cur_rec.group_number))
+              THEN
+              -- DEBUGƒƒbƒZ[ƒW
+              debug(
+                 buff   => '‰c‹ÆƒOƒ‹[ƒv”Ô†‚ªˆá‚¢‚Ü‚·B :' ||'‘O‰ñF '|| lv_bf_group_number ||
+                            '¡‰ñF' || l_cur_rec.group_number ||
+                            '–¾×•””z—ñ' || TO_CHAR(ln_m_cnt)
+              );
+              -- =================================================
+              -- A-5-3.PLSQL•\‚ÌXV
+              -- =================================================
+              up_plsql_tab3(
+                 i_month_square_rec   => l_month_square_rec          -- 1ƒ–Œ•ªƒf[ƒ^
+                ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+                ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+                ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+                ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+                ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+                ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+              );
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+              l_month_square_rec.l_one_day_tab.DELETE;
+              l_month_square_rec      := NULL;
+              init_month_square_rec3(l_month_square_rec);
+              ln_m_cnt          := ln_m_cnt + 1;       -- –¾×•””z—ñ‚ğ{‚P‚·‚éB
+              lb_boolean        := TRUE;               -- ‰Šúˆ—‚Ìƒtƒ‰ƒOƒIƒ“‚·‚éB
+            ELSIF(lv_bf_work_base_code <> l_cur_rec.work_base_code)THEN
+              -- =================================================
+              -- A-5-3.PLSQL•\‚ÌXV
+              -- =================================================
+              up_plsql_tab3(
+                 i_month_square_rec   => l_month_square_rec          -- 1ƒ–Œ•ªƒf[ƒ^
+                ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+                ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+                ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+                ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+                ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+                ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+              );
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+              l_month_square_rec.l_one_day_tab.DELETE;  -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+              l_month_square_rec      := NULL;          -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+              init_month_square_rec3(l_month_square_rec);
+              lb_boolean        := TRUE;               -- ‰Šúˆ—‚Ìƒtƒ‰ƒOƒIƒ“‚·‚éB
+            END IF;
+          END IF;
+          -- o—Íƒtƒ‰ƒO‚ªƒIƒ“‚Ìó‘Ô‚Å‹’“_ƒR[ƒh‚ª‘O‰ñæ“¾‚µ‚½‰c‹Æˆõ”Ô†‚Æˆá‚¤ê‡ƒ[ƒNƒe[ƒuƒ‹‚Éo—Í‚µ‚Ü‚·B
+          IF ((ln_cnt > 0) AND
+              (lv_bf_work_base_code <> l_cur_rec.work_base_code)) THEN
+            debug(
+               buff   => '‹’“_ƒR[ƒh‚ªˆá‚¢‚Ü‚·B :' ||'‘O‰ñF '|| lv_bf_work_base_code || ''||
+                          '¡‰ñF' || l_cur_rec.work_base_code
+            );
+          -- =================================================
+          -- A-3-4,A-4-4,A-5-4,A-6-4,A-7-4.ƒ[ƒNƒe[ƒuƒ‹‚Öo—Í
+          -- =================================================
+          insert_wrk_table(
+             ir_m_tab            => l_get_month_square_tab                      -- –¾×•”ƒŒƒR[ƒh
+            ,ir_hon_tab          => l_get_month_square_hon_tab                  -- –{‘Ì•”ƒŒƒR[ƒh
+            ,in_m_cnt            => ln_m_cnt                                    -- –¾×•”s”
+            ,in_report_output_no => ln_report_output_no                         -- ’ •[o—ÍƒZƒbƒg”Ô†
+            ,ov_errbuf           => lv_errbuf            -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+            ,ov_retcode          => lv_retcode           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+            ,ov_errmsg           => lv_errmsg            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+           );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- ƒŒƒR[ƒh‚Ì‰Šú‰»
+          l_get_month_square_tab.DELETE;
+          l_get_month_square_hon_tab.DELETE;
+          init_month_square_hon_tab(l_get_month_square_hon_tab);
+          ln_report_output_no := ln_report_output_no + 1; -- o—Í‚³‚ê‚½’ •[ŒÂ”‚É{‚P‚·‚é
+          lb_boolean          := TRUE;                    -- ‰Šúˆ—‚Ìó‘Ô‚É–ß‚·
+          ln_m_cnt            := 1;                       -- –¾×•””z—ñ‚Ìs”‚Ì‰Šú‰»
+          END IF;
+          -- ‰Šúˆ—‚Ìê‡
+          IF(lb_boolean) THEN
+            -- ‰c‹ÆƒOƒ‹[ƒv”Ô†‚Æ]‹Æˆõ”Ô†‚ğƒ[ƒJƒ‹•Ï”‚ÉŠi”[
+            lv_bf_group_number         := l_cur_rec.group_number;          -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+            lv_bf_work_base_code       := l_cur_rec.work_base_code;        -- ‹’“_ƒR[ƒh
+            -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚ÉŠi”[
+            -- ‹Î–±’n‹’“_ƒR[ƒh
+            l_month_square_rec.work_base_code     := l_cur_rec.work_base_code;
+            -- ‹Î–±’n‹’“_–¼
+            l_month_square_rec.base_name          := l_cur_rec.base_name;
+            -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+            l_month_square_rec.group_number       := l_cur_rec.group_number;
+            -- ‰c‹ÆƒOƒ‹[ƒv–¼
+            l_month_square_rec.group_name         := l_cur_rec.group_name;
+            -- V‹KŒÚ‹qŒ”
+            l_month_square_rec.cust_new_num       := l_cur_rec.cust_new_num;
+            -- V‹KVDŒ”
+            l_month_square_rec.cust_vd_new_num    := l_cur_rec.cust_vd_new_num;
+            -- V‹KVDˆÈŠOŒ”
+            l_month_square_rec.cust_other_new_num := l_cur_rec.cust_other_new_num;
+            -- ‘O”NÀÑ
+            l_month_square_rec.rslt_amty          := l_cur_rec.rslt_amty;
+            -- ‘O”NÀÑiVDj
+            l_month_square_rec.rslt_vd_amty       := l_cur_rec.rslt_vd_amty;
+            -- ‘O”NÀÑiVDˆÈŠOj
+            l_month_square_rec.rslt_other_amty    := l_cur_rec.rslt_other_amty;
+            -- æŒÀÑ
+            l_month_square_rec.rslt_amtm          := l_cur_rec.rslt_amtm;
+            -- æŒÀÑiVDj
+            l_month_square_rec.rslt_vd_amtm       := l_cur_rec.rslt_vd_amtm;
+            -- æŒÀÑiVDˆÈŠOj
+            l_month_square_rec.rslt_other_amtm    := l_cur_rec.rslt_other_amtm;
+            -- Œ•Ê”„ã—\Z
+            l_month_square_rec.tgt_sales_prsn_total_amt := l_cur_rec.tgt_sales_prsn_total_amt;
+            lb_boolean := FALSE;
+            -- DEBUGƒƒbƒZ[ƒW
+            -- ‰Šúˆ—‚Ìê‡
+            debug(
+               buff   => '‰Šúˆ—ƒtƒ‰ƒO:' || 'FALSE'
+            );
+          END IF;
+          -- “ú•t‚ğæ“¾
+          ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
+          -- DEBUGƒƒbƒZ[ƒW
+          -- ‰Šúˆ—‚Ìê‡
+          debug(
+             buff   => '“ú•t:' || l_cur_rec.sales_date || cv_lf ||
+                       '“ú•t‚¯‚Ìƒiƒ“ƒo[Œ^:'     || TO_CHAR(ln_date)
+          );
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_amt               
+            := l_cur_rec.tgt_amt;               -- ”„ãŒv‰æ
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_new_amt           
+            := l_cur_rec.tgt_new_amt;           -- ”„ãŒv‰æiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_new_amt        
+            := l_cur_rec.tgt_vd_new_amt;        -- ”„ãŒv‰æiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_amt            
+            := l_cur_rec.tgt_vd_amt;            -- ”„ãŒv‰æiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_other_new_amt     
+            := l_cur_rec.tgt_other_new_amt;     -- ”„ãŒv‰æiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_other_amt         
+            := l_cur_rec.tgt_other_amt;         -- ”„ãŒv‰æiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_amt              
+            := l_cur_rec.rslt_amt;               -- ”„ãÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt          
+            := l_cur_rec.rslt_new_amt;          -- ”„ãÀÑiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt       
+            := l_cur_rec.rslt_vd_new_amt;       -- ”„ãÀÑiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt           
+            := l_cur_rec.rslt_vd_amt;           -- ”„ãÀÑiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt    
+            := l_cur_rec.rslt_other_new_amt;    -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt        
+            := l_cur_rec.rslt_other_amt;        -- ”„ãÀÑiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt       
+            := l_cur_rec.rslt_center_amt;       -- “à‘¼‹’“_Q”„ãÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_vd_amt       
+            := l_cur_rec.rslt_center_vd_amt;    -- “à‘¼‹’“_Q”„ãÀÑiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_other_amt       
+            := l_cur_rec.rslt_center_other_amt; -- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_num           
+            := l_cur_rec.tgt_vis_num;           -- –K–âŒv‰æ
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_new_num       
+            := l_cur_rec.tgt_vis_new_num;       -- –K–âŒv‰æiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_new_num    
+            := l_cur_rec.tgt_vis_vd_new_num;    -- –K–âŒv‰æiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_num        
+            := l_cur_rec.tgt_vis_vd_num;        -- –K–âŒv‰æiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_new_num 
+            := l_cur_rec.tgt_vis_other_new_num;-- –K–âŒv‰æiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_num     
+            := l_cur_rec.tgt_vis_other_num;     -- –K–âŒv‰æiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_mc_num     
+            := l_cur_rec.tgt_vis_mc_num;        -- –K–âŒv‰æiMCj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_num               
+            := l_cur_rec.vis_num;               -- –K–âÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).vis_new_num           
+            := l_cur_rec.vis_new_num;           -- –K–âÀÑiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num        
+            := l_cur_rec.vis_vd_new_num;        -- –K–âÀÑiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num            
+            := l_cur_rec.vis_vd_num;            -- –K–âÀÑiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num     
+            := l_cur_rec.vis_other_new_num;     -- –K–âÀÑiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_other_num         
+            := l_cur_rec.vis_other_num;         -- –K–âÀÑiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num         
+            := l_cur_rec.vis_mc_num;            -- –K–âÀÑiMCj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num         
+            := l_cur_rec.vis_sales_num;         -- —LŒøŒ¬”
+          -- A0Z–K–âŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- –K–âAŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- –K–âBŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- –K–âCŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- –K–âDŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- –K–âEŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- –K–âFŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- –K–âGŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- –K–âHŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- –K–âIŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- –K–âJŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- –K–âKŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- –K–âLŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- –K–âMŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- –K–âNŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- –K–âOŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- –K–âPŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- –K–âQŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- –K–âRŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- –K–âSŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- –K–âTŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- –K–âUŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- –K–âVŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- –K–âWŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- –K–âXŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- –K–âYŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- –K–âZŒ”
+          -- Å‰‚ÌƒŒƒR[ƒh‚Ìê‡
+          IF(lb_boolean) THEN
+            lb_boolean              := FALSE;                  -- ‰Šúˆ—‚Ìƒtƒ‰ƒO‚ğƒIƒt‚·‚éB
+          END IF;
+          -- ’ŠoŒ”ƒJƒEƒ“ƒ^‚É‚P‚ğ‘«‚·B
+          ln_cnt         := ln_cnt + 1;
+          gn_target_cnt  := ln_cnt;
+          -- loopŒ”
+          debug(
+                buff   => 'loopŒ”' || TO_CHAR(ln_cnt)
+          );
+        END LOOP;
+        -- ÅŒã‚Ìƒf[ƒ^“o˜^
+        IF (ln_cnt > 0) THEN
+          debug(
+                  buff   => 'ÅŒã‚Ìƒf[ƒ^‚Ì“o˜^'
+          );
+          -- =================================================
+          -- A-5-3.PLSQL•\‚ÌXV
+          -- =================================================
+          up_plsql_tab3(
+             i_month_square_rec   => l_month_square_rec          -- 1ƒ–Œ•ªƒf[ƒ^
+            ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+            ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+            ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+            ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+            ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+            ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- =================================================
+          -- A-3-4,A-4-4,A-5-4,A-6-4,A-7-4.ƒ[ƒNƒe[ƒuƒ‹‚Öo—Í
+          -- =================================================
+          insert_wrk_table(
+             ir_m_tab            => l_get_month_square_tab                      -- –¾×•”ƒŒƒR[ƒh
+            ,ir_hon_tab          => l_get_month_square_hon_tab                  -- –{‘Ì•”ƒŒƒR[ƒh
+            ,in_m_cnt            => ln_m_cnt                                    -- –¾×•”s”
+            ,in_report_output_no => ln_report_output_no                         -- ’ •[o—ÍƒZƒbƒg”Ô†
+            ,ov_errbuf           => lv_errbuf            -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+            ,ov_retcode          => lv_retcode           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+            ,ov_errmsg           => lv_errmsg            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+           );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- ƒƒbƒZ[ƒWo—Í
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                          ,iv_name         => cv_tkn_number_08         --ƒƒbƒZ[ƒWƒR[ƒh
+                          ,iv_token_name1  => cv_tkn_table             --ƒg[ƒNƒ“ƒR[ƒh1
+                          ,iv_token_value1 => cv_tab_samari            --ƒg[ƒNƒ“’l1
+                          ,iv_token_name2  => cv_tkn_errmsg            --ƒg[ƒNƒ“ƒR[ƒh‚Q
+                          ,iv_token_value2 => SQLERRM                  --ƒg[ƒNƒ“’l‚Q
+          );
+          fnd_file.put_line(
+                which  => FND_FILE.LOG,
+                buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                        lv_errmsg || cv_lf || 
+                         ''                         -- ‹ós‚Ì‘}“ü
+          );
+        RAISE global_api_expt;
+      END;
+    -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
+    CLOSE ticket_data_cur;
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END get_ticket3;
+--
+  /**********************************************************************************
+   * Procedure Name   : up_plsql_tab4
+   * Description      : ’ •[í•Ê4-’n‹æ‰c‹Æ•”/•”•Ê-PLSQL•\‚ÌXV (A-6-3)
+  ***********************************************************************************/
+  PROCEDURE up_plsql_tab4(
+     i_month_square_rec  IN                g_month_rtype4                     -- ˆêƒ–Œ•ªƒf[ƒ^
+    ,in_m_cnt            IN                NUMBER                             -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+    ,io_m_tab            IN  OUT NOCOPY    g_get_month_square_ttype           -- –¾×•””z—ñ
+    ,io_hon_tab          IN  OUT NOCOPY    g_get_month_square_ttype           -- –{‘Ì•””z—ñ
+    ,ov_errbuf           OUT NOCOPY VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+    ,ov_retcode          OUT NOCOPY VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+    ,ov_errmsg           OUT NOCOPY VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'up_plsql_tab4';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+    -- ƒ[ƒJƒ‹•Ï”
+    lv_gvm_type           VARCHAR2(1);                                       -- ˆê”Ê^©”Ì‹@^‚l‚b
+    ln_m_cnt              NUMBER(9);                                         -- INƒpƒ‰ƒ[ƒ^‚ğŠi”[
+    BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+      ln_m_cnt                            := in_m_cnt;                       -- INƒpƒ‰ƒ[ƒ^‚ğŠi”[
+      -- DEBUGƒƒbƒZ[ƒW
+      -- PL/SQL•\‚ÌXV
+      debug(
+         buff   => '’n‹æ‰c‹Æ•”/•”•Ê-PL/SQL•\‚ÌXVˆ—:' || TO_CHAR(ln_m_cnt)
+      );
+      BEGIN
+        -- ”„‚èã‚°–¾×•”
+        io_m_tab(ln_m_cnt).up_base_code     := i_month_square_rec.base_code_par;       -- ‹’“_ƒR[ƒhie)
+        io_m_tab(ln_m_cnt).up_hub_name      := i_month_square_rec.base_name_par;       -- ‹’“_–¼Ìiej
+        io_m_tab(ln_m_cnt).base_code        := i_month_square_rec.base_code_chi;       -- ‹Æ–±’n‹’“_ƒR[ƒh
+        io_m_tab(ln_m_cnt).hub_name         := i_month_square_rec.base_name_chi;       -- ‹Æ–±’n‹’“_–¼  
+        io_m_tab(ln_m_cnt).last_year_rslt_sales_amt :=i_month_square_rec.rslt_amty; -- ‘O”NÀÑ
+        io_m_tab(ln_m_cnt).last_mon_rslt_sales_amt  :=i_month_square_rec.rslt_amtm; -- æŒÀÑ
+        io_m_tab(ln_m_cnt).new_customer_num :=i_month_square_rec.cust_new_num;      -- ŒÚ‹qŒ”
+        io_m_tab(ln_m_cnt).new_vendor_num   :=i_month_square_rec.cust_vd_new_num;   -- ŒÚ‹qŒ”iVD V‹Kj
+        io_m_tab(ln_m_cnt).plan_sales_amt  := i_month_square_rec.tgt_sales_prsn_total_amt;  -- Œ•Ê”„ã—\Z
+        -- DEBUGƒƒbƒZ[ƒW
+        -- PL/SQL•\‚ÌXV
+        debug(
+           buff   => '’n‹æ‰c‹Æ•”/•”•Ê-PL/SQL•\‚ÌXVˆ—' || '”„‚èã‚°–¾×•”ŒÅ’è•”Š®—¹'
+        );
+      EXCEPTION
+        WHEN OTHERS THEN
+          fnd_file.put_line(
+           which  => FND_FILE.LOG,
+           buff   => '’n‹æ‰c‹Æ•”/•”•Ê-PL/SQL•\‚ÌXVˆ—¸”s:' || SQLERRM 
+         );
+         RAISE global_api_others_expt;
+      END;
+      -- –{‘Ì•”
+      FOR i IN 1..cn_idx_max LOOP 
+        IF(i = cn_idx_sales_ippn) THEN         --”„‚èã‚°’†Œv•”(ˆê”Ê)
+          io_hon_tab(i).gvm_type                 := cv_gvm_g;                              -- ˆê”Ê
+        ELSIF(i = cn_idx_sales_vd) THEN      --”„‚èã‚°’†Œv•”(©”Ì‹@)
+          io_hon_tab(i).gvm_type                 := cv_gvm_v;                              -- ©”Ì‹@
+        ELSIF(i = cn_idx_sales_sum) THEN      -- ”„‚èã‚°‡Œv•”
+          NULL;
+        ELSIF(i=cn_idx_visit_ippn)THEN       --–K–â’†Œv•”
+          io_hon_tab(i).gvm_type                 := cv_gvm_g;                              -- ˆê”Ê
+        ELSIF(i=cn_idx_visit_vd)THEN       --–K–â’†Œv•”
+          io_hon_tab(i).gvm_type                 := cv_gvm_v;                              -- ©”Ì‹@
+        ELSIF(i=cn_idx_visit_mc)THEN       --–K–â’†Œv•”
+          io_hon_tab(i).gvm_type                 := cv_gvm_m;                              -- MC
+        END IF;
+        io_hon_tab(i).up_base_code     := i_month_square_rec.base_code_par;  -- ‹’“_ƒR[ƒhie)
+        io_hon_tab(i).up_hub_name      := i_month_square_rec.base_name_par;  -- ‹’“_–¼Ìiej
+      END LOOP;
+--
+      -- ”„ã’†Œv•”(ˆê”Ê)
+      io_hon_tab(cn_idx_sales_ippn).last_year_rslt_sales_amt := 
+        io_hon_tab(cn_idx_sales_ippn).last_year_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_other_amty, 0);    -- ‘O”NÀÑ
+      io_hon_tab(cn_idx_sales_ippn).last_mon_rslt_sales_amt  :=
+        io_hon_tab(cn_idx_sales_ippn).last_mon_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_other_amtm, 0);    -- æŒÀÑ
+      io_hon_tab(cn_idx_sales_ippn).new_customer_num :=
+        io_hon_tab(cn_idx_sales_ippn).new_customer_num +
+        NVL(i_month_square_rec.cust_other_new_num, 0); -- ŒÚ‹qŒ”iV‹Kjiˆê”Êj
+      -- ”„ã’†Œv•”(©”Ì‹@)
+      io_hon_tab(cn_idx_sales_vd).last_year_rslt_sales_amt :=
+        io_hon_tab(cn_idx_sales_vd).last_year_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_vd_amty, 0);       -- ‘O”NÀÑ
+      io_hon_tab(cn_idx_sales_vd).last_mon_rslt_sales_amt :=
+        io_hon_tab(cn_idx_sales_vd).last_mon_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_vd_amtm, 0);       -- æŒÀÑ
+      io_hon_tab(cn_idx_sales_vd).new_customer_num :=
+        io_hon_tab(cn_idx_sales_vd).new_customer_num +
+        NVL(i_month_square_rec.cust_vd_new_num, 0);     -- ŒÚ‹qŒ”iV‹Kj(©”Ì‹@)
+--
+      FOR i IN 1..31 LOOP
+        BEGIN
+          -- DEBUGƒƒbƒZ[ƒW
+            -- PL/SQL•\‚ÌXV
+            debug(
+               buff   => '’n‹æ‰c‹Æ•”/•”•Ê-PL/SQL•\‚ÌXVˆ—' || '1ƒ–Œ•ª‚Ìƒf[ƒ^XV'
+            );
+          --”„‚èã‚°–¾×•”
+          io_m_tab(ln_m_cnt).l_get_one_day_tab(i).rslt_vs_amt
+            := i_month_square_rec.l_one_day_tab(i).rslt_amt;                  -- ”„‚èã‚°ÀÑ
+          io_m_tab(ln_m_cnt).l_get_one_day_tab(i).rslt_other_sales_amt
+            := i_month_square_rec.l_one_day_tab(i).rslt_center_amt;           -- “à‘¼‹’“_Q”„ãÀÑ
+          -- ”„‚èã‚°’†Œv•”(ˆê”Ê)
+          io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_other_amt,0);        -- ”„ãÀÑ,–K–âÀÑ
+          io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_other_sales_amt :=
+            io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_other_sales_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_center_other_amt,0); -- “à‘¼‹’“_Q”„ãÀÑ
+          -- ”„‚èã‚°’†Œv•”(©”Ì‹@)
+          io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_vd_amt,0);           -- ”„ãÀÑ,–K–âÀÑ
+          io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_other_sales_amt :=
+            io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_other_sales_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_center_vd_amt,0);    -- “à‘¼‹’“_Q”„ãÀÑ
+          -- ”„‚èã‚°‡Œv•”
+          -- –K–â’†Œv•”(ˆê”Ê)
+          io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_other_num,0);         -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â’†Œv•”(©”Ì‹@)
+          io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_vd_num,0);            -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â’†Œv•”(MC)
+          io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_mc_num,0);            -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â‡Œv•”
+          io_hon_tab(cn_idx_visit_sum).l_get_one_day_tab(i).effective_num :=
+            io_hon_tab(cn_idx_visit_sum).l_get_one_day_tab(i).effective_num + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_sales_num,0);         -- —LŒøŒ¬”
+          -- –K–â“à—e‡Œv•”
+          io_hon_tab(cn_idx_visit_dsc).vis_a_num := 
+             io_hon_tab(cn_idx_visit_dsc).vis_a_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_a_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_b_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_b_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_b_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_c_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_c_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_c_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_d_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_d_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_d_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_e_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_e_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_e_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_f_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_f_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_f_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_g_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_g_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_g_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_h_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_h_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_h_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_i_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_i_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_i_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_j_num := 
+             io_hon_tab(cn_idx_visit_dsc).vis_j_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_j_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_k_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_k_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_k_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_l_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_l_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_l_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_m_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_m_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_m_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_n_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_n_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_n_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_o_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_o_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_o_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_p_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_p_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_p_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_q_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_q_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_q_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_r_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_r_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_r_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_s_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_s_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_s_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_t_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_t_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_t_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_u_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_u_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_u_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_v_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_v_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_v_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_w_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_w_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_w_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_x_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_x_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_x_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_y_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_y_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_y_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_z_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_z_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_z_num,0);
+        EXCEPTION
+          WHEN OTHERS THEN
+            fnd_file.put_line(
+               which  => FND_FILE.LOG,
+               buff   => '’n‹æ‰c‹Æ•”/•”•Ê-PL/SQL•\-–{‘Ì•”‚ÌXVˆ—‚ÅƒGƒ‰[‚É‚È‚è‚Ü‚µ‚½B' || SQLERRM ||
+                        ''                         -- ‹ós‚Ì‘}“ü
+             );
+            RAISE global_api_others_expt;
+        END;
+      END LOOP;
+    EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END up_plsql_tab4;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_ticket4
+   * Description      : ’ •[í•Ê4-’n‹æ‰c‹Æ•”/•”•Ê (A-6-1,A-6-2)
+  ***********************************************************************************/
+  PROCEDURE get_ticket4(
+     ov_errbuf         OUT NOCOPY VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+    ,ov_retcode        OUT NOCOPY VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+    ,ov_errmsg         OUT NOCOPY VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'get_ticket4';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ƒ[ƒJƒ‹’è”
+    -- ƒ[ƒJƒ‹•Ï”
+    lb_boolean            BOOLEAN;      -- ”»’f—p
+    ln_m_cnt              NUMBER(9);    -- –¾×•”ƒJƒEƒ“ƒ^[”Ši”[
+    ln_cnt                NUMBER(9);    -- ’Šo‚³‚ê‚½ƒŒƒR[ƒhŒ”
+    ln_date               NUMBER(2);    -- “ú•t‚Ìƒiƒ“ƒo[Œ^
+    ln_report_output_no   NUMBER(9);    -- ’ •[o—ÍƒZƒbƒg”Ô†
+    lv_bf_base_code_par   xxcso_aff_base_level_v.base_code%TYPE;
+    lv_bf_base_code_chi   xxcso_aff_base_level_v.child_base_code%TYPE;
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+    CURSOR ticket_data_cur
+    IS
+      SELECT
+              xablv.base_code             base_code_par,          -- ‹Î–±’n‹’“_ƒR[ƒh(e)(‹’“_ƒR[ƒh)
+              xabvpar.base_name           base_name_par,          -- ‹Î–±’n‹’“_–¼(e)
+              xablv.child_base_code       base_code_chi,          -- ‹Î–±’n‹’“_ƒR[ƒh
+              xabvchi.base_name           base_name_chi,          -- ‹Î–±’n‹’“_–¼
+              xsvsr.sales_date            sales_date,             -- ”Ì”„”NŒ“ú
+              xsvsr.rslt_amt              rslt_amt,               -- ”„ãÀÑ
+              xsvsr.rslt_new_amt          rslt_new_amt,           -- ”„ãÀÑiV‹Kj
+              xsvsr.rslt_vd_new_amt       rslt_vd_new_amt,        -- ”„ãÀÑiVDFV‹Kj
+              xsvsr.rslt_vd_amt           rslt_vd_amt,            -- ”„ãÀÑiVDj
+              xsvsr.rslt_other_new_amt    rslt_other_new_amt,     -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+              xsvsr.rslt_other_amt        rslt_other_amt,         -- ”„ãÀÑiVDˆÈŠOj
+              xsvsr.rslt_center_amt       rslt_center_amt,        -- “à‘¼‹’“_Q”„ãÀÑ
+              xsvsr.rslt_center_vd_amt    rslt_center_vd_amt,     -- “à‘¼‹’“_Q”„ãÀÑiVDj
+              xsvsr.rslt_center_other_amt rslt_center_other_amt,  -- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+              xsvsr.vis_num               vis_num,                -- –K–âÀÑ
+              xsvsr.vis_new_num           vis_new_num,            -- –K–âÀÑiV‹Kj
+              xsvsr.vis_vd_new_num        vis_vd_new_num,         -- –K–âÀÑiVDFV‹Kj
+              xsvsr.vis_vd_num            vis_vd_num,             -- –K–âÀÑiVDj
+              xsvsr.vis_other_new_num     vis_other_new_num,      -- –K–âÀÑiVDˆÈŠOFV‹Kj
+              xsvsr.vis_other_num         vis_other_num,          -- –K–âÀÑiVDˆÈŠOj
+              xsvsr.vis_mc_num            vis_mc_num,             -- –K–âÀÑiMCj
+              xsvsr.vis_sales_num         vis_sales_num,          -- —LŒøŒ¬”
+              xsvsr.vis_a_num             vis_a_num,              -- –K–â‚`Œ”
+              xsvsr.vis_b_num             vis_b_num,              -- –K–â‚aŒ”
+              xsvsr.vis_c_num             vis_c_num,              -- –K–â‚bŒ”
+              xsvsr.vis_d_num             vis_d_num,              -- –K–â‚cŒ”
+              xsvsr.vis_e_num             vis_e_num,              -- –K–â‚dŒ”
+              xsvsr.vis_f_num             vis_f_num,              -- –K–â‚eŒ”
+              xsvsr.vis_g_num             vis_g_num,              -- –K–â‚fŒ”
+              xsvsr.vis_h_num             vis_h_num,              -- –K–â‚gŒ”
+              xsvsr.vis_i_num             vis_i_num,              -- –K–âú@Œ”
+              xsvsr.vis_j_num             vis_j_num,              -- –K–â‚iŒ”
+              xsvsr.vis_k_num             vis_k_num,              -- –K–â‚jŒ”
+              xsvsr.vis_l_num             vis_l_num,              -- –K–â‚kŒ”
+              xsvsr.vis_m_num             vis_m_num,              -- –K–â‚lŒ”
+              xsvsr.vis_n_num             vis_n_num,              -- –K–â‚mŒ”
+              xsvsr.vis_o_num             vis_o_num,              -- –K–â‚nŒ”
+              xsvsr.vis_p_num             vis_p_num,              -- –K–â‚oŒ”
+              xsvsr.vis_q_num             vis_q_num,              -- –K–â‚pŒ”
+              xsvsr.vis_r_num             vis_r_num,              -- –K–â‚qŒ”
+              xsvsr.vis_s_num             vis_s_num,              -- –K–â‚rŒ”
+              xsvsr.vis_t_num             vis_t_num,              -- –K–â‚sŒ”
+              xsvsr.vis_u_num             vis_u_num,              -- –K–â‚tŒ”
+              xsvsr.vis_v_num             vis_v_num,              -- –K–â‚uŒ”
+              xsvsr.vis_w_num             vis_w_num,              -- –K–â‚vŒ”
+              xsvsr.vis_x_num             vis_x_num,              -- –K–â‚wŒ”
+              xsvsr.vis_y_num             vis_y_num,              -- –K–â‚xŒ”
+              xsvsr.vis_z_num             vis_z_num,              -- –K–â‚yŒ”
+              xsvsry.rslt_amt             rslt_amty,              -- ‘O”NÀÑ
+              xsvsry.rslt_vd_amt          rslt_vd_amty,           -- ‘O”NÀÑiVDj
+              xsvsry.rslt_other_amt       rslt_other_amty,        -- ‘O”NÀÑiVDˆÈŠOj
+              xsvsrm.rslt_amt             rslt_amtm,              -- æŒÀÑ
+              xsvsrm.rslt_vd_amt          rslt_vd_amtm,           -- æŒÀÑiVDj
+              xsvsrm.rslt_other_amt       rslt_other_amtm,        -- æŒÀÑiVDˆÈŠOj
+              xsvsrn.cust_new_num         cust_new_num,           -- ŒÚ‹qŒ”iV‹Kj
+              xsvsrn.cust_vd_new_num      cust_vd_new_num,        -- ŒÚ‹qŒ”iVDFV‹Kj
+              xsvsrn.cust_other_new_num   cust_other_new_num,     -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+              xsvsrn.tgt_sales_prsn_total_amt  tgt_sales_prsn_total_amt  -- Œ•Ê”„ã—\Z
+      FROM    xxcso_aff_base_level_v      xablv         -- AFF•”–åŠK‘wƒ}ƒXƒ^ƒrƒ…[
+             ,xxcso_aff_base_v2           xabvpar       -- AFF•”–åƒ}ƒXƒ^iÅVjƒrƒ…[(e)
+             ,xxcso_aff_base_v2           xabvchi       -- AFF•”–åƒ}ƒXƒ^iÅVjƒrƒ…[(q)
+             ,xxcso_sum_visit_sale_rep    xsvsr         -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠƒe[ƒuƒ‹
+             ,xxcso_sum_visit_sale_rep    xsvsry        -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠ‘O”N
+             ,xxcso_sum_visit_sale_rep    xsvsrm        -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠæŒ
+             ,xxcso_sum_visit_sale_rep    xsvsrn        -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠ“–Œ
+      WHERE   xablv.base_code = gv_base_code
+        AND   xablv.child_base_code = xsvsr.sum_org_code
+        AND   xablv.base_code = xabvpar.base_code
+        AND   xablv.child_base_code = xabvchi.base_code
+        AND   xsvsr.sum_org_type = cv_sum_org_type4
+        AND   xsvsr.month_date_div = cv_month_date_div2
+        AND   xsvsr.sales_date
+                BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        AND   xsvsr.sum_org_type   = xsvsry.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsry.sum_org_code(+)
+        AND   xsvsry.month_date_div(+)= cv_month_date_div1
+        AND   xsvsry.sales_date(+) = gv_year_prev
+        AND   xsvsr.sum_org_type   = xsvsrm.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsrm.sum_org_code(+)
+        AND   xsvsrm.month_date_div(+)= cv_month_date_div1
+        AND   xsvsrm.sales_date(+) = gv_year_month_prev
+        AND   xsvsr.sum_org_type   = xsvsrn.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsrn.sum_org_code(+)
+        AND   xsvsrn.month_date_div(+)= cv_month_date_div1
+        AND   xsvsrn.sales_date(+) = gv_year_month
+      ORDER BY  base_code_chi     ASC;
+    -- ƒ[ƒJƒ‹ƒŒƒR[ƒh
+    l_cur_rec                  ticket_data_cur%ROWTYPE;
+    l_month_square_rec         g_month_rtype4;
+    l_get_month_square_tab     g_get_month_square_ttype;
+    l_get_month_square_hon_tab g_get_month_square_ttype;
+    BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+      -- ƒ[ƒJƒ‹•Ï”‰Šú‰»
+      lb_boolean                := TRUE;        -- ‰Šúˆ—”»’f
+      ln_m_cnt                  := 1;           -- –¾×•”‚Ìs”
+      ln_report_output_no       := 1;           -- ”z—ñs”
+      ln_cnt                    := 0;           -- LOOPŒ”
+      -- PL/SQL•\i–{‘Ì•”j‚Ì‰Šú‰»
+      init_month_square_hon_tab(l_get_month_square_hon_tab);
+      -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ì‰Šú‰»
+      init_month_square_rec4(l_month_square_rec);
+      BEGIN
+        --ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
+        OPEN ticket_data_cur;
+--
+DO_ERROR('A-6-2-1');
+--
+        <<get_data_loop>>
+        LOOP 
+          l_cur_rec                           := NULL;          -- ƒJ[ƒ\ƒ‹ƒŒƒR[ƒh‚Ì‰Šú‰»
+--
+          FETCH ticket_data_cur INTO l_cur_rec;                 -- ƒJ[ƒ\ƒ‹‚Ìƒf[ƒ^‚ğƒŒƒR[ƒh‚ÉŠi”[
+--
+          -- ‘ÎÛŒ”‚ªOŒ‚Ìê‡
+          EXIT WHEN ticket_data_cur%NOTFOUND
+            OR  ticket_data_cur%ROWCOUNT = 0;
+--
+DO_ERROR('A-6-2-2');
+--
+          debug(
+            buff   => l_cur_rec.base_code_par                     ||','||
+                      l_cur_rec.base_name_par                     ||','||
+                      l_cur_rec.base_code_chi                     ||','||
+                      l_cur_rec.base_name_chi                     ||','||
+                      l_cur_rec.sales_date                        ||','||
+                      TO_CHAR(l_cur_rec.rslt_amt)                 ||','||
+                      TO_CHAR(l_cur_rec.rslt_new_amt)             ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_new_amt)          ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amt)              ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_new_amt)       ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amt)           ||','||
+                      TO_CHAR(l_cur_rec.rslt_center_amt)          ||','||
+                      TO_CHAR(l_cur_rec.rslt_center_vd_amt)       ||','||
+                      TO_CHAR(l_cur_rec.rslt_center_other_amt)    ||','||
+                      TO_CHAR(l_cur_rec.vis_num)                  ||','||
+                      TO_CHAR(l_cur_rec.vis_new_num)              ||','||
+                      TO_CHAR(l_cur_rec.vis_vd_new_num)           ||','||
+                      TO_CHAR(l_cur_rec.vis_vd_num)               ||','||
+                      TO_CHAR(l_cur_rec.vis_other_new_num)        ||','||
+                      TO_CHAR(l_cur_rec.vis_other_num)            ||','||
+                      TO_CHAR(l_cur_rec.vis_mc_num)               ||','||
+                      TO_CHAR(l_cur_rec.vis_sales_num)            ||','||
+                      TO_CHAR(l_cur_rec.vis_a_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_b_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_c_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_d_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_e_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_f_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_g_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_h_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_i_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_j_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_k_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_l_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_m_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_n_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_o_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_p_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_q_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_r_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_s_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_t_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_u_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_v_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_w_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_x_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_y_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_z_num)                ||','||
+                      TO_CHAR(l_cur_rec.rslt_amty)                ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amty)             ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amty)          ||','||
+                      TO_CHAR(l_cur_rec.rslt_amtm)                ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amtm)             ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amtm)          ||','||
+                      TO_CHAR(l_cur_rec.cust_new_num)             ||','||
+                      TO_CHAR(l_cur_rec.cust_vd_new_num)          ||','||
+                      TO_CHAR(l_cur_rec.cust_other_new_num)       ||','||
+                      TO_CHAR(l_cur_rec.tgt_sales_prsn_total_amt) ||','||
+                     cv_lf 
+          );
+          -- ‘O‰ñƒŒƒR[ƒh‚Æ‹’“_ƒR[ƒh‚ª“¯‚¶‚Å‹Æ–±’nƒR[ƒh‚ªˆá‚¤ê‡A–¾×•””z—ñ‚Æ–{‘Ì•””z—ñ‚ğXVB
+          IF(lb_boolean=FALSE) THEN
+            IF((lv_bf_base_code_par = l_cur_rec.base_code_par)AND(lv_bf_base_code_chi <> l_cur_rec.base_code_chi))
+              THEN
+              -- DEBUGƒƒbƒZ[ƒW
+              debug(
+                 buff   => '‹Æ–±’nƒR[ƒh‚ªˆá‚¢‚Ü‚·B :' ||'‘O‰ñF '|| lv_bf_base_code_chi ||
+                            '¡‰ñF' || l_cur_rec.base_code_chi ||
+                            '–¾×•””z—ñ' || TO_CHAR(ln_m_cnt)
+              );
+              -- =================================================
+              -- A-6-2,A-6-3.PLSQL•\‚ÌXV
+              -- =================================================
+              up_plsql_tab4(
+                 i_month_square_rec   => l_month_square_rec          -- ˆêƒ–Œ•ªƒf[ƒ^
+                ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+                ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+                ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+                ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+                ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+                ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+              );
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+              l_month_square_rec.l_one_day_tab.DELETE;  -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+              l_month_square_rec      := NULL;          -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+              init_month_square_rec4(l_month_square_rec);
+              ln_m_cnt          := ln_m_cnt + 1;       -- –¾×•””z—ñ‚ğ{‚P‚·‚éB
+              lb_boolean        := TRUE;               -- ‰Šúˆ—‚Ìƒtƒ‰ƒOƒIƒ“‚·‚éB
+            ELSIF(lv_bf_base_code_par <> l_cur_rec.base_code_par) THEN
+              -- =================================================
+              -- A-6-2,A-6-3.PLSQL•\‚ÌXV
+              -- =================================================
+              up_plsql_tab4(
+                 i_month_square_rec   => l_month_square_rec          -- ˆêƒ–Œ•ªƒf[ƒ^
+                ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+                ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+                ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+                ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+                ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+                ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+              );
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+              l_month_square_rec.l_one_day_tab.DELETE;  -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+              l_month_square_rec      := NULL;          -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ìƒf[ƒ^‚ğÁ‚·B
+              init_month_square_rec4(l_month_square_rec);
+              lb_boolean        := TRUE;               -- ‰Šúˆ—‚Ìƒtƒ‰ƒOƒIƒ“‚·‚éB
+            END IF;
+          END IF;
+          -- ‹’“_ƒR[ƒh‚ª‘O‰ñæ“¾‚µ‚½‹’“_ƒR[ƒh‚Æˆá‚¤ê‡ƒ[ƒNƒe[ƒuƒ‹‚Éo—Í‚µ‚Ü‚·B
+          IF ((ln_cnt > 0) AND
+              (lv_bf_base_code_par <> l_cur_rec.base_code_par)) THEN
+            debug(
+               buff   => '‹’“_ƒR[ƒh‚ªˆá‚¢‚Ü‚·B :' ||'‘O‰ñF '|| lv_bf_base_code_par || ''||
+                          '¡‰ñF' || l_cur_rec.base_code_par
+            );
+          -- =================================================
+          -- A-3-4,A-4-4,A-5-4,A-6-4,A-7-4.ƒ[ƒNƒe[ƒuƒ‹‚Öo—Í
+          -- =================================================
+          insert_wrk_table(
+             ir_m_tab            => l_get_month_square_tab                      -- –¾×•”ƒŒƒR[ƒh
+            ,ir_hon_tab          => l_get_month_square_hon_tab                  -- –{‘Ì•”ƒŒƒR[ƒh
+            ,in_m_cnt            => ln_m_cnt                                    -- –¾×•”s”
+            ,in_report_output_no => ln_report_output_no                         -- ’ •[o—ÍƒZƒbƒg”Ô†
+            ,ov_errbuf           => lv_errbuf            -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+            ,ov_retcode          => lv_retcode           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+            ,ov_errmsg           => lv_errmsg            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- ƒŒƒR[ƒh‚Ì‰Šú‰»
+          l_get_month_square_tab.DELETE;
+          l_get_month_square_hon_tab.DELETE;
+          init_month_square_hon_tab(l_get_month_square_hon_tab);
+          -- ƒJƒEƒ“ƒ^”‚É‚P‚ğ‘«‚·
+          ln_report_output_no := ln_report_output_no + 1; -- o—Í‚³‚ê‚½’ •[ŒÂ”‚É{‚P‚·‚é
+          lb_boolean          := TRUE;                    -- ‰Šúˆ—‚Ìó‘Ô‚É–ß‚·
+          ln_m_cnt            := 1;                       -- –¾×•””z—ñ‚Ìs”‚Ì‰Šú‰»
+          END IF;
+          -- ‰Šúˆ—‚Ìê‡
+          IF(lb_boolean) THEN
+            -- ‹Æ–±’nƒR[ƒh‚ğƒ[ƒJƒ‹•Ï”‚ÉŠi”[
+            lv_bf_base_code_par         := l_cur_rec.base_code_par;        -- ‹Î–±’n‹’“_ƒR[ƒh(e)(‹’“_ƒR[ƒh)
+            lv_bf_base_code_chi         := l_cur_rec.base_code_chi;        -- ‹Î–±’n‹’“_ƒR[ƒh
+            -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚ÉŠi”[
+            -- ‹Î–±’n‹’“_ƒR[ƒh(e)(‹’“_ƒR[ƒh)
+            l_month_square_rec.base_code_par     := l_cur_rec.base_code_par;
+            -- ‹Î–±’n‹’“_–¼(e)(‹’“_ƒR[ƒh)
+            l_month_square_rec.base_name_par     := l_cur_rec.base_name_par;
+            -- ‹Î–±’n‹’“_ƒR[ƒh
+            l_month_square_rec.base_code_chi     := l_cur_rec.base_code_chi;
+            -- ‹Î–±’n‹’“_–¼
+            l_month_square_rec.base_name_chi     := l_cur_rec.base_name_chi;
+            -- V‹KŒÚ‹qŒ”
+            l_month_square_rec.cust_new_num      := l_cur_rec.cust_new_num;
+            -- V‹KVDŒ”
+            l_month_square_rec.cust_vd_new_num   := l_cur_rec.cust_vd_new_num;
+            -- V‹KVDˆÈŠOŒ”
+            l_month_square_rec.cust_other_new_num := l_cur_rec.cust_other_new_num;
+            -- ‘O”NÀÑ
+            l_month_square_rec.rslt_amty         := l_cur_rec.rslt_amty;
+            -- ‘O”NÀÑiVDj
+            l_month_square_rec.rslt_vd_amty      := l_cur_rec.rslt_vd_amty;
+            -- ‘O”NÀÑiVDˆÈŠOjj
+            l_month_square_rec.rslt_other_amty   := l_cur_rec.rslt_other_amty;
+            -- æŒÀÑ
+            l_month_square_rec.rslt_amtm         := l_cur_rec.rslt_amtm;
+            -- æŒÀÑiVDj
+            l_month_square_rec.rslt_vd_amtm      := l_cur_rec.rslt_vd_amtm;
+            -- æŒÀÑiVDˆÈŠO
+            l_month_square_rec.rslt_other_amtm   := l_cur_rec.rslt_other_amtm;
+            -- Œ•Ê”„ã—\Z
+            l_month_square_rec.tgt_sales_prsn_total_amt := l_cur_rec.tgt_sales_prsn_total_amt;
+            lb_boolean := FALSE;                  -- ‰Šúˆ—‚Ìƒtƒ‰ƒO‚ğƒIƒt‚·‚éB
+            -- DEBUGƒƒbƒZ[ƒW
+            -- ‰Šúˆ—‚Ìê‡
+            debug(
+               buff   => '‰Šúˆ—ƒtƒ‰ƒO:' || 'FALSE'
+            );
+          END IF;
+          -- “ú•t‚ğæ“¾
+          ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
+          -- DEBUGƒƒbƒZ[ƒW
+          -- ‰Šúˆ—‚Ìê‡
+          debug(
+             buff   => '“ú•t:' || l_cur_rec.sales_date || cv_lf ||
+                       '“ú•t‚¯‚Ìƒiƒ“ƒo[Œ^:'     || TO_CHAR(ln_date)
+          );
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_amt
+            := l_cur_rec.rslt_amt;              -- ”„ãÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt
+            := l_cur_rec.rslt_new_amt;          -- ”„ãÀÑiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt
+            := l_cur_rec.rslt_vd_new_amt;       -- ”„ãÀÑiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt
+            := l_cur_rec.rslt_vd_amt;           -- ”„ãÀÑiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt
+            := l_cur_rec.rslt_other_new_amt;    -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt
+            := l_cur_rec.rslt_other_amt;        -- ”„ãÀÑiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt
+            := l_cur_rec.rslt_center_amt;       -- “à‘¼‹’“_Q”„ãÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_vd_amt
+            := l_cur_rec.rslt_center_vd_amt;    -- “à‘¼‹’“_Q”„ãÀÑiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_other_amt
+            := l_cur_rec.rslt_center_other_amt; -- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_num
+            := l_cur_rec.vis_num;               -- –K–âÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).vis_new_num
+            := l_cur_rec.vis_new_num;           -- –K–âÀÑiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num
+            := l_cur_rec.vis_vd_new_num;        -- –K–âÀÑiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num
+            := l_cur_rec.vis_vd_num;            -- –K–âÀÑiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num
+            := l_cur_rec.vis_other_new_num;     -- –K–âÀÑiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_other_num
+            := l_cur_rec.vis_other_num;         -- –K–âÀÑiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num
+            := l_cur_rec.vis_mc_num;            -- –K–âÀÑiMC
+          l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num
+            := l_cur_rec.vis_sales_num;         -- —LŒøŒ¬”
+          -- A0Z–K–âŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- –K–âAŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- –K–âBŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- –K–âCŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- –K–âDŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- –K–âEŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- –K–âFŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- –K–âGŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- –K–âHŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- –K–âIŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- –K–âJŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- –K–âKŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- –K–âLŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- –K–âMŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- –K–âNŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- –K–âOŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- –K–âPŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- –K–âQŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- –K–âRŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- –K–âSŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- –K–âTŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- –K–âUŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- –K–âVŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- –K–âWŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- –K–âXŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- –K–âYŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- –K–âZŒ”
+          -- Å‰‚ÌƒŒƒR[ƒh‚Ìê‡
+          IF(lb_boolean) THEN
+            lb_boolean              := FALSE;                  -- ‰Šúˆ—‚Ìƒtƒ‰ƒO‚ğƒIƒt‚·‚éB
+          END IF;
+          -- ’ŠoŒ”ƒJƒEƒ“ƒ^‚É‚P‚ğ‘«‚·B
+          ln_cnt := ln_cnt + 1;
+          gn_target_cnt  := ln_cnt;
+          -- loopŒ”
+          debug(
+                buff   => 'loopŒ”' || TO_CHAR(ln_cnt)
+          );
+        END LOOP;
+        -- ÅŒã‚Ìƒf[ƒ^“o˜^
+        IF (ln_cnt > 0) THEN
+          debug(
+                buff   => 'ÅŒã‚Ìƒf[ƒ^‚Ì“o˜^'
+          );
+          -- =================================================
+          -- A-6-2,A-6-3.PLSQL•\‚ÌXV
+          -- =================================================
+          up_plsql_tab4(
+             i_month_square_rec   => l_month_square_rec          -- ˆêƒ–Œ•ªƒf[ƒ^
+            ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+            ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+            ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+            ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+            ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+            ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- =================================================
+          -- A-3-4,A-4-4,A-5-4,A-6-4,A-7-4.ƒ[ƒNƒe[ƒuƒ‹‚Öo—Í
+          -- =================================================
+          insert_wrk_table(
+             ir_m_tab            => l_get_month_square_tab                      -- –¾×•”ƒŒƒR[ƒh
+            ,ir_hon_tab          => l_get_month_square_hon_tab                  -- –{‘Ì•”ƒŒƒR[ƒh
+            ,in_m_cnt            => ln_m_cnt                                    -- –¾×•”s”
+            ,in_report_output_no => ln_report_output_no                         -- ’ •[o—ÍƒZƒbƒg”Ô†
+            ,ov_errbuf           => lv_errbuf            -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+            ,ov_retcode          => lv_retcode           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+            ,ov_errmsg           => lv_errmsg            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- ƒƒbƒZ[ƒWo—Í
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                          ,iv_name         => cv_tkn_number_08         --ƒƒbƒZ[ƒWƒR[ƒh
+                          ,iv_token_name1  => cv_tkn_table             --ƒg[ƒNƒ“ƒR[ƒh1
+                          ,iv_token_value1 => cv_tab_samari            --ƒg[ƒNƒ“’l1
+                          ,iv_token_name2  => cv_tkn_errmsg            --ƒg[ƒNƒ“ƒR[ƒh‚Q
+                          ,iv_token_value2 => SQLERRM                  --ƒg[ƒNƒ“’l‚Q
+          );
+          fnd_file.put_line(
+                which  => FND_FILE.LOG,
+                buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                        lv_errmsg || cv_lf || 
+                         ''                         -- ‹ós‚Ì‘}“ü
+          );
+          RAISE global_api_expt;
+      END;
+    -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
+    CLOSE ticket_data_cur;
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END get_ticket4;
+--
+
+  /**********************************************************************************
+   * Procedure Name   : up_plsql_tab5
+   * Description      : ’ •[í•Ê5-’nˆæ‰c‹Æ–{•”•Ê•Ê-PLSQL•\‚ÌXV (A-7-3)
+  ***********************************************************************************/
+  PROCEDURE up_plsql_tab5(
+     i_month_square_rec  IN               g_month_rtype5                     -- ˆêƒ–Œ•ªƒf[ƒ^
+    ,in_m_cnt            IN               NUMBER                             -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+    ,io_m_tab            IN OUT NOCOPY    g_get_month_square_ttype           -- –¾×•””z—ñ
+    ,io_hon_tab          IN OUT NOCOPY    g_get_month_square_ttype           -- –{‘Ì•””z—ñ
+    ,ov_errbuf           OUT NOCOPY VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+    ,ov_retcode          OUT NOCOPY VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+    ,ov_errmsg           OUT NOCOPY VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'up_plsql_tab5';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+    lv_gvm_type           VARCHAR2(1);                                       -- ˆê”Ê^©”Ì‹@^‚l‚b
+    ln_m_cnt              NUMBER(9);                                         -- INƒpƒ‰ƒ[ƒ^‚ğŠi”[
+    BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+      ln_m_cnt                            := in_m_cnt;                       -- INƒpƒ‰ƒ[ƒ^‚ğŠi”[
+      -- DEBUGƒƒbƒZ[ƒW
+      -- PL/SQL•\‚ÌXV
+      debug(
+         buff   => '’nˆæ‰c‹Æ–{•”-PL/SQL•\‚ÌXVˆ—:' || TO_CHAR(ln_m_cnt)
+      );
+      BEGIN
+        -- ”„‚èã‚°–¾×•”
+        io_m_tab(ln_m_cnt).up_base_code     := i_month_square_rec.base_code_par;       -- ‹’“_ƒR[ƒhie)
+        io_m_tab(ln_m_cnt).up_hub_name      := i_month_square_rec.base_name_par;       -- ‹’“_–¼Ìiej
+        io_m_tab(ln_m_cnt).base_code        := i_month_square_rec.base_code_chi;       -- ‹Æ–±’n‹’“_ƒR[ƒh
+        io_m_tab(ln_m_cnt).hub_name         := i_month_square_rec.base_name_chi;       -- ‹Æ–±’n‹’“_–¼  
+        io_m_tab(ln_m_cnt).last_year_rslt_sales_amt :=i_month_square_rec.rslt_amty; -- ‘O”NÀÑ
+        io_m_tab(ln_m_cnt).last_mon_rslt_sales_amt  :=i_month_square_rec.rslt_amtm; -- æŒÀÑ
+        io_m_tab(ln_m_cnt).new_customer_num :=i_month_square_rec.cust_new_num;      -- ŒÚ‹qŒ”
+        io_m_tab(ln_m_cnt).new_vendor_num   :=i_month_square_rec.cust_vd_new_num;   -- ŒÚ‹qŒ”iVD V‹Kj
+        io_m_tab(ln_m_cnt).plan_sales_amt   := i_month_square_rec.tgt_sales_prsn_total_amt;  -- Œ•Ê”„ã—\Z
+        -- DEBUGƒƒbƒZ[ƒW
+        -- PL/SQL•\‚ÌXV
+        debug(
+           buff   => '’nˆæ‰c‹Æ–{•”-PL/SQL•\‚ÌXVˆ—' || '”„‚èã‚°–¾×•”ŒÅ’è•”Š®—¹'
+        );
+      EXCEPTION
+        WHEN OTHERS THEN
+          fnd_file.put_line(
+           which  => FND_FILE.LOG,
+           buff   => '’nˆæ‰c‹Æ–{•”-PL/SQL•\‚ÌXVˆ—¸”s:' || SQLERRM 
+          );
+          RAISE global_api_others_expt;
+      END;
+      -- –{‘Ì•”
+      <<get_hontai_loop>>
+      FOR i IN 1..cn_idx_max LOOP 
+        IF(i = cn_idx_sales_ippn) THEN         --”„‚èã‚°’†Œv•”
+          io_hon_tab(i).gvm_type                 := cv_gvm_g;                              -- ˆê”Ê
+        ELSIF(i = cn_idx_sales_vd) THEN      --”„‚èã‚°’†Œv•”
+          io_hon_tab(i).gvm_type                 := cv_gvm_v;                              -- ©”Ì‹@
+        ELSIF(i = cn_idx_sales_sum) THEN      -- ”„‚èã‚°‡Œv•”
+          NULL;
+        ELSIF(i=cn_idx_visit_ippn)THEN       --–K–â’†Œv•”
+          io_hon_tab(i).gvm_type                 := cv_gvm_g;                              -- ˆê”Ê
+        ELSIF(i=cn_idx_visit_vd)THEN       --–K–â’†Œv•”
+          io_hon_tab(i).gvm_type                 := cv_gvm_v;                              -- ©”Ì‹@
+        ELSIF(i=cn_idx_visit_mc)THEN       --–K–â’†Œv•”
+          io_hon_tab(i).gvm_type                 := cv_gvm_m;                              -- MC
+        END IF;
+        io_hon_tab(i).up_base_code   := i_month_square_rec.base_code_par;  -- ‹’“_ƒR[ƒhie)
+        io_hon_tab(i).up_hub_name    := i_month_square_rec.base_name_par;  -- ‹’“_–¼Ìiej
+      END LOOP get_hontai_loop;
+--
+      -- ”„ã’†Œv•”(ˆê”Ê)
+      io_hon_tab(cn_idx_sales_ippn).last_year_rslt_sales_amt := 
+        io_hon_tab(cn_idx_sales_ippn).last_year_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_other_amty, 0);    -- ‘O”NÀÑ
+      io_hon_tab(cn_idx_sales_ippn).last_mon_rslt_sales_amt  :=
+        io_hon_tab(cn_idx_sales_ippn).last_mon_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_other_amtm, 0);    -- æŒÀÑ
+      io_hon_tab(cn_idx_sales_ippn).new_customer_num :=
+        io_hon_tab(cn_idx_sales_ippn).new_customer_num +
+        NVL(i_month_square_rec.cust_other_new_num, 0); -- ŒÚ‹qŒ”iV‹Kjiˆê”Êj
+      -- ”„ã’†Œv•”(©”Ì‹@)
+      io_hon_tab(cn_idx_sales_vd).last_year_rslt_sales_amt :=
+        io_hon_tab(cn_idx_sales_vd).last_year_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_vd_amty, 0);       -- ‘O”NÀÑ
+      io_hon_tab(cn_idx_sales_vd).last_mon_rslt_sales_amt :=
+        io_hon_tab(cn_idx_sales_vd).last_mon_rslt_sales_amt +
+        NVL(i_month_square_rec.rslt_vd_amtm, 0);       -- æŒÀÑ
+      io_hon_tab(cn_idx_sales_vd).new_customer_num :=
+        io_hon_tab(cn_idx_sales_vd).new_customer_num +
+        NVL(i_month_square_rec.cust_vd_new_num, 0);    -- ŒÚ‹qŒ”iV‹Kj(©”Ì‹@)
+--
+      <<get_all_day_data_loop>>
+      FOR i IN 1..31 LOOP
+        BEGIN
+          -- DEBUGƒƒbƒZ[ƒW
+            -- PL/SQL•\‚ÌXV
+            debug(
+               buff   => '’nˆæ‰c‹Æ–{•”-PL/SQL•\‚ÌXVˆ—' || '1ƒ–Œ•ª‚Ìƒf[ƒ^XV'
+            );
+          -- ”„‚èã‚°–¾×•”
+          io_m_tab(ln_m_cnt).l_get_one_day_tab(i).rslt_vs_amt
+            := i_month_square_rec.l_one_day_tab(i).rslt_amt;                 -- ”„‚èã‚°ÀÑ
+          io_m_tab(ln_m_cnt).l_get_one_day_tab(i).rslt_other_sales_amt
+            := i_month_square_rec.l_one_day_tab(i).rslt_center_amt;          -- “à‘¼‹’“_Q”„ãÀÑ
+          -- ”„‚èã‚°’†Œv•”(ˆê”Ê)
+          io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_other_amt,0);       -- ”„ãÀÑ,–K–âÀÑ
+          io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_other_sales_amt :=
+            io_hon_tab(cn_idx_sales_ippn).l_get_one_day_tab(i).rslt_other_sales_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_center_other_amt,0);-- “à‘¼‹’“_Q”„ãÀÑ
+          -- ”„‚èã‚°’†Œv•”(©”Ì‹@)
+          io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_vd_amt,0);          -- ”„ãÀÑ,–K–âÀÑ
+          io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_other_sales_amt :=
+            io_hon_tab(cn_idx_sales_vd).l_get_one_day_tab(i).rslt_other_sales_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).rslt_center_vd_amt,0);   -- “à‘¼‹’“_Q”„ãÀÑ
+          -- ”„‚èã‚°‡Œv•”
+          -- –K–â’†Œv•”(ˆê”Ê)
+          io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_ippn).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_other_num,0);        -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â’†Œv•”(©”Ì‹@)
+          io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_vd).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_vd_num,0);           -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â’†Œv•”(MC)
+          io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).rslt_vs_amt :=
+            io_hon_tab(cn_idx_visit_mc).l_get_one_day_tab(i).rslt_vs_amt + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_mc_num,0);            -- ”„ãÀÑ,–K–âÀÑ
+          -- –K–â‡Œv•”
+          io_hon_tab(cn_idx_visit_sum).l_get_one_day_tab(i).effective_num :=
+            io_hon_tab(cn_idx_visit_sum).l_get_one_day_tab(i).effective_num + 
+            NVL(i_month_square_rec.l_one_day_tab(i).vis_sales_num,0);        -- —LŒøŒ¬”
+          -- –K–â“à—e‡Œv•”
+          io_hon_tab(cn_idx_visit_dsc).vis_a_num := 
+             io_hon_tab(cn_idx_visit_dsc).vis_a_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_a_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_b_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_b_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_b_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_c_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_c_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_c_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_d_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_d_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_d_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_e_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_e_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_e_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_f_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_f_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_f_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_g_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_g_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_g_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_h_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_h_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_h_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_i_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_i_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_i_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_j_num := 
+             io_hon_tab(cn_idx_visit_dsc).vis_j_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_j_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_k_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_k_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_k_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_l_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_l_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_l_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_m_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_m_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_m_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_n_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_n_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_n_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_o_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_o_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_o_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_p_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_p_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_p_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_q_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_q_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_q_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_r_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_r_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_r_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_s_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_s_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_s_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_t_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_t_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_t_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_u_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_u_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_u_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_v_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_v_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_v_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_w_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_w_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_w_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_x_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_x_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_x_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_y_num :=   
+             io_hon_tab(cn_idx_visit_dsc).vis_y_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_y_num,0);
+          io_hon_tab(cn_idx_visit_dsc).vis_z_num :=  
+             io_hon_tab(cn_idx_visit_dsc).vis_z_num + NVL(i_month_square_rec.l_one_day_tab(i).vis_z_num,0);
+        EXCEPTION
+          WHEN OTHERS THEN
+          fnd_file.put_line(
+             which  => FND_FILE.LOG,
+             buff   => '’nˆæ‰c‹Æ–{•”-PL/SQL•\-–{‘Ì•”‚ÌXVˆ—‚ÅƒGƒ‰[‚É‚È‚è‚Ü‚µ‚½B' || SQLERRM ||
+                      ''                         -- ‹ós‚Ì‘}“ü
+          );
+          RAISE global_api_others_expt;
+        END;
+      END LOOP get_all_day_data_loop;
+    EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+      -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+      WHEN global_api_expt THEN
+        ov_errmsg  := lv_errmsg;
+        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+        ov_retcode := cv_status_error;
+      -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+      WHEN global_api_others_expt THEN
+        ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+        ov_retcode := cv_status_error;
+      -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+      WHEN OTHERS THEN
+        ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+        ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END up_plsql_tab5;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_ticket5
+   * Description      : ’ •[í•Ê5-’nˆæ‰c‹Æ–{•”•Ê (A-7-1,A-7-2)
+  ***********************************************************************************/
+  PROCEDURE get_ticket5(
+    ov_errbuf         OUT NOCOPY VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+   ,ov_retcode        OUT NOCOPY VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+   ,ov_errmsg         OUT NOCOPY VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'get_ticket5';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ƒ[ƒJƒ‹’è”
+    -- ƒ[ƒJƒ‹•Ï”
+    lb_boolean            BOOLEAN;      -- ”»’f—p
+    ln_m_cnt              NUMBER(9);    -- –¾×•”ƒJƒEƒ“ƒ^[”Ši”[
+    ln_cnt                NUMBER(9);    -- ’Šo‚³‚ê‚½ƒŒƒR[ƒhŒ”
+    ln_date               NUMBER(2);    -- “ú•t‚Ìƒiƒ“ƒo[Œ^
+    ln_report_output_no   NUMBER(9);    -- ’ •[o—ÍƒZƒbƒg”Ô†
+    lv_bf_base_code_par   xxcso_aff_base_level_v.base_code%TYPE;
+    lv_bf_base_code_chi   xxcso_aff_base_level_v.child_base_code%TYPE;
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+    CURSOR ticket_data_cur
+    IS
+      SELECT
+              xablv.base_code             base_code_par,          -- ‹Î–±’n‹’“_ƒR[ƒh(e)(‹’“_ƒR[ƒh)
+              xabvpar.base_name           base_name_par,          -- ‹Î–±’n‹’“_–¼(e)
+              xablv.child_base_code       base_code_chi,          -- ‹Î–±’n‹’“_ƒR[ƒh
+              xabvchi.base_name           base_name_chi,          -- ‹Î–±’n‹’“_–¼
+              xsvsr.sales_date            sales_date,             -- ”Ì”„”NŒ“ú
+              xsvsr.rslt_amt              rslt_amt,               -- ”„ãÀÑ
+              xsvsr.rslt_new_amt          rslt_new_amt,           -- ”„ãÀÑiV‹Kj
+              xsvsr.rslt_vd_new_amt       rslt_vd_new_amt,        -- ”„ãÀÑiVDFV‹Kj
+              xsvsr.rslt_vd_amt           rslt_vd_amt,            -- ”„ãÀÑiVDj
+              xsvsr.rslt_other_new_amt    rslt_other_new_amt,     -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+              xsvsr.rslt_other_amt        rslt_other_amt,         -- ”„ãÀÑiVDˆÈŠOj
+              xsvsr.rslt_center_amt       rslt_center_amt,        -- “à‘¼‹’“_Q”„ãÀÑ
+              xsvsr.rslt_center_vd_amt    rslt_center_vd_amt,     -- “à‘¼‹’“_Q”„ãÀÑiVDj
+              xsvsr.rslt_center_other_amt rslt_center_other_amt,  -- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+              xsvsr.vis_num               vis_num,                -- –K–âÀÑ
+              xsvsr.vis_new_num           vis_new_num,            -- –K–âÀÑiV‹Kj
+              xsvsr.vis_vd_new_num        vis_vd_new_num,         -- –K–âÀÑiVDFV‹Kj
+              xsvsr.vis_vd_num            vis_vd_num,             -- –K–âÀÑiVDj
+              xsvsr.vis_other_new_num     vis_other_new_num,      -- –K–âÀÑiVDˆÈŠOFV‹Kj
+              xsvsr.vis_other_num         vis_other_num,          -- –K–âÀÑiVDˆÈŠOj
+              xsvsr.vis_mc_num            vis_mc_num,             -- –K–âÀÑiMCj
+              xsvsr.vis_sales_num         vis_sales_num,          -- —LŒøŒ¬”
+              xsvsr.vis_a_num             vis_a_num,              -- –K–â‚`Œ”
+              xsvsr.vis_b_num             vis_b_num,              -- –K–â‚aŒ”
+              xsvsr.vis_c_num             vis_c_num,              -- –K–â‚bŒ”
+              xsvsr.vis_d_num             vis_d_num,              -- –K–â‚cŒ”
+              xsvsr.vis_e_num             vis_e_num,              -- –K–â‚dŒ”
+              xsvsr.vis_f_num             vis_f_num,              -- –K–â‚eŒ”
+              xsvsr.vis_g_num             vis_g_num,              -- –K–â‚fŒ”
+              xsvsr.vis_h_num             vis_h_num,              -- –K–â‚gŒ”
+              xsvsr.vis_i_num             vis_i_num,              -- –K–âú@Œ”
+              xsvsr.vis_j_num             vis_j_num,              -- –K–â‚iŒ”
+              xsvsr.vis_k_num             vis_k_num,              -- –K–â‚jŒ”
+              xsvsr.vis_l_num             vis_l_num,              -- –K–â‚kŒ”
+              xsvsr.vis_m_num             vis_m_num,              -- –K–â‚lŒ”
+              xsvsr.vis_n_num             vis_n_num,              -- –K–â‚mŒ”
+              xsvsr.vis_o_num             vis_o_num,              -- –K–â‚nŒ”
+              xsvsr.vis_p_num             vis_p_num,              -- –K–â‚oŒ”
+              xsvsr.vis_q_num             vis_q_num,              -- –K–â‚pŒ”
+              xsvsr.vis_r_num             vis_r_num,              -- –K–â‚qŒ”
+              xsvsr.vis_s_num             vis_s_num,              -- –K–â‚rŒ”
+              xsvsr.vis_t_num             vis_t_num,              -- –K–â‚sŒ”
+              xsvsr.vis_u_num             vis_u_num,              -- –K–â‚tŒ”
+              xsvsr.vis_v_num             vis_v_num,              -- –K–â‚uŒ”
+              xsvsr.vis_w_num             vis_w_num,              -- –K–â‚vŒ”
+              xsvsr.vis_x_num             vis_x_num,              -- –K–â‚wŒ”
+              xsvsr.vis_y_num             vis_y_num,              -- –K–â‚xŒ”
+              xsvsr.vis_z_num             vis_z_num,              -- –K–â‚yŒ”
+              xsvsry.rslt_amt             rslt_amty,              -- ‘O”NÀÑ
+              xsvsry.rslt_vd_amt          rslt_vd_amty,           -- ‘O”NÀÑiVDj
+              xsvsry.rslt_other_amt       rslt_other_amty,        -- ‘O”NÀÑiVDˆÈŠOj
+              xsvsrm.rslt_amt             rslt_amtm,              -- æŒÀÑ
+              xsvsrm.rslt_vd_amt          rslt_vd_amtm,           -- æŒÀÑiVDj
+              xsvsrm.rslt_other_amt       rslt_other_amtm,        -- æŒÀÑiVDˆÈŠOj
+              xsvsrn.cust_new_num         cust_new_num,           -- ŒÚ‹qŒ”iV‹Kj
+              xsvsrn.cust_vd_new_num      cust_vd_new_num,        -- ŒÚ‹qŒ”iVDFV‹Kj
+              xsvsrn.cust_other_new_num   cust_other_new_num,     -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+              xsvsrn.tgt_sales_prsn_total_amt  tgt_sales_prsn_total_amt  -- Œ•Ê”„ã—\Z
+      FROM    xxcso_aff_base_level_v      xablv         -- AFF•”–åŠK‘wƒ}ƒXƒ^ƒrƒ…[
+             ,xxcso_aff_base_v2           xabvpar       -- AFF•”–åƒ}ƒXƒ^iÅVjƒrƒ…[(e)
+             ,xxcso_aff_base_v2           xabvchi       -- AFF•”–åƒ}ƒXƒ^iÅVjƒrƒ…[(q)
+             ,xxcso_sum_visit_sale_rep    xsvsr         -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠƒe[ƒuƒ‹
+             ,xxcso_sum_visit_sale_rep    xsvsry        -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠ‘O”N
+             ,xxcso_sum_visit_sale_rep    xsvsrm        -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠæŒ
+             ,xxcso_sum_visit_sale_rep    xsvsrn        -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠ“–Œ
+      WHERE   xablv.base_code = gv_base_code
+        AND   xablv.child_base_code = xsvsr.sum_org_code
+        AND   xablv.base_code = xabvpar.base_code
+        AND   xablv.child_base_code = xabvchi.base_code
+        AND   xsvsr.sum_org_type = cv_sum_org_type5
+        AND   xsvsr.month_date_div = cv_month_date_div2
+        AND   xsvsr.sales_date
+                BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        AND   xsvsr.sum_org_type   = xsvsry.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsry.sum_org_code(+)
+        AND   xsvsry.month_date_div(+)= cv_month_date_div1
+        AND   xsvsry.sales_date(+) = gv_year_prev
+        AND   xsvsr.sum_org_type   = xsvsrm.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsrm.sum_org_code(+)
+        AND   xsvsrm.month_date_div(+)= cv_month_date_div1
+        AND   xsvsrm.sales_date(+) = gv_year_month_prev
+        AND   xsvsr.sum_org_type   = xsvsrn.sum_org_type(+)
+        AND   xsvsr.sum_org_code   = xsvsrn.sum_org_code(+)
+        AND   xsvsrn.month_date_div(+)= cv_month_date_div1
+        AND   xsvsrn.sales_date(+) = gv_year_month
+      ORDER BY  base_code_chi     ASC;
+    -- ƒ[ƒJƒ‹ƒŒƒR[ƒh
+    -- ’ •[•Ï”Ši”[—p
+    l_cur_rec                  ticket_data_cur%ROWTYPE;
+    l_month_square_rec         g_month_rtype5;
+    l_get_month_square_tab     g_get_month_square_ttype;
+    l_get_month_square_hon_tab g_get_month_square_ttype;
+    BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+      -- ƒ[ƒJƒ‹•Ï”‰Šú‰»
+      lb_boolean                := TRUE;        -- ‰Šúˆ—”»’f
+      ln_m_cnt                  := 1;           -- –¾×•”‚Ìs”
+      ln_report_output_no       := 1;           -- ”z—ñs”
+      ln_cnt                    := 0;           -- LOOPŒ”
+      -- PL/SQL•\i–{‘Ì•”j‚Ì‰Šú‰»
+      init_month_square_hon_tab(l_get_month_square_hon_tab);
+      -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚Ì‰Šú‰»
+      init_month_square_rec5(l_month_square_rec);
+      BEGIN
+      --ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
+      OPEN ticket_data_cur;
+--
+DO_ERROR('A-7-2-1');
+--
+      <<get_data_loop>>
+      LOOP 
+          l_cur_rec                           := NULL;          -- ƒJ[ƒ\ƒ‹ƒŒƒR[ƒh‚Ì‰Šú‰»
+--
+          FETCH ticket_data_cur INTO l_cur_rec;                 -- ƒJ[ƒ\ƒ‹‚Ìƒf[ƒ^‚ğƒŒƒR[ƒh‚ÉŠi”[
+--
+        -- ‘ÎÛŒ”‚ªOŒ‚Ìê‡
+        EXIT WHEN ticket_data_cur%NOTFOUND
+          OR  ticket_data_cur%ROWCOUNT = 0;
+--
+DO_ERROR('A-7-2-2');
+--
+          debug(
+            buff   => l_cur_rec.base_code_par                         ||','||
+                      l_cur_rec.base_name_par                         ||','||
+                      l_cur_rec.base_code_chi                         ||','||
+                      l_cur_rec.base_name_chi                         ||','||
+                      l_cur_rec.sales_date                            ||','||
+                      TO_CHAR(l_cur_rec.rslt_amt)                     ||','||
+                      TO_CHAR(l_cur_rec.rslt_new_amt)                 ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_new_amt)              ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amt)                  ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_new_amt)           ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amt)               ||','||
+                      TO_CHAR(l_cur_rec.rslt_center_amt)              ||','||
+                      TO_CHAR(l_cur_rec.rslt_center_vd_amt)           ||','||
+                      TO_CHAR(l_cur_rec.rslt_center_other_amt)        ||','||
+                      TO_CHAR(l_cur_rec.vis_num)                      ||','||
+                      TO_CHAR(l_cur_rec.vis_new_num)                  ||','||
+                      TO_CHAR(l_cur_rec.vis_vd_new_num)               ||','||
+                      TO_CHAR(l_cur_rec.vis_vd_num)                   ||','||
+                      TO_CHAR(l_cur_rec.vis_other_new_num)            ||','||
+                      TO_CHAR(l_cur_rec.vis_other_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_mc_num)                   ||','||
+                      TO_CHAR(l_cur_rec.vis_sales_num)                ||','||
+                      TO_CHAR(l_cur_rec.vis_a_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_b_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_c_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_d_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_e_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_f_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_g_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_h_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_i_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_j_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_k_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_l_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_m_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_n_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_o_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_p_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_q_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_r_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_s_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_t_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_u_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_v_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_w_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_x_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_y_num)                    ||','||
+                      TO_CHAR(l_cur_rec.vis_z_num)                    ||','||
+                      TO_CHAR(l_cur_rec.rslt_amty)                    ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amty)                 ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amty)              ||','||
+                      TO_CHAR(l_cur_rec.rslt_amtm)                    ||','||
+                      TO_CHAR(l_cur_rec.rslt_vd_amtm)                 ||','||
+                      TO_CHAR(l_cur_rec.rslt_other_amtm)              ||','||
+                      TO_CHAR(l_cur_rec.cust_new_num)                 ||','||
+                      TO_CHAR(l_cur_rec.cust_vd_new_num)              ||','||
+                      TO_CHAR(l_cur_rec.cust_other_new_num)           ||','||
+                      TO_CHAR(l_cur_rec.tgt_sales_prsn_total_amt)     ||','||
+                     cv_lf 
+          );
+          -- ‘O‰ñƒŒƒR[ƒh‚Æ‹’“_ƒR[ƒh‚ª“¯‚¶‚Å‹Æ–±’nƒR[ƒh‚ªˆá‚¤ê‡A–¾×•””z—ñ‚Æ–{‘Ì•””z—ñ‚ğXVB
+          IF(lb_boolean=FALSE) THEN
+            IF((lv_bf_base_code_par = l_cur_rec.base_code_par)AND(lv_bf_base_code_chi <> l_cur_rec.base_code_chi))
+              THEN
+              -- DEBUGƒƒbƒZ[ƒW
+              debug(
+                 buff   => '‹Æ–±’nƒR[ƒh‚ªˆá‚¢‚Ü‚·B :' ||'‘O‰ñF '|| lv_bf_base_code_chi ||
+                            '¡‰ñF' || l_cur_rec.base_code_chi ||
+                            '–¾×•””z—ñ' || TO_CHAR(ln_m_cnt)
+              );
+              -- =================================================
+              -- A-7-2,A-7-3.PLSQL•\‚ÌXV
+              -- =================================================
+              up_plsql_tab5(
+                 i_month_square_rec   => l_month_square_rec          -- ˆêƒ–Œ•ªƒf[ƒ^
+                ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+                ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+                ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+                ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+                ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+                ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+              );
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+              l_month_square_rec.l_one_day_tab.DELETE;
+              l_month_square_rec     := NULL;
+              init_month_square_rec5(l_month_square_rec);
+              ln_m_cnt          := ln_m_cnt + 1;       -- –¾×•””z—ñ‚ğ{‚P‚·‚éB
+              lb_boolean        := TRUE;               -- ‰Šúˆ—‚Ìƒtƒ‰ƒOƒIƒ“‚·‚éB
+            ELSIF(lv_bf_base_code_par <> l_cur_rec.base_code_par) THEN
+              -- =================================================
+              -- A-7-2,A-7-3.PLSQL•\‚ÌXV
+              -- =================================================
+              up_plsql_tab5(
+                 i_month_square_rec   => l_month_square_rec          -- ˆêƒ–Œ•ªƒf[ƒ^
+                ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+                ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+                ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+                ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+                ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+                ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+              );
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+              l_month_square_rec.l_one_day_tab.DELETE;
+              l_month_square_rec     := NULL;
+              init_month_square_rec5(l_month_square_rec);
+              lb_boolean        := TRUE;               -- ‰Šúˆ—‚Ìƒtƒ‰ƒOƒIƒ“‚·‚éB
+            END IF;
+          END IF;
+          -- ‹’“_ƒR[ƒh‚ª‘O‰ñæ“¾‚µ‚½‹’“_ƒR[ƒh‚Æˆá‚¤ê‡ƒ[ƒNƒe[ƒuƒ‹‚Éo—Í‚µ‚Ü‚·B
+          IF ((ln_cnt > 0) AND
+              (lv_bf_base_code_par <> l_cur_rec.base_code_par)) THEN
+            debug(
+               buff   => '‹’“_ƒR[ƒh‚ªˆá‚¢‚Ü‚·B :' ||'‘O‰ñF '|| lv_bf_base_code_par || ''||
+                          '¡‰ñF' || l_cur_rec.base_code_par
+            );
+          -- =================================================
+          -- A-3-4,A-4-4,A-5-4,A-6-4,A-7-4.ƒ[ƒNƒe[ƒuƒ‹‚Öo—Í
+          -- =================================================
+          insert_wrk_table(
+             ir_m_tab            => l_get_month_square_tab                      -- –¾×•”ƒŒƒR[ƒh
+            ,ir_hon_tab          => l_get_month_square_hon_tab                  -- –{‘Ì•”ƒŒƒR[ƒh
+            ,in_m_cnt            => ln_m_cnt                                    -- –¾×•”s”
+            ,in_report_output_no => ln_report_output_no                         -- ’ •[o—ÍƒZƒbƒg”Ô†
+            ,ov_errbuf           => lv_errbuf            -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+            ,ov_retcode          => lv_retcode           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+            ,ov_errmsg           => lv_errmsg            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- ƒŒƒR[ƒh‚Ì‰Šú‰»
+          l_get_month_square_tab.DELETE;
+          l_get_month_square_hon_tab.DELETE;
+          init_month_square_hon_tab(l_get_month_square_hon_tab);
+          -- ƒJƒEƒ“ƒ^”‚É‚P‚ğ‘«‚·
+          ln_report_output_no := ln_report_output_no + 1; -- o—Í‚³‚ê‚½’ •[ŒÂ”‚É{‚P‚·‚é
+          lb_boolean          := TRUE;                    -- ‰Šúˆ—‚Ìó‘Ô‚É–ß‚·
+          ln_m_cnt            := 1;                       -- –¾×•””z—ñ‚Ìs”‚Ì‰Šú‰»
+          END IF;
+          -- ‰Šúˆ—‚Ìê‡
+          IF(lb_boolean) THEN
+            -- ‹Æ–±’nƒR[ƒh‚ğƒ[ƒJƒ‹•Ï”‚ÉŠi”[
+            lv_bf_base_code_par         := l_cur_rec.base_code_par;        -- ‹Î–±’n‹’“_ƒR[ƒh(e)(‹’“_ƒR[ƒh)
+            lv_bf_base_code_chi         := l_cur_rec.base_code_chi;        -- ‹Î–±’n‹’“_ƒR[ƒh
+            -- ƒ[ƒJƒ‹ƒŒƒR[ƒh‚ÉŠi”[
+            -- ‹Î–±’n‹’“_ƒR[ƒh(e)(‹’“_ƒR[ƒh)
+            l_month_square_rec.base_code_par     := l_cur_rec.base_code_par;
+            -- ‹Î–±’n‹’“_–¼(e)(‹’“_ƒR[ƒh)
+            l_month_square_rec.base_name_par     := l_cur_rec.base_name_par;
+            -- ‹Î–±’n‹’“_ƒR[ƒh
+            l_month_square_rec.base_code_chi     := l_cur_rec.base_code_chi;
+            -- ‹Î–±’n‹’“_–¼
+            l_month_square_rec.base_name_chi     := l_cur_rec.base_name_chi;
+            -- V‹KŒÚ‹qŒ”
+            l_month_square_rec.cust_new_num      := l_cur_rec.cust_new_num;
+            -- V‹KVDŒ”
+            l_month_square_rec.cust_vd_new_num   := l_cur_rec.cust_vd_new_num;
+            -- V‹KVDˆÈŠOŒ”
+            l_month_square_rec.cust_other_new_num := l_cur_rec.cust_other_new_num;
+            -- ‘O”NÀÑ
+            l_month_square_rec.rslt_amty         := l_cur_rec.rslt_amty;
+            -- ‘O”NÀÑiVDj
+            l_month_square_rec.rslt_vd_amty      := l_cur_rec.rslt_vd_amty;
+            -- ‘O”NÀÑiVDˆÈŠOjj
+            l_month_square_rec.rslt_other_amty   := l_cur_rec.rslt_other_amty;
+            -- æŒÀÑ
+            l_month_square_rec.rslt_amtm         := l_cur_rec.rslt_amtm;
+            -- æŒÀÑiVDj
+            l_month_square_rec.rslt_vd_amtm      := l_cur_rec.rslt_vd_amtm;
+            -- æŒÀÑiVDˆÈŠO
+            l_month_square_rec.rslt_other_amtm   := l_cur_rec.rslt_other_amtm;
+            -- Œ•Ê”„ã—\Z
+            l_month_square_rec.tgt_sales_prsn_total_amt := l_cur_rec.tgt_sales_prsn_total_amt;
+            lb_boolean := FALSE;
+            -- DEBUGƒƒbƒZ[ƒW
+            -- ‰Šúˆ—‚Ìê‡
+            debug(
+               buff   => '‰Šúˆ—ƒtƒ‰ƒO:' || 'FALSE'
+            );
+          END IF;
+          -- “ú•t‚ğæ“¾
+          ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
+          -- DEBUGƒƒbƒZ[ƒW
+          -- ‰Šúˆ—‚Ìê‡
+          debug(
+             buff   => '“ú•t:' || l_cur_rec.sales_date || cv_lf ||
+                       '“ú•t‚¯‚Ìƒiƒ“ƒo[Œ^:'     || TO_CHAR(ln_date)
+          );
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_amt              
+            := l_cur_rec.rslt_amt;              -- ”„ãÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt          
+            := l_cur_rec.rslt_new_amt;          -- ”„ãÀÑiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt       
+            := l_cur_rec.rslt_vd_new_amt;       -- ”„ãÀÑiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt           
+            := l_cur_rec.rslt_vd_amt;           -- ”„ãÀÑiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt    
+            := l_cur_rec.rslt_other_new_amt;    -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt        
+            := l_cur_rec.rslt_other_amt;        -- ”„ãÀÑiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt       
+            := l_cur_rec.rslt_center_amt;       -- “à‘¼‹’“_Q”„ãÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_vd_amt       
+            := l_cur_rec.rslt_center_vd_amt;    -- “à‘¼‹’“_Q”„ãÀÑiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_other_amt       
+            := l_cur_rec.rslt_center_other_amt; -- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_num               
+            := l_cur_rec.vis_num;               -- –K–âÀÑ
+          l_month_square_rec.l_one_day_tab(ln_date).vis_new_num           
+            := l_cur_rec.vis_new_num;           -- –K–âÀÑiV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num        
+            := l_cur_rec.vis_vd_new_num;        -- –K–âÀÑiVDFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num            
+            := l_cur_rec.vis_vd_num;            -- –K–âÀÑiVDj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num     
+            := l_cur_rec.vis_other_new_num;     -- –K–âÀÑiVDˆÈŠOFV‹Kj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_other_num         
+            := l_cur_rec.vis_other_num;         -- –K–âÀÑiVDˆÈŠOj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num         
+            := l_cur_rec.vis_mc_num;            -- –K–âÀÑiMCj
+          l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num         
+            := l_cur_rec.vis_sales_num;         -- —LŒøŒ¬”
+          -- A0Z–K–âŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- –K–âAŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- –K–âBŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- –K–âCŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- –K–âDŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- –K–âEŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- –K–âFŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- –K–âGŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- –K–âHŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- –K–âIŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- –K–âJŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- –K–âKŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- –K–âLŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- –K–âMŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- –K–âNŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- –K–âOŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- –K–âPŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- –K–âQŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- –K–âRŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- –K–âSŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- –K–âTŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- –K–âUŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- –K–âVŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- –K–âWŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- –K–âXŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- –K–âYŒ”
+          l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- –K–âZŒ”
+          -- Å‰‚ÌƒŒƒR[ƒh‚Ìê‡
+          IF(lb_boolean) THEN
+            lb_boolean              := FALSE;                  -- ‰Šúˆ—‚Ìƒtƒ‰ƒO‚ğƒIƒt‚·‚éB
+          END IF;
+          -- ’ŠoŒ”ƒJƒEƒ“ƒ^‚É‚P‚ğ‘«‚·B
+          ln_cnt := ln_cnt + 1;
+          gn_target_cnt  := ln_cnt;
+          -- loopŒ”
+          debug(
+                buff   => 'loopŒ”' || TO_CHAR(ln_cnt)
+          );
+        END LOOP;
+        -- ÅŒã‚Ìƒf[ƒ^“o˜^
+        IF (ln_cnt > 0) THEN
+          debug(
+                buff   => 'ÅŒã‚Ìƒf[ƒ^‚Ì“o˜^'
+          );
+          -- =================================================
+          -- A-7-2,A-7-3.PLSQL•\‚ÌXV
+          -- =================================================
+          up_plsql_tab5(
+            i_month_square_rec   => l_month_square_rec          -- ˆêƒ–Œ•ªƒf[ƒ^
+           ,in_m_cnt             => ln_m_cnt                    -- –¾×•”‚ÌƒJƒEƒ“ƒ^
+           ,io_m_tab             => l_get_month_square_tab      -- –¾×•””z—ñ
+           ,io_hon_tab           => l_get_month_square_hon_tab  -- –{‘Ì•””z—ñ
+           ,ov_errbuf            => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+           ,ov_retcode           => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+           ,ov_errmsg            => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- =================================================
+          -- A-3-4,A-4-4,A-5-4,A-6-4,A-7-4.ƒ[ƒNƒe[ƒuƒ‹‚Öo—Í
+          -- =================================================
+          insert_wrk_table(
+             ir_m_tab            => l_get_month_square_tab                      -- –¾×•”ƒŒƒR[ƒh
+            ,ir_hon_tab          => l_get_month_square_hon_tab                  -- –{‘Ì•”ƒŒƒR[ƒh
+            ,in_m_cnt            => ln_m_cnt                                    -- –¾×•”s”
+            ,in_report_output_no => ln_report_output_no                         -- ’ •[o—ÍƒZƒbƒg”Ô†
+            ,ov_errbuf           => lv_errbuf            -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+            ,ov_retcode          => lv_retcode           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+            ,ov_errmsg           => lv_errmsg            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+           );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- ƒƒbƒZ[ƒWo—Í
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                          ,iv_name         => cv_tkn_number_08         --ƒƒbƒZ[ƒWƒR[ƒh
+                          ,iv_token_name1  => cv_tkn_table             --ƒg[ƒNƒ“ƒR[ƒh1
+                          ,iv_token_value1 => cv_tab_samari            --ƒg[ƒNƒ“’l1
+                          ,iv_token_name2  => cv_tkn_errmsg            --ƒg[ƒNƒ“ƒR[ƒh‚Q
+                          ,iv_token_value2 => SQLERRM                  --ƒg[ƒNƒ“’l‚Q
+          );
+          fnd_file.put_line(
+                which  => FND_FILE.LOG,
+                buff   => ''      || cv_lf ||     -- ‹ós‚Ì‘}“ü
+                        lv_errmsg || cv_lf || 
+                         ''                         -- ‹ós‚Ì‘}“ü
+          );
+          RAISE global_api_expt;
+      END;
+    -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
+    CLOSE ticket_data_cur;
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END get_ticket5;
+--
+  /**********************************************************************************
+   * Procedure Name   : act_svf
+   * Description      : SVF‹N“®ˆ— (A-8)
+   ***********************************************************************************/
+  PROCEDURE act_svf(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
+  IS
+    -- ===============================
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'act_svf'; -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ===============================
+    -- ƒ†[ƒU[éŒ¾•”
+    -- ===============================
+    -- *** ƒ[ƒJƒ‹’è” ***
+    cv_svf_api_name    CONSTANT VARCHAR2(50) := 'SVF‹N“®';     -- SVF‹N“®API–¼
+--
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    lv_svf_file_name   VARCHAR2(100);
+    lv_file_id         VARCHAR2(30)  := NULL;
+    lv_conc_name       VARCHAR2(30)  := NULL;
+    lv_user_name       VARCHAR2(240) := NULL;
+    lv_resp_name       VARCHAR2(240) := NULL;
+--
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+--
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
+--
+  BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+--
+    -- ƒtƒ@ƒCƒ‹–¼‚Ìİ’è
+    lv_svf_file_name := cv_pkg_name
+                     || TO_CHAR(cd_creation_date, 'YYYYMMDD')
+                     || TO_CHAR(cn_request_id);
+--
+      BEGIN
+        SELECT  user_concurrent_program_name,
+                xx00_global_pkg.user_name   ,
+                xx00_global_pkg.resp_name
+        INTO    lv_conc_name,
+                lv_user_name,
+                lv_resp_name
+        FROM    fnd_concurrent_programs_tl
+        WHERE   concurrent_program_id =cn_request_id
+        AND     LANGUAGE = 'JA'
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_conc_name := cv_pkg_name;
+      END;
+      
+      lv_file_id := cv_pkg_name;
+--
+-- ’ •[ƒT[ƒo—§ã‚É—LŒø‰»
+    xxccp_svfcommon_pkg.submit_svf_request(
+       ov_errbuf       => lv_errbuf            -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+      ,ov_retcode      => lv_retcode           -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+      ,ov_errmsg       => lv_errmsg            -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
+      ,iv_conc_name    => lv_conc_name         -- ƒRƒ“ƒJƒŒƒ“ƒg–¼
+      ,iv_file_name    => lv_svf_file_name     -- o—Íƒtƒ@ƒCƒ‹–¼
+      ,iv_file_id      => lv_file_id           -- ’ •[ID
+      ,iv_output_mode  => '1'                  -- o—Í‹æ•ª(=1FPDFo—Íj
+      ,iv_frm_file     => gv_svf_form_name     -- ƒtƒH[ƒ€—l®ƒtƒ@ƒCƒ‹–¼
+      ,iv_vrq_file     => gv_svf_query_name    -- ƒNƒGƒŠ[—l®ƒtƒ@ƒCƒ‹–¼
+      ,iv_org_id       => fnd_global.org_id    -- ORG_ID
+      ,iv_user_name    => lv_user_name         -- ƒƒOƒCƒ“Eƒ†[ƒU–¼
+      ,iv_resp_name    => lv_resp_name         -- ƒƒOƒCƒ“Eƒ†[ƒU‚ÌEÓ–¼
+      ,iv_doc_name     => NULL                 -- •¶‘–¼
+      ,iv_printer_name => NULL                 -- ƒvƒŠƒ“ƒ^–¼
+      ,iv_request_id   => cn_request_id        -- —v‹ID
+      ,iv_nodata_msg   => NULL                 -- ƒf[ƒ^‚È‚µƒƒbƒZ[ƒW
+    );
+--
+DO_ERROR('A-8');
+--
+    debug(
+       buff   => 'SVF‹N“®ˆ— (A-8)'
+    );
+--
+    IF (lv_retcode <> cv_status_normal) THEN
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_app_name              --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                             ,iv_name         => cv_tkn_number_09         --ƒƒbƒZ[ƒWƒR[ƒh
+                             ,iv_token_name1  => cv_tkn_api_name          --ƒg[ƒNƒ“ƒR[ƒh1
+                             ,iv_token_value1 => cv_svf_api_name          --uSVF‹N“®v
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END act_svf;
+--
+  /**********************************************************************************
+   * Procedure Name   : del_wrk_tbl_data                                                                         
+   * Description      : ƒ[ƒNƒe[ƒuƒ‹ƒf[ƒ^íœ (A-9)
+   ***********************************************************************************/
+  PROCEDURE del_wrk_tbl_data(
+    ov_errbuf               OUT NOCOPY VARCHAR2,         -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode              OUT NOCOPY VARCHAR2,         -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg               OUT NOCOPY VARCHAR2          -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
+  )
+  IS
+    -- ===============================
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_prg_name              CONSTANT VARCHAR2(100)    := 'del_wrk_tbl_data';         -- ƒvƒƒOƒ‰ƒ€–¼
+    cv_table_name            CONSTANT VARCHAR2(100)    := '–K–â”„ãŒv‰æŠÇ—•\’ •[ƒ[ƒNƒe[ƒuƒ‹';
+      -- –K–â”„ãŒv‰æŠÇ—•\’ •[ƒ[ƒNƒe[ƒuƒ‹–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf   VARCHAR2(5000);   -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode  VARCHAR2(1);      -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg   VARCHAR2(5000);   -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ===============================
+    -- ƒ†[ƒU[éŒ¾•”
+    -- ===============================
+    -- *** ƒ[ƒJƒ‹’è” ***
+--
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+--
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
+--
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
+--
+    -- *** ƒ[ƒJƒ‹E—áŠO ***
+    del_tbl_data_expt     EXCEPTION;
+--
+  BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+    -- *******************************************************
+    -- ***  –K–â”„ãŒv‰æŠÇ—•\’ •[ƒ[ƒNƒe[ƒuƒ‹ƒf[ƒ^íœ ***
+    -- *******************************************************
+--TODO ’P‘ÌƒeƒXƒgI—¹‚É—LŒø‰»
+    BEGIN
+      IF ( CB_DO_DELETE ) THEN
+        DELETE
+        FROM  xxcso_rep_visit_sale_plan
+        WHERE request_id = cn_request_id;
+        debug(
+           buff   => 'ƒ[ƒNƒe[ƒuƒ‹ƒf[ƒ^íœÀs (A-9)'
+        );
+      ELSE
+        debug(
+           buff   => 'ƒ[ƒNƒe[ƒuƒ‹ƒf[ƒ^íœÀsƒXƒLƒbƒv (A-9)'
+        );
+      END IF;
+--
+    EXCEPTION
+      -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+      WHEN OTHERS THEN
+        -- ƒGƒ‰[ƒƒbƒZ[ƒWì¬
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                   -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                       ,iv_name         => cv_tkn_number_10              -- ƒƒbƒZ[ƒWƒR[ƒh ƒf[ƒ^íœƒGƒ‰[
+                       ,iv_token_name1  => cv_tkn_table                  -- ƒg[ƒNƒ“ƒR[ƒh1
+                       ,iv_token_value1 => cv_table_name                 -- ƒGƒ‰[”­¶‚Ìƒe[ƒuƒ‹–¼
+                       ,iv_token_name2  => cv_tkn_errmsg                 -- ƒg[ƒNƒ“ƒR[ƒh2
+                       ,iv_token_value2 => SQLERRM                       -- ORACLEƒGƒ‰[
+                      );
+        lv_errbuf  := lv_errmsg||SQLERRM;
+        RAISE del_tbl_data_expt;
+    END;
+--
+DO_ERROR('A-9');
+--
+  EXCEPTION
+    -- *** ƒf[ƒ^íœ‚Ì—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN del_tbl_data_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END del_wrk_tbl_data;
+--
+  /**********************************************************************************
+   * Procedure Name   : submain
+   * Description      : ƒƒCƒ“ˆ—ƒvƒƒV[ƒWƒƒ
+   ***********************************************************************************/
+  PROCEDURE submain(
+     iv_year_month        IN        VARCHAR2   -- Šî€”NŒ
+    ,iv_report_type       IN        VARCHAR2   -- ’ •[í•Ê
+    ,iv_base_code         IN        VARCHAR2   -- ‹’“_ƒR[ƒh
+    ,ov_errbuf           OUT NOCOPY VARCHAR2   -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+    ,ov_retcode          OUT NOCOPY VARCHAR2   -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+    ,ov_errmsg           OUT NOCOPY VARCHAR2   -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+        -- ===============================
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'submain';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ===============================
+    -- ƒ†[ƒU[éŒ¾•”
+    -- ===============================
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    lv_year_month      VARCHAR2(6);     -- Šî€”NŒ
+    lv_report_type     VARCHAR2(9);     -- ’ •[í•Ê
+    lv_base_code       VARCHAR2(9);     -- ‹’“_ƒR[ƒh
+    -- SVF‹N“®API–ß‚è’lŠi”[—p
+    lv_errbuf_svf      VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode_svf     VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg_svf      VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+    -- OUTƒpƒ‰ƒ[ƒ^Ši”[—p
+    -- ƒƒbƒZ[ƒWo—Í—p
+    lv_msg               VARCHAR2(2000);
+
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
+    -- *** ƒ[ƒJƒ‹—áŠO ***
+  BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+--
+--
+    -- ƒOƒ[ƒoƒ‹•Ï”‚Ì‰Šú‰»
+    gd_online_sysdate     := XXCSO_UTIL_COMMON_PKG.GET_ONLINE_SYSDATE();
+    gv_online_sysdate     := TO_CHAR(gd_online_sysdate,'YYYYMMDD');
+    gn_target_cnt         := 0;
+    gn_normal_cnt         := 0;
+    gn_error_cnt          := 0;
+    gn_warn_cnt           := 0;
+    lv_year_month         := iv_year_month;
+    lv_report_type        := iv_report_type;
+    lv_base_code          := iv_base_code;
+--
+  -- ========================================
+  -- A-1.‰Šúˆ— 
+  -- ========================================
+    init(
+       iv_year_month => lv_year_month     -- Šî€”NŒ
+      ,iv_report_type=> lv_report_type    -- ’ •[í•Ê
+      ,iv_base_code  => lv_base_code      -- ‹’“_ƒR[ƒh
+      ,ov_errbuf     => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+      ,ov_retcode    => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+      ,ov_errmsg     => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+    );
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+  -- ======================================
+  -- A-2.ƒpƒ‰ƒ[ƒ^ƒ`ƒFƒbƒN 
+  -- =======================================
+    chek_param(
+       ov_errbuf     => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+      ,ov_retcode    => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+      ,ov_errmsg     => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+    );
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+DO_ERROR('submain');
+--
+    IF (gv_report_type = cv_report_1) THEN
+      -- ======================================
+      -- A-3-1,A-3-2.’ •[í•Ê1-‰c‹Æˆõ•Ê 
+      -- ======================================
+      get_ticket1(
+         ov_errbuf    => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+        ,ov_retcode   => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+        ,ov_errmsg    => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+    ELSIF (gv_report_type = cv_report_2) THEN
+      -- ======================================
+      -- A-4-1,A-4-2 ’ •[í•Ê2-‰c‹ÆˆõƒOƒ‹[ƒv•Ê 
+      -- ======================================
+      get_ticket2(
+         ov_errbuf    => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+        ,ov_retcode   => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+        ,ov_errmsg    => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+    ELSIF (gv_report_type = cv_report_3) THEN
+      -- ======================================
+      -- A-5-1,A-5-2 ’ •[í•Ê3-‹’“_/‰Û•Ê
+      -- ======================================
+      get_ticket3(
+         ov_errbuf    => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+        ,ov_retcode   => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+        ,ov_errmsg    => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+    ELSIF (gv_report_type = cv_report_4) THEN
+      -- ======================================
+      -- A-6-1,A-6-2 ’ •[í•Ê4-’n‹æ‰c‹Æ•”•Ê
+      -- ======================================
+      get_ticket4(
+         ov_errbuf    => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+        ,ov_retcode   => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+        ,ov_errmsg    => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+    ELSIF (gv_report_type = cv_report_5) THEN
+      -- ======================================
+      -- A-7-1,A-7-2 ’ •[í•Ê5-’nˆæ‰c‹Æ–{•”•Ê
+      -- ======================================
+      get_ticket5(
+         ov_errbuf    => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+        ,ov_retcode   => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+        ,ov_errmsg    => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+--
+    -- ˆ—‘ÎÛƒf[ƒ^‚ª0Œ‚Ìê‡
+    IF gn_target_cnt = 0 THEN
+      -- 0ŒƒƒbƒZ[ƒWo—Í
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name         --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                    ,iv_name         => cv_tkn_number_11    --ƒƒbƒZ[ƒWƒR[ƒh
+                   );
+      fnd_file.put_line(
+         which  => FND_FILE.LOG
+        ,buff   => lv_errmsg                                 --ƒ†[ƒU[EƒGƒ‰[ƒƒbƒZ[ƒW
+      );
+      RETURN;
+    END IF;
+--
+    -- ======================================
+    -- A-8 SVF‹N“®
+    -- ======================================
+    act_svf(
+       ov_errbuf    => lv_errbuf_svf     -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+      ,ov_retcode   => lv_retcode_svf    -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+      ,ov_errmsg    => lv_errmsg_svf     -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+    );
+--
+    -- ======================================
+    -- A-9 ƒ[ƒNƒe[ƒuƒ‹ƒf[ƒ^íœ
+    -- ======================================
+    del_wrk_tbl_data(
+       ov_errbuf    => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+      ,ov_retcode   => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+      ,ov_errmsg    => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+    );
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ======================================
+    -- A-10 SVF‹N“®APIƒGƒ‰[ƒ`ƒFƒbƒN
+    -- ======================================
+    IF (lv_retcode_svf = cv_status_error) THEN
+      lv_errmsg := lv_errmsg_svf;
+      lv_errbuf := lv_errbuf_svf;
+      RAISE global_process_expt;
+    END IF;
+--
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    EXCEPTION
+    -- *** ˆ—•”‹¤’Ê—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_process_expt THEN
+      -- ƒGƒ‰[Œ”ƒJƒEƒ“ƒg
+      gn_error_cnt := gn_error_cnt + 1;
+--
+      -- ƒJ[ƒ\ƒ‹‚ªƒNƒ[ƒY‚³‚ê‚Ä‚¢‚È‚¢ê‡
+--
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      ov_retcode := cv_status_error;
+--
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      -- ƒGƒ‰[Œ”ƒJƒEƒ“ƒg
+      gn_error_cnt := gn_error_cnt + 1;
+--
+      -- ƒJ[ƒ\ƒ‹‚ªƒNƒ[ƒY‚³‚ê‚Ä‚¢‚È‚¢ê‡
+--
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
+      ov_retcode := cv_status_error;
+--
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      -- ƒGƒ‰[Œ”ƒJƒEƒ“ƒg
+      gn_error_cnt := gn_error_cnt + 1;
+--
+      -- ƒJ[ƒ\ƒ‹‚ªƒNƒ[ƒY‚³‚ê‚Ä‚¢‚È‚¢ê‡
+--
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END submain;
+--
+  /**********************************************************************************
+   * Procedure Name   : main
+   * Description      : ƒRƒ“ƒJƒŒƒ“ƒgÀsƒtƒ@ƒCƒ‹“o˜^ƒvƒƒV[ƒWƒƒ
+   **********************************************************************************/
+--
+  PROCEDURE main(
+    errbuf            OUT NOCOPY VARCHAR2          -- ƒGƒ‰[ƒƒbƒZ[ƒW #ŒÅ’è#
+   ,retcode           OUT NOCOPY VARCHAR2          -- ƒGƒ‰[ƒR[ƒh     #ŒÅ’è#
+   ,iv_year_month     IN         VARCHAR2          -- Šî€”NŒ
+   ,iv_report_type    IN         VARCHAR2          -- ’ •[í•Ê
+   ,iv_base_code      IN         VARCHAR2          -- ‹’“_ƒR[ƒh
+    )
+--
+--###########################  ŒÅ’è•” START   ###########################
+--
+  IS
+--
+    -- ===============================
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_prg_name        CONSTANT VARCHAR2(100) := 'main';  -- ƒvƒƒOƒ‰ƒ€–¼
+--
+    cv_appl_short_name CONSTANT VARCHAR2(10)  := 'XXCCP';            -- ƒAƒhƒIƒ“F‹¤’ÊEIF—Ìˆæ
+    cv_target_rec_msg  CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90000'; -- ‘ÎÛŒ”ƒƒbƒZ[ƒW
+    cv_success_rec_msg CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90001'; -- ¬Œ÷Œ”ƒƒbƒZ[ƒW
+    cv_error_rec_msg   CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90002'; -- ƒGƒ‰[Œ”ƒƒbƒZ[ƒW
+    cv_skip_rec_msg    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90003'; -- ƒXƒLƒbƒvŒ”ƒƒbƒZ[ƒW
+    cv_cnt_token       CONSTANT VARCHAR2(10)  := 'COUNT';            -- Œ”ƒƒbƒZ[ƒW—pƒg[ƒNƒ“–¼
+    cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- ³íI—¹ƒƒbƒZ[ƒW
+    cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- ŒxI—¹ƒƒbƒZ[ƒW
+    cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- ƒGƒ‰[I—¹‘Sƒ[ƒ‹ƒoƒbƒN
+    -- ===============================
+    -- ƒ[ƒJƒ‹•Ï”
+    -- ===============================
+    lv_errbuf          VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode         VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg          VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_message_code    VARCHAR2(100);   -- I—¹ƒƒbƒZ[ƒWƒR[ƒh
+    lv_year_month      VARCHAR2(6);     -- Šî€”NŒ
+    lv_report_type     VARCHAR2(9);     -- ’ •[í•Ê
+    lv_base_code       VARCHAR2(9);     -- ‹’“_ƒR[ƒh
+--
+  BEGIN
+--###########################  ŒÅ’è•” START   #####################################################
+--
+    -- ŒÅ’èo—Í
+    -- ƒRƒ“ƒJƒŒƒ“ƒgƒwƒbƒ_ƒƒbƒZ[ƒWo—ÍŠÖ”‚ÌŒÄ‚Ño‚µ
+    xxccp_common_pkg.put_log_header(
+       ov_retcode => lv_retcode
+      ,ov_errbuf  => lv_errbuf
+      ,ov_errmsg  => lv_errmsg
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_others_expt;
+    END IF;
+--
+--###########################  ŒÅ’è•” END   #############################
+--
+    lv_year_month      := iv_year_month;
+    lv_report_type     := iv_report_type;
+    lv_base_code       := iv_base_code;
+    -- ===============================================
+    -- submain‚ÌŒÄ‚Ño‚µiÀÛ‚Ìˆ—‚Ísubmain‚Ås‚¤j
+    -- ===============================================
+    submain(
+       iv_year_month    => lv_year_month     -- Šî€”NŒ
+      ,iv_report_type   => lv_report_type    -- ’ •[í•Ê
+      ,iv_base_code     => lv_base_code      -- ‹’“_ƒR[ƒh
+      ,ov_errbuf        => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+      ,ov_retcode       => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+      ,ov_errmsg        => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+    );
+--
+DO_ERROR('main');
+--
+    IF (lv_retcode = cv_status_error) THEN
+       --ƒGƒ‰[o—Í
+       fnd_file.put_line(
+          which  => FND_FILE.LOG
+         ,buff   => lv_errmsg                  --ƒ†[ƒU[EƒGƒ‰[ƒƒbƒZ[ƒW
+       );
+       fnd_file.put_line(
+          which  => FND_FILE.LOG
+         ,buff   => cv_pkg_name||cv_msg_cont||
+                    cv_prg_name||cv_msg_part||
+                    lv_errbuf                  --ƒGƒ‰[ƒƒbƒZ[ƒW
+       );
+    END IF;
+--
+    -- =======================
+    -- A-11.I—¹ˆ— 
+    -- =======================
+    --‹ós‚Ìo—Í
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => ''
+    );
+    --‘ÎÛŒ”o—Í
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_target_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => gv_out_msg
+    );
+    --
+    --¬Œ÷Œ”o—Í
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_success_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_normal_cnt)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => gv_out_msg
+    );
+    --
+    --ƒGƒ‰[Œ”o—Í
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_error_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_error_cnt)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => gv_out_msg
+    );
+    --
+    --I—¹ƒƒbƒZ[ƒW
+    IF (lv_retcode = cv_status_normal) THEN
+      lv_message_code := cv_normal_msg;
+    ELSIF(lv_retcode = cv_status_error) THEN
+      lv_message_code := cv_error_msg;
+    END IF;
+    --
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => lv_message_code
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => gv_out_msg
+    );
+--
+    --ƒXƒe[ƒ^ƒXƒZƒbƒg
+    retcode := lv_retcode;
+--
+  EXCEPTION
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
+      retcode := cv_status_error;
+      --ƒGƒ‰[o—Í
+      fnd_file.put_line(
+        which  => FND_FILE.LOG
+       ,buff   => errbuf                  --ƒ†[ƒU[EƒGƒ‰[ƒƒbƒZ[ƒW
+      );
+      fnd_file.put_line(
+        which  => FND_FILE.LOG
+       ,buff   => cv_pkg_name||cv_msg_cont||
+                  cv_prg_name||cv_msg_part||
+                  errbuf                  --ƒGƒ‰[ƒƒbƒZ[ƒW
+      );
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      retcode := cv_status_error;
+      --ƒGƒ‰[o—Í
+      fnd_file.put_line(
+        which  => FND_FILE.LOG
+       ,buff   => errbuf                  --ƒ†[ƒU[EƒGƒ‰[ƒƒbƒZ[ƒW
+      );
+      fnd_file.put_line(
+        which  => FND_FILE.LOG
+       ,buff   => cv_pkg_name||cv_msg_cont||
+                  cv_prg_name||cv_msg_part||
+                  errbuf                  --ƒGƒ‰[ƒƒbƒZ[ƒW
+      );
+  END main;
+--
+--###########################  ŒÅ’è•” END   #######################################################
+END XXCSO019A05C;
+/

@@ -1,0 +1,18 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**注意
+* KROWN:124532により、1ファイルが32Kバイトを超えないようにしてください。
+* 超えてしまう場合は、ファイルを分割してください。
+
+詳細
+物件情報汎用検索画面の属性セットファイルです。
+
+修正履歴
+2008/12/27  柳平直人        新規作成-->
+<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <attributeSet docName="PageLayoutRN" windowTitle="物件情報汎用検索" title="物件情報汎用検索"/>
+   <attributeSet docName="PvDesignRN" text="ビュー"/>
+   <attributeSet docName="ViewName" prompt="ビュー"/>
+   <attributeSet docName="ForwardButton" prompt="進む"/>
+   <attributeSet docName="PersonalizeButton" prompt="パーソナライズ"/>
+</package>

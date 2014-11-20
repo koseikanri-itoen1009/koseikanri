@@ -1,0 +1,561 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSpDecisionBm1CustFullVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm1CustFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm1CustFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_ID, 
+       XxcsoSpDecisionCustsVEO.SP_DECISION_HEADER_ID, 
+       XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_CLASS, 
+       SUBSTRB(
+         xxcso_020001j_pkg.get_bm1_info_parameter(
+           XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+          ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+          ,xsdh.bm1_send_type
+          ,inst.customer_id
+          ,xcasv.customer_status
+          ,cntr.customer_id
+          ,cntr.same_install_account_flag
+          ,XxcsoSpDecisionCustsVEO.PARTY_NAME
+          ,pv.vendor_name
+          ,inst.party_name
+          ,xcasv.party_name
+          ,cntr.party_name
+          ,xcc.contract_name
+         )
+        ,1
+        ,80
+       ) party_name,
+       SUBSTRB(
+         xxcso_020001j_pkg.get_bm1_info_parameter(
+           XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+          ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+          ,xsdh.bm1_send_type
+          ,inst.customer_id
+          ,xcasv.customer_status
+          ,cntr.customer_id
+          ,cntr.same_install_account_flag
+          ,XxcsoSpDecisionCustsVEO.PARTY_NAME_ALT
+          ,pv.vendor_name_alt
+          ,inst.party_name_alt
+          ,xcasv.organization_name_phonetic
+          ,cntr.party_name_alt
+          ,xcc.contract_name_kana
+         )
+        ,1
+        ,320
+       ) party_name_alt,
+       xxcso_020001j_pkg.get_bm1_info_parameter(
+         XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+        ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+        ,xsdh.bm1_send_type
+        ,inst.customer_id
+        ,xcasv.customer_status
+        ,cntr.customer_id
+        ,cntr.same_install_account_flag
+        ,XxcsoSpDecisionCustsVEO.POSTAL_CODE_FIRST
+        ,SUBSTRB(pvs.zip, 1, 3)
+        ,inst.postal_code_first
+        ,SUBSTRB(xcasv.postal_code, 1, 3)
+        ,cntr.postal_code_first
+        ,SUBSTRB(xcc.post_code, 1, 3)
+       ) postal_code_first,
+       xxcso_020001j_pkg.get_bm1_info_parameter(
+         XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+        ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+        ,xsdh.bm1_send_type
+        ,inst.customer_id
+        ,xcasv.customer_status
+        ,cntr.customer_id
+        ,cntr.same_install_account_flag
+        ,XxcsoSpDecisionCustsVEO.POSTAL_CODE_SECOND
+        ,SUBSTRB(pvs.zip, 4, 4)
+        ,inst.postal_code_second
+        ,SUBSTRB(xcasv.postal_code, 4, 4)
+        ,cntr.postal_code_second
+        ,SUBSTRB(xcc.post_code, 4, 4)
+       ) postal_code_second,
+       xxcso_020001j_pkg.get_bm1_info_parameter(
+         XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+        ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+        ,xsdh.bm1_send_type
+        ,inst.customer_id
+        ,xcasv.customer_status
+        ,cntr.customer_id
+        ,cntr.same_install_account_flag
+        ,XxcsoSpDecisionCustsVEO.POSTAL_CODE
+        ,pvs.zip
+        ,inst.postal_code
+        ,xcasv.postal_code
+        ,cntr.postal_code
+        ,xcc.post_code
+       ) postal_code,
+       SUBSTRB(
+         xxcso_020001j_pkg.get_bm1_info_parameter(
+           XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+          ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+          ,xsdh.bm1_send_type
+          ,inst.customer_id
+          ,xcasv.customer_status
+          ,cntr.customer_id
+          ,cntr.same_install_account_flag
+          ,XxcsoSpDecisionCustsVEO.STATE
+          ,pvs.state
+          ,inst.state
+          ,xcasv.state
+          ,cntr.state
+          ,xcc.prefectures
+         )
+        ,1
+        ,25
+       ) state,
+       SUBSTRB(
+         xxcso_020001j_pkg.get_bm1_info_parameter(
+           XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+          ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+          ,xsdh.bm1_send_type
+          ,inst.customer_id
+          ,xcasv.customer_status
+          ,cntr.customer_id
+          ,cntr.same_install_account_flag
+          ,XxcsoSpDecisionCustsVEO.CITY
+          ,pvs.city
+          ,inst.city
+          ,xcasv.city
+          ,cntr.city
+          ,xcc.city_ward
+         )
+        ,1
+        ,25
+       ) city,
+       SUBSTRB(
+         xxcso_020001j_pkg.get_bm1_info_parameter(
+           XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+          ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+          ,xsdh.bm1_send_type
+          ,inst.customer_id
+          ,xcasv.customer_status
+          ,cntr.customer_id
+          ,cntr.same_install_account_flag
+          ,XxcsoSpDecisionCustsVEO.ADDRESS1
+          ,pvs.address_line1
+          ,inst.address1
+          ,xcasv.address1
+          ,cntr.address1
+          ,xcc.address_1
+         )
+        ,1
+        ,35
+       ) address1,
+       SUBSTRB(
+         xxcso_020001j_pkg.get_bm1_info_parameter(
+           XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+          ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+          ,xsdh.bm1_send_type
+          ,inst.customer_id
+          ,xcasv.customer_status
+          ,cntr.customer_id
+          ,cntr.same_install_account_flag
+          ,XxcsoSpDecisionCustsVEO.ADDRESS2
+          ,pvs.address_line2
+          ,inst.address2
+          ,xcasv.address2
+          ,cntr.address2
+          ,xcc.address_2
+         )
+        ,1
+        ,35
+       ) address2,
+       xxcso_020001j_pkg.get_bm1_info_parameter(
+         XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+        ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
+        ,xsdh.bm1_send_type
+        ,inst.customer_id
+        ,xcasv.customer_status
+        ,cntr.customer_id
+        ,cntr.same_install_account_flag
+        ,XxcsoSpDecisionCustsVEO.ADDRESS_LINES_PHONETIC
+        ,pvs.area_code || pvs.phone
+        ,inst.address_lines_phonetic
+        ,xcasv.phone_number
+        ,cntr.address_lines_phonetic
+        ,xcc.phone_number
+       ) address_lines_phonetic,
+       XxcsoSpDecisionCustsVEO.INSTALL_NAME, 
+       XxcsoSpDecisionCustsVEO.BUSINESS_CONDITION_TYPE, 
+       XxcsoSpDecisionCustsVEO.BUSINESS_TYPE, 
+       XxcsoSpDecisionCustsVEO.INSTALL_LOCATION, 
+       XxcsoSpDecisionCustsVEO.EXTERNAL_REFERENCE_OPCL_TYPE, 
+       XxcsoSpDecisionCustsVEO.EMPLOYEE_NUMBER, 
+       XxcsoSpDecisionCustsVEO.PUBLISH_BASE_CODE, 
+       XxcsoSpDecisionCustsVEO.REPRESENTATIVE_NAME, 
+       XxcsoSpDecisionCustsVEO.TRANSFER_COMMISSION_TYPE, 
+       XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE, 
+       xxcso_020001j_pkg.get_bm1_info_parameter(
+         XxcsoSpDecisionCustsVEO.CUSTOMER_ID
+        ,NULL
+        ,NULL
+        ,NULL
+        ,NULL
+        ,NULL
+        ,NULL
+        ,XxcsoSpDecisionCustsVEO.INQUIRY_BASE_CODE
+        ,pvs.attribute5
+        ,NULL
+        ,NULL
+        ,NULL
+        ,NULL
+       ) inquiry_base_code,
+       XxcsoSpDecisionCustsVEO.NEW_CUSTOMER_FLAG, 
+       XxcsoSpDecisionCustsVEO.CUSTOMER_ID, 
+       XxcsoSpDecisionCustsVEO.SAME_INSTALL_ACCOUNT_FLAG, 
+       XxcsoSpDecisionCustsVEO.CREATED_BY, 
+       XxcsoSpDecisionCustsVEO.CREATION_DATE, 
+       XxcsoSpDecisionCustsVEO.LAST_UPDATED_BY, 
+       XxcsoSpDecisionCustsVEO.LAST_UPDATE_DATE, 
+       XxcsoSpDecisionCustsVEO.LAST_UPDATE_LOGIN, 
+       XxcsoSpDecisionCustsVEO.REQUEST_ID, 
+       XxcsoSpDecisionCustsVEO.PROGRAM_APPLICATION_ID, 
+       XxcsoSpDecisionCustsVEO.PROGRAM_ID, 
+       XxcsoSpDecisionCustsVEO.PROGRAM_UPDATE_DATE
+      ,pv.segment1 vendor_number
+      ,(SELECT  xabv.base_name
+        FROM    xxcso_aff_base_v2  xabv
+        WHERE   xabv.base_code = XxcsoSpDecisionCustsVEO.INQUIRY_BASE_CODE
+       ) inquiry_base_name
+      ,XxcsoSpDecisionCustsVEO.TRANSFER_COMMISSION_TYPE transfer_commission_type_view
+FROM XXCSO_SP_DECISION_CUSTS_V XxcsoSpDecisionCustsVEO
+    ,xxcso_sp_decision_headers xsdh
+    ,xxcso_sp_decision_custs_v inst
+    ,xxcso_sp_decision_custs_v cntr
+    ,xxcso_cust_acct_sites_v   xcasv
+    ,xxcso_contract_customers  xcc
+    ,po_vendors                pv
+    ,po_vendor_sites           pvs
+WHERE XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_CLASS = '3'
+AND   xsdh.sp_decision_header_id                         = XxcsoSpDecisionCustsVEO.SP_DECISION_HEADER_ID
+AND   inst.sp_decision_header_id                         = XxcsoSpDecisionCustsVEO.SP_DECISION_HEADER_ID
+AND   inst.sp_decision_customer_class                    = '1'
+AND   cntr.sp_decision_header_id                         = XxcsoSpDecisionCustsVEO.SP_DECISION_HEADER_ID
+AND   cntr.sp_decision_customer_class                    = '2'
+AND   xcasv.cust_account_id(+)                           = inst.customer_id
+AND   xcc.contract_customer_id(+)                        = cntr.customer_id
+AND   pv.vendor_id(+)                                    = XxcsoSpDecisionCustsVEO.customer_id
+AND   pvs.vendor_id(+)                                   = XxcsoSpDecisionCustsVEO.customer_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoSpDecisionCustsVEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionCustsVEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="true" />
+         <Attr Name="_queryWhere" Value="XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_CLASS = &#39;3&#39;" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="SpDecisionCustomerId"
+      IsNotNull="true"
+      EntityAttrName="SpDecisionCustomerId"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="SP_DECISION_CUSTOMER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionHeaderId"
+      IsNotNull="true"
+      EntityAttrName="SpDecisionHeaderId"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="SP_DECISION_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionCustomerClass"
+      Precision="1"
+      EntityAttrName="SpDecisionCustomerClass"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="SP_DECISION_CUSTOMER_CLASS" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyName"
+      Precision="80"
+      EntityAttrName="PartyName"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="PARTY_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyNameAlt"
+      Precision="50"
+      EntityAttrName="PartyNameAlt"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="PARTY_NAME_ALT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PostalCodeFirst"
+      EntityAttrName="PostalCodeFirst"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="PostalCodeFirst" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PostalCodeSecond"
+      EntityAttrName="PostalCodeSecond"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="PostalCodeSecond" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PostalCode"
+      Precision="7"
+      EntityAttrName="PostalCode"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="POSTAL_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="State"
+      Precision="30"
+      EntityAttrName="State"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="STATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="City"
+      Precision="30"
+      EntityAttrName="City"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="CITY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Address1"
+      Precision="240"
+      EntityAttrName="Address1"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="ADDRESS1" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Address2"
+      Precision="240"
+      EntityAttrName="Address2"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="ADDRESS2" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AddressLinesPhonetic"
+      Precision="30"
+      EntityAttrName="AddressLinesPhonetic"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="ADDRESS_LINES_PHONETIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallName"
+      Precision="30"
+      EntityAttrName="InstallName"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="INSTALL_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BusinessConditionType"
+      Precision="2"
+      EntityAttrName="BusinessConditionType"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="BUSINESS_CONDITION_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BusinessType"
+      Precision="2"
+      EntityAttrName="BusinessType"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="BUSINESS_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallLocation"
+      Precision="2"
+      EntityAttrName="InstallLocation"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="INSTALL_LOCATION" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ExternalReferenceOpclType"
+      Precision="1"
+      EntityAttrName="ExternalReferenceOpclType"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="EXTERNAL_REFERENCE_OPCL_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      Precision="7"
+      EntityAttrName="EmployeeNumber"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="EMPLOYEE_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PublishBaseCode"
+      Precision="4"
+      EntityAttrName="PublishBaseCode"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="PUBLISH_BASE_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RepresentativeName"
+      Precision="20"
+      EntityAttrName="RepresentativeName"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="REPRESENTATIVE_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransferCommissionType"
+      Precision="1"
+      EntityAttrName="TransferCommissionType"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="TRANSFER_COMMISSION_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmPaymentType"
+      Precision="1"
+      EntityAttrName="BmPaymentType"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="BM_PAYMENT_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InquiryBaseCode"
+      Precision="4"
+      EntityAttrName="InquiryBaseCode"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="INQUIRY_BASE_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NewCustomerFlag"
+      Precision="1"
+      EntityAttrName="NewCustomerFlag"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="NEW_CUSTOMER_FLAG" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustomerId"
+      EntityAttrName="CustomerId"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="CUSTOMER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SameInstallAccountFlag"
+      Precision="1"
+      EntityAttrName="SameInstallAccountFlag"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="SAME_INSTALL_ACCOUNT_FLAG" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoSpDecisionCustsVEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorNumber"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_NUMBER"
+      Expression="VENDOR_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InquiryBaseName"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INQUIRY_BASE_NAME"
+      Expression="INQUIRY_BASE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransferCommissionTypeView"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TRANSFER_COMMISSION_TYPE_VIEW"
+      Expression="TRANSFER_COMMISSION_TYPE_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

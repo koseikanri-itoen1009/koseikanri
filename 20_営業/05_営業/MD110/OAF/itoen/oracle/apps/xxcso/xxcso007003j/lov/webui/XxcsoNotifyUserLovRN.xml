@@ -1,0 +1,29 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Search notify user information LOV region by shared for regist sales decision information.
+
+@see itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoSalesRegistLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoSalesRegistLovAM.java
+
+HISTORY
+2009/01/07  H.Ogawa        new-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoSalesRegistLovAM" advancedSearchAllowed="true" scope="/">
+   <ui:contents>
+      <oa:table name="XxcsoNotifyUserLovRN" id="NotifyUserResultTblRN" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/NotifyUserResultTblRN">
+         <ui:contents>
+            <oa:messageStyledText id="EmployeeNumber" viewName="XxcsoNotifyUserLovVO1" viewAttr="EmployeeNumber" maximumLength="30" queryable="true" selectiveSearchCriteria="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/EmployeeNumber"/>
+            <oa:messageStyledText id="FullName" viewName="XxcsoNotifyUserLovVO1" viewAttr="FullName" maximumLength="301" sortState="yes" queryable="true" selectiveSearchCriteria="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/FullName"/>
+            <oa:messageStyledText id="PositionName" viewName="XxcsoNotifyUserLovVO1" viewAttr="PositionName" maximumLength="4000" queryable="true" sortState="yes" selectiveSearchCriteria="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/PositionName"/>
+            <oa:messageStyledText id="WorkBaseCode" viewName="XxcsoNotifyUserLovVO1" viewAttr="WorkBaseCode" maximumLength="4000" queryable="true" sortState="yes" selectiveSearchCriteria="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/BaseCode"/>
+            <oa:messageStyledText id="WorkBaseName" viewName="XxcsoNotifyUserLovVO1" viewAttr="WorkBaseName" maximumLength="4000" queryable="true" sortState="yes" selectiveSearchCriteria="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/BaseName"/>
+            <oa:formValue id="UserName" prompt="UserName" viewName="XxcsoNotifyUserLovVO1" viewAttr="UserName"/>
+            <oa:formValue id="PositionSortCode" prompt="PositionSortCode" viewName="XxcsoNotifyUserLovVO1" viewAttr="PositionSortCode"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

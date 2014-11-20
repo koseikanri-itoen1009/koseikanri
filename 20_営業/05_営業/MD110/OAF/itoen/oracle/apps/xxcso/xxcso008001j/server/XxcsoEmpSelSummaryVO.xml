@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoEmpSelSummaryVO"
+   OrderBy="POSITION_SORT_CODE,EMPLOYEE_NUMBER"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpSelSummaryVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpSelSummaryVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  xrv2.user_id AS user_id
+       ,(
+          CASE
+            WHEN TO_DATE(xrv2.issue_date) > TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate) THEN
+              xrv2.position_name_old
+            ELSE
+              xrv2.position_name_new
+          END
+        ) AS position_name
+       ,xrv2.full_name AS full_name
+       ,xrv2.resource_id AS resource_id
+       ,(
+          CASE
+            WHEN TO_DATE(xrv2.issue_date) > TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate) THEN
+              xrv2.position_sort_code_old
+            ELSE
+              xrv2.position_sort_code_new
+          END
+        ) AS position_sort_code
+       ,xrv2.employee_number AS employee_number
+FROM    xxcso_resources_v2 xrv2
+       ,(
+          SELECT   base_code
+                  ,child_base_code
+          FROM     (
+                     SELECT  xablv2.base_code AS base_code
+                            ,xablv2.child_base_code AS child_base_code
+                     FROM    xxcso_aff_base_level_v2 xablv2
+                             START WITH
+                               xablv2.base_code = :1
+                             CONNECT BY NOCYCLE
+                               PRIOR xablv2.child_base_code = xablv2.base_code
+                   ) aff
+                   UNION ALL
+                   SELECT  :2
+                           ,:3
+                   FROM    DUAL
+        ) tree_aff
+WHERE   xrv2.sales_dashboad_use_flag = 'Y'
+  AND   (
+          (
+              TO_DATE(xrv2.issue_date) > TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
+          AND (xrv2.work_base_code_old = tree_aff.child_base_code)
+          )
+          OR
+          (
+              TO_DATE(xrv2.issue_date) <= TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
+          AND (xrv2.work_base_code_new = tree_aff.child_base_code)
+          )
+        )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="SelectFlg"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="$none$"
+      AliasName="SELECT_FLG"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UserId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="USER_ID"
+      Expression="USER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PositionName"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="POSITION_NAME"
+      Expression="POSITION_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="300"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ResourceId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="RESOURCE_ID"
+      Expression="RESOURCE_ID"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PositionSortCode"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="POSITION_SORT_CODE"
+      Expression="POSITION_SORT_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EMPLOYEE_NUMBER"
+      Expression="EMPLOYEE_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+</ViewObject>

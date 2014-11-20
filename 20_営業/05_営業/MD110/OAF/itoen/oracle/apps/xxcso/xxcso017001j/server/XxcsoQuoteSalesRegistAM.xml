@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoQuoteSalesRegistAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteSalesRegistAMImpl"
+   LoadComponentsLazily="true" >
+   <Properties>
+      <Property Name ="RETENTION_LEVEL" Value ="MANAGE_STATE" />
+   </Properties>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoStorePriceTaxTypeLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoUsuallyDelivPriceVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoUsuallyDelivPriceVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteDivLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoUnitPriceDivLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoDelivPriceTaxTypeLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteHeadersFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteHeadersFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteLinesSalesFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteLinesSalesFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteHeadersFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteHeadersFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteLinesSalesFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteLinesSalesFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoReferenceQuoteVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoReferenceQuoteVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteTypeLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteStatusLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteSalesInitVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteSalesInitVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoCsvDownVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoCsvDownVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoCsvQueryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoCsvQueryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoAccountTypeVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoAccountTypeVO" >
+   </ViewUsage>
+   <ViewLinkUsage
+      Name="XxcsoQuoteHeaderLineSalesVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteHeaderLineSalesVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteSalesRegistAM.XxcsoQuoteHeadersFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteSalesRegistAM.XxcsoQuoteLinesSalesFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoQuoteHeaderLineSalesVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteHeaderLineSalesVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteSalesRegistAM.XxcsoQuoteHeadersFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteSalesRegistAM.XxcsoQuoteLinesSalesFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+</AppModule>

@@ -1,0 +1,44 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Search customer information LOV region by shared for regist SP-DECISION information.
+
+@see itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM.java
+
+HISTORY
+2009/01/05  H.Ogawa        new-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM" scope="/" advancedSearchAllowed="true">
+   <ui:contents>
+      <oa:table name="XxcsoAccountForRegistLovRN" id="AccountTblRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/AccountTblRN">
+         <ui:contents>
+            <oa:formValue id="ApplicationType" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="ApplicationType"/>
+            <oa:formValue id="CustAccountId" dataType="NUMBER" viewName="XxcsoAccountForRegistLovVO1" viewAttr="CustAccountId"/>
+            <oa:messageStyledText id="AccountNumber" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="AccountNumber" maximumLength="30" queryable="true" sortState="yes" initSortSeq="first" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/AccountNumber"/>
+            <oa:messageStyledText id="PartyName" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="PartyName" maximumLength="360" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/PartyName"/>
+            <oa:formValue id="OrganizationNamePhonetic" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="OrganizationNamePhonetic"/>
+            <oa:formValue id="EstablishedSiteName" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="EstablishedSiteName"/>
+            <oa:formValue id="PostalCodeFirst" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="PostalCodeFirst"/>
+            <oa:formValue id="PostalCodeSecond" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="PostalCodeSecond"/>
+            <oa:messageStyledText id="PostalCode" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="PostalCode" maximumLength="60" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/PostalCode"/>
+            <oa:messageStyledText id="State" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="State" maximumLength="60" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/State"/>
+            <oa:messageStyledText id="City" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="City" maximumLength="60" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/City"/>
+            <oa:messageStyledText id="Address1" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="Address1" maximumLength="240" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/Address1"/>
+            <oa:messageStyledText id="Address2" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="Address2" maximumLength="240" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/Address2"/>
+            <oa:messageStyledText id="PhoneNumber" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="PhoneNumber" maximumLength="560" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/PhoneNumber"/>
+            <oa:formValue id="BusinessLowType" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="BusinessLowType"/>
+            <oa:formValue id="IndustryDiv" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="IndustryDiv"/>
+            <oa:formValue id="EstablishmentLocation" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="EstablishmentLocation"/>
+            <oa:formValue id="OpenCloseDiv" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="OpenCloseDiv"/>
+            <oa:formValue id="Employees" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="Employees"/>
+            <oa:formValue id="SaleBaseCode" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="SaleBaseCode"/>
+            <oa:formValue id="SaleBaseName" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="SaleBaseName"/>
+            <oa:formValue id="CustomerStatus" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="CustomerStatus"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

@@ -1,0 +1,1156 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Regist CONTRACT_MANAGEMENT information page.
+
+@param ExecuteMode      1 : For Detail
+                        2 : For Copy
+                     NULL : For Create
+@param TransactionKey1  XXCSO_SP_DECISION_HEADERS.SP_DECISION_HEADER_ID
+@param TransactionKey2  XXCSO_CONTRACT_MANAGEMENT.CONTRACT_MANAGEMENT_ID
+
+@see itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO.java
+@see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.xml
+@see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAMImpl.java
+
+HISTORY 2009/01/27  H.Ogawa        Initialcode drop.-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="CancelButton" text="Cancel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CancelButton"/>
+                  <oa:submitButton id="ApplyButton" text="Apply" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ApplyButton" rendered="${oa.XxcsoPageRenderVO1.ApplyButtonRender}"/>
+                  <oa:submitButton id="SubmitButton" text="Submit" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SubmitButton" rendered="${oa.XxcsoPageRenderVO1.SubmitButtonRender}"/>
+                  <oa:submitButton id="PrintPdfButton" text="Print PDF" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PrintPdfButton" rendered="${oa.XxcsoPageRenderVO1.PrintPdfButtonRender}"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:header id="BaseInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BaseInfoHdrRN">
+                     <ui:contents>
+                        <oa:messageComponentLayout id="BaseInfoMclRN">
+                           <ui:contents>
+                              <oa:messageRadioGroup id="ContractFormatView" viewName="XxcsoContractManagementFullVO1" viewAttr="ContractFormat" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractFormat" pickListViewName="XxcsoContractFormatListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" required="yes" styleClass="OraInstructionText" vAlign="middle" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}"/>
+                              <oa:messageRadioGroup id="ContractFormat" viewName="XxcsoContractManagementFullVO1" viewAttr="ContractFormat" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractFormat" pickListViewName="XxcsoContractFormatListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" required="yes" styleClass="OraInstructionText" vAlign="middle" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="ContractNumber" viewName="XxcsoContractManagementFullVO1" viewAttr="ContractNumber" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractNumber"/>
+                              <oa:messageChoice id="Status" viewName="XxcsoContractManagementFullVO1" viewAttr="Status" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Status" pickListViewName="XxcsoContractStatusListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true"/>
+                              <oa:messageLayout id="InputUserLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InputUserLayout">
+                                 <ui:contents>
+                                    <oa:rowLayout id="InputUserRlRN">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="CreateEmployeeNumber" viewName="XxcsoContractManagementFullVO1" viewAttr="EmployeeNumber" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CreateEmployeeNumber"/>
+                                          <oa:spacer id="InputUserSpacer01" width="10"/>
+                                          <oa:messageStyledText id="CreateEmployeeName" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CreateEmployeeName" viewName="XxcsoContractManagementFullVO1" viewAttr="FullName"/>
+                                          <oa:spacer id="InputUserSpacer02" width="10"/>
+                                          <oa:messageStyledText id="CreateBaseName" viewName="XxcsoContractManagementFullVO1" viewAttr="BaseName" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CreateBaseName"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                              <oa:messageStyledText id="SpDecisionNumber" viewName="XxcsoContractManagementFullVO1" viewAttr="SpDecisionNumber" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SpDecisionNumber" styleClass="OraDataText"/>
+                           </ui:contents>
+                        </oa:messageComponentLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="ContractInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractInfoHdrRN">
+                     <ui:contents>
+                        <oa:messageComponentLayout id="ContractInfoMclRN01">
+                           <ui:contents>
+                              <oa:messageStyledText id="ContractorNumber" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="ContractNumber" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractorNumber"/>
+                              <oa:messageStyledText id="ContractNameView" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="ContractName" maximumLength="360" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractName" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="ContractName" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="ContractName" maximumLength="360" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractName" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="DelegateNameView" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="DelegateName" maximumLength="20" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/DelegateName" required="uiOnly" columns="25" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="DelegateName" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="DelegateName" maximumLength="20" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/DelegateName" required="uiOnly" columns="25" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="ContractPostalCodeView" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="PostCode" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractPostalCode" required="uiOnly" columns="8" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="ContractPostalCode" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="PostCode" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractPostalCode" required="uiOnly" columns="8" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="ContractStateView" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="Prefectures" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractState" required="uiOnly" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="ContractState" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="Prefectures" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractState" required="uiOnly" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="ContractCityView" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="CityWard" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractCity" required="uiOnly" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="ContractCity" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="CityWard" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractCity" required="uiOnly" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="ContractAddress1View" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="Address1" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractAddress1" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="ContractAddress1" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="Address1" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractAddress1" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="ContractAddress2View" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="Address2" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractAddress2" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="ContractAddress2" dataType="VARCHAR2" viewName="XxcsoContractCustomerFullVO1" viewAttr="Address2" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractAddress2" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                           </ui:contents>
+                        </oa:messageComponentLayout>
+                        <oa:spacer id="ContractInfoSpacer01" height="20"/>
+                        <oa:messageComponentLayout id="ContractInfoMclRN02">
+                           <ui:contents>
+                              <oa:messageStyledText id="ContractEffectDateView" viewName="XxcsoContractManagementFullVO1" viewAttr="ContractEffectDate" dataType="DATE" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractEffectDate" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="ContractEffectDate" viewName="XxcsoContractManagementFullVO1" viewAttr="ContractEffectDate" dataType="DATE" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractEffectDate" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                           </ui:contents>
+                        </oa:messageComponentLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="PayCondInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PayCondInfoHdrRN">
+                     <ui:contents>
+                        <oa:tableLayout id="PayCondInfoTlRN" hAlign="center" width="100%">
+                           <ui:contents>
+                              <oa:rowLayout id="PayCondInfoRlRN01" width="100%">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PayCondInfoCfRN0101" hAlign="end" width="20%" vAlign="top">
+                                       <ui:contents>
+                                          <oa:staticStyledText id="SalesCondLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" styleClass="OraDataText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="PayCondInfoCfRN0102" width="80%">
+                                       <ui:contents>
+                                          <oa:advancedTable id="SalesCondInfoAdvTblRN" viewName="XxcsoSalesCondSummaryVO1" width="100%" tableBanding="rowBanding">
+                                             <ui:contents>
+                                                <oa:column id="FixedPriceCol">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="FixedPriceColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/FixedPriceColHdr" cellNoWrapFormat="true"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="FixedPrice" viewAttr="FixedPrice"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="SalesPriceCol">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="SalesPriceColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesPriceColHdr" cellNoWrapFormat="true"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="SalesPrice" viewAttr="SalesPrice"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:columnGroup id="ScBmTotalGrp">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="ScBmTotalGrpHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBmTotalGrpHdr" cellNoWrapFormat="true"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:column id="ScBmTotalRateCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="ScBmTotalRateColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBmTotalRateColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="ScBmTotalRate" viewAttr="BmRatePerSalesPrice"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="ScBmTotalAmtCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="ScBmTotalAmtColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBmTotalAmtColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="ScBmTotalAmt" viewAttr="BmAmountPerSalesPrice"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="ScBmTotalCalcRateCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="ScBmTotalCalcRateColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBmTotalCalcRateColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="ScBmTotalCalcRate" viewAttr="BmConvRatePerSalesPrice"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                   </ui:contents>
+                                                </oa:columnGroup>
+                                                <oa:columnGroup id="ScBm1Grp">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="ScBm1GrpHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBm1GrpHdr" cellNoWrapFormat="true"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:column id="ScBm1RateCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="ScBm1RateColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBm1RateColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="ScBm1Rate" viewAttr="Bm1BmRate"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="ScBm1AmtCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="ScBm1AmtColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBm1AmtColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="ScBm1Amt" viewAttr="Bm1BmAmount"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                   </ui:contents>
+                                                </oa:columnGroup>
+                                                <oa:columnGroup id="ScBm2Grp">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="ScBm2GrpHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBm2GrpHdr" cellNoWrapFormat="true"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:column id="ScBm2RateCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="ScBm2RateColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBm2RateColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="ScBm2Rate" viewAttr="Bm2BmRate"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="ScBm2AmtCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="ScBm2AmtColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBm2AmtColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="ScBm2Amt" viewAttr="Bm2BmAmount"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                   </ui:contents>
+                                                </oa:columnGroup>
+                                                <oa:columnGroup id="ScBm3Grp">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="ScBm3GrpHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBm3GrpHdr" cellNoWrapFormat="true"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:column id="ScBm3RateCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="ScBm3RateColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBm3RateColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="ScBm3Rate" viewAttr="Bm3BmRate"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="ScBm3AmtCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="ScBm3AmtColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ScBm3AmtColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="ScBm3Amt" viewAttr="Bm3BmAmount"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                   </ui:contents>
+                                                </oa:columnGroup>
+                                             </ui:contents>
+                                          </oa:advancedTable>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="PayCondInfoRlRN02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PayCondInfoCfRN0201" hAlign="end" vAlign="top">
+                                       <ui:contents>
+                                          <oa:staticStyledText id="ContainerCondLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContainerCondLabel" styleClass="OraDataText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="PayCondInfoCfRN0202">
+                                       <ui:contents>
+                                          <oa:advancedTable id="ContainerCondInfoAdvTblRN" width="100%" viewName="XxcsoContainerCondSummaryVO1">
+                                             <ui:contents>
+                                                <oa:column id="SpContainerNameCol">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="SpContainerNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SpContainerNameColHdr" cellNoWrapFormat="true"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="SpContainerName" viewAttr="SpContainerName"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="DiscountAmtCol">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="DiscountAmtColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/DiscountAmtColHdr"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="DiscountAmt" viewAttr="DiscountAmt"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:columnGroup id="CcBmTotalGrp">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="CcBmTotalGrpHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBmTotalGrpHdr" cellNoWrapFormat="true"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:column id="CcBmTotalRateCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="CcBmTotalRateColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBmTotalRateColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="CcBmTotalRate" viewAttr="BmRatePerSalesPrice"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="CcBmTotalAmtCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="CcBmTotalAmtColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBmTotalAmtColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="CcBmTotalAmt" viewAttr="BmAmountPerSalesPrice"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="CcBmTotalCalcRateCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="CcBmTotalCalcRateColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBmTotalCalcRateColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="CcBmTotalCalcRate" viewAttr="BmConvRatePerSalesPrice"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                   </ui:contents>
+                                                </oa:columnGroup>
+                                                <oa:columnGroup id="CcBm1Grp">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="CcBm1GrpHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBm1GrpHdr" cellNoWrapFormat="true"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:column id="CcBm1RateCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="CcBm1RateColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBm1RateColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="CcBm1Rate" viewAttr="Bm1BmRate"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="CcBm1AmtCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="CcBm1AmtColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBm1AmtColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="CcBm1Amt" viewAttr="Bm1BmAmount"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                   </ui:contents>
+                                                </oa:columnGroup>
+                                                <oa:columnGroup id="CcBm2Grp">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="CcBm2GrpHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBm2GrpHdr" cellNoWrapFormat="true"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:column id="CcBm2RateCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="CcBm2RateColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBm2RateColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="CcBm2Rate" viewAttr="Bm2BmRate"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="CcBm2AmtCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="CcBm2AmtColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBm2AmtColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="CcBm2Amt" viewAttr="Bm2BmAmount"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                   </ui:contents>
+                                                </oa:columnGroup>
+                                                <oa:columnGroup id="CcBm3Grp">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="CcBm3GrpHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBm3GrpHdr" cellNoWrapFormat="true"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:column id="CcBm3RateCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="CcBm3RateColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBm3RateColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="CcBm3Rate" viewAttr="Bm3BmRate"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="CcBm3AmtCol">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="CcBm3AmtColHdr" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CcBm3AmtColHdr" cellNoWrapFormat="true"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="CcBm3Amt" viewAttr="Bm3BmAmount"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                   </ui:contents>
+                                                </oa:columnGroup>
+                                             </ui:contents>
+                                          </oa:advancedTable>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="PayCondInfoRlRN03">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PayCondInfoCfRN0301" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:spacer id="PayCondInfoSpacer01" height="20"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="PayCondInfoRlRN04">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PayCondInfoCfRN0401" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="PayCondInfoMclRN04">
+                                             <ui:contents>
+                                                <oa:messageLayout id="CloseDayLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CloseDayLayout">
+                                                   <ui:contents>
+                                                      <oa:tableLayout id="CloseDayTlRN" hAlign="start">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="CloseDayRlRN01">
+                                                               <ui:contents>
+                                                                  <oa:cellFormat id="CloseDayCfRN0101" width="80">
+                                                                     <ui:contents>
+                                                                        <oa:spacer id="CloseDaySpacer01"/>
+                                                                     </ui:contents>
+                                                                  </oa:cellFormat>
+                                                                  <oa:cellFormat id="CloseDayCfRN0102" width="70">
+                                                                     <ui:contents>
+                                                                        <oa:staticStyledText id="CloseDayCodeDisabled" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PayCondInfoDisabled" rendered="${oa.XxcsoPageRenderVO1.PayCondInfoDisabled}"/>
+                                                                        <oa:messageChoice id="CloseDayCodeView" viewName="XxcsoContractManagementFullVO1" viewAttr="CloseDayCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CloseDayCode" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.PayCondInfoViewRender}" allowBlankValue="false" readOnly="true" styleClass="OraDataText"/>
+                                                                        <oa:messageChoice id="CloseDayCode" viewName="XxcsoContractManagementFullVO1" viewAttr="CloseDayCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CloseDayCode" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.PayCondInfoEnabled}"/>
+                                                                     </ui:contents>
+                                                                  </oa:cellFormat>
+                                                                  <oa:cellFormat id="CloseDayCfRN0103" width="100" hAlign="start">
+                                                                     <ui:contents>
+                                                                        <oa:staticStyledText id="CloseDayLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CloseDayLabel"/>
+                                                                     </ui:contents>
+                                                                  </oa:cellFormat>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:tableLayout>
+                                                   </ui:contents>
+                                                </oa:messageLayout>
+                                                <oa:messageLayout id="TransferDayLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/TransferDayLayout">
+                                                   <ui:contents>
+                                                      <oa:tableLayout id="TransferDayTlRN" hAlign="start">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="TransferDayRlRN01">
+                                                               <ui:contents>
+                                                                  <oa:cellFormat id="TransferDayCfRN0101" width="80" hAlign="start">
+                                                                     <ui:contents>
+                                                                        <oa:staticStyledText id="TransferMonthCodeDisabled" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PayCondInfoDisabled" rendered="${oa.XxcsoPageRenderVO1.PayCondInfoDisabled}"/>
+                                                                        <oa:messageChoice id="TransferMonthCodeView" viewName="XxcsoContractManagementFullVO1" viewAttr="TransferMonthCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/TransferMonthCode" pickListViewName="XxcsoMonthsListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.PayCondInfoViewRender}" allowBlankValue="false" readOnly="true" styleClass="OraDataText"/>
+                                                                        <oa:messageChoice id="TransferMonthCode" viewName="XxcsoContractManagementFullVO1" viewAttr="TransferMonthCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/TransferMonthCode" pickListViewName="XxcsoMonthsListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.PayCondInfoEnabled}"/>
+                                                                     </ui:contents>
+                                                                  </oa:cellFormat>
+                                                                  <oa:cellFormat id="TransferDayCfRN0102" width="70">
+                                                                     <ui:contents>
+                                                                        <oa:staticStyledText id="TransferDayCodeDisabled" text="-" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PayCondInfoDisabled" rendered="${oa.XxcsoPageRenderVO1.PayCondInfoDisabled}"/>
+                                                                        <oa:messageChoice id="TransferDayCodeView" viewName="XxcsoContractManagementFullVO1" viewAttr="TransferDayCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/TransferDayCode" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.PayCondInfoViewRender}" allowBlankValue="false" readOnly="true" styleClass="OraDataText"/>
+                                                                        <oa:messageChoice id="TransferDayCode" viewName="XxcsoContractManagementFullVO1" viewAttr="TransferDayCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/TransferDayCode" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.PayCondInfoEnabled}"/>
+                                                                     </ui:contents>
+                                                                  </oa:cellFormat>
+                                                                  <oa:cellFormat id="TransferDayCfRN0103" hAlign="start" width="100">
+                                                                     <ui:contents>
+                                                                        <oa:staticStyledText id="TransferDayLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/TransferDayLabel"/>
+                                                                     </ui:contents>
+                                                                  </oa:cellFormat>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:tableLayout>
+                                                   </ui:contents>
+                                                </oa:messageLayout>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="PeriodInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PeriodInfoHdrRN">
+                     <ui:contents>
+                        <oa:messageComponentLayout id="PeriodInfoMclRN01">
+                           <ui:contents>
+                              <oa:messageLayout id="ContractPeriodLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractPeriodLayout">
+                                 <ui:contents>
+                                    <oa:tableLayout id="ContractPeriodTlRN" hAlign="start">
+                                       <ui:contents>
+                                          <oa:rowLayout id="ContractPeriodRlRN01">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ContractPeriodCfRN0101" width="150">
+                                                   <ui:contents>
+                                                      <oa:staticStyledText id="ContractPeriodStartLabel" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractPeriodStartLabel"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="ContractPeriodCfRN0102" width="70">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ContractYearDate" viewName="XxcsoContractManagementFullVO1" viewAttr="ContractYearDate" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractYearDate" columns="2" dataType="NUMBER"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="ContractPeriodCfRN0103" width="200">
+                                                   <ui:contents>
+                                                      <oa:staticStyledText id="ContractPeriodEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractPeriodEndLabel"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                              <oa:messageLayout id="CancellationOfferLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CancellationOfferLayout">
+                                 <ui:contents>
+                                    <oa:tableLayout id="CancellationOfferTlRN" hAlign="start">
+                                       <ui:contents>
+                                          <oa:rowLayout id="CancellationOfferRlRN01">
+                                             <ui:contents>
+                                                <oa:cellFormat id="CancellationOfferCfRN0101" width="150">
+                                                   <ui:contents>
+                                                      <oa:staticStyledText id="CancellationOfferStartLabel" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CancellationOfferStartLabel"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="CancellationOfferCfRN0102" width="70">
+                                                   <ui:contents>
+                                                      <oa:messageChoice id="CancellationOfferCodeView" viewName="XxcsoContractManagementFullVO1" viewAttr="CancellationOfferCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CancellationOfferCode" pickListViewName="XxcsoCancellationListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" allowBlankValue="false" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                                      <oa:messageChoice id="CancellationOfferCode" viewName="XxcsoContractManagementFullVO1" viewAttr="CancellationOfferCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CancellationOfferCode" pickListViewName="XxcsoCancellationListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="CancellationOfferCfRN0103" width="200">
+                                                   <ui:contents>
+                                                      <oa:staticStyledText id="CancellationOfferEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/CancellationOfferEndLabel"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                           </ui:contents>
+                        </oa:messageComponentLayout>
+                        <oa:spacer id="PeriodInfoSpacer01" height="20"/>
+                        <oa:messageComponentLayout id="PeriodInfoMclRN02">
+                           <ui:contents>
+                              <oa:messageTextInput id="OtherContent" viewName="XxcsoContractManagementFullVO1" viewAttr="OtherContent" maximumLength="500" columns="70" rows="5" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/OtherContent"/>
+                           </ui:contents>
+                        </oa:messageComponentLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="Bm1DestHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1DestHdrRN">
+                     <ui:contents>
+                        <oa:messageCheckBox id="Bm1ExistFlag" checkedValue="Y" unCheckedValue="N" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1ExistFlag" styleClass="OraDataText" readOnly="true" viewName="XxcsoPageRenderVO1" viewAttr="Bm1ExistFlag"/>
+                        <oa:formValue id="Bm1SupplierId" dataType="NUMBER" prompt="SupplierId" viewName="XxcsoBm1DestinationFullVO1" viewAttr="SupplierId"/>
+                        <oa:formValue id="Bm1VendorFlag" viewName="XxcsoBm1DestinationFullVO1" viewAttr="VendorFlag"/>
+                        <oa:formValue id="Bm1SpCustomerId" viewName="XxcsoBm1ContractSpCustFullVO1" viewAttr="CustomerId" dataType="NUMBER"/>
+                        <oa:stackLayout id="Bm1DestEnableSlRN" rendered="${oa.XxcsoPageRenderVO1.Bm1Enabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="Bm1DestMclRN01" columns="1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm1VendorCodeView" viewName="XxcsoBm1DestinationFullVO1" viewAttr="VendorCode" maximumLength="9" columns="10" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1VendorCode" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageLovInput id="Bm1VendorCode" viewName="XxcsoBm1DestinationFullVO1" viewAttr="VendorCode" maximumLength="9" columns="10" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1VendorCode" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractVendorLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                       <lovMappings>
+                                          <lovMap id="Bm1VendorCodeMap" lovItem="VendorNumber" resultTo="Bm1VendorCode" criteriaFrom="Bm1VendorCode"/>
+                                          <lovMap id="Bm1SupplierIdMap" lovItem="VendorId" resultTo="Bm1SupplierId"/>
+                                          <lovMap id="Bm1TransferFeeMap" lovItem="BmTransferCommissionType" resultTo="Bm1BankTransferFeeDiv" useForValidation="no"/>
+                                          <lovMap id="Bm1BmPaymentTypeMap" lovItem="BmPaymentType" resultTo="Bm1BellingDetailsDiv" useForValidation="no"/>
+                                          <lovMap id="Bm1InqueryBaseCodeMap" lovItem="InquiryBaseCode" resultTo="Bm1InqueryChargeHubCd" useForValidation="no"/>
+                                          <lovMap id="Bm1InqueryBaseNameMap" lovItem="InquiryBaseName" resultTo="Bm1InqueryChargeHubNameValue" useForValidation="no"/>
+                                          <lovMap id="Bm1VendorNameMap" lovItem="VendorName" resultTo="Bm1PaymentName" useForValidation="no"/>
+                                          <lovMap id="Bm1VendorNameAltMap" lovItem="VendorNameAlt" resultTo="Bm1PaymentNameAlt" useForValidation="no"/>
+                                          <lovMap id="Bm1PostalCodeMap" lovItem="Zip" resultTo="Bm1PostalCode" useForValidation="no"/>
+                                          <lovMap id="Bm1StateMap" lovItem="State" resultTo="Bm1State" useForValidation="no"/>
+                                          <lovMap id="Bm1CityMap" lovItem="City" resultTo="Bm1City" useForValidation="no"/>
+                                          <lovMap id="Bm1Address1Map" lovItem="AddressLine1" resultTo="Bm1Address1" useForValidation="no"/>
+                                          <lovMap id="Bm1Address2Map" lovItem="AddressLine2" resultTo="Bm1Address2" useForValidation="no"/>
+                                          <lovMap id="Bm1PhoneNumberMap" lovItem="PhoneNumber" resultTo="Bm1AddressLinesPhonetic" useForValidation="no"/>
+                                          <lovMap id="Bm1BankNumberMap" lovItem="BankNumber" resultTo="Bm1BankNumber" useForValidation="no"/>
+                                          <lovMap id="Bm1BankNameMap" lovItem="BankName" resultTo="Bm1BankNameValue" useForValidation="no"/>
+                                          <lovMap id="Bm1BankBranchNumberMap" lovItem="BankBranchNumber" resultTo="Bm1BranchNumberValue" useForValidation="no"/>
+                                          <lovMap id="Bm1BankBranchNameMap" lovItem="BankBranchName" resultTo="Bm1BranchNameValue" useForValidation="no"/>
+                                          <lovMap id="Bm1BankAccountTypeMap" lovItem="BankAccountType" resultTo="Bm1BankAccountType" useForValidation="no"/>
+                                          <lovMap id="Bm1BankAccountNumberMap" lovItem="BankAccountNum" resultTo="Bm1BankAccountNumber" useForValidation="no"/>
+                                          <lovMap id="Bm1BankAccountNameKanaMap" lovItem="BankAccountHolderNameAlt" resultTo="Bm1BankAccountNameKana" useForValidation="no"/>
+                                          <lovMap id="Bm1BankAccountNameKanjiMap" lovItem="BankAccountHolderName" resultTo="Bm1BankAccountNameKanji" useForValidation="no"/>
+                                          <lovMap id="Bm1SupplierId2Map" lovItem="VendorId2" resultTo="Bm1SpCustomerId"/>
+                                       </lovMappings>
+                                    </oa:messageLovInput>
+                                    <oa:messageLayout id="Bm1BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankTransferFeeDivLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm1BankTransferFeeDivView" viewName="XxcsoBm1DestinationFullVO1" viewAttr="BankTransferFeeChargeDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="Bm1BankTransferFeeDiv" viewName="XxcsoBm1DestinationFullVO1" viewAttr="BankTransferFeeChargeDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm1BellingDetailsDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BellingDetailsDivLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm1BellingDetailsDivView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="Bm1BellingDetailsDiv" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm1InqueryBaseLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InqueryBaseLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="Bm1InqueryBaseRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Bm1InqueryChargeHubCdView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="InqueryChargeHubCd" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InqueryChargeHubCd" columns="5" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                                <oa:messageLovInput id="Bm1InqueryChargeHubCd" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="InqueryChargeHubCd" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InqueryChargeHubCd" columns="5" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractInqueryBaseLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                                   <lovMappings>
+                                                      <lovMap id="Bm1VendorFlagMap" lovItem="VendorFlag" criteriaFrom="Bm1VendorFlag"/>
+                                                      <lovMap id="Bm1InqueryChargeHubCdMap" lovItem="InqueryBaseCode" resultTo="Bm1InqueryChargeHubCd" criteriaFrom="Bm1InqueryChargeHubCd"/>
+                                                      <lovMap id="Bm1InqueryChargeHubNameMap" lovItem="InqueryBaseName" resultTo="Bm1InqueryChargeHubNameValue"/>
+                                                      <lovMap id="Bm1InqBaseLovSupplierIdMap" lovItem="VendorId" criteriaFrom="Bm1SupplierId"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:spacer id="Bm1InqueryBaseSpacer01" width="10"/>
+                                                <oa:messageStyledText id="Bm1InqueryChargeHubName" viewName="XxcsoBm1DestinationFullVO1" viewAttr="InqueryChargeHubName" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InqueryChargeHubName" styleClass="OraDataText"/>
+                                                <oa:formValue id="Bm1InqueryChargeHubNameValue" viewName="XxcsoBm1DestinationFullVO1" viewAttr="InqueryChargeHubName"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="Bm1PaymentNameView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="PaymentName" maximumLength="80" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PaymentName" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1PaymentName" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="PaymentName" maximumLength="80" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PaymentName" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm1PaymentNameAltView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="PaymentNameAlt" maximumLength="320" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PaymentNameAlt" required="uiOnly" columns="55" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1PaymentNameAlt" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="PaymentNameAlt" maximumLength="320" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PaymentNameAlt" required="uiOnly" columns="55" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm1DestSpacer01" height="20"/>
+                              <oa:messageComponentLayout id="Bm1DestMclRN02">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm1PostalCodeView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="PostCode" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PostalCode" required="uiOnly" columns="8" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1PostalCode" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="PostCode" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PostalCode" required="uiOnly" columns="8" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm1StateView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="Prefectures" maximumLength="25" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1State" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1State" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="Prefectures" maximumLength="25" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1State" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm1CityView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="CityWard" maximumLength="25" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1City" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1City" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="CityWard" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1City" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" maximumLength="25"/>
+                                    <oa:messageStyledText id="Bm1Address1View" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="Address1" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1Address1" required="uiOnly" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1Address1" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="Address1" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1Address1" required="uiOnly" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm1Address2View" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="Address2" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1Address2" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1Address2" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="Address2" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1Address2" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm1AddressLinesPhoneticView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1AddressLinesPhonetic" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm1DestSpacer02" height="20"/>
+                              <oa:messageComponentLayout id="Bm1BankMclRN">
+                                 <ui:contents>
+                                    <oa:messageLayout id="Bm1BankNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="Bm1BankNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Bm1BankNumberView" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankNumber" columns="5" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                                <oa:messageLovInput id="Bm1BankNumber" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankNumber" columns="5" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractBankLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                                   <lovMappings>
+                                                      <lovMap id="BankLovBm1BankNumberMap" lovItem="BankNumber" criteriaFrom="Bm1BankNumber" resultTo="Bm1BankNumber"/>
+                                                      <lovMap id="BankLovBm1BankNameMap" lovItem="BankName" resultTo="Bm1BankNameValue"/>
+                                                      <lovMap id="BankLovBm1BranchNumberMap" lovItem="BankNum" resultTo="Bm1BranchNumberValue"/>
+                                                      <lovMap id="BankLovBm1BranchNameMap" lovItem="BankBranchName" resultTo="Bm1BranchNameValue"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:spacer id="Bm1BankNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="Bm1BankName" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankName" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankName" styleClass="OraDataText"/>
+                                                <oa:formValue id="Bm1BankNameValue" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankName"/>
+                                                <oa:formValue id="Bm1BranchNumberValue" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BranchNumber"/>
+                                                <oa:formValue id="Bm1BranchNameValue" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BranchName"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm1BranchNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BranchNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="Bm1BranchNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Bm1BranchNumber" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BranchNumber" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BranchNumber" styleClass="OraDataText"/>
+                                                <oa:spacer id="Bm1BranchNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="Bm1BranchName" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BranchName" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BranchName" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm1BankAccountTypeLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountTypeLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm1BankAccountTypeView" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankAccountType" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="Bm1BankAccountType" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankAccountType" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="Bm1BankAccountNumberView" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankAccountNumber" maximumLength="20" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountNumber" columns="25" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" required="uiOnly" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1BankAccountNumber" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankAccountNumber" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountNumber" columns="25" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1BankAccountNameKanaView" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankAccountNameKana" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountNameKana" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" required="uiOnly" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1BankAccountNameKana" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankAccountNameKana" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountNameKana" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1BankAccountNameKanjiView" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankAccountNameKanji" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountNameKanji" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" required="uiOnly" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1BankAccountNameKanji" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankAccountNameKanji" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountNameKanji" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" required="uiOnly"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                        <oa:stackLayout id="Bm1DestDisableSlRN" rendered="${oa.XxcsoPageRenderVO1.Bm1Disabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="Bm1DestMclRN011" columns="1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm1VendorCodeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1VendorCode"/>
+                                    <oa:messageStyledText id="Bm1BankTransferFeeDivBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankTransferFeeDivLayout" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1BellingDetailsDivBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BellingDetailsDivLayout" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1InqueryBaseBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InqueryBaseLayout" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1PaymentNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PaymentName" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1PaymentNameAltBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PaymentNameAlt" required="uiOnly"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm1DestSpacer011" height="20"/>
+                              <oa:messageComponentLayout id="Bm1DestMclRN021">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm1PostalCodeBlank" dataType="VARCHAR2" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PostalCode" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1StateBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1State" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1CityBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1City" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1Address1Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1Address1" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1Address2Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1Address2"/>
+                                    <oa:messageStyledText id="Bm1AddressLinesPhoneticBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1AddressLinesPhonetic"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm1DestSpacer021" height="20"/>
+                              <oa:messageComponentLayout id="Bm1BankMclRN1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm1BankNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankNameLayout" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1BranchNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BranchNameLayout"/>
+                                    <oa:messageStyledText id="Bm1BankAccountTypeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountTypeBlank" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1BankAccountNumberBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountNumber" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1BankAccountNameKanaBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountNameKana" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1BankAccountNameKanjiBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountNameKanji" required="uiOnly"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="Bm2DestHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2DestHdrRN">
+                     <ui:contents>
+                        <oa:messageCheckBox id="Bm2ExistFlag" checkedValue="Y" unCheckedValue="N" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2ExistFlag" styleClass="OraDataText" readOnly="true" viewName="XxcsoPageRenderVO1" viewAttr="Bm2ExistFlag"/>
+                        <oa:formValue id="Bm2SupplierId" dataType="NUMBER" prompt="SupplierId" viewName="XxcsoBm2DestinationFullVO1" viewAttr="SupplierId"/>
+                        <oa:formValue id="Bm2VendorFlag" viewName="XxcsoBm2DestinationFullVO1" viewAttr="VendorFlag"/>
+                        <oa:formValue id="Bm2SpCustomerId" viewName="XxcsoBm2ContractSpCustFullVO1" viewAttr="CustomerId" dataType="NUMBER"/>
+                        <oa:stackLayout id="Bm2DestEnabledSlRN" rendered="${oa.XxcsoPageRenderVO1.Bm2Enabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="Bm2DestMclRN01" columns="1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm2VendorCodeView" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2VendorCode" maximumLength="9" columns="10" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" viewName="XxcsoBm2DestinationFullVO1" viewAttr="VendorCode" styleClass="OraDataText"/>
+                                    <oa:messageLovInput id="Bm2VendorCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2VendorCode" maximumLength="9" columns="10" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractVendorLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" viewName="XxcsoBm2DestinationFullVO1" viewAttr="VendorCode">
+                                       <lovMappings>
+                                          <lovMap id="Bm2VendorCodeMap" lovItem="VendorNumber" resultTo="Bm2VendorCode" criteriaFrom="Bm2VendorCode"/>
+                                          <lovMap id="Bm2SupplierIdMap" lovItem="VendorId" resultTo="Bm2SupplierId"/>
+                                          <lovMap id="Bm2TransferFeeMap" lovItem="BmTransferCommissionType" resultTo="Bm2BankTransferFeeDiv" useForValidation="no"/>
+                                          <lovMap id="Bm2BmPaymentTypeMap" lovItem="BmPaymentType" resultTo="Bm2BellingDetailsDiv" useForValidation="no"/>
+                                          <lovMap id="Bm2InqueryBaseCodeMap" lovItem="InquiryBaseCode" resultTo="Bm2InqueryChargeHubCd" useForValidation="no"/>
+                                          <lovMap id="Bm2InqueryBaseNameMap" lovItem="InquiryBaseName" resultTo="Bm2InqueryChargeHubNameValue" useForValidation="no"/>
+                                          <lovMap id="Bm2VendorNameMap" lovItem="VendorName" resultTo="Bm2PaymentName" useForValidation="no"/>
+                                          <lovMap id="Bm2VendorNameAltMap" lovItem="VendorNameAlt" resultTo="Bm2PaymentNameAlt" useForValidation="no"/>
+                                          <lovMap id="Bm2PostalCodeMap" lovItem="Zip" resultTo="Bm2PostalCode" useForValidation="no"/>
+                                          <lovMap id="Bm2StateMap" lovItem="State" resultTo="Bm2State" useForValidation="no"/>
+                                          <lovMap id="Bm2CityMap" lovItem="City" resultTo="Bm2City" useForValidation="no"/>
+                                          <lovMap id="Bm2Address1Map" lovItem="AddressLine1" resultTo="Bm2Address1" useForValidation="no"/>
+                                          <lovMap id="Bm2Address2Map" lovItem="AddressLine2" resultTo="Bm2Address2" useForValidation="no"/>
+                                          <lovMap id="Bm2PhoneNumberMap" lovItem="PhoneNumber" resultTo="Bm2AddressLinesPhonetic" useForValidation="no"/>
+                                          <lovMap id="Bm2BankNumberMap" lovItem="BankNumber" resultTo="Bm2BankNumber" useForValidation="no"/>
+                                          <lovMap id="Bm2BankNameMap" lovItem="BankName" resultTo="Bm2BankNameValue" useForValidation="no"/>
+                                          <lovMap id="Bm2BankBranchNumberMap" lovItem="BankBranchNumber" resultTo="Bm2BranchNumberValue" useForValidation="no"/>
+                                          <lovMap id="Bm2BankBranchNameMap" lovItem="BankBranchName" resultTo="Bm2BranchNameValue" useForValidation="no"/>
+                                          <lovMap id="Bm2BankAccountTypeMap" lovItem="BankAccountType" resultTo="Bm2BankAccountType" useForValidation="no"/>
+                                          <lovMap id="Bm2BankAccountNumberMap" lovItem="BankAccountNum" resultTo="Bm2BankAccountNumber" useForValidation="no"/>
+                                          <lovMap id="Bm2BankAccountNameKanaMap" lovItem="BankAccountHolderNameAlt" resultTo="Bm2BankAccountNameKana" useForValidation="no"/>
+                                          <lovMap id="Bm2BankAccountNameKanjiMap" lovItem="BankAccountHolderName" resultTo="Bm2BankAccountNameKanji" useForValidation="no"/>
+                                          <lovMap id="Bm2SupplierId2Map" lovItem="VendorId2" resultTo="Bm2SpCustomerId"/>
+                                       </lovMappings>
+                                    </oa:messageLovInput>
+                                    <oa:messageLayout id="Bm2BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankTransferFeeDivLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm2BankTransferFeeDivView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="BankTransferFeeChargeDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="Bm2BankTransferFeeDiv" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="BankTransferFeeChargeDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm2BellingDetailsDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BellingDetailsDivLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm2BellingDetailsDivView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="Bm2BellingDetailsDiv" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm2InqueryBaseLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InqueryBaseLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="Bm2InqueryBaseRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Bm2InqueryChargeHubCdView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="InqueryChargeHubCd" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InqueryChargeHubCd" columns="5" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                                <oa:messageLovInput id="Bm2InqueryChargeHubCd" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="InqueryChargeHubCd" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InqueryChargeHubCd" columns="5" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractInqueryBaseLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                                   <lovMappings>
+                                                      <lovMap id="Bm2VendorFlagMap" lovItem="VendorFlag" criteriaFrom="Bm2VendorFlag"/>
+                                                      <lovMap id="Bm2InqueryChargeHubCdMap" lovItem="InqueryBaseCode" resultTo="Bm2InqueryChargeHubCd" criteriaFrom="Bm2InqueryChargeHubCd"/>
+                                                      <lovMap id="Bm2InqueryChargeHubNameMap" lovItem="InqueryBaseName" resultTo="Bm2InqueryChargeHubNameValue"/>
+                                                      <lovMap id="Bm2InqBaseLovSupplierIdMap" lovItem="VendorId" criteriaFrom="Bm2SupplierId"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:spacer id="Bm2InqueryBaseSpacer01" width="10"/>
+                                                <oa:messageStyledText id="Bm2InqueryChargeHubName" viewName="XxcsoBm2DestinationFullVO1" viewAttr="InqueryChargeHubName" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InqueryChargeHubName" styleClass="OraDataText"/>
+                                                <oa:formValue id="Bm2InqueryChargeHubNameValue" viewName="XxcsoBm2DestinationFullVO1" viewAttr="InqueryChargeHubName"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="Bm2PaymentNameView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="PaymentName" maximumLength="80" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PaymentName" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2PaymentName" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="PaymentName" maximumLength="80" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PaymentName" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm2PaymentNameAltView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="PaymentNameAlt" maximumLength="320" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PaymentNameAlt" required="uiOnly" columns="55" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2PaymentNameAlt" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="PaymentNameAlt" maximumLength="320" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PaymentNameAlt" required="uiOnly" columns="55" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm2DestSpacer01" height="20"/>
+                              <oa:messageComponentLayout id="Bm2DestMclRN02">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm2PostalCodeView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="PostCode" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PostalCode" required="uiOnly" columns="8" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2PostalCode" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="PostCode" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PostalCode" required="uiOnly" columns="8" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm2StateView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="Prefectures" maximumLength="25" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2State" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2State" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="Prefectures" maximumLength="25" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2State" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm2CityView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="CityWard" maximumLength="25" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2City" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2City" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="CityWard" maximumLength="25" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2City" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm2Address1View" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="Address1" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2Address1" required="uiOnly" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2Address1" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="Address1" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2Address1" required="uiOnly" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm2Address2View" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="Address2" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2Address2" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2Address2" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="Address2" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2Address2" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm2AddressLinesPhoneticView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2AddressLinesPhonetic" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm2DestSpacer02" height="20"/>
+                              <oa:messageComponentLayout id="Bm2BankMclRN">
+                                 <ui:contents>
+                                    <oa:messageLayout id="Bm2BankNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="Bm2BankNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Bm2BankNumberView" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankNumber" columns="5" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                                <oa:messageLovInput id="Bm2BankNumber" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankNumber" columns="5" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractBankLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                                   <lovMappings>
+                                                      <lovMap id="BankLovBm2BankNumberMap" lovItem="BankNumber" criteriaFrom="Bm2BankNumber" resultTo="Bm2BankNumber"/>
+                                                      <lovMap id="BankLovBm2BankNameMap" lovItem="BankName" resultTo="Bm2BankNameValue"/>
+                                                      <lovMap id="BankLovBm2BranchNumberMap" lovItem="BankNum" resultTo="Bm2BranchNumberValue"/>
+                                                      <lovMap id="BankLovBm2BranchNameMap" lovItem="BankBranchName" resultTo="Bm2BranchNameValue"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:spacer id="Bm2BankNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="Bm2BankName" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankName" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankName" styleClass="OraDataText"/>
+                                                <oa:formValue id="Bm2BankNameValue" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankName"/>
+                                                <oa:formValue id="Bm2BranchNumberValue" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BranchNumber"/>
+                                                <oa:formValue id="Bm2BranchNameValue" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BranchName"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm2BranchNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BranchNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="Bm2BranchNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Bm2BranchNumber" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BranchNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BranchNumber" columns="5" styleClass="OraDataText"/>
+                                                <oa:spacer id="Bm2BranchNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="Bm2BranchName" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BranchName" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BranchName" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm2BankAccountTypeLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountTypeLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm2BankAccountTypeView" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankAccountType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountType" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText" readOnly="true"/>
+                                          <oa:messageChoice id="Bm2BankAccountType" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankAccountType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountType" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="Bm2BankAccountNumberView" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankAccountNumber" maximumLength="20" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountNumber" columns="25" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2BankAccountNumber" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankAccountNumber" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountNumber" columns="25" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm2BankAccountNameKanaView" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankAccountNameKana" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountNameKana" columns="70" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2BankAccountNameKana" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankAccountNameKana" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountNameKana" columns="70" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm2BankAccountNameKanjiView" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankAccountNameKanji" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountNameKanji" columns="70" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2BankAccountNameKanji" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankAccountNameKanji" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountNameKanji" columns="70" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                        <oa:stackLayout id="Bm2DestDisabledSlRN" rendered="${oa.XxcsoPageRenderVO1.Bm2Disabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="Bm2DestMclRN011" columns="1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm2VendorCodeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2VendorCode"/>
+                                    <oa:messageStyledText id="Bm2BankTransferFeeDivBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankTransferFeeDivLayout" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm2BellingDetailsDivBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BellingDetailsDivLayout" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm2InqueryBaseBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InqueryBaseLayout"/>
+                                    <oa:messageStyledText id="Bm2PaymentNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PaymentName" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm2PaymentNameAltBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PaymentNameAlt" required="uiOnly"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm2DestSpacer011" height="20"/>
+                              <oa:messageComponentLayout id="Bm2DestMclRN021">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm2PostalCodeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PostalCode" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm2StateBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2State" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm2CityBlank" dataType="VARCHAR2" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2City" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm2Address1Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2Address1" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm2Address2Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2Address2"/>
+                                    <oa:messageStyledText id="Bm2AddressLinesPhoneticBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2AddressLinesPhonetic"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm2DestSpacer021" height="20"/>
+                              <oa:messageComponentLayout id="Bm2BankMclRN1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm2BankNameBlank" required="uiOnly" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankNameLayout"/>
+                                    <oa:messageStyledText id="Bm2BranchNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BranchNameLayout"/>
+                                    <oa:messageStyledText id="Bm2BankAccountTypeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountTypeBlank" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm2BankAccountNumberBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountNumber" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm2BankAccountNameKanaBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountNameKana" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm2BankAccountNameKanjiBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountNameKanji" required="uiOnly"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="Bm3DestHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3DestHdrRN">
+                     <ui:contents>
+                        <oa:messageCheckBox id="Bm3ExistFlag" checkedValue="Y" unCheckedValue="N" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3ExistFlag" styleClass="OraDataText" readOnly="true" viewName="XxcsoPageRenderVO1" viewAttr="Bm3ExistFlag"/>
+                        <oa:formValue id="Bm3SupplierId" dataType="NUMBER" prompt="SupplierId" viewName="XxcsoBm3DestinationFullVO1" viewAttr="SupplierId"/>
+                        <oa:formValue id="Bm3VendorFlag" dataType="NUMBER" prompt="SupplierId" viewName="XxcsoBm3DestinationFullVO1" viewAttr="VendorFlag"/>
+                        <oa:formValue id="Bm3SpCustomerId" viewName="XxcsoBm3ContractSpCustFullVO1" viewAttr="CustomerId" dataType="NUMBER"/>
+                        <oa:stackLayout id="Bm3DestEnabledSlRN" rendered="${oa.XxcsoPageRenderVO1.Bm3Enabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="Bm3DestMclRN01" columns="1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm3VendorCodeView" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3VendorCode" maximumLength="9" columns="10" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText" viewName="XxcsoBm3DestinationFullVO1" viewAttr="VendorCode"/>
+                                    <oa:messageLovInput id="Bm3VendorCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3VendorCode" maximumLength="9" columns="10" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractVendorLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" viewName="XxcsoBm3DestinationFullVO1" viewAttr="VendorCode">
+                                       <lovMappings>
+                                          <lovMap id="Bm3VendorCodeMap" lovItem="VendorNumber" resultTo="Bm3VendorCode" criteriaFrom="Bm3VendorCode"/>
+                                          <lovMap id="Bm3SupplierIdMap" lovItem="VendorId" resultTo="Bm3SupplierId"/>
+                                          <lovMap id="Bm3TransferFeeMap" lovItem="BmTransferCommissionType" resultTo="Bm3BankTransferFeeDiv" useForValidation="no"/>
+                                          <lovMap id="Bm3BmPaymentTypeMap" lovItem="BmPaymentType" resultTo="Bm3BellingDetailsDiv" useForValidation="no"/>
+                                          <lovMap id="Bm3InqueryBaseCodeMap" lovItem="InquiryBaseCode" resultTo="Bm3InqueryChargeHubCd" useForValidation="no"/>
+                                          <lovMap id="Bm3InqueryBaseNameMap" lovItem="InquiryBaseName" resultTo="Bm3InqueryChargeHubNameValue" useForValidation="no"/>
+                                          <lovMap id="Bm3VendorNameMap" lovItem="VendorName" resultTo="Bm3PaymentName" useForValidation="no"/>
+                                          <lovMap id="Bm3VendorNameAltMap" lovItem="VendorNameAlt" resultTo="Bm3PaymentNameAlt" useForValidation="no"/>
+                                          <lovMap id="Bm3PostalCodeMap" lovItem="Zip" resultTo="Bm3PostalCode" useForValidation="no"/>
+                                          <lovMap id="Bm3StateMap" lovItem="State" resultTo="Bm3State" useForValidation="no"/>
+                                          <lovMap id="Bm3CityMap" lovItem="City" resultTo="Bm3City" useForValidation="no"/>
+                                          <lovMap id="Bm3Address1Map" lovItem="AddressLine1" resultTo="Bm3Address1" useForValidation="no"/>
+                                          <lovMap id="Bm3Address2Map" lovItem="AddressLine2" resultTo="Bm3Address2" useForValidation="no"/>
+                                          <lovMap id="Bm3PhoneNumberMap" lovItem="PhoneNumber" resultTo="Bm3AddressLinesPhonetic" useForValidation="no"/>
+                                          <lovMap id="Bm3BankNumberMap" lovItem="BankNumber" resultTo="Bm3BankNumber" useForValidation="no"/>
+                                          <lovMap id="Bm3BankNameMap" lovItem="BankName" resultTo="Bm3BankNameValue" useForValidation="no"/>
+                                          <lovMap id="Bm3BankBranchNumberMap" lovItem="BankBranchNumber" resultTo="Bm3BranchNumberValue" useForValidation="no"/>
+                                          <lovMap id="Bm3BankBranchNameMap" lovItem="BankBranchName" resultTo="Bm3BranchNameValue" useForValidation="no"/>
+                                          <lovMap id="Bm3BankAccountTypeMap" lovItem="BankAccountType" resultTo="Bm3BankAccountType" useForValidation="no"/>
+                                          <lovMap id="Bm3BankAccountNumberMap" lovItem="BankAccountNum" resultTo="Bm3BankAccountNumber" useForValidation="no"/>
+                                          <lovMap id="Bm3BankAccountNameKanaMap" lovItem="BankAccountHolderNameAlt" resultTo="Bm3BankAccountNameKana" useForValidation="no"/>
+                                          <lovMap id="Bm3BankAccountNameKanjiMap" lovItem="BankAccountHolderName" resultTo="Bm3BankAccountNameKanji" useForValidation="no"/>
+                                          <lovMap id="Bm3SupplierId2Map" lovItem="VendorId2" resultTo="Bm3SpCustomerId"/>
+                                       </lovMappings>
+                                    </oa:messageLovInput>
+                                    <oa:messageLayout id="Bm3BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankTransferFeeDivLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm3BankTransferFeeDivView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="BankTransferFeeChargeDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="Bm3BankTransferFeeDiv" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="BankTransferFeeChargeDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm3BellingDetailsDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BellingDetailsDivLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm3BellingDetailsDivView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" readOnly="true" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="Bm3BellingDetailsDiv" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm3InqueryBaseLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InqueryBaseLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="Bm3InqueryBaseRlRN" rendered="${oa.XxcsoPageRenderVO1.Bm3Enabled}">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Bm3InqueryChargeHubCdView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="InqueryChargeHubCd" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InqueryChargeHubCd" columns="5" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                                <oa:messageLovInput id="Bm3InqueryChargeHubCd" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="InqueryChargeHubCd" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InqueryChargeHubCd" columns="5" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractInqueryBaseLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                                   <lovMappings>
+                                                      <lovMap id="Bm3VendorFlagMap" lovItem="VendorFlag" criteriaFrom="Bm3VendorFlag"/>
+                                                      <lovMap id="Bm3InqueryChargeHubCdMap" lovItem="InqueryBaseCode" resultTo="Bm3InqueryChargeHubCd" criteriaFrom="Bm3InqueryChargeHubCd"/>
+                                                      <lovMap id="Bm3InqueryChargeHubNameMap" lovItem="InqueryBaseName" resultTo="Bm3InqueryChargeHubNameValue"/>
+                                                      <lovMap id="Bm3InqBaseLovSupplierIdMap" lovItem="VendorId" criteriaFrom="Bm3SupplierId"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:spacer id="Bm3InqueryBaseSpacer01" width="10"/>
+                                                <oa:messageStyledText id="Bm3InqueryChargeHubName" viewName="XxcsoBm3DestinationFullVO1" viewAttr="InqueryChargeHubName" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InqueryChargeHubName" styleClass="OraDataText"/>
+                                                <oa:formValue id="Bm3InqueryChargeHubNameValue" viewName="XxcsoBm3DestinationFullVO1" viewAttr="InqueryChargeHubName"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="Bm3PaymentNameView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="PaymentName" maximumLength="80" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PaymentName" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3PaymentName" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="PaymentName" maximumLength="80" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PaymentName" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm3PaymentNameAltView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="PaymentNameAlt" maximumLength="320" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PaymentNameAlt" required="uiOnly" columns="55" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3PaymentNameAlt" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="PaymentNameAlt" maximumLength="320" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PaymentNameAlt" required="uiOnly" columns="55" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm3DestSpacer01" height="20"/>
+                              <oa:messageComponentLayout id="Bm3DestMclRN02">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm3PostalCodeView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="PostCode" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PostalCode" required="uiOnly" columns="8" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3PostalCode" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="PostCode" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PostalCode" required="uiOnly" columns="8" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm3StateView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="Prefectures" maximumLength="25" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3State" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3State" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="Prefectures" maximumLength="25" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3State" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm3CityView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="CityWard" maximumLength="25" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3City" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3City" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="CityWard" maximumLength="25" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3City" required="uiOnly" columns="30" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm3Address1View" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="Address1" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3Address1" required="uiOnly" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3Address1" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="Address1" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3Address1" required="uiOnly" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm3Address2View" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="Address2" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3Address2" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3Address2" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="Address2" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3Address2" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm3AddressLinesPhoneticView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3AddressLinesPhonetic" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm3DestSpacer02" height="20"/>
+                              <oa:messageComponentLayout id="Bm3BankMclRN">
+                                 <ui:contents>
+                                    <oa:messageLayout id="Bm3BankNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="Bm3BankNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Bm3BankNumberView" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankNumber" columns="5" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                                <oa:messageLovInput id="Bm3BankNumber" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankNumber" columns="5" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractBankLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                                   <lovMappings>
+                                                      <lovMap id="BankLovBm3BankNumberMap" lovItem="BankNumber" criteriaFrom="Bm3BankNumber" resultTo="Bm3BankNumber"/>
+                                                      <lovMap id="BankLovBm3BankNameMap" lovItem="BankName" resultTo="Bm3BankNameValue"/>
+                                                      <lovMap id="BankLovBm3BranchNumberMap" lovItem="BankNum" resultTo="Bm3BranchNumberValue"/>
+                                                      <lovMap id="BankLovBm3BranchNameMap" lovItem="BankBranchName" resultTo="Bm3BranchNameValue"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:spacer id="Bm3BankNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="Bm3BankName" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankName" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankName" styleClass="OraDataText"/>
+                                                <oa:formValue id="Bm3BankNameValue" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankName"/>
+                                                <oa:formValue id="Bm3BranchNumberValue" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BranchNumber"/>
+                                                <oa:formValue id="Bm3BranchNameValue" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BranchName"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm3BranchNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BranchNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="Bm3BranchNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="Bm3BranchNumber" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BranchNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BranchNumber" columns="5" styleClass="OraDataText"/>
+                                                <oa:spacer id="Bm3BranchNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="Bm3BranchName" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BranchName" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BranchName" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm3BankAccountTypeLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountTypeLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm3BankAccountTypeView" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankAccountType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountType" readOnly="true" styleClass="OraDataText" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}"/>
+                                          <oa:messageChoice id="Bm3BankAccountType" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankAccountType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountType" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="Bm3BankAccountNumberView" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankAccountNumber" maximumLength="20" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNumber" columns="25" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3BankAccountNumber" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankAccountNumber" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNumber" columns="25" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm3BankAccountNameKanaView" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankAccountNameKana" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNameKana" columns="70" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3BankAccountNameKana" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankAccountNameKana" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNameKana" columns="70" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm3BankAccountNameKanjiView" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankAccountNameKanji" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNameKanji" columns="70" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3BankAccountNameKanji" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankAccountNameKanji" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNameKanji" columns="70" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                        <oa:stackLayout id="Bm3DestDisabledSlRN" rendered="${oa.XxcsoPageRenderVO1.Bm3Disabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="Bm3DestMclRN011" columns="1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm3VendorCodeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3VendorCode"/>
+                                    <oa:messageStyledText id="Bm3BankTransferFeeDivBlank" required="uiOnly" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankTransferFeeDivLayout"/>
+                                    <oa:messageStyledText id="Bm3BellingDetailsDivBlank" required="uiOnly" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BellingDetailsDivLayout"/>
+                                    <oa:messageStyledText id="Bm3InqueryBaseBlank" required="uiOnly" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InqueryBaseLayout"/>
+                                    <oa:messageStyledText id="Bm3PaymentNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PaymentName" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm3PaymentNameAltBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PaymentNameAlt" required="uiOnly"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm3DestSpacer011" height="20"/>
+                              <oa:messageComponentLayout id="Bm3DestMclRN021">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm3PostalCodeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PostalCode" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm3StateBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3State" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm3CityBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3City" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm3Address1Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3Address1" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm3Address2Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3Address2"/>
+                                    <oa:messageStyledText id="Bm3AddressLinesPhoneticBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3AddressLinesPhonetic"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm3DestSpacer021" height="20"/>
+                              <oa:messageComponentLayout id="Bm3BankMclRN1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Bm3BankNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankNameLayout" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm3BranchNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BranchNameLayout"/>
+                                    <oa:messageStyledText id="Bm3BankAccountTypeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountTypeBlank" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm3BankAccountNumberBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNumber" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm3BankAccountNameKanaBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNameKana" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm3BankAccountNameKanjiBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNameKanji" required="uiOnly"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="InstallInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallInfoHdrRN">
+                     <ui:contents>
+                        <oa:messageComponentLayout id="InstallInfoMclRN">
+                           <ui:contents>
+                              <oa:messageStyledText id="InstallAccountNumber" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallAccountNumber" maximumLength="9" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallAccountNumber"/>
+                              <oa:messageStyledText id="InstallPartyNameView" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallPartyName" maximumLength="360" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallPartyName" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="InstallPartyName" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallPartyName" maximumLength="360" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallPartyName" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="InstallPostalCodeView" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallPostalCode" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallPostalCode" required="uiOnly" columns="8" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="InstallPostalCode" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallPostalCode" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallPostalCode" required="uiOnly" columns="8" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="InstallStateView" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallState" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallState" required="uiOnly" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="InstallState" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallState" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallState" required="uiOnly" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="InstallCityView" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallCity" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallCity" required="uiOnly" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="InstallCity" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallCity" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallCity" required="uiOnly" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="InstallAddress1View" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallAddress1" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallAddress1" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="InstallAddress1" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallAddress1" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallAddress1" required="uiOnly" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="InstallAddress2View" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallAddress2" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallAddress2" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="InstallAddress2" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallAddress2" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallAddress2" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageStyledText id="InstallDateView" dataType="DATE" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallDate" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallDate" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                              <oa:messageTextInput id="InstallDate" dataType="DATE" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallDate" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallDate" required="uiOnly" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                              <oa:messageLayout id="OwnerChangeLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/OwnerChangeLayout">
+                                 <ui:contents>
+                                    <oa:messageCheckBox id="OwnerChangeFlagView" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/OwnerChangeFlag" viewName="XxcsoPageRenderVO1" viewAttr="OwnerChangeFlag" checkedValue="Y" unCheckedValue="N" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}"/>
+                                    <oa:messageCheckBox id="OwnerChangeFlag" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/OwnerChangeFlag" viewName="XxcsoPageRenderVO1" viewAttr="OwnerChangeFlag" checkedValue="Y" unCheckedValue="N" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                       <ui:primaryClientAction>
+                                          <ui:firePartialAction event="OwnerChangeFlagChange"/>
+                                       </ui:primaryClientAction>
+                                    </oa:messageCheckBox>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                              <oa:messageLayout id="InstallCodeLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallCodeLayout" rendered="${oa.XxcsoPageRenderVO1.OwnerChangeRender}">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="InstallCodeView" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallCode" maximumLength="10" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallCode" columns="15" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageLovInput id="InstallCode" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="InstallCode" maximumLength="10" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallCode" columns="15" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractInstCodeLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                       <lovMappings>
+                                          <lovMap id="InstallCodeMap" lovItem="InstallCode" resultTo="InstallCode" criteriaFrom="InstallCode"/>
+                                       </lovMappings>
+                                    </oa:messageLovInput>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                           </ui:contents>
+                        </oa:messageComponentLayout>
+                        <oa:spacer id="InstallInfoSpacer01" height="60"/>
+                        <oa:messageComponentLayout id="PublishBaseInfoMclRN">
+                           <ui:contents>
+                              <oa:messageLayout id="PublishBaseLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PublishBaseLayout">
+                                 <ui:contents>
+                                    <oa:rowLayout id="PublishBaseRlRN">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="PublishDeptCodeView" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="PublishDeptCode" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PublishDeptCode" columns="5" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageLovInput id="PublishDeptCode" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="PublishDeptCode" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PublishDeptCode" columns="5" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractPubBaseLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                             <lovMappings>
+                                                <lovMap id="PublishBaseCodeMap" lovItem="BaseCode" resultTo="PublishDeptCode" criteriaFrom="PublishDeptCode"/>
+                                                <lovMap id="PublishBaseNameMap" lovItem="BaseName" resultTo="PublishDeptNameValue"/>
+                                                <lovMap id="LocationAddressMap" lovItem="LocationAddress" resultTo="LocationAddress"/>
+                                                <lovMap id="BaseLeaderPosNameMap" lovItem="BaseLeaderPosName" resultTo="BaseLeaderPosNameValue"/>
+                                                <lovMap id="BaseLeaderNameMap" lovItem="BaseLeaderName" resultTo="BaseLeaderNameValue"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:spacer id="PublishBaseSpacer01" width="10"/>
+                                          <oa:messageStyledText id="PublishDeptName" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="PublishDeptName" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PublishDeptName" styleClass="OraDataText"/>
+                                          <oa:formValue id="PublishDeptNameValue" viewName="XxcsoContractManagementFullVO1" viewAttr="PublishDeptName"/>
+                                          <oa:formValue id="BaseLeaderPosNameValue" viewName="XxcsoContractManagementFullVO1" viewAttr="BaseLeaderPositionName"/>
+                                          <oa:formValue id="BaseLeaderNameValue" viewName="XxcsoContractManagementFullVO1" viewAttr="BaseLeaderName"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                              <oa:messageStyledText id="LocationAddress" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="LocationAddress" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/LocationAddress" styleClass="OraDataText"/>
+                              <oa:messageStyledText id="IssueBaseName" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="PublishDeptName" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IssueBaseName" styleClass="OraDataText"/>
+                              <oa:messageLayout id="BaseLeaderLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BaseLeaderLayout">
+                                 <ui:contents>
+                                    <oa:rowLayout id="BaseLeaderRlRN">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="BaseLeaderPositionName" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BaseLeaderPositionName" styleClass="OraDataText" viewName="XxcsoContractManagementFullVO1" viewAttr="BaseLeaderPositionName"/>
+                                          <oa:spacer id="BaseLeaderSpacer01" width="10"/>
+                                          <oa:messageStyledText id="BaseLeaderName" dataType="VARCHAR2" viewName="XxcsoContractManagementFullVO1" viewAttr="BaseLeaderName" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BaseLeaderName" styleClass="OraDataText"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                           </ui:contents>
+                        </oa:messageComponentLayout>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

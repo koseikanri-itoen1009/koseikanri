@@ -1,0 +1,41 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*注意
+* KROWN:124532により、1ファイルが32Kバイトを超えないようにしてください。
+* 超えてしまう場合は、ファイルを分割してください。
+
+詳細
+フルベンダー用SP専決書検索画面用の属性セットファイルです。
+
+修正履歴
+2009/01/05  小川浩        新規作成-->
+<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <attributeSet docName="BackButton" prompt="戻る"/>
+   <attributeSet docName="SearchHdrRN" text="検索"/>
+   <attributeSet docName="ApplyBaseTermLayout" prompt="申請拠点"/>
+   <attributeSet docName="ApplyUserTermLayout" prompt="申請者"/>
+   <attributeSet docName="ApplyUserCodeTerm" shortDesc="申請者コード"/>
+   <attributeSet docName="ApplyDateTermLayout" prompt="申請日"/>
+   <attributeSet docName="ApplyDateStartTerm" shortDesc="申請日（開始）"/>
+   <attributeSet docName="ApplyDateEndTerm" shortDesc="申請日（終了）"/>
+   <attributeSet docName="StatusTermLayout" prompt="ステータス"/>
+   <attributeSet docName="StatusTerm" shortDesc="ステータス"/>
+   <attributeSet docName="SpDecisionNumberTermLayout" prompt="SP専決書番号"/>
+   <attributeSet docName="SpDecisionNumberTerm" shortDesc="SP専決書番号"/>
+   <attributeSet docName="AccountTermLayout" prompt="顧客コード"/>
+   <attributeSet docName="AccountNumberTerm" shortDesc="顧客コード"/>
+   <attributeSet docName="SearchButton" prompt="進む"/>
+   <attributeSet docName="ClearButton" prompt="消去"/>
+   <attributeSet docName="ResultSearchHdr" text="SP専決書選択"/>
+   <attributeSet docName="PartyNameColHdr" prompt="顧客名"/>
+   <attributeSet docName="SpDecisionNumberColHdr" prompt="SP専決書番号"/>
+   <attributeSet docName="ApplicationNameColHdr" prompt="申請者"/>
+   <attributeSet docName="ApplicationDateColHdr" prompt="申請日"/>
+   <attributeSet docName="ApprovalCompleteDateColHdr" prompt="承認完了日"/>
+   <attributeSet docName="StatusNameColHdr" prompt="ステータス"/>
+   <attributeSet docName="CopyButton" prompt="コピーの作成"/>
+   <attributeSet docName="DetailButton" prompt="詳細"/>
+   <attributeSet docName="ApplyDateTermSep" prompt="－"/>
+   <attributeSet docName="singleSelection" text="選択"/>
+   <attributeSet docName="PageLayoutRN" windowTitle="SP専決書" title="SP専決書"/>
+</package>

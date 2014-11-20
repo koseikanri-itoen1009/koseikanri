@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoWeeklyTaskViewAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoWeeklyTaskViewAMImpl"
+   LoadComponentsLazily="true" >
+   <Properties>
+      <Property Name ="RETENTION_LEVEL" Value ="MANAGE_STATE" />
+   </Properties>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoEmpSelSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpSelSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpNameSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpNameSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpNameSummaryVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpNameSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpNameSummaryVO3"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpNameSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpNameSummaryVO4"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpNameSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpNameSummaryVO5"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpNameSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpNameSummaryVO6"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpNameSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpNameSummaryVO7"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpNameSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpNameSummaryVO8"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpNameSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpNameSummaryVO9"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpNameSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpNameSummaryVO10"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpNameSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskSummaryVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskSummaryVO3"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskSummaryVO4"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskSummaryVO5"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskSummaryVO6"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskSummaryVO7"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskSummaryVO8"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskSummaryVO9"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskSummaryVO10"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoCsvDownVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoCsvDownVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskAppSearchVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskAppSearchVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskRenderVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskRenderVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskRenderVO3"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskRenderVO4"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskRenderVO5"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskRenderVO6"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskRenderVO7"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskRenderVO8"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskRenderVO9"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTaskRenderVO10"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoCsvQueryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoCsvQueryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpSelRenderVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpSelRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBaseSearchVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoBaseSearchVO" >
+   </ViewUsage>
+</AppModule>

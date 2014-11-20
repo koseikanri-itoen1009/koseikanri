@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoDeptMonthlyPlansRegistAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoDeptMonthlyPlansRegistAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoSalesPlanRelDivLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoDeptMonthlyPlansInitVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoDeptMonthlyPlansInitVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoYearListVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoYearListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoMonthListVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoMonthListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoDeptMonthlyPlansFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoDeptMonthlyPlansFullVO" >
+   </ViewUsage>
+</AppModule>

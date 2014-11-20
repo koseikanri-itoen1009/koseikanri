@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoModelTypeSearchLovVO"
+   OrderBy="un_number"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoModelTypeSearchLovVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoModelTypeSearchLovVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  punv.un_number     AS un_number
+       ,flvv1.meaning      AS meaning1
+       ,flvv2.meaning      AS meaning2
+FROM    po_un_numbers_vl punv
+       ,fnd_lookup_values_vl flvv1
+       ,fnd_lookup_values_vl flvv2
+WHERE   flvv1.lookup_type = 'XXCSO_PO_KIKI_SHUBETSU'
+  AND   flvv2.lookup_type = 'XXCSO_CSI_MAKER_CODE'
+  AND   punv.attribute1 = flvv1.lookup_code
+  AND   punv.attribute2 = flvv2.lookup_code
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="UnNumber"
+      IsPersistent="false"
+      Precision="25"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="UN_NUMBER"
+      Passivate="true"
+      Expression="UN_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Meaning1"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="MEANING1"
+      Passivate="true"
+      Expression="MEANING1"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Meaning2"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="MEANING2"
+      Passivate="true"
+      Expression="MEANING2"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

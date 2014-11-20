@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoRscRtnRsrcLovVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019009j.lov.server.XxcsoRscRtnRsrcLovVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019009j.lov.server.XxcsoRscRtnRsrcLovVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xrv2.employee_number,
+       xrv2.full_name
+FROM  XXCSO_RESOURCES_V2 xrv2,
+    (SELECT CASE
+       WHEN TO_DATE(xrv2.issue_date, 'YYYYMMDD') > TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       THEN xrv2.work_base_code_old
+       ELSE xrv2.work_base_code_new
+       END bs_code
+    FROM XXCSO_RESOURCES_V2 xrv2
+    WHERE xrv2.user_id = fnd_global.user_id)
+WHERE
+    (
+      (TO_DATE(xrv2.issue_date, 'YYYYMMDD') > TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+          AND
+       xrv2.work_base_code_old=bs_code)
+      OR
+      (TO_DATE(xrv2.issue_date, 'YYYYMMDD') <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+          AND
+       xrv2.work_base_code_new=bs_code)
+    )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EMPLOYEE_NUMBER"
+      Expression="EMPLOYEE_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

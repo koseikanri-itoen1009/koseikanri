@@ -1,0 +1,51 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*注意
+* KROWN:124532により、1ファイルが32Kバイトを超えないようにしてください。
+* 超えてしまう場合は、ファイルを分割してください。
+
+詳細
+商談決定情報通知画面用の属性セットファイルです。
+
+修正履歴
+2009/01/08  小川浩        新規作成-->
+<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <attributeSet docName="MessageText" prompt="下記のリンクから商談情報を確認できます。"/>
+   <attributeSet docName="LeadDescriptionLink" shortDesc="クリックすると商談情報が表示されます。"/>
+   <attributeSet docName="SalesOutLineDscRN" text="商談概要"/>
+   <attributeSet docName="LeadNumber" prompt="商談番号"/>
+   <attributeSet docName="LeadDescription" prompt="商談名"/>
+   <attributeSet docName="PartyName" prompt="顧客名"/>
+   <attributeSet docName="SalesDecisionInfoHdrRN" text="商談決定情報"/>
+   <attributeSet docName="QuoteNumberColHdr" prompt="見積番号"/>
+   <attributeSet docName="QuoteRevisionNumberColHdr" prompt="版"/>
+   <attributeSet docName="SalesItemColHdr" prompt="商品"/>
+   <attributeSet docName="InventoryItemCode" prompt="コード：" shortDesc="商品コード"/>
+   <attributeSet docName="ItemShortName" prompt="略称：" shortDesc="商品略称"/>
+   <attributeSet docName="CaseIncNum" prompt="ケース入数：" shortDesc="ケース入数"/>
+   <attributeSet docName="JanCode" prompt="JANコード：" shortDesc="JANコード"/>
+   <attributeSet docName="ItfCode" prompt="ITFコード：" shortDesc="ITFコード"/>
+   <attributeSet docName="SalesClassName" prompt="商品区分：" shortDesc="商品区分"/>
+   <attributeSet docName="SalesAdoptClassName" prompt="採用区分：" shortDesc="採用区分"/>
+   <attributeSet docName="SalesAreaName" prompt="販売対象エリア：" shortDesc="販売対象エリア"/>
+   <attributeSet docName="SalesScheduleDate" prompt="予定日：" shortDesc="予定日"/>
+   <attributeSet docName="SalesMeaningColHdr" prompt="活動内容"/>
+   <attributeSet docName="PriceColHdr" prompt="価格"/>
+   <attributeSet docName="IntroduceTermsColHdr" prompt="導入条件"/>
+   <attributeSet docName="DelivPrice" prompt="店納価格：" shortDesc="店納価格"/>
+   <attributeSet docName="StoreSalesPrice" prompt="売価（税抜）：" shortDesc="売価（税抜）"/>
+   <attributeSet docName="StoreSalesPriceIncTax" prompt="売価（税込）：" shortDesc="売価（税込）"/>
+   <attributeSet docName="QuotationPrice" prompt="建値：" shortDesc="建値"/>
+   <attributeSet docName="OtherContent" shortDesc="その他・特記事項"/>
+   <attributeSet docName="OtherContentHdrRN" text="その他・特記事項"/>
+   <attributeSet docName="NotifyCommentHdrRN" text="コメント"/>
+   <attributeSet docName="NotifyComment" shortDesc="コメント"/>
+   <attributeSet docName="NotifyListHdrRN" text="通知者リスト"/>
+   <attributeSet docName="EmployeeNumberColHdr" prompt="従業員番号"/>
+   <attributeSet docName="FullNameColHdr" prompt="従業員氏名"/>
+   <attributeSet docName="PositionNameColHdr" prompt="職位名"/>
+   <attributeSet docName="WorkBaseCodeColHdr" prompt="拠点コード"/>
+   <attributeSet docName="WorkBaseNameColHdr" prompt="拠点名"/>
+   <attributeSet docName="ApprRjctCommentHdrRN" text="承認／否認コメント"/>
+   <attributeSet docName="ApprRjctComment" shortDesc="承認／否認コメント"/>
+</package>

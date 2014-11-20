@@ -1,0 +1,26 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Search inventory item information LOV region by shared for quote for sales.
+
+@see itoen.oracle.apps.xxcso.xxcso017001j.lov.server.XxcsoQuoteSalesRegistLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso017001j.lov.server.XxcsoQuoteSalesRegistLovAM.java
+
+HISTORY
+2008/12/21  H.Ogawa        new-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso017001j.lov.server.XxcsoQuoteSalesRegistLovAM" scope="/" advancedSearchAllowed="true">
+   <ui:contents>
+      <oa:table id="XxcsoInventoryItemSearchTlRN" name="XxcsoInventoryLovRN" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/XxcsoInventoryItemSearchTlRN">
+         <ui:contents>
+            <oa:messageStyledText id="InventoryItemCode" dataType="VARCHAR2" viewName="XxcsoInventoryItemSearchLovVO1" viewAttr="InventoryItemCode" queryable="true" sortState="yes" initSortSeq="first" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/InventoryItemIdColHdr"/>
+            <oa:messageStyledText id="ItemShortName" dataType="VARCHAR2" viewName="XxcsoInventoryItemSearchLovVO1" viewAttr="ItemShortName" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/InventoryItemNameColHdr"/>
+            <oa:formValue id="InventoryItemId" viewName="XxcsoInventoryItemSearchLovVO1" viewAttr="InventoryItemId" dataType="NUMBER"/>
+            <oa:formValue id="BusinessPrice" viewName="XxcsoInventoryItemSearchLovVO1" viewAttr="BusinessPrice" dataType="NUMBER"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

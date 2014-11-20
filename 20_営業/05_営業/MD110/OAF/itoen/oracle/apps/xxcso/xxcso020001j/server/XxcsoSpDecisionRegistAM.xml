@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoSpDecisionRegistAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoInstallLocationListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoNewoldTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoMakerCodeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoStandardTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoConditionBizTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoElectricityTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBmPaymentTypeListVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoFiexedPriceListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm1SendTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTransferTypeListVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTransferTypeListVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTransferTypeListVO3"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBmPaymentTypeListVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBmPaymentTypeListVO3"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpAreaTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBusinessCondTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.poplist.server.XxcsoBusinessCondTypeListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoExtRefOpclTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.poplist.server.XxcsoExtRefOpclTypeListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoApplicationTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoAllContainerTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionHeaderFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionHeaderFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionInitVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionInitVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionInstCustFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionInstCustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionCntrctCustFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionCntrctCustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionBm1CustFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm1CustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionBm2CustFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm2CustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionBm3CustFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm3CustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionScLineFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionScLineFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionAllCcLineFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionAllCcLineFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionSelCcLineFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSelCcLineFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionAttachFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionAttachFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionSendFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSendFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoStatusListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecContentListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBusinessTypeListVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.poplist.server.XxcsoBusinessTypeListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionSendInitVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSendInitVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoRuleBottleTypeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionCcLineInitVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionCcLineInitVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecRequestFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecRequestFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionVendorCheckVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionVendorCheckVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionHeaderFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionHeaderFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionInstCustFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionInstCustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionCntrctCustFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionCntrctCustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionBm1CustFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm1CustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionBm2CustFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm2CustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionBm3CustFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm3CustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionScLineFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionScLineFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionAllCcLineFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionAllCcLineFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionSelCcLineFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSelCcLineFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionAttachFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionAttachFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionSendFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSendFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionBmFormatVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBmFormatVO" >
+   </ViewUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderInstCustVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderInstCustVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionInstCustFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderCntrctCustVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderCntrctCustVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionCntrctCustFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderBm1CustVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderBm1CustVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionBm1CustFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderBm2CustVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderBm2CustVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionBm2CustFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderBm3CustVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderBm3CustVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionBm3CustFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderScLineVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderScLineVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionScLineFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderAllCcLineVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderAllCcLineVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionAllCcLineFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderSelCcLineVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderSelCcLineVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionSelCcLineFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderAttachVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderAttachVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionAttachFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderSendVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderSendVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionSendFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderInstCustVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderInstCustVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionInstCustFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderCntrctCustVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderCntrctCustVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionCntrctCustFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderBm1CustVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderBm1CustVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionBm1CustFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderBm2CustVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderBm2CustVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionBm2CustFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderBm3CustVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderBm3CustVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionBm3CustFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderScLineVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderScLineVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionScLineFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderAllCcLineVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderAllCcLineVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionAllCcLineFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderSelCcLineVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderSelCcLineVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionSelCcLineFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderAttachVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderAttachVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionAttachFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSpDecHeaderSendVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderSendVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionHeaderFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM.XxcsoSpDecisionSendFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+</AppModule>

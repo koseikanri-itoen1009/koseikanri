@@ -1,0 +1,723 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE Entity SYSTEM "jbo_03_01.dtd">
+
+<Entity
+   Name="XxcsoSpDecisionHeadersVEO"
+   DBObjectType="view"
+   DBObjectName="XXCSO_SP_DECISION_HEADERS_V"
+   AliasName="XxcsoSpDecisionHeadersVEO"
+   BindingStyle="Oracle"
+   BatchThreshold="100"
+   UseGlueCode="false"
+   CodeGenFlag="4"
+   RowClass="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionHeadersVEOImpl"
+   DefClass="oracle.apps.fnd.framework.server.OAEntityDefImpl"
+   CollClass="oracle.apps.fnd.framework.server.OAEntityCache" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_superClass" Value="oracle.apps.fnd.framework.server.OAPlsqlEntityImpl" />
+      <AttrArray Name="_publishEvents">
+      </AttrArray>
+   </DesignTime>
+   <Attribute
+      Name="SpDecisionHeaderId"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="SP_DECISION_HEADER_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_SP_DECISION_HEADERS_V"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SpDecisionNumber"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnName="SP_DECISION_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SpDecisionType"
+      IsNotNull="true"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="SP_DECISION_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="Status"
+      IsNotNull="true"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnName="STATUS"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ApplicationNumber"
+      Precision="3"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="APPLICATION_NUMBER"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ApplicationDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="APPLICATION_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ApprovalCompleteDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="APPROVAL_COMPLETE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ApplicationCode"
+      Precision="5"
+      Type="java.lang.String"
+      ColumnName="APPLICATION_CODE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="5" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="AppBaseCode"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnName="APP_BASE_CODE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ApplicationType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="APPLICATION_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NewoldType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="NEWOLD_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SeleNumber"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="SELE_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="MakerCode"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnName="MAKER_CODE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="StandardType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="STANDARD_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="UnNumber"
+      Precision="14"
+      Type="java.lang.String"
+      ColumnName="UN_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="14" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="INSTALL_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LeaseCompany"
+      Precision="50"
+      Type="java.lang.String"
+      ColumnName="LEASE_COMPANY"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="50" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ConditionBusinessType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="CONDITION_BUSINESS_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="AllContainerType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="ALL_CONTAINER_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ContractYearDate"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="CONTRACT_YEAR_DATE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSupportAmt"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPPORT_AMT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSupportAmt2"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPPORT_AMT2"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="PaymentCycle"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="PAYMENT_CYCLE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricityType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="ELECTRICITY_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricityAmount"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="ELECTRICITY_AMOUNT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ConditionReason"
+      Precision="500"
+      Type="java.lang.String"
+      ColumnName="CONDITION_REASON"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="500" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="Bm1SendType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="BM1_SEND_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="OtherContent"
+      Precision="500"
+      Type="java.lang.String"
+      ColumnName="OTHER_CONTENT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="500" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SalesMonth"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="SALES_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SalesYear"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="SALES_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SalesGrossMarginRate"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="SALES_GROSS_MARGIN_RATE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="YearGrossMarginAmt"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="YEAR_GROSS_MARGIN_AMT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="BmRate"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="BM_RATE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="VdSalesCharge"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="VD_SALES_CHARGE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSupportAmtYear"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPPORT_AMT_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LeaseChargeMonth"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="LEASE_CHARGE_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ConstructionCharge"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="CONSTRUCTION_CHARGE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="VdLeaseCharge"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="VD_LEASE_CHARGE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricityAmtMonth"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="ELECTRICITY_AMT_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricityAmtYear"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="ELECTRICITY_AMT_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TransportationCharge"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="TRANSPORTATION_CHARGE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LaborCostOther"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="LABOR_COST_OTHER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TotalCost"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="TOTAL_COST"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="OperatingProfit"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="OPERATING_PROFIT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="OperatingProfitRate"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="OPERATING_PROFIT_RATE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="BreakEvenPoint"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="BREAK_EVEN_POINT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="CREATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreationDate"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="CREATION_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="LAST_UPDATE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATE_LOGIN"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="REQUEST_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="PROGRAM_APPLICATION_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="PROGRAM_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramUpdateDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="PROGRAM_UPDATE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <AccessorAttribute
+      Name="XxcsoSpDecisionAttachesEO"
+      Association="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderAttachAO"
+      AssociationEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderAttachAO.XxcsoSpDecisionAttachesEO"
+      AssociationOtherEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderAttachAO.XxcsoSpDecisionHeadersVEO"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </AccessorAttribute>
+   <AccessorAttribute
+      Name="XxcsoSpDecisionCustsVEO"
+      Association="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderCustAO"
+      AssociationEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderCustAO.XxcsoSpDecisionCustsVEO"
+      AssociationOtherEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderCustAO.XxcsoSpDecisionHeadersVEO"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </AccessorAttribute>
+   <AccessorAttribute
+      Name="XxcsoSpDecisionLinesVEO"
+      Association="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderLineAO"
+      AssociationEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderLineAO.XxcsoSpDecisionLinesVEO"
+      AssociationOtherEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderLineAO.XxcsoSpDecisionHeadersVEO"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </AccessorAttribute>
+   <AccessorAttribute
+      Name="XxcsoSpDecisionSendsEO"
+      Association="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderSendAO"
+      AssociationEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderSendAO.XxcsoSpDecisionSendsEO"
+      AssociationOtherEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderSendAO.XxcsoSpDecisionHeadersVEO"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </AccessorAttribute>
+</Entity>

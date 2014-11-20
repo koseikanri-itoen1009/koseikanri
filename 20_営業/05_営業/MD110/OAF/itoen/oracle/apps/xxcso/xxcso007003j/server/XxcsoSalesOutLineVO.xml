@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSalesOutLineVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesOutLineVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesOutLineVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  ala.lead_number
+       ,ala.description
+       ,hp.party_name
+       ,ala.lead_id
+       ,TO_CHAR(xxcso_util_common_pkg.get_online_sysdate, 'YYYY/MM/DD')
+        || ' '
+        || ala.lead_number
+        || ' '
+        || ala.description notify_subject
+       ,xxcso_007003j_pkg.get_baseline_base_code(
+          xxcso_util_common_pkg.get_emp_parameter(
+            xev.work_base_code_new
+           ,xev.work_base_code_old
+           ,xev.issue_date
+           ,xxcso_util_common_pkg.get_online_sysdate
+          )
+        ) baseline_base_code
+FROM    as_leads_all  ala
+       ,hz_parties    hp
+       ,xxcso_employees_v2  xev
+WHERE   ala.lead_id = :1
+AND     hp.party_id = ala.customer_id
+AND     xev.user_id = fnd_global.user_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="LeadNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LEAD_NUMBER"
+      Expression="LEAD_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Description"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DESCRIPTION"
+      Expression="DESCRIPTION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PARTY_NAME"
+      Expression="PARTY_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeadId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LEAD_ID"
+      Expression="LEAD_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NotifySubject"
+      IsPersistent="false"
+      Precision="100"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NOTIFY_SUBJECT"
+      Expression="NOTIFY_SUBJECT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="282" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaselineBaseCode"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASELINE_BASE_CODE"
+      Expression="BASELINE_BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

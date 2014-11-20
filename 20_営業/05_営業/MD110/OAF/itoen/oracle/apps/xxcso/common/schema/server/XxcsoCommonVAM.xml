@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoCommonVAM"
+   ComponentClass="itoen.oracle.apps.xxcso.common.schema.server.XxcsoCommonVAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoAsLeadVVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.schema.server.XxcsoAsLeadVVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoGetOnlineSysdateVVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.schema.server.XxcsoGetOnlineSysdateVVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoGetAutoAssignedCodeVVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.schema.server.XxcsoGetAutoAssignedCodeVVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoCustAccountVVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.schema.server.XxcsoCustAccountVVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionHeaderVVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionHeaderVVO" >
+   </ViewUsage>
+</AppModule>

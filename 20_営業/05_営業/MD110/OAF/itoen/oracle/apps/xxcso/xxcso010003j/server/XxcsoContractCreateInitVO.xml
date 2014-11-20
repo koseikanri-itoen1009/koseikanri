@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoContractCreateInitVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractCreateInitVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractCreateInitVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  xsdh.sp_decision_header_id           AS sp_decision_header_id
+       ,xsdh.sp_decision_number              AS sp_decision_number
+       ,xsdh.condition_business_type         AS condition_business_type
+       ,xcasv.cust_account_id                AS install_account_id
+       ,xcasv.account_number                 AS install_account_number
+       ,xcasv.party_name                     AS install_name
+       ,xcasv.postal_code                    AS install_postal_code
+       ,xcasv.state                          AS install_state
+       ,xcasv.city                           AS install_city
+       ,xcasv.address1                       AS install_address1
+       ,xcasv.address2                       AS install_address2
+       ,cntrct.customer_id                   AS cntrct_customer_id
+       ,xcasv.sale_base_code                 AS sale_base_code
+       ,bm1.sp_decision_customer_id          AS bm1_sp_cust_id
+       ,bm1.bm_payment_type                  AS bm1_payment_type
+       ,bm2.sp_decision_customer_id          AS bm2_sp_cust_id
+       ,bm2.bm_payment_type                  AS bm2_payment_type
+       ,bm3.sp_decision_customer_id          AS bm3_sp_cust_id
+       ,bm3.bm_payment_type                  AS bm3_payment_type
+       ,xxcso_010003j_pkg.get_sales_charge(
+          xsdh.sp_decision_header_id
+       )                                     AS line_count
+       ,xabv.base_name                       AS sale_base_name
+       ,xlv.address_line1                    AS location_address
+       ,xxcso_010003j_pkg.get_base_leader_name(
+          xcasv.sale_base_code
+        )                                    AS base_leader_name
+       ,xsdh.contract_year_date
+       ,xxcso_010003j_pkg.get_base_leader_pos_name(
+          xcasv.sale_base_code
+        )                                    AS base_leader_position_name
+       ,xsdh.other_content
+FROM    xxcso_sp_decision_headers  xsdh
+       ,xxcso_sp_decision_custs    inst
+       ,xxcso_cust_acct_sites_v    xcasv
+       ,xxcso_aff_base_v2          xabv
+       ,xxcso_locations_v2         xlv
+       ,xxcso_sp_decision_custs    cntrct
+       ,xxcso_sp_decision_custs    bm1
+       ,xxcso_sp_decision_custs    bm2
+       ,xxcso_sp_decision_custs    bm3
+WHERE   xsdh.sp_decision_header_id        = :1
+AND     inst.sp_decision_header_id        = xsdh.sp_decision_header_id
+AND     inst.sp_decision_customer_class   = '1'
+AND     xcasv.cust_account_id             = inst.customer_id
+AND     cntrct.sp_decision_header_id      = xsdh.sp_decision_header_id
+AND     cntrct.sp_decision_customer_class = '2'
+AND     bm1.sp_decision_header_id         = xsdh.sp_decision_header_id
+AND     bm1.sp_decision_customer_class    = '3'
+AND     bm2.sp_decision_header_id         = xsdh.sp_decision_header_id
+AND     bm2.sp_decision_customer_class    = '4'
+AND     bm3.sp_decision_header_id         = xsdh.sp_decision_header_id
+AND     bm3.sp_decision_customer_class    = '5'
+AND     xabv.base_code(+)                 = xcasv.sale_base_code
+AND     xlv.dept_code(+)                  = xcasv.sale_base_code
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="SpDecisionHeaderId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="SP_DECISION_HEADER_ID"
+      Expression="SP_DECISION_HEADER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SP_DECISION_NUMBER"
+      Expression="SP_DECISION_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ConditionBusinessType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CONDITION_BUSINESS_TYPE"
+      Expression="CONDITION_BUSINESS_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAccountId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="INSTALL_ACCOUNT_ID"
+      Expression="INSTALL_ACCOUNT_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAccountNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_ACCOUNT_NUMBER"
+      Expression="INSTALL_ACCOUNT_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallName"
+      IsPersistent="false"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_NAME"
+      Expression="INSTALL_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallPostalCode"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_POSTAL_CODE"
+      Expression="INSTALL_POSTAL_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="60" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallState"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_STATE"
+      Expression="INSTALL_STATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="60" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallCity"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_CITY"
+      Expression="INSTALL_CITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="60" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAddress1"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_ADDRESS1"
+      Expression="INSTALL_ADDRESS1"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAddress2"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_ADDRESS2"
+      Expression="INSTALL_ADDRESS2"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CntrctCustomerId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CNTRCT_CUSTOMER_ID"
+      Expression="CNTRCT_CUSTOMER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SaleBaseCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SALE_BASE_CODE"
+      Expression="SALE_BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1SpCustId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="40"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="Number"
+      AliasName="BM1SPCUSTID"
+      Expression="Bm1SpCustId"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1PaymentType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM1PAYMENTTYPE"
+      Expression="Bm1PaymentType"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm2SpCustId"
+      IsPersistent="false"
+      Precision="40"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="Number"
+      AliasName="BM2SPCUSTID"
+      Expression="Bm2SpCustId"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm2PaymentType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM2PAYMENTTYPE"
+      Expression="Bm2PaymentType"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm3SpCustId"
+      IsPersistent="false"
+      Precision="40"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="Number"
+      AliasName="BM3SPCUSTID"
+      Expression="Bm3SpCustId"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm3PaymentType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM3PAYMENTTYPE"
+      Expression="Bm3PaymentType"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineCount"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINECOUNT"
+      Expression="LineCount"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SaleBaseName"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SALEBASENAME"
+      Expression="SaleBaseName"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LocationAddress"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LOCATIONADDRESS"
+      Expression="LocationAddress"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseLeaderName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASELEADERNAME"
+      Expression="BaseLeaderName"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractYearDate"
+      IsPersistent="false"
+      Precision="2"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="Number"
+      AliasName="CONTRACTYEARDATE"
+      Expression="ContractYearDate"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseLeaderPositionName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASELEADERPOSITIONNAME"
+      Expression="BaseLeaderPositionName"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OtherContent"
+      IsPersistent="false"
+      Precision="500"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="OTHERCONTENT"
+      Expression="OtherContent"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+</ViewObject>

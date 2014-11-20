@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoTaskSummaryVO"
+   OrderBy="DISP_DATE,TASK_ACCOUNT_NUMBER,TASK_ACTUAL_END_DATE"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoTaskSummaryVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  task_calendar.disp_date                  AS disp_date
+       ,task.task_id                             AS task_id
+       ,task.task_name                           AS task_name
+       ,task.account_number                      AS task_account_number
+       ,TO_CHAR(task_calendar.disp_date, 'fmdd') AS task_date
+       ,TO_CHAR(task_calendar.disp_date, 'DY')   AS task_dy
+       ,(
+          CASE TO_CHAR(task.task_status_id)
+            WHEN FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID') THEN
+              '予　'
+            WHEN FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID') THEN
+              '実　'
+            ELSE NULL
+          END
+          ||
+          CASE
+            WHEN task.actual_end_date IS NOT NULL THEN
+              TO_CHAR(task.actual_end_date, 'hh24:mi')
+            WHEN task.actual_end_date IS NULL AND task.scheduled_end_date IS NOT NULL THEN
+              '00:00'
+            ELSE NULL
+          END
+          ||
+          CASE
+            WHEN  task.source_object_type_code IN ('PARTY', 'OPPORTUNITY') THEN
+              '　' || task.party_name
+            ELSE NULL
+          END
+        )                                       AS task_plan_or_result
+       ,task.description                        AS task_description
+       ,task.owner_id                           AS task_owner_id
+       ,task.actual_end_date                    AS task_actual_end_date
+FROM    (
+          SELECT  jtv.task_id             AS task_id
+                 ,jtv.task_name          AS task_name
+                 ,jtv.description        AS description
+                 ,jtv.task_status_id     AS task_status_id
+                 ,jtv.scheduled_end_date AS scheduled_end_date
+                 ,jtv.actual_end_date    AS actual_end_date
+                 ,jtv.source_object_type_code AS source_object_type_code
+                 ,jtv.owner_id           AS owner_id
+                 ,xcav.party_id          AS party_id
+                 ,xcav.party_name        AS party_name
+                 ,xcav.account_number    AS account_number
+          FROM    jtf_tasks_vl jtv
+                 ,xxcso_cust_accounts_v xcav
+          WHERE   jtv.owner_id = :1
+            AND   jtv.owner_type_code = 'RS_EMPLOYEE'
+            AND   (
+                    (task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
+                    OR
+                    (task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
+                  )
+            AND   EXISTS
+                  (
+                   SELECT  1
+                   FROM    jtf_task_all_assignments jtaa
+                   WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
+                     AND   jtaa.task_id = jtv.task_id
+                     AND   jtaa.resource_id = :2
+                  )
+            AND   xcav.party_id(+) = jtv.source_object_id
+        ) task
+       ,(
+         SELECT  first_day.monday + two_week.day_index AS disp_date
+         FROM    (
+                   SELECT  0 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  1 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  2 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  3 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  4 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  5 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  6 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  7 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  8 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  9 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  10 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  11 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  12 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  13 day_index
+                   FROM DUAL
+                ) two_week
+               ,(
+                   SELECT  TO_DATE(:3, 'yyyy/mm/dd') -
+                             DECODE(TO_NUMBER(TO_CHAR(TO_DATE(:4, 'yyyy/mm/dd'), 'D')), 1, 8, TO_NUMBER(TO_CHAR(TO_DATE(:5, 'yyyy/mm/dd'), 'D')))
+                             + 2 AS monday
+                   FROM    DUAL
+                ) first_day
+        ) task_calendar
+WHERE   TRUNC(NVL(task.actual_end_date(+), task.scheduled_end_date(+))) = task_calendar.disp_date
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="DispDate"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DISP_DATE"
+      Expression="DISP_DATE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskId"
+      IsPersistent="false"
+      Precision="8"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="TASK_ID"
+      Expression="TASK_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskName"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_NAME"
+      Expression="TASK_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskAccountNumber"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_ACCOUNT_NUMBER"
+      Expression="TASK_ACCOUNT_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskDate"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_DATE"
+      Expression="TASK_DATE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskDy"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_DY"
+      Expression="TASK_DY"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskPlanOrResult"
+      IsPersistent="false"
+      Precision="371"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_PLANORRESULT"
+      Expression="TASK_PLANORRESULT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskDescription"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_DESCRIPTION"
+      Expression="TASK_PLANORRESULT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskOwnerId"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_OWNER_ID"
+      Expression="TASK_OWNER_ID"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskActualEndDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="TASK_ACTUAL_END_DATE"
+      Expression="TASK_ACTUAL_END_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

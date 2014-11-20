@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoPvSearchAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvSearchAMImpl"
+   LoadComponentsLazily="true" >
+   <Properties>
+      <Property Name ="RETENTION_LEVEL" Value ="MANAGE_STATE" />
+   </Properties>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="ViewDispLookupVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="PvDefFullVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvDefFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="PvViewColumnFullVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvViewColumnFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="PvSortColumnFullVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvSortColumnFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="PvExtractTermFullVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvExtractTermFullVO" >
+   </ViewUsage>
+   <ViewLinkUsage
+      Name="XxcsoPvDefViewColumnVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvDefViewColumnVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvSearchAM.PvDefFullVO"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvSearchAM.PvViewColumnFullVO" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoPvDefSortColumnVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvDefSortColumnVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvSearchAM.PvDefFullVO"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvSearchAM.PvSortColumnFullVO" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoPvDefExtractTermVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvDefExtractTermVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvSearchAM.PvDefFullVO"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvSearchAM.PvExtractTermFullVO" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+</AppModule>

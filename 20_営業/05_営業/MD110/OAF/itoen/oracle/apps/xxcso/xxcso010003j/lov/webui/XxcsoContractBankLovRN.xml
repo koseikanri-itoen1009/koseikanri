@@ -1,0 +1,14 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" advancedSearchAllowed="true" scope="/" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAM">
+   <ui:contents>
+      <oa:table name="XxcsoContractBankLovRN" id="BankTblRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BankTblRN">
+         <ui:contents>
+            <oa:messageStyledText id="BankNumber" dataType="VARCHAR2" viewName="XxcsoContractBankLovVO1" viewAttr="BankNumber" maximumLength="30" queryable="true" sortState="yes" initSortSeq="first" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BankNumber"/>
+            <oa:messageStyledText id="BankName" dataType="VARCHAR2" viewName="XxcsoContractBankLovVO1" viewAttr="BankName" maximumLength="60" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BankName"/>
+            <oa:messageStyledText id="BankNum" dataType="VARCHAR2" viewName="XxcsoContractBankLovVO1" viewAttr="BankNum" maximumLength="25" queryable="true" sortState="yes" initSortSeq="second" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BankNum"/>
+            <oa:messageStyledText id="BankBranchName" dataType="VARCHAR2" viewName="XxcsoContractBankLovVO1" viewAttr="BankBranchName" maximumLength="60" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/BankBranchName"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

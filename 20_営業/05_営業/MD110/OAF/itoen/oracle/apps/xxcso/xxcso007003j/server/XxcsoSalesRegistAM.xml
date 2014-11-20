@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoSalesRegistAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRegistAMImpl"
+   LoadComponentsLazily="true" >
+   <Properties>
+      <Property Name ="RETENTION_LEVEL" Value ="MANAGE_STATE" />
+   </Properties>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="SalesClassListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="SalesAdoptClassListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="SalesAreaListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesOutLineVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesOutLineVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesHeaderFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesHeaderFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesLineFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesLineFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesNotifyUserSumVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesNotifyUserSumVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesRequestFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRequestFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesNotifyFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesNotifyFullVO" >
+   </ViewUsage>
+   <ViewLinkUsage
+      Name="XxcsoSalesHeaderLineVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesHeaderLineVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRegistAM.XxcsoSalesHeaderFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRegistAM.XxcsoSalesLineFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoSalesRequestNotifyVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRequestNotifyVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRegistAM.XxcsoSalesRequestFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRegistAM.XxcsoSalesNotifyFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+</AppModule>

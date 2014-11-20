@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoPlanMonthListVO"
+   OrderBy="plan_month_index"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019001j.poplist.server.XxcsoPlanMonthListVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019001j.poplist.server.XxcsoPlanMonthListVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  TO_CHAR(xxcso_util_common_pkg.get_online_sysdate, 'MM') plan_month
+       ,TO_CHAR(xxcso_util_common_pkg.get_online_sysdate, 'FMMM') || '月' plan_month_view
+       ,TO_NUMBER(TO_CHAR(xxcso_util_common_pkg.get_online_sysdate, 'MM')) plan_month_index
+FROM    DUAL
+UNION ALL
+SELECT  TO_CHAR(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 1), 'MM') plan_month
+       ,TO_CHAR(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 1), 'FMMM') || '月' plan_month_view
+       ,TO_NUMBER(TO_CHAR(xxcso_util_common_pkg.get_online_sysdate, 'MM')) + 1 plan_month_index
+FROM    DUAL
+UNION ALL
+SELECT  TO_CHAR(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 2), 'MM') plan_month
+       ,TO_CHAR(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 2), 'FMMM') || '月' plan_month_view
+       ,TO_NUMBER(TO_CHAR(xxcso_util_common_pkg.get_online_sysdate, 'MM')) + 2 plan_month_index
+FROM    DUAL
+UNION ALL
+SELECT  TO_CHAR(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 3), 'MM') plan_month
+       ,TO_CHAR(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 3), 'FMMM') || '月' plan_month_view
+       ,TO_NUMBER(TO_CHAR(xxcso_util_common_pkg.get_online_sysdate, 'MM')) + 3 plan_month_index
+FROM    DUAL
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="PlanMonth"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PLAN_MONTH"
+      Expression="PLAN_MONTH"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PlanMonthView"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PLAN_MONTH_VIEW"
+      Expression="PLAN_MONTH_VIEW"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PlanMonthIndex"
+      IsPersistent="false"
+      Precision="4"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="PLAN_MONTH_INDEX"
+      Expression="PLAN_MONTH_INDEX"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

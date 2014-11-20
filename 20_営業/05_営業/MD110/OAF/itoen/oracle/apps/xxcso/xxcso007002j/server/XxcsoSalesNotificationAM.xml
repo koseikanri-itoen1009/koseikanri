@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoSalesNotificationAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso007002j.server.XxcsoSalesNotificationAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoSalesHeaderHistSumVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007002j.server.XxcsoSalesHeaderHistSumVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesLineHistSumVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007002j.server.XxcsoSalesLineHistSumVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesNotifyUserSumVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007002j.server.XxcsoSalesNotifyUserSumVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesNotifySummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007002j.server.XxcsoSalesNotifySummaryVO" >
+   </ViewUsage>
+</AppModule>

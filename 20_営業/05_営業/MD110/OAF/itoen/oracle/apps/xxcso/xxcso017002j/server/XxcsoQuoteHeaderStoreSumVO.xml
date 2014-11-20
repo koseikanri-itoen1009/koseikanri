@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoQuoteHeaderStoreSumVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeaderStoreSumVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeaderStoreSumVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoQuoteHeadersEO.QUOTE_HEADER_ID, 
+       XxcsoQuoteHeadersEO.QUOTE_TYPE, 
+       XxcsoQuoteHeadersEO.QUOTE_NUMBER, 
+       XxcsoQuoteHeadersEO.QUOTE_REVISION_NUMBER, 
+       XxcsoQuoteHeadersEO.REFERENCE_QUOTE_NUMBER, 
+       XxcsoQuoteHeadersEO.REFERENCE_QUOTE_HEADER_ID, 
+       XxcsoQuoteHeadersEO.PUBLISH_DATE, 
+       XxcsoQuoteHeadersEO.ACCOUNT_NUMBER, 
+       XxcsoQuoteHeadersEO.EMPLOYEE_NUMBER, 
+       XxcsoQuoteHeadersEO.BASE_CODE, 
+       XxcsoQuoteHeadersEO.DELIV_PLACE, 
+       XxcsoQuoteHeadersEO.PAYMENT_CONDITION, 
+       XxcsoQuoteHeadersEO.QUOTE_SUBMIT_NAME, 
+       XxcsoQuoteHeadersEO.STATUS, 
+       XxcsoQuoteHeadersEO.DELIV_PRICE_TAX_TYPE, 
+       XxcsoQuoteHeadersEO.STORE_PRICE_TAX_TYPE, 
+       XxcsoQuoteHeadersEO.UNIT_TYPE, 
+       XxcsoQuoteHeadersEO.SPECIAL_NOTE, 
+       XxcsoQuoteHeadersEO.QUOTE_INFO_START_DATE, 
+       XxcsoQuoteHeadersEO.QUOTE_INFO_END_DATE, 
+       XxcsoQuoteHeadersEO.CREATED_BY, 
+       XxcsoQuoteHeadersEO.CREATION_DATE, 
+       XxcsoQuoteHeadersEO.LAST_UPDATED_BY, 
+       XxcsoQuoteHeadersEO.LAST_UPDATE_DATE, 
+       XxcsoQuoteHeadersEO.LAST_UPDATE_LOGIN, 
+       XxcsoQuoteHeadersEO.REQUEST_ID, 
+       XxcsoQuoteHeadersEO.PROGRAM_APPLICATION_ID, 
+       XxcsoQuoteHeadersEO.PROGRAM_ID, 
+       XxcsoQuoteHeadersEO.PROGRAM_UPDATE_DATE
+      ,sales_cust.party_name   store_name
+      ,store_cust.party_name   party_name
+      ,sales_header.unit_type  sales_unit_type
+      ,xev.full_name
+      ,xxcso_util_common_pkg.get_emp_parameter(
+         xev.work_base_name_new
+        ,xev.work_base_name_old
+        ,xev.issue_date
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       ) base_name
+FROM XXCSO_QUOTE_HEADERS XxcsoQuoteHeadersEO
+      ,xxcso_quote_headers    sales_header
+      ,xxcso_cust_accounts_v  sales_cust
+      ,xxcso_cust_accounts_v  store_cust
+      ,xxcso_employees_v2     xev
+WHERE  XxcsoQuoteHeadersEO.QUOTE_HEADER_ID = :1
+AND    sales_header.quote_header_id = XxcsoQuoteHeadersEO.REFERENCE_QUOTE_HEADER_ID
+AND    sales_cust.account_number = sales_header.account_number
+AND    store_cust.account_number = XxcsoQuoteHeadersEO.ACCOUNT_NUMBER
+AND    xev.employee_number(+)    = XxcsoQuoteHeadersEO.EMPLOYEE_NUMBER
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoQuoteHeadersEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteHeadersEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="QuoteHeaderId"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="QuoteHeaderId"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="QUOTE_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteType"
+      Precision="1"
+      EntityAttrName="QuoteType"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="QUOTE_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteNumber"
+      Precision="12"
+      EntityAttrName="QuoteNumber"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="QUOTE_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteRevisionNumber"
+      IsNotNull="true"
+      Precision="2"
+      Scale="0"
+      EntityAttrName="QuoteRevisionNumber"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="QUOTE_REVISION_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReferenceQuoteNumber"
+      Precision="12"
+      EntityAttrName="ReferenceQuoteNumber"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="REFERENCE_QUOTE_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReferenceQuoteHeaderId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ReferenceQuoteHeaderId"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="REFERENCE_QUOTE_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PublishDate"
+      EntityAttrName="PublishDate"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="PUBLISH_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AccountNumber"
+      Precision="9"
+      EntityAttrName="AccountNumber"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="ACCOUNT_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      Precision="5"
+      EntityAttrName="EmployeeNumber"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="EMPLOYEE_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCode"
+      Precision="4"
+      EntityAttrName="BaseCode"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="BASE_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DelivPlace"
+      Precision="20"
+      EntityAttrName="DelivPlace"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="DELIV_PLACE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PaymentCondition"
+      Precision="20"
+      EntityAttrName="PaymentCondition"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="PAYMENT_CONDITION" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteSubmitName"
+      Precision="40"
+      EntityAttrName="QuoteSubmitName"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="QUOTE_SUBMIT_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Status"
+      Precision="1"
+      EntityAttrName="Status"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="STATUS" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DelivPriceTaxType"
+      Precision="1"
+      EntityAttrName="DelivPriceTaxType"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="DELIV_PRICE_TAX_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StorePriceTaxType"
+      Precision="1"
+      EntityAttrName="StorePriceTaxType"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="STORE_PRICE_TAX_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UnitType"
+      Precision="1"
+      EntityAttrName="UnitType"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="UNIT_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpecialNote"
+      Precision="100"
+      EntityAttrName="SpecialNote"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="SPECIAL_NOTE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteInfoStartDate"
+      EntityAttrName="QuoteInfoStartDate"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="QUOTE_INFO_START_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteInfoEndDate"
+      EntityAttrName="QuoteInfoEndDate"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="QUOTE_INFO_END_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoQuoteHeadersEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StoreName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STORE_NAME"
+      Expression="STORE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PARTY_NAME"
+      Expression="PARTY_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesUnitType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SALES_UNIT_TYPE"
+      Expression="SALES_UNIT_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_NAME"
+      Expression="BASE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewLinkAccessor
+      Name="XxcsoQuoteLineStoreSumVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeaderLineStoreSumVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+</ViewObject>

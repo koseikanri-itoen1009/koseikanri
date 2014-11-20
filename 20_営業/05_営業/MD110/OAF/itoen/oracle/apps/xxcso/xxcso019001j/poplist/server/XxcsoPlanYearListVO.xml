@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoPlanYearListVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019001j.poplist.server.XxcsoPlanYearListVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019001j.poplist.server.XxcsoPlanYearListVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+WITH
+  plan_view AS
+  (
+    SELECT  TO_CHAR(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 3),'YYYY') AS plan_year
+      FROM  DUAL
+    UNION
+    SELECT  TO_CHAR(xxcso_util_common_pkg.get_online_sysdate,'YYYY') AS plan_year
+      FROM  DUAL
+  )
+SELECT  plan_year,
+        plan_year || '年' plan_year_view,
+        TO_NUMBER(plan_year) plan_year_index
+  FROM  plan_view
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="PlanYear"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PLAN_YEAR"
+      Expression="PLAN_YEAR"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PlanYearView"
+      IsPersistent="false"
+      Precision="6"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PLAN_YEAR_VIEW"
+      Expression="PLAN_YEAR_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PlanYearIndex"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="PLAN_YEAR_INDEX"
+      Expression="PLAN_YEAR_INDEX"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

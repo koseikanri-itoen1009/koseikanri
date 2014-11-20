@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoQuoteSearchTermsVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso017006j.server.XxcsoQuoteSearchTermsVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso017006j.server.XxcsoQuoteSearchTermsVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT NULL quote_type
+      ,NULL quote_number
+      ,NULL quote_revision_number
+FROM DUAL
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="QuoteType"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_TYPE"
+      Expression="QUOTE_TYPE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteNumber"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_NUMBER"
+      Expression="QUOTE_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteRevisionNumber"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_REVISION_NUMBER"
+      Expression="QUOTE_REVISION_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+</ViewObject>

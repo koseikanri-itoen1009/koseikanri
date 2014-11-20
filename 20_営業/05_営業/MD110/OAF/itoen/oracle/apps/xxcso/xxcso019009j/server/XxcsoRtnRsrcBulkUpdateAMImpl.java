@@ -1,0 +1,1120 @@
+/*============================================================================
+* ファイル名 : XxcsoRtnRsrcBulkUpdateAMImpl
+* 概要説明   : ルートNo/担当営業員一括更新画面アプリケーション・モジュールクラス
+* バージョン : 1.0
+*============================================================================
+* 修正履歴
+* 日付       Ver. 担当者       修正内容
+* ---------- ---- ------------ ----------------------------------------------
+* 2008-01-16 1.0  SCS富尾和基  新規作成
+* 2009-03-05 1.1  SCS柳平直人  [CT1-034]重複営業員エラー対応
+*============================================================================
+*/
+package itoen.oracle.apps.xxcso.xxcso019009j.server;
+
+import oracle.apps.fnd.framework.server.OAApplicationModuleImpl;
+import oracle.apps.fnd.framework.server.OADBTransaction;
+import oracle.apps.fnd.framework.OAException;
+import oracle.jdbc.OracleCallableStatement;
+import oracle.jdbc.OracleTypes;
+import itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVOImpl;
+import itoen.oracle.apps.xxcso.common.util.XxcsoValidateUtils;
+import itoen.oracle.apps.xxcso.common.util.XxcsoConstants;
+import itoen.oracle.apps.xxcso.common.util.XxcsoMessage;
+import itoen.oracle.apps.xxcso.common.util.XxcsoUtils;
+import itoen.oracle.apps.xxcso.common.util.XxcsoRouteManagementUtils;
+import itoen.oracle.apps.xxcso.xxcso019009j.util.XxcsoRtnRsrcBulkUpdateConstants;
+import com.sun.java.util.collections.List;
+import com.sun.java.util.collections.ArrayList;
+import java.sql.SQLException;
+import oracle.jbo.domain.Date;
+
+/*******************************************************************************
+ * ルートNo/担当営業員一括更新画面のアプリケーション・モジュールクラス
+ * @author  SCS富尾和基
+ * @version 1.0
+ *******************************************************************************
+ */
+public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl 
+{
+  /**
+   * 
+   * This is the default constructor (do not remove)
+   */
+  public XxcsoRtnRsrcBulkUpdateAMImpl()
+  {
+  }
+
+  /*****************************************************************************
+   * 初期化処理
+   * @param mode         処理モード
+   *****************************************************************************
+   */
+  public void initDetails(
+    String mode
+  )
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+    
+    XxcsoRtnRsrcBulkUpdateInitVOImpl initVo
+      = getXxcsoRtnRsrcBulkUpdateInitVO1();
+    if ( initVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateInitVO1"
+        );
+    }
+
+    XxcsoRtnRsrcBulkUpdateSumVOImpl sumVo
+      = getXxcsoRtnRsrcBulkUpdateSumVO1();
+    if ( sumVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateSumVO1"
+        );
+    }
+    
+    rollback();
+
+    if ( ! initVo.isPreparedForExecution() )
+    {
+      initVo.executeQuery();
+    }
+
+    XxcsoRtnRsrcBulkUpdateInitVORowImpl initRow
+      = (XxcsoRtnRsrcBulkUpdateInitVORowImpl)initVo.first();
+
+    if ( XxcsoRtnRsrcBulkUpdateConstants.MODE_FIRE_ACTION.equals(mode) )
+    {
+      XxcsoRtnRsrcBulkUpdateSumVORowImpl sumRow
+        = (XxcsoRtnRsrcBulkUpdateSumVORowImpl)sumVo.first();
+
+      initRow.setEmployeeNumber(sumRow.getEmployeeNumber());
+      initRow.setFullName(sumRow.getFullName());
+      initRow.setRouteNo(sumRow.getRouteNo());
+      initRow.setReflectMethod(initRow.getReflectMethod());
+      initRow.setAddCustomerButtonRender(Boolean.TRUE);
+
+      //適用ボタン押下後再検索処理
+      reSearch();
+
+    }
+    else
+    {
+      initRow.setAddCustomerButtonRender(Boolean.FALSE);
+    }
+    
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 進むボタン押下時処理
+   *****************************************************************************
+   */
+  public void handleSearchButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+    
+    XxcsoRtnRsrcBulkUpdateInitVOImpl initVo
+      = getXxcsoRtnRsrcBulkUpdateInitVO1();
+    if ( initVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateInitVO1"
+        );
+    }
+
+    XxcsoRtnRsrcBulkUpdateSumVOImpl sumVo
+      = getXxcsoRtnRsrcBulkUpdateSumVO1();
+    if ( sumVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateSumVO1"
+        );
+    }
+
+    XxcsoRtnRsrcFullVOImpl registVo
+      = getXxcsoRtnRsrcFullVO1();
+    if ( registVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcFullVO1"
+        );
+    }
+
+    //////////////////////////////////////
+    // 変更確認
+    //////////////////////////////////////
+    if ( getTransaction().isDirty() )
+    {
+      throw XxcsoMessage.createErrorMessage(XxcsoConstants.APP_XXCSO1_00335);
+    }
+    
+    //////////////////////////////////////
+    // 各行を取得
+    //////////////////////////////////////
+    XxcsoRtnRsrcBulkUpdateInitVORowImpl initRow
+      = (XxcsoRtnRsrcBulkUpdateInitVORowImpl)initVo.first();
+    
+    //////////////////////////////////////
+    // 検索前検証処理
+    //////////////////////////////////////
+    chkBeforeSearch( txn, initRow );
+
+    //////////////////////////////////////
+    // 検索処理
+    //////////////////////////////////////
+    sumVo.initQuery(
+      initRow.getEmployeeNumber()
+     ,initRow.getFullName()
+     ,initRow.getRouteNo()
+    );
+    
+    registVo.initQuery(
+      initRow.getEmployeeNumber()
+     ,initRow.getRouteNo()
+     ,initRow.getBaseCode()
+    );
+
+    // 各行のプロパティ設定
+    XxcsoRtnRsrcFullVORowImpl registRow
+      = (XxcsoRtnRsrcFullVORowImpl)registVo.first();
+    
+    if ( registRow != null )
+    {
+      initRow.setAddCustomerButtonRender(Boolean.TRUE);
+      while ( registRow != null )
+      {
+        registRow.setAccountNumberReadOnly(Boolean.TRUE);
+
+        registRow = (XxcsoRtnRsrcFullVORowImpl)registVo.next();
+      }
+    }
+    else
+    {
+      initRow.setAddCustomerButtonRender(Boolean.FALSE);
+    }
+
+    //////////////////////////////////////
+    // 検索後検証処理
+    //////////////////////////////////////
+    List list = chkAfterSearch( txn, registVo );
+
+    if ( list.size() > 0 )
+    {
+      // エラーの出力と共に、追加ボタンを非表示
+      initRow.setAddCustomerButtonRender(Boolean.FALSE);
+      OAException.raiseBundledOAException( list );
+    }
+    
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 追加ボタン押下時処理
+   *****************************************************************************
+   */
+  public void handleAddCustomerButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+    
+    // プロファイル値の取得
+    String maxSize = getVoMaxFetchSize( txn );
+
+    XxcsoRtnRsrcFullVOImpl registVo
+      = getXxcsoRtnRsrcFullVO1();
+    if ( registVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcFullVO1"
+        );
+    }
+
+    int rowCount = registVo.getRowCount();
+
+    XxcsoUtils.debug(txn, "検索件数上限： " + maxSize);
+    XxcsoUtils.debug(txn, "検索結果件数： " + rowCount);
+
+    // 追加上限チェック
+    if ( rowCount >= Integer.parseInt(maxSize))
+    {
+      throw
+        XxcsoMessage.createErrorMessage(
+          XxcsoConstants.APP_XXCSO1_00010
+         ,XxcsoConstants.TOKEN_OBJECT
+         ,XxcsoRtnRsrcBulkUpdateConstants.TOKEN_VALUE_ACCOUNT_INFO
+         ,XxcsoConstants.TOKEN_MAX_SIZE
+         ,maxSize
+        );
+    }
+
+    XxcsoRtnRsrcFullVORowImpl registRow
+      = (XxcsoRtnRsrcFullVORowImpl)registVo.createRow();
+
+    registRow.setAccountNumberReadOnly(Boolean.FALSE);
+    
+    registVo.first();
+    registVo.insertRow(registRow);
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+  
+  /*****************************************************************************
+   * 消去ボタン押下時処理
+   *****************************************************************************
+   */
+  public void handleClearButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+    
+    XxcsoUtils.debug(txn, "[START]");
+    
+    XxcsoRtnRsrcBulkUpdateInitVOImpl initVo
+      = getXxcsoRtnRsrcBulkUpdateInitVO1();
+    if ( initVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateInitVO1"
+        );
+    }
+
+    initVo.executeQuery();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 適用ボタン押下時処理
+   *****************************************************************************
+   */
+  public OAException handleSubmitButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+    
+    XxcsoUtils.debug(txn, "[START]");
+
+    if ( ! getTransaction().isDirty() )
+    {
+      throw XxcsoMessage.createNotChangedMessage();
+    }
+
+    XxcsoRtnRsrcBulkUpdateInitVOImpl initVo
+      = getXxcsoRtnRsrcBulkUpdateInitVO1();
+    if ( initVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateInitVO1"
+        );
+    }
+
+    XxcsoRtnRsrcFullVOImpl registVo
+      = getXxcsoRtnRsrcFullVO1();
+    if ( registVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcFullVO1"
+        );
+    }
+    
+    //////////////////////////////////////
+    // 各行を取得
+    //////////////////////////////////////
+    XxcsoRtnRsrcBulkUpdateInitVORowImpl initRow
+      = (XxcsoRtnRsrcBulkUpdateInitVORowImpl)initVo.first();
+    
+    //////////////////////////////////////
+    // 登録前検証処理
+    //////////////////////////////////////
+    chkBeforeSubmit( txn, initRow,  registVo);
+
+    //////////////////////////////////////
+    // 適用開始日判定
+    //////////////////////////////////////
+    Date trgtResourceStartDate = null;
+    Date nextResourceStartDate = null;
+    Date trgtRouteNoStartDate = null;
+    Date nextRouteNoStartDate = null;
+
+    // 「反映方法」=即時反映
+    if ( (XxcsoRtnRsrcBulkUpdateConstants.REFLECT_TRGT).equals(
+           initRow.getReflectMethod() ) )
+    {
+      // 現担当適用開始日     :業務処理日付
+      trgtResourceStartDate = initRow.getCurrentDate();
+
+      // 現ルートNo適用開始日 :業務処理日付の翌月１日
+      trgtRouteNoStartDate  = initRow.getFirstDate();
+
+      // 新担当適用開始日     :業務処理日付
+      nextResourceStartDate = initRow.getCurrentDate();
+
+      // 新ルートNo適用開始日 :業務処理日付の翌月１日
+      nextRouteNoStartDate  = initRow.getFirstDate();
+
+    // 「反映方法」=予約反映  
+    }
+    else 
+    {
+      //現担当適用開始日      :業務処理日付の翌月１日
+      trgtResourceStartDate = initRow.getNextDate();
+
+      //現ルートNo適用開始日  :業務処理日付の翌月１日
+      trgtRouteNoStartDate  = initRow.getNextDate();
+
+      //新担当適用開始日      :業務処理日付の翌月１日
+      nextResourceStartDate = initRow.getNextDate();
+
+      //新ルートNo適用開始日  :業務処理日付の翌月１日
+      nextRouteNoStartDate  = initRow.getNextDate();
+    }
+
+    //////////////////////////////////////
+    // 登録用VOへ適用開始日設定
+    //////////////////////////////////////
+    XxcsoRtnRsrcFullVORowImpl registRow
+      = (XxcsoRtnRsrcFullVORowImpl)registVo.first();
+
+    while ( registRow != null )
+    {
+      registRow.setTrgtResourceStartDate(trgtResourceStartDate);
+      registRow.setTrgtRouteNoStartDate(trgtRouteNoStartDate);
+      registRow.setNextResourceStartDate(nextResourceStartDate);
+      registRow.setNextRouteNoStartDate(nextRouteNoStartDate);
+
+      registRow = (XxcsoRtnRsrcFullVORowImpl)registVo.next();
+    }
+
+    //////////////////////////////////////
+    // 登録・更新処理
+    //////////////////////////////////////
+    commit();
+
+    OAException msg
+      = XxcsoMessage.createConfirmMessage(
+          XxcsoConstants.APP_XXCSO1_00001
+         ,XxcsoConstants.TOKEN_RECORD
+         ,XxcsoRtnRsrcBulkUpdateConstants.TOKEN_VALUE_PROCESS
+         ,XxcsoConstants.TOKEN_ACTION
+         ,XxcsoConstants.TOKEN_VALUE_COMPLETE
+        ); 
+    
+    XxcsoUtils.debug(txn, "[END]");
+
+    return msg;
+  }
+
+  /*****************************************************************************
+   * 取消ボタン押下時処理
+   *****************************************************************************
+   */
+  public void handleCancelButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+    
+    XxcsoUtils.debug(txn, "[START]");
+
+    rollback();
+    
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+    /*****************************************************************************
+   * 各ポップリストの初期化処理
+   *****************************************************************************
+   */
+  public void initPopList()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // 反映方法
+    XxcsoLookupListVOImpl appListVo
+      = getXxcsoReflectMethodListVO();
+    if ( appListVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoReflectMethodListVO");
+    }
+
+    appListVo.initQuery(
+      "XXCSO1_REFLECT_METHOD"
+     ,"lookup_code"
+    );
+    
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * コミット処理
+   *****************************************************************************
+   */
+  private void commit()
+  {
+    OADBTransaction txn = getOADBTransaction();
+    
+    XxcsoUtils.debug(txn, "[START]");
+
+    XxcsoRouteManagementUtils.getInstance().commitTransaction(txn);
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * ロールバック処理
+   *****************************************************************************
+   */
+  private void rollback()
+  {
+    OADBTransaction txn = getOADBTransaction();
+    
+    XxcsoUtils.debug(txn, "[START]");
+
+    if ( getTransaction().isDirty() )
+    {
+      getTransaction().rollback();
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 検索前検証処理
+   * @param txn         OADBTransactionインスタンス
+   * @param initRow     対象指定リージョン情報
+   *****************************************************************************
+   */
+  private void chkBeforeSearch(
+    OADBTransaction txn
+   ,XxcsoRtnRsrcBulkUpdateInitVORowImpl initRow
+  )
+  {
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    List errorList = new ArrayList();
+    XxcsoValidateUtils util = XxcsoValidateUtils.getInstance(txn);
+
+    //画面項目「営業員コード」必須チェック
+    errorList
+      = util.requiredCheck(
+          errorList
+         ,initRow.getEmployeeNumber()
+         ,XxcsoRtnRsrcBulkUpdateConstants.TOKEN_VALUE_EMPLOYEENUMBER
+         ,0
+        );
+
+    //画面項目「ルートNo」妥当性チェック
+    if ( ! chkRouteNo( txn , initRow.getRouteNo() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00046,
+            XxcsoConstants.TOKEN_ENTRY,
+            XxcsoRtnRsrcBulkUpdateConstants.TOKEN_VALUE_ROUTENO,
+            XxcsoConstants.TOKEN_VALUES,
+            initRow.getRouteNo()
+          );
+      errorList.add(error);
+    }
+    if ( errorList.size() > 0 )
+    {
+      OAException.raiseBundledOAException(errorList);
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 検索後検証処理
+   * @param txn         OADBTransactionインスタンス
+   * @param registVo    一括更新リージョン情報
+   * @return エラーメッセージ
+   *****************************************************************************
+   */
+  private List chkAfterSearch(
+    OADBTransaction        txn
+   ,XxcsoRtnRsrcFullVOImpl registVo
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+
+    List errorList = new ArrayList();
+
+    // プロファイル値の取得
+    String maxSize = getVoMaxFetchSize( txn );
+
+    // 検索結果件数の取得
+    int rowCount = registVo.getRowCount();
+
+    XxcsoUtils.debug(txn, "検索件数上限： " + maxSize);
+    XxcsoUtils.debug(txn, "検索結果件数： " + rowCount);
+
+    //検索件数チェック
+    if ( rowCount > Integer.parseInt( maxSize ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00424
+          );
+      errorList.add(error);
+    }
+
+    // プロファイルのエラー時は検索結果を表示し、終了
+    if ( errorList.size() > 0 )
+    {
+      return errorList;
+    }
+
+    XxcsoRtnRsrcFullVORowImpl registRow
+      = (XxcsoRtnRsrcFullVORowImpl)registVo.first();
+
+    while ( registRow != null )
+    {
+      // 現担当、新担当が期間重複で複数設定されていないかチェック
+      if ( registRow.getTrgtResourceCnt().intValue() > 1 ||
+           registRow.getNextResourceCnt().intValue() > 1
+      )
+      {
+        // 重複営業員存在エラー
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00555
+             ,XxcsoConstants.TOKEN_ACCOUNT
+             ,registRow.getPartyName()
+            );
+        errorList.add(error);
+      }
+      registRow = (XxcsoRtnRsrcFullVORowImpl) registVo.next();
+    }
+
+    // 重複エラー時は検索結果を全件表示しない
+    if ( errorList.size() > 0 )
+    {
+      // 0件となる検索条件でVOを初期化
+      registVo.initQuery(
+        ""
+       ,""
+       ,""
+       );
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return errorList;
+  }
+
+  /*****************************************************************************
+   * 登録前検証処理
+   * @param txn         OADBTransactionインスタンス
+   * @param initRow      対象指定リージョン情報
+   * @param registVo    一括更新リージョン情報
+   *****************************************************************************
+   */
+  private void chkBeforeSubmit(
+    OADBTransaction                     txn
+   ,XxcsoRtnRsrcBulkUpdateInitVORowImpl initRow
+   ,XxcsoRtnRsrcFullVOImpl              registVo
+  )
+  { 
+  
+    XxcsoUtils.debug(txn, "[START]");
+  
+    List errorList = new ArrayList();
+    XxcsoValidateUtils util = XxcsoValidateUtils.getInstance(txn);
+
+    XxcsoRtnRsrcFullVORowImpl registRow
+      = (XxcsoRtnRsrcFullVORowImpl)registVo.first();
+
+    int index = 0;
+    String  baseCode      = initRow.getBaseCode();
+    List    coAccountList = new ArrayList();
+    boolean isRsvAccount  = false;
+    boolean isSameErr     = false;
+    
+    while ( registRow != null )
+    {
+      index++;
+
+      //////////////////////////////////////
+      // DEBUGログ出力
+      //////////////////////////////////////
+      XxcsoUtils.debug(txn, "顧客コード          ："
+                              + registRow.getAccountNumber()                  );
+      XxcsoUtils.debug(txn, "顧客名              ："
+                              + registRow.getPartyName()                      );
+      XxcsoUtils.debug(txn, "顧客ID              ："
+                              + registRow.getCustAccountId()                  );
+      XxcsoUtils.debug(txn, "作成者              ："
+                              + registRow.getCreatedBy()                      );
+      XxcsoUtils.debug(txn, "作成日              ："
+                              + registRow.getCreationDate()                   );
+      XxcsoUtils.debug(txn, "最終更新者          ："
+                              + registRow.getLastUpdatedBy()                  );
+      XxcsoUtils.debug(txn, "最終更新日          ："
+                              + registRow.getLastUpdateDate()                 );
+      XxcsoUtils.debug(txn, "最終更新R           ："
+                              + registRow.getLastUpdateLogin()                );
+      XxcsoUtils.debug(txn, "現ルートNo          ："
+                              + registRow.getTrgtRouteNo()                    );
+      XxcsoUtils.debug(txn, "現ルートNo適用開始日："
+                              + registRow.getTrgtRouteNoStartDate()           );
+      XxcsoUtils.debug(txn, "現ルートNoEXTID     ："
+                              + registRow.getTrgtRouteNoExtensionId()         );
+      XxcsoUtils.debug(txn, "現ルート最終更新日  ："
+                              + registRow.getTrgtRouteNoLastUpdDate()         );
+      XxcsoUtils.debug(txn, "新ルートNo          ："
+                              + registRow.getNextRouteNo()                    );
+      XxcsoUtils.debug(txn, "新ルートNo適用開始日："
+                              + registRow.getNextRouteNoStartDate()           );
+      XxcsoUtils.debug(txn, "新ルートNoEXTID     ："
+                              + registRow.getNextRouteNoExtensionId()         );
+      XxcsoUtils.debug(txn, "新ルートNo最終更新日："
+                              + registRow.getNextRouteNoLastUpdDate()         );
+      XxcsoUtils.debug(txn, "現担当              ："
+                              + registRow.getTrgtResource()                   );
+      XxcsoUtils.debug(txn, "現担当適用開始日    ："
+                              + registRow.getTrgtResourceStartDate()          );
+      XxcsoUtils.debug(txn, "現担当EXTID         ："
+                              + registRow.getTrgtResourceExtensionId()        );
+      XxcsoUtils.debug(txn, "現担当最終更新日    ："
+                              + registRow.getTrgtResourceLastUpdDate()        );
+      XxcsoUtils.debug(txn, "新担当              ："
+                              + registRow.getNextResource()                   );
+      XxcsoUtils.debug(txn, "新担当適用開始日    ："
+                              + registRow.getNextResourceStartDate()          );
+      XxcsoUtils.debug(txn, "新担当EXTID         ："
+                              + registRow.getNextResourceExtensionId()        );
+      XxcsoUtils.debug(txn, "新担当最終更新日    ："
+                              + registRow.getNextResourceLastUpdDate()        );
+      XxcsoUtils.debug(txn, "READONLY            ："
+                              + registRow.getAccountNumberReadOnly()          );
+      XxcsoUtils.debug(txn, "ISRSVFLG            ："
+                              + registRow.getIsRsvFlg()                       );
+
+      //画面項目「新担当」同一拠点内存在チェック
+      if ( registRow.getNextResource() != null
+        && ! registRow.getNextResource().equals("")
+        && registRow.getAccountNumber() != null
+        && ! registRow.getAccountNumber().equals("") )
+      {
+        if ( ! chkExistEmployee( txn, registRow.getNextResource(), baseCode ) )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00422,
+                XxcsoConstants.TOKEN_INDEX,
+                String.valueOf(index)
+              );
+          errorList.add(error);
+        }
+      }
+
+      //画面項目「新ルートNo」妥当性チェック
+      if ( registRow.getNextRouteNo() != null
+        && ! registRow.getNextRouteNo().equals("")
+        && registRow.getAccountNumber() != null
+        && ! registRow.getAccountNumber().equals("") )
+      {
+        if ( ! chkRouteNo( txn , registRow.getNextRouteNo() ) )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00514,
+                XxcsoConstants.TOKEN_INDEX,
+                String.valueOf(index)
+              );
+          errorList.add(error);
+        }
+      }
+
+      //画面項目「新担当」「新ルートNo」に入力値が存在する顧客コードを取得
+      if ( ( registRow.getNextResource() != null
+        && ! registRow.getNextResource().equals("") )
+        || registRow.getNextRouteNo() != null
+        && ! registRow.getNextRouteNo().equals("") )
+      {
+        //画面項目「顧客コード」同一存在チェック
+        for ( int i = 0 ; i < coAccountList.size() ; i++ )
+        {
+          if ( coAccountList.get(i) != null
+            && !coAccountList.get(i).equals("")
+            && coAccountList.get(i).equals( registRow.getAccountNumber() ) )
+          {
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00515,
+                  XxcsoConstants.TOKEN_INDEX,
+                  String.valueOf(index)
+                );
+            errorList.add(error);
+            isSameErr = true;
+            continue;
+          }
+        }
+        if ( !isSameErr )
+        {
+          coAccountList.add(registRow.getAccountNumber());
+        }
+        isSameErr = false;
+      }
+
+      //予約売上拠点が自拠点の場合
+      if ( ! isRsvAccount
+        && registRow.getAccountNumber() != null
+        && ! registRow.getAccountNumber().equals("")
+        && registRow.getIsRsvFlg() != null
+        && registRow.getIsRsvFlg().equals(
+             XxcsoRtnRsrcBulkUpdateConstants.BOOL_ISRSV)
+        && ( ( registRow.getNextResource() != null
+            && ! registRow.getNextResource().equals("") )
+            || registRow.getNextRouteNo() != null
+            && ! registRow.getNextRouteNo().equals("")) )
+      {
+        isRsvAccount = true;
+      }
+
+      //次行に移行
+      registRow = (XxcsoRtnRsrcFullVORowImpl)registVo.next();
+    }
+
+    //画面項目「反映方法」選択チェック
+    String reflectMethod = initRow.getReflectMethod();
+    XxcsoUtils.debug(txn, "反映方法 = " + reflectMethod);
+
+    if ( reflectMethod == null || "".equals(reflectMethod) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00423,
+            XxcsoConstants.TOKEN_COLUMN,
+            XxcsoRtnRsrcBulkUpdateConstants.TOKEN_VALUE_REFLECTMETHOD
+          );
+      errorList.add(error);
+    }
+    
+    //画面項目「反映方法」即時反映時予約売上拠点存在チェック
+    if ( isRsvAccount
+      && initRow.getReflectMethod() != null
+      && initRow.getReflectMethod().equals(
+           XxcsoRtnRsrcBulkUpdateConstants.REFLECT_TRGT) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00475
+          );
+      errorList.add(error);
+    }
+    
+    if ( errorList.size() > 0 )
+    {
+      OAException.raiseBundledOAException(errorList);
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 担当営業員拠点内存在チェック
+   * @param txn         OADBTransactionインスタンス
+   * @param employeeNo  従業員番号
+   * @param baseCode    拠点コード
+   * @return boolean    TRUE:存在する FALSE:存在しない
+   *****************************************************************************
+   */
+  private boolean chkExistEmployee(
+    OADBTransaction txn
+   ,String employeeNo
+   ,String baseCode
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+
+    XxcsoRtnRsrcBulkUpdateEmployeeVOImpl empVo
+      = getXxcsoRtnRsrcBulkUpdateEmployeeVO();
+    if ( empVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateEmployeeVO"
+        );
+    }
+
+    empVo.initQuery(
+      employeeNo
+     ,baseCode
+    );
+
+    //引数の従業員番号がログインユーザの同一拠点内に存在する場合
+    if ( empVo.getRowCount() != 0 )
+    {
+      return true;
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return false;
+  }
+
+  /*****************************************************************************
+   * ルートNo妥当性チェック
+   * @param txn         OADBTransactionインスタンス
+   * @param routeNo     チェック対象ルートNo
+   * @return boolean    TRUE:妥当 FALSE:非妥当
+   *****************************************************************************
+   */
+  private boolean chkRouteNo(
+    OADBTransaction txn
+   ,String routeNo
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+
+    OracleCallableStatement stmt = null;
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  xxcso_route_common_pkg.validate_route_no_p(");
+      sql.append("     iv_route_number   => :1");
+      sql.append("    ,ov_retcode        => :2");
+      sql.append("    ,ov_error_reason   => :3");
+      sql.append("  );");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.setString(1,  routeNo);
+      stmt.registerOutParameter(2, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+      
+      XxcsoUtils.debug(txn, "execute stored start");
+      stmt.execute();
+      XxcsoUtils.debug(txn, "execute stored end");
+
+      String retCode     = stmt.getString(2);
+      String errMsg      = stmt.getString(3);
+
+      XxcsoUtils.debug(txn, "retCode = " + retCode);
+      XxcsoUtils.debug(txn, "errMsg = " + errMsg);
+
+      if ( "0".equals( retCode ) )
+      {
+        return true;
+      }
+    }
+    catch ( SQLException sqle )
+    {
+      XxcsoUtils.unexpected(txn, sqle);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          sqle
+         ,XxcsoRtnRsrcBulkUpdateConstants.TOKEN_VALUE_ROUTENO
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException sqle )
+      {
+        XxcsoUtils.unexpected(txn, sqle);
+      }
+    }
+    XxcsoUtils.debug(txn, "[END]");
+    return false;
+  }
+
+  /*****************************************************************************
+   * 適用ボタン押下後再検索処理
+   *****************************************************************************
+   */
+  private void reSearch()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+    
+    XxcsoRtnRsrcBulkUpdateInitVOImpl initVo
+      = getXxcsoRtnRsrcBulkUpdateInitVO1();
+    if ( initVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateInitVO1"
+        );
+    }
+
+    XxcsoRtnRsrcBulkUpdateSumVOImpl sumVo
+      = getXxcsoRtnRsrcBulkUpdateSumVO1();
+    if ( sumVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateSumVO1"
+        );
+    }
+
+    XxcsoRtnRsrcFullVOImpl registVo
+      = getXxcsoRtnRsrcFullVO1();
+    if ( registVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcFullVO1"
+        );
+    }
+    
+    //////////////////////////////////////
+    // 各行を取得
+    //////////////////////////////////////
+    XxcsoRtnRsrcBulkUpdateInitVORowImpl initRow
+      = (XxcsoRtnRsrcBulkUpdateInitVORowImpl)initVo.first();
+
+    //////////////////////////////////////
+    // 検索処理
+    //////////////////////////////////////
+    sumVo.initQuery(
+      initRow.getEmployeeNumber()
+     ,initRow.getFullName()
+     ,initRow.getRouteNo()
+    );
+    
+    registVo.initQuery(
+      initRow.getEmployeeNumber()
+     ,initRow.getRouteNo()
+     ,initRow.getBaseCode()
+    );
+
+    XxcsoRtnRsrcFullVORowImpl registRow
+      = (XxcsoRtnRsrcFullVORowImpl)registVo.first();
+    
+    if ( registRow != null )
+    {
+      initRow.setAddCustomerButtonRender(Boolean.TRUE);
+      while ( registRow != null )
+      {
+        registRow.setAccountNumberReadOnly(Boolean.TRUE);
+
+        registRow = (XxcsoRtnRsrcFullVORowImpl)registVo.next();
+      }
+    }
+    else
+    {
+      initRow.setAddCustomerButtonRender(Boolean.FALSE);
+    }
+
+    //////////////////////////////////////
+    // 検索後検証処理
+    //////////////////////////////////////
+    List list = chkAfterSearch( txn, registVo );
+
+    if ( list.size() > 0 )
+    {
+      OAException.raiseBundledOAException( list );
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * プロファイル最大表示行数取得処理
+   * @param  txn OADBTransactionインスタンス
+   * @return プロファイルのVO_MAX_FETCH_SIZEで指定された行数
+   *****************************************************************************
+   */
+  private String getVoMaxFetchSize(OADBTransaction txn)
+  {
+
+    String maxSize = txn.getProfile(XxcsoConstants.VO_MAX_FETCH_SIZE);
+    if ( maxSize == null || "".equals(maxSize.trim()) )
+    {
+      throw
+        XxcsoMessage.createProfileNotFoundError(
+          XxcsoConstants.VO_MAX_FETCH_SIZE
+        );
+    }
+
+    return maxSize;
+  }
+
+
+  /**
+   * 
+   * Container's getter for XxcsoRtnRsrcBulkUpdateInitVO1
+   */
+  public XxcsoRtnRsrcBulkUpdateInitVOImpl getXxcsoRtnRsrcBulkUpdateInitVO1()
+  {
+    return (XxcsoRtnRsrcBulkUpdateInitVOImpl)findViewObject("XxcsoRtnRsrcBulkUpdateInitVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoRtnRsrcBulkUpdateSumVO1
+   */
+  public XxcsoRtnRsrcBulkUpdateSumVOImpl getXxcsoRtnRsrcBulkUpdateSumVO1()
+  {
+    return (XxcsoRtnRsrcBulkUpdateSumVOImpl)findViewObject("XxcsoRtnRsrcBulkUpdateSumVO1");
+  }
+
+  /**
+   * 
+   * Sample main for debugging Business Components code using the tester.
+   */
+  public static void main(String[] args)
+  {
+    launchTester("itoen.oracle.apps.xxcso.xxcso019009j.server", "XxcsoRtnRsrcBulkUpdateAMLocal");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoRtnRsrcFullVO1
+   */
+  public XxcsoRtnRsrcFullVOImpl getXxcsoRtnRsrcFullVO1()
+  {
+    return (XxcsoRtnRsrcFullVOImpl)findViewObject("XxcsoRtnRsrcFullVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoReflectMethodListVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoReflectMethodListVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoReflectMethodListVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoRtnRsrcBulkUpdateEmployeeVO
+   */
+  public XxcsoRtnRsrcBulkUpdateEmployeeVOImpl getXxcsoRtnRsrcBulkUpdateEmployeeVO()
+  {
+    return (XxcsoRtnRsrcBulkUpdateEmployeeVOImpl)findViewObject("XxcsoRtnRsrcBulkUpdateEmployeeVO");
+  }
+
+
+}

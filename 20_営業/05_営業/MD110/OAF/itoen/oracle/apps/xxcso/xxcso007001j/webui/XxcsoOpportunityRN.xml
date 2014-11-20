@@ -1,0 +1,21 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+This is shared region for Sales Online page.
+This page is included by personalize
+OpptyDetPG(producted).
+
+@see /oracle/apps/asn/opportunity/webui/OpptyDetPG.xml
+@see itoen.oracle.apps.xxcso.xxcso007001j.webui.XxcsoOpportunityCO.java
+
+HISTORY
+2009/02/06  H.Ogawa        new-->
+<oa:stackLayout version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" controllerClass="itoen.oracle.apps.xxcso.xxcso007001j.webui.XxcsoOpportunityCO">
+   <ui:contents>
+      <oa:submitButton id="XxcsoCancelButton" use="/itoen/oracle/apps/xxcso/xxcso007001j/attributesets/XxcsoSalesDecisionViewAttrSets/CancelButton"/>
+   </ui:contents>
+</oa:stackLayout>

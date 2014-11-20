@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoBm3DestinationFullVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3DestinationFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3DestinationFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
+       XxcsoDestinationsEO.CONTRACT_MANAGEMENT_ID      AS contract_management_id,
+       XxcsoDestinationsEO.SUPPLIER_ID                 AS supplier_id,
+       XxcsoDestinationsEO.DELIVERY_DIV                AS delivery_div,
+       SUBSTRB(
+         xxcso_010003j_pkg.decode_bm_info(
+           XxcsoDestinationsEO.SUPPLIER_ID
+          ,xcm.status
+          ,xcm.cooperate_flag
+          ,xcm.batch_proc_status
+          ,XxcsoDestinationsEO.PAYMENT_NAME
+          ,pv.vendor_name
+         )
+        ,1
+        ,80
+       )                                               AS payment_name,
+       SUBSTRB(
+         xxcso_010003j_pkg.decode_bm_info(
+           XxcsoDestinationsEO.SUPPLIER_ID
+          ,xcm.status
+          ,xcm.cooperate_flag
+          ,xcm.batch_proc_status
+          ,XxcsoDestinationsEO.PAYMENT_NAME_ALT
+          ,pv.vendor_name_alt
+         )
+        ,1
+        ,320
+       )                                               AS payment_name_alt,
+       xxcso_010003j_pkg.decode_bm_info(
+         XxcsoDestinationsEO.SUPPLIER_ID
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoDestinationsEO.BANK_TRANSFER_FEE_CHARGE_DIV
+        ,pvs.bank_charge_bearer
+       )                                               AS bank_transfer_fee_charge_div,
+       xxcso_010003j_pkg.decode_bm_info(
+         XxcsoDestinationsEO.SUPPLIER_ID
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoDestinationsEO.BELLING_DETAILS_DIV
+        ,pvs.attribute4
+       )                                               AS belling_details_div,
+       xxcso_010003j_pkg.decode_bm_info(
+         XxcsoDestinationsEO.SUPPLIER_ID
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoDestinationsEO.INQUERY_CHARGE_HUB_CD
+        ,pvs.attribute5
+       )                                               AS inquery_charge_hub_cd,
+       xxcso_010003j_pkg.decode_bm_info(
+         XxcsoDestinationsEO.SUPPLIER_ID
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoDestinationsEO.POST_CODE
+        ,pvs.zip
+       )                                               AS post_code,
+       SUBSTRB(
+         xxcso_010003j_pkg.decode_bm_info(
+           XxcsoDestinationsEO.SUPPLIER_ID
+          ,xcm.status
+          ,xcm.cooperate_flag
+          ,xcm.batch_proc_status
+          ,XxcsoDestinationsEO.PREFECTURES
+          ,pvs.state
+         )
+        ,1
+        ,25
+       )                                               AS prefectures,
+       SUBSTRB(
+         xxcso_010003j_pkg.decode_bm_info(
+           XxcsoDestinationsEO.SUPPLIER_ID
+          ,xcm.status
+          ,xcm.cooperate_flag
+          ,xcm.batch_proc_status
+          ,XxcsoDestinationsEO.CITY_WARD
+          ,pvs.city
+         )
+        ,1
+        ,25
+       )                                               AS city_ward,
+       SUBSTRB(
+         xxcso_010003j_pkg.decode_bm_info(
+           XxcsoDestinationsEO.SUPPLIER_ID
+          ,xcm.status
+          ,xcm.cooperate_flag
+          ,xcm.batch_proc_status
+          ,XxcsoDestinationsEO.ADDRESS_1
+          ,pvs.address_line1
+         )
+        ,1
+        ,35
+       )                                               AS address_1,
+       SUBSTRB(
+         xxcso_010003j_pkg.decode_bm_info(
+           XxcsoDestinationsEO.SUPPLIER_ID
+          ,xcm.status
+          ,xcm.cooperate_flag
+          ,xcm.batch_proc_status
+          ,XxcsoDestinationsEO.ADDRESS_2
+          ,pvs.address_line2
+         )
+        ,1
+        ,35
+       )                                               AS address_2,
+       xxcso_010003j_pkg.decode_bm_info(
+         XxcsoDestinationsEO.SUPPLIER_ID
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoDestinationsEO.ADDRESS_LINES_PHONETIC
+        ,pvs.area_code || pvs.phone
+       )                                               AS address_lines_phonetic,
+       XxcsoDestinationsEO.CREATED_BY                  AS created_by,
+       XxcsoDestinationsEO.CREATION_DATE               AS creation_date,
+       XxcsoDestinationsEO.LAST_UPDATED_BY             AS last_updated_by,
+       XxcsoDestinationsEO.LAST_UPDATE_DATE            AS last_update_date,
+       XxcsoDestinationsEO.LAST_UPDATE_LOGIN           AS last_update_login,
+       XxcsoDestinationsEO.REQUEST_ID                  AS request_id,
+       XxcsoDestinationsEO.PROGRAM_APPLICATION_ID      AS program_application_id,
+       XxcsoDestinationsEO.PROGRAM_ID                  AS program_id,
+       XxcsoDestinationsEO.PROGRAM_UPDATE_DATE         AS program_update_date
+      ,xxcso_util_common_pkg.get_base_name(
+         xxcso_010003j_pkg.decode_bm_info(
+           XxcsoDestinationsEO.SUPPLIER_ID
+          ,xcm.status
+          ,xcm.cooperate_flag
+          ,xcm.batch_proc_status
+          ,XxcsoDestinationsEO.INQUERY_CHARGE_HUB_CD
+          ,pvs.attribute5
+         )
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       )                                               AS inquery_charge_hub_name
+      ,pv.segment1                                     AS vendor_code
+FROM XXCSO_DESTINATIONS          XxcsoDestinationsEO
+    ,xxcso_contract_managements  xcm
+    ,po_vendors                  pv
+    ,po_vendor_sites             pvs
+WHERE XxcsoDestinationsEO.DELIVERY_DIV = '3'
+AND   xcm.contract_management_id = XxcsoDestinationsEO.CONTRACT_MANAGEMENT_ID
+AND   pv.vendor_id(+)            = XxcsoDestinationsEO.SUPPLIER_ID
+AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoDestinationsEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="DeliveryId"
+      IsNotNull="true"
+      EntityAttrName="DeliveryId"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="DELIVERY_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractManagementId"
+      EntityAttrName="ContractManagementId"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="CONTRACT_MANAGEMENT_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SupplierId"
+      EntityAttrName="SupplierId"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="SUPPLIER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeliveryDiv"
+      Precision="1"
+      EntityAttrName="DeliveryDiv"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="DELIVERY_DIV" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PaymentName"
+      Precision="240"
+      EntityAttrName="PaymentName"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="PAYMENT_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PaymentNameAlt"
+      Precision="320"
+      EntityAttrName="PaymentNameAlt"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="PAYMENT_NAME_ALT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BankTransferFeeChargeDiv"
+      Precision="1"
+      EntityAttrName="BankTransferFeeChargeDiv"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="BANK_TRANSFER_FEE_CHARGE_DIV" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BellingDetailsDiv"
+      Precision="25"
+      EntityAttrName="BellingDetailsDiv"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="BELLING_DETAILS_DIV" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InqueryChargeHubCd"
+      Precision="4"
+      EntityAttrName="InqueryChargeHubCd"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="INQUERY_CHARGE_HUB_CD" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PostCode"
+      Precision="60"
+      EntityAttrName="PostCode"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="POST_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Prefectures"
+      Precision="60"
+      EntityAttrName="Prefectures"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="PREFECTURES" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CityWard"
+      Precision="60"
+      EntityAttrName="CityWard"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="CITY_WARD" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Address1"
+      Precision="240"
+      EntityAttrName="Address1"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="ADDRESS_1" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Address2"
+      Precision="240"
+      EntityAttrName="Address2"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="ADDRESS_2" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AddressLinesPhonetic"
+      Precision="30"
+      EntityAttrName="AddressLinesPhonetic"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="ADDRESS_LINES_PHONETIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InqueryChargeHubName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INQUERY_CHARGE_HUB_NAME"
+      Expression="INQUERY_CHARGE_HUB_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorCode"
+      IsPersistent="false"
+      Precision="9"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_CODE"
+      Expression="VENDOR_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorFlag"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_FLAG"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewLinkAccessor
+      Name="XxcsoBm3BankAccountFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3DestBankVL"
+      Type="oracle.jbo.Row"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+</ViewObject>

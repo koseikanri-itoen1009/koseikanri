@@ -1,0 +1,925 @@
+/*============================================================================
+* ファイル名 : XxcsoContractSearchAMImpl
+* 概要説明   : 契約書検索アプリケーション・モジュールクラス
+* バージョン : 1.0
+*============================================================================
+* 修正履歴
+* 日付       Ver. 担当者       修正内容
+* ---------- ---- ------------ ----------------------------------------------
+* 2008-10-31 1.0  SCS及川領    新規作成
+*============================================================================
+*/
+package itoen.oracle.apps.xxcso.xxcso010001j.server;
+import oracle.apps.fnd.framework.server.OAApplicationModuleImpl;
+import oracle.apps.fnd.framework.OAException;
+import com.sun.java.util.collections.HashMap;
+import itoen.oracle.apps.xxcso.common.util.XxcsoMessage;
+import itoen.oracle.apps.xxcso.common.util.XxcsoConstants;
+import itoen.oracle.apps.xxcso.xxcso010001j.util.XxcsoContractConstants;
+import oracle.jdbc.OracleTypes;
+import oracle.sql.NUMBER;
+import oracle.jdbc.OracleCallableStatement;
+import itoen.oracle.apps.xxcso.common.util.XxcsoUtils;
+import oracle.apps.fnd.framework.server.OADBTransaction;
+import java.sql.SQLException;
+import com.sun.java.util.collections.List;
+import com.sun.java.util.collections.ArrayList;
+
+/*******************************************************************************
+ * 契約書を検索するためのアプリケーション・モジュールクラスです。
+ * @author  SCS及川領
+ * @version 1.0
+ *******************************************************************************
+ */
+
+public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl 
+{
+
+  /**
+   * 
+   * This is the default constructor (do not remove)
+   */
+  public XxcsoContractSearchAMImpl()
+  {
+  }
+
+  /*****************************************************************************
+   * アプリケーション・モジュールの初期化処理です。
+   * @throw OAException
+   *****************************************************************************
+   */
+  public void initDetails()
+  {
+    //SP専決書番号選択条件初期化
+    XxcsoContractNewVOImpl newVo = getXxcsoContractNewVO1();
+    if ( newVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractNewVOImpl");
+    }
+    // 他画面からの遷移考慮
+    if ( ! newVo.isPreparedForExecution() )
+    {
+      // 初期化処理実行
+      newVo.executeQuery();
+    }
+
+    // 検索条件初期化
+    XxcsoContractQueryTermsVOImpl termsVo = getXxcsoContractQueryTermsVO1();
+    if ( termsVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError
+        ("XxcsoContractQueryTermsVOImpl");
+    }
+    // 他画面からの遷移考慮
+    if ( ! termsVo.isPreparedForExecution() )
+    {
+      // 初期化処理実行
+      termsVo.executeQuery();
+
+      // 明細初期化
+      XxcsoContractSummaryVOImpl summaryVo = getXxcsoContractSummaryVO1();
+      if ( summaryVo == null )
+      {
+        throw XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
+      }
+
+      // 明細のボタンを非表示に設定
+      ControlBtn( XxcsoContractConstants.CONSTANT_COM_KBN2 );
+    }
+  }
+
+  /*****************************************************************************
+   * 参照SP専決書番号項目エラーチェック処理です。
+   * @return returnValue
+   * @throw  OAException
+   *****************************************************************************
+   */
+  public Boolean spHeaderCheck()
+  {
+    Boolean returnValue = Boolean.TRUE;
+
+    // XxcsoContractNewVO1インスタンスの取得
+    XxcsoContractNewVOImpl newVo = getXxcsoContractNewVO1();
+    if ( newVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoContractNewVOImpl");
+    }
+
+    XxcsoContractNewVORowImpl newRow = (XxcsoContractNewVORowImpl)newVo.first();
+    if ( newRow == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractNewVORowImpl");
+    }
+
+    //未入力チェック
+    if ( newRow.getSpDecisionNumber() == null )
+    {
+      mMessage
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00005,
+            XxcsoConstants.TOKEN_COLUMN,
+            XxcsoContractConstants.MSG_SP_DECISION_NUMBER
+          );
+      returnValue = Boolean.FALSE;
+    }
+    else
+    {
+      // XxcsoContractAuthorityCheckVO1インスタンスの取得
+      XxcsoContractAuthorityCheckVOImpl checkVo
+        = getXxcsoContractAuthorityCheckVO1();
+      if ( checkVo == null )
+      {
+        throw XxcsoMessage.createInstanceLostError
+          ("XxcsoContractAuthorityCheckVOImpl");
+      }
+      //権限チェックパッケージCALL
+      checkVo.getAuthority(newRow.getSpDecisionHeaderId());
+
+      XxcsoContractAuthorityCheckVORowImpl checkRow
+        = (XxcsoContractAuthorityCheckVORowImpl)checkVo.first();
+
+      if ( checkRow == null )
+      {
+        throw XxcsoMessage.createInstanceLostError
+          ("XxcsoContractAuthorityCheckVORowImpl");
+      }
+      // 権限エラー
+      if ( XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
+             checkRow.getAuthority()) )
+      {
+        mMessage
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00232,
+              XxcsoConstants.TOKEN_REF_OBJECT,
+              XxcsoContractConstants.MSG_SP_DECISION,
+              XxcsoConstants.TOKEN_CRE_OBJECT,
+              XxcsoContractConstants.MSG_CONTRACT
+            );
+        returnValue = Boolean.FALSE;
+      }
+    }
+    return returnValue;
+  }
+
+  /*****************************************************************************
+   * 進むボタンを押下した際の処理です。
+   * @return returnValue
+   * @throw  OAException
+   *****************************************************************************
+   */
+  public void executeSearch()
+  {
+    // 検索条件取得
+    XxcsoContractQueryTermsVOImpl termsVo = getXxcsoContractQueryTermsVO1();
+    if ( termsVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError
+        ("XxcsoContractQueryTermsVOImpl");
+    }
+
+    XxcsoContractQueryTermsVORowImpl termsRow
+      = (XxcsoContractQueryTermsVORowImpl)termsVo.first();
+    if ( termsRow == null )
+    {
+      throw XxcsoMessage.createInstanceLostError
+        ("XxcsoContractQueryTermsVORowImpl");
+    }
+
+    XxcsoContractSummaryVOImpl summaryVo = getXxcsoContractSummaryVO1();
+    if ( summaryVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
+    }
+
+    //検索条件が全て設定されていない場合はエラー
+    if ( (termsRow.getContractNumber() == null ) &&
+         (termsRow.getInstallAccountNumber() == null) &&
+         (termsRow.getInstallpartyName() == null) )
+    {
+      throw
+        XxcsoMessage.createErrorMessage(XxcsoConstants.APP_XXCSO1_00041);
+    }
+    else
+    {
+      // 検索実行
+      summaryVo.initQuery(
+        termsRow.getContractNumber(),
+        termsRow.getInstallAccountNumber(),
+        termsRow.getInstallpartyName()
+      );
+
+     // 件数チェック(firstでnullチェック)
+     XxcsoContractSummaryVORowImpl summaryRow
+      = (XxcsoContractSummaryVORowImpl)summaryVo.first();
+
+     if ( summaryRow != null )
+     {
+      //検索結果がある場合はボタンを使用可にする
+      ControlBtn( XxcsoContractConstants.CONSTANT_COM_KBN1 );
+     }
+     else
+     {
+      //それ以外はボタンを使用不可にする
+      ControlBtn( XxcsoContractConstants.CONSTANT_COM_KBN2 );
+     }
+    }
+  }
+
+  /*****************************************************************************
+   * 消去ボタンを押下した際の処理です。
+   * @throw OAException
+   *****************************************************************************
+   */
+  public void ClearBtn()
+  {
+    // 検索条件初期化
+    XxcsoContractQueryTermsVOImpl termsVo = getXxcsoContractQueryTermsVO1();
+    if ( termsVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractQueryTermsVOImpl");
+    }
+    termsVo.executeQuery();
+  }
+
+  /*****************************************************************************
+   * 明細エラーチェック処理です。
+   * @param  mode
+   * @return returnValue
+   * @throw  OAException
+   *****************************************************************************
+   */
+  public Boolean selCheck(String mode)
+  {
+    Boolean returnValue = Boolean.TRUE;
+
+    //検索結果から選択されているレコードを判定し、パラメータとして返す
+    XxcsoContractSummaryVOImpl summaryVo = getXxcsoContractSummaryVO1();
+    if ( summaryVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
+    }
+
+    XxcsoContractSummaryVORowImpl summaryRow
+      = (XxcsoContractSummaryVORowImpl)summaryVo.first();
+
+    if ( summaryRow == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVORowImpl");
+    }
+
+    //ループカウント用
+    int i = 0;
+    //権限エラー番号
+    String errorno = null;
+
+    //明細選択チェック
+    while ( summaryRow != null )
+    {
+      if ( "Y".equals(summaryRow.getSelectFlag()) )
+      {
+        //チェックカウント
+        i = ++i;
+
+        // XxcsoContractAuthorityCheckVO1インスタンスの取得
+        XxcsoContractAuthorityCheckVOImpl checkVo
+          = getXxcsoContractAuthorityCheckVO1();
+        if ( checkVo == null )
+        {
+          throw XxcsoMessage.createInstanceLostError
+            ("XxcsoContractAuthorityCheckVOImpl");
+        }
+
+        //権限チェックパッケージCALL
+        checkVo.getAuthority(
+          summaryRow.getSpDecisionHeaderId()
+        );
+
+        XxcsoContractAuthorityCheckVORowImpl checkRow
+          = (XxcsoContractAuthorityCheckVORowImpl)checkVo.first();
+
+        if ( checkRow == null )
+        {
+          throw XxcsoMessage.createInstanceLostError
+            ("XxcsoContractAuthorityCheckVORowImpl");
+        }
+        //エラーとなったSP専決ヘッダIDを退避
+        if ( XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
+               checkRow.getAuthority()) )
+        {
+          errorno = summaryRow.getSpDecisionHeaderNum();
+        }
+
+        // PDF作成時のエラーチェック
+        if ( XxcsoContractConstants.CONSTANT_COM_KBN3.equals(mode) )
+        {
+          // フォーマットチェック
+          if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(
+                 summaryRow.getContractFormat())
+             )
+          {
+            mMessage
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00448
+                );
+            returnValue = Boolean.FALSE;
+          }
+        }
+        // コピー作成ボタンのマスタ連携チェック
+        if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) &&
+             XxcsoContractConstants.CONSTANT_COM_KBN1.equals(
+               summaryRow.getStatuscd()) &&
+             XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
+               summaryRow.getCooperateFlag())
+             )
+        {
+          mMessage
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00397
+              );
+          returnValue = Boolean.FALSE;
+        }
+      }
+      summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
+    }
+
+    //mode＝コピー作成:1,詳細:2,PDF作成:3
+    // PDF作成選択で未選択の場合
+    if ( ( i == 0 ) &&
+         ( XxcsoContractConstants.CONSTANT_COM_KBN3.equals(mode) ) )
+    {
+      mMessage
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00039,
+            XxcsoConstants.TOKEN_PARAM2,
+            XxcsoContractConstants.MSG_CONTRACT
+          );
+      returnValue = Boolean.FALSE;
+    }
+    // 未選択or複数行選択の場合
+    else if ( ( i == 0 ) || ( i > 1 ) )
+    {
+      // コピー作成
+      if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) )
+      {
+        mMessage
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00037,
+              XxcsoConstants.TOKEN_BUTTON,
+              XxcsoContractConstants.MSG_COPY_CREATE
+            );
+        returnValue = Boolean.FALSE;
+      }
+      // 詳細
+      else if ( XxcsoContractConstants.CONSTANT_COM_KBN2.equals(mode) )
+      {
+        mMessage
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00037,
+              XxcsoConstants.TOKEN_BUTTON,
+              XxcsoContractConstants.MSG_DETAILS
+            );
+        returnValue = Boolean.FALSE;
+      }
+    }
+
+    //権限エラー
+    if ( ( i == 1 ) && ( errorno != null  ) )
+    {
+      // コピー作成
+      if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(mode) )
+      {
+        mMessage
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00232,
+              XxcsoConstants.TOKEN_REF_OBJECT,
+              XxcsoContractConstants.MSG_SP_DECISION,
+              XxcsoConstants.TOKEN_CRE_OBJECT,
+              XxcsoContractConstants.MSG_CONTRACT
+            );
+        returnValue = Boolean.FALSE;
+      }
+      // PDF作成
+      else if ( XxcsoContractConstants.CONSTANT_COM_KBN3.equals(mode) )
+      {
+        mMessage
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00232,
+              XxcsoConstants.TOKEN_REF_OBJECT,
+              XxcsoContractConstants.MSG_CONTRACT,
+              XxcsoConstants.TOKEN_CRE_OBJECT,
+              XxcsoContractConstants.MSG_PDF_CREATE
+            );
+        returnValue = Boolean.FALSE;
+      }
+    }
+
+    //先頭行にカーソルを戻す
+    summaryVo.first();
+
+    return returnValue;
+  }
+
+  /*****************************************************************************
+   * 契約書作成ボタンを押下した際のURLパラメータ取得処理です。
+   * @throw  OAException
+   * @return params
+   *****************************************************************************
+   */
+  public HashMap getUrlParamNew()
+  {
+    // 検索条件取得
+    XxcsoContractNewVOImpl newVo = getXxcsoContractNewVO1();
+    if ( newVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractNewVOImpl");
+    }
+    
+    XxcsoContractNewVORowImpl newRow
+      = (XxcsoContractNewVORowImpl)newVo.first();
+    if ( newRow == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractNewVORowImpl");
+    }
+
+    HashMap params = new HashMap();
+    // SP専決ヘッダID
+    params.put(
+      XxcsoConstants.TRANSACTION_KEY1,
+      newRow.getSpDecisionHeaderId()
+    );
+
+    return params; 
+  }
+
+  /*****************************************************************************
+   * コピー作成ボタンを押下した際のURLパラメータ取得処理です。
+   * @throw  OAException
+   * @return params
+   *****************************************************************************
+   */
+  public HashMap getUrlParamCopy()
+  {
+    //検索結果から選択されているレコードを判定し、パラメータとして返す
+    XxcsoContractSummaryVOImpl summaryVo = getXxcsoContractSummaryVO1();
+    if ( summaryVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
+    }
+
+    XxcsoContractSummaryVORowImpl summaryRow
+      = (XxcsoContractSummaryVORowImpl)summaryVo.first();
+
+    HashMap params = new HashMap();
+
+    while ( summaryRow != null )
+    {
+      if ( "Y".equals(summaryRow.getSelectFlag()) )
+      {
+        // XxcsoContractAuthorityCheckVO1インスタンスの取得
+        XxcsoContractAuthorityCheckVOImpl checkVo
+          = getXxcsoContractAuthorityCheckVO1();
+        if ( checkVo == null )
+        {
+          throw XxcsoMessage.createInstanceLostError
+            ("XxcsoContractAuthorityCheckVOImpl");
+        }
+        // 処理区分
+        params.put(
+          XxcsoConstants.EXECUTE_MODE,
+          XxcsoContractConstants.CONSTANT_COM_KBN2
+        );
+        // SP専決ヘッダID
+        params.put(
+          XxcsoConstants.TRANSACTION_KEY1,
+          summaryRow.getSpDecisionHeaderId()
+        );
+        // 自動販売機設置契約書ID
+        params.put(
+          XxcsoConstants.TRANSACTION_KEY2,
+          summaryRow.getContractManagementId()
+        );
+      }
+      summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
+    }
+    return params; 
+  }
+
+  /*****************************************************************************
+   * 詳細ボタンを押下した際のURLパラメータ取得処理です。
+   * @throw  OAException
+   * @return params
+   *****************************************************************************
+   */
+  public HashMap getUrlParamDetails()
+  {
+    //検索結果から選択されているレコードを判定し、パラメータとして返す
+    XxcsoContractSummaryVOImpl summaryVo = getXxcsoContractSummaryVO1();
+    if ( summaryVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
+    }
+
+    XxcsoContractSummaryVORowImpl summaryRow
+      = (XxcsoContractSummaryVORowImpl)summaryVo.first();
+
+    HashMap params = new HashMap();
+
+    while ( summaryRow != null )
+    {
+      if ( "Y".equals(summaryRow.getSelectFlag()) )
+      {
+        // XxcsoContractAuthorityCheckVO1インスタンスの取得
+        XxcsoContractAuthorityCheckVOImpl checkVo
+          = getXxcsoContractAuthorityCheckVO1();
+        if ( checkVo == null )
+        {
+          throw XxcsoMessage.createInstanceLostError
+            ("XxcsoContractAuthorityCheckVOImpl");
+        }
+        // 処理区分
+        params.put(
+          XxcsoConstants.EXECUTE_MODE,
+          XxcsoContractConstants.CONSTANT_COM_KBN1
+        );
+        // SP専決ヘッダID
+        params.put(
+          XxcsoConstants.TRANSACTION_KEY1,
+          summaryRow.getSpDecisionHeaderId()
+        );
+        // 自動販売機設置契約書ID
+        params.put(
+          XxcsoConstants.TRANSACTION_KEY2,
+          summaryRow.getContractManagementId()
+        );
+      }
+      summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
+    }
+    return params; 
+  }
+
+  /*****************************************************************************
+   * コピー作成、詳細、PDF作成ボタンの制御処理です。
+   * @throw OAException
+   *****************************************************************************
+   */
+  public void ControlBtn(String contbtn)
+  {
+      XxcsoContractRenderVOImpl renderVo = getXxcsoContractRenderVO1();
+      if ( renderVo == null )
+      {
+        throw XxcsoMessage.createInstanceLostError
+          ("XxcsoContractRenderVOImpl");
+      }
+
+      XxcsoContractRenderVORowImpl renderRow
+        = (XxcsoContractRenderVORowImpl)renderVo.first();
+      if ( renderRow == null )
+      {
+        throw XxcsoMessage.createInstanceLostError
+          ("XxcsoContractRenderVORowImpl");
+      }
+      if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(contbtn) )
+      {
+        renderRow.setContractRender(Boolean.TRUE); // 表示
+      }
+      else
+      {
+        renderRow.setContractRender(Boolean.FALSE); // 非表示
+      }
+  }
+
+  /*****************************************************************************
+   * 契約書印刷ボタン押下時処理
+   * @return OAException 正常終了メッセージ
+   *****************************************************************************
+   */
+  public void handlePdfCreateButton()
+  {
+
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    List errorList = new ArrayList();
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoContractSummaryVOImpl summaryVo = getXxcsoContractSummaryVO1();
+    if ( summaryVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
+    }
+
+    XxcsoContractSummaryVORowImpl summaryRow
+      = (XxcsoContractSummaryVORowImpl)summaryVo.first();
+
+    NUMBER requestId = null;
+    OracleCallableStatement stmt = null;
+
+    while ( summaryRow != null )
+    {
+      if ( "Y".equals(summaryRow.getSelectFlag()) )
+      {
+        // 見積書印刷PGをCALL
+        requestId = null;
+        stmt = null;
+
+        try
+        {
+          StringBuffer sql = new StringBuffer(100);
+          sql.append("BEGIN");
+          sql.append("  :1 := fnd_request.submit_request(");
+          sql.append("         application       => 'XXCSO'");
+          sql.append("        ,program           => 'XXCSO010A04C'");
+          sql.append("        ,description       => NULL");
+          sql.append("        ,start_time        => NULL");
+          sql.append("        ,sub_request       => FALSE");
+          sql.append("        ,argument1         => :2");
+          sql.append("       );");
+          sql.append("END;");
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.NUMBER);
+          stmt.setString(2, summaryRow.getContractManagementId().stringValue());
+
+          stmt.execute();
+
+          requestId = stmt.getNUMBER(1);
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoContractConstants.TOKEN_VALUE_PDF_OUT
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+
+        if ( NUMBER.zero().equals(requestId) )
+        {
+          try
+          {
+            StringBuffer sql = new StringBuffer(50);
+            sql.append("BEGIN fnd_message.retrieve(:1); END;");
+
+            stmt
+              = (OracleCallableStatement)
+                  txn.createCallableStatement(sql.toString(), 0);
+
+            stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+
+            stmt.execute();
+
+            String errmsg = stmt.getString(1);
+
+            throw
+              XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00310
+               ,XxcsoConstants.TOKEN_CONC
+               ,XxcsoContractConstants.TOKEN_VALUE_PDF_OUT
+               ,XxcsoConstants.TOKEN_CONCMSG
+               ,errmsg
+              );
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+            throw
+              XxcsoMessage.createSqlErrorMessage(
+                e
+               ,XxcsoContractConstants.TOKEN_VALUE_PDF_OUT
+              );
+          }
+          finally
+          {
+            try
+            {
+              if ( stmt != null )
+              {
+                stmt.close();
+              }
+            }
+            catch ( SQLException e )
+            {
+              XxcsoUtils.unexpected(txn, e);
+            }
+          }
+        }
+        // 正常終了メッセージ
+        OAException error
+          = XxcsoMessage.createConfirmMessage(
+              XxcsoConstants.APP_XXCSO1_00001
+             ,XxcsoConstants.TOKEN_RECORD
+             ,XxcsoContractConstants.TOKEN_VALUE_PDF_OUT
+                + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
+                + XxcsoConstants.TOKEN_VALUE_REQUEST_ID
+                + requestId.stringValue()
+                + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
+             ,XxcsoConstants.TOKEN_ACTION
+             ,XxcsoContractConstants.TOKEN_VALUE_START
+            );
+        errorList.add(error);
+
+      }
+      summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
+    }
+
+    // カーソルを先頭にする
+    summaryVo.first();
+
+    commit();
+
+    if ( errorList.size() > 0 )
+    {
+      OAException.raiseBundledOAException(errorList);
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+  }
+
+  /*****************************************************************************
+   * マスタ連携チェック処理です。
+   * @return returnValue
+   * @throw  OAException
+   *****************************************************************************
+   */
+  public Boolean handleCooperateChk()
+  {
+    Boolean returnValue = Boolean.TRUE;
+
+    //インスタンス取得
+    XxcsoContractSummaryVOImpl summaryVo = getXxcsoContractSummaryVO1();
+    if ( summaryVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVOImpl");
+    }
+
+    XxcsoContractSummaryVORowImpl summaryRow
+      = (XxcsoContractSummaryVORowImpl)summaryVo.first();
+
+    if ( summaryRow == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractSummaryVORowImpl");
+    }
+
+    //明細選択チェック
+    while ( summaryRow != null )
+    {
+      if ( "Y".equals(summaryRow.getSelectFlag()) )
+      {
+        // マスタ連携チェック
+        if ( XxcsoContractConstants.CONSTANT_COM_KBN1.equals(
+               summaryRow.getStatuscd()) &&
+             XxcsoContractConstants.CONSTANT_COM_KBN0.equals(
+               summaryRow.getCooperateFlag())
+           )
+        {
+          // 詳細、PDF作成は確認ダイアログを表示
+          mMessage
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00398
+              );
+          returnValue = Boolean.FALSE;
+        }
+      }
+      summaryRow = (XxcsoContractSummaryVORowImpl)summaryVo.next();
+    }
+
+    //先頭行にカーソルを戻す
+    summaryVo.first();
+
+    return returnValue;
+  }
+
+  /*****************************************************************************
+   * 確認ダイアログOKボタン押下時処理（PDF）
+   * （ダイアログ未出力時も登録処理としてCallされる）
+   *****************************************************************************
+   */
+  public void handleConfirmPdfOkButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+    XxcsoUtils.debug(txn, "[START]");
+
+    XxcsoUtils.debug(txn, "PDF出力処理");
+    this.handlePdfCreateButton();
+
+    XxcsoUtils.debug(txn, "[END]");
+
+  }
+
+  /*****************************************************************************
+   * 出力メッセージ
+   *****************************************************************************
+   */
+  private OAException mMessage = null;
+
+  /*****************************************************************************
+   * メッセージを取得します。
+   * @return mMessage
+   *****************************************************************************
+   */
+  public OAException getMessage()
+  {
+    return mMessage;
+  }
+
+  /*****************************************************************************
+   * コミット処理
+   *****************************************************************************
+   */
+  private void commit()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    getTransaction().commit();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+
+  /**
+   * 
+   * Container's getter for XxcsoContractQueryTermsVO1
+   */
+  public XxcsoContractQueryTermsVOImpl getXxcsoContractQueryTermsVO1()
+  {
+    return (XxcsoContractQueryTermsVOImpl)findViewObject("XxcsoContractQueryTermsVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoContractSummaryVO1
+   */
+  public XxcsoContractSummaryVOImpl getXxcsoContractSummaryVO1()
+  {
+    return (XxcsoContractSummaryVOImpl)findViewObject("XxcsoContractSummaryVO1");
+  }
+
+  /**
+   * 
+   * Sample main for debugging Business Components code using the tester.
+   */
+  public static void main(String[] args)
+  {
+    launchTester("itoen.oracle.apps.xxcso.xxcso010001j.server", "XxcsoContractSearchAMLocal");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoContractNewVO1
+   */
+  public XxcsoContractNewVOImpl getXxcsoContractNewVO1()
+  {
+    return (XxcsoContractNewVOImpl)findViewObject("XxcsoContractNewVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoContractAuthorityCheckVO1
+   */
+  public XxcsoContractAuthorityCheckVOImpl getXxcsoContractAuthorityCheckVO1()
+  {
+    return (XxcsoContractAuthorityCheckVOImpl)findViewObject("XxcsoContractAuthorityCheckVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoContractRenderVO1
+   */
+  public XxcsoContractRenderVOImpl getXxcsoContractRenderVO1()
+  {
+    return (XxcsoContractRenderVOImpl)findViewObject("XxcsoContractRenderVO1");
+  }
+
+
+}

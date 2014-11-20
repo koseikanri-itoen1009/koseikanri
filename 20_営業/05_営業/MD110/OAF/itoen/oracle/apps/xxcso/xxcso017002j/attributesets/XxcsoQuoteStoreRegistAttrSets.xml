@@ -1,0 +1,66 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*注意
+* KROWN:124532により、1ファイルが32Kバイトを超えないようにしてください。
+* 超えてしまう場合は、ファイルを分割してください。
+
+詳細
+帳合問屋用見積画面の属性セットファイルです。
+
+修正履歴
+2009/01/07  及川領        新規作成-->
+<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <attributeSet docName="PageLayoutRN" windowTitle="帳合問屋用見積入力画面" title="帳合問屋用見積入力画面"/>
+   <attributeSet docName="CancelButton" prompt="取消"/>
+   <attributeSet docName="CopyCreateButton" prompt="コピーの作成"/>
+   <attributeSet docName="InvalidityButton" prompt="無効にする"/>
+   <attributeSet docName="ApplicableButton" prompt="適用"/>
+   <attributeSet docName="RevisionButton" prompt="版の改訂"/>
+   <attributeSet docName="FixedButton" prompt="確定"/>
+   <attributeSet docName="QuoteSheetPrintButton" prompt="見積書印刷"/>
+   <attributeSet docName="CsvCreateButton" prompt="CSV作成"/>
+   <attributeSet docName="CsvDownHdrRN" text="CSVダウンロード"/>
+   <attributeSet docName="FileName" prompt="ファイル名"/>
+   <attributeSet docName="QuoteHeaderHdrRN" text="見積ヘッダー情報"/>
+   <attributeSet docName="QuoteTypeName" prompt="見積種別"/>
+   <attributeSet docName="CsvDownTblRN" shortDesc="CSVダウンロード"/>
+   <attributeSet docName="ReferenceQuoteNumber" prompt="参照用見積番号"/>
+   <attributeSet docName="StoreName" prompt="問屋帳合先名"/>
+   <attributeSet docName="QuoteNumber" prompt="見積番号"/>
+   <attributeSet docName="QuoteRevisionNumber" prompt="版"/>
+   <attributeSet docName="PublishDate" prompt="発行日"/>
+   <attributeSet docName="AccountNumber" prompt="顧客コード"/>
+   <attributeSet docName="PartyName" prompt="顧客名"/>
+   <attributeSet docName="EmployeeNumber" prompt="担当者コード"/>
+   <attributeSet docName="EmployeeName" prompt="担当者名"/>
+   <attributeSet docName="BaseCode" prompt="拠点コード"/>
+   <attributeSet docName="BaseName" prompt="拠点名"/>
+   <attributeSet docName="DeliveryPlace" prompt="納入場所"/>
+   <attributeSet docName="PaymentCondition" prompt="支払条件"/>
+   <attributeSet docName="QuoteSubmitName" prompt="見積書提出先名"/>
+   <attributeSet docName="Status" prompt="ステータス"/>
+   <attributeSet docName="SalesUnitType" prompt="販売先単価区分"/>
+   <attributeSet docName="DelivPriceTaxType" prompt="税区分"/>
+   <attributeSet docName="UnitType" prompt="問屋単価区分"/>
+   <attributeSet docName="SpecialNote" prompt="特記事項"/>
+   <attributeSet docName="QuoteLinesHdrRN" text="見積明細情報"/>
+   <attributeSet docName="InventoryItemIdColHdr" prompt="商品コード"/>
+   <attributeSet docName="InventoryItemNameColHdr" prompt="商品名"/>
+   <attributeSet docName="QuoteDivColHdr" prompt="見積区分"/>
+   <attributeSet docName="UsuallyDelivPriceColHdr" prompt="通常店納価格"/>
+   <attributeSet docName="ThisTimeDelivPriceColHdr" prompt="今回店納価格"/>
+   <attributeSet docName="QuotationPriceColHdr" prompt="建値"/>
+   <attributeSet docName="SalesDiscountPriceColHdr" prompt="売上値引"/>
+   <attributeSet docName="UsuallNetPriceColHdr" prompt="通常NET価格"/>
+   <attributeSet docName="ThisTimeNetPriceColHdr" prompt="今回NET価格"/>
+   <attributeSet docName="AmountOfMarginColHdr" prompt="マージン額"/>
+   <attributeSet docName="MarginRateColHdr" prompt="マージン率"/>
+   <attributeSet docName="QuoteStartDateColHdr" prompt="期間（開始）"/>
+   <attributeSet docName="QuoteEndDateColHdr" prompt="期間（終了）"/>
+   <attributeSet docName="LineOrderColHdr" prompt="並び順"/>
+   <attributeSet docName="RemarksColHdr" prompt="備考"/>
+   <attributeSet docName="ResultTblRN" shortDesc="参照用見積番号選択"/>
+   <attributeSet docName="XxcsoAccountStoreTIRN" shortDesc="顧客選択"/>
+   <attributeSet docName="CustomerClassName" prompt="顧客区分名"/>
+   <attributeSet docName="Percent" prompt="%"/>
+</package>

@@ -1,0 +1,578 @@
+/*============================================================================
+* ファイル名 : XxcsoConstants
+* 概要説明   : 【アドオン：営業・営業領域】共通固定値クラス
+* バージョン : 1.0
+*============================================================================
+* 修正履歴
+* 日付       Ver. 担当者       修正内容
+* ---------- ---- ------------ ----------------------------------------------
+* 2008-11-05 1.0  SCS小川浩    新規作成
+* 2008-11-11 1.0  SCS及川領    メッセージ、トークン、機能ID追加
+* 2008-11-12 1.0  SCS柳平直人  メッセージ、トークン、機能ID追加
+* 2008-11-21 1.0  SCS及川領    メッセージ、トークン追加
+* 2008-11-24 1.0  SCS柳平直人  メッセージ、プロファイルオプション値追加
+* 2008-11-28 1.0  SCS小川浩    トークン値追加
+* 2008-12-03 1.0  SCS小川浩    トークン追加（TOKEN_STRINGS）
+* 2008-12-03 1.0  SCS小川浩    トークン追加（TOKEN_DIGIT）
+* 2008-12-03 1.0  SCS小川浩    メッセージ追加（APP_XXCSO1_00320）
+* 2008-12-03 1.0  SCS小川浩    メッセージ追加（APP_XXCSO1_00009）
+* 2008-12-03 1.0  SCS小川浩    メッセージ追加（APP_XXCSO1_00249）
+* 2008-12-05 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_ACCT_MONTHLY_PLAN）
+* 2008-12-05 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_ACCT_DAILY_PLAN）
+* 2008-12-03 1.0  SCS小川浩    メッセージ追加（APP_XXCSO1_00042）
+* 2008-12-07 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00335）
+* 2008-12-07 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00336）
+* 2008-12-07 1.0  SCS小川浩    デバッグオプション追加
+* 2008-12-07 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_REGIST）
+* 2008-12-07 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_ROUTE_NO）
+* 2008-12-07 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_INIT_ACCT_SALES_TXN）
+* 2008-12-07 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_DAY）
+* 2008-12-08 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00073）
+* 2008-12-08 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00075）
+* 2008-12-08 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00319）
+* 2008-12-08 1.0  SCS及川領    トークン値追加（TOKEN_EIGYO）
+* 2008-12-08 1.0  SCS及川領    トークン値追加（BASE_VALUE）
+* 2008-12-08 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00341）
+* 2008-12-09 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_SALES_LINE）
+* 2008-12-09 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_DELETE）
+* 2008-12-09 1.0  SCS小川浩    機能ID追加（FUNC_SALES_REGIST_PG）
+* 2008-12-09 1.0  SCS小川浩    機能ID追加（ASN_OPPTYDETPG）
+* 2008-12-09 1.0  SCS小川浩    メニューID追加（ASN_MAIN_MENU）
+* 2008-12-10 1.0  SCS小川浩    操作モード追加
+* 2008-12-10 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_APPROVAL_REQUEST）
+* 2008-12-10 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_SEP_LEFT）
+* 2008-12-10 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_SEP_RIGHT）
+* 2008-12-10 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_SALES_HEADER）
+* 2008-12-10 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00248）
+* 2008-12-10 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00314）
+* 2008-12-10 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00315）
+* 2008-12-10 1.0  SCS及川領    トークン値追加（TOKEN_ENTRY）
+* 2008-12-10 1.0  SCS及川領    トークン値追加（TOKEN_MAX_VALUE）
+* 2008-12-10 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00125）
+* 2008-12-10 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00273）
+* 2008-12-10 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00010）
+* 2008-12-10 1.0  SCS小川浩    トークン値追加（TOKEN_MAX_SIZE）
+* 2008-12-12 1.0  SCS小川浩    トークン値追加（TOKEN_INDEX）
+* 2008-12-12 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00403）
+* 2008-12-12 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00404）
+* 2008-12-12 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00405）
+* 2008-12-12 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00406）
+* 2008-12-12 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00407）
+* 2008-12-12 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00408）
+* 2008-12-12 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00409）
+* 2008-12-12 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00410）
+* 2008-12-12 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00126）
+* 2008-12-13 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_SAVE）
+* 2008-12-16 1.0  SCS小川浩    機能ID追加（FUNC_SP_DECISION_SEARCH_PG）
+* 2008-12-16 1.0  SCS小川浩    機能ID追加（FUNC_SP_DECISION_REGIST_PG）
+* 2008-12-16 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00304）
+* 2008-12-18 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00006）
+* 2008-12-18 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00007）
+* 2008-12-18 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00008）
+* 2008-12-18 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00451）
+* 2008-12-18 1.0  SCS及川領    トークン追加（VALUES）
+* 2008-12-18 1.0  SCS及川領    トークン追加（PERIOD）
+* 2008-12-18 1.0  SCS及川領    トークン追加（PARAM9）
+* 2008-12-18 1.0  SCS及川領    トークン値追加（TOKEN_VALUE_QUOTE_NUMBER）
+* 2008-12-18 1.0  SCS及川領    トークン値追加（TOKEN_VALUE_QUOTE_LINE）
+* 2008-12-19 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00451）
+* 2008-12-19 1.0  SCS柳平直人  トークン値追加（TOKEN_VALUE_REGIST）
+* 2008-12-19 1.0  SCS柳平直人  機能ID追加（FUNC_PV_SEARCH_PG）
+* 2008-12-19 1.0  SCS柳平直人  機能ID追加（FUNC_PV_REGIST_PG）
+* 2008-12-19 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_SP_DECISION_NUM）
+* 2008-12-19 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_SP_DECISION_HEADER）
+* 2008-12-19 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_SP_DECISION_LINE）
+* 2008-12-19 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_SP_DECISION_CUST）
+* 2008-12-19 1.0  SCS朴邦彦    メッセージ追加（APP-XXCSO1-00454）
+* 2008-12-20 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_DELIMITER2）
+* 2008-12-20 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00461）
+* 2008-12-20 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00462）
+* 2008-12-20 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00463）
+* 2008-12-20 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00464）
+* 2008-12-23 1.0  SCS張吉      メッセージ追加（APP-XXCSO1-00466）
+* 2008-12-23 1.0  SCS張吉      トークン値追加（TOKEN_QUOTE_NUMBER）
+* 2008-12-23 1.0  SCS張吉      トークン値追加（TOKEN_QUOTE_R_N）
+* 2008-12-23 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_FULL_VD_SP_DECISION）
+* 2008-12-23 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_INITIALIZE）
+* 2008-12-18 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00455）
+* 2008-12-18 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00460）
+* 2008-12-18 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00467）
+* 2008-12-18 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00479）
+* 2008-12-28 1.0  SCS柳平直人  トークン値追加（TOKEN_VALUE_PV_EXTRACT_TERM_DEF）
+* 2008-12-28 1.0  SCS柳平直人  トークン値追加（TOKEN_VALUE_PV_DEF_VIEW_ID）
+* 2008-12-28 1.0  SCS柳平直人  トークン値追加（TOKEN_VALUE_PV）
+* 2008-12-28 1.0  SCS柳平直人  トークン値追加（TOKEN_VALUE_DELIMITER3）
+* 2008-12-28 1.0  SCS柳平直人  機能ID追加（FUNC_INSTALL_BASE_PV_SEARCH_PG）
+* 2008-12-28 1.0  SCS柳平直人  機能ID追加（FUNC_CSI_SEARCH_PROD）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00300）
+* 2008-12-26 1.0  SCS小川浩    トークン追加（TOKEN_PRICE）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00425）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00426）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00286）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00287）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00288）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00289）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00290）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00291）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00292）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00293）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00294）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00295）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00298）
+* 2008-12-26 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00299）
+* 2008-12-27 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00480）
+* 2008-12-27 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00481）
+* 2008-12-27 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00482）
+* 2008-12-27 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00483）
+* 2008-12-27 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00484）
+* 2008-12-27 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00485）
+* 2008-12-27 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00486）
+* 2008-12-26 1.0  SCS小川浩    トークン追加（TOKEN_REGION）
+* 2008-12-28 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00303）
+* 2008-12-28 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00301）
+* 2008-12-28 1.0  SCS小川浩    トークン追加（TOKEN_VENDOR）
+* 2008-12-29 1.0  SCS小川浩    トークン追加（TOKEN_MIN_VALUE）
+* 2008-12-29 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00487）
+* 2008-12-29 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00488）
+* 2008-12-29 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00489）
+* 2008-12-29 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00490）
+* 2008-12-29 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00491）
+* 2008-12-30 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00306）
+* 2008-12-30 1.0  SCS小川浩    トークン追加（TOKEN_FORWARD）
+* 2008-01-05 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00494）
+* 2009-01-05 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_RESOURCE_NO）
+* 2009-01-06 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00474）
+* 2009-01-06 1.0  SCS小川浩    トークン追加（TOKEN_ACCOUNT）
+* 2009-01-06 1.0  SCS小川浩    機能ID追加（FUNC_RTN_RSRC_BULK_UPDATE_PG）
+* 2009-01-08 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00498）
+* 2009-01-08 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00499）
+* 2009-01-16 1.0  SCS富尾和基  メッセージ追加（APP-XXCSO1-00046）
+* 2009-01-16 1.0  SCS富尾和基  メッセージ追加（APP-XXCSO1-00422）
+* 2009-01-16 1.0  SCS富尾和基  メッセージ追加（APP-XXCSO1-00423）
+* 2009-01-16 1.0  SCS富尾和基  メッセージ追加（APP-XXCSO1-00424）
+* 2009-01-16 1.0  SCS富尾和基  メッセージ追加（APP-XXCSO1-00475）
+* 2009-01-19 1.0  SCS朴邦彦    メッセージ追加（APP-XXCSO1-00312）
+* 2009-01-19 1.0  SCS朴邦彦    メッセージ追加（APP-XXCSO1-00313）
+* 2009-01-20 1.0  SCS朴邦彦    トークン値追加（TOKEN_VALUE_DISTRIBUTE_SALES_PLAN）
+* 2009-01-20 1.0  SCS富尾和基  メッセージ追加（APP-XXCSO1-00514）
+* 2009-01-20 1.0  SCS富尾和基  メッセージ追加（APP-XXCSO1-00515）
+* 2009-01-20 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00310）
+* 2009-01-20 1.0  SCS小川浩    トークン追加（TOKEN_CONC）
+* 2009-01-20 1.0  SCS小川浩    トークン追加（TOKEN_CONCMSG）
+* 2009-01-23 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00520）
+* 2009-01-21 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_CONTRACT_NUMBER）
+* 2009-01-22 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_VENDOR_INFO）
+* 2009-01-22 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_CONTRACTOR_INFO）
+* 2009-01-28 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00044）
+* 2009-01-28 1.0  SCS及川領    機能ID追加（FUNC_DEPT_MONTHLY_PLANS_REGIST_PG）
+* 2009-01-28 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_REQUEST_ID）
+* 2009-01-28 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00521）
+* 2009-01-28 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00522）
+* 2009-01-29 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00115）
+* 2009-01-30 1.0  SCS朴邦彦    機能ID追加（FUNC_SALES_PLAN_BULK_REGIST_PG）
+* 2009-01-30 1.0  SCS朴邦彦    メッセージ追加（APP-XXCSO1-00311）
+* 2009-01-30 1.0  SCS朴邦彦    メッセージ追加（APP-XXCSO1-00316）
+* 2009-01-30 1.0  SCS朴邦彦    メッセージ追加（APP-XXCSO1-00396）
+* 2009-01-30 1.0  SCS朴邦彦    トークン値追加（TOKEN_VALUE_ACCOUNT_NUMBER）
+* 2009-01-30 1.0  SCS朴邦彦    トークン値追加（TOKEN_VALUE_BASE_CODE）
+* 2009-01-30 1.0  SCS朴邦彦    トークン値追加（TOKEN_VALUE_YEAR_MONTH）
+* 2009-01-30 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00074）
+* 2009-01-30 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00526）
+* 2009-01-30 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00527）
+* 2009-01-30 1.0  SCS小川浩    トークン追加（TOKEN_EMSIZE）
+* 2009-01-30 1.0  SCS小川浩    トークン追加（TOKEN_ONEBYTE）
+* 2009-01-30 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00528）
+* 2009-01-30 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00529）
+* 2009-02-03 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00397）
+* 2009-02-03 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00398）
+* 2009-02-03 1.0  SCS及川領    メッセージ追加（APP-XXCSO1-00448）
+* 2009-02-03 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00449）
+* 2009-02-03 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00453）
+* 2009-02-03 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00523）
+* 2009-02-03 1.0  SCS柳平直人  トークン追加（TOKEN_ACCOUNTS）
+* 2009-02-03 1.0  SCS柳平直人  トークン値追加（TOKEN_VALUE_DECISION）
+* 2009-02-03 1.0  SCS柳平直人  トークン値追加（TOKEN_VALUE_CONTRACT_REGIST）
+* 2009-02-04 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00450）
+* 2009-02-05 1.0  SCS小川浩    メッセージ追加（APP-XXCSO1-00530）
+* 2009-02-06 1.0  SCS小川浩    トークン値追加（TOKEN_VALUE_SET_MODULE）
+* 2009-02-09 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00452）
+* 2009-02-09 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00532）
+* 2009-02-16 1.0  SCS柳平直人  メッセージ追加（APP-XXCSO1-00533）
+* 2009-02-24 1.1  SCS柳平直人  [内部障害-030]メッセージ追加（APP-XXCSO1-00546）
+* 2009-03-05 1.1  SCS柳平直人  [CT1-034]メッセージ追加（APP-XXCSO1-00555）
+*============================================================================
+*/
+package itoen.oracle.apps.xxcso.common.util;
+
+/*******************************************************************************
+ * アドオン：営業・営業領域の共通固定値クラスです。
+ * @author  SCS小川浩
+ * @version 1.0
+ *******************************************************************************
+ */
+public class XxcsoConstants 
+{
+  /*****************************************************************************
+   * デバッグオプション（ローカル確認時のみtrueにすること）
+   *****************************************************************************
+   */
+  public static final boolean DEBUG_OPTION       = true;
+  
+  /*****************************************************************************
+   * メッセージ名
+   *****************************************************************************
+   */
+
+  public static final String APP_XXCSO1_00001    = "APP-XXCSO1-00001";
+  public static final String APP_XXCSO1_00002    = "APP-XXCSO1-00002";
+  public static final String APP_XXCSO1_00003    = "APP-XXCSO1-00003";
+  public static final String APP_XXCSO1_00004    = "APP-XXCSO1-00004";
+  public static final String APP_XXCSO1_00005    = "APP-XXCSO1-00005";
+  public static final String APP_XXCSO1_00006    = "APP-XXCSO1-00006";
+  public static final String APP_XXCSO1_00007    = "APP-XXCSO1-00007";
+  public static final String APP_XXCSO1_00008    = "APP-XXCSO1-00008";
+  public static final String APP_XXCSO1_00009    = "APP-XXCSO1-00009";
+  public static final String APP_XXCSO1_00010    = "APP-XXCSO1-00010";
+  public static final String APP_XXCSO1_00014    = "APP-XXCSO1-00014";
+  public static final String APP_XXCSO1_00037    = "APP-XXCSO1-00037";
+  public static final String APP_XXCSO1_00039    = "APP-XXCSO1-00039";
+  public static final String APP_XXCSO1_00040    = "APP-XXCSO1-00040";
+  public static final String APP_XXCSO1_00041    = "APP-XXCSO1-00041";
+  public static final String APP_XXCSO1_00042    = "APP-XXCSO1-00042";
+  public static final String APP_XXCSO1_00044    = "APP-XXCSO1-00044";
+  public static final String APP_XXCSO1_00046    = "APP-XXCSO1-00046";
+  public static final String APP_XXCSO1_00047    = "APP-XXCSO1-00047";
+  public static final String APP_XXCSO1_00074    = "APP-XXCSO1-00074";
+  public static final String APP_XXCSO1_00115    = "APP-XXCSO1-00115";
+  public static final String APP_XXCSO1_00120    = "APP-XXCSO1-00120";
+  public static final String APP_XXCSO1_00121    = "APP-XXCSO1-00121";
+  public static final String APP_XXCSO1_00125    = "APP-XXCSO1-00125";
+  public static final String APP_XXCSO1_00133    = "APP-XXCSO1-00133";
+  public static final String APP_XXCSO1_00126    = "APP-XXCSO1-00126";
+  public static final String APP_XXCSO1_00223    = "APP-XXCSO1-00223";
+  public static final String APP_XXCSO1_00229    = "APP-XXCSO1-00229";
+  public static final String APP_XXCSO1_00232    = "APP-XXCSO1-00232";
+  public static final String APP_XXCSO1_00236    = "APP-XXCSO1-00236";
+  public static final String APP_XXCSO1_00248    = "APP-XXCSO1-00248";
+  public static final String APP_XXCSO1_00249    = "APP-XXCSO1-00249";
+  public static final String APP_XXCSO1_00273    = "APP-XXCSO1-00273";
+  public static final String APP_XXCSO1_00286    = "APP-XXCSO1-00286";
+  public static final String APP_XXCSO1_00287    = "APP-XXCSO1-00287";
+  public static final String APP_XXCSO1_00288    = "APP-XXCSO1-00288";
+  public static final String APP_XXCSO1_00289    = "APP-XXCSO1-00289";
+  public static final String APP_XXCSO1_00290    = "APP-XXCSO1-00290";
+  public static final String APP_XXCSO1_00291    = "APP-XXCSO1-00291";
+  public static final String APP_XXCSO1_00292    = "APP-XXCSO1-00292";
+  public static final String APP_XXCSO1_00293    = "APP-XXCSO1-00293";
+  public static final String APP_XXCSO1_00294    = "APP-XXCSO1-00294";
+  public static final String APP_XXCSO1_00295    = "APP-XXCSO1-00295";
+  public static final String APP_XXCSO1_00298    = "APP-XXCSO1-00298";
+  public static final String APP_XXCSO1_00299    = "APP-XXCSO1-00299";
+  public static final String APP_XXCSO1_00300    = "APP-XXCSO1-00300";
+  public static final String APP_XXCSO1_00301    = "APP-XXCSO1-00301";
+  public static final String APP_XXCSO1_00303    = "APP-XXCSO1-00303";
+  public static final String APP_XXCSO1_00304    = "APP-XXCSO1-00304";
+  public static final String APP_XXCSO1_00306    = "APP-XXCSO1-00306";
+  public static final String APP_XXCSO1_00310    = "APP-XXCSO1-00310";
+  public static final String APP_XXCSO1_00311    = "APP-XXCSO1-00311";
+  public static final String APP_XXCSO1_00312    = "APP-XXCSO1-00312";
+  public static final String APP_XXCSO1_00313    = "APP-XXCSO1-00313";
+  public static final String APP_XXCSO1_00314    = "APP-XXCSO1-00314";
+  public static final String APP_XXCSO1_00315    = "APP-XXCSO1-00315";
+  public static final String APP_XXCSO1_00316    = "APP-XXCSO1-00316";
+  public static final String APP_XXCSO1_00320    = "APP-XXCSO1-00320";
+  public static final String APP_XXCSO1_00335    = "APP-XXCSO1-00335";
+  public static final String APP_XXCSO1_00336    = "APP-XXCSO1-00336";
+  public static final String APP_XXCSO1_00396    = "APP-XXCSO1-00396";
+  public static final String APP_XXCSO1_00397    = "APP-XXCSO1-00397";
+  public static final String APP_XXCSO1_00398    = "APP-XXCSO1-00398";
+  public static final String APP_XXCSO1_00403    = "APP-XXCSO1-00403";
+  public static final String APP_XXCSO1_00404    = "APP-XXCSO1-00404";
+  public static final String APP_XXCSO1_00405    = "APP-XXCSO1-00405";
+  public static final String APP_XXCSO1_00406    = "APP-XXCSO1-00406";
+  public static final String APP_XXCSO1_00407    = "APP-XXCSO1-00407";
+  public static final String APP_XXCSO1_00408    = "APP-XXCSO1-00408";
+  public static final String APP_XXCSO1_00409    = "APP-XXCSO1-00409";
+  public static final String APP_XXCSO1_00410    = "APP-XXCSO1-00410";
+  public static final String APP_XXCSO1_00422    = "APP-XXCSO1-00422";
+  public static final String APP_XXCSO1_00423    = "APP-XXCSO1-00423";
+  public static final String APP_XXCSO1_00424    = "APP-XXCSO1-00424";
+  public static final String APP_XXCSO1_00425    = "APP-XXCSO1-00425";
+  public static final String APP_XXCSO1_00426    = "APP-XXCSO1-00426";
+  public static final String APP_XXCSO1_00448    = "APP-XXCSO1-00448";
+  public static final String APP_XXCSO1_00449    = "APP-XXCSO1-00449";
+  public static final String APP_XXCSO1_00450    = "APP-XXCSO1-00450";
+  public static final String APP_XXCSO1_00451    = "APP-XXCSO1-00451";
+  public static final String APP_XXCSO1_00452    = "APP-XXCSO1-00452";
+  public static final String APP_XXCSO1_00453    = "APP-XXCSO1-00453";
+  public static final String APP_XXCSO1_00454    = "APP-XXCSO1-00454";
+  public static final String APP_XXCSO1_00455    = "APP-XXCSO1-00455";
+  public static final String APP_XXCSO1_00460    = "APP-XXCSO1-00460";
+  public static final String APP_XXCSO1_00461    = "APP-XXCSO1-00461";
+  public static final String APP_XXCSO1_00462    = "APP-XXCSO1-00462";
+  public static final String APP_XXCSO1_00463    = "APP-XXCSO1-00463";
+  public static final String APP_XXCSO1_00464    = "APP-XXCSO1-00464";
+  public static final String APP_XXCSO1_00466    = "APP-XXCSO1-00466";
+  public static final String APP_XXCSO1_00467    = "APP-XXCSO1-00467";
+  public static final String APP_XXCSO1_00474    = "APP-XXCSO1-00474";
+  public static final String APP_XXCSO1_00475    = "APP-XXCSO1-00475";
+  public static final String APP_XXCSO1_00479    = "APP-XXCSO1-00479";
+  public static final String APP_XXCSO1_00480    = "APP-XXCSO1-00480";
+  public static final String APP_XXCSO1_00481    = "APP-XXCSO1-00481";
+  public static final String APP_XXCSO1_00482    = "APP-XXCSO1-00482";
+  public static final String APP_XXCSO1_00483    = "APP-XXCSO1-00483";
+  public static final String APP_XXCSO1_00484    = "APP-XXCSO1-00484";
+  public static final String APP_XXCSO1_00485    = "APP-XXCSO1-00485";
+  public static final String APP_XXCSO1_00486    = "APP-XXCSO1-00486";
+  public static final String APP_XXCSO1_00487    = "APP-XXCSO1-00487";
+  public static final String APP_XXCSO1_00488    = "APP-XXCSO1-00488";
+  public static final String APP_XXCSO1_00489    = "APP-XXCSO1-00489";
+  public static final String APP_XXCSO1_00490    = "APP-XXCSO1-00490";
+  public static final String APP_XXCSO1_00491    = "APP-XXCSO1-00491";
+  public static final String APP_XXCSO1_00494    = "APP-XXCSO1-00494";
+  public static final String APP_XXCSO1_00498    = "APP-XXCSO1-00498";
+  public static final String APP_XXCSO1_00499    = "APP-XXCSO1-00499";
+  public static final String APP_XXCSO1_00514    = "APP-XXCSO1-00514";
+  public static final String APP_XXCSO1_00515    = "APP-XXCSO1-00515";
+  public static final String APP_XXCSO1_00520    = "APP-XXCSO1-00520";
+  public static final String APP_XXCSO1_00521    = "APP-XXCSO1-00521";
+  public static final String APP_XXCSO1_00522    = "APP-XXCSO1-00522";
+  public static final String APP_XXCSO1_00523    = "APP-XXCSO1-00523";
+  public static final String APP_XXCSO1_00526    = "APP-XXCSO1-00526";
+  public static final String APP_XXCSO1_00527    = "APP-XXCSO1-00527";
+  public static final String APP_XXCSO1_00528    = "APP-XXCSO1-00528";
+  public static final String APP_XXCSO1_00529    = "APP-XXCSO1-00529";
+  public static final String APP_XXCSO1_00530    = "APP-XXCSO1-00530";
+  public static final String APP_XXCSO1_00532    = "APP-XXCSO1-00532";
+  public static final String APP_XXCSO1_00533    = "APP-XXCSO1-00533";
+  public static final String APP_XXCSO1_00546    = "APP-XXCSO1-00546";
+  public static final String APP_XXCSO1_00555    = "APP-XXCSO1-00555";
+
+  /*****************************************************************************
+   * トークン名
+   *****************************************************************************
+   */
+  public static final String TOKEN_RECORD        = "RECORD";
+  public static final String TOKEN_ACTION        = "ACTION";
+  public static final String TOKEN_COLUMN        = "COLUMN";
+  public static final String TOKEN_INSTANCE_NAME = "INSTANCE_NAME";
+  public static final String TOKEN_PROF_NAME     = "PROF_NAME";
+  public static final String TOKEN_PROF_VALUE    = "PROF_VALUE";
+  public static final String TOKEN_PARAM1        = "PARAM1";
+  public static final String TOKEN_PARAM2        = "PARAM2";
+  public static final String TOKEN_BUTTON        = "BUTTON";
+  public static final String TOKEN_MODE          = "MODE";
+  public static final String TOKEN_NO            = "NO";
+  public static final String TOKEN_ITEM          = "ITEM";
+  public static final String TOKEN_SIZE          = "SIZE";
+  public static final String TOKEN_MAX_VAL       = "MAX_VAL";
+  public static final String TOKEN_REF_OBJECT    = "REF_OBJECT";
+  public static final String TOKEN_CRE_OBJECT    = "CRE_OBJECT";
+  public static final String TOKEN_OBJECT        = "OBJECT";
+  public static final String TOKEN_ERRMSG        = "ERRMSG";
+  public static final String TOKEN_STRINGS       = "STRINGS";
+  public static final String TOKEN_DIGIT         = "DIGIT";
+  public static final String TOKEN_ENTRY         = "ENTRY";
+  public static final String TOKEN_MAX_VALUE     = "MAX_VALUE";
+  public static final String TOKEN_MAX_SIZE      = "MAX_SIZE";
+  public static final String TOKEN_INDEX         = "INDEX";
+  public static final String TOKEN_VALUES        = "VALUES";
+  public static final String TOKEN_PERIOD        = "PERIOD";
+  public static final String TOKEN_PARAM9        = "PARAM9";
+  public static final String TOKEN_QUOTE_NUMBER  = "QUOTE_NUMBER";
+  public static final String TOKEN_QUOTE_R_N     = "QUOTE_REVISION_NUMBER";
+  public static final String TOKEN_PRICE         = "PRICE";
+  public static final String TOKEN_REGION        = "REGION";
+  public static final String TOKEN_VENDOR        = "VENDOR";
+  public static final String TOKEN_MIN_VALUE     = "MIN_VALUE";
+  public static final String TOKEN_FORWARD       = "FORWARD";
+  public static final String TOKEN_ACCOUNT       = "ACCOUNT";
+  public static final String TOKEN_CONC          = "CONC";
+  public static final String TOKEN_CONCMSG       = "CONCMSG";
+  public static final String TOKEN_EMSIZE        = "EMSIZE";
+  public static final String TOKEN_ONEBYTE       = "ONEBYTE";
+  public static final String TOKEN_ACCOUNTS      = "ACCOUNTS";
+
+  /*****************************************************************************
+   * トークン値
+   *****************************************************************************
+   */
+  public static final String
+    TOKEN_VALUE_CREATE                 = "作成";
+  public static final String
+    TOKEN_VALUE_REGIST                 = "登録";
+  public static final String
+    TOKEN_VALUE_UPDATE                 = "更新";
+  public static final String
+    TOKEN_VALUE_DELETE                 = "削除";
+  public static final String
+    TOKEN_VALUE_SAVE                   = "保存";
+  public static final String
+    TOKEN_VALUE_DECISION               = "確定";
+  public static final String
+    TOKEN_VALUE_CSV_CREATE             = "CSVファイル作成";
+  public static final String
+    TOKEN_VALUE_LEAD_NUMBER            = "商談番号：";
+  public static final String
+    TOKEN_VALUE_ROUTE_NO               = "ルートNo";
+  public static final String
+    TOKEN_VALUE_ACCT_MONTHLY_PLAN      = "顧客別売上計画（月別）";
+  public static final String
+    TOKEN_VALUE_ACCT_DAILY_PLAN        = "顧客別売上計画（日別）";
+  public static final String
+    TOKEN_VALUE_DELIMITER1             = "の";
+  public static final String
+    TOKEN_VALUE_DAY                    = "日";
+  public static final String
+    TOKEN_VALUE_INIT_ACCT_SALES_TXN    = "顧客別売上計画情報の検索の初期化";
+  public static final String
+    TOKEN_VALUE_SALES_LINE             = "商談決定情報明細";
+  public static final String
+    TOKEN_VALUE_APPROVAL_REQUEST       = "承認依頼";
+  public static final String
+    TOKEN_VALUE_SEP_LEFT               = "（";
+  public static final String
+    TOKEN_VALUE_SEP_RIGHT              = "）";
+  public static final String
+    TOKEN_VALUE_QUOTE_NUMBER           = "見積番号：";
+  public static final String
+    TOKEN_VALUE_QUOTE_LINE             = "見積明細";
+  public static final String
+    TOKEN_VALUE_SP_DECISION_NUM        = "SP専決書番号：";
+  public static final String
+    TOKEN_VALUE_SP_DECISION_HEADER     = "SP専決ヘッダ";
+  public static final String
+    TOKEN_VALUE_SP_DECISION_LINE       = "SP専決明細";
+  public static final String
+    TOKEN_VALUE_SP_DECISION_CUST       = "SP専決顧客";
+  public static final String
+    TOKEN_VALUE_DELIMITER2             = "、";
+  public static final String
+    TOKEN_VALUE_FULL_VD_SP_DECISION    = "SP専決書";
+  public static final String
+    TOKEN_VALUE_INITIALIZE             = "初期化";
+  public static final String
+    TOKEN_VALUE_PV_DEF_VIEW_ID         = "ビューID";
+  public static final String
+    TOKEN_VALUE_PV                     = "パーソナライズ・ビュー";
+  public static final String
+    TOKEN_VALUE_PV_EXTRACT_TERM_DEF    = "汎用検索抽出条件定義";
+  public static final String
+    TOKEN_VALUE_DELIMITER3             = "：";
+  public static final String
+    TOKEN_VALUE_RESOURCE_NO            = "担当営業員";
+  public static final String
+    TOKEN_VALUE_COMPLETE               = "完了";
+  public static final String
+    TOKEN_VALUE_DISTRIBUTE_SALES_PLAN  = "按分";
+  public static final String
+    TOKEN_VALUE_CONTRACT_NUMBER        = "契約書番号：";
+  public static final String
+    TOKEN_VALUE_VENDOR_INFO            = "送付先情報";
+  public static final String
+    TOKEN_VALUE_CONTRACTOR_INFO        = "契約者(甲)情報";
+  public static final String
+    TOKEN_VALUE_REQUEST_ID             = "要求ID：";
+  public static final String
+    TOKEN_VALUE_ACCOUNT_NUMBER         = "顧客コード";
+  public static final String
+    TOKEN_VALUE_BASE_CODE              = "拠点コード";
+  public static final String
+    TOKEN_VALUE_YEAR_MONTH             = "計画年月";
+  public static final String
+    TOKEN_VALUE_CONTRACT_REGIST        = "自動販売機設置契約書";
+  public static final String
+    TOKEN_VALUE_SET_MODULE             = "モジュールの登録";
+
+  /*****************************************************************************
+   * 機能ID
+   *****************************************************************************
+   */
+  /****************/
+  /** 標準画面系 **/
+  /****************/
+  public static final String FUNC_OA_HOME_PAGE         = "OAHOMEPAGE";
+  public static final String FUNC_TASK_UPDATE_PG       = "CAC_TASK_UPDATE";
+  public static final String ASN_OPPTYDETPG            = "ASN_OPPTYDETPG";
+  public static final String ASN_MAIN_MENU             = "ASN_MAIN_MENU";
+
+  /********************/
+  /** 契約管理画面系 **/
+  /********************/
+  public static final String FUNC_CONTRACT_SEARCH_PG     = "XXCSO010001J_01";
+  public static final String FUNC_CONTRACT_REGIST_PG     = "XXCSO010003J_01";
+
+  /**********************/
+  /** 商談系           **/
+  /**********************/
+  public static final String FUNC_SALES_REGIST_PG        = "XXCSO007003J_01";
+
+  /**********************/
+  /** 週次活動状況照会 **/
+  /**********************/
+  public static final String FUNC_WEEKLY_TASK_VIEW_PG    = "XXCSO008001J_01";
+
+  /**********************/
+  /** 物件管理画面系 **/
+  /**********************/
+  public static final String FUNC_INSTALL_BASE_PV_SEARCH_PG1
+                                                         = "XXCSO012001J_01";
+  public static final String FUNC_INSTALL_BASE_PV_SEARCH_PG2
+                                                         = "XXCSO012001J_02";
+  public static final String FUNC_PV_SEARCH_PG           = "XXCSO012001J_03";
+  public static final String FUNC_PV_REGIST_PG           = "XXCSO012001J_04";
+
+  /********************/
+  /** 見積管理画面系 **/
+  /********************/
+  public static final String FUNC_QUOTE_SALES_REGIST_PG  = "XXCSO017001J_01";
+  public static final String FUNC_QUOTE_STORE_REGIST_PG  = "XXCSO017002J_01";
+  public static final String FUNC_QUOTE_SEARCH_PG        = "XXCSO017006J_01";
+
+  /**********************/
+  /** ルート管理画面系 **/
+  /**********************/
+  public static final String FUNC_VISIT_SALES_PLAN_REGIST_PG
+                                                         = "XXCSO019001J_01";
+  public static final String FUNC_SALES_PLAN_BULK_REGIST_PG
+                                                         = "XXCSO019002J_01";
+  public static final String FUNC_DEPT_MONTHLY_PLANS_REGIST_PG
+                                                         = "XXCSO019003J_01";
+  public static final String FUNC_RTN_RSRC_BULK_UPDATE_PG
+                                                         = "XXCSO019009J_01";
+
+  /**********************/
+  /** SP専決画面系 **/
+  /**********************/
+  public static final String FUNC_SP_DECISION_SEARCH_PG1 = "XXCSO020001J_01";
+  public static final String FUNC_SP_DECISION_SEARCH_PG2 = "XXCSO020001J_02";
+  public static final String FUNC_SP_DECISION_REGIST_PG  = "XXCSO020001J_03";
+
+  /**********************/
+  /** IB画面 **/
+  /**********************/
+  public static final String FUNC_CSI_SEARCH_PROD        = "CSI_SEARCH_PROD";
+
+  /*****************************************************************************
+   * プロファイルオプション値（共通）
+   *****************************************************************************
+   */
+  public static final String VO_MAX_FETCH_SIZE    = "VO_MAX_FETCH_SIZE";
+  public static final String XXCSO1_CLIENT_ENCODE = "XXCSO1_CLIENT_ENCODE";
+
+  /*****************************************************************************
+   * URLパラメータ（共通）
+   *****************************************************************************
+   */
+  public static final String EXECUTE_MODE      = "ExecuteMode";
+  public static final String TRANSACTION_KEY1  = "TransactionKey1";
+  public static final String TRANSACTION_KEY2  = "TransactionKey2";
+  public static final String TRANSACTION_KEY3  = "TransactionKey3";
+
+  /*****************************************************************************
+   * 操作モード
+   *****************************************************************************
+   */
+  public static final String OPERATION_MODE_NORMAL  = "NORMAL";
+  public static final String OPERATION_MODE_REQUEST = "REQUEST";
+}

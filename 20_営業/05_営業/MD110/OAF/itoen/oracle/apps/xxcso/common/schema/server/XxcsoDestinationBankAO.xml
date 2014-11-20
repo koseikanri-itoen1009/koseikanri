@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE Association SYSTEM "jbo_03_01.dtd">
+
+<Association
+   Name="XxcsoDestinationBankAO" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+   </DesignTime>
+   <AssociationEnd
+      Name="XxcsoDestinationsEO"
+      Cardinality="1"
+      Source="true"
+      Owner="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO"
+      LockTopContainer="false" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.DeliveryId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_minCardinality" Value="1" />
+         <Attr Name="_aggregation" Value="0" />
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoDestinationsEO" />
+      </DesignTime>
+   </AssociationEnd>
+   <AssociationEnd
+      Name="XxcsoBankAccountsEO"
+      Cardinality="1"
+      Owner="itoen.oracle.apps.xxcso.common.schema.server.XxcsoBankAccountsEO"
+      HasOwner="true"
+      UpdateHistoryColumn="true" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoBankAccountsEO.DeliveryId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_aggregation" Value="0" />
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoBankAccountsEO" />
+      </DesignTime>
+   </AssociationEnd>
+</Association>

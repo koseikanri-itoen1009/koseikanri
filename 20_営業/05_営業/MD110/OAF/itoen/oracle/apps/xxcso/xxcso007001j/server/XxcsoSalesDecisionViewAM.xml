@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoSalesDecisionViewAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso007001j.server.XxcsoSalesDecisionViewAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoSalesHeaderSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007001j.server.XxcsoSalesHeaderSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesLineSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007001j.server.XxcsoSalesLineSummaryVO" >
+   </ViewUsage>
+</AppModule>

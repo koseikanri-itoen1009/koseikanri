@@ -1,0 +1,103 @@
+CREATE OR REPLACE PACKAGE xxcso_010003j_pkg
+AS
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Package Name     : xxcso_010003j_pkg(BODY)
+ * Description      : 自動販売機設置契約情報登録更新_共通関数
+ * MD.050/070       : 
+ * Version          : 1.0
+ *
+ * Program List
+ *  ------------------------- ---- ----- --------------------------------------------------
+ *   Name                     Type  Ret   Description
+ *  ------------------------- ---- ----- --------------------------------------------------
+ *  decode_bm_info            F    V      検索基準拠点コード取得関数
+ *  get_base_leader_name      F    V      発行元所属長取得
+ *  get_base_leader_pos_name  F    V      発行元所属長職位名取得
+ *  chk_double_byte_kana      F    V      全角カナチェック（共通関数ラッピング）
+ *  chk_tel_format            F    V      電話番号チェック（共通関数ラッピング）
+ *  chk_duplicate_vendor_name F    V      送付先名重複チェック
+ *  get_authority             F    V      権限判定関数
+ *  chk_single_byte_kana      F    V      半角カナチェック（共通関数ラッピング）
+ *  decode_cont_manage_info   F    V      契約管理情報分岐取得
+ *  get_sales_charge          F    V      販売手数料発生可否判別
+ * Change Record
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2009/01/27    1.0   H.Ogawa          新規作成
+ *  2009/02/16    1.0   N.Yanagitaira    [UT後修正]chk_single_byte_kana追加
+ *  2009/02/17    1.1   N.Yanagitaira    [CT1-012]decode_cont_manage_info追加
+ *  2009/02/23    1.1   N.Yanagitaira    [内部障害-028]全角カナチェック処理不正修正
+ *  2009/03/12    1.1   N.Yanagitaira    [CT2-058]get_sales_charge追加
+ *****************************************************************************************/
+--
+  -- BM情報分岐取得
+  FUNCTION decode_bm_info(
+    in_customer_id              NUMBER
+   ,iv_contract_status          VARCHAR2
+   ,iv_cooperate_flag           VARCHAR2
+   ,iv_batch_proc_status        VARCHAR2
+   ,iv_transaction_value        VARCHAR2
+   ,iv_master_value             VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 発行元所属長取得
+  FUNCTION get_base_leader_name(
+    iv_base_code                VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 発行元所属長職位名取得
+  FUNCTION get_base_leader_pos_name(
+    iv_base_code                VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 全角カナチェック（共通関数ラッピング）
+  FUNCTION chk_double_byte_kana(
+    iv_value                       IN  VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 電話番号チェック（共通関数ラッピング）
+  FUNCTION chk_tel_format(
+    iv_value                       IN  VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 送付先名重複チェック
+  FUNCTION chk_duplicate_vendor_name(
+    iv_dm1_vendor_name             IN  VARCHAR2
+   ,iv_dm2_vendor_name             IN  VARCHAR2
+   ,iv_dm3_vendor_name             IN  VARCHAR2
+   ,in_contract_management_id      IN  NUMBER
+   ,in_dm1_supplier_id             IN  NUMBER
+   ,in_dm2_supplier_id             IN  NUMBER
+   ,in_dm3_supplier_id             IN  NUMBER
+  ) RETURN VARCHAR2;
+--
+   -- 権限判定関数
+  FUNCTION get_authority(
+    iv_sp_decision_header_id      IN  NUMBER
+  )
+  RETURN VARCHAR2;
+--
+  -- 半角カナチェック（共通関数ラッピング）
+  FUNCTION chk_single_byte_kana(
+    iv_value                       IN  VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 契約管理分岐取得
+  FUNCTION decode_cont_manage_info(
+    iv_contract_status          VARCHAR2
+   ,iv_cooperate_flag           VARCHAR2
+   ,iv_batch_proc_status        VARCHAR2
+   ,iv_transaction_value        VARCHAR2
+   ,iv_master_value             VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 販売手数料発生可否判別
+  FUNCTION get_sales_charge(
+    in_sp_decision_header_id    NUMBER
+  ) RETURN VARCHAR2;
+--
+END xxcso_010003j_pkg;
+/

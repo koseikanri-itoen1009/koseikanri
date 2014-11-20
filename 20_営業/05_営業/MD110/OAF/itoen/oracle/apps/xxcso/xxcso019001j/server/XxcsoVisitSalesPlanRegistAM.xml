@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoVisitSalesPlanRegistAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoVisitSalesPlanRegistAMImpl"
+   LoadComponentsLazily="true" >
+   <Properties>
+      <Property Name ="RETENTION_LEVEL" Value ="MANAGE_STATE" />
+   </Properties>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoAcctSalesInitVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoAcctSalesInitVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoAcctSalesSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoAcctSalesSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoRsrcPlanSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoRsrcPlanSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoPlanMonthListVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019001j.poplist.server.XxcsoPlanMonthListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoAcctMonthlyPlanFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoAcctMonthlyPlanFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoAcctWeeklyPlanFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoAcctWeeklyPlanFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoRtnRsrcFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoRtnRsrcFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoPlanYearListVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019001j.poplist.server.XxcsoPlanYearListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoValidateAcctRsrsVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoValidateAcctRsrsVO" >
+   </ViewUsage>
+</AppModule>

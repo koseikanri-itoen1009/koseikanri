@@ -1,0 +1,2890 @@
+/*============================================================================
+* ファイル名 : XxcsoQuoteSalesRegistAMImpl
+* 概要説明   : 販売先用見積入力画面アプリケーション・モジュールクラス
+* バージョン : 1.0
+*============================================================================
+* 修正履歴
+* 日付       Ver. 担当者       修正内容
+* ---------- ---- ------------ ----------------------------------------------
+* 2008-12-02 1.0  SCS及川領  新規作成
+* 2009-02-24 1.1  SCS及川領  [CT1-010]通常店納価格導出ボタンﾀｲﾑｱｳﾄ修正
+*============================================================================
+*/
+package itoen.oracle.apps.xxcso.xxcso017001j.server;
+import oracle.apps.fnd.framework.server.OAApplicationModuleImpl;
+import oracle.apps.fnd.framework.OAException;
+import oracle.apps.fnd.framework.server.OADBTransaction;
+import oracle.jbo.server.ViewLinkImpl;
+import oracle.jbo.domain.Date;
+import oracle.jbo.domain.BlobDomain;
+import oracle.jdbc.OracleTypes;
+import oracle.sql.NUMBER;
+import oracle.jdbc.OracleCallableStatement;
+import oracle.jdbc.OracleResultSet;
+import itoen.oracle.apps.xxcso.common.util.XxcsoMessage;
+import itoen.oracle.apps.xxcso.common.util.XxcsoConstants;
+import itoen.oracle.apps.xxcso.common.util.XxcsoUtils;
+import itoen.oracle.apps.xxcso.common.util.XxcsoValidateUtils;
+import itoen.oracle.apps.xxcso.xxcso017001j.util.XxcsoQuoteConstants;
+import itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVOImpl;
+import com.sun.java.util.collections.HashMap;
+import com.sun.java.util.collections.List;
+import com.sun.java.util.collections.ArrayList;
+import java.sql.SQLException;
+import java.io.UnsupportedEncodingException;
+
+/*******************************************************************************
+ * 販売先用見積入力画面のアプリケーション・モジュールクラス
+ * @author  SCS及川領
+ * @version 1.0
+ *******************************************************************************
+ */
+public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl 
+{
+  /**
+   * 
+   * This is the default constructor (do not remove)
+   */
+  public XxcsoQuoteSalesRegistAMImpl()
+  {
+  }
+
+  /*****************************************************************************
+   * 実行区分「なし」の場合の初期化処理
+   * @param quoteHeaderId 見積ヘッダーID
+   *****************************************************************************
+   */
+  public void initDetails(
+    String quoteHeaderId
+  )
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+    
+    // トランザクションを初期化
+    rollback();
+    
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
+    if ( initVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");      
+    }
+
+    initVo.executeQuery();
+    
+    XxcsoQuoteSalesInitVORowImpl initRow
+      = (XxcsoQuoteSalesInitVORowImpl)initVo.first();
+
+    headerVo.initQuery(quoteHeaderId);
+    headerVo.first();
+
+    if (quoteHeaderId == null || "".equals(quoteHeaderId.trim()))
+    {
+      // 見積ヘッダー
+      XxcsoQuoteHeadersFullVORowImpl headerRow
+        = (XxcsoQuoteHeadersFullVORowImpl)headerVo.createRow();
+
+      headerVo.insertRow(headerRow);
+
+      // ボタンレンダリング処理
+      initRender();
+      
+      // 初期値設定
+      headerRow.setQuoteType(
+        XxcsoQuoteConstants.QUOTE_SALES
+      );
+      headerRow.setStatus(
+        XxcsoQuoteConstants.QUOTE_INPUT
+      );
+      headerRow.setPublishDate(
+        initRow.getCurrentDate()
+      );
+      headerRow.setEmployeeNumber(
+        initRow.getEmployeeNumber()
+      );
+      headerRow.setFullName(
+        initRow.getFullName()
+      );
+      headerRow.setBaseCode(
+        initRow.getWorkBaseCode()
+      );
+      headerRow.setBaseName(
+        initRow.getWorkBaseName()
+      );
+      headerRow.setDelivPlace(
+        XxcsoQuoteConstants.DEF_DELIV_PLACE
+      );
+      headerRow.setPaymentCondition(
+        XxcsoQuoteConstants.DEF_PAYMENT_CONDITION
+      );
+      headerRow.setDelivPriceTaxType(
+        XxcsoQuoteConstants.DEF_DELIV_PRICE_TAX_TYPE
+      );
+      headerRow.setStorePriceTaxType(
+        XxcsoQuoteConstants.DEF_STORE_PRICE_TAX_TYPE
+      );
+      headerRow.setUnitType(
+        XxcsoQuoteConstants.DEF_UNIT_TYPE
+      );
+    }
+    else
+    {
+      // ボタンレンダリング処理
+      initRender();
+    }
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 実行区分「COPY」の場合の初期化処理
+   * @param quoteHeaderId 見積ヘッダーID
+   *****************************************************************************
+   */
+  public void initDetailsCopy(
+    String quoteHeaderId
+  )
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // XxcsoQuoteHeadersFullVO1インスタンスの取得
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    // XxcsoQuoteHeadersFullVO2インスタンスの取得
+    XxcsoQuoteHeadersFullVOImpl headerVo2 = getXxcsoQuoteHeadersFullVO2();
+    if ( headerVo2 == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO2");
+    }
+
+    // XxcsoQuoteLinesSalesFullVO1インスタンスの取得
+    XxcsoQuoteLinesSalesFullVOImpl lineVo = getXxcsoQuoteLinesSalesFullVO1();
+    if ( lineVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesSalesFullVO1");
+    }
+
+    // XxcsoQuoteLinesSalesFullVO2インスタンスの取得
+    XxcsoQuoteLinesSalesFullVOImpl lineVo2 = getXxcsoQuoteLinesSalesFullVO2();
+    if ( lineVo2 == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesSalesFullVO2");
+    }
+
+    // XxcsoQuoteSalesInitVO1インスタンスの取得
+    XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
+    if ( initVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");      
+    }
+
+    // 初期化
+    headerVo.initQuery((String)null);
+    headerVo.first();
+    
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.createRow();
+
+    headerVo.insertRow(headerRow);
+
+    // 検索
+    headerVo2.initQuery(quoteHeaderId);
+    XxcsoQuoteHeadersFullVORowImpl headerRow2
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo2.first();
+
+    // 初期化用VOの検索
+    initVo.executeQuery();
+    XxcsoQuoteSalesInitVORowImpl initRow
+      = (XxcsoQuoteSalesInitVORowImpl)initVo.first();
+
+    // コピー
+    headerRow.setQuoteType(
+      headerRow2.getQuoteType()
+    );
+    headerRow.setPublishDate(         
+      initRow.getCurrentDate()          
+    );
+    headerRow.setAccountNumber(       
+      headerRow2.getAccountNumber()      
+    );
+    headerRow.setEmployeeNumber(      
+      initRow.getEmployeeNumber()       
+    );
+    headerRow.setFullName(            
+      initRow.getFullName()             
+    );
+    headerRow.setBaseCode(            
+      initRow.getWorkBaseCode()         
+    );
+    headerRow.setBaseName(            
+      initRow.getWorkBaseName()         
+    );
+    headerRow.setDelivPlace(          
+      headerRow2.getDelivPlace()        
+    );
+    headerRow.setPaymentCondition(    
+      headerRow2.getPaymentCondition()  
+    );
+    headerRow.setQuoteSubmitName(     
+      headerRow2.getQuoteSubmitName()   
+    );
+    headerRow.setStatus(              
+      XxcsoQuoteConstants.QUOTE_INPUT   
+    );
+    headerRow.setDelivPriceTaxType(   
+      headerRow2.getDelivPriceTaxType() 
+    );
+    headerRow.setStorePriceTaxType(   
+      headerRow2.getStorePriceTaxType() 
+    );
+    headerRow.setUnitType(            
+      headerRow2.getUnitType()          
+    );
+    headerRow.setSpecialNote(         
+      headerRow2.getSpecialNote()       
+    );
+
+    
+    // 明細のコピー
+    XxcsoQuoteLinesSalesFullVORowImpl lineRow2
+      = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo2.first();
+    
+    while ( lineRow2 != null )
+    {
+      XxcsoQuoteLinesSalesFullVORowImpl lineRow
+        = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.createRow();
+
+      lineVo.last();
+      lineVo.next();
+      lineVo.insertRow(lineRow);
+      
+      // コピー
+      lineRow.setInventoryItemId(        
+        lineRow2.getInventoryItemId()        
+      );
+      lineRow.setInventoryItemCode(      
+        lineRow2.getInventoryItemCode()      
+      );
+      lineRow.setQuoteDiv(               
+        lineRow2.getQuoteDiv()               
+      );
+      lineRow.setUsuallyDelivPrice(      
+        lineRow2.getUsuallyDelivPrice()      
+      );
+      lineRow.setUsuallyStoreSalePrice(  
+        lineRow2.getUsuallyStoreSalePrice()  
+      );
+      lineRow.setThisTimeDelivPrice(     
+        lineRow2.getThisTimeDelivPrice()     
+      );
+      lineRow.setThisTimeStoreSalePrice( 
+        lineRow2.getThisTimeStoreSalePrice() 
+      );
+      lineRow.setRemarks(                
+        lineRow2.getRemarks()                
+      );
+      lineRow.setLineOrder(              
+        lineRow2.getLineOrder()              
+      );
+      lineRow.setBusinessPrice(          
+        lineRow2.getBusinessPrice()          
+      );
+
+      // コピーした後に初期化
+      lineRow.setQuoteStartDate(initRow.getCurrentDate());
+
+      Date currentDate = new Date(initRow.getCurrentDate());
+      
+      if ( XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(
+            lineRow.getQuoteDiv())
+         )
+      {
+        lineRow.setQuoteEndDate((Date)currentDate.addMonths(12));
+      }
+      else
+      {
+        lineRow.setQuoteEndDate((Date)currentDate.addMonths(3));        
+      }
+
+      lineRow2 = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo2.next();
+    }
+
+    // カーソルを先頭にする
+    lineVo.first();
+    
+    // ボタンレンダリング処理
+    initRender();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 実行区分「REVISION_UP」の場合の初期化処理
+   * @param quoteHeaderId 見積ヘッダーID
+   *****************************************************************************
+   */
+  public void initDetailsRevisionUp(
+    String quoteHeaderId
+  )
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // XxcsoQuoteHeadersFullVO1インスタンスの取得
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    // XxcsoQuoteHeadersFullVO2インスタンスの取得
+    XxcsoQuoteHeadersFullVOImpl headerVo2 = getXxcsoQuoteHeadersFullVO2();
+    if ( headerVo2 == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO2");
+    }
+
+    // XxcsoQuoteLinesSalesFullVO1インスタンスの取得
+    XxcsoQuoteLinesSalesFullVOImpl lineVo = getXxcsoQuoteLinesSalesFullVO1();
+    if ( lineVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesSalesFullVO1");
+    }
+
+    // XxcsoQuoteLinesSalesFullVO2インスタンスの取得
+    XxcsoQuoteLinesSalesFullVOImpl lineVo2 = getXxcsoQuoteLinesSalesFullVO2();
+    if ( lineVo2 == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesSalesFullVO2");
+    }
+
+    // XxcsoQuoteSalesInitVO1インスタンスの取得
+    XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
+    if ( initVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");      
+    }
+
+    // 初期化
+    headerVo.initQuery((String)null);
+    headerVo.first();
+    
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.createRow();
+
+    // 検索
+    headerVo2.initQuery(quoteHeaderId);
+    XxcsoQuoteHeadersFullVORowImpl headerRow2
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo2.first();
+
+    headerVo.insertRow(headerRow);
+
+    // 初期化用VOの検索
+    initVo.executeQuery();
+    XxcsoQuoteSalesInitVORowImpl initRow
+      = (XxcsoQuoteSalesInitVORowImpl)initVo.first();
+
+    // 属性数を取得
+    int attrNum = headerVo.getAttributeCount();
+
+     // コピー
+    headerRow.setQuoteType(
+      headerRow2.getQuoteType()
+    );
+    headerRow.setQuoteNumber(
+      headerRow2.getQuoteNumber()       
+    );
+    headerRow.setQuoteRevisionNumber(
+      headerRow2.getQuoteRevisionNumber().add(1)
+    );
+    headerRow.setPublishDate(         
+      initRow.getCurrentDate()          
+    );
+    headerRow.setAccountNumber(       
+      headerRow2.getAccountNumber()      
+    );
+    headerRow.setEmployeeNumber(      
+      initRow.getEmployeeNumber()       
+    );
+    headerRow.setFullName(            
+      initRow.getFullName()             
+    );
+    headerRow.setBaseCode(            
+      initRow.getWorkBaseCode()         
+    );
+    headerRow.setBaseName(            
+      initRow.getWorkBaseName()         
+    );
+    headerRow.setDelivPlace(          
+      headerRow2.getDelivPlace()        
+    );
+    headerRow.setPaymentCondition(    
+      headerRow2.getPaymentCondition()  
+    );
+    headerRow.setQuoteSubmitName(     
+      headerRow2.getQuoteSubmitName()   
+    );
+    headerRow.setStatus(              
+      XxcsoQuoteConstants.QUOTE_INPUT   
+    );
+    headerRow.setDelivPriceTaxType(   
+      headerRow2.getDelivPriceTaxType() 
+    );
+    headerRow.setStorePriceTaxType(   
+      headerRow2.getStorePriceTaxType() 
+    );
+    headerRow.setUnitType(            
+      headerRow2.getUnitType()          
+    );
+    headerRow.setSpecialNote(         
+      headerRow2.getSpecialNote()       
+    );
+
+    // 改定元のステータスを旧版にする
+    headerRow2.setStatus(XxcsoQuoteConstants.QUOTE_OLD);
+    
+    // 明細のコピー
+    XxcsoQuoteLinesSalesFullVORowImpl lineRow2
+      = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo2.first();
+    
+    while ( lineRow2 != null )
+    {
+      XxcsoQuoteLinesSalesFullVORowImpl lineRow
+        = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.createRow();
+      
+      lineVo.last();
+      lineVo.next();
+      lineVo.insertRow(lineRow);
+
+      // コピー
+      lineRow.setInventoryItemId(        
+        lineRow2.getInventoryItemId()        
+      );
+      lineRow.setInventoryItemCode(      
+        lineRow2.getInventoryItemCode()      
+      );
+      lineRow.setQuoteDiv(               
+        lineRow2.getQuoteDiv()               
+      );
+      lineRow.setUsuallyDelivPrice(      
+        lineRow2.getUsuallyDelivPrice()      
+      );
+      lineRow.setUsuallyStoreSalePrice(  
+        lineRow2.getUsuallyStoreSalePrice()  
+      );
+      lineRow.setThisTimeDelivPrice(     
+        lineRow2.getThisTimeDelivPrice()     
+      );
+      lineRow.setThisTimeStoreSalePrice( 
+        lineRow2.getThisTimeStoreSalePrice() 
+      );
+      lineRow.setRemarks(                
+        lineRow2.getRemarks()                
+      );
+      lineRow.setLineOrder(              
+        lineRow2.getLineOrder()              
+      );
+      lineRow.setBusinessPrice(          
+        lineRow2.getBusinessPrice()          
+      );
+
+      // コピーした後に初期化
+      lineRow.setQuoteStartDate(initRow.getCurrentDate());
+      Date currentDate = new Date(initRow.getCurrentDate());
+
+      if ( XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(
+            lineRow.getQuoteDiv())
+         )
+      {
+        lineRow.setQuoteEndDate((Date)currentDate.addMonths(12));
+      }
+      else
+      {
+        lineRow.setQuoteEndDate((Date)currentDate.addMonths(3));        
+      }
+      
+      lineRow2 = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo2.next();
+    }
+
+    // カーソルを先頭にする
+    lineVo.first();
+    
+    // ボタンレンダリング処理
+    initRender();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * ポップリスト初期化処理
+   *****************************************************************************
+   */
+  public void initPoplist()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+    
+    // *************************
+    // *****poplistの生成*******
+    // *************************
+    // *****見積種別
+    XxcsoLookupListVOImpl quoteTypeLookupVo =
+      getXxcsoQuoteTypeLookupVO();
+    if (quoteTypeLookupVo == null)
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteTypeListVO");
+    }
+    // lookupの初期化
+    quoteTypeLookupVo.initQuery("XXCSO1_QUOTE_TYPE", "1");
+      
+    // *****ステータス
+    XxcsoLookupListVOImpl quoteStatusLookupVo =
+      getXxcsoQuoteStatusLookupVO();
+    if (quoteStatusLookupVo == null)
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteStatusLookupVO");
+    }
+    // lookupの初期化
+    quoteStatusLookupVo.initQuery("XXCSO1_QUOTE_STATUS", "1");
+      
+    // *****店納価格税区分
+    XxcsoLookupListVOImpl delivPriceTaxTypeLookupVo =
+      getXxcsoDelivPriceTaxTypeLookupVO();
+    if (delivPriceTaxTypeLookupVo == null)
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoDelivPriceTaxDivLookupVO");
+    }
+    // lookupの初期化
+    delivPriceTaxTypeLookupVo.initQuery("XXCSO1_TAX_DIVISION", "1");
+      
+    // *****小売価格税区分
+    XxcsoLookupListVOImpl storePriceTaxTypeLookupVo
+        = getXxcsoStorePriceTaxTypeLookupVO();
+    if (storePriceTaxTypeLookupVo == null)
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoStorePriceTaxTypLookupVO");
+    }
+    // lookupの初期化
+    storePriceTaxTypeLookupVo.initQuery("XXCSO1_TAX_DIVISION", "1");
+
+    // *****単価区分
+    XxcsoLookupListVOImpl unitPriceDivLookupVo
+        = getXxcsoUnitPriceDivLookupVO();
+    if (unitPriceDivLookupVo == null)
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoUnitPriceDivLookupVO");
+    }
+    // lookupの初期化
+    unitPriceDivLookupVo.initQuery("XXCSO1_UNIT_PRICE_DIVISION", "1");
+
+    // *****見積区分
+    XxcsoLookupListVOImpl quoteDivLookupVo = getXxcsoQuoteDivLookupVO();
+    if (quoteDivLookupVo == null)
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteDivLookupVO");
+    }
+    // lookupの初期化
+    quoteDivLookupVo.initQuery("XXCSO1_QUOTE_DIVISION", "1");
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 取消ボタン押下時処理
+   *****************************************************************************
+   */
+  public void handleCancelButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // 変更内容を初期化する
+    rollback();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * コピーの作成ボタン押下時処理
+   * @return HashMap URLパラメータ
+   *****************************************************************************
+   */
+  public HashMap handleCopyCreateButton(
+    String returnPgName
+  )
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // 変更内容を初期化する
+    rollback();
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    // 見積ヘッダー
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+    HashMap params = new HashMap();
+
+   // 見積番号
+    params.put(
+          XxcsoConstants.TRANSACTION_KEY1,
+          headerRow.getQuoteHeaderId()
+        );
+   // 戻り先画面名称
+    params.put(
+      XxcsoConstants.TRANSACTION_KEY3,
+      returnPgName
+    );
+    // 実行区分
+    params.put(
+      XxcsoConstants.EXECUTE_MODE,
+      XxcsoQuoteConstants.TRANDIV_COPY
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return params; 
+  }
+
+  /*****************************************************************************
+   * 無効にするボタン押下時処理
+   * @return OAException 正常終了メッセージ
+   *****************************************************************************
+   */
+  public OAException handleInvalidityButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // 問屋帳合先用見積の存在チェックを行う
+    validateReference();
+    
+    // 変更内容を初期化する
+    rollback();
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+   // 見積ヘッダー
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+    // ステータスを更新
+    headerRow.setStatus( XxcsoQuoteConstants.QUOTE_INVALIDITY );
+
+    // 保存処理を実行します。
+    commit();
+
+    OAException msg
+      = XxcsoMessage.createConfirmMessage(
+          XxcsoConstants.APP_XXCSO1_00001
+         ,XxcsoConstants.TOKEN_RECORD
+         ,XxcsoQuoteConstants.TOKEN_VALUE_QUOTE
+            + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
+            + XxcsoQuoteConstants.TOKEN_VALUE_QUOTE_NUMBER
+            + headerRow.getQuoteNumber()
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER2
+            + XxcsoQuoteConstants.TOKEN_VALUE_QUOTE_REV_NUMBER
+            + headerRow.getQuoteRevisionNumber()
+            + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
+          ,XxcsoConstants.TOKEN_ACTION
+         ,XxcsoQuoteConstants.TOKEN_VALUE_INVALID
+        );
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return msg;
+  }
+
+  /*****************************************************************************
+   * 適用ボタン押下時処理
+   * @return HashMap 正常終了メッセージ,URLパラメータ
+   *****************************************************************************
+   */
+  public HashMap handleApplicableButton(
+    String returnPgName
+  )
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    if ( ! getTransaction().isDirty() )
+    {
+      throw XxcsoMessage.createNotChangedMessage();
+    }
+
+    // 問屋帳合先用見積の存在チェックを行う
+    validateReference();
+    
+    List errorList = new ArrayList();
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    XxcsoQuoteLinesSalesFullVOImpl lineVo = getXxcsoQuoteLinesSalesFullVO1();
+    if ( lineVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesSalesFullVO1");
+    }
+
+    // 入力チェックを行います。
+    XxcsoValidateUtils util = XxcsoValidateUtils.getInstance(txn);
+    // 見積ヘッダー
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+    // 見積明細
+    XxcsoQuoteLinesSalesFullVORowImpl lineRow
+      = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.first();
+
+    // 顧客コード
+    errorList
+      = util.requiredCheck(
+          errorList
+         ,headerRow.getAccountNumber()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_ACCOUNT_NUMBER
+         ,0
+        );
+
+    // 納入場所
+    errorList
+      = util.checkIllegalString(
+          errorList
+         ,headerRow.getDelivPlace()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_DELIV_PLACE
+         ,0
+        );
+
+    // 支払条件
+    errorList
+      = util.checkIllegalString(
+          errorList
+         ,headerRow.getPaymentCondition()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_PAYMENT_CONDITION
+         ,0
+        );
+
+    // 見積書提出先名
+    errorList
+      = util.checkIllegalString(
+          errorList
+         ,headerRow.getQuoteSubmitName()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_QUOTE_SUBMIT_NAME
+         ,0
+        );
+
+    // 特記事項
+    errorList
+      = util.checkIllegalString(
+          errorList
+         ,headerRow.getSpecialNote()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_SPECIAL_NOTE
+         ,0
+        );
+
+    int index = 0;
+    
+    while ( lineRow != null )
+    {
+      index++;
+
+      //DB反映チェック      
+      errorList
+        = validateLine(
+            errorList
+           ,lineRow
+           ,index
+          );
+
+      lineRow = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.next();
+    }
+
+    if ( errorList.size() > 0 )
+    {
+      OAException.raiseBundledOAException(errorList);
+    }
+
+    // 保存処理を実行します。
+    commit();
+
+    HashMap params = new HashMap(3);
+    params.put(
+      XxcsoConstants.EXECUTE_MODE
+     ,XxcsoQuoteConstants.TRANDIV_UPDATE
+    );
+    params.put(
+      XxcsoConstants.TRANSACTION_KEY1
+     ,headerRow.getQuoteHeaderId()
+    );
+    params.put(
+      XxcsoConstants.TRANSACTION_KEY3
+     ,returnPgName
+    );
+
+    OAException msg
+      = XxcsoMessage.createConfirmMessage(
+          XxcsoConstants.APP_XXCSO1_00001
+         ,XxcsoConstants.TOKEN_RECORD
+         ,XxcsoQuoteConstants.TOKEN_VALUE_QUOTE
+            + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
+            + XxcsoQuoteConstants.TOKEN_VALUE_QUOTE_NUMBER
+            + headerRow.getQuoteNumber()
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER2
+            + XxcsoQuoteConstants.TOKEN_VALUE_QUOTE_REV_NUMBER
+            + headerRow.getQuoteRevisionNumber()
+            + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
+         ,XxcsoConstants.TOKEN_ACTION
+         ,XxcsoConstants.TOKEN_VALUE_REGIST
+        );
+
+    HashMap returnValue = new HashMap(2);
+    returnValue.put(
+      XxcsoQuoteConstants.RETURN_PARAM_URL
+     ,params
+    );
+    returnValue.put(
+      XxcsoQuoteConstants.RETURN_PARAM_MSG
+     ,msg
+    );
+    
+    XxcsoUtils.debug(txn, "[END]");
+
+    return returnValue;
+  }
+
+  /*****************************************************************************
+   * 版の改訂ボタン押下時処理
+   * @return HashMap URLパラメータ
+   *****************************************************************************
+   */
+  public HashMap handleRevisionButton(
+    String returnPgName
+  )
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // 問屋帳合先用見積の存在チェックを行う
+    validateReference();
+    
+    // 変更内容を初期化する
+    rollback();
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    // 見積ヘッダー
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+    HashMap params = new HashMap();
+
+   // 見積番号
+    params.put(
+          XxcsoConstants.TRANSACTION_KEY1,
+          headerRow.getQuoteHeaderId()
+        );
+    // 戻り先画面名称
+    params.put(
+      XxcsoConstants.TRANSACTION_KEY3
+     ,returnPgName
+    );
+    // 実行区分
+    params.put(
+      XxcsoConstants.EXECUTE_MODE,
+      XxcsoQuoteConstants.TRANDIV_REVISION_UP
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return params; 
+
+  }
+
+  /*****************************************************************************
+   * 確定ボタン押下時処理
+   * @return OAException 正常終了メッセージ
+   *****************************************************************************
+   */
+  public OAException handleFixedButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    if ( getTransaction().isDirty() )
+    {
+      // 問屋帳合先用見積の存在チェックを行う
+      validateReference();
+    }
+    
+    List errorList = new ArrayList();
+    
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+    // 画面項目の入力チェック
+    validateFixed();
+
+    // ステータスを更新
+    headerRow.setStatus( XxcsoQuoteConstants.QUOTE_FIXATION );
+
+    // 保存処理を実行します。
+    commit();
+
+    OAException msg
+      = XxcsoMessage.createConfirmMessage(
+          XxcsoConstants.APP_XXCSO1_00001
+         ,XxcsoConstants.TOKEN_RECORD
+         ,XxcsoQuoteConstants.TOKEN_VALUE_QUOTE
+            + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
+            + XxcsoQuoteConstants.TOKEN_VALUE_QUOTE_NUMBER
+            + headerRow.getQuoteNumber()
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER2
+            + XxcsoQuoteConstants.TOKEN_VALUE_QUOTE_REV_NUMBER
+            + headerRow.getQuoteRevisionNumber()
+            + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
+         ,XxcsoConstants.TOKEN_ACTION
+         ,XxcsoQuoteConstants.TOKEN_VALUE_FIXATION
+        );
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return msg;
+  }
+
+  /*****************************************************************************
+   * 見積書印刷ボタン押下時処理
+   * @return OAException 正常終了メッセージ
+   *****************************************************************************
+   */
+  public OAException handlePdfCreateButton()
+  {
+
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+    if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(headerRow.getStatus()) )
+    {
+      if ( getTransaction().isDirty() )
+      {
+        // 問屋帳合先用見積の存在チェックを行う
+        validateReference();
+    
+        // 画面項目の入力チェック
+        validateFixed();
+
+        // 保存処理を実行します。
+        commit();
+      }
+    }
+    else
+    {
+      rollback();
+    }
+
+    // 見積書印刷PGをCALL
+    NUMBER requestId = null;
+    OracleCallableStatement stmt = null;
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  :1 := fnd_request.submit_request(");
+      sql.append("         application       => 'XXCSO'");
+      sql.append("        ,program           => 'XXCSO017A03C'");
+      sql.append("        ,description       => NULL");
+      sql.append("        ,start_time        => NULL");
+      sql.append("        ,sub_request       => FALSE");
+      sql.append("        ,argument1         => :2");
+      sql.append("       );");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.NUMBER);
+      stmt.setString(2, headerRow.getQuoteHeaderId().stringValue());
+
+      stmt.execute();
+      
+      requestId = stmt.getNUMBER(1);
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoQuoteConstants.TOKEN_VALUE_PDF_OUT
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+
+    if ( NUMBER.zero().equals(requestId) )
+    {
+      try
+      {
+        StringBuffer sql = new StringBuffer(50);
+        sql.append("BEGIN fnd_message.retrieve(:1); END;");
+
+        stmt
+          = (OracleCallableStatement)
+              txn.createCallableStatement(sql.toString(), 0);
+
+        stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+
+        stmt.execute();
+
+        String errmsg = stmt.getString(1);
+
+        throw
+          XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00310
+           ,XxcsoConstants.TOKEN_CONC
+           ,XxcsoQuoteConstants.TOKEN_VALUE_PDF_OUT
+           ,XxcsoConstants.TOKEN_CONCMSG
+           ,errmsg
+          );
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+        throw
+          XxcsoMessage.createSqlErrorMessage(
+            e
+           ,XxcsoQuoteConstants.TOKEN_VALUE_PDF_OUT
+          );
+      }
+      finally
+      {
+        try
+        {
+          if ( stmt != null )
+          {
+            stmt.close();
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+        }
+      }
+    }
+
+    commit();
+
+    OAException msg
+      = XxcsoMessage.createConfirmMessage(
+          XxcsoConstants.APP_XXCSO1_00001
+         ,XxcsoConstants.TOKEN_RECORD
+         ,XxcsoQuoteConstants.TOKEN_VALUE_PDF_OUT
+            + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
+            + requestId.stringValue()
+            + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
+         ,XxcsoConstants.TOKEN_ACTION
+         ,XxcsoQuoteConstants.TOKEN_VALUE_START
+        );
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return msg;
+  }
+
+  /*****************************************************************************
+   * CSV作成ボタン押下時処理
+   *****************************************************************************
+   */
+  public OAException handleCsvCreateButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+    if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(headerRow.getStatus()) )
+    {
+      if ( getTransaction().isDirty() )
+      {
+        // 問屋帳合先用見積の存在チェックを行う
+        validateReference();
+    
+        // 画面項目の入力チェック
+        validateFixed();
+
+        // 保存処理を実行します。
+        commit();
+      }
+    }
+    else
+    {
+      rollback();
+    }
+
+    // CSVファイル作成
+    XxcsoCsvQueryVOImpl queryVo = getXxcsoCsvQueryVO1();
+    String sql = queryVo.getQuery();
+
+    OracleCallableStatement stmt = null;
+    OracleResultSet         rs   = null;
+
+    // プロファイルの取得
+    String clientEnc = txn.getProfile(XxcsoConstants.XXCSO1_CLIENT_ENCODE);
+    if ( clientEnc == null || "".equals(clientEnc.trim()) )
+    {
+      throw
+        XxcsoMessage.createProfileNotFoundError(
+          XxcsoConstants.XXCSO1_CLIENT_ENCODE
+        );
+    }
+
+    StringBuffer sbFileData = new StringBuffer();
+
+    try
+    {
+      stmt = (OracleCallableStatement)txn.createCallableStatement(sql, 0);
+      stmt.setNUMBER(1, headerRow.getQuoteHeaderId());
+
+      rs = (OracleResultSet)stmt.executeQuery();
+
+      while ( rs.next() )
+      {
+        // 出力用バッファへ格納
+        int rsIdx = 1;
+        
+        // 項目:見積種別
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:見積番号
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:版
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:発行日
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:顧客コード
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:顧客名
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:従業員番号
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:従業員氏名
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:拠点コード
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:拠点名
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:納入場所
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:支払条件
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:見積情報開始日
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:見積情報終了日
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:見積提出先名
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:店納価格税区分
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:小売価格税区分
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:単価税区分
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:ステータス
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:特記事項
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:商品コード
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:商品略称
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:見積区分
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:通常店納価格
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:通常店頭売価
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:今回店納価格
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:今回店頭売価
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:期間（開始）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:期間（終了）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:備考
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:並び順
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:見積種別（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:見積番号（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:版（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:発行日（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:顧客コード（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:顧客名（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:従業員番号（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:従業員氏名（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:拠点コード（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:拠点名（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:納入場所（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:支払条件（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:見積情報開始日（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:見積情報終了日（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:見積提出先名（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:店納価格税区分（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:小売価格税区分（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:単価税区分（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:ステータス（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:特記事項（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:商品コード（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:商品略称（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:見積区分（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:通常店納価格（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:通常店頭売価（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:今回店納価格（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:今回店頭売価（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:建値（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:売上値引（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:通常ＮＥＴ価格（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:今回ＮＥＴ価格（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:マージン額（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:マージン率（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:期間（開始）（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:期間（終了）（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:備考（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:並び順（帳合用）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+
+
+        // 項目:商品正式名称
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:JANコード
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:ケースJANコード
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:ITFコード
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:容器区分
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), false);
+        // 項目:定価（新）
+        sbFileData
+          = createCsvStatement(sbFileData, rs.getString(rsIdx++), true);
+      }
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e,
+          XxcsoConstants.TOKEN_VALUE_CSV_CREATE
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( rs != null )
+        {
+          rs.close();
+        }
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    
+    // VOへのファイル名、ファイルデータの設定
+    XxcsoCsvDownVOImpl csvVo = getXxcsoCsvDownVO1();
+    if ( csvVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoCsvDownVO1");
+    }
+
+    XxcsoCsvDownVORowImpl csvRowVo
+      = (XxcsoCsvDownVORowImpl)csvVo.createRow();
+
+    // *****CSVファイル名用日付文字列(yyyymmdd)
+    StringBuffer sbDate = new StringBuffer(8);
+    String nowDate = txn.getCurrentUserDate().dateValue().toString();
+    sbDate.append(nowDate.substring(0, 4));
+    sbDate.append(nowDate.substring(5, 7));
+    sbDate.append(nowDate.substring(8, 10));
+
+    // *****CSVファイル名の生成(見積番号_yyyymmdd_連番)
+    StringBuffer sbFileName = new StringBuffer(120);
+    sbFileName.append(headerRow.getQuoteNumber());
+    sbFileName.append(XxcsoQuoteConstants.CSV_NAME_DELIMITER);
+    sbFileName.append(sbDate);
+    sbFileName.append(XxcsoQuoteConstants.CSV_NAME_DELIMITER);
+    sbFileName.append((csvVo.getRowCount() + 1));
+    sbFileName.append(XxcsoQuoteConstants.CSV_EXTENSION);
+
+    try
+    {
+      // *****ファイル名、ファイルデータを設定
+      csvRowVo.setFileName(new String(sbFileName));
+      csvRowVo.setFileData(
+        new BlobDomain(sbFileData.toString().getBytes(clientEnc))
+      );
+    }
+    catch (UnsupportedEncodingException uae)
+    {
+      throw XxcsoMessage.createCsvErrorMessage(uae);
+    }
+
+    csvVo.last();
+    csvVo.next();
+    csvVo.insertRow(csvRowVo);
+
+    // 成功メッセージを設定する
+    StringBuffer sbMsg = new StringBuffer();
+    sbMsg.append(XxcsoQuoteConstants.MSG_DISP_CSV);
+    sbMsg.append(sbFileName);
+
+    OAException msg
+      = XxcsoMessage.createConfirmMessage(
+          XxcsoConstants.APP_XXCSO1_00001
+          ,XxcsoConstants.TOKEN_RECORD
+          ,new String(sbMsg)
+          ,XxcsoConstants.TOKEN_ACTION
+          ,XxcsoQuoteConstants.MSG_DISP_OUT
+        );
+    
+    XxcsoUtils.debug(txn, "[END]");
+
+    return msg;
+  }
+
+  /*****************************************************************************
+   * 帳合問屋用入力画面へボタン押下時処理
+   * @return HashMap URLパラメータ
+   *****************************************************************************
+   */
+  public HashMap handleStoreButton()
+  {
+
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    // 見積ヘッダー
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+    if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(headerRow.getStatus()) )
+    {
+      // 顧客タイプチェック
+      validateAccount();
+
+      if ( getTransaction().isDirty() )
+      {
+        // 問屋帳合先用見積の存在チェックを行う
+        validateReference();
+
+        // 画面項目の入力チェック
+        validateFixed();
+
+        // 保存処理を実行します。
+        commit();
+      }
+    }
+    else
+    {
+      rollback();
+    }
+    
+    HashMap params = new HashMap();
+
+   // 見積ヘッダーID
+   params.put(
+     XxcsoConstants.TRANSACTION_KEY1,
+     ""
+   );
+
+   // 参照用見積ヘッダーID
+   params.put(
+     XxcsoConstants.TRANSACTION_KEY2,
+     headerRow.getQuoteHeaderId()
+   );
+
+    // 戻り先画面名称
+    params.put(
+      XxcsoConstants.TRANSACTION_KEY3,
+     ""
+    );
+
+    // 実行区分
+    params.put(
+      XxcsoConstants.EXECUTE_MODE,
+      XxcsoQuoteConstants.TRANDIV_FROM_SALES
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return params; 
+
+  }
+
+  /*****************************************************************************
+   * 行追加ボタン押下時処理（見積明細表）
+   *****************************************************************************
+   */
+  public void handleAddLineButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // 問屋帳合先用見積の存在チェックを行う
+    validateReference();
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteLinesSalesFullVOImpl lineVo = getXxcsoQuoteLinesSalesFullVO1();
+    if ( lineVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesSalesFullVO1");
+    }
+
+    XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
+    if ( initVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");      
+    }
+
+    int maxSize
+      = Integer.parseInt(txn.getProfile(XxcsoConstants.VO_MAX_FETCH_SIZE));
+      
+    if ( lineVo.getRowCount() == maxSize )
+    {
+      throw
+        XxcsoMessage.createMaxRowException(
+          XxcsoQuoteConstants.TOKEN_VALUE_QUOTE_LINE_INFO
+         ,String.valueOf(maxSize)
+        );
+    }
+    
+    // 新規明細行作成
+    XxcsoQuoteLinesSalesFullVORowImpl lineRow
+      = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.createRow();
+
+    // 初期化用VO行を取得
+    XxcsoQuoteSalesInitVORowImpl initRow
+      = (XxcsoQuoteSalesInitVORowImpl)initVo.first();
+    
+    // 初期値の設定
+    Date currentDate = new Date(initRow.getCurrentDate());
+    lineRow.setQuoteDiv(XxcsoQuoteConstants.QUOTE_DIV_USUALLY);
+    lineRow.setQuoteStartDate(initRow.getCurrentDate());
+    lineRow.setQuoteEndDate((Date)currentDate.addMonths(12));
+
+    // 行の最後に追加
+    lineVo.last();
+    lineVo.next();
+    lineVo.insertRow(lineRow);
+    
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 行削除ボタン押下時処理（見積明細表）
+   *****************************************************************************
+   */
+  public void handleDelLineButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    List errorList = new ArrayList();
+
+    // インスタンス取得
+    XxcsoQuoteLinesSalesFullVOImpl lineVo = getXxcsoQuoteLinesSalesFullVO1();
+    if ( lineVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesSalesFullVO1");
+    }
+
+    XxcsoQuoteLinesSalesFullVORowImpl lineRow
+      = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.first();
+
+    boolean existFlag = false;
+    
+    // 削除対象明細をチェック
+    while ( lineRow != null )
+    {
+      if ( "Y".equals(lineRow.getSelectFlag()) )
+      {
+        existFlag = true;
+
+        // 問屋帳合先見積の存在チェックを行う
+        validateReference();
+      }
+      
+      lineRow = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.next();
+    }
+
+    if ( ! existFlag )
+    {
+      throw XxcsoMessage.createErrorMessage(XxcsoConstants.APP_XXCSO1_00464);
+    }
+    
+    if ( errorList.size() > 0 )
+    {
+      OAException.raiseBundledOAException(errorList);
+    }
+
+    // 帳合問屋情報で使用していない場合は削除します。
+    lineRow = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.first();
+
+    while ( lineRow != null )
+    {
+      if ( "Y".equals(lineRow.getSelectFlag()) )
+      {
+        // 選択されている明細行を削除します。
+        lineVo.removeCurrentRow();
+      }
+
+      lineRow = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.next();
+    }
+
+    // カーソルを先頭にする
+    lineVo.first();
+    
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 通常店納価格導出ボタン押下時処理（見積明細表）
+   *****************************************************************************
+   */
+  public void handleRegularPriceButton()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    XxcsoQuoteLinesSalesFullVOImpl lineVo = getXxcsoQuoteLinesSalesFullVO1();
+    if ( lineVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesSalesFullVO1");
+    }
+
+    XxcsoUsuallyDelivPriceVOImpl usuallyVo = getXxcsoUsuallyDelivPriceVO1();
+
+    if ( usuallyVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoUsuallyDelivPriceVO1");
+    }
+
+   // 見積ヘッダー
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+   // 見積明細
+    XxcsoQuoteLinesSalesFullVORowImpl lineRow
+      = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.first();
+
+    while ( lineRow != null )
+    {
+       // 見積区分が通常以外の場合、通常店納価格を自動導出します。
+      if ( ! XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(
+             lineRow.getQuoteDiv()) )
+      {
+        if ( "Y".equals(lineRow.getSelectFlag()) )
+        {
+          // 問屋帳合先用見積の存在チェックを行う
+          validateReference();
+
+          // 検索実行
+          usuallyVo.initQuery(
+            headerRow.getAccountNumber(),
+            lineRow.getInventoryItemId()
+          );
+
+          // 通常店納価格取得
+          XxcsoUsuallyDelivPriceVORowImpl usuallyRow
+            = (XxcsoUsuallyDelivPriceVORowImpl)usuallyVo.first();
+
+          //通常店納価格が取得できた場合
+          if ( usuallyRow != null )
+          {
+            // 取得した通常店納価格を設定
+            lineRow.setUsuallyDelivPrice(usuallyRow.getUsuallyDelivPrice());
+          }
+        }
+      }
+      
+      lineRow = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.next();
+    }
+
+    // カーソルを先頭にする
+    lineVo.first();
+    
+    XxcsoUtils.debug(txn, "[END]");
+
+  }
+
+  /*****************************************************************************
+   * 見積区分が変更されたら期間（終了）も変更する処理
+   * @param quoteLineId 見積明細ID
+   *****************************************************************************
+   */
+  public void handleDivChange(
+    String quoteLineId
+  )
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // 問屋帳合先用見積の存在チェックを行う
+    validateReference();
+    
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteLinesSalesFullVOImpl lineVo = getXxcsoQuoteLinesSalesFullVO1();
+    if ( lineVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesSalesFullVO1");
+    }
+
+    // XxcsoQuoteSalesInitVO1インスタンスの取得
+    XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
+    if ( initVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");      
+    }
+
+    // 見積明細
+    XxcsoQuoteLinesSalesFullVORowImpl lineRow
+      = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.first();
+
+    while ( lineRow != null )
+    {
+      if ( quoteLineId.equals(lineRow.getQuoteLineId().stringValue()) )
+      {
+        // システム日付取得
+        XxcsoQuoteSalesInitVORowImpl initRow
+          = (XxcsoQuoteSalesInitVORowImpl)initVo.first();
+
+        if ( lineRow.getQuoteStartDate() != null )
+        {
+          Date currentDate = new Date(lineRow.getQuoteStartDate());
+
+          // 見積区分が「1」の場合は、1年後。それ以外は3ヶ月後
+          if ( XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(
+                 lineRow.getQuoteDiv())
+             )
+          {
+            lineRow.setQuoteEndDate((Date)currentDate.addMonths(12));
+          }
+          else
+          {
+            lineRow.setQuoteEndDate((Date)currentDate.addMonths(3));
+          }
+        }
+        break;
+      }
+
+      lineRow = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.next();
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 確定チェック処理
+   *****************************************************************************
+   */
+  private void validateFixed()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // 入力チェックを行います。
+    List errorList = new ArrayList();
+    XxcsoValidateUtils util = XxcsoValidateUtils.getInstance(txn);
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+    
+    XxcsoQuoteLinesSalesFullVOImpl lineVo = getXxcsoQuoteLinesSalesFullVO1();
+    if ( lineVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesSalesFullVO1");
+    }
+
+    errorList = validateHeader(errorList);
+
+    XxcsoQuoteLinesSalesFullVORowImpl lineRow
+      = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.first();
+
+    int index = 0;
+    while ( lineRow != null )
+    {
+      index++;
+      validateLine(
+        errorList
+       ,lineRow
+       ,index
+      );
+
+      validateFixedLine(
+        errorList
+       ,lineRow
+       ,index
+      );
+
+      lineRow = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.next();
+    }
+
+    if ( index == 0 )
+    {
+      throw XxcsoMessage.createErrorMessage(XxcsoConstants.APP_XXCSO1_00451);
+    }
+
+    if ( errorList.size() > 0 )
+    {
+      OAException.raiseBundledOAException(errorList);
+    }
+    
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 問屋帳合先用見積の存在チェック処理
+   *****************************************************************************
+   */
+  private void validateReference()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    XxcsoReferenceQuoteVOImpl refVo = getXxcsoReferenceQuoteVO1();
+    if ( refVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoReferenceQuoteVO1");
+    }
+
+    List errorList = new ArrayList();
+    
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+    // 問屋帳合先用見積が存在しているかを確認
+    refVo.initQuery(headerRow.getQuoteHeaderId());
+
+    XxcsoReferenceQuoteVORowImpl refRow
+      = (XxcsoReferenceQuoteVORowImpl)refVo.first();
+
+    while ( refRow != null )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00223
+           ,XxcsoConstants.TOKEN_PARAM9
+           ,refRow.getQuoteNumber()
+          );
+
+      errorList.add(error);
+
+      refRow = (XxcsoReferenceQuoteVORowImpl)refVo.next();
+
+    }
+
+    if ( errorList.size() > 0 )
+    {
+      OAException.raiseBundledOAException(errorList);
+    }
+    
+    XxcsoUtils.debug(txn, "[END]");
+
+  }
+
+  
+  /*****************************************************************************
+   * 見積ヘッダー項目のチェック処理
+   * @param errorList エラーリスト
+   *****************************************************************************
+   */
+  private List validateHeader(
+    List errorList
+  )
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // 入力チェックを行います。
+    XxcsoValidateUtils util = XxcsoValidateUtils.getInstance(txn);
+
+    ////////////////
+    //インスタンス取得
+    ////////////////
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw 
+        XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    ///////////////////////////////////
+    // 値検証（見積ヘッダー）
+    ///////////////////////////////////
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+    // 発行日
+    errorList
+      = util.requiredCheck(
+          errorList
+         ,headerRow.getPublishDate()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_PUBLISH_DATE
+         ,0
+        );
+
+    // 顧客コード
+    errorList
+      = util.requiredCheck(
+          errorList
+         ,headerRow.getAccountNumber()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_ACCOUNT_NUMBER
+         ,0
+        );
+
+    // 納入場所
+    errorList
+      = util.checkIllegalString(
+          errorList
+         ,headerRow.getDelivPlace()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_DELIV_PLACE
+         ,0
+        );
+
+    // 支払条件
+    errorList
+      = util.checkIllegalString(
+          errorList
+         ,headerRow.getPaymentCondition()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_PAYMENT_CONDITION
+         ,0
+        );
+
+    // 見積書提出先名
+    errorList
+      = util.checkIllegalString(
+          errorList
+         ,headerRow.getQuoteSubmitName()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_QUOTE_SUBMIT_NAME
+         ,0
+        );
+
+    // 特記事項
+    errorList
+      = util.checkIllegalString(
+          errorList
+         ,headerRow.getSpecialNote()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_SPECIAL_NOTE
+         ,0
+        );
+
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return errorList;
+  }
+
+  /*****************************************************************************
+   * 見積明細項目のチェック処理（DB登録用）
+   * @param errorList     エラーリスト
+   * @param lineRow       見積明細行インスタンス
+   * @param index         対象行
+   *****************************************************************************
+   */
+  private List validateLine(
+    List                              errorList
+   ,XxcsoQuoteLinesSalesFullVORowImpl lineRow
+   ,int                               index
+  )
+  {
+    OADBTransaction txn = getOADBTransaction();
+    XxcsoUtils.debug(txn, "[START]");
+
+    // 入力チェックを行います。
+    XxcsoValidateUtils util = XxcsoValidateUtils.getInstance(txn);
+
+    ///////////////////////////////////
+    // 値検証（見積明細）
+    ///////////////////////////////////
+    //価格がnullの場合意は「0」に置き換える
+    if ( lineRow.getUsuallyDelivPrice() == null )
+    {
+      lineRow.setUsuallyDelivPrice(XxcsoQuoteConstants.DEF_PRICE);
+    }
+
+    if ( lineRow.getUsuallyStoreSalePrice() == null )
+    {
+      lineRow.setUsuallyStoreSalePrice(XxcsoQuoteConstants.DEF_PRICE);
+    }
+
+    if ( lineRow.getThisTimeDelivPrice() == null )
+    {
+      lineRow.setThisTimeDelivPrice(XxcsoQuoteConstants.DEF_PRICE);
+    }
+
+    if ( lineRow.getThisTimeStoreSalePrice() == null )
+    {
+      lineRow.setThisTimeStoreSalePrice(XxcsoQuoteConstants.DEF_PRICE);
+    }
+
+    // 商品コード
+    errorList
+      = util.requiredCheck(
+          errorList
+         ,lineRow.getInventoryItemId()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_INVENTORY_ITEM_ID
+         ,index
+        );
+
+    // 通常店納価格
+    errorList
+      = util.checkStringToNumber(
+          errorList
+         ,lineRow.getUsuallyDelivPrice()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_USUALLY_DELIV_PRICE
+         ,2
+         ,5
+         ,true
+         ,false
+         ,false
+         ,index
+        );
+
+    // 通常店頭売価
+    errorList
+      = util.checkStringToNumber(
+          errorList
+         ,lineRow.getUsuallyStoreSalePrice()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_USUALLY_STORE_SALE_PRICE
+         ,2
+         ,6
+         ,true
+         ,false
+         ,false
+         ,index
+        );
+
+    // 今回店納価格
+    errorList
+      = util.checkStringToNumber(
+          errorList
+         ,lineRow.getThisTimeDelivPrice()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME_DELIV_PRICE
+         ,2
+         ,5
+         ,true
+         ,false
+         ,false
+         ,index
+        );
+
+    // 今回店頭売価
+    errorList
+      = util.checkStringToNumber(
+          errorList
+         ,lineRow.getThisTimeStoreSalePrice()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME_STORE_SALE_PRICE
+         ,2
+         ,6
+         ,true
+         ,false
+         ,false
+         ,index
+        );
+
+    // 並び順
+    errorList
+      = util.checkStringToNumber(
+          errorList
+         ,lineRow.getLineOrder()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_LINE_ORDER
+         ,0
+         ,2
+         ,true
+         ,false
+         ,false
+         ,index
+        );
+
+    // 備考
+    errorList
+      = util.checkIllegalString(
+          errorList
+         ,lineRow.getRemarks()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_REMARKS
+         ,index
+        );
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return errorList;
+  }
+  
+  /*****************************************************************************
+   * 見積明細項目のチェック処理（確定チェック）
+   * @param errorList     エラーリスト
+   * @param lineRow       見積明細行インスタンス
+   * @param index         対象行
+   *****************************************************************************
+   */
+  private List validateFixedLine(
+    List                              errorList
+   ,XxcsoQuoteLinesSalesFullVORowImpl lineRow
+   ,int                               index
+  )
+  {
+    OADBTransaction txn = getOADBTransaction();
+    XxcsoUtils.debug(txn, "[START]");
+
+    XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
+    if ( initVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");      
+    }
+
+    XxcsoQuoteSalesInitVORowImpl initRow
+      = (XxcsoQuoteSalesInitVORowImpl)initVo.first();
+
+    // 必須チェックを行います。
+    XxcsoValidateUtils util = XxcsoValidateUtils.getInstance(txn);
+
+    // 商品コード
+    errorList
+      = util.requiredCheck(
+          errorList
+         ,lineRow.getInventoryItemId()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_INVENTORY_ITEM_ID
+         ,index
+        );
+
+    // 期間（開始）
+    errorList
+      = util.requiredCheck(
+          errorList
+         ,lineRow.getQuoteStartDate()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_QUOTE_START_DATE
+         ,index
+        );
+
+    // 期間（終了）
+    errorList
+      = util.requiredCheck(
+          errorList
+         ,lineRow.getQuoteEndDate()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_QUOTE_END_DATE
+         ,index
+        );
+    
+    // 期間チェック
+    if ( lineRow.getQuoteStartDate() != null &&
+         lineRow.getQuoteEndDate()   != null
+       )
+    {
+      Date currentDate = new Date(initRow.getCurrentDate());
+      Date currentDate2 = new Date(lineRow.getQuoteStartDate());
+      Date limitDate = (Date)currentDate.addJulianDays(-30, 0);
+
+      // システム日付より30日前まで入力可能
+      if ( lineRow.getQuoteStartDate().compareTo(limitDate) < 0 )
+      {
+        XxcsoUtils.debug(txn, limitDate);
+
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00463
+             ,XxcsoConstants.TOKEN_INDEX
+             ,String.valueOf(index)
+            );
+        errorList.add(error);
+      }
+
+      // 見積区分が通常の場合
+      if( XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(lineRow.getQuoteDiv()) )
+      {
+        // 期間（開始）より１年以内
+        limitDate = (Date)currentDate2.addMonths(12);
+
+        if ( lineRow.getQuoteEndDate().compareTo(limitDate) > 0 ||
+             lineRow.getQuoteEndDate().compareTo(
+                                         lineRow.getQuoteStartDate()) < 0
+           )
+        {
+          XxcsoUtils.debug(txn, limitDate);
+
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00462,
+                XxcsoConstants.TOKEN_VALUES,
+                XxcsoQuoteConstants.TOKEN_VALUE_USUALLY,
+                XxcsoConstants.TOKEN_PERIOD,
+                XxcsoQuoteConstants.TOKEN_VALUE_ONE_YEAR,
+                XxcsoConstants.TOKEN_INDEX,
+                String.valueOf(index)
+              );
+          errorList.add(error);
+        }
+      }
+      else
+      {
+        // 期間（開始）より3ヶ月以内
+        limitDate = (Date)currentDate2.addMonths(3);
+
+        if ( lineRow.getQuoteEndDate().compareTo(limitDate) > 0 ||
+             lineRow.getQuoteEndDate().compareTo(
+                                         lineRow.getQuoteStartDate()) < 0
+           )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00462,
+                XxcsoConstants.TOKEN_VALUES,
+                XxcsoQuoteConstants.TOKEN_VALUE_EXCULDING_USUALLY,
+                XxcsoConstants.TOKEN_PERIOD,
+                XxcsoQuoteConstants.TOKEN_VALUE_THREE_MONTHS,
+                XxcsoConstants.TOKEN_INDEX,
+                String.valueOf(index)
+              );
+          errorList.add(error);
+        }
+      }
+    }
+    
+    if ( XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(lineRow.getQuoteDiv()) ||
+         XxcsoQuoteConstants.QUOTE_DIV_BARGAIN.equals(lineRow.getQuoteDiv())
+       )
+    {
+      // 通常か特売の場合は、店納価格の原価割れチェック
+      String usuallyDelivPriceRep 
+        = lineRow.getUsuallyDelivPrice().replaceAll(",", "");
+      String thisTimeDelivPriceRep 
+        = lineRow.getThisTimeDelivPrice().replaceAll(",", "");
+
+      double businessPrice      = lineRow.getBusinessPrice().doubleValue();
+
+      try
+      {
+        double usuallyDelivPrice  = Double.parseDouble(usuallyDelivPriceRep);
+
+        // 通常店納価格
+        if ( usuallyDelivPrice <= businessPrice )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00461,
+                XxcsoConstants.TOKEN_COLUMN,
+                XxcsoQuoteConstants.TOKEN_VALUE_USUALLY,
+                XxcsoConstants.TOKEN_INDEX,
+                String.valueOf(index)
+              );
+          errorList.add(error);
+        }
+      }
+      catch ( NumberFormatException e )
+      {
+        XxcsoUtils.debug(txn, "NumberFormatException");
+      }
+
+      try
+      {
+        double thisTimeDelivPrice = Double.parseDouble(thisTimeDelivPriceRep);
+
+        // 今回店納価格
+        if ( thisTimeDelivPrice <= businessPrice )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00461,
+                XxcsoConstants.TOKEN_COLUMN,
+                XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME,
+                XxcsoConstants.TOKEN_INDEX,
+                String.valueOf(index)
+              );
+          errorList.add(error);
+        }
+      }
+      catch ( NumberFormatException e )
+      {
+        XxcsoUtils.debug(txn, "NumberFormatException");
+      }
+    }
+
+    // 備考
+    errorList
+      = util.checkIllegalString(
+          errorList
+         ,lineRow.getRemarks()
+         ,XxcsoQuoteConstants.TOKEN_VALUE_REMARKS
+         ,index
+        );
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return errorList;
+  }
+
+  /*****************************************************************************
+   * 顧客チェック処理
+   *****************************************************************************
+   */
+  private void validateAccount()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    XxcsoAccountTypeVOImpl accountVo = getXxcsoAccountTypeVO1();
+    if ( accountVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoAccountTypeVO1");
+    }
+
+    List errorList = new ArrayList();
+    
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+    // 顧客コードが存在しているかを確認
+    accountVo.initQuery(headerRow.getAccountNumber());
+
+    XxcsoAccountTypeVORowImpl accountRow
+      = (XxcsoAccountTypeVORowImpl)accountVo.first();
+
+    if ( accountRow == null )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00115
+          );
+
+      errorList.add(error);
+    }
+
+    if ( errorList.size() > 0 )
+    {
+      OAException.raiseBundledOAException(errorList);
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+  }
+
+  /*****************************************************************************
+   * ボタンレンダリング処理
+   *****************************************************************************
+   */
+  private void initRender()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    XxcsoQuoteHeadersFullVOImpl headerVo = getXxcsoQuoteHeadersFullVO1();
+    if ( headerVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteHeadersFullVO1");
+    }
+
+    XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
+    if ( initVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQuoteSalesInitVO1");
+    }
+    
+    XxcsoQuoteHeadersFullVORowImpl headerRow
+      = (XxcsoQuoteHeadersFullVORowImpl)headerVo.first();
+
+    XxcsoQuoteSalesInitVORowImpl initRow
+      = (XxcsoQuoteSalesInitVORowImpl)initVo.first();
+
+    initRow.setCopyCreateButtonRender(Boolean.FALSE);
+    initRow.setInvalidityButtonRender(Boolean.FALSE);
+    initRow.setApplicableButtonRender(Boolean.FALSE);
+    initRow.setRevisionButtonRender(Boolean.FALSE);
+    initRow.setFixedButtonRender(Boolean.FALSE);
+    initRow.setQuoteSheetPrintButtonRender(Boolean.FALSE);
+    initRow.setCsvCreateButtonRender(Boolean.FALSE);
+    initRow.setInputTranceButtonRender(Boolean.FALSE);
+
+    String status = headerRow.getStatus();
+    if ( status == null || "".equals(status.trim()) )
+    {
+      initRow.setApplicableButtonRender(Boolean.TRUE);
+    }
+    else
+    {
+      if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(status) )
+      {
+        initRow.setCopyCreateButtonRender(Boolean.TRUE);
+        initRow.setApplicableButtonRender(Boolean.TRUE);
+        initRow.setRevisionButtonRender(Boolean.TRUE);
+        initRow.setFixedButtonRender(Boolean.TRUE);
+        initRow.setQuoteSheetPrintButtonRender(Boolean.TRUE);
+        initRow.setCsvCreateButtonRender(Boolean.TRUE);
+        initRow.setInputTranceButtonRender(Boolean.TRUE);
+      }
+      if ( XxcsoQuoteConstants.QUOTE_INVALIDITY.equals(status) )
+      {
+        initRow.setCopyCreateButtonRender(Boolean.TRUE);
+        initRow.setQuoteSheetPrintButtonRender(Boolean.TRUE);
+        initRow.setCsvCreateButtonRender(Boolean.TRUE);
+      }
+      if ( XxcsoQuoteConstants.QUOTE_OLD.equals(status) )
+      {
+        initRow.setCopyCreateButtonRender(Boolean.TRUE);
+        initRow.setQuoteSheetPrintButtonRender(Boolean.TRUE);
+        initRow.setCsvCreateButtonRender(Boolean.TRUE);
+      }
+      if ( XxcsoQuoteConstants.QUOTE_FIXATION.equals(status) )
+      {
+        initRow.setCopyCreateButtonRender(Boolean.TRUE);
+        initRow.setQuoteSheetPrintButtonRender(Boolean.TRUE);
+        initRow.setCsvCreateButtonRender(Boolean.TRUE);
+        initRow.setInvalidityButtonRender(Boolean.TRUE);
+        initRow.setInputTranceButtonRender(Boolean.TRUE);
+      }
+    }
+    
+    XxcsoUtils.debug(txn, "[END]");
+  }
+  
+  /*****************************************************************************
+   * CSV行作成処理
+   *****************************************************************************
+   */
+  private StringBuffer createCsvStatement(
+    StringBuffer buffer
+   ,String       value
+   ,boolean      endFlag
+  )
+  {
+    buffer.append("\"");
+    buffer.append(value);
+    buffer.append("\"");
+
+    if ( endFlag )
+    {
+      buffer.append("\r\n");
+    }
+    else
+    {
+      buffer.append(",");
+    }
+
+    return buffer;
+  }
+
+  /*****************************************************************************
+   * コミット処理
+   *****************************************************************************
+   */
+  private void commit()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    getTransaction().commit();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * ロールバック処理
+   *****************************************************************************
+   */
+  private void rollback()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+    
+    if ( getTransaction().isDirty() )
+    {
+      // ロールバックを行います。
+      getTransaction().rollback();
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+  }
+
+
+
+
+
+
+  /**
+   * 
+   * Container's getter for XxcsoStorePriceTaxTypeLookupVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoStorePriceTaxTypeLookupVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoStorePriceTaxTypeLookupVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoUsuallyDelivPriceVO1
+   */
+  public XxcsoUsuallyDelivPriceVOImpl getXxcsoUsuallyDelivPriceVO1()
+  {
+    return (XxcsoUsuallyDelivPriceVOImpl)findViewObject("XxcsoUsuallyDelivPriceVO1");
+  }
+
+
+
+  /**
+   * 
+   * Container's getter for XxcsoQuoteDivLookupVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoQuoteDivLookupVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoQuoteDivLookupVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoUnitPriceDivLookupVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoUnitPriceDivLookupVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoUnitPriceDivLookupVO");
+  }
+
+
+
+  /**
+   * 
+   * Container's getter for XxcsoDelivPriceTaxTypeLookupVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoDelivPriceTaxTypeLookupVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoDelivPriceTaxTypeLookupVO");
+  }
+
+
+
+  /**
+   * 
+   * Sample main for debugging Business Components code using the tester.
+   */
+  public static void main(String[] args)
+  {
+    launchTester("itoen.oracle.apps.xxcso.xxcso017001j.server", "XxcsoQuoteSalesRegistAMLocal");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoQuoteHeadersFullVO1
+   */
+  public XxcsoQuoteHeadersFullVOImpl getXxcsoQuoteHeadersFullVO1()
+  {
+    return (XxcsoQuoteHeadersFullVOImpl)findViewObject("XxcsoQuoteHeadersFullVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoQuoteLinesSalesFullVO1
+   */
+  public XxcsoQuoteLinesSalesFullVOImpl getXxcsoQuoteLinesSalesFullVO1()
+  {
+    return (XxcsoQuoteLinesSalesFullVOImpl)findViewObject("XxcsoQuoteLinesSalesFullVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoQuoteHeadersFullVO2
+   */
+  public XxcsoQuoteHeadersFullVOImpl getXxcsoQuoteHeadersFullVO2()
+  {
+    return (XxcsoQuoteHeadersFullVOImpl)findViewObject("XxcsoQuoteHeadersFullVO2");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoQuoteLinesSalesFullVO2
+   */
+  public XxcsoQuoteLinesSalesFullVOImpl getXxcsoQuoteLinesSalesFullVO2()
+  {
+    return (XxcsoQuoteLinesSalesFullVOImpl)findViewObject("XxcsoQuoteLinesSalesFullVO2");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoQuoteHeaderLineSalesVL1
+   */
+  public ViewLinkImpl getXxcsoQuoteHeaderLineSalesVL1()
+  {
+    return (ViewLinkImpl)findViewLink("XxcsoQuoteHeaderLineSalesVL1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoQuoteHeaderLineSalesVL2
+   */
+  public ViewLinkImpl getXxcsoQuoteHeaderLineSalesVL2()
+  {
+    return (ViewLinkImpl)findViewLink("XxcsoQuoteHeaderLineSalesVL2");
+  }
+
+
+
+  /**
+   * 
+   * Container's getter for XxcsoReferenceQuoteVO1
+   */
+  public XxcsoReferenceQuoteVOImpl getXxcsoReferenceQuoteVO1()
+  {
+    return (XxcsoReferenceQuoteVOImpl)findViewObject("XxcsoReferenceQuoteVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoQuoteTypeLookupVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoQuoteTypeLookupVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoQuoteTypeLookupVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoQuoteStatusLookupVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoQuoteStatusLookupVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoQuoteStatusLookupVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoQuoteSalesInitVO1
+   */
+  public XxcsoQuoteSalesInitVOImpl getXxcsoQuoteSalesInitVO1()
+  {
+    return (XxcsoQuoteSalesInitVOImpl)findViewObject("XxcsoQuoteSalesInitVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoCsvDownVO1
+   */
+  public XxcsoCsvDownVOImpl getXxcsoCsvDownVO1()
+  {
+    return (XxcsoCsvDownVOImpl)findViewObject("XxcsoCsvDownVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoCsvQueryVO1
+   */
+  public XxcsoCsvQueryVOImpl getXxcsoCsvQueryVO1()
+  {
+    return (XxcsoCsvQueryVOImpl)findViewObject("XxcsoCsvQueryVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoAccountTypeVO1
+   */
+  public XxcsoAccountTypeVOImpl getXxcsoAccountTypeVO1()
+  {
+    return (XxcsoAccountTypeVOImpl)findViewObject("XxcsoAccountTypeVO1");
+  }
+
+
+
+
+
+
+
+}

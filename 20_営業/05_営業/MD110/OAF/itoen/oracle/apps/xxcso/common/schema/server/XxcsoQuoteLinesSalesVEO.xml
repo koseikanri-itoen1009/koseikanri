@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE Entity SYSTEM "jbo_03_01.dtd">
+
+<Entity
+   Name="XxcsoQuoteLinesSalesVEO"
+   DBObjectType="view"
+   DBObjectName="XXCSO_QUOTE_LINES_SALES_V"
+   AliasName="XxcsoQuoteLinesSalesVEO"
+   BindingStyle="Oracle"
+   UseGlueCode="false"
+   CodeGenFlag="5"
+   RowClass="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteLinesSalesVEOImpl"
+   DefClass="oracle.apps.fnd.framework.server.OAEntityDefImpl"
+   CollClass="oracle.apps.fnd.framework.server.OAEntityCache" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_superClass" Value="oracle.apps.fnd.framework.server.OAPlsqlEntityImpl" />
+      <AttrArray Name="_publishEvents">
+      </AttrArray>
+   </DesignTime>
+   <Attribute
+      Name="QuoteLineId"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="QUOTE_LINE_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="QuoteHeaderId"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="QUOTE_HEADER_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ReferenceQuoteLineId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="REFERENCE_QUOTE_LINE_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InventoryItemId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="INVENTORY_ITEM_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="QuoteDiv"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="QUOTE_DIV"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="UsuallyDelivPrice"
+      Precision="9"
+      Type="java.lang.String"
+      ColumnName="USUALLY_DELIV_PRICE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="UsuallyStoreSalePrice"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnName="USUALLY_STORE_SALE_PRICE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ThisTimeDelivPrice"
+      Precision="9"
+      Type="java.lang.String"
+      ColumnName="THIS_TIME_DELIV_PRICE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ThisTimeStoreSalePrice"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnName="THIS_TIME_STORE_SALE_PRICE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="QuotationPrice"
+      Precision="7"
+      Scale="2"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="QUOTATION_PRICE"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SalesDiscountPrice"
+      Precision="7"
+      Scale="2"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="SALES_DISCOUNT_PRICE"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="UsuallNetPrice"
+      Precision="7"
+      Scale="2"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="USUALL_NET_PRICE"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ThisTimeNetPrice"
+      Precision="7"
+      Scale="2"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="THIS_TIME_NET_PRICE"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="AmountOfMargin"
+      Precision="7"
+      Scale="2"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="AMOUNT_OF_MARGIN"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="MarginRate"
+      Precision="5"
+      Scale="2"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="MARGIN_RATE"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="QuoteStartDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="QUOTE_START_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="QuoteEndDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="QUOTE_END_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="Remarks"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="REMARKS"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LineOrder"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnName="LINE_ORDER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="BusinessPrice"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="BUSINESS_PRICE"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="CREATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreationDate"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="CREATION_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="LAST_UPDATE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATE_LOGIN"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="REQUEST_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="PROGRAM_APPLICATION_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="PROGRAM_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramUpdateDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="PROGRAM_UPDATE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_QUOTE_LINES_SALES_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <AccessorAttribute
+      Name="XxcsoQuoteHeadersEO"
+      Association="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteHeaderLineSalesAO"
+      AssociationEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteHeaderLineSalesAO.XxcsoQuoteHeadersEO"
+      AssociationOtherEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteHeaderLineSalesAO.XxcsoQuoteLinesSalesVEO"
+      Type="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteHeadersEOImpl" >
+   </AccessorAttribute>
+   <Key
+      Name="XxcsoquotelinessalesveoPrimaryKey" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteLinesSalesVEO.QuoteLineId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="XXCSOQUOTELINESSALESVEO_PRIMAR" />
+         <Attr Name="_isPrimary" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="XxcsoQuoteLinesSalesVQuoteHeaderIdCheck" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteLinesSalesVEO.QuoteHeaderId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="XXCSO_QUOTE_LINES_SALES_VQUOTE" />
+         <Attr Name="_checkCondition" Value="&#34;QUOTE_HEADER_ID&#34; IS NOT NULL" />
+         <Attr Name="_isNotNull" Value="true" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+</Entity>

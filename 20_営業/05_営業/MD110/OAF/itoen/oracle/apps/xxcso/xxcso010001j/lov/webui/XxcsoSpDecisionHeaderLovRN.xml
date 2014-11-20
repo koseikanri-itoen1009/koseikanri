@@ -1,0 +1,27 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*・ページの概要
+SP専決書番号検索用LOV画面
+・ページの詳細
+「SP専決書番号」,「承認完了日」,「顧客名」を検索条件として選択可能です。
+検索結果を選択することによりベース・ページの「参照SP専決書番号」
+に値を反映します。
+・起動パラメータ
+なし
+・参照しているクラス（CO/AM）
+@see itoen.oracle.apps.xxcso.xxcso010001j.lov.server.XxcsoSpDecisionHeaderLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso010001j.lov.server.XxcsoSpDecisionHeaderLovAMlmpl.java
+・修正履歴
+2008/10/31 及川領 新規作成-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" amDefName="itoen.oracle.apps.xxcso.xxcso010001j.lov.server.XxcsoSpDecisionHeaderLovAM" advancedSearchAllowed="true">
+   <ui:contents>
+      <oa:table name="XxcsoSpDecisionHeaderLovRN" id="SpDecisionHeaderTblRN" width="100%" shortDesc="SP専決書番号検索結果">
+         <ui:contents>
+            <oa:messageStyledText id="SpDecisionNum" dataType="VARCHAR2" prompt="SP専決書番号" viewName="XxcsoSpDecisionHeaderLovVO1" viewAttr="SpDecisionNumber" queryable="true" sortState="yes" initSortSeq="first"/>
+            <oa:messageStyledText id="ApprovalDate" dataType="DATE" prompt="承認完了日" viewName="XxcsoSpDecisionHeaderLovVO1" viewAttr="ApprovalCompleteDate" queryable="true" sortState="yes"/>
+            <oa:messageStyledText id="PartyName" dataType="VARCHAR2" prompt="顧客名" viewName="XxcsoSpDecisionHeaderLovVO1" viewAttr="PartyName" queryable="true" sortState="yes"/>
+            <oa:formValue id="SpDecisionHeaderId" dataType="NUMBER" prompt="SP専決ヘッダID" viewName="XxcsoSpDecisionHeaderLovVO1" viewAttr="SpDecisionHeaderId"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

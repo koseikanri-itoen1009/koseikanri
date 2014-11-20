@@ -1,0 +1,151 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--*・ページの概要
+契約書検索画面
+・ページの詳細
+登録されている契約書データを検索し、自動販売機設置契約情報登録／更新画面
+に遷移します。この時、契約書の作成／更新が可能なユーザーかチェック
+を行い、結果をパラメータとして登録／更新画面に渡します。
+・起動パラメータ
+ユーザー情報
+・参照しているクラス（CO/AM）
+@see itoen.oracle.apps.xxcso.xxcso010001j.webui.XxcsoContractSearchCO.java
+@see itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractSearchAM.xml
+@see itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractSearchAMlmpl.java
+
+・修正履歴
+2008/10/31 及川領 新規作成-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractSearchAM" windowTitle="契約書" title="契約書" controllerClass="itoen.oracle.apps.xxcso.xxcso010001j.webui.XxcsoContractSearchCO">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="ReturnButton" text="戻る" prompt="戻る"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:header id="NewHdrRN" text="新規">
+               <ui:contents>
+                  <oa:messageComponentLayout id="NewMclRN">
+                     <ui:contents>
+                        <oa:messageLovInput id="SpDecisionNumber" dataType="VARCHAR2" prompt="参照SP専決書番号" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010001j/lov/webui/XxcsoSpDecisionHeaderLovRN" viewName="XxcsoContractNewVO1" viewAttr="SpDecisionNumber" maximumLength="30">
+                           <lovMappings>
+                              <lovMap id="SpNumSearchLovMap" resultTo="SpDecisionNumber" criteriaFrom="SpDecisionNumber" lovItem="SpDecisionNum"/>
+                              <lovMap id="SpIdSearchLovMap" lovItem="SpDecisionHeaderId" resultTo="SpHeaderId"/>
+                           </lovMappings>
+                        </oa:messageLovInput>
+                     </ui:contents>
+                     <ui:footer>
+                        <oa:flowLayout id="NewFlRN">
+                           <ui:contents>
+                              <oa:submitButton id="CreateButton" text="契約書作成" prompt="契約書作成"/>
+                           </ui:contents>
+                        </oa:flowLayout>
+                     </ui:footer>
+                  </oa:messageComponentLayout>
+                  <oa:formValue id="SpHeaderId" dataType="NUMBER" viewAttr="SpDecisionHeaderId" viewName="XxcsoContractNewVO1"/>
+               </ui:contents>
+            </oa:header>
+            <oa:header id="SearchHdrRN" text="検索">
+               <ui:contents>
+                  <oa:messageComponentLayout id="SearchMclRN">
+                     <ui:contents>
+                        <oa:messageTextInput id="ContractNumSearch" maximumLength="12" prompt="契約書番号" viewName="XxcsoContractQueryTermsVO1" viewAttr="ContractNumber"/>
+                        <oa:messageLovInput id="AccountNumSearch" prompt="顧客コード" maximumLength="9" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010001j/lov/webui/XxcsoInstallAccountLovRN" unvalidated="true" viewName="XxcsoContractQueryTermsVO1" viewAttr="InstallAccountNumber">
+                           <lovMappings>
+                              <lovMap id="AccountNumSearchLovMap" resultTo="AccountNumSearch" lovItem="InstallAccountNumber" criteriaFrom="AccountNumSearch"/>
+                           </lovMappings>
+                        </oa:messageLovInput>
+                        <oa:messageLovInput id="InstallNameSearch" prompt="設置先名" maximumLength="240" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010001j/lov/webui/XxcsoInstallAccountLovRN" unvalidated="true" viewName="XxcsoContractQueryTermsVO1" viewAttr="InstallpartyName">
+                           <lovMappings>
+                              <lovMap id="InstallNameSearchLovMap" resultTo="InstallNameSearch" criteriaFrom="InstallNameSearch" lovItem="InstallPartyName"/>
+                           </lovMappings>
+                        </oa:messageLovInput>
+                     </ui:contents>
+                     <ui:footer>
+                        <oa:flowLayout id="SearchFlRN">
+                           <ui:contents>
+                              <oa:submitButton id="SearchButton" text="進む" prompt="進む"/>
+                              <oa:submitButton id="ClearButton" text="消去" prompt="消去"/>
+                           </ui:contents>
+                        </oa:flowLayout>
+                     </ui:footer>
+                  </oa:messageComponentLayout>
+               </ui:contents>
+            </oa:header>
+            <oa:header id="ResultsHdrRN" text="契約書選択">
+               <ui:contents>
+                  <oa:advancedTable id="ResultsAdvTblRN" width="100%" viewName="XxcsoContractSummaryVO1" tableBanding="rowBanding" shortDesc="契約書検索結果">
+                     <ui:contents>
+                        <oa:column id="SpDecisionHeaderNumCol" width="15%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="SpDecisionHeaderNumColHdr" prompt="参照SP専決書番号" sortState="yes"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="SpDecisionHeaderNum" dataType="VARCHAR2" viewAttr="SpDecisionHeaderNum"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="ContractNumberCol" width="15%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ContractNumberColHdr" prompt="契約書番号" sortState="yes"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="ContractNumber" dataType="VARCHAR2" viewAttr="ContractNumber"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="LastUpdateDateCol" width="10%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="LastUpdateDateColHdr" prompt="最終更新日" sortState="yes"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="LastUpdateDate" dataType="DATE" viewAttr="LastUpdateDate"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="InstallAccountNumberCol" width="10%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="InstallAccountNumberColHdr" prompt="顧客コード" sortState="yes"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="InstallAccountNumber" dataType="VARCHAR2" viewAttr="InstallAccountNumber"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="InstallPartyNameCol" width="35%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="InstallPartyNameColHdr" prompt="設置先名" sortState="yes"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="InstallPartyName" dataType="VARCHAR2" viewAttr="InstallPartyName"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="StatusCol" width="10%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="StatusColHdr" prompt="ステータス" sortState="yes"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="Status" dataType="VARCHAR2" viewAttr="Status"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:formValue id="SpDecisionHeaderId" dataType="NUMBER" viewAttr="SpDecisionHeaderId"/>
+                     </ui:contents>
+                     <ui:tableActions>
+                        <oa:flowLayout id="ResultsFlRN" rendered="${oa.XxcsoContractRenderVO1.ContractRender}">
+                           <ui:contents>
+                              <oa:submitButton id="CopyButton" text="コピー作成" prompt="コピー作成"/>
+                              <oa:submitButton id="DetailsButton" text="詳細" prompt="詳細"/>
+                              <oa:submitButton id="PdfButton" text="PDF作成" prompt="PDF作成"/>
+                           </ui:contents>
+                        </oa:flowLayout>
+                     </ui:tableActions>
+                     <ui:tableSelection>
+                        <oa:multipleSelection id="ContractSelection" text="選択" viewAttr="SelectFlag"/>
+                     </ui:tableSelection>
+                  </oa:advancedTable>
+               </ui:contents>
+            </oa:header>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

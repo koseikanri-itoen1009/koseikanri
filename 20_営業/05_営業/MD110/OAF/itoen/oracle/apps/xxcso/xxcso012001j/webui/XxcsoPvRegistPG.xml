@@ -1,0 +1,407 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Parsonaraize View is registered, and updated. 
+
+@see itoen.oracle.apps.xxcso.xxcso012001j.webui.XxcsoPvRegistCO.java
+@see itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvRegistAM.xml
+@see itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvRegistAM.java
+
+HISTORY 2008/12/27  N.Yanagitaira        Initialcode drop.-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso012001j.webui.XxcsoPvRegistCO" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="CancelButton" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/CancelButton"/>
+                  <oa:submitButton id="AppliAndSearchButton" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/AppliAndSearchButton"/>
+                  <oa:spacer id="Spacer"/>
+                  <oa:submitButton id="ApplicationButton" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ApplicationButton"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:tableLayout id="RequiredKeyTlRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG" hAlign="center" width="100%"/>
+                  <oa:defaultSingleColumn id="GeneralPropertyRN" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/GeneralPropertyRN">
+                     <ui:contents>
+                        <oa:messageTextInput id="ViewName" required="uiOnly" maximumLength="100" viewName="XxcsoPvDefFullVO1" viewAttr="ViewName" columns="100" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ViewName"/>
+                        <oa:messageChoice id="ViewSize" viewName="XxcsoPvDefFullVO1" viewAttr="ViewSize" pickListViewName="XxcsoViewSizeLookupListVO" pickListDispAttr="Description" pickListValAttr="LookupCode" allowBlankValue="false" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ViewSize"/>
+                        <oa:messageCheckBox id="DefaultFlag" viewName="XxcsoPvDefFullVO1" viewAttr="DefaultFlag" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/DefaultFlag"/>
+                        <oa:messageTextInput id="Description" rows="3" columns="100" viewName="XxcsoPvDefFullVO1" viewAttr="Description" maximumLength="300" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/Description"/>
+                     </ui:contents>
+                  </oa:defaultSingleColumn>
+                  <oa:header id="LinePropertyHdrRN" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/LinePropertyHdrRN">
+                     <ui:contents>
+                        <oa:header id="LineOrderSubHdrRN" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/LineOrderSubHdrRN">
+                           <ui:contents>
+                              <oa:shuttle id="LineOrderStlRN" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/LineOrderStlRN">
+                                 <ui:leading>
+                                    <oa:list id="EnableLine" pickListViewName="XxcsoEnableColumnSumVO1" pickListDispAttr="Description" pickListValAttr="LookupCode" multiple="true" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/EnableLine"/>
+                                 </ui:leading>
+                                 <ui:trailing>
+                                    <oa:list id="DisplayLine" pickListViewName="XxcsoDisplayColumnSumVO1" pickListDispAttr="Description" pickListValAttr="LookupCode" multiple="true" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/DisplayLine"/>
+                                 </ui:trailing>
+                              </oa:shuttle>
+                           </ui:contents>
+                        </oa:header>
+                        <oa:header id="SortSettingSubHdrRN" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/SortSettingSubHdrRN">
+                           <ui:contents>
+                              <oa:advancedTable id="SortSettingAdvTblRN" tableBanding="rowBanding" viewName="XxcsoPvSortColumnFullVO1" rowHeaderViewAttr="LineCaption">
+                                 <ui:contents>
+                                    <oa:column id="ColumnNameCol" bandingShade="light">
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="LineNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/LineNameColHdr"/>
+                                       </ui:columnHeader>
+                                       <ui:contents>
+                                          <oa:messageChoice id="ColumnName" viewAttr="ColumnCode" pickListViewName="XxcsoColumnNameLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                       </ui:contents>
+                                    </oa:column>
+                                    <oa:column id="SortDirectionCol" bandingShade="light">
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="SortOrderColHdr" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/SortOrderColHdr"/>
+                                       </ui:columnHeader>
+                                       <ui:contents>
+                                          <oa:messageChoice id="SortDirection" viewAttr="SortDirectionCode" pickListViewName="XxcsoSortDirectionLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                       </ui:contents>
+                                    </oa:column>
+                                 </ui:contents>
+                              </oa:advancedTable>
+                           </ui:contents>
+                        </oa:header>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="SearchConditionHdrRN" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/SearchConditionHdrRN">
+                     <ui:contents>
+                        <oa:messageComponentLayout id="SearchConditionMclRN">
+                           <ui:contents>
+                              <oa:messageRadioGroup id="ConditionAndOr" viewName="XxcsoPvDefFullVO1" viewAttr="ExtractPatternCode" pickListDispAttr="Description" pickListViewName="XxcsoAndOrLookupVO" pickListValAttr="LookupCode" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ConditionAndOr" styleClass="OraInstructionText"/>
+                              <oa:messageLayout id="massageLayout" prompt="">
+                                 <ui:contents>
+                                    <oa:tableLayout id="SelectConditonTlRN" hAlign="start">
+                                       <ui:contents>
+                                          <oa:rowLayout id="SelectConditonRlRN01" hAlign="start">
+                                             <ui:contents>
+                                                <oa:cellFormat id="SelectConditonCfRN0101">
+                                                   <ui:contents>
+                                                      <oa:messageChoice id="AddCondition" pickListViewName="XxcsoAddConditionLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" allowBlankValue="false" viewName="XxcsoPvDefFullVO1" viewAttr="AddColumn" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/AddCondition"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="SelectConditonCfRN0102">
+                                                   <ui:contents>
+                                                      <oa:submitButton id="AddtionButton" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/AddtionButton"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="SelectConditonRlRN02" hAlign="start">
+                                             <ui:contents>
+                                                <oa:cellFormat id="SelectConditonCfRN0201" columnSpan="2" hAlign="start">
+                                                   <ui:contents>
+                                                      <oa:advancedTable id="ExtractConditionAdvTblRN" viewName="XxcsoPvExtractTermFullVO1">
+                                                         <ui:tableSelection>
+                                                            <oa:multipleSelection id="SelectFlag" viewAttr="SelectFlag" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/SelectFlag" text="">
+                                                               <ui:contents>
+                                                                  <oa:flowLayout id="ExtractConditionFlRN">
+                                                                     <ui:contents>
+                                                                        <oa:submitButton id="DeleteButton" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/DeleteButton"/>
+                                                                     </ui:contents>
+                                                                  </oa:flowLayout>
+                                                               </ui:contents>
+                                                            </oa:multipleSelection>
+                                                         </ui:tableSelection>
+                                                         <ui:contents>
+                                                            <oa:column id="ExtractLineNameCol">
+                                                               <ui:columnHeader>
+                                                                  <oa:sortableHeader id="ExtractLineNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractLineNameColHdr"/>
+                                                               </ui:columnHeader>
+                                                               <ui:contents>
+                                                                  <oa:formattedText id="ExtractColumnName010" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender010}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName010"/>
+                                                                  <oa:formattedText id="ExtractColumnName020" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender020}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName020"/>
+                                                                  <oa:formattedText id="ExtractColumnName030" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender030}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName030"/>
+                                                                  <oa:formattedText id="ExtractColumnName040" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender040}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName040"/>
+                                                                  <oa:formattedText id="ExtractColumnName050" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender050}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName050"/>
+                                                                  <oa:formattedText id="ExtractColumnName060" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender060}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName060"/>
+                                                                  <oa:formattedText id="ExtractColumnName070" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender070}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName070"/>
+                                                                  <oa:formattedText id="ExtractColumnName080" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender080}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName080"/>
+                                                                  <oa:formattedText id="ExtractColumnName090" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender090}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName090"/>
+                                                                  <oa:formattedText id="ExtractColumnName100" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender100}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName100"/>
+                                                                  <oa:formattedText id="ExtractColumnName110" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender110}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName110"/>
+                                                                  <oa:formattedText id="ExtractColumnName120" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender120}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName120"/>
+                                                                  <oa:formattedText id="ExtractColumnName130" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender130}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName130"/>
+                                                                  <oa:formattedText id="ExtractColumnName140" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender140}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName140"/>
+                                                                  <oa:formattedText id="ExtractColumnName150" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender150}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName150"/>
+                                                                  <oa:formattedText id="ExtractColumnName160" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender160}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName160"/>
+                                                                  <oa:formattedText id="ExtractColumnName170" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender170}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName170"/>
+                                                                  <oa:formattedText id="ExtractColumnName180" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender180}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName180"/>
+                                                                  <oa:formattedText id="ExtractColumnName190" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender190}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName190"/>
+                                                                  <oa:formattedText id="ExtractColumnName200" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender200}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName200"/>
+                                                                  <oa:formattedText id="ExtractColumnName210" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender210}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName210"/>
+                                                                  <oa:formattedText id="ExtractColumnName220" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender220}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName220"/>
+                                                                  <oa:formattedText id="ExtractColumnName230" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender230}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName230"/>
+                                                                  <oa:formattedText id="ExtractColumnName240" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender240}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName240"/>
+                                                                  <oa:formattedText id="ExtractColumnName250" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender250}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName250"/>
+                                                                  <oa:formattedText id="ExtractColumnName260" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender260}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName260"/>
+                                                                  <oa:formattedText id="ExtractColumnName270" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender270}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName270"/>
+                                                                  <oa:formattedText id="ExtractColumnName280" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender280}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName280"/>
+                                                                  <oa:formattedText id="ExtractColumnName290" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender290}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName290"/>
+                                                                  <oa:formattedText id="ExtractColumnName300" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender300}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName300"/>
+                                                                  <oa:formattedText id="ExtractColumnName310" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender310}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName310"/>
+                                                                  <oa:formattedText id="ExtractColumnName320" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender320}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName320"/>
+                                                                  <oa:formattedText id="ExtractColumnName330" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender330}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName330"/>
+                                                                  <oa:formattedText id="ExtractColumnName340" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender340}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName340"/>
+                                                                  <oa:formattedText id="ExtractColumnName350" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender350}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName350"/>
+                                                                  <oa:formattedText id="ExtractColumnName360" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender360}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName360"/>
+                                                                  <oa:formattedText id="ExtractColumnName370" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender370}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName370"/>
+                                                                  <oa:formattedText id="ExtractColumnName380" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender380}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName380"/>
+                                                                  <oa:formattedText id="ExtractColumnName390" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender390}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName390"/>
+                                                                  <oa:formattedText id="ExtractColumnName400" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender400}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName400"/>
+                                                                  <oa:formattedText id="ExtractColumnName410" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender410}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName410"/>
+                                                                  <oa:formattedText id="ExtractColumnName420" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender420}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName420"/>
+                                                                  <oa:formattedText id="ExtractColumnName430" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender430}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName430"/>
+                                                                  <oa:formattedText id="ExtractColumnName440" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender440}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName440"/>
+                                                                  <oa:formattedText id="ExtractColumnName450" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender450}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName450"/>
+                                                                  <oa:formattedText id="ExtractColumnName460" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender460}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName460"/>
+                                                                  <oa:formattedText id="ExtractColumnName470" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender470}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName470"/>
+                                                                  <oa:formattedText id="ExtractColumnName480" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender480}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName480"/>
+                                                                  <oa:formattedText id="ExtractColumnName490" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender490}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName490"/>
+                                                                  <oa:formattedText id="ExtractColumnName500" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender500}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName500"/>
+                                                                  <oa:formattedText id="ExtractColumnName510" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender510}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName510"/>
+                                                                  <oa:formattedText id="ExtractColumnName520" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender520}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName520"/>
+                                                                  <oa:formattedText id="ExtractColumnName530" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender530}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName530"/>
+                                                                  <oa:formattedText id="ExtractColumnName540" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender540}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName540"/>
+                                                                  <oa:formattedText id="ExtractColumnName550" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender550}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName550"/>
+                                                                  <oa:formattedText id="ExtractColumnName560" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender560}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName560"/>
+                                                                  <oa:formattedText id="ExtractColumnName570" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender570}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName570"/>
+                                                                  <oa:formattedText id="ExtractColumnName580" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender580}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName580"/>
+                                                                  <oa:formattedText id="ExtractColumnName590" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender590}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName590"/>
+                                                                  <oa:formattedText id="ExtractColumnName600" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender600}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName600"/>
+                                                                  <oa:formattedText id="ExtractColumnName610" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender610}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName610"/>
+                                                                  <oa:formattedText id="ExtractColumnName620" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender620}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName620"/>
+                                                                  <oa:formattedText id="ExtractColumnName630" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender630}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName630"/>
+                                                                  <oa:formattedText id="ExtractColumnName640" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender640}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName640"/>
+                                                                  <oa:formattedText id="ExtractColumnName650" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender650}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName650"/>
+                                                                  <oa:formattedText id="ExtractColumnName660" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender660}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName660"/>
+                                                                  <oa:formattedText id="ExtractColumnName670" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender670}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName670"/>
+                                                                  <oa:formattedText id="ExtractColumnName680" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender680}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName680"/>
+                                                                  <oa:formattedText id="ExtractColumnName690" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender690}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName690"/>
+                                                                  <oa:formattedText id="ExtractColumnName700" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender700}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName700"/>
+                                                                  <oa:formattedText id="ExtractColumnName710" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender710}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName710"/>
+                                                                  <oa:formattedText id="ExtractColumnName720" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender720}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName720"/>
+                                                                  <oa:formattedText id="ExtractColumnName730" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender730}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName730"/>
+                                                                  <oa:formattedText id="ExtractColumnName740" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender740}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName740"/>
+                                                                  <oa:formattedText id="ExtractColumnName750" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender750}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName750"/>
+                                                                  <oa:formattedText id="ExtractColumnName760" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender760}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName760"/>
+                                                                  <oa:formattedText id="ExtractColumnName770" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender770}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName770"/>
+                                                                  <oa:formattedText id="ExtractColumnName780" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender780}" viewAttr="ColumnCode" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractColumnName780"/>
+                                                               </ui:contents>
+                                                            </oa:column>
+                                                            <oa:column id="ExtractModeCol">
+                                                               <ui:columnHeader>
+                                                                  <oa:sortableHeader id="ExtractModeColHdr" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractModeColHdr"/>
+                                                               </ui:columnHeader>
+                                                               <ui:contents>
+                                                                  <oa:messageChoice id="Method010" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender010}" pickListViewName="XxcsoModeLovLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method020" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender020}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method030" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender030}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method040" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender040}" pickListViewName="XxcsoModeLovLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method050" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender050}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method060" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender060}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method070" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender070}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method080" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender080}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method090" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender090}" pickListViewName="XxcsoModeLovLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method100" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender100}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method110" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender110}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method120" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender120}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method130" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender130}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method140" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender140}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method150" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender150}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method160" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender160}" pickListViewName="XxcsoModeDateLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method170" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender170}" pickListViewName="XxcsoModeNumberLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method180" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender180}" pickListViewName="XxcsoModeNumberLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method190" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender190}" pickListViewName="XxcsoModeDateLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method200" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender200}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method210" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender210}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method220" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender220}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method230" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender230}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method240" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender240}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method250" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender250}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method260" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender260}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method270" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender270}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method280" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender280}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method290" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender290}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method300" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender300}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method310" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender310}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method320" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender320}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method330" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender330}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method340" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender340}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method350" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender350}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method360" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender360}" pickListViewName="XxcsoModeNumberLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method370" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender370}" pickListViewName="XxcsoModeDateLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method380" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender380}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method390" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender390}" pickListViewName="XxcsoModeNumberLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method400" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender400}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method410" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender410}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method420" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender420}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method430" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender430}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method440" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender440}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method450" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender450}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method460" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender460}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method470" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender470}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method480" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender480}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method490" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender490}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method500" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender500}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method510" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender510}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method520" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender520}" pickListViewName="XxcsoModeNumberLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method530" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender530}" pickListViewName="XxcsoModeDateLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method540" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender540}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method550" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender550}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method560" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender560}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method570" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender570}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method580" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender580}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method590" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender590}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method600" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender600}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method610" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender610}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method620" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender620}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method630" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender630}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method640" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender640}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method650" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender650}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method660" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender660}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method670" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender670}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method680" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender680}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method690" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender690}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method700" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender700}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method710" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender710}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method720" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender720}" pickListViewName="XxcsoModeTextLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method730" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender730}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method740" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender740}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method750" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender750}" pickListViewName="XxcsoModeNumberLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method760" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender760}" pickListViewName="XxcsoModeDateLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method770" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender770}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                                  <oa:messageChoice id="Method780" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender780}" pickListViewName="XxcsoModePoplistLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ExtractMethodCode"/>
+                                                               </ui:contents>
+                                                            </oa:column>
+                                                            <oa:column id="ExtractConditionCol">
+                                                               <ui:columnHeader>
+                                                                  <oa:sortableHeader id="ExtractConditionColHdr" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistAttrSets/ExtractConditionColHdr"/>
+                                                               </ui:columnHeader>
+                                                               <ui:contents>
+                                                                  <oa:messageLovInput id="Where010" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender010}" viewAttr="ExtractTermText" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso012001j/lov/webui/XxcsoBaseItemLovRN">
+                                                                     <lovMappings>
+                                                                        <lovMap id="lovMapBaseCode" lovItem="BaseCode" resultTo="Where010" criteriaFrom="Where010"/>
+                                                                     </lovMappings>
+                                                                  </oa:messageLovInput>
+                                                                  <oa:messageChoice id="Where020" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender020}" viewAttr="ExtractTermNumber" pickListViewName="XxcsoVendorTypeListVO1" pickListDispAttr="HazardClass" pickListValAttr="HazardClassId" dataType="NUMBER"/>
+                                                                  <oa:messageTextInput id="Where030" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender030}" viewAttr="ExtractTermText" maximumLength="30"/>
+                                                                  <oa:messageLovInput id="Where040" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender040}" viewAttr="ExtractTermText" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso012001j/lov/webui/XxcsoModelTypeSearchLovRN">
+                                                                     <lovMappings>
+                                                                        <lovMap id="lovMapUnNumber" lovItem="UnNumber" resultTo="Where040" criteriaFrom="Where040"/>
+                                                                     </lovMappings>
+                                                                  </oa:messageLovInput>
+                                                                  <oa:messageTextInput id="Where050" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender050}" viewAttr="ExtractTermText" maximumLength="150"/>
+                                                                  <oa:messageChoice id="Where060" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender060}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere060LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageChoice id="Where070" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender070}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere070LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageChoice id="Where080" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender080}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere080LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageLovInput id="Where090" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender090}" viewAttr="ExtractTermText" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso012001j/lov/webui/XxcsoAccountItemLovRN">
+                                                                     <lovMappings>
+                                                                        <lovMap id="lovMapAccountNumber" lovItem="AccountNumber" resultTo="Where090" criteriaFrom="Where090"/>
+                                                                     </lovMappings>
+                                                                  </oa:messageLovInput>
+                                                                  <oa:messageTextInput id="Where100" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender100}" viewAttr="ExtractTermText" maximumLength="360"/>
+                                                                  <oa:messageTextInput id="Where110" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender110}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where120" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender120}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where130" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender130}" viewAttr="ExtractTermText" maximumLength="240"/>
+                                                                  <oa:messageTextInput id="Where140" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender140}" viewAttr="ExtractTermText" maximumLength="150"/>
+                                                                  <oa:messageChoice id="Where150" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender150}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere150LookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageTextInput id="Where160" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender160}" dataType="DATE" viewAttr="ExtractTermDate"/>
+                                                                  <oa:messageTextInput id="Where170" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender170}" viewAttr="ExtractTermNumber" dataType="NUMBER" maximumLength="10"/>
+                                                                  <oa:messageTextInput id="Where180" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender180}" viewAttr="ExtractTermNumber" dataType="NUMBER" maximumLength="10"/>
+                                                                  <oa:messageTextInput id="Where190" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender190}" dataType="DATE" viewAttr="ExtractTermDate"/>
+                                                                  <oa:messageTextInput id="Where200" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender200}" viewAttr="ExtractTermText" maximumLength="240"/>
+                                                                  <oa:messageTextInput id="Where210" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender210}" viewAttr="ExtractTermText" maximumLength="240"/>
+                                                                  <oa:messageChoice id="Where220" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender220}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere220LookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageTextInput id="Where230" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender230}" viewAttr="ExtractTermText" maximumLength="240"/>
+                                                                  <oa:messageTextInput id="Where240" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender240}" viewAttr="ExtractTermText" maximumLength="240"/>
+                                                                  <oa:messageTextInput id="Where250" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender250}" viewAttr="ExtractTermText" maximumLength="240"/>
+                                                                  <oa:messageTextInput id="Where260" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender260}" viewAttr="ExtractTermText" maximumLength="12"/>
+                                                                  <oa:messageTextInput id="Where270" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender270}" viewAttr="ExtractTermText" maximumLength="301"/>
+                                                                  <oa:messageTextInput id="Where280" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender280}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where290" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender290}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageChoice id="Where300" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender300}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere300LookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageChoice id="Where310" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender310}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere310LookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageChoice id="Where320" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender320}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere320LookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageTextInput id="Where330" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender330}" viewAttr="ExtractTermText" maximumLength="240"/>
+                                                                  <oa:messageTextInput id="Where340" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender340}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where350" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender350}" viewAttr="ExtractTermText" maximumLength="15"/>
+                                                                  <oa:messageTextInput id="Where360" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender360}" viewAttr="ExtractTermNumber" maximumLength="3" dataType="NUMBER"/>
+                                                                  <oa:messageTextInput id="Where370" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender370}" dataType="DATE" viewAttr="ExtractTermDate"/>
+                                                                  <oa:messageTextInput id="Where380" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender380}" viewAttr="ExtractTermText" maximumLength="15"/>
+                                                                  <oa:messageTextInput id="Where390" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender390}" viewAttr="ExtractTermNumber" maximumLength="3" dataType="NUMBER"/>
+                                                                  <oa:messageTextInput id="Where400" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender400}" viewAttr="ExtractTermText" maximumLength="320"/>
+                                                                  <oa:messageTextInput id="Where410" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender410}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where420" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender420}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where430" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender430}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where440" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender440}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where450" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender450}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where460" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender460}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where470" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender470}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where480" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender480}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where490" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender490}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where500" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender500}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageChoice id="Where510" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender510}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere510LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageTextInput id="Where520" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender520}" viewAttr="ExtractTermNumber" dataType="NUMBER" maximumLength="3"/>
+                                                                  <oa:messageTextInput id="Where530" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender530}" dataType="DATE" viewAttr="ExtractTermDate"/>
+                                                                  <oa:messageTextInput id="Where540" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender540}" viewAttr="ExtractTermText" maximumLength="15"/>
+                                                                  <oa:messageChoice id="Where550" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender550}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere550LookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageChoice id="Where560" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender560}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere560LookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageTextInput id="Where570" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender570}" viewAttr="ExtractTermText" maximumLength="360"/>
+                                                                  <oa:messageTextInput id="Where580" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender580}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where590" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender590}" viewAttr="ExtractTermText" maximumLength="30"/>
+                                                                  <oa:messageChoice id="Where600" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender600}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere600LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageChoice id="Where610" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender610}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere610LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageChoice id="Where620" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender620}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere620LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageTextInput id="Where630" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender630}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where640" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender640}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where650" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender650}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageChoice id="Where660" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender660}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere660LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageChoice id="Where670" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender670}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere670LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageTextInput id="Where680" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender680}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where690" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender690}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where700" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender700}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where710" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender710}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageTextInput id="Where720" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender720}" viewAttr="ExtractTermText" maximumLength="1000"/>
+                                                                  <oa:messageChoice id="Where730" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender730}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere730LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageChoice id="Where740" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender740}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere740LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageTextInput id="Where750" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender750}" viewAttr="ExtractTermNumber" dataType="NUMBER" maximumLength="13"/>
+                                                                  <oa:messageTextInput id="Where760" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender760}" dataType="DATE" viewAttr="ExtractTermDate"/>
+                                                                  <oa:messageChoice id="Where770" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender770}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere770LookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode"/>
+                                                                  <oa:messageChoice id="Where780" rendered="${oa.XxcsoPvExtractTermFullVO1.ExtractRender780}" viewAttr="ExtractTermText" pickListViewName="XxcsoWhere780LookupVO" pickListValAttr="LookupCode" pickListDispAttr="Description"/>
+                                                               </ui:contents>
+                                                            </oa:column>
+                                                         </ui:contents>
+                                                      </oa:advancedTable>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                           </ui:contents>
+                        </oa:messageComponentLayout>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

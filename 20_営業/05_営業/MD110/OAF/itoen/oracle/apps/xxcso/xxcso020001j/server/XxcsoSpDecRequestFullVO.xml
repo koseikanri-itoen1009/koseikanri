@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSpDecRequestFullVO"
+   SelectList="XxcsoSpDecRequestEO.SP_DECISION_HEADER_ID, 
+       XxcsoSpDecRequestEO.APP_BASE_CODE, 
+
+       XxcsoSpDecRequestEO.OPERATION_MODE, 
+       XxcsoSpDecRequestEO.CREATED_BY, 
+
+       XxcsoSpDecRequestEO.CREATION_DATE, 
+       XxcsoSpDecRequestEO.LAST_UPDATED_BY, 
+
+       XxcsoSpDecRequestEO.LAST_UPDATE_DATE, 
+       XxcsoSpDecRequestEO.LAST_UPDATE_LOGIN, 
+
+       XxcsoSpDecRequestEO.REQUEST_ID, 
+       XxcsoSpDecRequestEO.PROGRAM_APPLICATION_ID, 
+
+       XxcsoSpDecRequestEO.PROGRAM_ID, 
+       XxcsoSpDecRequestEO.PROGRAM_UPDATE_DATE"
+   FromList="XXCSO_TMP_SP_DEC_REQUEST XxcsoSpDecRequestEO"
+   BindingStyle="Oracle"
+   CustomQuery="false"
+   RowClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecRequestFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecRequestFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoSpDecRequestEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecRequestEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="SpDecisionHeaderId"
+      EntityAttrName="SpDecisionHeaderId"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="SP_DECISION_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AppBaseCode"
+      Precision="4"
+      EntityAttrName="AppBaseCode"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="APP_BASE_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OperationMode"
+      Precision="30"
+      EntityAttrName="OperationMode"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="OPERATION_MODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoSpDecRequestEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+</ViewObject>

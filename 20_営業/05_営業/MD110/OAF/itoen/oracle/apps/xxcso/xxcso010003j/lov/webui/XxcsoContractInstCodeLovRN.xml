@@ -1,0 +1,31 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Search Install information LOV region by shared for regist CONTRACT_MANAGEMENTS information.
+
+@see itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAMImpl.java
+
+HISTORY
+2009/01/27  H.Ogawa                Initialcode drop.-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" advancedSearchAllowed="true" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAM">
+   <ui:contents>
+      <oa:table name="XxcsoContractInstCodeLovRN" id="InstallCodeTblRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallCodeTblRN">
+         <ui:contents>
+            <oa:messageStyledText id="InstallCode" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="InstallCode" maximumLength="30" queryable="true" sortState="yes" initSortSeq="first" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallCodeLov"/>
+            <oa:messageStyledText id="VendorModel" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="VendorModel" maximumLength="240" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/VendorModel"/>
+            <oa:messageStyledText id="PartyName" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="PartyName" maximumLength="360" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PartyName"/>
+            <oa:messageStyledText id="PostalCode" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="PostalCode" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PostalCode"/>
+            <oa:messageStyledText id="State" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="State" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/State"/>
+            <oa:messageStyledText id="City" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="City" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/City"/>
+            <oa:messageStyledText id="Address1" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="Address1" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Address1"/>
+            <oa:messageStyledText id="Address2" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="Address2" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Address2"/>
+            <oa:messageStyledText id="StatusName" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="StatusName" maximumLength="50" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/StatusName"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

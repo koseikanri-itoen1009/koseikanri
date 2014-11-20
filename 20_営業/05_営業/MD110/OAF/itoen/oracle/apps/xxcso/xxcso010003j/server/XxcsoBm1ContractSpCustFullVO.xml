@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoBm1ContractSpCustFullVO"
+   SelectList="XxcsoContractSpCustsEO.SP_DECISION_CUSTOMER_ID, 
+       XxcsoContractSpCustsEO.SP_DECISION_HEADER_ID, 
+
+       XxcsoContractSpCustsEO.SP_DECISION_CUSTOMER_CLASS, 
+ 
+      XxcsoContractSpCustsEO.PARTY_NAME, 
+       XxcsoContractSpCustsEO.PARTY_NAME_ALT, 
+
+       XxcsoContractSpCustsEO.POSTAL_CODE_FIRST, 
+       XxcsoContractSpCustsEO.POSTAL_CODE_SECOND, 
+
+       XxcsoContractSpCustsEO.POSTAL_CODE, 
+       XxcsoContractSpCustsEO.STATE, 
+
+       XxcsoContractSpCustsEO.CITY, 
+       XxcsoContractSpCustsEO.ADDRESS1, 
+
+       XxcsoContractSpCustsEO.ADDRESS2, 
+       XxcsoContractSpCustsEO.ADDRESS_LINES_PHONETIC, 
+
+       XxcsoContractSpCustsEO.INSTALL_NAME, 
+       XxcsoContractSpCustsEO.BUSINESS_CONDITION_TYPE, 
+
+       XxcsoContractSpCustsEO.BUSINESS_TYPE, 
+       XxcsoContractSpCustsEO.INSTALL_LOCATION, 
+
+       XxcsoContractSpCustsEO.EXTERNAL_REFERENCE_OPCL_TYPE, 
+
+       XxcsoContractSpCustsEO.EMPLOYEE_NUMBER, 
+       XxcsoContractSpCustsEO.PUBLISH_BASE_CODE, 
+
+       XxcsoContractSpCustsEO.REPRESENTATIVE_NAME, 
+       XxcsoContractSpCustsEO.TRANSFER_COMMISSION_TYPE, 
+
+       XxcsoContractSpCustsEO.BM_PAYMENT_TYPE, 
+       XxcsoContractSpCustsEO.INQUIRY_BASE_CODE, 
+
+       XxcsoContractSpCustsEO.NEW_CUSTOMER_FLAG, 
+       XxcsoContractSpCustsEO.CUSTOMER_ID, 
+
+       XxcsoContractSpCustsEO.SAME_INSTALL_ACCOUNT_FLAG, 
+  
+     XxcsoContractSpCustsEO.CREATED_BY, 
+       XxcsoContractSpCustsEO.CREATION_DATE, 
+
+       XxcsoContractSpCustsEO.LAST_UPDATED_BY, 
+       XxcsoContractSpCustsEO.LAST_UPDATE_DATE, 
+
+       XxcsoContractSpCustsEO.LAST_UPDATE_LOGIN, 
+       XxcsoContractSpCustsEO.REQUEST_ID, 
+
+       XxcsoContractSpCustsEO.PROGRAM_APPLICATION_ID, 
+     
+  XxcsoContractSpCustsEO.PROGRAM_ID, 
+       XxcsoContractSpCustsEO.PROGRAM_UPDATE_DATE"
+   FromList="XXCSO_SP_DECISION_CUSTS XxcsoContractSpCustsEO"
+   Where="XxcsoContractSpCustsEO.SP_DECISION_HEADER_ID = :1 AND XxcsoContractSpCustsEO.SP_DECISION_CUSTOMER_CLASS = &#39;3&#39;"
+   BindingStyle="Oracle"
+   CustomQuery="false"
+   RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1ContractSpCustFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1ContractSpCustFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoContractSpCustsEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractSpCustsEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="true" />
+         <Attr Name="_queryWhere" Value="XxcsoContractSpCustsEO.SP_DECISION_HEADER_ID = :1 AND XxcsoContractSpCustsEO.SP_DECISION_CUSTOMER_CLASS = &#39;3&#39;" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="SpDecisionCustomerId"
+      IsNotNull="true"
+      EntityAttrName="SpDecisionCustomerId"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="SP_DECISION_CUSTOMER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionHeaderId"
+      IsNotNull="true"
+      EntityAttrName="SpDecisionHeaderId"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="SP_DECISION_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionCustomerClass"
+      IsNotNull="true"
+      Precision="1"
+      EntityAttrName="SpDecisionCustomerClass"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="SP_DECISION_CUSTOMER_CLASS" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyName"
+      Precision="360"
+      EntityAttrName="PartyName"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="PARTY_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyNameAlt"
+      Precision="320"
+      EntityAttrName="PartyNameAlt"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="PARTY_NAME_ALT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PostalCodeFirst"
+      Precision="3"
+      EntityAttrName="PostalCodeFirst"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="POSTAL_CODE_FIRST" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PostalCodeSecond"
+      Precision="4"
+      EntityAttrName="PostalCodeSecond"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="POSTAL_CODE_SECOND" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PostalCode"
+      Precision="7"
+      EntityAttrName="PostalCode"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="POSTAL_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="State"
+      Precision="30"
+      EntityAttrName="State"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="STATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="City"
+      Precision="30"
+      EntityAttrName="City"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="CITY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Address1"
+      Precision="240"
+      EntityAttrName="Address1"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="ADDRESS1" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Address2"
+      Precision="240"
+      EntityAttrName="Address2"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="ADDRESS2" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AddressLinesPhonetic"
+      Precision="30"
+      EntityAttrName="AddressLinesPhonetic"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="ADDRESS_LINES_PHONETIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallName"
+      Precision="30"
+      EntityAttrName="InstallName"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="INSTALL_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BusinessConditionType"
+      Precision="2"
+      EntityAttrName="BusinessConditionType"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="BUSINESS_CONDITION_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BusinessType"
+      Precision="2"
+      EntityAttrName="BusinessType"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="BUSINESS_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallLocation"
+      Precision="2"
+      EntityAttrName="InstallLocation"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="INSTALL_LOCATION" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ExternalReferenceOpclType"
+      Precision="1"
+      EntityAttrName="ExternalReferenceOpclType"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="EXTERNAL_REFERENCE_OPCL_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      Precision="7"
+      Scale="0"
+      EntityAttrName="EmployeeNumber"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="EMPLOYEE_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PublishBaseCode"
+      Precision="4"
+      EntityAttrName="PublishBaseCode"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="PUBLISH_BASE_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RepresentativeName"
+      Precision="20"
+      EntityAttrName="RepresentativeName"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="REPRESENTATIVE_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransferCommissionType"
+      Precision="1"
+      EntityAttrName="TransferCommissionType"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="TRANSFER_COMMISSION_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmPaymentType"
+      Precision="1"
+      EntityAttrName="BmPaymentType"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="BM_PAYMENT_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InquiryBaseCode"
+      Precision="4"
+      EntityAttrName="InquiryBaseCode"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="INQUIRY_BASE_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NewCustomerFlag"
+      Precision="1"
+      EntityAttrName="NewCustomerFlag"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="NEW_CUSTOMER_FLAG" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustomerId"
+      EntityAttrName="CustomerId"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="CUSTOMER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SameInstallAccountFlag"
+      Precision="1"
+      EntityAttrName="SameInstallAccountFlag"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="SAME_INSTALL_ACCOUNT_FLAG" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoContractSpCustsEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+</ViewObject>

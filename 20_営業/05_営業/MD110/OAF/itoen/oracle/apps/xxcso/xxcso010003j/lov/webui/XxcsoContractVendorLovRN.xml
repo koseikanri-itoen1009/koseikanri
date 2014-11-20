@@ -1,0 +1,45 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Search Vendor information LOV region by shared for regist CONTRACT_MANAGEMENTS information.
+
+@see itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAMImpl.java
+
+HISTORY
+2009/01/27  H.Ogawa                Initialcode drop.-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAM" advancedSearchAllowed="true" scope="/">
+   <ui:contents>
+      <oa:table name="XxcsoContractVendorLovRN" id="ContractVendorTblRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractVendorTblRN">
+         <ui:contents>
+            <oa:messageStyledText id="VendorNumber" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="VendorNumber" queryable="true" sortState="yes" initSortSeq="first" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/VendorNumber"/>
+            <oa:formValue id="VendorId" dataType="NUMBER" viewName="XxcsoContractVendorLovVO1" viewAttr="VendorId"/>
+            <oa:messageStyledText id="VendorName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="VendorName" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/VendorName"/>
+            <oa:formValue id="VendorNameAlt" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="VendorNameAlt"/>
+            <oa:formValue id="Zip" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="Zip"/>
+            <oa:formValue id="State" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="State"/>
+            <oa:formValue id="City" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="City"/>
+            <oa:formValue id="AddressLine1" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="AddressLine1"/>
+            <oa:formValue id="AddressLine2" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="AddressLine2"/>
+            <oa:formValue id="PhoneNumber" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="PhoneNumber"/>
+            <oa:formValue id="BankNumber" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankNumber"/>
+            <oa:formValue id="BankName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankName"/>
+            <oa:formValue id="BankBranchNumber" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankBranchNumber"/>
+            <oa:formValue id="BankBranchName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankBranchName"/>
+            <oa:formValue id="BankAccountType" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankAccountType"/>
+            <oa:formValue id="BankAccountNum" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankAccountNum"/>
+            <oa:formValue id="BankAccountHolderNameAlt" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankAccountHolderNameAlt"/>
+            <oa:formValue id="BankAccountHolderName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BankAccountHolderName"/>
+            <oa:formValue id="BmTransferCommissionType" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BmTransferCommissionType"/>
+            <oa:formValue id="BmPaymentType" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="BmPaymentType"/>
+            <oa:formValue id="InquiryBaseCode" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="InquiryBaseCode"/>
+            <oa:formValue id="InquiryBaseName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="InquiryBaseName"/>
+            <oa:formValue id="VendorId2" viewName="XxcsoContractVendorLovVO1" viewAttr="VendorId2" dataType="NUMBER"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

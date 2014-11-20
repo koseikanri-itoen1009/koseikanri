@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoDispayColumnInitVO"
+   OrderBy="lookup_code"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoDispayColumnInitVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoDispayColumnInitVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  flvv.lookup_code AS lookup_code
+       ,flvv.description AS description
+FROM    FND_LOOKUP_VALUES_VL flvv
+WHERE   flvv.lookup_type = 'XXCSO1_IB_PV_COLUMN_DEF'
+  AND   SUBSTRB(flvv.attribute1, :1, 1) = '1'
+  AND   SUBSTRB(flvv.attribute2, :2, 1) = '1'
+  AND   NVL(flvv.start_date_active, TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)) <= TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
+  AND   NVL(flvv.end_date_active, TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)) >= TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="LookupCode"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LOOKUP_CODE"
+      Passivate="true"
+      Expression="LOOKUP_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Description"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DESCRIPTION"
+      Passivate="true"
+      Expression="DESCRIPTION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

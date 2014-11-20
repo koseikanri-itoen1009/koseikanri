@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoPvViewColumnFullVO"
+   OrderBy="SETUP_NUMBER"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvViewColumnFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvViewColumnFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  XxcsoPvViewColumnDefEO.VIEW_COLUMN_DEF_ID 
+       ,XxcsoPvViewColumnDefEO.VIEW_ID
+       ,XxcsoPvViewColumnDefEO.SETUP_NUMBER
+       ,XxcsoPvViewColumnDefEO.COLUMN_CODE
+       ,XxcsoPvViewColumnDefEO.CREATED_BY
+       ,XxcsoPvViewColumnDefEO.CREATION_DATE
+       ,XxcsoPvViewColumnDefEO.LAST_UPDATED_BY
+       ,XxcsoPvViewColumnDefEO.LAST_UPDATE_DATE
+       ,XxcsoPvViewColumnDefEO.LAST_UPDATE_LOGIN
+       ,XxcsoPvViewColumnDefEO.REQUEST_ID
+       ,XxcsoPvViewColumnDefEO.PROGRAM_APPLICATION_ID
+       ,XxcsoPvViewColumnDefEO.PROGRAM_ID
+       ,XxcsoPvViewColumnDefEO.PROGRAM_UPDATE_DATE
+FROM    XXCSO_PV_VIEW_COLUMN_DEF XxcsoPvViewColumnDefEO
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoPvViewColumnDefEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoPvViewColumnDefEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="ViewColumnDefId"
+      IsNotNull="true"
+      EntityAttrName="ViewColumnDefId"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="VIEW_COLUMN_DEF_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ViewId"
+      IsNotNull="true"
+      EntityAttrName="ViewId"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="VIEW_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SetupNumber"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="SetupNumber"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="SETUP_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ColumnCode"
+      Precision="30"
+      EntityAttrName="ColumnCode"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="COLUMN_CODE"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoPvViewColumnDefEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+</ViewObject>

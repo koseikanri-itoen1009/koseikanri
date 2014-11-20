@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewLink SYSTEM "jbo_03_01.dtd">
+
+<ViewLink
+   Name="XxcsoQuoteHeaderLineStoreVL"
+   EntityAssociation="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteHeaderLineStoreAO" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+   </DesignTime>
+   <ViewLinkDefEnd
+      Name="XxcsoQuoteHeadersFullVO"
+      Cardinality="0"
+      Owner="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeadersFullVO"
+      Source="true" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteHeadersFullVO.QuoteHeaderId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoQuoteHeadersFullVO" />
+         <Attr Name="_accessor" Value="false" />
+      </DesignTime>
+   </ViewLinkDefEnd>
+   <ViewLinkDefEnd
+      Name="XxcsoQuoteLinesStoreFullVO"
+      Cardinality="-1"
+      Owner="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteLinesStoreFullVO" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQuoteLinesStoreFullVO.QuoteHeaderId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoQuoteLinesStoreFullVO" />
+         <Attr Name="_accessor" Value="true" />
+      </DesignTime>
+   </ViewLinkDefEnd>
+</ViewLink>

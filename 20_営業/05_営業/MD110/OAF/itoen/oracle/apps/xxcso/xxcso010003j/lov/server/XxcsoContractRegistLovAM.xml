@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoContractRegistLovAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoContractVendorLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractVendorLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractInqueryBaseLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractInqueryBaseLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractBankLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractBankLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractInstCodeLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractInstCodeLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractPubBaseLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractPubBaseLovVO" >
+   </ViewUsage>
+</AppModule>

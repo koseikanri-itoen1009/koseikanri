@@ -1,0 +1,829 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+The list display will be done in every two weeks the business schedule.
+
+@see itoen.oracle.apps.xxcso.xxcso008001j.webui.XxcsoWeeklyTaskViewCO.java
+@see itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoWeeklyTaskViewAM.xml
+@see itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoWeeklyTaskViewAM.java
+
+HISTORY 2008/11/06  N.Yanagitaira        Initialcode drop.-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoWeeklyTaskViewAM" controllerClass="itoen.oracle.apps.xxcso.xxcso008001j.webui.XxcsoWeeklyTaskViewCO" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="BackButton" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/BackButton"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:header id="CsvDwnHdrRN" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/CsvDwnHdrRN">
+                     <ui:contents>
+                        <oa:table id="CsvDwnTblRN" width="30%" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/CsvDwnTblRN">
+                           <ui:contents>
+                              <oa:messageDownload id="FileNameDwn" viewAttr="FileName" contentViewAttributeName="FileData" viewName="XxcsoCsvDownVO1" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/FileNameDwn"/>
+                           </ui:contents>
+                        </oa:table>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="TaskAppHdrRN" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskAppHdrRN">
+                     <ui:contents>
+                        <oa:messageComponentLayout id="TaskAppMclRN">
+                           <ui:contents>
+                              <oa:messageTextInput id="DateSch" dataType="DATE" viewName="XxcsoTaskAppSearchVO1" viewAttr="DateSch" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/DateSch"/>
+                              <oa:messageLovInput id="BaseName" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso008001j/lov/webui/XxcsoBaseSearchLovRN" viewName="XxcsoTaskAppSearchVO1" viewAttr="BaseName" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/BaseName">
+                                 <lovMappings>
+                                    <lovMap id="lovMapBaseCode" lovItem="BaseCode" resultTo="BaseCode"/>
+                                    <lovMap id="lovMapBaseName" lovItem="BaseName" resultTo="BaseName" criteriaFrom="BaseName"/>
+                                 </lovMappings>
+                              </oa:messageLovInput>
+                           </ui:contents>
+                           <ui:footer>
+                              <oa:flowLayout id="TaskAppFlRN">
+                                 <ui:contents>
+                                    <oa:submitButton id="ForwardButton" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/ForwardButton"/>
+                                    <oa:submitButton id="CsvCreateButton" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/CsvCreateButton"/>
+                                 </ui:contents>
+                              </oa:flowLayout>
+                           </ui:footer>
+                        </oa:messageComponentLayout>
+                        <oa:formValue id="BaseCode" viewName="XxcsoTaskAppSearchVO1" viewAttr="BaseCode"/>
+                        <oa:formValue id="BaseLineBaseCode" viewName="XxcsoTaskAppSearchVO1" viewAttr="BaseLineBaseCode"/>
+                        <oa:formValue id="LoginResourceId" dataType="NUMBER" viewName="XxcsoTaskAppSearchVO1" viewAttr="LoginResourceId"/>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:tableLayout id="DispDataTlRN" width="100%">
+                     <ui:contents>
+                        <oa:rowLayout id="DispDataRlRN" width="100%">
+                           <ui:contents>
+                              <oa:cellFormat id="EmployeeSelectCfRN" width="30%" vAlign="top">
+                                 <ui:contents>
+                                    <oa:header id="EmployeeSelectHdrRN" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/EmployeeSelectHdrRN">
+                                       <ui:contents>
+                                          <oa:advancedTable id="EmployeeSelectAdvTblRN" blockSize="3" width="100%" viewName="XxcsoEmpSelSummaryVO1" tableBanding="rowBanding">
+                                             <ui:contents>
+                                                <oa:column id="PositionNameCol" width="30%">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="PositionNameColHdr" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/PositionNameColHdr"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="PositionName" viewAttr="PositionName"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:column id="FullNameCol" width="50%">
+                                                   <ui:columnHeader>
+                                                      <oa:sortableHeader id="FullNameColHdr" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/FullNameColHdr"/>
+                                                   </ui:columnHeader>
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="FullName" viewAttr="FullName"/>
+                                                   </ui:contents>
+                                                </oa:column>
+                                                <oa:formValue id="ResourceId" viewAttr="ResourceId" dataType="NUMBER"/>
+                                             </ui:contents>
+                                             <ui:tableActions>
+                                                <oa:flowLayout id="StaffSelectFlRN">
+                                                   <ui:contents>
+                                                      <oa:submitButton id="ShowButton" rendered="${oa.XxcsoEmpSelRenderVO1.EmpSelRender}" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/ShowButton"/>
+                                                   </ui:contents>
+                                                </oa:flowLayout>
+                                             </ui:tableActions>
+                                             <ui:tableSelection>
+                                                <oa:multipleSelection id="SelectChkBox" viewAttr="SelectFlg" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/SelectChkBox"/>
+                                             </ui:tableSelection>
+                                          </oa:advancedTable>
+                                       </ui:contents>
+                                    </oa:header>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="TaskCfRN" width="70%" vAlign="top">
+                                 <ui:contents>
+                                    <oa:header id="TaskHdrRN" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskHdrRN">
+                                       <ui:contents>
+                                          <oa:tableLayout id="TaskSubTlRN" width="100%" hAlign="start">
+                                             <ui:contents>
+                                                <oa:rowLayout id="TaskSubRlRN01" width="100%" rendered="${oa.XxcsoTaskRenderVO1.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="TaskSubCfRN0101" vAlign="top" width="20%">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="EmpName01" viewName="XxcsoEmpNameSummaryVO1" viewAttr="EmpName" styleClass="OraDataText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="TaskSubCfRN0102" width="80%">
+                                                         <ui:contents>
+                                                            <oa:advancedTable id="TaskAdvTblRN01" width="100%" viewName="XxcsoTaskSummaryVO1">
+                                                               <ui:contents>
+                                                                  <oa:column id="TaskDateCol01" bandingShade="dark" width="10%">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDateColHdr01" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDateColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDate01" viewAttr="TaskDate"/>
+                                                                        <oa:messageStyledText id="TaskDy01" viewAttr="TaskDy"/>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskPlanOrResultCol01" width="30%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskPlanOrResultColHdr01" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskPlanOrResultColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskPlanOrResult01" viewAttr="TaskPlanOrResult">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction1">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO1.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO1.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskDescriptionCol01" width="60%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDescriptionColHdr01" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDescriptionColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDescription01" viewAttr="TaskDescription">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction2">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO1.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO1.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:formValue id="TaskId01" viewAttr="TaskId"/>
+                                                                  <oa:formValue id="TaskOwnerId01" viewAttr="TaskOwnerId"/>
+                                                               </ui:contents>
+                                                            </oa:advancedTable>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="SeparatorRlRN01" width="100%" rendered="${oa.XxcsoTaskRenderVO2.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="SeparatorCfRN0101" columnSpan="2" width="100%">
+                                                         <ui:contents>
+                                                            <oa:separator id="Separator01"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="TaskSubRlRN02" width="100%" rendered="${oa.XxcsoTaskRenderVO2.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="TaskSubCfRN0201" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="EmpName02" viewName="XxcsoEmpNameSummaryVO2" viewAttr="EmpName" styleClass="OraDataText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="TaskSubCfRN0202" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:advancedTable id="TaskAdvTblRN02" width="100%" viewName="XxcsoTaskSummaryVO2">
+                                                               <ui:contents>
+                                                                  <oa:column id="TaskDateCol02" bandingShade="dark" width="10%">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDateColHdr02" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDateColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDate02" viewAttr="TaskDate"/>
+                                                                        <oa:messageStyledText id="TaskDy02" viewAttr="TaskDy"/>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="PlanOrResultCol02" width="30%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskPlanOrResultColHdr02" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskPlanOrResultColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskPlanOrResult02" viewAttr="TaskPlanOrResult">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction3">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO2.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO2.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskDescriptionCol02" width="60%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDescriptionColHdr02" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDescriptionColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDescription02" viewAttr="TaskDescription">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction4">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO2.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO2.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:formValue id="TaskId02" viewAttr="TaskId"/>
+                                                                  <oa:formValue id="TaskOwnerId02" viewAttr="TaskOwnerId"/>
+                                                               </ui:contents>
+                                                            </oa:advancedTable>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="SeparatorRlRN02" rendered="${oa.XxcsoTaskRenderVO3.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="SeparatorCfRN0201" columnSpan="2" width="100%">
+                                                         <ui:contents>
+                                                            <oa:separator id="Separator02"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="TaskSubRlRN03" width="100%" rendered="${oa.XxcsoTaskRenderVO3.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="TaskSubCfRN0301" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="EmpName03" viewName="XxcsoEmpNameSummaryVO3" viewAttr="EmpName" styleClass="OraDataText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="TaskSubCfRN0302" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:advancedTable id="TaskAdvTblRN03" width="100%" viewName="XxcsoTaskSummaryVO3">
+                                                               <ui:contents>
+                                                                  <oa:column id="TaskDateCol03" bandingShade="dark" width="10%">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDateColHdr03" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDateColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDate03" viewAttr="TaskDate"/>
+                                                                        <oa:messageStyledText id="TaskDy03" viewAttr="TaskDy"/>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskPlanOrResultCol03" width="30%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskPlanOrResultColHdr03" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskPlanOrResultColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskPlanOrResult03" viewAttr="TaskPlanOrResult">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction5">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO3.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO3.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskDescriptionCol03" width="60%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDescriptionColHdr03" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDescriptionColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDescription03" viewAttr="TaskDescription">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction6">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO3.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO3.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:formValue id="TaskId03" viewAttr="TaskId"/>
+                                                                  <oa:formValue id="TaskOwnerId03" viewAttr="TaskOwnerId"/>
+                                                               </ui:contents>
+                                                            </oa:advancedTable>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="SeparatorRlRN03" rendered="${oa.XxcsoTaskRenderVO4.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="SeparatorCfRN0301" columnSpan="2" rowSpan="1" width="100%">
+                                                         <ui:contents>
+                                                            <oa:separator id="Separator03"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="TaskSubRlRN04" width="100%" rendered="${oa.XxcsoTaskRenderVO4.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="TaskSubCfRN0401" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="EmpName04" viewName="XxcsoEmpNameSummaryVO4" viewAttr="EmpName" styleClass="OraDataText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="TaskSubCfRN0402" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:advancedTable id="TaskAdvTblRN04" width="100%" viewName="XxcsoTaskSummaryVO4">
+                                                               <ui:contents>
+                                                                  <oa:column id="TaskDateCol04" bandingShade="dark" width="10%">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDateColHdr04" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDateColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDate04" viewAttr="TaskDate"/>
+                                                                        <oa:messageStyledText id="TaskDy04" viewAttr="TaskDy"/>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskPlanOrResultCol04" width="30%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskPlanOrResultColHdr04" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskPlanOrResultColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskPlanOrResult04" viewAttr="TaskPlanOrResult">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction7">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO4.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO4.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskDescriptionCol04" width="60%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDescriptionColHdr04" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDescriptionColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDescription04" viewAttr="TaskDescription">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction8">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO4.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO4.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:formValue id="TaskId04" viewAttr="TaskId"/>
+                                                                  <oa:formValue id="TaskOwnerId04" viewAttr="TaskOwnerId"/>
+                                                               </ui:contents>
+                                                            </oa:advancedTable>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="SeparatorRlRN04" rendered="${oa.XxcsoTaskRenderVO5.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="SeparatorCfRN0401" columnSpan="2" rowSpan="1" width="100%">
+                                                         <ui:contents>
+                                                            <oa:separator id="Separator04"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="TaskSubRlRN05" width="100%" rendered="${oa.XxcsoTaskRenderVO5.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="TaskSubCfRN0501" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="EmpName05" viewName="XxcsoEmpNameSummaryVO5" viewAttr="EmpName" styleClass="OraDataText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="TaskSubCfRN0502" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:advancedTable id="TaskAdvTblRN05" width="100%" viewName="XxcsoTaskSummaryVO5">
+                                                               <ui:contents>
+                                                                  <oa:column id="TaskDateCol05" bandingShade="dark" width="10%">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDateColHdr05" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDateColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDate05" viewAttr="TaskDate"/>
+                                                                        <oa:messageStyledText id="TaskDy05" viewAttr="TaskDy"/>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskPlanOrResultCol05" width="30%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskPlanOrResultColHdr05" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskPlanOrResultColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskPlanOrResult05" viewAttr="TaskPlanOrResult">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction9">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO5.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO5.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskDescriptionCol05" width="60%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDescriptionColHdr05" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDescriptionColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDescription05" viewAttr="TaskDescription">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction10">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO5.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO5.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:formValue id="TaskId05" viewAttr="TaskId"/>
+                                                                  <oa:formValue id="TaskOwnerId05" viewAttr="TaskOwnerId"/>
+                                                               </ui:contents>
+                                                            </oa:advancedTable>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="SeparatorRlRN05" width="100%" rendered="${oa.XxcsoTaskRenderVO6.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="SeparatorCfRN0501" columnSpan="2" rowSpan="1">
+                                                         <ui:contents>
+                                                            <oa:separator id="Separator05"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="TaskSubRlRN06" width="100%" rendered="${oa.XxcsoTaskRenderVO6.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="TaskSubCfRN0601" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="EmpName06" viewName="XxcsoEmpNameSummaryVO6" viewAttr="EmpName" styleClass="OraDataText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="TaskSubCfRN0602" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:advancedTable id="TaskAdvTblRN06" width="100%" viewName="XxcsoTaskSummaryVO6">
+                                                               <ui:contents>
+                                                                  <oa:column id="TaskDateCol06" bandingShade="dark" width="10%">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDateColHdr06" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDateColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDate06" viewAttr="TaskDate"/>
+                                                                        <oa:messageStyledText id="TaskDy06" viewAttr="TaskDy"/>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskPlanOrResultCol06" width="30%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskPlanOrResultColHdr06" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskPlanOrResultColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskPlanOrResult06" viewAttr="TaskPlanOrResult">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction11">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO6.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO6.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskDescriptionCol06" width="60%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDescriptionColHdr06" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDescriptionColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDescription06" viewAttr="TaskDescription">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction12">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO6.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO6.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:formValue id="TaskId06" viewAttr="TaskId"/>
+                                                                  <oa:formValue id="TaskOwnerId06" viewAttr="TaskOwnerId"/>
+                                                               </ui:contents>
+                                                            </oa:advancedTable>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="SeparatorRlRN06" rendered="${oa.XxcsoTaskRenderVO7.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="SeparatorCfRN0601" columnSpan="2" rowSpan="1" width="100%">
+                                                         <ui:contents>
+                                                            <oa:separator id="Separator06"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="TaskSubRlRN07" width="100%" rendered="${oa.XxcsoTaskRenderVO7.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="TaskSubCfRN0701" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="EmpName07" viewName="XxcsoEmpNameSummaryVO7" viewAttr="EmpName" styleClass="OraDataText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="TaskSubCfRN0702" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:advancedTable id="TaskAdvTblRN07" width="100%" viewName="XxcsoTaskSummaryVO7">
+                                                               <ui:contents>
+                                                                  <oa:column id="TaskDateCol07" bandingShade="dark" width="10%">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDateColHdr07" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDateColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDate07" viewAttr="TaskDate"/>
+                                                                        <oa:messageStyledText id="TaskDy07" viewAttr="TaskDy"/>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskPlanOrResultCol07" width="30%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskPlanOrResultColHdr07" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskPlanOrResultColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskPlanOrResult07" viewAttr="TaskPlanOrResult">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction13">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO7.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO7.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskDescriptionCol07" width="60%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDescriptionColHdr07" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDescriptionColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDescription07" viewAttr="TaskDescription">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction14">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO7.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO7.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:formValue id="TaskId07" viewAttr="TaskId"/>
+                                                                  <oa:formValue id="TaskOwnerId07" viewAttr="TaskOwnerId"/>
+                                                               </ui:contents>
+                                                            </oa:advancedTable>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="SeparatorRlRN07" rendered="${oa.XxcsoTaskRenderVO8.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="SeparatorCfRN07" columnSpan="2" rowSpan="1" width="100%">
+                                                         <ui:contents>
+                                                            <oa:separator id="Separator07"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="TaskSubRlRN08" width="100%" rendered="${oa.XxcsoTaskRenderVO8.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="TaskSubCfRN0801" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="EmpName08" viewName="XxcsoEmpNameSummaryVO8" viewAttr="EmpName" styleClass="OraDataText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="TaskSubCfRN0802" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:advancedTable id="TaskAdvTblRN08" width="100%" viewName="XxcsoTaskSummaryVO8">
+                                                               <ui:contents>
+                                                                  <oa:column id="TaskDateCol08" bandingShade="dark" width="10%">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDateColHdr08" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDateColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDate08" viewAttr="TaskDate"/>
+                                                                        <oa:messageStyledText id="TaskDy08" viewAttr="TaskDy"/>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskPlanOrResultCol08" width="30%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskPlanOrResultColHdr08" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskPlanOrResultColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskPlanOrResult08" viewAttr="TaskPlanOrResult">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction15">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO8.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO8.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskDescriptionCol08" width="60%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDescriptionColHdr08" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDescriptionColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDescription08" viewAttr="TaskDescription">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction16">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO8.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO8.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:formValue id="TaskId08" viewAttr="TaskId"/>
+                                                                  <oa:formValue id="TaskOwnerId08" viewAttr="TaskOwnerId"/>
+                                                               </ui:contents>
+                                                            </oa:advancedTable>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="SeparatorRlRN08" rendered="${oa.XxcsoTaskRenderVO9.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="SeparatorCfRN0801" columnSpan="2" rowSpan="1" width="100%">
+                                                         <ui:contents>
+                                                            <oa:separator id="Separator08"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="TaskSubRlRN09" width="100%" rendered="${oa.XxcsoTaskRenderVO9.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="TaskSubCfRN0901" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="EmpName09" viewName="XxcsoEmpNameSummaryVO9" viewAttr="EmpName" styleClass="OraDataText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="TaskSubCfRN0902" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:advancedTable id="TaskAdvTblRN09" width="100%" viewName="XxcsoTaskSummaryVO9">
+                                                               <ui:contents>
+                                                                  <oa:column id="TaskDateCol09" bandingShade="dark" width="10%">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDateColHdr09" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDateColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDate09" viewAttr="TaskDate"/>
+                                                                        <oa:messageStyledText id="TaskDy09" viewAttr="TaskDy"/>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskPlanOrResultCol09" width="30%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskPlanOrResultColHdr09" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskPlanOrResultColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskPlanOrResult09" viewAttr="TaskPlanOrResult">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction17">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO9.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO9.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskDescriptionCol09" width="60%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDescriptionColHdr09" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDescriptionColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDescription09" viewAttr="TaskDescription">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction18">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO9.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO9.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:formValue id="TaskId09" viewAttr="TaskId"/>
+                                                                  <oa:formValue id="TaskOwnerId09" viewAttr="TaskOwnerId"/>
+                                                               </ui:contents>
+                                                            </oa:advancedTable>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="SeparatorRlRN09" rendered="${oa.XxcsoTaskRenderVO10.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="SeparatorCfRN0901" columnSpan="2" rowSpan="1" width="100%">
+                                                         <ui:contents>
+                                                            <oa:separator id="Separator09"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="TaskSubRlRN10" width="100%" rendered="${oa.XxcsoTaskRenderVO10.TaskRender}">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="TaskSubCfRN1001" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="EmpName10" viewName="XxcsoEmpNameSummaryVO10" viewAttr="EmpName" styleClass="OraDataText"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="TaskSubCfRN1002" hAlign="start" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:advancedTable id="TaskAdvTblRN10" width="100%" viewName="XxcsoTaskSummaryVO10">
+                                                               <ui:contents>
+                                                                  <oa:column id="TaskDateCol10" bandingShade="dark" width="10%">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDateColHdr10" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDateColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDate10" viewAttr="TaskDate"/>
+                                                                        <oa:messageStyledText id="TaskDy10" viewAttr="TaskDy"/>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskPlanOrResultCol10" width="30%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskPlanOrResultColHdr10" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskPlanOrResultColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskPlanOrResult10" viewAttr="TaskPlanOrResult">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction19">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO10.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO10.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:column id="TaskDescriptionCol10" width="60%" bandingShade="light">
+                                                                     <ui:columnHeader>
+                                                                        <oa:sortableHeader id="TaskDescriptionColHdr10" use="/itoen/oracle/apps/xxcso/xxcso008001j/attributesets/XxcsoWeeklyTaskViewAttrSets/TaskDescriptionColHdr"/>
+                                                                     </ui:columnHeader>
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="TaskDescription10" viewAttr="TaskDescription">
+                                                                           <ui:primaryClientAction>
+                                                                              <ui:fireAction event="TaskClick" id="fireAction20">
+                                                                                 <ui:parameters>
+                                                                                    <ui:parameter key="SelectedTaskId" value="${oa.XxcsoTaskSummaryVO10.TaskId}"/>
+                                                                                    <ui:parameter key="SelectedTaskOwnerId" value="${oa.XxcsoTaskSummaryVO10.TaskOwnerId}"/>
+                                                                                 </ui:parameters>
+                                                                              </ui:fireAction>
+                                                                           </ui:primaryClientAction>
+                                                                        </oa:messageStyledText>
+                                                                     </ui:contents>
+                                                                  </oa:column>
+                                                                  <oa:formValue id="TaskId10" viewAttr="TaskId"/>
+                                                                  <oa:formValue id="TaskOwnerId10" viewAttr="TaskOwnerId"/>
+                                                               </ui:contents>
+                                                            </oa:advancedTable>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                    </oa:header>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:tableLayout>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

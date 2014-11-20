@@ -1,0 +1,212 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Search SP-DECISION information page.
+
+@param ExecuteMode 1 : For Applicant
+                   2 : For Approval
+
+@see itoen.oracle.apps.xxcso.xxcso020001j.webui.XxcsoSpDecisionSearchCO.java
+@see itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSearchAM.xml
+@see itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSearchAMImpl.java
+
+HISTORY
+2009/01/05  H.Ogawa        new-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSearchAM" controllerClass="itoen.oracle.apps.xxcso.xxcso020001j.webui.XxcsoSpDecisionSearchCO" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="BackButton" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/BackButton"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:header id="SearchHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/SearchHdrRN">
+                     <ui:contents>
+                        <oa:messageComponentLayout id="SearchMclRN">
+                           <ui:contents>
+                              <oa:messageLayout id="ApplyBaseTermLayout" rendered="${oa.XxcsoSpDecisionSearchInitVO1.ApplyBaseUserRender}" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ApplyBaseTermLayout">
+                                 <ui:contents>
+                                    <oa:rowLayout id="ApplyBaseTermRlRN" width="100%">
+                                       <ui:contents>
+                                          <oa:cellFormat id="ApplyBaseTermCfRN01" width="20%">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ApplyBaseCodeTerm" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="ApplyBaseCode" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ApplyBaseTermCfRN02" width="80%">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ApplyBaseNameTerm" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="ApplyBaseName" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                              <oa:messageLayout id="ApplyUserTermLayout" rendered="${oa.XxcsoSpDecisionSearchInitVO1.ApplyBaseUserRender}" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ApplyUserTermLayout">
+                                 <ui:contents>
+                                    <oa:rowLayout id="ApplyUserTermRlRN" width="100%">
+                                       <ui:contents>
+                                          <oa:cellFormat id="ApplyUserTermCfRN01" width="20%">
+                                             <ui:contents>
+                                                <oa:messageLovInput id="ApplyUserCodeTerm" columns="6" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoApplyUserLovRN" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="EmployeeNumber" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ApplyUserCodeTerm" maximumLength="5">
+                                                   <lovMappings>
+                                                      <lovMap id="ApplyUserCodeTermMap" lovItem="EmployeeNumber" criteriaFrom="ApplyUserCodeTerm" resultTo="ApplyUserCodeTerm"/>
+                                                      <lovMap id="ApplyUserNameTermMap" lovItem="FullName" resultTo="ApplyUserNameValue"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:formValue id="ApplyUserNameValue" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="FullName"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ApplyUserTermCfRN02" width="80%">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ApplyUserNameTerm" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="FullName" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                              <oa:messageLayout id="ApplyDateTermLayout" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ApplyDateTermLayout">
+                                 <ui:contents>
+                                    <oa:rowLayout id="ApplyDateTermRlRN">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="ApplyDateStartTerm" dataType="DATE" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="ApplyDateStart" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ApplyDateStartTerm"/>
+                                          <oa:staticStyledText id="ApplyDateTermSep" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ApplyDateTermSep"/>
+                                          <oa:messageTextInput id="ApplyDateEndTerm" dataType="DATE" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="ApplyDateEnd" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ApplyDateEndTerm"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                              <oa:messageLayout id="StatusTermLayout" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/StatusTermLayout">
+                                 <ui:contents>
+                                    <oa:messageChoice id="StatusTerm" pickListViewName="XxcsoSpDecisionStatusListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="Status" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/StatusTerm"/>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                              <oa:messageLayout id="SpDecisionNumberTermLayout" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/SpDecisionNumberTermLayout">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="SpDecisionNumberTerm" maximumLength="30" columns="10" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="SpDecisionNumber" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/SpDecisionNumberTerm"/>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                              <oa:messageLayout id="AccountTermLayout" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/AccountTermLayout">
+                                 <ui:contents>
+                                    <oa:rowLayout id="AccountTermRlRN">
+                                       <ui:contents>
+                                          <oa:formValue id="CustAccountIdTerm" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="CustAccountId"/>
+                                          <oa:cellFormat id="AccountTermCfRN01" width="30%">
+                                             <ui:contents>
+                                                <oa:messageLovInput id="AccountNumberTerm" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoAccountForSearchLovRN" columns="10" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="AccountNumber" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/AccountNumberTerm" maximumLength="9">
+                                                   <lovMappings>
+                                                      <lovMap id="AccountNumberTermMap" lovItem="AccountNumber" resultTo="AccountNumberTerm" criteriaFrom="AccountNumberTerm"/>
+                                                      <lovMap id="PartyNameTermMap" lovItem="PartyName" resultTo="PartyNameValue"/>
+                                                      <lovMap id="CustAccountIdTermMap" lovItem="CustAccountId" resultTo="CustAccountIdTerm"/>
+                                                      <lovMap id="SearchClassMap" lovItem="SearchClass" criteriaFrom="SearchClass"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:formValue id="PartyNameValue" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="PartyName"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="AccountTermCfRN02" width="70%">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="PartyNameTerm" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="PartyName" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                           </ui:contents>
+                           <ui:footer>
+                              <oa:flowLayout id="SearchActionFlRN">
+                                 <ui:contents>
+                                    <oa:submitButton id="SearchButton" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/SearchButton"/>
+                                    <oa:submitButton id="ClearButton" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ClearButton"/>
+                                 </ui:contents>
+                              </oa:flowLayout>
+                           </ui:footer>
+                        </oa:messageComponentLayout>
+                        <oa:formValue id="SearchClass" viewName="XxcsoSpDecisionSearchInitVO1" viewAttr="SearchClass"/>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="ResultSearchHdr" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ResultSearchHdr">
+                     <ui:contents>
+                        <oa:advancedTable id="ResultAdvTblRN" viewName="XxcsoSpDecisionSummaryVO1" width="100%" tableBanding="rowBanding">
+                           <ui:tableSelection>
+                              <oa:singleSelection id="singleSelection" viewAttr="SelectFlag" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/singleSelection"/>
+                           </ui:tableSelection>
+                           <ui:contents>
+                              <oa:column id="PartyNameCol" width="40%">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="PartyNameColHdr" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/PartyNameColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="PartyName" viewAttr="PartyName"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="SpDecisionNumberCol" width="10%" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="SpDecisionNumberColHdr" sortState="yes" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/SpDecisionNumberColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="SpDecisionNumber" viewAttr="SpDecisionNumber"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="ApplicationNameCol" width="20%" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="ApplicationNameColHdr" sortState="yes" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ApplicationNameColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ApplicationName" viewAttr="FullName"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="ApplicationDateCol" width="10%" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="ApplicationDateColHdr" sortState="yes" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ApplicationDateColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ApplicationDate" dataType="DATE" viewAttr="ApplicationDate"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="ApprovalCompleteDateCol" width="10%" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="ApprovalCompleteDateColHdr" sortState="yes" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/ApprovalCompleteDateColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ApprovalCompleteDate" dataType="DATE" viewAttr="ApprovalCompleteDate"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="StatusNameCol" width="10%" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="StatusNameColHdr" sortState="yes" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/StatusNameColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="StatusName" viewAttr="StatusName"/>
+                                 </ui:contents>
+                              </oa:column>
+                           </ui:contents>
+                           <ui:tableActions>
+                              <oa:flowLayout id="ResultActionFlRN">
+                                 <ui:contents>
+                                    <oa:submitButton id="CopyButton" rendered="${oa.XxcsoSpDecisionSearchInitVO1.CopyButtonRender}" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/CopyButton"/>
+                                    <oa:submitButton id="DetailButton" rendered="${oa.XxcsoSpDecisionSearchInitVO1.DetailButtonRender}" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionSearchAttrSets/DetailButton"/>
+                                 </ui:contents>
+                              </oa:flowLayout>
+                           </ui:tableActions>
+                        </oa:advancedTable>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

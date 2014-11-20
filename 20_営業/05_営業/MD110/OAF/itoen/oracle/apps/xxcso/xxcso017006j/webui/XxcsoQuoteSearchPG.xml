@@ -1,0 +1,58 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Search quote information page.
+
+@see itoen.oracle.apps.xxcso.xxcso017006j.webui.XxcsoQuoteSearchCO.java
+@see itoen.oracle.apps.xxcso.xxcso017006j.server.XxcsoQuoteSearchAM.xml
+@see itoen.oracle.apps.xxcso.xxcso017006j.server.XxcsoQuoteSearchAMImpl.java
+
+HISTORY
+2008/12/23  kichi.cho        new-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso017006j.server.XxcsoQuoteSearchAM" controllerClass="itoen.oracle.apps.xxcso.xxcso017006j.webui.XxcsoQuoteSearchCO" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="pageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="ReturnButton" text="" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/ReturnButton"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:messageComponentLayout id="SearchMclRN">
+               <ui:contents>
+                  <oa:messageChoice id="QuoteTypeSearch" required="yes" pickListDispAttr="Meaning" pickListValAttr="LookupCode" viewName="XxcsoQuoteSearchTermsVO1" viewAttr="QuoteType" pickListViewName="XxcsoQuoteTypeListVO" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/QuoteTypeSearch" allowBlankValue="false"/>
+                  <oa:messageLovInput id="QuoteNumberSearch" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso017006j/lov/webui/XxcsoQuoteSearchLovRN" required="uiOnly" dataType="VARCHAR2" viewName="XxcsoQuoteSearchTermsVO1" viewAttr="QuoteNumber" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/QuoteNumberSearch">
+                     <lovMappings>
+                        <lovMap id="QuoteNumberLovMap" lovItem="QuoteNumber" criteriaFrom="QuoteNumberSearch" resultTo="QuoteNumberSearch"/>
+                        <lovMap id="QuoteTypeLovMap" lovItem="QuoteType" criteriaFrom="QuoteTypeSearch" requiredForLOV="true"/>
+                     </lovMappings>
+                  </oa:messageLovInput>
+                  <oa:messageTextInput id="QuoteRevisionSearch" maximumLength="2" unvalidated="true" dataType="VARCHAR2" viewName="XxcsoQuoteSearchTermsVO1" viewAttr="QuoteRevisionNumber" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/QuoteRevisionSearch"/>
+               </ui:contents>
+               <ui:footer>
+                  <oa:flowLayout id="SearchFlRN">
+                     <ui:contents>
+                        <oa:submitButton id="SearchButton" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/SearchButton"/>
+                        <oa:submitButton id="ClearButton" use="/itoen/oracle/apps/xxcso/xxcso017006j/attributesets/XxcsoQuoteSearchAttrSets/ClearButton"/>
+                     </ui:contents>
+                  </oa:flowLayout>
+               </ui:footer>
+            </oa:messageComponentLayout>
+         </ui:contents>
+         <ui:pageStatus>
+            <oa:flowLayout id="PageStatusRN">
+               <ui:contents>
+                  <oa:tableLayout id="RequiredKey" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG" hAlign="center" width="100%"/>
+               </ui:contents>
+            </oa:flowLayout>
+         </ui:pageStatus>
+      </oa:pageLayout>
+   </content>
+</page>

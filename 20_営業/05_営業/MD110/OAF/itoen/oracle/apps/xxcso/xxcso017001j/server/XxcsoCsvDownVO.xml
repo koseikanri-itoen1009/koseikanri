@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoCsvDownVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoCsvDownVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoCsvDownVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="FileName"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="$none$"
+      AliasName="FILENAME"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FileData"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.BlobDomain"
+      ColumnType="$none$"
+      AliasName="FILEDATA"
+      Passivate="true"
+      SQLType="BLOB" >
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="FileName" />
+   </AttrArray>
+</ViewObject>

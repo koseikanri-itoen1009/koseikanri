@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoBm2BankAccountFullVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm2BankAccountFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm2BankAccountFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoBankAccountsEO.BANK_ACCOUNT_ID            AS bank_account_id,
+       xxcso_010003j_pkg.decode_bm_info(
+         xdc.supplier_id
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoBankAccountsEO.BANK_NUMBER
+        ,xbav.bank_number
+       )                                              AS bank_number,
+       xxcso_010003j_pkg.decode_bm_info(
+         xdc.supplier_id
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoBankAccountsEO.BANK_NAME
+        ,xbav.bank_name
+       )                                              AS bank_name,
+       xxcso_010003j_pkg.decode_bm_info(
+         xdc.supplier_id
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoBankAccountsEO.BRANCH_NUMBER
+        ,xbav.bank_num
+       )                                              AS branch_number,
+       xxcso_010003j_pkg.decode_bm_info(
+         xdc.supplier_id
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoBankAccountsEO.BRANCH_NAME
+        ,xbav.bank_branch_name
+       )                                              AS branch_name,
+       xxcso_010003j_pkg.decode_bm_info(
+         xdc.supplier_id
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoBankAccountsEO.BANK_ACCOUNT_TYPE
+        ,xbav.bank_account_type
+       )                                              AS bank_account_type,
+       xxcso_010003j_pkg.decode_bm_info(
+         xdc.supplier_id
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoBankAccountsEO.BANK_ACCOUNT_NUMBER
+        ,xbav.bank_account_num
+       )                                              AS bank_account_number,
+       xxcso_010003j_pkg.decode_bm_info(
+         xdc.supplier_id
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoBankAccountsEO.BANK_ACCOUNT_NAME_KANA
+        ,xbav.account_holder_name_alt
+       )                                              AS bank_account_name_kana,
+       xxcso_010003j_pkg.decode_bm_info(
+         xdc.supplier_id
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoBankAccountsEO.BANK_ACCOUNT_NAME_KANJI
+        ,xbav.account_holder_name
+       )                                              AS bank_account_name_kanji,
+       XxcsoBankAccountsEO.BANK_ACCOUNT_DUMMY_FLAG, 
+       XxcsoBankAccountsEO.CREATED_BY, 
+       XxcsoBankAccountsEO.CREATION_DATE, 
+       XxcsoBankAccountsEO.LAST_UPDATED_BY, 
+       XxcsoBankAccountsEO.LAST_UPDATE_DATE, 
+       XxcsoBankAccountsEO.LAST_UPDATE_LOGIN, 
+       XxcsoBankAccountsEO.REQUEST_ID, 
+       XxcsoBankAccountsEO.PROGRAM_APPLICATION_ID, 
+       XxcsoBankAccountsEO.PROGRAM_ID, 
+       XxcsoBankAccountsEO.PROGRAM_UPDATE_DATE, 
+       XxcsoBankAccountsEO.DELIVERY_ID
+FROM   XXCSO_BANK_ACCOUNTS        XxcsoBankAccountsEO
+      ,xxcso_destinations         xdc
+      ,xxcso_contract_managements xcm
+      ,xxcso_bank_accts_v         xbav
+WHERE  xdc.delivery_id            = XxcsoBankAccountsEO.DELIVERY_ID
+AND    xcm.contract_management_id = xdc.contract_management_id
+AND    xbav.vendor_id(+)          = xdc.supplier_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoBankAccountsEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoBankAccountsEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="BankAccountId"
+      IsNotNull="true"
+      EntityAttrName="BankAccountId"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="BANK_ACCOUNT_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BankNumber"
+      Precision="30"
+      EntityAttrName="BankNumber"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="BANK_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BankName"
+      Precision="60"
+      EntityAttrName="BankName"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="BANK_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BranchNumber"
+      Precision="25"
+      EntityAttrName="BranchNumber"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="BRANCH_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BranchName"
+      Precision="60"
+      EntityAttrName="BranchName"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="BRANCH_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BankAccountType"
+      Precision="25"
+      EntityAttrName="BankAccountType"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="BANK_ACCOUNT_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BankAccountNumber"
+      Precision="30"
+      EntityAttrName="BankAccountNumber"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="BANK_ACCOUNT_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BankAccountNameKana"
+      Precision="150"
+      EntityAttrName="BankAccountNameKana"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="BANK_ACCOUNT_NAME_KANA" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BankAccountNameKanji"
+      Precision="240"
+      EntityAttrName="BankAccountNameKanji"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="BANK_ACCOUNT_NAME_KANJI" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BankAccountDummyFlag"
+      Precision="1"
+      EntityAttrName="BankAccountDummyFlag"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="BANK_ACCOUNT_DUMMY_FLAG" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeliveryId"
+      IsNotNull="true"
+      EntityAttrName="DeliveryId"
+      EntityUsage="XxcsoBankAccountsEO"
+      AliasName="DELIVERY_ID" >
+   </ViewAttribute>
+</ViewObject>

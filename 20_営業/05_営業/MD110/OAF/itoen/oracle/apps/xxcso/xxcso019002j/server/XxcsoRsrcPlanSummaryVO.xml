@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoRsrcPlanSummaryVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019002j.server.XxcsoRsrcPlanSummaryVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019002j.server.XxcsoRsrcPlanSummaryVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+WITH  tmp
+AS
+(
+  SELECT  :1  AS base_code
+         ,:2  AS employee_number
+         ,:3  AS target_year_month
+         ,TO_CHAR(
+            ADD_MONTHS(
+              TO_DATE(:4, 'YYYYMM')
+             ,1)
+           ,'YYYYMM'
+          ) AS next_year_month
+    FROM DUAL
+)
+SELECT  tmp.employee_number
+       ,tmp.base_code
+       ,tmp.target_year_month
+       ,SUBSTR(
+          tmp.target_year_month
+          ,1
+          ,4
+        ) || '年' ||
+        SUBSTR(
+          tmp.target_year_month
+          ,5
+          ,2
+        ) || '月' AS target_year_month_view
+       ,tmp.next_year_month
+       ,SUBSTR(
+          tmp.next_year_month
+          ,1
+          ,4
+        ) || '年' ||
+        SUBSTR(
+          tmp.next_year_month
+          ,5
+          ,2
+        ) || '月' AS next_year_month_view
+       ,xxcso_rsrc_sales_plans_pkg.get_rsrc_monthly_plan(
+          tmp.base_code
+         ,tmp.employee_number
+         ,tmp.target_year_month
+        ) AS target_rsrc_plan
+       ,xxcso_rsrc_sales_plans_pkg.get_acct_monthly_plan_sum(
+          tmp.base_code
+         ,tmp.employee_number
+         ,tmp.target_year_month
+        ) AS target_rsrc_acct_plan_sum
+       ,xxcso_rsrc_sales_plans_pkg.get_rsrc_monthly_differ(
+          tmp.base_code
+         ,tmp.employee_number
+         ,tmp.target_year_month
+        ) AS trgt_rsrc_differ
+       ,xxcso_rsrc_sales_plans_pkg.get_rsrc_monthly_plan(
+          tmp.base_code
+         ,tmp.employee_number
+         ,tmp.next_year_month
+        ) AS next_rsrc_plan
+       ,xxcso_rsrc_sales_plans_pkg.get_acct_monthly_plan_sum(
+          tmp.base_code
+         ,tmp.employee_number
+         ,tmp.next_year_month
+        ) AS next_rsrc_acct_plan_sum
+       ,xxcso_rsrc_sales_plans_pkg.get_rsrc_monthly_differ(
+          tmp.base_code
+         ,tmp.employee_number
+         ,tmp.next_year_month
+        ) AS next_rsrc_differ
+       ,(CASE 
+           WHEN tmp.target_year_month <
+                  TO_CHAR(
+                    xxcso_util_common_pkg.get_online_sysdate
+                   ,'YYYYMM'
+                  ) THEN
+                    '1'
+           ELSE
+                    '0'
+         END
+        ) AS readonly_value
+  FROM  tmp
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      IsPersistent="false"
+      Precision="9"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EMPLOYEE_NUMBER"
+      Expression="EMPLOYEE_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_CODE"
+      Expression="BASE_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetYearMonth"
+      IsPersistent="false"
+      Precision="6"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TARGET_YEAR_MONTH"
+      Expression="TARGET_YEAR_MONTH"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetYearMonthView"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TARGET_YEAR_MONTH_VIEW"
+      Expression="TARGET_YEAR_MONTH_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextYearMonth"
+      IsPersistent="false"
+      Precision="6"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NEXT_YEAR_MONTH"
+      Expression="NEXT_YEAR_MONTH"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextYearMonthView"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NEXT_YEAR_MONTH_VIEW"
+      Expression="NEXT_YEAR_MONTH_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetRsrcPlan"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TARGET_RSRC_PLAN"
+      Expression="TARGET_RSRC_PLAN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetRsrcAcctPlanSum"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TARGET_RSRC_ACCT_PLAN_SUM"
+      Expression="TARGET_RSRC_ACCT_PLAN_SUM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TrgtRsrcDiffer"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TRGT_RSRC_DIFFER"
+      Expression="TRGT_RSRC_DIFFER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextRsrcPlan"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NEXT_RSRC_PLAN"
+      Expression="NEXT_RSRC_PLAN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextRsrcAcctPlanSum"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NEXT_RSRC_ACCT_PLAN_SUM"
+      Expression="NEXT_RSRC_ACCT_PLAN_SUM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextRsrcDiffer"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NEXT_RSRC_DIFFER"
+      Expression="NEXT_RSRC_DIFFER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReadonlyValue"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="READONLY_VALUE"
+      Expression="READONLY_VALUE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReadOnlyFlg"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+</ViewObject>

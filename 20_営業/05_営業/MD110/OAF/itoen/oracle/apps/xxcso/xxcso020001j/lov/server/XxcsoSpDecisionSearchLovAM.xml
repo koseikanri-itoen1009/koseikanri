@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoSpDecisionSearchLovAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionSearchLovAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoAccountForSearchLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoAccountForSearchLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoApplyUserLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoApplyUserLovVO" >
+   </ViewUsage>
+</AppModule>

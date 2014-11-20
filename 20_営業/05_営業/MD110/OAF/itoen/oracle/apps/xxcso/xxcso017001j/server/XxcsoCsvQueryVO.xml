@@ -1,0 +1,928 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoCsvQueryVO"
+   OrderBy="quote_line_id"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoCsvQueryVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoCsvQueryVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xxcso_util_common_pkg.get_lookup_meaning(
+         'XXCSO1_QUOTE_TYPE'
+         ,xqh.quote_type
+         ,TRUNC(xxcso_util_common_pkg.get_online_sysdate))     AS quote_type
+      ,xqh.quote_number                                        AS quote_number
+      ,TO_CHAR(xqh.quote_revision_number)                      AS quote_revision_number
+      ,TO_CHAR(xqh.publish_date, 'YYYY/MM/DD')                 AS publish_date
+      ,xqh.account_number                                      AS account_number
+      ,xcav.party_name                                         AS party_name
+      ,xqh.employee_number                                     AS employee_number
+      ,xev.full_name                                           AS full_name
+      ,xqh.base_code                                           AS base_code
+      ,xxcso_util_common_pkg.get_base_name(
+         xqh.base_code
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       )                                                       AS base_name
+      ,xqh.deliv_place                                         AS deliv_place
+      ,xqh.payment_condition                                   AS payment_condition
+      ,TO_CHAR(xqh.quote_info_start_date, 'YYYY/MM/DD')        AS quote_info_start_date
+      ,TO_CHAR(xqh.quote_info_end_date, 'YYYY/MM/DD')          AS quote_info_end_date
+      ,xqh.quote_submit_name                                   AS quote_submit_name
+      ,xxcso_util_common_pkg.get_lookup_meaning(
+        'XXCSO1_TAX_DIVISION'
+        ,xqh.deliv_price_tax_type
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       )                                                       AS deliv_price_tax_type
+      ,xxcso_util_common_pkg.get_lookup_meaning(
+        'XXCSO1_TAX_DIVISION'
+        ,xqh.store_price_tax_type
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       )                                                       AS store_price_tax_type
+      ,xxcso_util_common_pkg.get_lookup_meaning(
+       'XXCSO1_UNIT_PRICE_DIVISION'
+       ,xqh.unit_type
+       ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      )                                                        AS unit_type
+      ,xxcso_util_common_pkg.get_lookup_meaning(
+        'XXCSO1_QUOTE_STATUS'
+        ,xqh.status
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       )                                                       AS status
+      ,xqh.special_note                                        AS special_note
+      ,xiiv.inventory_item_code                                AS inventory_item_code
+      ,xiiv.item_short_name                                    AS item_short_name
+      ,xxcso_util_common_pkg.get_lookup_meaning(
+        'XXCSO1_QUOTE_DIVISION'
+        ,xql.quote_div
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       )                                                       AS quote_div
+      ,TO_CHAR(xql.usually_deliv_price, 'FM99G999D90')         AS usually_deliv_price
+      ,TO_CHAR(xql.usually_store_sale_price, 'FM999G999D90')   AS usually_store_sale_price
+      ,TO_CHAR(xql.this_time_deliv_price, 'FM99G999D90')       AS this_time_deliv_price
+      ,TO_CHAR(xql.this_time_store_sale_price, 'FM999G999D90') AS this_time_store_sale_price
+      ,TO_CHAR(xql.quote_start_date, 'YYYY/MM/DD')             AS quote_start_date
+      ,TO_CHAR(xql.quote_end_date, 'YYYY/MM/DD')               AS quote_end_date
+      ,xql.remarks                                             AS remarks
+      ,TO_CHAR(xql.line_order)                                 AS line_order
+      ,NULL AS quote_type_s
+      ,NULL AS quote_number_s
+      ,NULL AS quote_revision_number_s
+      ,NULL AS publish_date_s
+      ,NULL AS account_number_s
+      ,NULL AS party_name_s
+      ,NULL AS employee_number_s
+      ,NULL AS full_name_s
+      ,NULL AS base_code_s
+      ,NULL AS base_name_s
+      ,NULL AS deliv_place_s
+      ,NULL AS payment_condition_s
+      ,NULL AS quote_info_start_date_s
+      ,NULL AS quote_info_end_date_s
+      ,NULL AS quote_submit_name_s
+      ,NULL AS deliv_price_tax_type_s
+      ,NULL AS store_price_tax_type_s
+      ,NULL AS unit_type_s
+      ,NULL AS status_s
+      ,NULL AS special_note_s
+      ,NULL AS inventory_item_code_s
+      ,NULL AS item_short_name_s
+      ,NULL AS quote_div_s
+      ,NULL AS usually_deliv_price_s
+      ,NULL AS usually_store_sale_price_s
+      ,NULL AS this_time_deliv_price_s
+      ,NULL AS this_time_store_sale_price_s
+      ,NULL AS quotation_price_s
+      ,NULL AS sales_discount_price_s
+      ,NULL AS usuall_net_price_s
+      ,NULL AS this_time_net_price_s
+      ,NULL AS amount_of_margin_s
+      ,NULL AS margin_rate_s
+      ,NULL AS quote_start_date_s
+      ,NULL AS quote_end_date_s
+      ,NULL AS remarks_s
+      ,NULL AS line_order_s
+      ,xiiv.item_full_name                                     AS item_full_name
+      ,xiiv.jan_code                                           AS jan_code
+      ,xiiv.case_jan_code                                      AS case_jan_code
+      ,xiiv.itf_code                                           AS itf_code
+      ,xiiv.vessel_group                                       AS vessel_group
+      ,xiiv.fixed_price_new                                    AS fixed_price_new
+      ,xql.quote_line_id                                       AS quote_line_id
+FROM   xxcso_quote_headers xqh
+      ,xxcso_quote_lines xql
+      ,xxcso_cust_accounts_v xcav
+      ,xxcso_employees_v2 xev
+      ,xxcso_inventory_items_v2 xiiv
+WHERE xqh.quote_header_id       = :1
+  AND xql.quote_header_id       = xqh.quote_header_id
+  AND xcav.account_number(+)    = xqh.account_number
+  AND xev.employee_number(+)    = xqh.employee_number
+  AND xiiv.inventory_item_id(+) = xql.inventory_item_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="QuoteType"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_TYPE"
+      Expression="QUOTE_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="12"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_NUMBER"
+      Expression="QUOTE_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="12" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteRevisionNumber"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_REVISION_NUMBER"
+      Expression="QUOTE_REVISION_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PublishDate"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PUBLISH_DATE"
+      Expression="PUBLISH_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AccountNumber"
+      IsPersistent="false"
+      Precision="9"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ACCOUNT_NUMBER"
+      Expression="ACCOUNT_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="9" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyName"
+      IsPersistent="false"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PARTY_NAME"
+      Expression="PARTY_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      IsPersistent="false"
+      Precision="5"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EMPLOYEE_NUMBER"
+      Expression="EMPLOYEE_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="5" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_CODE"
+      Expression="BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_NAME"
+      Expression="BASE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DelivPlace"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELIV_PLACE"
+      Expression="DELIV_PLACE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PaymentCondition"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PAYMENT_CONDITION"
+      Expression="PAYMENT_CONDITION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteInfoStartDate"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_INFO_START_DATE"
+      Expression="QUOTE_INFO_START_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteInfoEndDate"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_INFO_END_DATE"
+      Expression="QUOTE_INFO_END_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteSubmitName"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_SUBMIT_NAME"
+      Expression="QUOTE_SUBMIT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DelivPriceTaxType"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELIV_PRICE_TAX_TYPE"
+      Expression="DELIV_PRICE_TAX_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StorePriceTaxType"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STORE_PRICE_TAX_TYPE"
+      Expression="STORE_PRICE_TAX_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UnitType"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="UNIT_TYPE"
+      Expression="UNIT_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Status"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STATUS"
+      Expression="STATUS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpecialNote"
+      IsPersistent="false"
+      Precision="100"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SPECIAL_NOTE"
+      Expression="SPECIAL_NOTE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="100" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InventoryItemCode"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INVENTORY_ITEM_CODE"
+      Expression="INVENTORY_ITEM_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemShortName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_SHORT_NAME"
+      Expression="ITEM_SHORT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteDiv"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_DIV"
+      Expression="QUOTE_DIV"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UsuallyDelivPrice"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="USUALLY_DELIV_PRICE"
+      Expression="USUALLY_DELIV_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UsuallyStoreSalePrice"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="USUALLY_STORE_SALE_PRICE"
+      Expression="USUALLY_STORE_SALE_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ThisTimeDelivPrice"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="THIS_TIME_DELIV_PRICE"
+      Expression="THIS_TIME_DELIV_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ThisTimeStoreSalePrice"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="THIS_TIME_STORE_SALE_PRICE"
+      Expression="THIS_TIME_STORE_SALE_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteStartDate"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_START_DATE"
+      Expression="QUOTE_START_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteEndDate"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_END_DATE"
+      Expression="QUOTE_END_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Remarks"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="REMARKS"
+      Expression="REMARKS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineOrder"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE_ORDER"
+      Expression="LINE_ORDER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemFullName"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_FULL_NAME"
+      Expression="ITEM_FULL_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="60" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="JanCode"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="JAN_CODE"
+      Expression="JAN_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CaseJanCode"
+      IsPersistent="false"
+      Precision="13"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CASE_JAN_CODE"
+      Expression="CASE_JAN_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItfCode"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITF_CODE"
+      Expression="ITF_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VesselGroup"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VESSEL_GROUP"
+      Expression="VESSEL_GROUP"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FixedPriceNew"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FIXED_PRICE_NEW"
+      Expression="FIXED_PRICE_NEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteLineId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="QUOTE_LINE_ID"
+      Expression="QUOTE_LINE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullNameS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME_S"
+      Expression="FULL_NAME_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCodeS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_CODE_S"
+      Expression="BASE_CODE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseNameS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_NAME_S"
+      Expression="BASE_NAME_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DelivPlaceS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELIV_PLACE_S"
+      Expression="DELIV_PLACE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PaymentConditionS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PAYMENT_CONDITION_S"
+      Expression="PAYMENT_CONDITION_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteInfoStartDateS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_INFO_START_DATE_S"
+      Expression="QUOTE_INFO_START_DATE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteInfoEndDateS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_INFO_END_DATE_S"
+      Expression="QUOTE_INFO_END_DATE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteSubmitNameS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_SUBMIT_NAME_S"
+      Expression="QUOTE_SUBMIT_NAME_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DelivPriceTaxTypeS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELIV_PRICE_TAX_TYPE_S"
+      Expression="DELIV_PRICE_TAX_TYPE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StorePriceTaxTypeS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STORE_PRICE_TAX_TYPE_S"
+      Expression="STORE_PRICE_TAX_TYPE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UnitTypeS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="UNIT_TYPE_S"
+      Expression="UNIT_TYPE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StatusS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STATUS_S"
+      Expression="STATUS_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpecialNoteS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SPECIAL_NOTE_S"
+      Expression="SPECIAL_NOTE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InventoryItemCodeS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INVENTORY_ITEM_CODE_S"
+      Expression="INVENTORY_ITEM_CODE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemShortNameS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_SHORT_NAME_S"
+      Expression="ITEM_SHORT_NAME_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteDivS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_DIV_S"
+      Expression="QUOTE_DIV_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UsuallyDelivPriceS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="USUALLY_DELIV_PRICE_S"
+      Expression="USUALLY_DELIV_PRICE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UsuallyStoreSalePriceS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="USUALLY_STORE_SALE_PRICE_S"
+      Expression="USUALLY_STORE_SALE_PRICE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ThisTimeDelivPriceS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="THIS_TIME_DELIV_PRICE_S"
+      Expression="THIS_TIME_DELIV_PRICE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ThisTimeStoreSalePriceS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="THIS_TIME_STORE_SALE_PRICE_S"
+      Expression="THIS_TIME_STORE_SALE_PRICE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuotationPriceS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTATION_PRICE_S"
+      Expression="QUOTATION_PRICE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesDiscountPriceS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SALES_DISCOUNT_PRICE_S"
+      Expression="SALES_DISCOUNT_PRICE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UsuallNetPriceS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="USUALL_NET_PRICE_S"
+      Expression="USUALL_NET_PRICE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ThisTimeNetPriceS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="THIS_TIME_NET_PRICE_S"
+      Expression="THIS_TIME_NET_PRICE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AmountOfMarginS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="AMOUNT_OF_MARGIN_S"
+      Expression="AMOUNT_OF_MARGIN_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MarginRateS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="MARGIN_RATE_S"
+      Expression="MARGIN_RATE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteStartDateS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_START_DATE_S"
+      Expression="QUOTE_START_DATE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteEndDateS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QUOTE_END_DATE_S"
+      Expression="QUOTE_END_DATE_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RemarksS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="REMARKS_S"
+      Expression="REMARKS_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineOrderS"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE_ORDER_S"
+      Expression="LINE_ORDER_S"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+</ViewObject>

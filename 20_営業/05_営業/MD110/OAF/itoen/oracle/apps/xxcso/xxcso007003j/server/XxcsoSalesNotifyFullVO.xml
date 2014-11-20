@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSalesNotifyFullVO"
+   SelectList="XxcsoSalesNotifiesEO.SALES_NOTICE_ID, 
+       XxcsoSalesNotifiesEO.HEADER_HISTORY_ID, 
+
+       XxcsoSalesNotifiesEO.USER_NAME, 
+       XxcsoSalesNotifiesEO.EMPLOYEE_NUMBER, 
+
+       XxcsoSalesNotifiesEO.FULL_NAME, 
+       XxcsoSalesNotifiesEO.POSITION_NAME, 
+
+       XxcsoSalesNotifiesEO.POSITION_SORT_CODE, 
+       XxcsoSalesNotifiesEO.BASE_CODE, 
+
+       XxcsoSalesNotifiesEO.BASE_NAME, 
+       XxcsoSalesNotifiesEO.NOTIFIED_FLAG, 
+
+       XxcsoSalesNotifiesEO.CREATED_BY, 
+       XxcsoSalesNotifiesEO.CREATION_DATE, 
+
+       XxcsoSalesNotifiesEO.LAST_UPDATED_BY, 
+       XxcsoSalesNotifiesEO.LAST_UPDATE_DATE, 
+
+       XxcsoSalesNotifiesEO.LAST_UPDATE_LOGIN, 
+       XxcsoSalesNotifiesEO.REQUEST_ID, 
+
+       XxcsoSalesNotifiesEO.PROGRAM_APPLICATION_ID, 
+       
+XxcsoSalesNotifiesEO.PROGRAM_ID, 
+       XxcsoSalesNotifiesEO.PROGRAM_UPDATE_DATE"
+   FromList="XXCSO_SALES_NOTIFIES XxcsoSalesNotifiesEO"
+   BindingStyle="Oracle"
+   CustomQuery="false"
+   RowClass="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesNotifyFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesNotifyFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoSalesNotifiesEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSalesNotifiesEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="SalesNoticeId"
+      IsNotNull="true"
+      EntityAttrName="SalesNoticeId"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="SALES_NOTICE_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="HeaderHistoryId"
+      IsNotNull="true"
+      EntityAttrName="HeaderHistoryId"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="HEADER_HISTORY_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UserName"
+      IsNotNull="true"
+      Precision="100"
+      EntityAttrName="UserName"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="USER_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      Precision="30"
+      EntityAttrName="EmployeeNumber"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="EMPLOYEE_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      Precision="301"
+      EntityAttrName="FullName"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="FULL_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PositionName"
+      Precision="150"
+      EntityAttrName="PositionName"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="POSITION_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PositionSortCode"
+      Precision="150"
+      EntityAttrName="PositionSortCode"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="POSITION_SORT_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCode"
+      Precision="4"
+      EntityAttrName="BaseCode"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="BASE_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseName"
+      Precision="150"
+      EntityAttrName="BaseName"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="BASE_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NotifiedFlag"
+      Precision="1"
+      EntityAttrName="NotifiedFlag"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="NOTIFIED_FLAG" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoSalesNotifiesEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="SalesNoticeId" />
+      <Item Value="UserName" />
+   </AttrArray>
+</ViewObject>

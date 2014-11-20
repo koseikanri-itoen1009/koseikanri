@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewLink SYSTEM "jbo_03_01.dtd">
+
+<ViewLink
+   Name="XxcsoSalesRequestNotifyVL"
+   EntityAssociation="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSalesRequestNotifyAO" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+   </DesignTime>
+   <ViewLinkDefEnd
+      Name="XxcsoSalesRequestFullVO"
+      Cardinality="1"
+      Owner="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRequestFullVO"
+      Source="true" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRequestFullVO.HeaderHistoryId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_minCardinality" Value="1" />
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoSalesRequestFullVO" />
+         <Attr Name="_accessor" Value="false" />
+      </DesignTime>
+   </ViewLinkDefEnd>
+   <ViewLinkDefEnd
+      Name="XxcsoSalesNotifyFullVO"
+      Cardinality="-1"
+      Owner="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesNotifyFullVO" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesNotifyFullVO.HeaderHistoryId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoSalesNotifyFullVO" />
+         <Attr Name="_accessor" Value="true" />
+      </DesignTime>
+   </ViewLinkDefEnd>
+</ViewLink>

@@ -1,0 +1,71 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Parsonaraize View is specified, and retrieved. 
+Moreover, the Parsonaraize view display is called. 
+
+@see itoen.oracle.apps.xxcso.xxcso012001j.webui.XxcsoInstallBasePvSearchCO.java
+@see itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBasePvSearchAM.xml
+@see itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBasePvSearchAM.java
+
+HISTORY 2008/12/27  N.Yanagitaira        Initialcode drop.-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBasePvSearchAM" controllerClass="itoen.oracle.apps.xxcso.xxcso012001j.webui.XxcsoInstallBasePvSearchCO" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoInstallBasePvSearchAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:header id="PvDesignRN" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoInstallBasePvSearchAttrSets/PvDesignRN">
+                     <ui:contents>
+                        <oa:tableLayout id="PvDesignTlRN" hAlign="start" width="100%">
+                           <ui:contents>
+                              <oa:rowLayout id="PvDesignRlRN01">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PvDesignCfRN0101" width="1%">
+                                       <ui:contents>
+                                          <oa:messageChoice id="ViewName" pickListViewName="InstallBasePvChoiceVO" pickListValAttr="ViewId" pickListDispAttr="ViewName" viewName="InstallBasePvDesignVO" viewAttr="SelectView" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoInstallBasePvSearchAttrSets/ViewName" dataType="NUMBER"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="PvDesignCfRN0102" width="1%">
+                                       <ui:contents>
+                                          <oa:submitButton id="ForwardButton" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoInstallBasePvSearchAttrSets/ForwardButton"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="PvDesignCfRN0103" width="98%">
+                                       <ui:contents>
+                                          <oa:submitButton id="PersonalizeButton" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoInstallBasePvSearchAttrSets/PersonalizeButton"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="PvDesignRlRN02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PvDesignCfRN0201" columnSpan="3">
+                                       <ui:contents>
+                                          <oa:separator id="Separetor"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="PvDesignRlRN03">
+                                 <ui:contents>
+                                    <oa:cellFormat id="PvDesignCfRN0301" columnSpan="3"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

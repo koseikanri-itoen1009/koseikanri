@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE Entity SYSTEM "jbo_03_01.dtd">
+
+<Entity
+   Name="XxcsoRtnRsrcVEO"
+   DBObjectType="view"
+   DBObjectName="XXCSO_RTN_RSRC_V"
+   AliasName="XxcsoRtnRsrcVEO"
+   BindingStyle="Oracle"
+   UseGlueCode="false"
+   CodeGenFlag="4"
+   RowClass="itoen.oracle.apps.xxcso.common.schema.server.XxcsoRtnRsrcVEOImpl"
+   DefClass="oracle.apps.fnd.framework.server.OAEntityDefImpl"
+   CollClass="oracle.apps.fnd.framework.server.OAEntityCache" >
+   <Properties>
+      <Property Name ="ExpertClass" Value ="itoen.oracle.apps.xxcso.common.schema.server.XxcsoCommonEntityExpert" />
+      <Property Name ="VAMDef" Value ="itoen.oracle.apps.xxcso.common.schema.server.XxcsoCommonVAM" />
+   </Properties>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_superClass" Value="oracle.apps.fnd.framework.server.OAPlsqlEntityImpl" />
+      <AttrArray Name="_publishEvents">
+      </AttrArray>
+   </DesignTime>
+   <Attribute
+      Name="AccountNumber"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnName="ACCOUNT_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CustAccountId"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="CUST_ACCOUNT_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreatedBy"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="CREATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreationDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="CREATION_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdatedBy"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="LAST_UPDATE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateLogin"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATE_LOGIN"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TrgtRouteNo"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnName="TRGT_ROUTE_NO"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TrgtRouteNoStartDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="TRGT_ROUTE_NO_START_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TrgtRouteNoExtensionId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="TRGT_ROUTE_NO_EXTENSION_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TrgtRouteNoLastUpdDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="TRGT_ROUTE_NO_LAST_UPD_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NextRouteNo"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnName="NEXT_ROUTE_NO"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NextRouteNoStartDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="NEXT_ROUTE_NO_START_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NextRouteNoExtensionId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="NEXT_ROUTE_NO_EXTENSION_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NextRouteNoLastUpdDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="NEXT_ROUTE_NO_LAST_UPD_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NewRouteNo"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnName="NEW_ROUTE_NO"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NewRouteNoStartDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="NEW_ROUTE_NO_START_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NewRouteNoExtensionId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="NEW_ROUTE_NO_EXTENSION_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TrgtResource"
+      Precision="5"
+      Type="java.lang.String"
+      ColumnName="TRGT_RESOURCE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TrgtResourceStartDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="TRGT_RESOURCE_START_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TrgtResourceExtensionId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="TRGT_RESOURCE_EXTENSION_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TrgtResourceLastUpdDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="TRGT_RESOURCE_LAST_UPD_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NextResource"
+      Precision="5"
+      Type="java.lang.String"
+      ColumnName="NEXT_RESOURCE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NextResourceStartDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="NEXT_RESOURCE_START_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NextResourceExtensionId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="NEXT_RESOURCE_EXTENSION_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NextResourceLastUpdDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="NEXT_RESOURCE_LAST_UPD_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NewResource"
+      Precision="5"
+      Type="java.lang.String"
+      ColumnName="NEW_RESOURCE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NewResourceStartDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="NEW_RESOURCE_START_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NewResourceExtensionId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="NEW_RESOURCE_EXTENSION_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="OldCustAccountId"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="OLDCUSTACCOUNTID"
+      ColumnType="$none$"
+      SQLType="NUMERIC" >
+   </Attribute>
+   <Attribute
+      Name="TrgtResourceCnt"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="TRGT_RESOURCE_CNT"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="NextResourceCnt"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="NEXT_RESOURCE_CNT"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_RTN_RSRC_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Key
+      Name="XxcsortnrsrcveoPrimaryKey" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoRtnRsrcVEO.CustAccountId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="XXCSORTNRSRCVEO_PRIMARY_KEY" />
+         <Attr Name="_isPrimary" Value="true" />
+      </DesignTime>
+   </Key>
+</Entity>

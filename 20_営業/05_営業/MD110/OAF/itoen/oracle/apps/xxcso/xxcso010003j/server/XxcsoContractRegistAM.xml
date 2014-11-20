@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoContractRegistAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoContractManagementFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractManagementFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm1DestinationFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1DestinationFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm2DestinationFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm2DestinationFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm3DestinationFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3DestinationFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractCustomerFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractCustomerFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm1ContractSpCustFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1ContractSpCustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm1BankAccountFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1BankAccountFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm2BankAccountFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm2BankAccountFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm3BankAccountFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3BankAccountFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractCreateInitVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractCreateInitVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoInitBmInfoSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoInitBmInfoSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoLoginUserSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoLoginUserSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm2ContractSpCustFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm2ContractSpCustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm3ContractSpCustFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3ContractSpCustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesCondSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoSalesCondSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContainerCondSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContainerCondSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractFormatListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractStatusListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoDaysListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoMonthsListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoCancellationListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoTransferFeeListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBmPaymentListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoKozaListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoPageRenderVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoPageRenderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractManagementFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractManagementFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm1DestinationFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1DestinationFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm2DestinationFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm2DestinationFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm3DestinationFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3DestinationFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm1BankAccountFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1BankAccountFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm2BankAccountFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm2BankAccountFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBm3BankAccountFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3BankAccountFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractCustomerFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractCustomerFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBmAccountInfoSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBmAccountInfoSummaryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoLoginUserAuthorityVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoLoginUserAuthorityVO" >
+   </ViewUsage>
+   <ViewLinkUsage
+      Name="XxcsoContractMngBm1DestVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractMngBm1DestVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoContractManagementFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm1DestinationFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoContractMngBm2DestVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractMngBm2DestVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoContractManagementFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm2DestinationFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoContractMngBm3DestVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractMngBm3DestVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoContractManagementFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm3DestinationFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoBm1DestBankVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1DestBankVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm1DestinationFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm1BankAccountFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoBm2DestBankVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm2DestBankVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm2DestinationFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm2BankAccountFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoBm3DestBankVL1"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3DestBankVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm3DestinationFullVO1"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm3BankAccountFullVO1" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoContractMngBm1DestVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractMngBm1DestVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoContractManagementFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm1DestinationFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoContractMngBm2DestVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractMngBm2DestVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoContractManagementFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm2DestinationFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoContractMngBm3DestVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractMngBm3DestVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoContractManagementFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm3DestinationFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoBm1DestBankVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1DestBankVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm1DestinationFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm1BankAccountFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoBm2DestBankVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm2DestBankVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm2DestinationFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm2BankAccountFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+   <ViewLinkUsage
+      Name="XxcsoBm3DestBankVL2"
+      ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3DestBankVL"
+      SrcViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm3DestinationFullVO2"
+      DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm3BankAccountFullVO2" >
+      <DesignTime>
+         <Attr Name="_isCodegen" Value="true" />
+         <Attr Name="_version" Value="9.0.3.14.00" />
+      </DesignTime>
+   </ViewLinkUsage>
+</AppModule>

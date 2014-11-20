@@ -1,0 +1,59 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*注意
+* KROWN:124532により、1ファイルが32Kバイトを超えないようにしてください。
+* 超えてしまう場合は、ファイルを分割してください。
+
+詳細
+訪問・売上計画画面用の属性セットファイルです。
+
+修正履歴
+2009/01/06  朴邦彦        新規作成-->
+<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <attributeSet docName="PageLayoutRN" windowTitle="訪問・売上計画" title="訪問・売上計画"/>
+   <attributeSet docName="CancelButton" text="取消" prompt="取消"/>
+   <attributeSet docName="SubmitButton" text="適用" prompt="適用"/>
+   <attributeSet docName="SearchHdrRN" text="顧客別売上計画情報"/>
+   <attributeSet docName="SearchAccountLayout" prompt="顧客コード"/>
+   <attributeSet docName="SearchAccountNumber" shortDesc="顧客コード"/>
+   <attributeSet docName="SearchPartyNameView" shortDesc="顧客名"/>
+   <attributeSet docName="SearchPlanYearMonthLayout" prompt="計画年月"/>
+   <attributeSet docName="SearchPlanYear" shortDesc="計画年"/>
+   <attributeSet docName="SearchPlanMonth" shortDesc="計画月"/>
+   <attributeSet docName="SearchButton" text="進む" prompt="進む"/>
+   <attributeSet docName="ResultHdrRN" text="検索結果"/>
+   <attributeSet docName="ResultAccountNumber" prompt="顧客コード"/>
+   <attributeSet docName="ResultPartyName" prompt="顧客名"/>
+   <attributeSet docName="ResultPlanYearMonth" prompt="計画年月"/>
+   <attributeSet docName="RouteNoHdrRN" text="ルートNo"/>
+   <attributeSet docName="TargetRouteNo" prompt="ルートNo（当月）"/>
+   <attributeSet docName="NextRouteNo" prompt="ルートNo（翌月以降）"/>
+   <attributeSet docName="ResourceInfoHdrRN" text="営業員計画情報"/>
+   <attributeSet docName="EmployeeNumber" prompt="従業員番号"/>
+   <attributeSet docName="FullName" prompt="従業員氏名"/>
+   <attributeSet docName="RsrcMonthlyPlanLayout" prompt="月間売上計画"/>
+   <attributeSet docName="RsrcMonthlyPlanLabel" text="（千円）" prompt="（千円）"/>
+   <attributeSet docName="RsrcAcctMonthlyPlanSumLayout" prompt="設定済売上計画"/>
+   <attributeSet docName="RsrcAcctMonthlyPlanSumLabel" text="（千円）" prompt="（千円）"/>
+   <attributeSet docName="RsrcAcctDifferLayout" prompt="差額"/>
+   <attributeSet docName="RsrcAcctDifferLabel" text="（千円）" prompt="（千円）"/>
+   <attributeSet docName="AcctMonthlyPlanHdrRN" text="顧客別売上計画（月別）"/>
+   <attributeSet docName="TargetMonthSalesPlanAmtLayout" prompt="月間売上計画"/>
+   <attributeSet docName="TargetMonthSalesPlanAmt" shortDesc="月間売上計画"/>
+   <attributeSet docName="TargetMonthSalesPlanAmtLabel" text="（千円）" prompt="（千円）"/>
+   <attributeSet docName="AcctDailyPlanSumLayout" prompt="設定済売上計画"/>
+   <attributeSet docName="AcctDailyPlanSumLabel" text="（千円）" prompt="（千円）"/>
+   <attributeSet docName="AcctDailyPlanDifferLayout" prompt="差額"/>
+   <attributeSet docName="AcctDailyPlanDifferLabel" text="（千円）" prompt="（千円）"/>
+   <attributeSet docName="AcctDailyPlanHdrRN" text="顧客別売上計画（日別）"/>
+   <attributeSet docName="MondayColHdr" prompt="月"/>
+   <attributeSet docName="TuesdayColHdr" prompt="火"/>
+   <attributeSet docName="WednesdayColHdr" prompt="水"/>
+   <attributeSet docName="ThursdayColHdr" prompt="木"/>
+   <attributeSet docName="FridayColHdr" prompt="金"/>
+   <attributeSet docName="SaturdayColHdr" prompt="土"/>
+   <attributeSet docName="AccountNumberTblRN" shortDesc="顧客選択"/>
+   <attributeSet docName="PartyName" shortDesc="顧客名"/>
+   <attributeSet docName="AccountNumber" shortDesc="顧客コード"/>
+   <attributeSet docName="SundayColHdr" prompt="日"/>
+</package>

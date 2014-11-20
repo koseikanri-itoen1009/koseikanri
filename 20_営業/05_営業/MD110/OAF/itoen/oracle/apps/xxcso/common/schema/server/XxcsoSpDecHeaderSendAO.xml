@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE Association SYSTEM "jbo_03_01.dtd">
+
+<Association
+   Name="XxcsoSpDecHeaderSendAO" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+   </DesignTime>
+   <AssociationEnd
+      Name="XxcsoSpDecisionHeadersVEO"
+      Cardinality="1"
+      Source="true"
+      Owner="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionHeadersVEO"
+      LockTopContainer="false" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionHeadersVEO.SpDecisionHeaderId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_minCardinality" Value="1" />
+         <Attr Name="_aggregation" Value="0" />
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoSpDecisionHeadersVEO" />
+      </DesignTime>
+   </AssociationEnd>
+   <AssociationEnd
+      Name="XxcsoSpDecisionSendsEO"
+      Cardinality="-1"
+      Owner="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionSendsEO"
+      HasOwner="true"
+      UpdateHistoryColumn="true" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionSendsEO.SpDecisionHeaderId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_aggregation" Value="0" />
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoSpDecisionSendsEO" />
+      </DesignTime>
+   </AssociationEnd>
+</Association>

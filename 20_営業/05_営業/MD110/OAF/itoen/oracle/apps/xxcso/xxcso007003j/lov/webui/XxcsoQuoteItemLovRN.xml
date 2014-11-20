@@ -1,0 +1,39 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Search item from quote information LOV region by shared for regist sales decision information.
+
+@see itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoSalesRegistLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoSalesRegistLovAM.java
+
+HISTORY
+2009/01/07  H.Ogawa        new-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoSalesRegistLovAM" advancedSearchAllowed="true" scope="/">
+   <ui:contents>
+      <oa:table name="XxcsoQuoteItemLovRN" id="QuoteItemTblRN" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/QuoteItemTblRN">
+         <ui:contents>
+            <oa:formValue id="InventoryItemId" dataType="NUMBER" viewName="XxcsoQuoteItemLovVO1" viewAttr="InventoryItemId"/>
+            <oa:messageStyledText id="InventoryItemCode" viewName="XxcsoQuoteItemLovVO1" viewAttr="InventoryItemCode" maximumLength="40" queryable="true" sortState="yes" selectiveSearchCriteria="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/LovInventoryItemCode"/>
+            <oa:messageStyledText id="ItemShortName" viewName="XxcsoQuoteItemLovVO1" viewAttr="ItemShortName" maximumLength="20" queryable="true" sortState="yes" selectiveSearchCriteria="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/LovItemShortName"/>
+            <oa:formValue id="CaseIncNum" viewName="XxcsoQuoteItemLovVO1" viewAttr="CaseIncNum"/>
+            <oa:messageStyledText id="QuoteNumber" viewName="XxcsoQuoteItemLovVO1" viewAttr="QuoteNumber" maximumLength="12" queryable="true" sortState="yes" selectiveSearchCriteria="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/QuoteNumber"/>
+            <oa:formValue id="QuoteRevisionNumber" dataType="NUMBER" viewName="XxcsoQuoteItemLovVO1" viewAttr="QuoteRevisionNumber"/>
+            <oa:messageStyledText id="PublishDate" dataType="DATE" viewName="XxcsoQuoteItemLovVO1" viewAttr="PublishDate" queryable="true" sortState="yes" selectiveSearchCriteria="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/PublishDate"/>
+            <oa:formValue id="JanCode" viewName="XxcsoQuoteItemLovVO1" viewAttr="JanCode"/>
+            <oa:formValue id="ItfCode" viewName="XxcsoQuoteItemLovVO1" viewAttr="ItfCode"/>
+            <oa:formValue id="QuoteStartDate" dataType="DATE" viewName="XxcsoQuoteItemLovVO1" viewAttr="QuoteStartDate"/>
+            <oa:formValue id="DelivPrice" viewName="XxcsoQuoteItemLovVO1" viewAttr="DelivPrice"/>
+            <oa:formValue id="StoreSalesPrice" viewName="XxcsoQuoteItemLovVO1" viewAttr="StoreSalesPrice"/>
+            <oa:formValue id="StoreSalesPriceIncTax" viewName="XxcsoQuoteItemLovVO1" viewAttr="StoreSalesPriceIncTax"/>
+            <oa:formValue id="QuotationPrice" viewName="XxcsoQuoteItemLovVO1" viewAttr="QuotationPrice"/>
+            <oa:formValue id="Remarks" viewName="XxcsoQuoteItemLovVO1" viewAttr="Remarks"/>
+            <oa:messageStyledText id="QuoteSubmitName" viewName="XxcsoQuoteItemLovVO1" viewAttr="QuoteSubmitName" maximumLength="360" queryable="true" sortState="yes" selectiveSearchCriteria="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/QuoteSubmitName"/>
+            <oa:formValue id="DeleteEnabledValue" viewName="XxcsoQuoteItemLovVO1" viewAttr="DeleteEnabledValue"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

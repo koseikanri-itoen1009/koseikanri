@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoSpDecisionSearchAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSearchAMImpl"
+   LoadComponentsLazily="true" >
+   <Properties>
+      <Property Name ="RETENTION_LEVEL" Value ="MANAGE_STATE" />
+   </Properties>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoSpDecisionSearchInitVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSearchInitVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionStatusListVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionSummaryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSummaryVO" >
+   </ViewUsage>
+</AppModule>

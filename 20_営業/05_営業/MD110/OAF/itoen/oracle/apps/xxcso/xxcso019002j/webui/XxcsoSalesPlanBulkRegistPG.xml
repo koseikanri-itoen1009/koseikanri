@@ -1,0 +1,275 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Regist quote information page for sales.
+
+@see itoen.oracle.apps.xxcso.xxcso019002j.webui.XxcsoSalesPlanBulkRegistCO.java
+@see itoen.oracle.apps.xxcso.xxcso019002j.server.XxcsoSalesPlanBulkRegistAMImpl.xml
+@see itoen.oracle.apps.xxcso.xxcso019002j.server.XxcsoSalesPlanBulkRegistAMImpl.java
+
+HISTORY
+2009/01/27  K.boku        new-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso019002j.server.XxcsoSalesPlanBulkRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso019002j.webui.XxcsoSalesPlanBulkRegistCO" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="CancelButton" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/CancelButton"/>
+                  <oa:submitButton id="SubmitButton" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/SubmitButton"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:rowLayout id="SelectRsrcInfoRlRN" width="100%">
+                     <ui:contents>
+                        <oa:cellFormat id="SpaceCfRN00" vAlign="top">
+                           <ui:contents>
+                              <oa:header id="SpaceHdr" text=""/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="SelectInfoCfRN01" width="50%" vAlign="top">
+                           <ui:contents>
+                              <oa:header id="SelectHdr" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/SelectHdr" text="対象年月・営業員選択">
+                                 <ui:contents>
+                                    <oa:messageComponentLayout id="SelectMclRN">
+                                       <ui:contents>
+                                          <oa:messageLayout id="SearchTargetYearMonthLayout" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/SearchPlanYearMonthLayout">
+                                             <ui:contents>
+                                                <oa:rowLayout id="SearchTargetYearMonthRlRN">
+                                                   <ui:contents>
+                                                      <oa:messageChoice id="SearchTargetYear" pickListViewName="XxcsoTargetYearListVO1" pickListDispAttr="TargetYearView" pickListValAttr="TargetYear" viewName="XxcsoSalesPlanBulkRegistInitVO1" viewAttr="TargetYear" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/SearchPlanYear"/>
+                                                      <oa:messageChoice id="SearchTargetMonth" pickListViewName="XxcsoTargetMonthListVO1" pickListDispAttr="TargetMonthView" pickListValAttr="TargetMonth" viewName="XxcsoSalesPlanBulkRegistInitVO1" viewAttr="TargetMonth" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/SearchPlanMonth"/>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:messageLayout>
+                                          <oa:messageLayout id="ResourceLayout" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/ResourceLayout" prompt="営業員">
+                                             <ui:contents>
+                                                <oa:rowLayout id="ResourceRlRN" hAlign="start">
+                                                   <ui:contents>
+                                                      <oa:messageLovInput id="EmployeeNumber" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/EmployeeNumber" maximumLength="5" queryable="true" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso019009j/lov/webui/XxcsoRscRtnRsrcLovRN" columns="6" viewName="XxcsoSalesPlanBulkRegistInitVO1" viewAttr="EmployeeNumber" readOnly="${oa.XxcsoSalesPlanBulkRegistInitVO1.ReadOnlyFlg}">
+                                                         <lovMappings>
+                                                            <lovMap id="EmplolyeeNumberMap" lovItem="EmployeeNumber" resultTo="EmployeeNumber" criteriaFrom="EmployeeNumber"/>
+                                                            <lovMap id="FullNameMap" lovItem="FullName" resultTo="FullName"/>
+                                                         </lovMappings>
+                                                      </oa:messageLovInput>
+                                                      <oa:spacer id="ResourceSpacer" width="20"/>
+                                                      <oa:messageStyledText id="FullNameView" styleClass="OraDataText" viewName="XxcsoSalesPlanBulkRegistInitVO1" viewAttr="FullName"/>
+                                                      <oa:formValue id="FullName" viewName="XxcsoSalesPlanBulkRegistInitVO1" viewAttr="FullName"/>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:messageLayout>
+                                       </ui:contents>
+                                       <ui:footer>
+                                          <oa:flowLayout id="SelectFlRN">
+                                             <ui:contents>
+                                                <oa:submitButton id="SearchButton" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/SearchButton"/>
+                                             </ui:contents>
+                                          </oa:flowLayout>
+                                       </ui:footer>
+                                    </oa:messageComponentLayout>
+                                    <oa:formValue id="BaseCode"/>
+                                 </ui:contents>
+                              </oa:header>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="RsrcPlanInfoCfRN02" width="50%" vAlign="top">
+                           <ui:contents>
+                              <oa:header id="RsrcPlanHdrRN" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/RsrcPlanHdrRN">
+                                 <ui:contents>
+                                    <oa:rowLayout id="RsrcPlanHdrRIRN">
+                                       <ui:contents>
+                                          <oa:cellFormat id="TrgtRsrcPlanCfRN" width="25%" vAlign="top">
+                                             <ui:contents>
+                                                <oa:messageComponentLayout id="TrgtRsrcPlanMclRN">
+                                                   <ui:contents>
+                                                      <oa:messageLayout id="TrgtYearMonthViewLayout">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="TrgtYearMonthViewRlRN" hAlign="right" cellNoWrapFormat="false">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="TrgtYearMonthView" styleClass="OraDataText" prompt="" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="TargetYearMonthView" cellNoWrapFormat="false"/>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:messageLayout>
+                                                      <oa:messageLayout id="TrgtRsrcMonthlyPlanLayout" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/TrgtRsrcMonthlyPlanLayout">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="TrgtRsrcMonthlyPlanRlRN" hAlign="right">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="TrgtRsrcMonthlyPlan" styleClass="OraDataText" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="TargetRsrcPlan"/>
+                                                                  <oa:staticStyledText id="TrgtRsrcMonthlyPlanLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/MoneyLabel"/>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:messageLayout>
+                                                      <oa:messageLayout id="TrgtRsrcAcctMonthlyPlanSumLayout" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/TrgtRsrcAcctMonthlyPlanSumLayout">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="TrgtRsrcAcctMonthlyPlanSumRlRN" hAlign="right">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="TrgtRsrcAcctMonthlyPlanSum" styleClass="OraDataText" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="TargetRsrcAcctPlanSum"/>
+                                                                  <oa:staticStyledText id="TrgtRsrcAcctMonthlyPlanSumLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/MoneyLabel"/>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:messageLayout>
+                                                      <oa:messageLayout id="TrgtRsrcAcctDifferLayout" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/TrgtRsrcAcctDifferLayout">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="TrgtRsrcAcctDifferRlRN" hAlign="right">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="TrgtRsrcAcctDiffer" styleClass="OraDataText" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="TrgtRsrcDiffer"/>
+                                                                  <oa:staticStyledText id="TrgtRsrcAcctDifferLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/MoneyLabel"/>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:messageLayout>
+                                                   </ui:contents>
+                                                </oa:messageComponentLayout>
+                                                <oa:formValue id="TrgtYearMonth" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="TargetYearMonth" rendered="true"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="NextRsrcPlanCfRN" width="25%" vAlign="top">
+                                             <ui:contents>
+                                                <oa:messageComponentLayout id="NextRsrcPlanMclRN">
+                                                   <ui:contents>
+                                                      <oa:messageLayout id="NextYearMonthViewLayout">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="NextYearMonthViewRlRN" hAlign="right" cellNoWrapFormat="false">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="NextYearMonthView" styleClass="OraDataText" prompt="" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="NextYearMonthView" cellNoWrapFormat="false"/>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:messageLayout>
+                                                      <oa:messageLayout id="NextRsrcMonthlyPlanLayout" prompt="">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="NextRsrcMonthlyPlanRlRN" hAlign="right">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="NextRsrcMonthlyPlan" styleClass="OraDataText" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="NextRsrcPlan"/>
+                                                                  <oa:staticStyledText id="NextRsrcMonthlyPlanLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/MoneyLabel"/>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:messageLayout>
+                                                      <oa:messageLayout id="NextRsrcAcctMonthlyPlanSumLayout" prompt="">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="NextRsrcAcctMonthlyPlanSumRlRN" hAlign="right">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="NextRsrcAcctMonthlyPlanSum" styleClass="OraDataText" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="NextRsrcAcctPlanSum"/>
+                                                                  <oa:staticStyledText id="NextRsrcAcctMonthlyPlanSumLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/MoneyLabel"/>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:messageLayout>
+                                                      <oa:messageLayout id="NextRsrcAcctDifferLayout" prompt="">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="NextRsrcAcctDifferRlRN" hAlign="right">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="NextRsrcAcctDiffer" styleClass="OraDataText" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="NextRsrcDiffer"/>
+                                                                  <oa:staticStyledText id="NextRsrcAcctDifferLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/MoneyLabel"/>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:messageLayout>
+                                                   </ui:contents>
+                                                </oa:messageComponentLayout>
+                                                <oa:formValue id="NextYearMonth" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="NextYearMonth"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:formValue id="BaseCodeFull" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="BaseCode"/>
+                                          <oa:formValue id="EmployeeNumberFull" viewName="XxcsoRsrcPlanSummaryVO1" viewAttr="EmployeeNumber"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:header>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:header id="ResultHdr" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/ResultHdr" text="顧客別売上計画設定">
+                     <ui:contents>
+                        <oa:rowLayout id="ResultRlRN01" styleClass="100%" width="100%">
+                           <ui:contents>
+                              <oa:cellFormat id="ResultCfRN0201" width="100%">
+                                 <ui:contents>
+                                    <oa:advancedTable id="ResultAdvTblRN" width="100%" tableBanding="rowBanding" viewName="XxcsoAcctMonthlyPlanFullVO1">
+                                       <ui:contents>
+                                          <oa:column id="IndustryDivCol" width="10%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="IndustryDivColHdr" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/IndustryDivColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="IndustryDiv" viewAttr="IndustryDiv"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="TrgtRouteNoCol" width="10%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="TrgtRouteNoColHdr" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/TrgtRouteNoColHdr" prompt="ルートNo"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="TrgtRouteNo" viewAttr="TargetRouteNumber"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="AccountNumberCol" width="10%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="AccountNumberColHdr" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/AccountNumberColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="AccountNumber" viewAttr="AccountNumber" columns="10"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="PartyNameCol">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="PartyNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/PartyNameColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="PartyName" viewAttr="PartyName"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="TrgtSalesPlanAmtCol" width="10%" columnDataFormat="textFormat">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="TrgtSalesPlanAmtColHdr" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/TrgtSalesPlanAmtColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageTextInput id="TrgtSalesPlanAmt" maximumLength="9" columns="9" viewAttr="TargetMonthSalesPlanAmt" readOnly="${oa.XxcsoRsrcPlanSummaryVO1.ReadOnlyFlg}"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="NextSalesPlanAmtCol" width="10%" columnDataFormat="textFormat">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="NextSalesPlanAmtColHdr" use="/itoen/oracle/apps/xxcso/xxcso019002j/attributesets/XxcsoSalesPlanBulkRegistAttrSets/NextSalesPlanAmtColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageTextInput id="NextSalesPlanAmt" maximumLength="9" columns="9" viewAttr="NextMonthSalesPlanAmt" readOnly="${oa.XxcsoRsrcPlanSummaryVO1.ReadOnlyFlg}"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:formValue id="FvBaseCode" viewAttr="BaseCode" rendered="false"/>
+                                          <oa:formValue id="FvPartyId" viewAttr="PartyId" rendered="false"/>
+                                          <oa:formValue id="FvTargetYearMonth" viewAttr="TargetYearMonth" rendered="false"/>
+                                          <oa:formValue id="FvTargetAccountSalesPlanId" viewAttr="TargetAccountSalesPlanId"/>
+                                          <oa:formValue id="FvNextYearMonth" viewAttr="NextYearMonth" rendered="false"/>
+                                          <oa:formValue id="FvNextAccountSalesPlanId" viewAttr="NextAccountSalesPlanId" rendered="false"/>
+                                          <oa:formValue id="FvNextEmployeeNumber" viewAttr="NextEmployeeNumber" rendered="false"/>
+                                          <oa:formValue id="FvNextRouteNo" viewAttr="NextRouteNumber" rendered="false"/>
+                                          <oa:formValue id="FvVistTargetDiv" viewAttr="VistTargetDiv" rendered="false"/>
+                                       </ui:contents>
+                                    </oa:advancedTable>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

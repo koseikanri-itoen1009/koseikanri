@@ -1,0 +1,43 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Search vendor information LOV region by shared for regist SP-DECISION information.
+
+@see itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM.java
+
+HISTORY
+2009/01/05  H.Ogawa        new-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM" scope="/" advancedSearchAllowed="true">
+   <ui:contents>
+      <oa:table name="XxcsoVendorLovRN" id="VendorTblRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/VendorTblRN">
+         <ui:contents>
+            <oa:messageStyledText id="VendorNumber" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="VendorNumber" maximumLength="30" queryable="true" sortState="yes" initSortSeq="first" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/VendorNumber"/>
+            <oa:formValue id="VendorId" dataType="NUMBER" viewName="XxcsoVendorLovVO1" viewAttr="VendorId"/>
+            <oa:messageStyledText id="VendorName" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="VendorName" maximumLength="240" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/VendorName"/>
+            <oa:formValue id="VendorNameAlt" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="VendorNameAlt"/>
+            <oa:formValue id="PostalCodeFirst" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="PostalCodeFirst"/>
+            <oa:formValue id="PostalCodeSecond" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="PostalCodeSecond"/>
+            <oa:messageStyledText id="Zip" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="Zip" maximumLength="20" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/PostalCode"/>
+            <oa:messageStyledText id="State" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="State" maximumLength="150" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/State"/>
+            <oa:messageStyledText id="City" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="City" maximumLength="25" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/City"/>
+            <oa:messageStyledText id="AddressLine1" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="AddressLine1" maximumLength="240" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/Address1"/>
+            <oa:messageStyledText id="AddressLine2" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="AddressLine2" maximumLength="240" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/Address2"/>
+            <oa:messageStyledText id="PhoneNumber" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="PhoneNumber" maximumLength="25" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/PhoneNumber"/>
+            <oa:messageStyledText id="BankName" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="BankName" maximumLength="60" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/BankName"/>
+            <oa:messageStyledText id="BankBranchName" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="BankBranchName" maximumLength="60" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/BankBranchName"/>
+            <oa:messageStyledText id="BankAccountTypeName" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="BankAccountTypeName" maximumLength="4000" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/BankAccountTypeName"/>
+            <oa:messageStyledText id="BankAccountNum" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="BankAccountNum" maximumLength="30" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/BankAccountNum"/>
+            <oa:messageStyledText id="AccountHolderName" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="AccountHolderName" maximumLength="240" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/AccountHolderName"/>
+            <oa:formValue id="BmTransferCommissionType" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="BmTransferCommissionType"/>
+            <oa:formValue id="BmPaymentType" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="BmPaymentType"/>
+            <oa:formValue id="InquiryBaseCode" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="InquiryBaseCode"/>
+            <oa:formValue id="InquiryBaseName" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="InquiryBaseName"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

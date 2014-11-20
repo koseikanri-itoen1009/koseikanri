@@ -1,0 +1,832 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoCreateSalesPersonCsvVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso001001j.server.XxcsoCreateSalesPersonCsvVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso001001j.server.XxcsoCreateSalesPersonCsvVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+WITH
+  xrrv_view AS
+  (
+    SELECT xrrv.employee_number              AS  employee_number     --営業員コード
+          ,xrrv.full_name                    AS  employee_name       --営業員名
+          ,xxcso_util_common_pkg.get_emp_parameter(
+            xrrv.group_number_new,
+            xrrv.group_number_old,
+            xrrv.issue_date,
+            xxcso_util_common_pkg.get_online_sysdate)
+                                             AS  group_number        --グループ番号
+          ,xxcso_util_common_pkg.get_emp_parameter(
+            xrrv.group_grade_new,
+            xrrv.group_grade_old,
+            xrrv.issue_date,
+            xxcso_util_common_pkg.get_online_sysdate)
+                                             AS  group_grade         --グループ内順序
+          ,xxcso_util_common_pkg.get_emp_parameter(
+            xrrv.group_leader_flag_new,
+            xrrv.group_leader_flag_old,
+            xrrv.issue_date,
+            xxcso_util_common_pkg.get_online_sysdate)
+                                             AS  group_leader_flag   --グループ長区分
+          ,xxcso_util_common_pkg.get_emp_parameter(
+            xrrv.work_base_code_new,
+            xrrv.work_base_code_old,
+            xrrv.issue_date,
+            xxcso_util_common_pkg.get_online_sysdate)
+                                             AS  base_code           -- 拠点コード
+          ,( CASE WHEN xxcso_util_common_pkg.get_emp_parameter(
+                         xrrv.group_leader_flag_new,
+                         xrrv.group_leader_flag_old,
+                         xrrv.issue_date,
+                         xxcso_util_common_pkg.get_online_sysdate) = 'Y' THEN
+                    xrrv.full_name 
+                  ELSE
+                    NULL
+             END
+           )                                 AS  group_leader_name  --グループ長名
+          ,xxcso_util_common_pkg.get_emp_parameter(
+             xrrv.position_name_new,
+             xrrv.position_name_old,
+             xrrv.issue_date,
+             xxcso_util_common_pkg.get_online_sysdate)
+                                             AS  job_lank           --職位名
+          ,'1'                                   slsprsn_xsts_f     -- 営業員有効フラグ
+      FROM xxcso_resource_relations_v2 xrrv    -- リソース関連マスタ（最新）VIEW
+     WHERE (xrrv.issue_date <= TO_CHAR(xxcso_util_common_pkg.get_online_sysdate, 'YYYYMMDD')
+            AND  xrrv.work_base_code_new  = :1)  -- base_code売上計画検索情報リージョン.拠点コード
+        OR (xrrv.issue_date > TO_CHAR(xxcso_util_common_pkg.get_online_sysdate, 'YYYYMMDD')
+            AND  xrrv.work_base_code_old  = :2)  -- base_code売上計画検索情報リージョン.拠点コード
+   ),
+  xspmp_view AS
+  (
+    SELECT xspmp.employee_number             AS  employee_number    -- 営業員コード
+          ,xev.full_name                     AS  employee_name      -- 営業員名
+          ,xspmp.group_number                AS  group_number       -- グループ番号
+          ,xspmp.group_grade                 AS  group_grade        -- グループ内順序
+          ,xspmp.group_leader_flag           AS  group_leader_flag  -- グループ長区分
+          ,xspmp.base_code                   AS  base_code          -- 拠点コード
+          ,( CASE WHEN xspmp.group_leader_flag = 'Y' THEN
+                    xev.full_name
+                  ELSE
+                    NULL
+             END
+           )                                 AS  group_leader_name  --グループ長名
+          ,xspmp.office_rank_name            AS  job_lank           --職位名
+          ,'0'                                   slsprsn_xsts_f     -- 営業員有効フラグ
+      FROM xxcso_sls_prsn_mnthly_plns xspmp    -- 営業員別月別計画
+          ,xxcso_employees_v2 xev              -- 従業員マスタ（最新）VIEW
+     WHERE xspmp.fiscal_year     = :3    -- 売上計画検索情報リージョン.年度一致
+       AND xspmp.base_code       = :4    -- 売上計画検索情報リージョン.拠点
+       AND xev.employee_number  = xspmp.employee_number
+       AND NOT EXISTS (
+               --リソース関連マスタ（最新）VIEWにいない
+               SELECT 'X'
+                 FROM xrrv_view    -- リソース関連マスタ（最新）VIEW
+                WHERE xrrv_view.base_code       =  xspmp.base_code
+                  AND xrrv_view.employee_number =  xspmp.employee_number
+           )
+       AND xspmp.year_month  = 
+           (      --最大月
+             SELECT MAX(xspmp2.year_month)
+               FROM xxcso_sls_prsn_mnthly_plns xspmp2
+              WHERE xspmp2.fiscal_year     = xspmp.fiscal_year
+                AND xspmp2.base_code       = xspmp.base_code
+                AND xspmp2.employee_number = xspmp.employee_number
+              GROUP BY xspmp2.base_code, xspmp2.fiscal_year, xspmp2.employee_number
+           )
+  ),
+  get_ym_view AS
+  (
+    SELECT TO_CHAR(glp.period_year )          AS  period_year -- 年度
+          ,TO_CHAR(glp.start_date,'YYYYMM')   AS  year_month  -- 年月
+      FROM gl_sets_of_books  glb                -- 会計帳簿マスタ
+          ,gl_periods        glp                -- 会計カレンダテーブル
+     WHERE glb.set_of_books_id        = FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')  -- '1002'
+       AND glp.period_set_name        = glb.period_set_name
+       AND glp.period_year            = :5      -- 売上計画検索情報リージョン.年度
+       AND glp.adjustment_period_flag = 'N'
+  ),
+  prsn_base_view AS
+  (
+    SELECT  gyv.period_year       -- 年度
+           ,gyv.year_month         -- 年月
+           ,rrsp.employee_number    -- 営業員コード
+           ,rrsp.employee_name      -- 営業員名
+           ,rrsp.group_number       -- グループ番号
+           ,rrsp.group_leader_flag  -- グループ長区分
+           ,rrsp.base_code          -- 拠点コード
+           ,rrsp.group_grade        -- グループ内順序
+           ,rrsp.group_leader_name  -- グループ長名
+           ,rrsp.job_lank           -- 職位
+           ,rrsp.slsprsn_xsts_f     -- 営業員有効フラグ
+      FROM get_ym_view gyv,
+           (SELECT employee_number    -- 営業員コード
+                  ,employee_name      -- 営業員名
+                  ,group_number       -- グループ番号
+                  ,group_leader_flag  -- グループ長区分
+                  ,base_code          -- 拠点コード
+                  ,group_grade        -- グループ内順序
+                  ,group_leader_name  -- グループ長名
+                  ,job_lank           -- 職位
+                  ,slsprsn_xsts_f     -- 営業員有効フラグ
+              FROM xrrv_view
+            UNION ALL
+            SELECT employee_number
+                  ,employee_name
+                  ,group_number
+                  ,group_leader_flag
+                  ,base_code
+                  ,group_grade
+                  ,group_leader_name
+                  ,job_lank
+                  ,slsprsn_xsts_f
+              FROM xspmp_view
+           ) rrsp
+     WHERE rrsp.group_number IS NOT NULL
+  )
+SELECT '2'                                 AS  data_kind_flag                 -- データ種別（1：拠点用 2：営業員用）
+      ,prsn_base.period_year               AS  business_year                  -- 年度
+      ,prsn_base.year_month                AS  year_month                     -- 年月
+      ,prsn_base.slsprsn_xsts_f            AS  slsprsn_xsts_f                 -- 営業員有効フラグ
+      ,spmp.base_code                      AS  base_code                      -- 拠点コード
+      ,NULL                                AS  base_name                      -- 拠点名称
+      ,NULL                                AS  bsc_sls_new_amt                -- 基本新規貢献
+      ,NULL                                AS  bsc_sls_next_amt               -- 基本翌年貢献
+      ,NULL                                AS  bsc_sls_exist_amt              -- 基本既存売上
+      ,NULL                                AS  bsc_discount                   -- 基本値引
+      ,NULL                                AS  bsc_total_sls_amt              -- 基本合計売上(基本ノルマ)
+      ,NULL                                AS  def_cnt_total                  -- 訪問
+      ,NULL                                AS  target_discount_amt            -- 目標値引
+      ,prsn_base.group_number              AS  group_number                   -- グループ番号
+      ,prsn_base.group_leader_flag         AS  group_leader_flag              -- グループ長区分
+      ,prsn_base.group_leader_name         AS  group_leader_name              -- グループ長名
+      ,prsn_base.group_grade               AS  group_grade                    -- グループ内順序
+      ,prsn_base.employee_number           AS  employee_number                -- 営業員コード
+      ,prsn_base.employee_name             AS  employee_name                  -- 営業員名
+      ,prsn_base.job_lank                  AS  job_lank                       -- 職位
+      ,spmp.pri_rslt_vd_new_serv_amt       AS  pri_rslt_vd_new_serv_amt       -- 前年実績（VD：新規貢献）
+      ,spmp.pri_rslt_vd_next_serv_amt      AS  pri_rslt_vd_next_serv_amt      -- 前年実績（VD：翌年貢献）
+      ,spmp.pri_rslt_vd_exist_serv_amt     AS  pri_rslt_vd_exist_serv_amt     -- 前年実績（VD：既存売上）
+      ,spmp.pri_rslt_new_serv_amt          AS  pri_rslt_new_serv_amt          -- 前年実績（VD以外：新規貢献）
+      ,spmp.pri_rslt_next_serv_amt         AS  pri_rslt_next_serv_amt         -- 前年実績（VD以外：翌年貢献）
+      ,spmp.pri_rslt_exist_serv_amt        AS  pri_rslt_exist_serv_amt        -- 前年実績（VD以外：既存売上）
+      ,spmp.bsc_sls_vd_new_serv_amt        AS  bsc_sls_vd_new_serv_amt        -- 基本売上（VD：新規貢献）
+      ,spmp.bsc_sls_vd_next_serv_amt       AS  bsc_sls_vd_next_serv_amt       -- 基本売上（VD：翌年貢献）
+      ,spmp.bsc_sls_vd_exist_serv_amt      AS  bsc_sls_vd_exist_serv_amt      -- 基本売上（VD：既存売上）
+      ,spmp.bsc_sls_new_serv_amt           AS  bsc_sls_new_serv_amt           -- 基本売上（VD以外：新規貢献）
+      ,spmp.bsc_sls_next_serv_amt          AS  bsc_sls_next_serv_amt          -- 基本売上（VD以外：翌年貢献）
+      ,spmp.bsc_sls_prsn_total_amt         AS  bsc_sls_prsn_total_amt         -- 基本売上（営業員計：計）
+      ,spmp.tgt_sales_vd_new_serv_amt      AS  tgt_sales_vd_new_serv_amt      -- 目標売上（VD：新規貢献）
+      ,spmp.tgt_sales_vd_next_serv_amt     AS  tgt_sales_vd_next_serv_amt     -- 目標売上（VD：翌年貢献）
+      ,spmp.tgt_sales_vd_exist_serv_amt    AS  tgt_sales_vd_exist_serv_amt    -- 目標売上（VD：既存売上）
+      ,spmp.tgt_sales_new_serv_amt         AS  tgt_sales_new_serv_amt         -- 目標売上（VD以外：新規貢献）
+      ,spmp.tgt_sales_next_serv_amt        AS  tgt_sales_next_serv_amt        -- 目標売上（VD以外：翌年貢献）
+      ,spmp.tgt_sales_prsn_total_amt       AS  tgt_sales_prsn_total_amt       -- 目標売上（営業員計：計）
+      ,spmp.rslt_vd_new_serv_amt           AS  rslt_vd_new_serv_amt           -- 実績（VD：新規貢献）
+      ,spmp.rslt_vd_exist_serv_amt         AS  rslt_vd_exist_serv_amt         -- 実績（VD：既存売上）
+      ,spmp.rslt_vd_total_amt              AS  rslt_vd_total_amt              -- 実績（VD：計）
+      ,spmp.rslt_new_serv_amt              AS  rslt_new_serv_amt              -- 実績（VD以外：新規貢献）
+      ,spmp.rslt_exist_serv_amt            AS  rslt_exist_serv_amt            -- 実績（VD以外：既存売上）
+      ,spmp.rslt_prsn_total_amt            AS  rslt_prsn_total_amt            -- 実績（営業員計：計）
+      ,spmp.vis_vd_total_amt               AS  vis_vd_total_amt               -- 訪問（VD：計）
+      ,spmp.vis_prsn_total_amt             AS  vis_prsn_total_amt             -- 訪問（営業員計：計）
+      ,(CASE WHEN spmp.year_month IS NOT NULL THEN
+               '1'
+             ELSE
+               '0'
+        END)                               AS  sls_pln_effective_flag         -- 計画データ有効フラグ
+  FROM xxcso_sls_prsn_mnthly_plns  spmp    -- 営業員別月別計画テーブル
+      ,prsn_base_view prsn_base
+ WHERE spmp.base_code(+)       = :6  --base_code 売上計画検索情報リージョン.拠点コード
+   AND spmp.employee_number(+) = prsn_base.employee_number
+   AND spmp.year_month(+)      = prsn_base.year_month  
+ORDER BY prsn_base.group_number ASC,
+         prsn_base.slsprsn_xsts_f ASC,
+         prsn_base.group_grade ASC,
+         prsn_base.employee_name ASC,
+         prsn_base.year_month ASC
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="DataKindFlag"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="CHAR"
+      AliasName="DATA_KIND_FLAG"
+      Expression="DATA_KIND_FLAG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BusinessYear"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BUSINESS_YEAR"
+      Expression="BUSINESS_YEAR"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="YearMonth"
+      IsPersistent="false"
+      Precision="6"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="YEAR_MONTH"
+      Expression="YEAR_MONTH"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SlsprsnXstsF"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="CHAR"
+      AliasName="SLSPRSN_XSTS_F"
+      Expression="SLSPRSN_XSTS_F"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="CHAR"
+      AliasName="BASE_CODE"
+      Expression="BASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASENAME"
+      Expression="BaseName"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BscSlsNewServAmt"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BSC_SLS__NEW_SERV_AMT"
+      Expression="BSC_SLS__NEW_SERV_AMT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BscSlsNextServAmt"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BSC_SLS__NEXT_SERV_AMT"
+      Expression="BSC_SLS__NEXT_SERV_AMT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BscSlsExistServAmt"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BSC_SLS__EXIST_SERV_AMT"
+      Expression="BSC_SLS__EXIST_SERV_AMT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BscDiscount"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BSC_DISCOUNT"
+      Expression="BSC_DISCOUNT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BscTotalSlsAmt"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BSC_TOTAL_SLS_AMT"
+      Expression="BSC_TOTAL_SLS_AMT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DefCntTotal"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DEF_CNT_TOTAL"
+      Expression="DEF_CNT_TOTAL"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetDiscountAmt"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TARGET_DISCOUNT_AMT"
+      Expression="TARGET_DISCOUNT_AMT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="GroupNumber"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="GROUP_NUMBER"
+      Expression="GROUP_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="GroupLeaderFlag"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="GROUP_LEADER_FLAG"
+      Expression="GROUP_LEADER_FLAG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="GroupLeaderName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="GROUP_LEADER_NAME"
+      Expression="GROUP_LEADER_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="GroupGrade"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="GROUP_GRADE"
+      Expression="GROUP_GRADE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EMPLOYEE_NUMBER"
+      Expression="EMPLOYEE_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EmployeeName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EMPLOYEE_NAME"
+      Expression="EMPLOYEE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="JobLank"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="JOB_LANK"
+      Expression="JOB_LANK"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PriRsltVdNewServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="PRI_RSLT_VD__NEW_SERV_AMT"
+      Expression="PRI_RSLT_VD__NEW_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PriRsltVdNextServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="PRI_RSLT_VD__NEXT_SERV_AMT"
+      Expression="PRI_RSLT_VD__NEXT_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PriRsltVdExistServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="PRI_RSLT_VD__EXIST_SERV_AMT"
+      Expression="PRI_RSLT_VD__EXIST_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PriRsltNewServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="PRI_RSLT_NEW_SERV_AMT"
+      Expression="PRI_RSLT_NEW_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PriRsltNextServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="PRI_RSLT_NEXT_SERV_AMT"
+      Expression="PRI_RSLT_NEXT_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PriRsltExistServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="PRI_RSLT_EXIST_SERV_AMT"
+      Expression="PRI_RSLT_EXIST_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BscSlsVdNewServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="BSC_SLS_VD__NEW_SERV_AMT"
+      Expression="BSC_SLS_VD__NEW_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BscSlsVdNextServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="BSC_SLS_VD__NEXT_SERV_AMT"
+      Expression="BSC_SLS_VD__NEXT_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BscSlsVdExistServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="BSC_SLS_VD__EXIST_SERV_AMT"
+      Expression="BSC_SLS_VD__EXIST_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BscSlsNewServAmt1"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="BSC_SLS_NEW_SERV_AMT"
+      Expression="BSC_SLS_NEW_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BscSlsNextServAmt1"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="BSC_SLS_NEXT_SERV_AMT"
+      Expression="BSC_SLS_NEXT_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BscSlsPrsnTotalAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="BSC_SLS_PRSN_TOTAL_AMT"
+      Expression="BSC_SLS_PRSN_TOTAL_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TgtSalesVdNewServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="TGT_SALES_VD__NEW_SERV_AMT"
+      Expression="TGT_SALES_VD__NEW_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TgtSalesVdNextServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="TGT_SALES_VD__NEXT_SERV_AMT"
+      Expression="TGT_SALES_VD__NEXT_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TgtSalesVdExistServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="TGT_SALES_VD__EXIST_SERV_AMT"
+      Expression="TGT_SALES_VD__EXIST_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TgtSalesNewServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="TGT_SALES_NEW_SERV_AMT"
+      Expression="TGT_SALES_NEW_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TgtSalesNextServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="TGT_SALES_NEXT_SERV_AMT"
+      Expression="TGT_SALES_NEXT_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TgtSalesPrsnTotalAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="TGT_SALES_PRSN_TOTAL_AMT"
+      Expression="TGT_SALES_PRSN_TOTAL_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsltVdNewServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="RSLT_VD__NEW_SERV_AMT"
+      Expression="RSLT_VD__NEW_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsltVdExistServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="RSLT_VD__EXIST_SERV_AMT"
+      Expression="RSLT_VD__EXIST_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsltVdTotalAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="RSLT_VD_TOTAL_AMT"
+      Expression="RSLT_VD_TOTAL_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsltNewServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="RSLT_NEW_SERV_AMT"
+      Expression="RSLT_NEW_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsltNextServAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="RSLT_NEXT_SERV_AMT"
+      Expression="RSLT_NEXT_SERV_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsltPrsnTotalAmt"
+      IsPersistent="false"
+      Precision="9"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="RSLT_PRSN_TOTAL_AMT"
+      Expression="RSLT_PRSN_TOTAL_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VisVdTotalAmt"
+      IsPersistent="false"
+      Precision="4"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="VIS_VD_TOTAL_AMT"
+      Expression="VIS_VD_TOTAL_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VisPrsnTotalAmt"
+      IsPersistent="false"
+      Precision="4"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="VIS_PRSN_TOTAL_AMT"
+      Expression="VIS_PRSN_TOTAL_AMT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SlsPlnEffectiveFlag"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="CHAR"
+      AliasName="SLS_PLN_EFFECTIVE_FLAG"
+      Expression="SLS_PLN_EFFECTIVE_FLAG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

@@ -1,0 +1,655 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSpDecisionHeaderFullVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionHeaderFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionHeaderFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID, 
+       XxcsoSpDecisionHeadersVEO.SP_DECISION_NUMBER, 
+       XxcsoSpDecisionHeadersVEO.SP_DECISION_TYPE, 
+       XxcsoSpDecisionHeadersVEO.STATUS, 
+       XxcsoSpDecisionHeadersVEO.APPLICATION_NUMBER, 
+       XxcsoSpDecisionHeadersVEO.APPLICATION_DATE, 
+       XxcsoSpDecisionHeadersVEO.APPROVAL_COMPLETE_DATE, 
+       XxcsoSpDecisionHeadersVEO.APPLICATION_CODE, 
+       XxcsoSpDecisionHeadersVEO.APP_BASE_CODE, 
+       XxcsoSpDecisionHeadersVEO.APPLICATION_TYPE, 
+       XxcsoSpDecisionHeadersVEO.NEWOLD_TYPE, 
+       XxcsoSpDecisionHeadersVEO.SELE_NUMBER, 
+       XxcsoSpDecisionHeadersVEO.MAKER_CODE, 
+       XxcsoSpDecisionHeadersVEO.STANDARD_TYPE, 
+       XxcsoSpDecisionHeadersVEO.UN_NUMBER, 
+       XxcsoSpDecisionHeadersVEO.INSTALL_DATE, 
+       XxcsoSpDecisionHeadersVEO.LEASE_COMPANY, 
+       XxcsoSpDecisionHeadersVEO.CONDITION_BUSINESS_TYPE, 
+       XxcsoSpDecisionHeadersVEO.ALL_CONTAINER_TYPE, 
+       XxcsoSpDecisionHeadersVEO.CONTRACT_YEAR_DATE, 
+       XxcsoSpDecisionHeadersVEO.INSTALL_SUPPORT_AMT, 
+       XxcsoSpDecisionHeadersVEO.INSTALL_SUPPORT_AMT2, 
+       XxcsoSpDecisionHeadersVEO.PAYMENT_CYCLE, 
+       XxcsoSpDecisionHeadersVEO.ELECTRICITY_TYPE, 
+       XxcsoSpDecisionHeadersVEO.ELECTRICITY_AMOUNT, 
+       XxcsoSpDecisionHeadersVEO.CONDITION_REASON, 
+       XxcsoSpDecisionHeadersVEO.BM1_SEND_TYPE, 
+       XxcsoSpDecisionHeadersVEO.OTHER_CONTENT, 
+       XxcsoSpDecisionHeadersVEO.SALES_MONTH, 
+       XxcsoSpDecisionHeadersVEO.SALES_YEAR, 
+       XxcsoSpDecisionHeadersVEO.SALES_GROSS_MARGIN_RATE, 
+       XxcsoSpDecisionHeadersVEO.YEAR_GROSS_MARGIN_AMT, 
+       XxcsoSpDecisionHeadersVEO.BM_RATE, 
+       XxcsoSpDecisionHeadersVEO.VD_SALES_CHARGE, 
+       XxcsoSpDecisionHeadersVEO.INSTALL_SUPPORT_AMT_YEAR, 
+       XxcsoSpDecisionHeadersVEO.LEASE_CHARGE_MONTH, 
+       XxcsoSpDecisionHeadersVEO.CONSTRUCTION_CHARGE, 
+       XxcsoSpDecisionHeadersVEO.VD_LEASE_CHARGE, 
+       XxcsoSpDecisionHeadersVEO.ELECTRICITY_AMT_MONTH, 
+       XxcsoSpDecisionHeadersVEO.ELECTRICITY_AMT_YEAR, 
+       XxcsoSpDecisionHeadersVEO.TRANSPORTATION_CHARGE, 
+       XxcsoSpDecisionHeadersVEO.LABOR_COST_OTHER, 
+       XxcsoSpDecisionHeadersVEO.TOTAL_COST, 
+       XxcsoSpDecisionHeadersVEO.OPERATING_PROFIT, 
+       XxcsoSpDecisionHeadersVEO.OPERATING_PROFIT_RATE, 
+       XxcsoSpDecisionHeadersVEO.BREAK_EVEN_POINT, 
+       XxcsoSpDecisionHeadersVEO.CREATED_BY, 
+       XxcsoSpDecisionHeadersVEO.CREATION_DATE, 
+       XxcsoSpDecisionHeadersVEO.LAST_UPDATED_BY, 
+       XxcsoSpDecisionHeadersVEO.LAST_UPDATE_DATE, 
+       XxcsoSpDecisionHeadersVEO.LAST_UPDATE_LOGIN, 
+       XxcsoSpDecisionHeadersVEO.REQUEST_ID, 
+       XxcsoSpDecisionHeadersVEO.PROGRAM_APPLICATION_ID, 
+       XxcsoSpDecisionHeadersVEO.PROGRAM_ID, 
+       XxcsoSpDecisionHeadersVEO.PROGRAM_UPDATE_DATE
+      ,xxcso_util_common_pkg.get_base_name(
+         XxcsoSpDecisionHeadersVEO.APP_BASE_CODE
+        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+       ) app_base_name
+      ,(SELECT  xev.full_name
+        FROM    xxcso_employees_v2 xev
+        WHERE   xev.employee_number = XxcsoSpDecisionHeadersVEO.APPLICATION_CODE
+       ) full_name
+      ,XxcsoSpDecisionHeadersVEO.CONTRACT_YEAR_DATE contract_year_date_view
+      ,XxcsoSpDecisionHeadersVEO.ELECTRICITY_TYPE electricity_type_view
+      ,XxcsoSpDecisionHeadersVEO.ELECTRICITY_AMOUNT electricity_amount_view
+      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPPORT_AMT install_support_amt_view
+      ,XxcsoSpDecisionHeadersVEO.PAYMENT_CYCLE payment_cycle_view
+      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPPORT_AMT2 install_support_amt2_view
+FROM XXCSO_SP_DECISION_HEADERS_V XxcsoSpDecisionHeadersVEO
+WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoSpDecisionHeadersVEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionHeadersVEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="true" />
+         <Attr Name="_queryWhere" Value="XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="SpDecisionHeaderId"
+      IsNotNull="true"
+      EntityAttrName="SpDecisionHeaderId"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="SP_DECISION_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionNumber"
+      IsNotNull="true"
+      Precision="30"
+      EntityAttrName="SpDecisionNumber"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="SP_DECISION_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionType"
+      IsNotNull="true"
+      Precision="1"
+      EntityAttrName="SpDecisionType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="SP_DECISION_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Status"
+      IsNotNull="true"
+      Precision="2"
+      EntityAttrName="Status"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="STATUS" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApplicationNumber"
+      Precision="3"
+      Scale="0"
+      EntityAttrName="ApplicationNumber"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="APPLICATION_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApplicationDate"
+      EntityAttrName="ApplicationDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="APPLICATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApprovalCompleteDate"
+      EntityAttrName="ApprovalCompleteDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="APPROVAL_COMPLETE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApplicationCode"
+      Precision="5"
+      EntityAttrName="ApplicationCode"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="APPLICATION_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AppBaseCode"
+      Precision="4"
+      EntityAttrName="AppBaseCode"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="APP_BASE_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApplicationType"
+      Precision="1"
+      EntityAttrName="ApplicationType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="APPLICATION_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NewoldType"
+      Precision="1"
+      EntityAttrName="NewoldType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="NEWOLD_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SeleNumber"
+      Precision="3"
+      EntityAttrName="SeleNumber"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="SELE_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MakerCode"
+      Precision="2"
+      EntityAttrName="MakerCode"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="MAKER_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StandardType"
+      Precision="1"
+      EntityAttrName="StandardType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="STANDARD_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UnNumber"
+      Precision="14"
+      EntityAttrName="UnNumber"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="UN_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallDate"
+      EntityAttrName="InstallDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="INSTALL_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeaseCompany"
+      Precision="50"
+      EntityAttrName="LeaseCompany"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="LEASE_COMPANY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ConditionBusinessType"
+      Precision="1"
+      EntityAttrName="ConditionBusinessType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="CONDITION_BUSINESS_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AllContainerType"
+      Precision="1"
+      EntityAttrName="AllContainerType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ALL_CONTAINER_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractYearDate"
+      Precision="2"
+      EntityAttrName="ContractYearDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="CONTRACT_YEAR_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSupportAmt"
+      Precision="10"
+      EntityAttrName="InstallSupportAmt"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="INSTALL_SUPPORT_AMT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSupportAmt2"
+      Precision="10"
+      EntityAttrName="InstallSupportAmt2"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="INSTALL_SUPPORT_AMT2" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PaymentCycle"
+      Precision="2"
+      EntityAttrName="PaymentCycle"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="PAYMENT_CYCLE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricityType"
+      Precision="1"
+      EntityAttrName="ElectricityType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ELECTRICITY_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricityAmount"
+      Precision="6"
+      EntityAttrName="ElectricityAmount"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ELECTRICITY_AMOUNT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ConditionReason"
+      Precision="500"
+      EntityAttrName="ConditionReason"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="CONDITION_REASON" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1SendType"
+      Precision="1"
+      EntityAttrName="Bm1SendType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="BM1_SEND_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OtherContent"
+      Precision="500"
+      EntityAttrName="OtherContent"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="OTHER_CONTENT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesMonth"
+      Precision="5"
+      EntityAttrName="SalesMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="SALES_MONTH" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesYear"
+      Precision="9"
+      EntityAttrName="SalesYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="SALES_YEAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesGrossMarginRate"
+      Precision="6"
+      EntityAttrName="SalesGrossMarginRate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="SALES_GROSS_MARGIN_RATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="YearGrossMarginAmt"
+      Precision="12"
+      EntityAttrName="YearGrossMarginAmt"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="YEAR_GROSS_MARGIN_AMT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmRate"
+      Precision="5"
+      EntityAttrName="BmRate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="BM_RATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VdSalesCharge"
+      Precision="12"
+      EntityAttrName="VdSalesCharge"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="VD_SALES_CHARGE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSupportAmtYear"
+      Precision="12"
+      EntityAttrName="InstallSupportAmtYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="INSTALL_SUPPORT_AMT_YEAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeaseChargeMonth"
+      Precision="2"
+      EntityAttrName="LeaseChargeMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="LEASE_CHARGE_MONTH" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ConstructionCharge"
+      Precision="5"
+      EntityAttrName="ConstructionCharge"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="CONSTRUCTION_CHARGE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VdLeaseCharge"
+      Precision="12"
+      EntityAttrName="VdLeaseCharge"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="VD_LEASE_CHARGE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricityAmtMonth"
+      Precision="6"
+      EntityAttrName="ElectricityAmtMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ELECTRICITY_AMT_MONTH" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricityAmtYear"
+      Precision="12"
+      EntityAttrName="ElectricityAmtYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ELECTRICITY_AMT_YEAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransportationCharge"
+      Precision="12"
+      EntityAttrName="TransportationCharge"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="TRANSPORTATION_CHARGE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LaborCostOther"
+      Precision="12"
+      EntityAttrName="LaborCostOther"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="LABOR_COST_OTHER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TotalCost"
+      Precision="12"
+      EntityAttrName="TotalCost"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="TOTAL_COST" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OperatingProfit"
+      Precision="12"
+      EntityAttrName="OperatingProfit"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="OPERATING_PROFIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OperatingProfitRate"
+      Precision="6"
+      EntityAttrName="OperatingProfitRate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="OPERATING_PROFIT_RATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BreakEvenPoint"
+      Precision="12"
+      EntityAttrName="BreakEvenPoint"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="BREAK_EVEN_POINT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AppBaseName"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="APP_BASE_NAME"
+      Expression="APP_BASE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractYearDateView"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CONTRACT_YEAR_DATE_VIEW"
+      Expression="CONTRACT_YEAR_DATE_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricityTypeView"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRICITY_TYPE_VIEW"
+      Expression="ELECTRICITY_TYPE_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricityAmountView"
+      IsPersistent="false"
+      Precision="6"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRICITY_AMOUNT_VIEW"
+      Expression="ELECTRICITY_AMOUNT_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSupportAmtView"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_SUPPORT_AMT_VIEW"
+      Expression="INSTALL_SUPPORT_AMT_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PaymentCycleView"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PAYMENT_CYCLE_VIEW"
+      Expression="PAYMENT_CYCLE_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSupportAmt2View"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_SUPPORT_AMT2_VIEW"
+      Expression="INSTALL_SUPPORT_AMT2_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="11" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewLinkAccessor
+      Name="XxcsoSpDecisionAllCcLineFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderAllCcLineVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoSpDecisionAttachFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderAttachVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoSpDecisionBm1CustFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderBm1CustVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoSpDecisionBm2CustFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderBm2CustVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoSpDecisionBm3CustFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderBm3CustVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoSpDecisionCntrctCustFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderCntrctCustVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoSpDecisionInstCustFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderInstCustVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoSpDecisionScLineFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderScLineVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoSpDecisionSelCcLineFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderSelCcLineVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoSpDecisionSendFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecHeaderSendVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+</ViewObject>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoReferenceQuotationPriceVO"
+   OrderBy="LAST_UPDATE_DATE DESC"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoReferenceQuotationPriceVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoReferenceQuotationPriceVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xql.quotation_price quotation_price
+      ,xql.last_update_date last_update_date
+FROM   xxcso_quote_headers xqh
+      ,xxcso_quote_lines   xql
+      ,xxcmm_cust_accounts xca
+WHERE  xql.inventory_item_id = :1
+  AND  xqh.status            = '2'
+  AND  xql.quote_header_id   = xqh.quote_header_id
+  AND  xca.customer_id       = :2
+  AND  xqh.account_number    = xxcso_util_common_pkg.get_lookup_meaning(
+                                 'XXCSO1_PRICE_QUOTATION'
+                                 ,xxcso_util_common_pkg.get_lookup_attribute(
+                                    'XXCMM_CHAIN_CODE'
+                                    ,xca.delivery_chain_code
+                                    ,1
+                                    ,TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                                 ,TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="QuotationPrice"
+      IsPersistent="false"
+      Precision="7"
+      Scale="2"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="QUOTATION_PRICE"
+      Expression="QUOTATION_PRICE"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="LAST_UPDATE_DATE"
+      Expression="LAST_UPDATE_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

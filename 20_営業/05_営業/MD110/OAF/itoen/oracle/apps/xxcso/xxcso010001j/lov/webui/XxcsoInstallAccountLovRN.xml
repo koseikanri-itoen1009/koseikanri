@@ -1,0 +1,26 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*・ページの概要
+顧客検索用LOV画面
+・ページの詳細
+「顧客コード」、「顧客名」を検索条件として選択可能です。
+検索結果を選択することによりベース・ページの「顧客コード」又は
+「設置先名」に値を反映します。
+戻り値はＬＯＶを呼ぶ際に押した項目に反映されます。
+・起動パラメータ
+なし
+・参照しているクラス（CO/AM）
+@see itoen.oracle.apps.xxcso.xxcso010001j.lov.server.XxcsoInstallAccountLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso010001j.lov.server.XxcsoInstallAccountLovAMlmpl.java
+・修正履歴
+2008/10/31 及川領 新規作成-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" amDefName="itoen.oracle.apps.xxcso.xxcso010001j.lov.server.XxcsoInstallAccountLovAM" advancedSearchAllowed="true">
+   <ui:contents>
+      <oa:table name="XxcsoInstallAccountLovRN" id="InstallAccountTblRN" width="100%" shortDesc="顧客検索結果">
+         <ui:contents>
+            <oa:messageStyledText id="InstallAccountNumber" dataType="VARCHAR2" prompt="顧客コード" viewName="XxcsoInstallAccountLovVO1" viewAttr="InstallAccountNumber" queryable="true" selectiveSearchCriteria="false" sortState="yes" initSortSeq="first"/>
+            <oa:messageStyledText id="InstallPartyName" dataType="VARCHAR2" prompt="顧客名" viewName="XxcsoInstallAccountLovVO1" viewAttr="InstallPartyName" queryable="true" selectiveSearchCriteria="false" sortState="yes"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

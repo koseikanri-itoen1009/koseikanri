@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE Association SYSTEM "jbo_03_01.dtd">
+
+<Association
+   Name="XxcsoQuoteHeaderLineSalesAO" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+   </DesignTime>
+   <AssociationEnd
+      Name="XxcsoQuoteHeadersEO"
+      Cardinality="1"
+      Source="true"
+      Owner="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteHeadersEO"
+      LockTopContainer="false" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteHeadersEO.QuoteHeaderId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_minCardinality" Value="1" />
+         <Attr Name="_aggregation" Value="0" />
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoQuoteHeadersEO" />
+      </DesignTime>
+   </AssociationEnd>
+   <AssociationEnd
+      Name="XxcsoQuoteLinesSalesVEO"
+      Cardinality="-1"
+      Owner="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteLinesSalesVEO"
+      HasOwner="true"
+      UpdateHistoryColumn="true" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoQuoteLinesSalesVEO.QuoteHeaderId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_aggregation" Value="0" />
+         <Attr Name="_isUpdateable" Value="true" />
+         <Attr Name="_finderName" Value="XxcsoQuoteLinesSalesVEO" />
+      </DesignTime>
+   </AssociationEnd>
+</Association>

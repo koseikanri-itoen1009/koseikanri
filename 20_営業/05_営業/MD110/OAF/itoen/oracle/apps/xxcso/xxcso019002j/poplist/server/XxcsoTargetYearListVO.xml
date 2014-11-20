@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoTargetYearListVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019002j.poplist.server.XxcsoTargetYearListVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019002j.poplist.server.XxcsoTargetYearListVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+WITH
+  target_view AS
+  (
+    SELECT  TO_CHAR(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 3),'YYYY') AS target_year
+      FROM  DUAL
+    UNION
+    SELECT  TO_CHAR(xxcso_util_common_pkg.get_online_sysdate,'YYYY') AS target_year
+      FROM  DUAL
+  )
+SELECT  target_year,
+        target_year || '年' target_year_view,
+        TO_NUMBER(target_year) target_year_index
+  FROM  target_view
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="TargetYear"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TARGET_YEAR"
+      Expression="TARGET_YEAR"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetYearView"
+      IsPersistent="false"
+      Precision="6"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TARGET_YEAR_VIEW"
+      Expression="TARGET_YEAR_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetYearIndex"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="TARGET_YEAR_INDEX"
+      Expression="TARGET_YEAR_INDEX"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

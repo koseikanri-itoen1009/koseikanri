@@ -1,0 +1,24 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Search publish base information LOV region by shared for regist SP-DECISION information.
+
+@see itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM.java
+
+HISTORY
+2009/01/05  H.Ogawa        new-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM" scope="/" advancedSearchAllowed="true">
+   <ui:contents>
+      <oa:table name="XxcsoPublishBaseLovRN" id="PublishTblRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/PublishTblRN">
+         <ui:contents>
+            <oa:messageStyledText id="BaseCode" dataType="VARCHAR2" viewName="XxcsoPublishBaseLovVO1" viewAttr="BaseCode" maximumLength="150" queryable="true" sortState="yes" initSortSeq="first" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/BaseCode"/>
+            <oa:messageStyledText id="BaseName" dataType="VARCHAR2" viewName="XxcsoPublishBaseLovVO1" viewAttr="BaseName" maximumLength="240" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/BaseName"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

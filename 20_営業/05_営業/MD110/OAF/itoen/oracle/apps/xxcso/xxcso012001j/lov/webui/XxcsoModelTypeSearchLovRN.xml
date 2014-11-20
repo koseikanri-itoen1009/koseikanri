@@ -1,0 +1,24 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+The code and the name are acquired.
+
+@see itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoPvRegistLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoPvRegistLovAM.java
+
+HISTORY 2008/12/27  N.Yanagitaira        Initialcode drop.-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" amDefName="itoen.oracle.apps.xxcso.xxcso012001j.lov.server.XxcsoPvRegistLovAM">
+   <ui:contents>
+      <oa:table name="XxcsoModelTypeSearchLovRN" id="XxcsoModelTypeSearchLovVO1" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistLovAttrSets/XxcsoModelTypeSearchLovRN">
+         <ui:contents>
+            <oa:messageStyledText id="UnNumber" dataType="VARCHAR2" viewName="XxcsoModelTypeSearchLovVO1" viewAttr="UnNumber" queryable="true" sortState="yes" initSortSeq="first" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistLovAttrSets/UnNumber"/>
+            <oa:messageStyledText id="Meaning1" dataType="VARCHAR2" viewName="XxcsoModelTypeSearchLovVO1" viewAttr="Meaning1" maximumLength="80" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistLovAttrSets/Meaning1"/>
+            <oa:messageStyledText id="Meaning2" dataType="VARCHAR2" viewName="XxcsoModelTypeSearchLovVO1" viewAttr="Meaning2" maximumLength="80" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvRegistLovAttrSets/Meaning2"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

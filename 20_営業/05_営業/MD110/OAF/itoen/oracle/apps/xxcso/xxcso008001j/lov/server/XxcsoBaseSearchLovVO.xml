@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoBaseSearchLovVO"
+   OrderBy="sort_code"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso008001j.lov.server.XxcsoBaseSearchLovVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso008001j.lov.server.XxcsoBaseSearchLovVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  tree_aff.sort_code    AS sort_code
+       ,xabv2.base_code       AS base_code
+       ,xabv2.base_name       AS base_name
+FROM    xxcso_aff_base_v2 xabv2
+       ,(
+          SELECT   rownum + 1 AS sort_code
+                  ,base_code
+                  ,child_base_code
+          FROM     (
+                     SELECT  xablv2.base_code AS base_code
+                            ,xablv2.child_base_code AS child_base_code
+                     FROM    xxcso_aff_base_level_v2 xablv2
+                             START WITH
+                               xablv2.base_code =
+                               (
+                                 SELECT XXCSO_008001J_PKG.get_baseline_base_code
+                                 FROM   DUAL
+                               )
+                             CONNECT BY NOCYCLE
+                               PRIOR xablv2.child_base_code = xablv2.base_code
+                             ORDER SIBLINGS BY
+                               xablv2.base_code ASC
+                   ) aff
+          UNION ALL
+          SELECT   1
+                  ,XXCSO_008001J_PKG.get_baseline_base_code
+                  ,XXCSO_008001J_PKG.get_baseline_base_code
+          FROM     DUAL
+        ) tree_aff
+WHERE   xabv2.base_code = tree_aff.child_base_code
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="SortCode"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SORT_CODE"
+      Expression="SORT_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseCode"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_CODE"
+      Expression="BASE_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseName"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_NAME"
+      Expression="BASE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

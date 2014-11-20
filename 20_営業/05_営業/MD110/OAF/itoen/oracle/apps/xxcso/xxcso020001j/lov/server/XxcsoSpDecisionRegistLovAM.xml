@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoSpDecisionRegistLovAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoAccountForRegistLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoAccountForRegistLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoPublishBaseLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoPublishBaseLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoVendorModelLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoVendorModelLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoContractLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoVendorLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoVendorLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoApproveCodeLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoApproveCodeLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoOtherContentLoVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoOtherContentLoVO" >
+   </ViewUsage>
+</AppModule>

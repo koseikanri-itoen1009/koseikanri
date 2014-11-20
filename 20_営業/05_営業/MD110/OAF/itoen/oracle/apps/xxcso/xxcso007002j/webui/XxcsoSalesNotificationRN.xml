@@ -1,0 +1,239 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+View sales decision information notification page.
+This page is called by Workflow(XXCSO007).
+
+@see XXCSO007.wft
+@see itoen.oracle.apps.xxcso.xxcso007002j.webui.XxcsoSalesNotificationCO.java
+@see itoen.oracle.apps.xxcso.xxcso007002j.server.XxcsoSalesNotificationAM.xml
+@see itoen.oracle.apps.xxcso.xxcso007002j.server.XxcsoSalesNotificationAMImpl.java
+
+HISTORY
+2009/01/08  H.Ogawa        new-->
+<oa:stackLayout version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso007002j.server.XxcsoSalesNotificationAM" controllerClass="itoen.oracle.apps.xxcso.xxcso007002j.webui.XxcsoSalesNotificationCO">
+   <ui:contents>
+      <oa:spacer id="Spacer04" height="20"/>
+      <oa:staticStyledText id="MessageText" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/MessageText" styleClass="OraDataText"/>
+      <oa:messageStyledText id="LeadDescriptionLink" viewName="XxcsoSalesHeaderHistSumVO1" viewAttr="LeadDescription" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/LeadDescriptionLink">
+         <ui:primaryClientAction>
+            <ui:fireAction event="SelectLeadDescriptionLink" id="fireAction1"/>
+         </ui:primaryClientAction>
+      </oa:messageStyledText>
+      <oa:defaultSingleColumn id="SalesOutLineDscRN" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/SalesOutLineDscRN">
+         <ui:contents>
+            <oa:messageStyledText id="LeadNumber" viewName="XxcsoSalesHeaderHistSumVO1" viewAttr="LeadNumber" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/LeadNumber"/>
+            <oa:messageStyledText id="LeadDescription" viewName="XxcsoSalesHeaderHistSumVO1" viewAttr="LeadDescription" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/LeadDescription"/>
+            <oa:messageStyledText id="PartyName" viewName="XxcsoSalesHeaderHistSumVO1" viewAttr="PartyName" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/PartyName"/>
+         </ui:contents>
+      </oa:defaultSingleColumn>
+      <oa:header id="SalesDecisionInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/SalesDecisionInfoHdrRN">
+         <ui:contents>
+            <oa:tableLayout id="SalesDecisionTlRN" hAlign="center" width="100%">
+               <ui:contents>
+                  <oa:rowLayout id="SalesDecisionRlRN01" width="100%">
+                     <ui:contents>
+                        <oa:cellFormat id="SalesDecisionCfRN0101" width="100%">
+                           <ui:contents>
+                              <oa:advancedTable id="SalesDecisionInfoAdvTblRN" viewName="XxcsoSalesLineHistSumVO1" tableBanding="rowBanding" width="100%">
+                                 <ui:contents>
+                                    <oa:column id="QuoteNumberCol" width="7%">
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="QuoteNumberColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/QuoteNumberColHdr"/>
+                                       </ui:columnHeader>
+                                       <ui:contents>
+                                          <oa:messageStyledText id="QuoteNumber" viewAttr="QuoteNumber" styleClass="OraInstructionText"/>
+                                       </ui:contents>
+                                    </oa:column>
+                                    <oa:column id="QuoteRevisionNumberCol" width="1%" columnDataFormat="numberFormat">
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="QuoteRevisionNumberColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/QuoteRevisionNumberColHdr"/>
+                                       </ui:columnHeader>
+                                       <ui:contents>
+                                          <oa:messageStyledText id="QuoteRevisionNumber" viewAttr="QuoteRevisionNumber" dataType="NUMBER" styleClass="OraInstructionText"/>
+                                       </ui:contents>
+                                    </oa:column>
+                                    <oa:column id="SalesItemCol">
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="SalesItemColHdr" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/SalesItemColHdr"/>
+                                       </ui:columnHeader>
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="SalesItemMclRN" columns="1">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="InventoryItemCode" viewAttr="InventoryItemCode" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/InventoryItemCode" styleClass="OraInstructionText"/>
+                                                <oa:messageStyledText id="ItemShortName" viewAttr="ItemShortName" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/ItemShortName"/>
+                                                <oa:messageStyledText id="CaseIncNum" viewAttr="CaseIncNum" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/CaseIncNum"/>
+                                                <oa:messageStyledText id="JanCode" viewAttr="JanCode" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/JanCode"/>
+                                                <oa:messageStyledText id="ItfCode" viewAttr="ItfCode" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/ItfCode"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:column>
+                                    <oa:column id="SalesMeaningCol" width="20%">
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="SalesMeaningColHdr" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/SalesMeaningColHdr"/>
+                                       </ui:columnHeader>
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="SalesMeaningMclRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="SalesClassName" dataType="VARCHAR2" viewAttr="SalesClassName" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/SalesClassName" styleClass="OraInstructionText"/>
+                                                <oa:messageStyledText id="SalesAdoptClassName" dataType="VARCHAR2" viewAttr="SalesAdoptClassName" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/SalesAdoptClassName" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineHistSumVO1.SalesAdoptClassRender}"/>
+                                                <oa:messageStyledText id="SalesAreaName" dataType="VARCHAR2" viewAttr="SalesAreaName" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/SalesAreaName" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineHistSumVO1.SalesAreaRender}"/>
+                                                <oa:messageStyledText id="SalesScheduleDate" dataType="DATE" viewAttr="SalesScheduleDate" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/SalesScheduleDate" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:column>
+                                    <oa:column id="PriceCol" width="20%">
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="PriceColHdr" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/PriceColHdr"/>
+                                       </ui:columnHeader>
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="PriceMclRN" columns="1">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="DelivPrice" dataType="VARCHAR2" viewAttr="DelivPrice" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/DelivPrice" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineHistSumVO1.DelivPriceRender}"/>
+                                                <oa:messageStyledText id="StoreSalesPrice" dataType="VARCHAR2" viewAttr="StoreSalesPrice" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/StoreSalesPrice" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineHistSumVO1.StoreSalesPriceRender}"/>
+                                                <oa:messageStyledText id="StoreSalesPriceIncTax" dataType="VARCHAR2" viewAttr="StoreSalesPriceIncTax" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/StoreSalesPriceIncTax" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineHistSumVO1.StoreSalesPriceIncTaxRender}"/>
+                                                <oa:messageStyledText id="QuotationPrice" dataType="VARCHAR2" viewAttr="QuotationPrice" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/QuotationPrice" styleClass="OraInstructionText" rendered="${oa.XxcsoSalesLineHistSumVO1.QuotationPriceRender}"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:column>
+                                    <oa:column id="IntroduceTermsCol" width="15%">
+                                       <ui:columnHeader>
+                                          <oa:sortableHeader id="IntroduceTermsColHdr" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/IntroduceTermsColHdr"/>
+                                       </ui:columnHeader>
+                                       <ui:contents>
+                                          <oa:messageTextInput id="IntroduceTerms" dataType="VARCHAR2" viewAttr="IntroduceTerms" rows="7" columns="14" maximumLength="60"/>
+                                       </ui:contents>
+                                    </oa:column>
+                                 </ui:contents>
+                              </oa:advancedTable>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+               </ui:contents>
+            </oa:tableLayout>
+         </ui:contents>
+      </oa:header>
+      <oa:tableLayout id="OtherContentTlRN" hAlign="center" width="100%">
+         <ui:contents>
+            <oa:rowLayout id="OtherContentRlRN01">
+               <ui:contents>
+                  <oa:cellFormat id="OtherContentCfRN0101" width="20%">
+                     <ui:contents>
+                        <oa:spacer id="Spacer01"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="OtherContentCfRN0102" width="80%">
+                     <ui:contents>
+                        <oa:header id="OtherContentHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/OtherContentHdrRN">
+                           <ui:contents>
+                              <oa:messageTextInput id="OtherContent" viewName="XxcsoSalesHeaderHistSumVO1" viewAttr="OtherContent" rows="7" columns="100" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/OtherContent" maximumLength="1200"/>
+                           </ui:contents>
+                        </oa:header>
+                     </ui:contents>
+                  </oa:cellFormat>
+               </ui:contents>
+            </oa:rowLayout>
+         </ui:contents>
+      </oa:tableLayout>
+      <oa:tableLayout id="NotifyCommentTlRN" hAlign="center" width="100%">
+         <ui:contents>
+            <oa:rowLayout id="NotifyCommentRlRN01" width="100%">
+               <ui:contents>
+                  <oa:cellFormat id="NotifyCommentCfRN0101" width="20%">
+                     <ui:contents>
+                        <oa:spacer id="Spacer02"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="NotifyCommentCfRN0102" width="80%">
+                     <ui:contents>
+                        <oa:header id="NotifyCommentHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/NotifyCommentHdrRN">
+                           <ui:contents>
+                              <oa:messageTextInput id="NotifyComment" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/NotifyComment" viewName="XxcsoSalesNotifySummaryVO1" viewAttr="NotifyComment" maximumLength="500" columns="100" rows="4"/>
+                           </ui:contents>
+                        </oa:header>
+                     </ui:contents>
+                  </oa:cellFormat>
+               </ui:contents>
+            </oa:rowLayout>
+         </ui:contents>
+      </oa:tableLayout>
+      <oa:header id="NotifyListHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/NotifyListHdrRN" rendered="${oa.XxcsoSalesNotifySummaryVO1.NotifyListHdrRNRender}">
+         <ui:contents>
+            <oa:advancedTable id="NotifyListAdvTblRN" viewName="XxcsoSalesNotifyUserSumVO1" width="100%" tableBanding="rowBanding">
+               <ui:contents>
+                  <oa:column id="EmployeeNumberCol" width="10%">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="EmployeeNumberColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/EmployeeNumberColHdr"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:messageStyledText id="EmployeeNumber" viewAttr="EmployeeNumber"/>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="FullNameCol" width="40%">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="FullNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/FullNameColHdr"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:messageStyledText id="FullName" viewAttr="FullName"/>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="PositionNameCol" width="20%">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="PositionNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/PositionNameColHdr"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:messageStyledText id="PositionName" viewAttr="PositionName"/>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="WorkBaseCodeCol" width="10%">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="WorkBaseCodeColHdr" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/WorkBaseCodeColHdr"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:messageStyledText id="BaseCode" viewAttr="BaseCode"/>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="WorkBaseNameCol" width="20%">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="WorkBaseNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/WorkBaseNameColHdr"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:messageStyledText id="BaseName" viewAttr="BaseName"/>
+                     </ui:contents>
+                  </oa:column>
+               </ui:contents>
+            </oa:advancedTable>
+         </ui:contents>
+      </oa:header>
+      <oa:tableLayout id="ApprRjctCommentTlRN" hAlign="center">
+         <ui:contents>
+            <oa:rowLayout id="ApprRjctCommentRlRN01">
+               <ui:contents>
+                  <oa:cellFormat id="ApprRjctCommentCfRN0101" width="20%">
+                     <ui:contents>
+                        <oa:spacer id="Spacer03"/>
+                     </ui:contents>
+                  </oa:cellFormat>
+                  <oa:cellFormat id="ApprRjctCommentCfRN0102" width="80%">
+                     <ui:contents>
+                        <oa:header id="ApprRjctCommentHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/ApprRjctCommentHdrRN" rendered="${oa.XxcsoSalesNotifySummaryVO1.ApprRjctCommentHdrRNRender}">
+                           <ui:contents>
+                              <oa:messageTextInput id="ApprRjctComment" use="/itoen/oracle/apps/xxcso/xxcso007002j/attributesets/XxcsoSalesNotificationAttrSets/ApprRjctComment" viewName="XxcsoSalesNotifySummaryVO1" viewAttr="ApprRjctComment" styleClass="OraDataText" maximumLength="500" columns="100" rows="4"/>
+                           </ui:contents>
+                        </oa:header>
+                     </ui:contents>
+                  </oa:cellFormat>
+               </ui:contents>
+            </oa:rowLayout>
+         </ui:contents>
+      </oa:tableLayout>
+   </ui:contents>
+</oa:stackLayout>

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoValidateAcctRsrsVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoValidateAcctRsrsVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoValidateAcctRsrsVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  xcrv.account_number
+       ,xcrv.party_id
+       ,xcav.vist_target_div
+       ,xcrv.start_date_active
+       ,xcrv.end_date_active
+FROM    xxcso_cust_resources_v  xcrv
+       ,xxcso_cust_accounts_v xcav
+WHERE   xcrv.account_number  = xcav.account_number
+  AND   xcrv.employee_number = :1
+  AND   xcrv.account_number  = :2
+  AND   TRUNC(
+          NVL(
+            xcrv.start_date_active
+           ,xxcso_util_common_pkg.get_online_sysdate
+          )
+         ,'MM'
+        ) <= TO_DATE(:3, 'YYYYMM')
+  AND   TRUNC(
+          NVL(
+            xcrv.end_date_active
+           ,TO_DATE(:4, 'YYYYMM')
+          )
+         ,'MM'
+        ) >= TO_DATE(:5, 'YYYYMM')
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="AccountNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ACCOUNT_NUMBER"
+      Expression="ACCOUNT_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="PARTY_ID"
+      Expression="PARTY_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VistTargetDiv"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIST_TARGET_DIV"
+      Expression="VIST_TARGET_DIV"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StartDateActive"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="START_DATE_ACTIVE"
+      Expression="START_DATE_ACTIVE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EndDateActive"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="END_DATE_ACTIVE"
+      Expression="END_DATE_ACTIVE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

@@ -1,0 +1,1085 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoInstallBasePvSumVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBasePvSumVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBasePvSumVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   Passivate="All"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT   xxcso_012001j_pkg.get_dept_code(xibv.install_party_id)                 AS dept_code                  -- 01:拠点コード
+        ,xxcso_012001j_pkg.get_vendor_type(punv.hazard_class_id)                AS vendor_type                -- 02:機器区分
+        ,xibv.install_code                                                      AS vendor_code                -- 03:物件コード
+        ,xibv.vendor_model                                                      AS vendor_model               -- 04:機種／形式
+        ,punv.attribute8                                                        AS sele_num                   -- 05:セレ数
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_CSI_JOTAI_KBN1'
+          ,xibv.jotai_kbn1
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS jotai_kbn1                 -- 06:機器状態1
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_CSI_JOTAI_KBN2'
+          ,xibv.jotai_kbn2
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS jotai_kbn2                 -- 07:機器状態2
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_CSI_JOTAI_KBN3'
+          ,xibv.jotai_kbn3
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS jotai_kbn3                 -- 08:機器状態3
+        ,xxcso_012001j_pkg.get_account_number(xibv.install_party_id)            AS account_number             -- 09:顧客コード
+        ,xxcso_012001j_pkg.get_party_name(xibv.install_party_id)                AS party_name                 -- 10:顧客名
+        ,xibv.hikisakigaisya_cd                                                 AS hikisakigaisya_cd          -- 11:引揚先(保管先)会社コード
+        ,xibv.hikisakijigyosyo_cd                                               AS hikisakijigyosyo_cd        -- 12:引揚先(保管先)事業所コード
+        ,xibv.vendor_number                                                     AS vendor_number              -- 13:機番／製造番号
+        ,punv.attribute3                                                        AS annual_type                -- 14:年式
+        ,punv.attribute2                                                        AS maker_code                 -- 15:メーカーコード
+        ,xxcso_012001j_pkg.get_lease_start_date(xibv.install_code)              AS lease_start_date           -- 16:リース開始年月日
+        ,xxcso_012001j_pkg.get_first_charge(xibv.install_code)                  AS first_charge               -- 17:初回月額リース料
+        ,xxcso_012001j_pkg.get_second_charge(xibv.install_code)                 AS second_charge              -- 18:2回目以降月額リース料
+        ,TRUNC(xibv.install_date)                                               AS install_date               -- 19:最終設置予定年月日
+        ,xxcso_012001j_pkg.get_address1(xibv.install_party_id)                  AS install_address1           -- 20:設置住所1
+        ,xxcso_012001j_pkg.get_address2(xibv.install_party_id)                  AS install_address2           -- 21:設置住所2
+        ,xxcso_012001j_pkg.get_install_industry_type(xibv.install_party_id)     AS install_industry_type      -- 22:設置業種区分
+        ,punv.attribute5                                                        AS width                      -- 23:幅
+        ,punv.attribute6                                                        AS depth                      -- 24:奥行き
+        ,punv.attribute12                                                       AS height                     -- 25:高さ
+        ,xxcso_012001j_pkg.get_contract_number(xibv.install_party_id)           AS contract_number            -- 26:契約書番号
+        ,xxcso_012001j_pkg.get_resource_name(xibv.install_party_id)             AS resource_name              -- 27:担当者名
+        ,xibv.count_no                                                          AS count_no                   -- 28:カウンタ(値)
+        ,xibv.nyuko_dt                                                          AS nyuko_dt                   -- 29:入庫年月日
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_meaning(
+           'XXCSO_CSI_TOKUSHUKI'
+          ,punv.attribute9
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS special1                    -- 30:特殊機1
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_meaning(
+           'XXCSO_CSI_TOKUSHUKI'
+          ,punv.attribute10
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS special2                    -- 31:特殊機2
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_meaning(
+           'XXCSO_CSI_TOKUSHUKI'
+          ,punv.attribute11
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS special3                   -- 32:特殊機3
+        ,xxcso_012001j_pkg.get_area_code(xibv.install_party_id)                 AS chiku_cd                   -- 33:地区コード
+        ,xibv.syoyu_cd                                                          AS syoyu_cd                   -- 34:所有者
+        ,xxcso_012001j_pkg.get_orig_lease_contract_number(xibv.install_code)    AS orig_lease_contract_number -- 35:原契約番号
+        ,xxcso_012001j_pkg.get_orig_lease_branch_number(xibv.install_code)      AS orig_lease_branch_number   -- 36:原契約番号-枝番
+        ,xxcso_012001j_pkg.get_lease_contract_date(xibv.install_code)           AS lease_contract_date        -- 37:現契約年月日
+        ,xxcso_012001j_pkg.get_lease_contract_number(xibv.install_code)         AS lease_contract_number      -- 38:リース現契約番号
+        ,xxcso_012001j_pkg.get_lease_branch_number(xibv.install_code)           AS lease_branch_number        -- 39:リース現契約番号枝番
+        ,xxcso_012001j_pkg.get_party_name_phonetic(xibv.install_party_id)       AS party_name_phonetic        -- 40:顧客名(カナ)
+        ,xibv.ven_tasya_cd01                                                    AS ven_tasya_cd01             -- 41:他社コード1
+        ,xibv.ven_tasya_daisu01                                                 AS ven_tasya_daisu01          -- 42:他社台数1
+        ,xibv.ven_tasya_cd02                                                    AS ven_tasya_cd02             -- 43:他社コード2
+        ,xibv.ven_tasya_daisu02                                                 AS ven_tasya_daisu02          -- 44:他社台数2
+        ,xibv.ven_tasya_cd03                                                    AS ven_tasya_cd03             -- 45:他社コード3
+        ,xibv.ven_tasya_daisu03                                                 AS ven_tasya_daisu03          -- 46:他社台数3
+        ,xibv.ven_tasya_cd04                                                    AS ven_tasya_cd04             -- 47:他社コード4
+        ,xibv.ven_tasya_daisu04                                                 AS ven_tasya_daisu04          -- 48:他社台数4
+        ,xibv.ven_tasya_cd05                                                    AS ven_tasya_cd05             -- 49:他社コード5
+        ,xibv.ven_tasya_daisu05                                                 AS ven_tasya_daisu05          -- 50:他社台数5
+        ,xxcso_012001j_pkg.get_lease_status(xibv.install_code)                  AS lease_status               -- 51:リース状態(再リース)
+        ,xxcso_012001j_pkg.get_payment_frequency(xibv.install_code)             AS payment_frequency          -- 52:支払回数
+        ,xxcso_012001j_pkg.get_lease_end_date(xibv.install_code)                AS lease_end_date             -- 53:リース終了年月日
+        ,xxcso_012001j_pkg.get_sp_decision_number(xibv.install_party_id)        AS sp_decision_number         -- 54:SP専決番号
+        ,xxcso_012001j_pkg.get_install_location(xibv.install_party_id)          AS install_location           -- 55:VD設置場所
+        ,xxcso_012001j_pkg.get_vendor_form(xibv.install_party_id)               AS vendor_form                -- 56:業態(小分類)
+        ,xxcso_012001j_pkg.get_last_party_name(xibv.ven_kyaku_last)             AS last_party_name            -- 57:顧客名(引揚前)
+        ,xibv.ven_kyaku_last                                                    AS last_account_code          -- 58:顧客コード(引揚前)
+        ,xxcso_012001j_pkg.get_last_install_place_name(xibv.ven_kyaku_last)     AS last_install_place_name    -- 59:設置先名(引揚前)
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_CSI_JOB_KBN2'
+          ,xibv.job_kbn2
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS job_kbn2                   -- 60:最終設置区分
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_CSI_SINTYOKU_KBN2'
+          ,xibv.sintyoku_kbn2
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS sintyoku_kbn2              -- 61:最終設置進捗
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_SAGYO_LEVEL'
+          ,xibv.sagyo_level
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS sagyo_level                -- 62:最終整備内容
+        ,xibv.sagyougaisya_cd                                                   AS sagyougaisya_cd            -- 63:作業会社コード
+        ,xibv.jigyousyo_cd                                                      AS jigyosyo_cd                -- 64:引揚作業会社事業所コード
+        ,xibv.den_no                                                            AS den_no                     -- 65:最終伝票No
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_CSI_JOB_KBN'
+          ,xibv.job_kbn
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS job_kbn                     -- 66:最終作業区分
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_CSI_SINTYOKU_KBN'
+          ,xibv.sintyoku_kbn
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS sintyoku_kbn               -- 67:最終作業進捗
+        ,xibv.yotei_dt                                                          AS yotei_dt                   -- 68:最終作業完了予定年月日
+        ,xibv.den_no2                                                           AS den_no2                    -- 69:最終設置伝票No
+        ,xibv.haikikessai_dt                                                    AS haikikessai_dt             -- 70:廃棄決裁年月日
+        ,xibv.tenhai_tanto                                                      AS tenhai_tanto               -- 71:転売廃棄業者
+        ,xibv.tenhai_den_no                                                     AS tenhai_den_no              -- 72:転売廃棄伝票No
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_CSI_TENHAI_FLG'
+          ,xibv.tenhai_flg
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS tenhai_flg                 -- 73:転売廃棄状況
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_CSI_KANRYO_KBN'
+          ,xibv.kanryo_kbn
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS kanryo_kbn                 -- 74:転売完了区分
+        ,xxcso_012001j_pkg.get_purchase_amount(xibv.install_code)               AS purchase_amount            -- 75:購入金額
+        ,xxcso_012001j_pkg.get_cancellation_date(xibv.install_code)             AS cancellation_date          -- 76:リース解約年月日
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO_CSI_MAKER_CODE'
+          ,punv.attribute2
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS maker_name                 -- 77:メーカー名
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_CSI_SAFETY_LEVEL'
+          ,xibv.safty_level
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         )                                                                      AS safty_level                -- 78:安全設置基準
+        ,xibv.instance_id         AS instance_id                 -- インスタンスID
+        ,xibv.install_code        AS install_code                -- 物件コード
+        ,xibv.instance_type_code  AS instance_type_code          -- 機器区分
+        ,xibv.install_account_id  AS install_account_id          -- 設置先アカウントID
+        ,xibv.install_party_id    AS install_party_id            -- 設置先パーティID
+FROM    xxcso_install_base_v xibv
+       ,po_un_numbers_vl punv
+WHERE   punv.un_number(+) = xibv.vendor_model
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="DeptCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DEPT_CODE"
+      Passivate="true"
+      Expression="DEPT_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorType"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_TYPE"
+      Passivate="true"
+      Expression="VENDOR_TYPE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorCode"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_CODE"
+      Passivate="true"
+      Expression="VENDOR_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorModel"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_MODEL"
+      Passivate="true"
+      Expression="VENDOR_MODEL"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SeleNum"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SELE_NUM"
+      Passivate="true"
+      Expression="SELE_NUM"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="JotaiKbn1"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="JOTAI_KBN1"
+      Passivate="true"
+      Expression="JOTAI_KBN1"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="JotaiKbn2"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="JOTAI_KBN2"
+      Passivate="true"
+      Expression="JOTAI_KBN2"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="JotaiKbn3"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="JOTAI_KBN3"
+      Passivate="true"
+      Expression="JOTAI_KBN3"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AccountNumber"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ACCOUNT_NUMBER"
+      Passivate="true"
+      Expression="ACCOUNT_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PARTY_NAME"
+      Passivate="true"
+      Expression="PARTY_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="HikisakigaisyaCd"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="HIKISAKIGAISYA_CD"
+      Passivate="true"
+      Expression="HIKISAKIGAISYA_CD"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="HikisakijigyosyoCd"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="HIKISAKIJIGYOSYO_CD"
+      Passivate="true"
+      Expression="HIKISAKIJIGYOSYO_CD"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorNumber"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_NUMBER"
+      Passivate="true"
+      Expression="VENDOR_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AnnualType"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ANNUAL_TYPE"
+      Passivate="true"
+      Expression="ANNUAL_TYPE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MakerCode"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="MAKER_CODE"
+      Passivate="true"
+      Expression="MAKER_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeaseStartDate"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LEASE_START_DATE"
+      Passivate="true"
+      Expression="LEASE_START_DATE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FirstCharge"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FIRST_CHARGE"
+      Passivate="true"
+      Expression="FIRST_CHARGE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SecondCharge"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SECOND_CHARGE"
+      Passivate="true"
+      Expression="SECOND_CHARGE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallDate"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_DATE"
+      Passivate="true"
+      Expression="INSTALL_DATE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAddress1"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_ADDRESS1"
+      Passivate="true"
+      Expression="INSTALL_ADDRESS1"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAddress2"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_ADDRESS2"
+      Passivate="true"
+      Expression="INSTALL_ADDRESS2"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallIndustryType"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_INDUSTRY_TYPE"
+      Passivate="true"
+      Expression="INSTALL_INDUSTRY_TYPE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Width"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="WIDTH"
+      Passivate="true"
+      Expression="WIDTH"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Depth"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DEPTH"
+      Passivate="true"
+      Expression="DEPTH"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Height"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="HEIGHT"
+      Passivate="true"
+      Expression="HEIGHT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractNumber"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CONTRACT_NUMBER"
+      Passivate="true"
+      Expression="CONTRACT_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ResourceName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RESOURCE_NAME"
+      Passivate="true"
+      Expression="RESOURCE_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CountNo"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="COUNT_NO"
+      Passivate="true"
+      Expression="COUNT_NO"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NyukoDt"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NYUKO_DT"
+      Passivate="true"
+      Expression="NYUKO_DT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Special1"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SPECIAL1"
+      Passivate="true"
+      Expression="SPECIAL1"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Special2"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SPECIAL2"
+      Passivate="true"
+      Expression="SPECIAL2"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Special3"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SPECIAL3"
+      Passivate="true"
+      Expression="SPECIAL3"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ChikuCd"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CHIKU_CD"
+      Passivate="true"
+      Expression="CHIKU_CD"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SyoyuCd"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SYOYU_CD"
+      Passivate="true"
+      Expression="SYOYU_CD"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrigLeaseContractNumber"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ORIG_LEASE_CONTRACT_NUMBER"
+      Passivate="true"
+      Expression="ORIG_LEASE_CONTRACT_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrigLeaseBranchNumber"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ORIG_LEASE_BRANCH_NUMBER"
+      Passivate="true"
+      Expression="ORIG_LEASE_BRANCH_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeaseContractDate"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LEASE_CONTRACT_DATE"
+      Passivate="true"
+      Expression="LEASE_CONTRACT_DATE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeaseContractNumber"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LEASE_CONTRACT_NUMBER"
+      Passivate="true"
+      Expression="LEASE_CONTRACT_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeaseBranchNumber"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LEASE_BRANCH_NUMBER"
+      Passivate="true"
+      Expression="LEASE_BRANCH_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyNamePhonetic"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PARTY_NAME_PHONETIC"
+      Passivate="true"
+      Expression="PARTY_NAME_PHONETIC"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VenTasyaCd01"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VEN_TASYA_CD01"
+      Passivate="true"
+      Expression="VEN_TASYA_CD01"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VenTasyaDaisu01"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VEN_TASYA_DAISU01"
+      Passivate="true"
+      Expression="VEN_TASYA_DAISU01"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VenTasyaCd02"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VEN_TASYA_CD02"
+      Passivate="true"
+      Expression="VEN_TASYA_CD02"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VenTasyaDaisu02"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VEN_TASYA_DAISU02"
+      Passivate="true"
+      Expression="VEN_TASYA_DAISU02"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VenTasyaCd03"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VEN_TASYA_CD03"
+      Passivate="true"
+      Expression="VEN_TASYA_CD03"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VenTasyaDaisu03"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VEN_TASYA_DAISU03"
+      Passivate="true"
+      Expression="VEN_TASYA_DAISU03"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VenTasyaCd04"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VEN_TASYA_CD04"
+      Passivate="true"
+      Expression="VEN_TASYA_CD04"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VenTasyaDaisu04"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VEN_TASYA_DAISU04"
+      Passivate="true"
+      Expression="VEN_TASYA_DAISU04"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VenTasyaCd05"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VEN_TASYA_CD05"
+      Passivate="true"
+      Expression="VEN_TASYA_CD05"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VenTasyaDaisu05"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VEN_TASYA_DAISU05"
+      Passivate="true"
+      Expression="VEN_TASYA_DAISU05"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeaseStatus"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LEASE_STATUS"
+      Passivate="true"
+      Expression="LEASE_STATUS"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PaymentFrequency"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PAYMENT_FREQUENCY"
+      Passivate="true"
+      Expression="PAYMENT_FREQUENCY"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeaseEndDate"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LEASE_END_DATE"
+      Passivate="true"
+      Expression="LEASE_END_DATE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionNumber"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SP_DECISION_NUMBER"
+      Passivate="true"
+      Expression="SP_DECISION_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallLocation"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_LOCATION"
+      Passivate="true"
+      Expression="INSTALL_LOCATION"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorForm"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_FORM"
+      Passivate="true"
+      Expression="VENDOR_FORM"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastPartyName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LAST_PARTY_NAME"
+      Passivate="true"
+      Expression="LAST_PARTY_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastAccountCode"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LAST_ACCOUNT_CODE"
+      Passivate="true"
+      Expression="LAST_ACCOUNT_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastInstallPlaceName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LAST_INSTALL_PLACE_NAME"
+      Passivate="true"
+      Expression="LAST_INSTALL_PLACE_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="JobKbn2"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="JOB_KBN2"
+      Passivate="true"
+      Expression="JOB_KBN2"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SintyokuKbn2"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SINTYOKU_KBN2"
+      Passivate="true"
+      Expression="SINTYOKU_KBN2"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SagyoLevel"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SAGYO_LEVEL"
+      Passivate="true"
+      Expression="SAGYO_LEVEL"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SagyougaisyaCd"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SAGYOUGAISYA_CD"
+      Passivate="true"
+      Expression="SAGYOUGAISYA_CD"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="JigyosyoCd"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="JIGYOSYO_CD"
+      Passivate="true"
+      Expression="JIGYOSYO_CD"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DenNo"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DEN_NO"
+      Passivate="true"
+      Expression="DEN_NO"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="JobKbn"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="JOB_KBN"
+      Passivate="true"
+      Expression="JOB_KBN"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SintyokuKbn"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SINTYOKU_KBN"
+      Passivate="true"
+      Expression="SINTYOKU_KBN"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="YoteiDt"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="YOTEI_DT"
+      Passivate="true"
+      Expression="YOTEI_DT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DenNo2"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DEN_NO2"
+      Passivate="true"
+      Expression="DEN_NO2"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="HaikikessaiDt"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="HAIKIKESSAI_DT"
+      Passivate="true"
+      Expression="HAIKIKESSAI_DT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TenhaiTanto"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TENHAI_TANTO"
+      Passivate="true"
+      Expression="TENHAI_TANTO"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TenhaiDenNo"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TENHAI_DEN_NO"
+      Passivate="true"
+      Expression="TENHAI_DEN_NO"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TenhaiFlg"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TENHAI_FLG"
+      Passivate="true"
+      Expression="TENHAI_FLG"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="KanryoKbn"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="KANRYO_KBN"
+      Passivate="true"
+      Expression="KANRYO_KBN"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PurchaseAmount"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PURCHASE_AMOUNT"
+      Passivate="true"
+      Expression="PURCHASE_AMOUNT"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CancellationDate"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CANCELLATION_DATE"
+      Passivate="true"
+      Expression="CANCELLATION_DATE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MakerName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="MAKER_NAME"
+      Passivate="true"
+      Expression="MAKER_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SafetyLevel"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SAFETY_LEVEL"
+      Passivate="true"
+      Expression="SAFETY_LEVEL"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstanceId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="INSTANCE_ID"
+      Passivate="true"
+      Expression="INSTANCE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallCode"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_CODE"
+      Passivate="true"
+      Expression="INSTALL_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstanceTypeCode"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTANCE_TYPE_CODE"
+      Passivate="true"
+      Expression="INSTANCE_TYPE_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallAccountId"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_ACCOUNT_ID"
+      Passivate="true"
+      Expression="INSTALL_ACCOUNT_ID"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallPartyId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="INSTALL_PARTY_ID"
+      Passivate="true"
+      Expression="INSTALL_PARTY_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

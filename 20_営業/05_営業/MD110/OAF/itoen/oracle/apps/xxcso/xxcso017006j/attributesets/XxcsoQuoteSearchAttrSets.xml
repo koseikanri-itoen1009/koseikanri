@@ -1,0 +1,15 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <attributeSet docName="PageLayoutRN" windowTitle="見積検索" title="見積検索"/>
+   <attributeSet docName="ReturnButton" prompt="戻る"/>
+   <attributeSet docName="SearchButton" prompt="進む"/>
+   <attributeSet docName="ClearButton" prompt="消去"/>
+   <attributeSet docName="QuoteTypeSearch" prompt="見積種別"/>
+   <attributeSet docName="QuoteNumberSearch" prompt="見積番号"/>
+   <attributeSet docName="QuoteRevisionSearch" prompt="版"/>
+   <attributeSet docName="AccountNumber" prompt="顧客コード"/>
+   <attributeSet docName="PartyName" prompt="顧客名"/>
+   <attributeSet docName="Meaning" prompt="ステータス"/>
+   <attributeSet docName="XxcsoQuoteSearchLovTIRN" shortDesc="見積番号選択"/>
+</package>

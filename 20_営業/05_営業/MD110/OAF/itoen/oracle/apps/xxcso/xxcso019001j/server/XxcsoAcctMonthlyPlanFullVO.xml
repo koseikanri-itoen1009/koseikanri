@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoAcctMonthlyPlanFullVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoAcctMonthlyPlanFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019001j.server.XxcsoAcctMonthlyPlanFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoAcctMonthlyPlansVEO.BASE_CODE, 
+       XxcsoAcctMonthlyPlansVEO.ACCOUNT_NUMBER, 
+       XxcsoAcctMonthlyPlansVEO.YEAR_MONTH, 
+       XxcsoAcctMonthlyPlansVEO.TARGET_ACCOUNT_SALES_PLAN_ID, 
+       XxcsoAcctMonthlyPlansVEO.TARGET_MONTH_SALES_PLAN_AMT, 
+       XxcsoAcctMonthlyPlansVEO.TARGET_YEAR_MONTH, 
+       XxcsoAcctMonthlyPlansVEO.TARGET_MONTH_LAST_UPD_DATE, 
+       XxcsoAcctMonthlyPlansVEO.CREATED_BY, 
+       XxcsoAcctMonthlyPlansVEO.CREATION_DATE, 
+       XxcsoAcctMonthlyPlansVEO.LAST_UPDATED_BY, 
+       XxcsoAcctMonthlyPlansVEO.LAST_UPDATE_DATE, 
+       XxcsoAcctMonthlyPlansVEO.LAST_UPDATE_LOGIN
+      ,xxcso_rsrc_sales_plans_pkg.get_acct_daily_plan_sum(
+         XxcsoAcctMonthlyPlansVEO.BASE_CODE
+        ,XxcsoAcctMonthlyPlansVEO.ACCOUNT_NUMBER
+        ,XxcsoAcctMonthlyPlansVEO.YEAR_MONTH
+       ) AS acct_daily_plan_sum
+      ,xxcso_rsrc_sales_plans_pkg.get_rsrc_acct_daily_differ(
+         XxcsoAcctMonthlyPlansVEO.BASE_CODE
+        ,XxcsoAcctMonthlyPlansVEO.ACCOUNT_NUMBER
+        ,XxcsoAcctMonthlyPlansVEO.YEAR_MONTH
+       ) AS rsrc_acct_daily_differ
+  FROM XXCSO_ACCT_MONTHLY_PLANS_V XxcsoAcctMonthlyPlansVEO
+ WHERE XxcsoAcctMonthlyPlansVEO.BASE_CODE      = :1
+   AND XxcsoAcctMonthlyPlansVEO.ACCOUNT_NUMBER = :2
+   AND XxcsoAcctMonthlyPlansVEO.YEAR_MONTH     = :3
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoAcctMonthlyPlansVEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoAcctMonthlyPlansVEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="BaseCode"
+      Precision="4"
+      EntityAttrName="BaseCode"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="BASE_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AccountNumber"
+      Precision="9"
+      EntityAttrName="AccountNumber"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="ACCOUNT_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="YearMonth"
+      Precision="6"
+      EntityAttrName="YearMonth"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="YEAR_MONTH" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetAccountSalesPlanId"
+      EntityAttrName="TargetAccountSalesPlanId"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="TARGET_ACCOUNT_SALES_PLAN_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetMonthSalesPlanAmt"
+      Precision="9"
+      EntityAttrName="TargetMonthSalesPlanAmt"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="TARGET_MONTH_SALES_PLAN_AMT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetYearMonth"
+      Precision="6"
+      EntityAttrName="TargetYearMonth"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="TARGET_YEAR_MONTH" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetMonthLastUpdDate"
+      EntityAttrName="TargetMonthLastUpdDate"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="TARGET_MONTH_LAST_UPD_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AcctDailyPlanSum"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ACCT_DAILY_PLAN_SUM"
+      Expression="ACCT_DAILY_PLAN_SUM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsrcAcctDailyDiffer"
+      IsPersistent="false"
+      Precision="11"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RSRC_ACCT_DAILY_DIFFER"
+      Expression="RSRC_ACCT_DAILY_DIFFER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

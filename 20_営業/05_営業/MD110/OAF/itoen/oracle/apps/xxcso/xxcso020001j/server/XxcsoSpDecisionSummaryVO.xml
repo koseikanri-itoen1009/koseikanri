@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSpDecisionSummaryVO"
+   OrderBy="TO_NUMBER(sp_decision_number)"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSummaryVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSummaryVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  (SELECT  DECODE(xsdc.customer_id
+                  ,NULL, xsdc.party_name
+                  ,xcav.party_name
+                 )
+         FROM    xxcso_sp_decision_custs  xsdc
+                ,xxcso_cust_accounts_v    xcav
+         WHERE   xsdc.sp_decision_header_id      = xsdh.sp_decision_header_id
+           AND   xsdc.sp_decision_customer_class = '1'
+           AND   xcav.cust_account_id(+)         = xsdc.customer_id
+        ) party_name
+       ,xsdh.sp_decision_number
+       ,(SELECT  xev.full_name
+         FROM    xxcso_employees_v2  xev
+         WHERE   xev.employee_number = xsdh.application_code
+        ) full_name
+       ,xsdh.application_date
+       ,xsdh.approval_complete_date
+       ,xxcso_util_common_pkg.get_lookup_meaning(
+          'XXCSO1_SP_STATUS_CD'
+         ,xsdh.status
+         ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        ) status_name
+       ,xsdh.sp_decision_header_id
+FROM    xxcso_sp_decision_headers  xsdh
+       ,(SELECT  :1  search_class
+                ,:2  app_base_code
+                ,:3  app_user_code
+                ,:4  app_start_date
+                ,:5  app_end_date
+                ,:6  status
+                ,:7  sp_decision_number
+                ,:8  cust_account_id
+         FROM    DUAL
+        ) criteria
+WHERE   (
+          (
+            (criteria.search_class = '1')
+            AND
+            (
+              (
+                xsdh.app_base_code     = criteria.app_base_code
+              )
+              OR
+              (
+                EXISTS (SELECT  1
+                        FROM    xxcso_sp_decision_custs  xsdc
+                               ,xxcso_cust_accounts_v    xcav
+                        WHERE   xsdc.sp_decision_header_id      = xsdh.sp_decision_header_id
+                          AND   xsdc.sp_decision_customer_class = '1'
+                          AND   xcav.cust_account_id            = xsdc.customer_id
+                          AND   xcav.sale_base_code             = criteria.app_base_code
+                       )
+              )
+            )
+          )
+          OR
+          (
+            (criteria.search_class = '2')
+            AND
+            (
+              (
+                EXISTS (SELECT  1
+                        FROM    xxcso_employees_v2       xev
+                               ,xxcso_sp_decision_sends  xsds
+                        WHERE   xev.user_id                = fnd_global.user_id
+                          AND   xsds.approve_code          = xev.employee_number
+                          AND   xsds.sp_decision_header_id = xsdh.sp_decision_header_id
+                       )
+              )
+              OR
+              (
+                xsdh.application_code = (SELECT xev.employee_number
+                                         FROM   xxcso_employees_v2 xev
+                                         WHERE  xev.user_id = fnd_global.user_id
+                                        )
+              )
+            )
+          )
+        )
+  AND   (
+          (
+            (criteria.app_user_code IS NOT NULL)
+            AND
+            (
+              xsdh.application_code = criteria.app_user_code
+            )
+          )
+          OR
+          (
+            (criteria.app_user_code IS NULL)
+          )
+        )
+  AND   (
+          (
+            (criteria.app_start_date IS NOT NULL)
+            AND
+            (
+              xsdh.application_date >= criteria.app_start_date
+            )
+          )
+          OR
+          (
+            (criteria.app_start_date IS NULL)
+          )
+        )
+  AND   (
+          (
+            (criteria.app_end_date IS NOT NULL)
+            AND
+            (
+              xsdh.application_date <= criteria.app_end_date
+            )
+          )
+          OR
+          (
+            (criteria.app_end_date IS NULL)
+          )
+        )
+  AND   (
+          (
+            (criteria.status IS NOT NULL)
+            AND
+            (
+              xsdh.status = criteria.status
+            )
+          )
+          OR
+          (
+            (criteria.status IS NULL)
+          )
+        )
+  AND   (
+          (
+            (criteria.sp_decision_number IS NOT NULL)
+            AND
+            (
+              xsdh.sp_decision_number LIKE criteria.sp_decision_number
+            )
+          )
+          OR
+          (
+            (criteria.sp_decision_number IS NULL)
+          )
+        )
+  AND   (
+          (
+            (criteria.cust_account_id IS NOT NULL)
+            AND
+            (
+              EXISTS (SELECT  1
+                      FROM    xxcso_sp_decision_custs  xsdc
+                      WHERE   xsdc.sp_decision_header_id      = xsdh.sp_decision_header_id
+                        AND   xsdc.sp_decision_customer_class = '1'
+                        AND   xsdc.customer_id                = criteria.cust_account_id
+                     )
+            )
+          )
+          OR
+          (
+            (criteria.cust_account_id IS NULL)
+          )
+        )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="PartyName"
+      IsPersistent="false"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PARTY_NAME"
+      Expression="PARTY_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SP_DECISION_NUMBER"
+      Expression="SP_DECISION_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApplicationDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="APPLICATION_DATE"
+      Expression="APPLICATION_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ApprovalCompleteDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="APPROVAL_COMPLETE_DATE"
+      Expression="APPROVAL_COMPLETE_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StatusName"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STATUS_NAME"
+      Expression="STATUS_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionHeaderId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="SP_DECISION_HEADER_ID"
+      Expression="SP_DECISION_HEADER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SelectFlag"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="$none$"
+      AliasName="SELECTFLAG"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+</ViewObject>

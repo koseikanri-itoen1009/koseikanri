@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoAccountForSearchLovVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoAccountForSearchLovVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoAccountForSearchLovVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  xcav.account_number
+       ,xcav.party_name
+       ,xcav.cust_account_id
+       ,sc.search_class
+FROM    xxcso_cust_accounts_v    xcav
+       ,(SELECT  '1' search_class
+         FROM    DUAL
+         UNION ALL
+         SELECT  '2' search_class
+         FROM    DUAL
+        ) sc
+WHERE   (
+         (
+          (sc.search_class = '1')
+          AND
+          (EXISTS
+            (SELECT  1
+             FROM    xxcso_employees_v2       xev
+                    ,xxcso_resource_custs_v2  xrcv
+             WHERE   xev.user_id          = fnd_global.user_id
+               AND   xrcv.employee_number = xev.employee_number
+               AND   xrcv.cust_account_id = xcav.cust_account_id
+            )
+          )
+         )
+         OR
+         (sc.search_class = '2')
+        )
+  AND   (
+         (
+          (xcav.customer_status IN ('10', '20'))
+          AND
+          (
+           (xcav.business_low_type IS NULL)
+           OR
+           (
+            EXISTS (
+              SELECT  1
+              FROM    fnd_lookup_values_vl  flvv1
+                     ,fnd_lookup_values_vl  flvv2
+              WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
+                AND   flvv1.enabled_flag  = 'Y'
+                AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         <= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         >= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
+                AND   flvv2.enabled_flag  = 'Y'
+                AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         <= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                         >= TRUNC(xxccp_common_pkg2.get_process_date)
+                AND   flvv2.lookup_code   = flvv1.lookup_code
+                AND   flvv2.lookup_code   = xcav.business_low_type
+            )
+           )
+          )
+         )
+         OR
+         (
+          (xcav.customer_class_code = '10')
+          AND
+          (
+           EXISTS (
+             SELECT  1
+             FROM    fnd_lookup_values_vl  flvv1
+                    ,fnd_lookup_values_vl  flvv2
+             WHERE   flvv1.lookup_type   = 'XXCMM_CUST_GYOTAI_SHO'
+               AND   flvv1.enabled_flag  = 'Y'
+               AND   NVL(flvv1.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        <= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   NVL(flvv1.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        >= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   flvv2.lookup_type   = 'XXCSO1_SP_CATEGORY'
+               AND   flvv2.enabled_flag  = 'Y'
+               AND   NVL(flvv2.start_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        <= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   NVL(flvv2.end_date_active, TRUNC(xxccp_common_pkg2.get_process_date))
+                                        >= TRUNC(xxccp_common_pkg2.get_process_date)
+               AND   flvv2.lookup_code   = flvv1.lookup_code
+               AND   flvv2.lookup_code   = xcav.business_low_type
+           )
+          )
+         )
+        )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="AccountNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ACCOUNT_NUMBER"
+      Expression="ACCOUNT_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PARTY_NAME"
+      Expression="PARTY_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustAccountId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CUST_ACCOUNT_ID"
+      Expression="CUST_ACCOUNT_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SearchClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SEARCH_CLASS"
+      Expression="SEARCH_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

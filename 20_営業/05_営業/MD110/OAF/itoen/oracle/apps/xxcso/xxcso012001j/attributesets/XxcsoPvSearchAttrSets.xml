@@ -1,0 +1,30 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**注意
+* KROWN:124532により、1ファイルが32Kバイトを超えないようにしてください。
+* 超えてしまう場合は、ファイルを分割してください。
+
+詳細
+パーソナライズ・ビュー表示画面用の属性セットファイルです。
+
+修正履歴
+2008/12/27  柳平直人        新規作成-->
+<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <attributeSet docName="PageLayoutRN" windowTitle="パーソナライズ・ビュー" title="パーソナライズ・ビュー"/>
+   <attributeSet docName="CancelButton" text="取消" prompt="取消"/>
+   <attributeSet docName="ApplicationButton" text="適用" prompt="適用"/>
+   <attributeSet docName="ViewNameColHdr" prompt="ビュー名"/>
+   <attributeSet docName="DescriptionColHdr" prompt="摘要"/>
+   <attributeSet docName="ViewOpenCodeColHdr" prompt="ビューの表示"/>
+   <attributeSet docName="DefaultFlagColHdr" prompt="デフォルト"/>
+   <attributeSet docName="DefaultFlag" shortDesc="デフォルト"/>
+   <attributeSet docName="UpdateIconColHdr" prompt="更新"/>
+   <attributeSet docName="UpdateEnabled" shortDesc="更新可能"/>
+   <attributeSet docName="UpdateDisabled" shortDesc="更新不可能"/>
+   <attributeSet docName="DeleteIconColHdr" prompt="削除"/>
+   <attributeSet docName="DeleteEnabled" shortDesc="削除可能"/>
+   <attributeSet docName="DeleteDisabled" shortDesc="削除不可能"/>
+   <attributeSet docName="SelectFlag" text="ビューの選択"/>
+   <attributeSet docName="CopyButton" prompt="複製"/>
+   <attributeSet docName="CreateViewButton" prompt="ビューの作成"/>
+</package>

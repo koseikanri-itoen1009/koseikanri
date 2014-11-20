@@ -1,0 +1,398 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Regist sales decision information page.
+
+@param TransactionKey1 : AS_LEADS_ALL.LEAD_ID
+@see itoen.oracle.apps.xxcso.xxcso007003j.webui.XxcsoSalesRegistCO.java
+@see itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRegistAM.xml
+@see itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRegistAM.java
+
+HISTORY
+2009/01/07  H.Ogawa        new-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso007003j.webui.XxcsoSalesRegistCO" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="CancelButton" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/CancelButton"/>
+                  <oa:submitButton id="SubmitButton" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/SubmitButton"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:defaultSingleColumn id="SalesOutLineDscRN" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/SalesOutLineDscRN">
+                     <ui:contents>
+                        <oa:messageStyledText id="LeadNumber" viewName="XxcsoSalesOutLineVO1" viewAttr="LeadNumber" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/LeadNumber"/>
+                        <oa:messageStyledText id="Description" viewName="XxcsoSalesOutLineVO1" viewAttr="Description" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/Description"/>
+                        <oa:messageStyledText id="PartyName" viewName="XxcsoSalesOutLineVO1" viewAttr="PartyName" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/PartyName"/>
+                        <oa:formValue id="BaselineBaseCode" viewName="XxcsoSalesOutLineVO1" viewAttr="BaselineBaseCode"/>
+                     </ui:contents>
+                  </oa:defaultSingleColumn>
+                  <oa:header id="SalesDecisionInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/SalesDecisionInfoHdrRN">
+                     <ui:contents>
+                        <oa:advancedTable id="SalesDecisionInfoAdvTblRN" viewName="XxcsoSalesLineFullVO1" tableBanding="rowBanding" width="100%">
+                           <ui:contents>
+                              <oa:column id="QuoteNumberCol" width="7%">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="QuoteNumberColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/QuoteNumberColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="QuoteNumber" viewAttr="QuoteNumber" styleClass="OraInstructionText"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="QuoteRevisionNumberCol" width="1%" columnDataFormat="numberFormat">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="QuoteRevisionNumberColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/QuoteRevisionNumberColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="QuoteRevisionNumber" viewAttr="QuoteRevisionNumber" dataType="NUMBER" styleClass="OraInstructionText"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="SalesItemCol" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="SalesItemColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/SalesItemColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageComponentLayout id="SalesItemMclRN" columns="1">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="InventoryItemCode" viewAttr="InventoryItemCode" columns="9" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso007003j/lov/webui/XxcsoInventoryItemLovRN" disabled="${oa.XxcsoSalesLineFullVO1.RowReadOnly}" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/InventoryItemCode" styleClass="OraInstructionText">
+                                             <lovMappings>
+                                                <lovMap id="InventoryItemIdMap" lovItem="InventoryItemId" resultTo="InventoryItemId"/>
+                                                <lovMap id="InventoryItemCodeMap" lovItem="InventoryItemCode" resultTo="InventoryItemCode" criteriaFrom="InventoryItemCode"/>
+                                                <lovMap id="ItemShortNameMap" lovItem="ItemShortName" resultTo="ItemShortName" useForValidation="no"/>
+                                                <lovMap id="CaseIncNumMap" lovItem="CaseIncNum" resultTo="CaseIncNum" useForValidation="no"/>
+                                                <lovMap id="JanCodeMap" lovItem="JanCode" resultTo="JanCode" useForValidation="no"/>
+                                                <lovMap id="ItfCodeMap" lovItem="ItfCode" resultTo="ItfCode" useForValidation="no"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:messageStyledText id="ItemShortNameView" viewAttr="ItemShortName" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/ItemShortNameView" cellNoWrapFormat="true"/>
+                                          <oa:messageStyledText id="CaseIncNumView" viewAttr="CaseIncNum" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/CaseIncNumView"/>
+                                          <oa:messageStyledText id="JanCodeView" viewAttr="JanCode" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/JanCodeView"/>
+                                          <oa:messageStyledText id="ItfCodeView" viewAttr="ItfCode" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/ItfCodeView"/>
+                                       </ui:contents>
+                                    </oa:messageComponentLayout>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="SalesMeaningCol" width="15%">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="SalesMeaningColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/SalesMeaningColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageComponentLayout id="SalesMeaningMclRN">
+                                       <ui:contents>
+                                          <oa:messageChoice id="SalesClassCode" dataType="VARCHAR2" viewAttr="SalesClassCode" pickListViewName="SalesClassListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" disabled="${oa.XxcsoSalesLineFullVO1.RowReadOnly}" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/SalesClassCode" styleClass="OraInstructionText">
+                                             <ui:primaryClientAction>
+                                                <ui:fireAction event="SalesClassChange" id="fireAction2">
+                                                   <ui:parameters>
+                                                      <ui:parameter key="SelectedLineId" value="${oa.XxcsoSalesLineFullVO1.SalesLineId}"/>
+                                                   </ui:parameters>
+                                                </ui:fireAction>
+                                             </ui:primaryClientAction>
+                                          </oa:messageChoice>
+                                          <oa:messageChoice id="SalesAdoptClassCode" dataType="VARCHAR2" viewAttr="SalesAdoptClassCode" pickListViewName="SalesAdoptClassListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" disabled="${oa.XxcsoSalesLineFullVO1.RowReadOnly}" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/SalesAdoptClassCode" rendered="${oa.XxcsoSalesLineFullVO1.SalesAdoptClassRender}" styleClass="OraInstructionText"/>
+                                          <oa:messageChoice id="SalesAreaCode" dataType="VARCHAR2" viewAttr="SalesAreaCode" pickListViewName="SalesAreaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" disabled="${oa.XxcsoSalesLineFullVO1.RowReadOnly}" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/SalesAreaCode" rendered="${oa.XxcsoSalesLineFullVO1.SalesAreaRender}" styleClass="OraInstructionText"/>
+                                          <oa:messageTextInput id="SalesScheduleDate" dataType="DATE" viewAttr="SalesScheduleDate" disabled="${oa.XxcsoSalesLineFullVO1.RowReadOnly}" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/SalesScheduleDate" styleClass="OraInstructionText" columns="12"/>
+                                       </ui:contents>
+                                    </oa:messageComponentLayout>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="PriceCol" width="15%">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="PriceColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/PriceColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageComponentLayout id="PriceMclRN" columns="1">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="DelivPrice" dataType="VARCHAR2" viewAttr="DelivPrice" maximumLength="9" columns="11" disabled="${oa.XxcsoSalesLineFullVO1.RowReadOnly}" rendered="${oa.XxcsoSalesLineFullVO1.DelivPriceRender}" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/DelivPrice" styleClass="OraInstructionText"/>
+                                          <oa:messageTextInput id="StoreSalesPrice" dataType="VARCHAR2" viewAttr="StoreSalesPrice" maximumLength="10" columns="11" disabled="${oa.XxcsoSalesLineFullVO1.RowReadOnly}" rendered="${oa.XxcsoSalesLineFullVO1.StoreSalesPriceRender}" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/StoreSalesPrice" styleClass="OraInstructionText"/>
+                                          <oa:messageTextInput id="StoreSalesPriceIncTax" dataType="VARCHAR2" viewAttr="StoreSalesPriceIncTax" maximumLength="10" columns="11" disabled="${oa.XxcsoSalesLineFullVO1.RowReadOnly}" rendered="${oa.XxcsoSalesLineFullVO1.StoreSalesPriceIncTaxRender}" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/StoreSalesPriceIncTax" styleClass="OraInstructionText"/>
+                                          <oa:messageTextInput id="QuotationPrice" dataType="VARCHAR2" viewAttr="QuotationPrice" maximumLength="9" columns="11" disabled="${oa.XxcsoSalesLineFullVO1.RowReadOnly}" rendered="${oa.XxcsoSalesLineFullVO1.QuotationPriceRender}" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/QuotationPrice" styleClass="OraInstructionText"/>
+                                       </ui:contents>
+                                    </oa:messageComponentLayout>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="IntroduceTermsCol" width="10%">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="IntroduceTermsColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/IntroduceTermsColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageTextInput id="IntroduceTerms" dataType="VARCHAR2" viewAttr="IntroduceTerms" maximumLength="60" rows="7" columns="13" disabled="${oa.XxcsoSalesLineFullVO1.RowReadOnly}"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="DeleteRowCol" columnDataFormat="iconButtonFormat" width="3%">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="DeleeteRowColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/DeleeteRowColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:stackLayout id="DeleteRowIconSlRN">
+                                       <ui:contents>
+                                          <oa:switcher id="DeleteEnableSwitcherRN" viewAttr="DeleteEnableSwitcher">
+                                             <ui:case name="DeleteEnabled">
+                                                <oa:image id="DeleteEnabled" source="deleteicon_enabled.gif" imageWidth="25" imageHeight="25" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/DeleteEnabled">
+                                                   <ui:primaryClientAction>
+                                                      <ui:fireAction event="DeleteIconClick" id="fireAction1">
+                                                         <ui:parameters>
+                                                            <ui:parameter key="SelectedLineId" value="${oa.XxcsoSalesLineFullVO1.SalesLineId}"/>
+                                                         </ui:parameters>
+                                                      </ui:fireAction>
+                                                   </ui:primaryClientAction>
+                                                </oa:image>
+                                             </ui:case>
+                                             <ui:case name="DeleteDisabled">
+                                                <oa:image id="DeleteDisabled" source="deleteicon_disabled.gif" imageHeight="25" imageWidth="25" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/DeleteDisabled"/>
+                                             </ui:case>
+                                          </oa:switcher>
+                                       </ui:contents>
+                                    </oa:stackLayout>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:formValue id="InventoryItemId" dataType="NUMBER" viewAttr="InventoryItemId"/>
+                              <oa:formValue id="ItemShortName" viewAttr="ItemShortName"/>
+                              <oa:formValue id="CaseIncNum" viewAttr="CaseIncNum"/>
+                              <oa:formValue id="JanCode" viewAttr="JanCode"/>
+                              <oa:formValue id="ItfCode" viewAttr="ItfCode"/>
+                              <oa:formValue id="DeleteEnabledView" viewAttr="DeleteEnableSwitcher"/>
+                           </ui:contents>
+                           <ui:tableActions>
+                              <oa:flowLayout id="SalesDecisionInfoActionFlRN">
+                                 <ui:contents>
+                                    <oa:lovActionButton id="QuoteItemLovButton" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso007003j/lov/webui/XxcsoQuoteItemLovRN" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/QuoteItemLovButton">
+                                       <lovActionMappings>
+                                          <lovActionMap id="QuoteNumberMap" lovItem="QuoteNumber" resultTo="QuoteNumber"/>
+                                          <lovActionMap id="QuoteRevisionNumberMap" lovItem="QuoteRevisionNumber" resultTo="QuoteRevisionNumber"/>
+                                          <lovActionMap id="QuoteInventoryItemCodeMap" lovItem="InventoryItemCode" resultTo="InventoryItemCode"/>
+                                          <lovActionMap id="QuoteItemShortNameMap" lovItem="ItemShortName" resultTo="ItemShortName"/>
+                                          <lovActionMap id="QuoteCaseIncNumMap" lovItem="CaseIncNum" resultTo="CaseIncNum"/>
+                                          <lovActionMap id="QuoteJanCodeMap" lovItem="JanCode" resultTo="JanCode"/>
+                                          <lovActionMap id="QuoteItfCodeMap" lovItem="ItfCode" resultTo="ItfCode"/>
+                                          <lovActionMap id="QuoteStartDateMap" lovItem="QuoteStartDate" resultTo="SalesScheduleDate"/>
+                                          <lovActionMap id="QuoteDelivPriceMap" lovItem="DelivPrice" resultTo="DelivPrice"/>
+                                          <lovActionMap id="QuoteStoreSalesPriceMap" lovItem="StoreSalesPrice" resultTo="StoreSalesPrice"/>
+                                          <lovActionMap id="QuoteStoreSalesPriceTaxMap" lovItem="StoreSalesPriceIncTax" resultTo="StoreSalesPriceIncTax"/>
+                                          <lovActionMap id="QuoteQuotationPriceMap" lovItem="QuotationPrice" resultTo="QuotationPrice"/>
+                                          <lovActionMap id="QuoteRemarksMap" lovItem="Remarks" resultTo="IntroduceTerms"/>
+                                          <lovActionMap id="QuoteInventoryItemIdMap" lovItem="InventoryItemId" resultTo="InventoryItemId"/>
+                                          <lovActionMap id="QuoteDeleteFlagMap" lovItem="DeleteEnabledValue" resultTo="DeleteEnabledView"/>
+                                       </lovActionMappings>
+                                    </oa:lovActionButton>
+                                    <oa:submitButton id="AddRowButton" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/AddRowButton"/>
+                                 </ui:contents>
+                              </oa:flowLayout>
+                           </ui:tableActions>
+                           <ui:tableSelection>
+                              <oa:multipleSelection id="ItemNotifySelection" viewAttr="NotifyFlag" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/ItemNotifySelection"/>
+                           </ui:tableSelection>
+                        </oa:advancedTable>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:tableLayout id="OtherContentTlRN" hAlign="center" width="100%">
+                     <ui:contents>
+                        <oa:rowLayout id="OtherContentRlRN01" width="100%">
+                           <ui:contents>
+                              <oa:cellFormat id="OtherContentCflRN0101" width="20%">
+                                 <ui:contents>
+                                    <oa:spacer id="Spacer01"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="OtherContentCflRN0102" width="80%">
+                                 <ui:contents>
+                                    <oa:header id="OtherContentHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/OtherContentHdrRN">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="OtherContent" viewName="XxcsoSalesHeaderFullVO1" viewAttr="OtherContent" maximumLength="1200" rows="7" columns="100" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/OtherContent"/>
+                                       </ui:contents>
+                                    </oa:header>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:tableLayout>
+                  <oa:spacer id="Spacer02" height="30"/>
+                  <oa:contentContainer id="NotifyInfoCcRN" width="100%" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/NotifyInfoCcRN">
+                     <ui:contents>
+                        <oa:tableLayout id="NotifyInfoTlRN" hAlign="center" width="100%">
+                           <ui:contents>
+                              <oa:rowLayout id="NotifyInfoRlRN01" width="100%">
+                                 <ui:contents>
+                                    <oa:cellFormat id="NotifyInfoCfRN0101" hAlign="start" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:tableLayout id="NotifyHintTlRN" hAlign="center" width="100%">
+                                             <ui:contents>
+                                                <oa:rowLayout id="NotifyHintRlRN01" width="100%">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="NotifyHintCfRN0101" hAlign="start">
+                                                         <ui:contents>
+                                                            <oa:tip id="NotifyHint" tipMessageAppShortName="XXCSO" tipMessageName="APP-XXCSO1-00420"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="NotifyHintCfRN0102" hAlign="end">
+                                                         <ui:contents>
+                                                            <oa:submitButton id="RequestButton" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/RequestButton"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="NotifyInfoRlRN02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="NotifyInfoCfRN0201" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="NotifySubject" columns="100" maximumLength="200" viewName="XxcsoSalesRequestFullVO1" viewAttr="NotifySubject" required="uiOnly" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/NotifySubject"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="NotifyInfoRlRN03">
+                                 <ui:contents>
+                                    <oa:cellFormat id="NotifyInfoCfRN0301" width="20%">
+                                       <ui:contents>
+                                          <oa:spacer id="Spacer03"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="NotifyInfoCfRN0302" width="80%">
+                                       <ui:contents>
+                                          <oa:header id="NotifyCommentHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/NotifyCommentHdrRN">
+                                             <ui:contents>
+                                                <oa:messageTextInput id="NotifyComment" rows="4" columns="100" maximumLength="500" viewName="XxcsoSalesRequestFullVO1" viewAttr="NotifyComment" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/NotifyComment"/>
+                                             </ui:contents>
+                                          </oa:header>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="NotifyInfoRlRN04">
+                                 <ui:contents>
+                                    <oa:cellFormat id="NotifyInfoCfRN0401" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:header id="ApprovalUserHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/ApprovalUserHdrRN">
+                                             <ui:contents>
+                                                <oa:rowLayout id="ApprovalUserRlRN">
+                                                   <ui:contents>
+                                                      <oa:messageLovInput id="ApprovalEmployeeNumber" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/ApprovalEmployeeNumber" viewName="XxcsoSalesRequestFullVO1" viewAttr="ApprovalEmployeeNumber" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso007003j/lov/webui/XxcsoApprovalUserLovRN" columns="6">
+                                                         <lovMappings>
+                                                            <lovMap id="ApprovalEmployeeNumberMap" lovItem="EmployeeNumber" resultTo="ApprovalEmployeeNumber" criteriaFrom="ApprovalEmployeeNumber"/>
+                                                            <lovMap id="ApprovalNameMap" lovItem="FullName" resultTo="ApprovalName"/>
+                                                            <lovMap id="ApprovalUserNameMap" lovItem="UserName" resultTo="ApprovalUserName"/>
+                                                            <lovMap id="BaselineBaseCodeMap" lovItem="BaselineBaseCode" criteriaFrom="BaselineBaseCode"/>
+                                                         </lovMappings>
+                                                      </oa:messageLovInput>
+                                                      <oa:spacer id="ApprovalUserSpacer" width="20"/>
+                                                      <oa:messageStyledText id="ApprovalName" viewName="XxcsoSalesRequestFullVO1" viewAttr="ApprovalName" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/ApprovalName" styleClass="OraDataText"/>
+                                                      <oa:formValue id="ApprovalUserName" viewName="XxcsoSalesRequestFullVO1" viewAttr="ApprovalUserName"/>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:header>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="NotifyInfoRlRN05">
+                                 <ui:contents>
+                                    <oa:cellFormat id="NotifyInfoCfRN0501" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:header id="NotifyListHdrRN" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/NotifyListHdrRN">
+                                             <ui:contents>
+                                                <oa:advancedTable id="NotifyListAdvTblRN" viewName="XxcsoSalesNotifyFullVO1" width="100%" tableBanding="rowBanding">
+                                                   <ui:contents>
+                                                      <oa:column id="EmployeeNumberCol" width="10%">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="EmployeeNumberColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/EmployeeNumberColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="EmployeeNumber" viewAttr="EmployeeNumber"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="FullNameCol" width="40%">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="FullNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/FullNameColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="FullName" viewAttr="FullName"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="PositionNameCol" width="20%">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="PositionNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/PositionNameColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="PositionName" viewAttr="PositionName"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="WorkBaseCodeCol" width="10%">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="WorkBaseCodeColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/WorkBaseCodeColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="BaseCode" viewAttr="BaseCode"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:column id="WorkBaseNameCol" width="20%">
+                                                         <ui:columnHeader>
+                                                            <oa:sortableHeader id="WorkBaseNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/WorkBaseNameColHdr"/>
+                                                         </ui:columnHeader>
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="BaseName" viewAttr="BaseName"/>
+                                                         </ui:contents>
+                                                      </oa:column>
+                                                      <oa:formValue id="UserName" viewAttr="UserName"/>
+                                                      <oa:formValue id="PositionSortCode" viewAttr="PositionSortCode"/>
+                                                   </ui:contents>
+                                                   <ui:tableSelection>
+                                                      <oa:multipleSelection id="UserNotifySelection" viewAttr="NotifiedFlag" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/UserNotifySelection"/>
+                                                   </ui:tableSelection>
+                                                   <ui:tableActions>
+                                                      <oa:flowLayout id="NotifyUserActionFlRN">
+                                                         <ui:contents>
+                                                            <oa:lovActionButton id="NotifyUserLovButton" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso007003j/lov/webui/XxcsoNotifyUserLovRN" use="/itoen/oracle/apps/xxcso/xxcso007003j/attributesets/XxcsoSalesRegistAttrSets/NotifyUserLovButton">
+                                                               <lovActionMappings>
+                                                                  <lovActionMap id="EmployeeNameMap" lovItem="EmployeeNumber" resultTo="EmployeeNumber"/>
+                                                                  <lovActionMap id="FullNameMap" resultTo="FullName" lovItem="FullName"/>
+                                                                  <lovActionMap id="PositionNameMap" lovItem="PositionName" resultTo="PositionName"/>
+                                                                  <lovActionMap id="BaseCodeMap" lovItem="WorkBaseCode" resultTo="BaseCode"/>
+                                                                  <lovActionMap id="BaseNameMap" lovItem="WorkBaseName" resultTo="BaseName"/>
+                                                                  <lovActionMap id="UserNameMap" lovItem="UserName" resultTo="UserName"/>
+                                                                  <lovActionMap id="PositionSortCodeMap" lovItem="PositionSortCode" resultTo="PositionSortCode"/>
+                                                               </lovActionMappings>
+                                                            </oa:lovActionButton>
+                                                         </ui:contents>
+                                                      </oa:flowLayout>
+                                                   </ui:tableActions>
+                                                </oa:advancedTable>
+                                             </ui:contents>
+                                          </oa:header>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:contentContainer>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+         <ui:pageStatus>
+            <oa:flowLayout id="RequiredKeyFlRN">
+               <ui:contents>
+                  <oa:tableLayout id="RequiredKeyTlRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG" hAlign="center" width="100%"/>
+               </ui:contents>
+            </oa:flowLayout>
+         </ui:pageStatus>
+      </oa:pageLayout>
+   </content>
+</page>

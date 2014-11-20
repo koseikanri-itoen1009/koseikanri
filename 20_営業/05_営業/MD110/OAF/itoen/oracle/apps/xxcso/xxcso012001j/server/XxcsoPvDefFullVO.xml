@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoPvDefFullVO"
+   OrderBy="creation_date"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvDefFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvDefFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   Passivate="All"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  XxcsoPvDefEO.VIEW_ID
+       ,XxcsoPvDefEO.VIEW_NAME
+       ,XxcsoPvDefEO.VIEW_SIZE
+       ,XxcsoPvDefEO.DEFAULT_FLAG
+       ,XxcsoPvDefEO.VIEW_OPEN_CODE
+       ,XxcsoPvDefEO.DESCRIPTION
+       ,XxcsoPvDefEO.EXTRACT_PATTERN_CODE
+       ,XxcsoPvDefEO.CREATED_BY
+       ,XxcsoPvDefEO.CREATION_DATE
+       ,XxcsoPvDefEO.LAST_UPDATED_BY
+       ,XxcsoPvDefEO.LAST_UPDATE_DATE
+       ,XxcsoPvDefEO.LAST_UPDATE_LOGIN
+       ,XxcsoPvDefEO.REQUEST_ID
+       ,XxcsoPvDefEO.PROGRAM_APPLICATION_ID
+       ,XxcsoPvDefEO.PROGRAM_ID
+       ,XxcsoPvDefEO.PROGRAM_UPDATE_DATE
+FROM    XXCSO_PV_DEF XxcsoPvDefEO
+WHERE   (
+          (
+            (:1 IS NOT NULL) AND (XxcsoPvDefEO.view_id = :2)
+          )
+          OR
+          (
+            (:3 IS NULL)
+            AND
+            (
+              (XxcsoPvDefEO.created_by = FND_GLOBAL.user_id)
+              OR
+              (XxcsoPvDefEO.created_by = -1)
+            )
+          )
+        )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoPvDefEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoPvDefEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="ViewId"
+      IsNotNull="true"
+      EntityAttrName="ViewId"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="VIEW_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ViewName"
+      Precision="100"
+      EntityAttrName="ViewName"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="VIEW_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ViewSize"
+      Precision="30"
+      EntityAttrName="ViewSize"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="VIEW_SIZE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DefaultFlag"
+      Precision="1"
+      EntityAttrName="DefaultFlag"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="DEFAULT_FLAG" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ViewOpenCode"
+      Precision="30"
+      EntityAttrName="ViewOpenCode"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="VIEW_OPEN_CODE"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Description"
+      Precision="300"
+      EntityAttrName="Description"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="DESCRIPTION"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ExtractPatternCode"
+      Precision="30"
+      EntityAttrName="ExtractPatternCode"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="EXTRACT_PATTERN_CODE"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="CREATED_BY"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="CREATION_DATE"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="LAST_UPDATED_BY"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="LAST_UPDATE_DATE"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="LAST_UPDATE_LOGIN"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="REQUEST_ID"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="PROGRAM_APPLICATION_ID"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="PROGRAM_ID"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoPvDefEO"
+      AliasName="PROGRAM_UPDATE_DATE"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AddColumn"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="$none$"
+      AliasName="ADD_COLUMN"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UpdateEnableSwitcher"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="UPDATE_ENABLE_SWITCHER"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeleteEnableSwitcher"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELETE_ENABLE_SWITCHER"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DefaultFlagSwitcher"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DEFAULT_FLAG_SWITCHER"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineSelectFlag"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE_SELECT_FLAG"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SeedDataFlag"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="SEED_DATA_FLAG"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewLinkAccessor
+      Name="XxcsoPvSortColumnFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvDefSortColumnVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoPvViewColumnFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvDefViewColumnVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+   <ViewLinkAccessor
+      Name="XxcsoPvExtractTermFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvDefExtractTermVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+</ViewObject>

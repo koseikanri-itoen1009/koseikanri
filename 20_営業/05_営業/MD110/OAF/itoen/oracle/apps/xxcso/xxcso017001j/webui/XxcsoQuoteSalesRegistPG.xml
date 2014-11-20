@@ -1,0 +1,442 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Regist quote information page for sales.
+
+@param ExecuteMode     : null        is new
+                         UPDATE      is update
+                         REVISION_UP is revision up
+@param TransactionKey1 : null        is new
+                         not null    is update, revision up
+@see itoen.oracle.apps.xxcso.xxcso017001j.webui.XxcsoQuoteSalesRegistCO.java
+@see itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteSalesRegistAM.xml
+@see itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteSalesRegistAM.java
+
+HISTORY
+2008/12/21  H.Ogawa        new-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteSalesRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso017001j.webui.XxcsoQuoteSalesRegistCO" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:tableLayout id="PageButtonTlRN" width="100%">
+                     <ui:contents>
+                        <oa:rowLayout id="PageButtonRlRN01" width="100%">
+                           <ui:contents>
+                              <oa:cellFormat id="PageButtonCfRN0101">
+                                 <ui:contents>
+                                    <oa:submitButton id="CancelButton" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/CancelButton"/>
+                                    <oa:submitButton id="CopyCreateButton" rendered="${oa.XxcsoQuoteSalesInitVO1.CopyCreateButtonRender}" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/CopyCreateButton"/>
+                                    <oa:submitButton id="InvalidityButton" rendered="${oa.XxcsoQuoteSalesInitVO1.InvalidityButtonRender}" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/InvalidityButton"/>
+                                    <oa:submitButton id="ApplicableButton" rendered="${oa.XxcsoQuoteSalesInitVO1.ApplicableButtonRender}" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/ApplicableButton"/>
+                                    <oa:submitButton id="RevisionButton" rendered="${oa.XxcsoQuoteSalesInitVO1.RevisionButtonRender}" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/RevisionButton"/>
+                                    <oa:submitButton id="FixedButton" rendered="${oa.XxcsoQuoteSalesInitVO1.FixedButtonRender}" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/FixedButton"/>
+                                    <oa:submitButton id="QuoteSheetPrintButton" rendered="${oa.XxcsoQuoteSalesInitVO1.QuoteSheetPrintButtonRender}" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/QuoteSheetPrintButton"/>
+                                    <oa:submitButton id="CsvCreateButton" rendered="${oa.XxcsoQuoteSalesInitVO1.CsvCreateButtonRender}" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/CsvCreateButton"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="PageButtonRlRN02" width="100%">
+                           <ui:contents>
+                              <oa:cellFormat id="PageButtonCfRN0201" hAlign="right">
+                                 <ui:contents>
+                                    <oa:submitButton id="StoreButton" rendered="${oa.XxcsoQuoteSalesInitVO1.InputTranceButtonRender}" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/StoreButton"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:tableLayout>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:header id="CsvDownHdrRN" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/CsvDownHdrRN">
+                     <ui:contents>
+                        <oa:table id="CsvDownTblRN" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/CsvDownTblRN">
+                           <ui:contents>
+                              <oa:messageDownload id="FileName" viewAttr="FileName" contentViewAttributeName="FileData" viewName="XxcsoCsvDownVO1" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/FileName"/>
+                           </ui:contents>
+                        </oa:table>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="QuoteHeaderHdrRN" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/QuoteHeaderHdrRN">
+                     <ui:contents>
+                        <oa:tableLayout id="QuoteHeaderTlRN" hAlign="center" width="100%">
+                           <ui:contents>
+                              <oa:rowLayout id="QuoteHeaderRlRN01" width="100%">
+                                 <ui:contents>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0101" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:flowLayout id="RequiredKeyFlRN">
+                                             <ui:contents>
+                                                <oa:tableLayout id="RequiredKeyTlRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG" hAlign="center" width="100%"/>
+                                             </ui:contents>
+                                          </oa:flowLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="QuoteHeaderRlRN02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0201">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0201">
+                                             <ui:contents>
+                                                <oa:messageChoice id="QuoteTypeName" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="QuoteType" pickListViewName="XxcsoQuoteTypeLookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/QuoteTypeName"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0202">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0202">
+                                             <ui:contents>
+                                                <oa:messageTextInput id="PublishDate" dataType="DATE" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="PublishDate" required="uiOnly" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/PublishDate"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="QuoteHeaderRlRN03">
+                                 <ui:contents>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0301">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0301">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="QuoteNumber" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="QuoteNumber" maximumLength="12" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/QuoteNumber"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0302">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0302">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="QuoteRevisionNumber" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="QuoteRevisionNumber" dataType="NUMBER" maximumLength="2" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/QuoteRevisionNumber"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="QuoteHeaderRlRN04">
+                                 <ui:contents>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0401">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0401">
+                                             <ui:contents>
+                                                <oa:messageLovInput id="AccountNumber" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso017001j/lov/webui/XxcsoAccountSearchLovRN" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="AccountNumber" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/AccountNumber" required="uiOnly">
+                                                   <lovMappings>
+                                                      <lovMap id="AccountNumberLovMap" lovItem="AccountNumber" resultTo="AccountNumber" criteriaFrom="AccountNumber"/>
+                                                      <lovMap id="PartyNameLovMap" lovItem="PartyName" resultTo="PartyName"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0402">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0402">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="PartyNameView" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="PartyName" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/PartyName"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="QuoteHeaderRlRN05">
+                                 <ui:contents>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0501">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0501">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="EmployeeNumber" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="EmployeeNumber" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/EmployeeNumber"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0502">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0502">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="EmployeeName" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="FullName" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/EmployeeName"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="QuoteHeaderRlRN06">
+                                 <ui:contents>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0601">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0601">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="BaseCode" maximumLength="40" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="BaseCode" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/BaseCode"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0602">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0602">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="BaseName" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="BaseName" styleClass="OraDataText" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/BaseName"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="QuoteHeaderRlRN07">
+                                 <ui:contents>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0701">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0701">
+                                             <ui:contents>
+                                                <oa:messageTextInput id="DeliveryPlace" maximumLength="20" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="DelivPlace" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/DeliveryPlace"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0702">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0702">
+                                             <ui:contents>
+                                                <oa:messageTextInput id="PaymentCondition" maximumLength="20" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="PaymentCondition" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/PaymentCondition"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="QuoteHeaderRlRN08">
+                                 <ui:contents>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0801">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0801">
+                                             <ui:contents>
+                                                <oa:messageTextInput id="QuoteSubmitName" maximumLength="40" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="QuoteSubmitName" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/QuoteSubmitName"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0802">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0802">
+                                             <ui:contents>
+                                                <oa:messageChoice id="Status" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="Status" styleClass="OraDataText" readOnly="true" pickListViewName="XxcsoQuoteStatusLookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/Status"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="QuoteHeaderRlRN09">
+                                 <ui:contents>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0901">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0901">
+                                             <ui:contents>
+                                                <oa:messageChoice id="DelivPriceTaxType" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="DelivPriceTaxType" allowBlankValue="false" selectiveSearchCriteria="true" pickListViewName="XxcsoDelivPriceTaxTypeLookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" required="yes" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/DelivPriceTaxType"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QuoteHeaderCfRN0902">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN0902">
+                                             <ui:contents>
+                                                <oa:messageChoice id="StorePriceTaxType" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="StorePriceTaxType" allowBlankValue="false" pickListViewName="XxcsoStorePriceTaxTypeLookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" required="yes" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/StorePriceTaxType"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="QuoteHeaderRlRN10">
+                                 <ui:contents>
+                                    <oa:cellFormat id="QuoteHeaderCfRN1001">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN1001">
+                                             <ui:contents>
+                                                <oa:messageChoice id="UnitType" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="UnitType" allowBlankValue="false" pickListViewName="XxcsoUnitPriceDivLookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" required="yes" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/UnitType"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QuoteHeaderCfRN1002">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN1002"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="QuoteHeaderRlRN11">
+                                 <ui:contents>
+                                    <oa:cellFormat id="QuoteHeaderCfRN1101">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN1101">
+                                             <ui:contents>
+                                                <oa:messageTextInput id="SpecialNote" rows="3" maximumLength="100" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="SpecialNote" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/SpecialNote"/>
+                                             </ui:contents>
+                                          </oa:messageComponentLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="QuoteHeaderCfRN1102">
+                                       <ui:contents>
+                                          <oa:messageComponentLayout id="QuoteHeaderMclRN1102"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                        <oa:formValue id="PartyName" viewName="XxcsoQuoteHeadersFullVO1" viewAttr="PartyName"/>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="QuoteLinesHdrRN" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/QuoteLinesHdrRN">
+                     <ui:contents>
+                        <oa:advancedTable id="QuoteLineAdvTblRN" viewName="XxcsoQuoteLinesSalesFullVO1" tableBanding="rowBanding" width="100%">
+                           <ui:contents>
+                              <oa:column id="InventoryItemIdCol">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="InventoryItemIdColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/InventoryItemIdColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageLovInput id="InventoryItemCode" queryable="true" viewAttr="InventoryItemCode" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso017001j/lov/webui/XxcsoInventoryLovRN" columns="8">
+                                       <lovMappings>
+                                          <lovMap id="InventoryCodeLovMap" lovItem="InventoryItemCode" resultTo="InventoryItemCode" criteriaFrom="InventoryItemCode"/>
+                                          <lovMap id="InventoryNameLovMap" lovItem="ItemShortName" resultTo="InventoryItemName"/>
+                                          <lovMap id="InventoryItemIdLovMap" lovItem="InventoryItemId" resultTo="InventoryItemId"/>
+                                          <lovMap id="BusinessPriceLovMap" lovItem="BusinessPrice" resultTo="BusinessPrice"/>
+                                       </lovMappings>
+                                    </oa:messageLovInput>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="InventoryItemNameCol" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="InventoryItemNameColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/InventoryItemNameColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageStyledText id="InventoryItemNameView" viewAttr="ItemShortName" maximumLength="20"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="QuoteDivCol" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="QuoteDivColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/QuoteDivColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageChoice id="QuoteDiv" viewAttr="QuoteDiv" pickListViewName="XxcsoQuoteDivLookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" allowBlankValue="false" required="yes">
+                                       <ui:primaryClientAction>
+                                          <ui:firePartialAction event="QuoteDivChangeEvent" id="firePartialAction1">
+                                             <ui:parameters>
+                                                <ui:parameter key="EventLineId" value="${oa.XxcsoQuoteLinesSalesFullVO1.QuoteLineId}"/>
+                                             </ui:parameters>
+                                          </ui:firePartialAction>
+                                       </ui:primaryClientAction>
+                                    </oa:messageChoice>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="UsuallyDelivPriceCol" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="UsuallyDelivPriceColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/UsuallyDelivPriceColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageTextInput id="UsuallyDelivPrice" viewAttr="UsuallyDelivPrice" maximumLength="9" columns="10"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="UsuallyStoreSalesPriceCol" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="UsuallyStoreSalesPriceColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/UsuallyStoreSalesPriceColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageTextInput id="UsuallyStoreSalesPrice" viewAttr="UsuallyStoreSalePrice" maximumLength="10" columns="11"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="ThisTimeDelivPriceCol" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="ThisTimeDelivPriceColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/ThisTimeDelivPriceColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageTextInput id="ThisTimeDelivPrice" viewAttr="ThisTimeDelivPrice" maximumLength="9" columns="10"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="ThisTimeStoreSalesPriceCol" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="ThisTimeStoreSalesPriceColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/ThisTimeStoreSalesPriceColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageTextInput id="ThisTimeStoreSalesPrice" viewAttr="ThisTimeStoreSalePrice" maximumLength="10" columns="11"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="QuoteStartDateCol" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="QuoteStartDateColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/QuoteStartDateColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageTextInput id="QuoteStartDate" dataType="DATE" viewAttr="QuoteStartDate" columns="12"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="QuoteEndDateCol" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="QuoteEndDateColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/QuoteEndDateColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageTextInput id="QuoteEndDate" dataType="DATE" viewAttr="QuoteEndDate" columns="12"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="LineOrderCol" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="LineOrderColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/LineOrderColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageTextInput id="LineOrder" dataType="VARCHAR2" viewAttr="LineOrder" maximumLength="2" columns="3"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="RemarksCol" cellNoWrapFormat="true">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="RemarksColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/RemarksColHdr"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageTextInput id="Remarks" viewAttr="Remarks" maximumLength="20" columns="21"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:formValue id="InventoryItemId" viewAttr="InventoryItemId" dataType="NUMBER"/>
+                              <oa:formValue id="BusinessPrice" viewAttr="BusinessPrice" dataType="NUMBER"/>
+                              <oa:formValue id="InventoryItemName" viewAttr="ItemShortName"/>
+                           </ui:contents>
+                           <ui:tableActions>
+                              <oa:flowLayout id="QuoteBodyFlRN">
+                                 <ui:contents>
+                                    <oa:submitButton id="AddLineButton" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/AddLineButton"/>
+                                    <oa:submitButton id="DelLineButton" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/DelLineButton"/>
+                                    <oa:submitButton id="RegularPriceButton" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/RegularPriceButton"/>
+                                 </ui:contents>
+                              </oa:flowLayout>
+                           </ui:tableActions>
+                           <ui:tableSelection>
+                              <oa:multipleSelection id="QuoteSelection" viewAttr="SelectFlag"/>
+                           </ui:tableSelection>
+                        </oa:advancedTable>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

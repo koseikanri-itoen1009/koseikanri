@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoYearListVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoYearListVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoYearListVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT TO_CHAR(TRUNC(xxcso_util_common_pkg.get_online_sysdate),'YYYY') year_date
+      ,TO_CHAR(TRUNC(xxcso_util_common_pkg.get_online_sysdate),'YYYY')||'年' year_name
+FROM   DUAL
+UNION
+SELECT TO_CHAR(ADD_MONTHS(TRUNC(xxcso_util_common_pkg.get_online_sysdate),12),'YYYY') year_date
+      ,TO_CHAR(ADD_MONTHS(TRUNC(xxcso_util_common_pkg.get_online_sysdate),12),'YYYY')||'年' year_name
+FROM   DUAL
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="YearDate"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="YEAR_DATE"
+      Expression="YEAR_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="YearName"
+      IsPersistent="false"
+      Precision="6"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="YEAR_NAME"
+      Expression="YEAR_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

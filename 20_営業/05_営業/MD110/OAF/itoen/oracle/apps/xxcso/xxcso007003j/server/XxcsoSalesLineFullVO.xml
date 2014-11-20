@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSalesLineFullVO"
+   OrderBy="sales_line_id"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesLineFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesLineFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoSalesLinesVEO.SALES_LINE_ID, 
+       XxcsoSalesLinesVEO.SALES_HEADER_ID, 
+       XxcsoSalesLinesVEO.QUOTE_NUMBER, 
+       XxcsoSalesLinesVEO.QUOTE_REVISION_NUMBER, 
+       XxcsoSalesLinesVEO.INVENTORY_ITEM_ID, 
+       XxcsoSalesLinesVEO.SALES_CLASS_CODE, 
+       XxcsoSalesLinesVEO.SALES_ADOPT_CLASS_CODE, 
+       XxcsoSalesLinesVEO.SALES_AREA_CODE, 
+       XxcsoSalesLinesVEO.SALES_SCHEDULE_DATE, 
+       XxcsoSalesLinesVEO.DELIV_PRICE, 
+       XxcsoSalesLinesVEO.STORE_SALES_PRICE, 
+       XxcsoSalesLinesVEO.STORE_SALES_PRICE_INC_TAX, 
+       XxcsoSalesLinesVEO.QUOTATION_PRICE, 
+       XxcsoSalesLinesVEO.INTRODUCE_TERMS, 
+       XxcsoSalesLinesVEO.NOTIFY_FLAG, 
+       XxcsoSalesLinesVEO.CREATED_BY, 
+       XxcsoSalesLinesVEO.CREATION_DATE, 
+       XxcsoSalesLinesVEO.LAST_UPDATED_BY, 
+       XxcsoSalesLinesVEO.LAST_UPDATE_DATE, 
+       XxcsoSalesLinesVEO.LAST_UPDATE_LOGIN, 
+       XxcsoSalesLinesVEO.REQUEST_ID, 
+       XxcsoSalesLinesVEO.PROGRAM_APPLICATION_ID, 
+       XxcsoSalesLinesVEO.PROGRAM_ID, 
+       XxcsoSalesLinesVEO.PROGRAM_UPDATE_DATE
+      ,(SELECT  COUNT('x')
+        FROM    xxcso_sales_lines_hist  xslh
+        WHERE   xslh.sales_line_id = XxcsoSalesLinesVEO.SALES_LINE_ID
+          AND   xslh.notified_flag = 'Y'
+          AND   ROWNUM = 1
+       ) notified_count
+      ,xiiv.inventory_item_code
+      ,xiiv.item_short_name
+      ,xiiv.case_inc_num
+      ,xiiv.jan_code
+      ,xiiv.itf_code
+FROM   XXCSO_SALES_LINES_V XxcsoSalesLinesVEO
+      ,xxcso_inventory_items_v  xiiv
+WHERE  xiiv.inventory_item_id = XxcsoSalesLinesVEO.INVENTORY_ITEM_ID
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoSalesLinesVEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSalesLinesVEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="SalesLineId"
+      IsNotNull="true"
+      EntityAttrName="SalesLineId"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="SALES_LINE_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesHeaderId"
+      IsNotNull="true"
+      EntityAttrName="SalesHeaderId"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="SALES_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteNumber"
+      Precision="12"
+      EntityAttrName="QuoteNumber"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="QUOTE_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuoteRevisionNumber"
+      Precision="2"
+      Scale="0"
+      EntityAttrName="QuoteRevisionNumber"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="QUOTE_REVISION_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InventoryItemId"
+      IsNotNull="true"
+      EntityAttrName="InventoryItemId"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="INVENTORY_ITEM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesClassCode"
+      Precision="30"
+      EntityAttrName="SalesClassCode"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="SALES_CLASS_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesAdoptClassCode"
+      Precision="30"
+      EntityAttrName="SalesAdoptClassCode"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="SALES_ADOPT_CLASS_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesAreaCode"
+      Precision="30"
+      EntityAttrName="SalesAreaCode"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="SALES_AREA_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesScheduleDate"
+      EntityAttrName="SalesScheduleDate"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="SALES_SCHEDULE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DelivPrice"
+      Precision="9"
+      EntityAttrName="DelivPrice"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="DELIV_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StoreSalesPrice"
+      Precision="10"
+      EntityAttrName="StoreSalesPrice"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="STORE_SALES_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StoreSalesPriceIncTax"
+      Precision="10"
+      EntityAttrName="StoreSalesPriceIncTax"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="STORE_SALES_PRICE_INC_TAX" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuotationPrice"
+      Precision="9"
+      EntityAttrName="QuotationPrice"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="QUOTATION_PRICE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroduceTerms"
+      Precision="60"
+      EntityAttrName="IntroduceTerms"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="INTRODUCE_TERMS" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NotifyFlag"
+      Precision="1"
+      EntityAttrName="NotifyFlag"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="NOTIFY_FLAG" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoSalesLinesVEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NotifiedCount"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="NOTIFIED_COUNT"
+      Expression="NOTIFIED_COUNT"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InventoryItemCode"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="InventoryItemCode"
+      Expression="InventoryItemCode"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemShortName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ItemShortName"
+      Expression="ItemShortName"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CaseIncNum"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CaseIncNum"
+      Expression="CaseIncNum"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="JanCode"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="JanCode"
+      Expression="JanCode"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItfCode"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ItfCode"
+      Expression="ItfCode"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeleteEnableSwitcher"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELETEENABLESWITCHER"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RowReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="ROWREADONLY"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesAdoptClassRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="SALESADOPTCLASSRENDER"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesAreaRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="SALESAREARENDER"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DelivPriceRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="DELIVPRICERENDER"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StoreSalesPriceRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="STORESALESPRICERENDER"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StoreSalesPriceIncTaxRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="SALESPRICEINCTAXRENDER"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QuotationPriceRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="QUATATIONPRICERENDER"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+</ViewObject>

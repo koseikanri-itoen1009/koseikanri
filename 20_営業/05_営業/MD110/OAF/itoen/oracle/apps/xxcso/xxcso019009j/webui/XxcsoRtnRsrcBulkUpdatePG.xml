@@ -1,0 +1,159 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso019009j.server.XxcsoRtnRsrcBulkUpdateAM" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/PageLayoutRN" controllerClass="itoen.oracle.apps.xxcso.xxcso019009j.webui.XxcsoRtnRsrcBulkUpdateCO">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="CancelButton" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/CancelButton"/>
+                  <oa:submitButton id="SubmitButton" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/SubmitButton"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:header id="SelectHdr" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/SelectHdr">
+                     <ui:contents>
+                        <oa:messageComponentLayout id="SelectMclRN">
+                           <ui:contents>
+                              <oa:messageStyledText id="CurrentDate" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/CurrentDate" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="CurrentDate" styleClass="OraDataText"/>
+                              <oa:messageLayout id="ResourceLayout" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/ResourceLayout">
+                                 <ui:contents>
+                                    <oa:rowLayout id="ResourceRlRN" hAlign="start">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="EmployeeNumber" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/EmployeeNumber" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="EmployeeNumber" maximumLength="5" queryable="true" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso019009j/lov/webui/XxcsoRscRtnRsrcLovRN" columns="6">
+                                             <lovMappings>
+                                                <lovMap id="EmplolyeeNumberMap" lovItem="EmployeeNumber" resultTo="EmployeeNumber" criteriaFrom="EmployeeNumber"/>
+                                                <lovMap id="FullNameMap" lovItem="FullName" resultTo="FullName"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:spacer id="ResourceSpacer" width="20"/>
+                                          <oa:messageStyledText id="FullNameView" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="FullName" styleClass="OraDataText"/>
+                                          <oa:formValue id="FullName" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="FullName"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:messageLayout>
+                              <oa:messageTextInput id="RouteNo" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/RouteNo" maximumLength="7" columns="8" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="RouteNo"/>
+                           </ui:contents>
+                           <ui:footer>
+                              <oa:flowLayout id="SelectFlRN">
+                                 <ui:contents>
+                                    <oa:submitButton id="SearchButton" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/SearchButton"/>
+                                    <oa:submitButton id="ClearButton" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/ClearButton"/>
+                                 </ui:contents>
+                              </oa:flowLayout>
+                           </ui:footer>
+                        </oa:messageComponentLayout>
+                        <oa:formValue id="BaseCode" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="BaseCode"/>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="ResultHdr" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/ResultHdr">
+                     <ui:contents>
+                        <oa:rowLayout id="ResultRlRN01" width="100%">
+                           <ui:contents>
+                              <oa:cellFormat id="ResultCfRN0101" width="100%" hAlign="end">
+                                 <ui:contents>
+                                    <oa:rowLayout id="ReflectMethodRlRN">
+                                       <ui:contents>
+                                          <oa:messageRadioGroup id="ReflectMethodView" pickListViewName="XxcsoReflectMethodListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" styleClass="OraInstructionText" vAlign="middle" viewName="XxcsoRtnRsrcBulkUpdateInitVO1" viewAttr="ReflectMethod" required="no" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/ReflectMethod"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                        <oa:rowLayout id="ResultRlRN02" styleClass="100%" width="100%">
+                           <ui:contents>
+                              <oa:cellFormat id="ResultCfRN0201" width="100%">
+                                 <ui:contents>
+                                    <oa:advancedTable id="ResultAdvTblRN" viewName="XxcsoRtnRsrcFullVO1" width="100%" tableBanding="rowBanding">
+                                       <ui:contents>
+                                          <oa:column id="AccountNumberCol" width="15%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="AccountNumberColHdr" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/AccountNumberColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageLovInput id="AccountNumber" viewAttr="AccountNumber" readOnly="${oa.XxcsoRtnRsrcFullVO1.AccountNumberReadOnly}" columns="10" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso019009j/lov/webui/XxcsoAccountRtnRsrcLovRN">
+                                                   <lovMappings>
+                                                      <lovMap id="AccountNumberMap" lovItem="AccountNumber" resultTo="AccountNumber" criteriaFrom="AccountNumber"/>
+                                                      <lovMap id="PartyNameMap" lovItem="PartyName" resultTo="formPartyName"/>
+                                                      <lovMap id="TrgtResourceMap" lovItem="EmployeeNumber" resultTo="formTrgtResource" useForValidation="no"/>
+                                                      <lovMap id="TrgtRouteNoMap" lovItem="RouteNumber" resultTo="formTrgtRouteNo" useForValidation="no"/>
+                                                      <lovMap id="RtnBaseCodeMap" lovItem="RtnBaseCode" criteriaFrom="BaseCode"/>
+                                                      <lovMap id="CustAccountIdMap" resultTo="CustAccountId" lovItem="CustAccountId"/>
+                                                      <lovMap id="IsRsvMap" lovItem="IsRsv" resultTo="formIsRsv"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="PartyNameCol">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="PartyNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/PartyNameColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="PartyName" viewAttr="PartyName"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="TrgtResourceCol" width="10%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="TrgtResourceColHdr" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/TrgtResourceColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="TrgtResource" viewAttr="TrgtResource"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="TrgtRouteNoCol" width="10%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="TrgtRouteNoColHdr" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/TrgtRouteNoColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageStyledText id="TrgtRouteNo" viewAttr="TrgtRouteNo"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="NextResourceCol" width="10%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="NextResourceColHdr" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/NextResourceColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageTextInput id="NextResource" viewAttr="NextResource" maximumLength="5" columns="6"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:column id="NextRouteNoCol" width="10%">
+                                             <ui:columnHeader>
+                                                <oa:sortableHeader id="NextRouteNoColHdr" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/NextRouteNoColHdr"/>
+                                             </ui:columnHeader>
+                                             <ui:contents>
+                                                <oa:messageTextInput id="NextRouteNo" viewAttr="NextRouteNo" maximumLength="7" columns="8"/>
+                                             </ui:contents>
+                                          </oa:column>
+                                          <oa:formValue id="RsvBaseCode" viewAttr="RsvBaseCode"/>
+                                          <oa:formValue id="formPartyName" viewAttr="PartyName"/>
+                                          <oa:formValue id="CustAccountId" dataType="NUMBER" viewAttr="CustAccountId"/>
+                                          <oa:formValue id="formIsRsv" viewAttr="IsRsvFlg"/>
+                                          <oa:formValue id="formTrgtResource" viewAttr="TrgtResource"/>
+                                          <oa:formValue id="formTrgtRouteNo" viewAttr="TrgtRouteNo"/>
+                                       </ui:contents>
+                                       <ui:tableActions>
+                                          <oa:flowLayout id="ResultActionFlRN">
+                                             <ui:contents>
+                                                <oa:submitButton id="AddCustomerButton" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/AddCustomerButton" rendered="${oa.XxcsoRtnRsrcBulkUpdateInitVO1.AddCustomerButtonRender}"/>
+                                             </ui:contents>
+                                          </oa:flowLayout>
+                                       </ui:tableActions>
+                                    </oa:advancedTable>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoRtnRsrcFullVO"
+   OrderBy="sort_code, account_number"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019009j.server.XxcsoRtnRsrcFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019009j.server.XxcsoRtnRsrcFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoRtnRsrcVEO.ACCOUNT_NUMBER, 
+       XxcsoRtnRsrcVEO.CUST_ACCOUNT_ID, 
+       XxcsoRtnRsrcVEO.CREATED_BY, 
+       XxcsoRtnRsrcVEO.CREATION_DATE, 
+       XxcsoRtnRsrcVEO.LAST_UPDATED_BY, 
+       XxcsoRtnRsrcVEO.LAST_UPDATE_DATE, 
+       XxcsoRtnRsrcVEO.LAST_UPDATE_LOGIN, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO_START_DATE, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO_EXTENSION_ID, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO_LAST_UPD_DATE, 
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO, 
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO_START_DATE, 
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO_EXTENSION_ID, 
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO_LAST_UPD_DATE, 
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE, 
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_START_DATE, 
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_EXTENSION_ID, 
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_LAST_UPD_DATE, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_START_DATE, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_EXTENSION_ID, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_LAST_UPD_DATE,
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_CNT, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_CNT 
+      ,xcav.party_name
+      ,1 sort_code
+FROM XXCSO_RTN_RSRC_V XxcsoRtnRsrcVEO
+    ,xxcso_cust_accounts_v xcav
+WHERE XxcsoRtnRsrcVEO.TRGT_RESOURCE = :1
+AND   (
+       (
+        (:2 IS NOT NULL)
+        AND
+        (XxcsoRtnRsrcVEO.TRGT_ROUTE_NO = :3)
+       )
+       OR
+       (:4 IS NULL)
+      )
+AND   xcav.account_number = XxcsoRtnRsrcVEO.account_number
+AND   NVL(xcav.customer_class_code, '  ') || '-' || NVL(xcav.customer_status, '  ') IN
+        ('10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '15-99', '17-99')
+UNION ALL
+SELECT XxcsoRtnRsrcVEO.ACCOUNT_NUMBER, 
+       XxcsoRtnRsrcVEO.CUST_ACCOUNT_ID, 
+       XxcsoRtnRsrcVEO.CREATED_BY, 
+       XxcsoRtnRsrcVEO.CREATION_DATE, 
+       XxcsoRtnRsrcVEO.LAST_UPDATED_BY, 
+       XxcsoRtnRsrcVEO.LAST_UPDATE_DATE, 
+       XxcsoRtnRsrcVEO.LAST_UPDATE_LOGIN, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO_START_DATE, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO_EXTENSION_ID, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO_LAST_UPD_DATE, 
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO, 
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO_START_DATE, 
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO_EXTENSION_ID, 
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO_LAST_UPD_DATE, 
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE, 
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_START_DATE, 
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_EXTENSION_ID, 
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_LAST_UPD_DATE, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_START_DATE, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_EXTENSION_ID, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_LAST_UPD_DATE, 
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_CNT, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_CNT 
+      ,xcav.party_name
+      ,2 sort_code
+FROM XXCSO_RTN_RSRC_V XxcsoRtnRsrcVEO
+    ,xxcso_cust_accounts_v xcav
+WHERE  XxcsoRtnRsrcVEO.NEXT_RESOURCE = :5
+AND    xcav.rsv_sale_base_code = :6
+AND    xcav.rsv_sale_base_act_date >= TRUNC(xxcso_util_common_pkg.get_online_sysdate + 1)
+AND    xcav.rsv_sale_base_act_date <= TRUNC(LAST_DAY(ADD_MONTHS(xxcso_util_common_pkg.get_online_sysdate, 1)))
+AND    xcav.account_number = XxcsoRtnRsrcVEO.ACCOUNT_NUMBER
+AND    NVL(xcav.customer_class_code, '  ') || '-' || NVL(xcav.customer_status, '  ') IN
+         ('10-10', '10-20', '10-25', '10-30', '10-40', '10-50', '15-99', '17-99')
+AND   (
+       (
+        (:7 IS NOT NULL)
+        AND
+        (XxcsoRtnRsrcVEO.NEXT_ROUTE_NO = :8)
+       )
+       OR
+       (:9 IS NULL)
+      )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoRtnRsrcVEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoRtnRsrcVEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="AccountNumber"
+      IsNotNull="true"
+      Precision="30"
+      EntityAttrName="AccountNumber"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="ACCOUNT_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustAccountId"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CustAccountId"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="CUST_ACCOUNT_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TrgtRouteNo"
+      Precision="7"
+      EntityAttrName="TrgtRouteNo"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="TRGT_ROUTE_NO" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TrgtRouteNoStartDate"
+      EntityAttrName="TrgtRouteNoStartDate"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="TRGT_ROUTE_NO_START_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TrgtRouteNoExtensionId"
+      EntityAttrName="TrgtRouteNoExtensionId"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="TRGT_ROUTE_NO_EXTENSION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TrgtRouteNoLastUpdDate"
+      EntityAttrName="TrgtRouteNoLastUpdDate"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="TRGT_ROUTE_NO_LAST_UPD_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextRouteNo"
+      Precision="7"
+      EntityAttrName="NextRouteNo"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="NEXT_ROUTE_NO" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextRouteNoStartDate"
+      EntityAttrName="NextRouteNoStartDate"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="NEXT_ROUTE_NO_START_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextRouteNoExtensionId"
+      EntityAttrName="NextRouteNoExtensionId"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="NEXT_ROUTE_NO_EXTENSION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextRouteNoLastUpdDate"
+      EntityAttrName="NextRouteNoLastUpdDate"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="NEXT_ROUTE_NO_LAST_UPD_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TrgtResource"
+      Precision="5"
+      EntityAttrName="TrgtResource"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="TRGT_RESOURCE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TrgtResourceStartDate"
+      EntityAttrName="TrgtResourceStartDate"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="TRGT_RESOURCE_START_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TrgtResourceExtensionId"
+      EntityAttrName="TrgtResourceExtensionId"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="TRGT_RESOURCE_EXTENSION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TrgtResourceLastUpdDate"
+      EntityAttrName="TrgtResourceLastUpdDate"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="TRGT_RESOURCE_LAST_UPD_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextResource"
+      Precision="5"
+      EntityAttrName="NextResource"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="NEXT_RESOURCE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextResourceStartDate"
+      EntityAttrName="NextResourceStartDate"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="NEXT_RESOURCE_START_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextResourceExtensionId"
+      EntityAttrName="NextResourceExtensionId"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="NEXT_RESOURCE_EXTENSION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextResourceLastUpdDate"
+      EntityAttrName="NextResourceLastUpdDate"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="NEXT_RESOURCE_LAST_UPD_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TrgtResourceCnt"
+      EntityAttrName="TrgtResourceCnt"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="TRGT_RESOURCE_CNT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextResourceCnt"
+      EntityAttrName="NextResourceCnt"
+      EntityUsage="XxcsoRtnRsrcVEO"
+      AliasName="NEXT_RESOURCE_CNT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RsvBaseCode"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AccountNumberReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IsRsvFlg"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyName"
+      IsPersistent="false"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PARTY_NAME"
+      Expression="PARTY_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SortCode"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="SORT_CODE"
+      Expression="SORT_CODE"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+</ViewObject>

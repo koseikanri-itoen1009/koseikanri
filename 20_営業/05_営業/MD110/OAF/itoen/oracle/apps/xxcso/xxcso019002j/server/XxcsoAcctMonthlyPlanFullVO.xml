@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoAcctMonthlyPlanFullVO"
+   OrderBy="industry_div, sort_amt DESC, account_number"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019002j.server.XxcsoAcctMonthlyPlanFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019002j.server.XxcsoAcctMonthlyPlanFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xxcsoacctmonthlyplansveo.base_code
+      ,xxcsoacctmonthlyplansveo.account_number
+      ,xxcsoacctmonthlyplansveo.year_month
+      ,xxcsoacctmonthlyplansveo.target_account_sales_plan_id
+      ,xxcsoacctmonthlyplansveo.target_month_sales_plan_amt
+      ,xxcsoacctmonthlyplansveo.target_year_month
+      ,xxcsoacctmonthlyplansveo.target_month_last_upd_date
+      ,xxcsoacctmonthlyplansveo.next_account_sales_plan_id
+      ,xxcsoacctmonthlyplansveo.next_month_sales_plan_amt
+      ,xxcsoacctmonthlyplansveo.next_year_month
+      ,xxcsoacctmonthlyplansveo.next_month_last_upd_date
+      ,xxcsoacctmonthlyplansveo.created_by
+      ,xxcsoacctmonthlyplansveo.creation_date
+      ,xxcsoacctmonthlyplansveo.last_updated_by
+      ,xxcsoacctmonthlyplansveo.last_update_date
+      ,xxcsoacctmonthlyplansveo.last_update_login
+      ,xcav.party_id
+      ,xcav.party_name
+      ,xcav.industry_div
+      ,xcav.vist_target_div
+      ,xcrv.employee_number AS next_employee_number
+      ,xcrv1.route_number AS target_route_number
+      ,xcrv2.route_number AS next_route_number
+      ,NVL(
+         TO_NUMBER(
+           xxcsoacctmonthlyplansveo.target_month_sales_plan_amt
+          ,'FM9G999G990'
+         )
+        ,0
+       ) AS sort_amt
+  FROM xxcso_acct_monthly_plans_v xxcsoacctmonthlyplansveo
+      ,xxcso_cust_accounts_v xcav
+      ,xxcso_cust_resources_v xcrv
+      ,xxcso_cust_routes_v xcrv1
+      ,xxcso_cust_routes_v xcrv2
+ WHERE xxcsoacctmonthlyplansveo.base_code       = :1
+   AND xxcsoacctmonthlyplansveo.year_month      = :2
+   AND xxcsoacctmonthlyplansveo.account_number  = xcav.account_number
+   AND xxcsoacctmonthlyplansveo.employee_number = :3
+   AND NVL(xcav.customer_class_code, '  ') || '-' || NVL(xcav.customer_status, '  ') IN
+         ('10-25', '10-30', '10-40', '10-50', '15-99', '17-99')
+   AND xcrv.account_number(+)                   = xxcsoacctmonthlyplansveo.account_number
+   AND xcrv.employee_number(+)                  = xxcsoacctmonthlyplansveo.employee_number
+   AND TRUNC(
+         xcrv.start_date_active(+)
+        ,'MM'
+       ) <= TO_DATE(xxcsoacctmonthlyplansveo.next_year_month, 'YYYYMM')
+   AND TRUNC(
+         NVL(xcrv.end_date_active(+)
+            ,TO_DATE(xxcsoacctmonthlyplansveo.next_year_month
+                    ,'YYYYMM'
+             )
+         )
+        ,'MM'
+       ) >= TO_DATE(xxcsoacctmonthlyplansveo.next_year_month, 'YYYYMM')
+   AND xcrv1.account_number(+)                   = xxcsoacctmonthlyplansveo.account_number
+   AND TRUNC(
+         xcrv1.start_date_active(+)
+        ,'MM'
+       ) <= TO_DATE(xxcsoacctmonthlyplansveo.target_year_month, 'YYYYMM')
+   AND TRUNC(
+         NVL(xcrv1.end_date_active(+)
+            ,TO_DATE(xxcsoacctmonthlyplansveo.target_year_month
+                    ,'YYYYMM'
+             )
+         )
+        ,'MM'
+       ) >= TO_DATE(xxcsoacctmonthlyplansveo.target_year_month, 'YYYYMM')
+   AND xcrv2.account_number(+)                   = xxcsoacctmonthlyplansveo.account_number
+   AND TRUNC(
+         xcrv2.start_date_active(+)
+        ,'MM'
+       ) <= TO_DATE(xxcsoacctmonthlyplansveo.next_year_month, 'YYYYMM')
+   AND TRUNC(
+         NVL(xcrv2.end_date_active(+)
+            ,TO_DATE(xxcsoacctmonthlyplansveo.next_year_month
+                    ,'YYYYMM'
+             )
+         )
+        ,'MM'
+       ) >= TO_DATE(xxcsoacctmonthlyplansveo.next_year_month, 'YYYYMM')
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoAcctMonthlyPlansVEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoAcctMonthlyPlansVEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="BaseCode"
+      Precision="4"
+      EntityAttrName="BaseCode"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="BASE_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AccountNumber"
+      Precision="9"
+      EntityAttrName="AccountNumber"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="ACCOUNT_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="YearMonth"
+      Precision="6"
+      EntityAttrName="YearMonth"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="YEAR_MONTH" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetAccountSalesPlanId"
+      EntityAttrName="TargetAccountSalesPlanId"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="TARGET_ACCOUNT_SALES_PLAN_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetMonthSalesPlanAmt"
+      Precision="9"
+      EntityAttrName="TargetMonthSalesPlanAmt"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="TARGET_MONTH_SALES_PLAN_AMT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetYearMonth"
+      Precision="6"
+      EntityAttrName="TargetYearMonth"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="TARGET_YEAR_MONTH" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetMonthLastUpdDate"
+      EntityAttrName="TargetMonthLastUpdDate"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="TARGET_MONTH_LAST_UPD_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextAccountSalesPlanId"
+      EntityAttrName="NextAccountSalesPlanId"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="NEXT_ACCOUNT_SALES_PLAN_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextMonthSalesPlanAmt"
+      Precision="9"
+      EntityAttrName="NextMonthSalesPlanAmt"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="NEXT_MONTH_SALES_PLAN_AMT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextYearMonth"
+      Precision="6"
+      EntityAttrName="NextYearMonth"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="NEXT_YEAR_MONTH" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextMonthLastUpdDate"
+      EntityAttrName="NextMonthLastUpdDate"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="NEXT_MONTH_LAST_UPD_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoAcctMonthlyPlansVEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyId"
+      IsPersistent="false"
+      Precision="15"
+      Scale="0"
+      Type="java.lang.String"
+      ColumnType="NUMBER"
+      AliasName="PARTY_ID"
+      Expression="PARTY_ID"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PartyName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PARTY_NAME"
+      Expression="PARTY_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IndustryDiv"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INDUSTRY_DIV"
+      Expression="INDUSTRY_DIV"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VistTargetDiv"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIST_TARGET_DIV"
+      Expression="VIST_TARGET_DIV"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextEmployeeNumber"
+      IsPersistent="false"
+      Precision="5"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NEXT_EMPLOYEE_NUMBER"
+      Expression="NEXT_EMPLOYEE_NUMBER"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetRouteNumber"
+      IsPersistent="false"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TARGET_ROUTE_NUMBER"
+      Expression="TARGET_ROUTE_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NextRouteNumber"
+      IsPersistent="false"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NEXT_ROUTE_NUMBER"
+      Expression="NEXT_ROUTE_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SortAmt"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="SORT_AMT"
+      Expression="SORT_AMT"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

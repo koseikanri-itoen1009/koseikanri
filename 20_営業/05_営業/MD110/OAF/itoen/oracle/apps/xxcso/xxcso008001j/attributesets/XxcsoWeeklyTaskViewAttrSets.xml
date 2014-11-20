@@ -1,0 +1,32 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--**注意
+* KROWN:124532により、1ファイルが32Kバイトを超えないようにしてください。
+* 超えてしまう場合は、ファイルを分割してください。
+
+詳細
+週次活動状況照会画面用の属性セットファイルです。
+
+修正履歴
+2008/12/27  柳平直人        新規作成-->
+<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <attributeSet docName="PageLayoutRN" windowTitle="週次活動状況照会" title="週次活動状況照会"/>
+   <attributeSet docName="BackButton" text="戻る" prompt="戻る"/>
+   <attributeSet docName="CsvDwnHdrRN" text="CSVダウンロード"/>
+   <attributeSet docName="CsvDwnTblRN" shortDesc="CSVダウンロード"/>
+   <attributeSet docName="FileNameDwn" prompt="ファイル名"/>
+   <attributeSet docName="TaskAppHdrRN" text="スケジュール指定"/>
+   <attributeSet docName="DateSch" prompt="日付"/>
+   <attributeSet docName="BaseName" prompt="部署"/>
+   <attributeSet docName="ForwardButton" text="進む" prompt="進む"/>
+   <attributeSet docName="CsvCreateButton" text="CSV作成" prompt="CSV作成"/>
+   <attributeSet docName="EmployeeSelectHdrRN" text="担当者選択"/>
+   <attributeSet docName="PositionNameColHdr" prompt="職位"/>
+   <attributeSet docName="FullNameColHdr" prompt="担当者名"/>
+   <attributeSet docName="ShowButton" text="表示" prompt="表示"/>
+   <attributeSet docName="SelectChkBox" text="選択"/>
+   <attributeSet docName="TaskHdrRN" text="スケジュール"/>
+   <attributeSet docName="TaskDateColHdr" prompt="日付"/>
+   <attributeSet docName="TaskPlanOrResultColHdr" prompt="予定／実績"/>
+   <attributeSet docName="TaskDescriptionColHdr" prompt="詳細"/>
+</package>

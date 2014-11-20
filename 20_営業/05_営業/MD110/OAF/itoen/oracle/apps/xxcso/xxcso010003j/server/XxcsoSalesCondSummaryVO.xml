@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSalesCondSummaryVO"
+   OrderBy="sp_decision_line_id"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoSalesCondSummaryVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoSalesCondSummaryVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT  xsdl.sp_decision_line_id
+       ,TO_CHAR(xsdl.fixed_price, 'FM999G999G999G999G990') fixed_price
+       ,TO_CHAR(xsdl.sales_price, 'FM999G999G999G999G990') sales_price
+       ,TO_CHAR(xsdl.bm_rate_per_sales_price, 'FM999G999G999G999G990D90') bm_rate_per_sales_price
+       ,TO_CHAR(xsdl.bm_amount_per_sales_price, 'FM999G999G999G999G990D90') bm_amount_per_sales_price
+       ,TO_CHAR(xsdl.bm_conv_rate_per_sales_price, 'FM999G999G999G999G990D90') bm_conv_rate_per_sales_price
+       ,TO_CHAR(xsdl.bm1_bm_rate, 'FM999G999G999G999G990D90') bm1_bm_rate
+       ,TO_CHAR(xsdl.bm1_bm_amount, 'FM999G999G999G999G990D90') bm1_bm_amount
+       ,TO_CHAR(xsdl.bm2_bm_rate, 'FM999G999G999G999G990D90') bm2_bm_rate
+       ,TO_CHAR(xsdl.bm2_bm_amount, 'FM999G999G999G999G990D90') bm2_bm_amount
+       ,TO_CHAR(xsdl.bm3_bm_rate, 'FM999G999G999G999G990D90') bm3_bm_rate
+       ,TO_CHAR(xsdl.bm3_bm_amount, 'FM999G999G999G999G990D90') bm3_bm_amount
+FROM    xxcso_sp_decision_lines xsdl
+WHERE   xsdl.sp_decision_header_id = :1
+AND     xsdl.sp_container_type IS NULL
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="SpDecisionLineId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="SP_DECISION_LINE_ID"
+      Expression="SP_DECISION_LINE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FixedPrice"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FIXED_PRICE"
+      Expression="FIXED_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesPrice"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SALES_PRICE"
+      Expression="SALES_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmRatePerSalesPrice"
+      IsPersistent="false"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM_RATE_PER_SALES_PRICE"
+      Expression="BM_RATE_PER_SALES_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmAmountPerSalesPrice"
+      IsPersistent="false"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM_AMOUNT_PER_SALES_PRICE"
+      Expression="BM_AMOUNT_PER_SALES_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="9" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmConvRatePerSalesPrice"
+      IsPersistent="false"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM_CONV_RATE_PER_SALES_PRICE"
+      Expression="BM_CONV_RATE_PER_SALES_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1BmRate"
+      IsPersistent="false"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM1_BM_RATE"
+      Expression="BM1_BM_RATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1BmAmount"
+      IsPersistent="false"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM1_BM_AMOUNT"
+      Expression="BM1_BM_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm2BmRate"
+      IsPersistent="false"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM2_BM_RATE"
+      Expression="BM2_BM_RATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm2BmAmount"
+      IsPersistent="false"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM2_BM_AMOUNT"
+      Expression="BM2_BM_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm3BmRate"
+      IsPersistent="false"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM3_BM_RATE"
+      Expression="BM3_BM_RATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm3BmAmount"
+      IsPersistent="false"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM3_BM_AMOUNT"
+      Expression="BM3_BM_AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="SpDecisionLineId" />
+   </AttrArray>
+</ViewObject>

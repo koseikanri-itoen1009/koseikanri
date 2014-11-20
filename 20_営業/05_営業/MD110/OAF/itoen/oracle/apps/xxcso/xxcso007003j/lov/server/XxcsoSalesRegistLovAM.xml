@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoSalesRegistLovAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoSalesRegistLovAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoInventoryItemLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoInventoryItemLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoNotifyUserLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoNotifyUserLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQuoteItemLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoQuoteItemLovVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoApprovalUserLovVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoApprovalUserLovVO" >
+   </ViewUsage>
+</AppModule>

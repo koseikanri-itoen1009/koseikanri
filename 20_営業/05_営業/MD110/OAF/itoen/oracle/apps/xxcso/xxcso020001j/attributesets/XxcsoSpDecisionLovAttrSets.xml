@@ -1,0 +1,46 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--** KROWN:124532により、1ファイルが32Kバイトを超えないようにしてください。
+* 超えてしまう場合は、ファイルを分割してください。
+
+詳細
+フルベンダー用SP専決画面LOV用の属性セットファイルです。
+
+修正履歴
+2008/12/22  小川浩        新規作成-->
+<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <attributeSet docName="AccountNumber" prompt="顧客コード"/>
+   <attributeSet docName="PartyName" prompt="顧客名"/>
+   <attributeSet docName="PostalCode" prompt="郵便番号"/>
+   <attributeSet docName="State" prompt="都道府県"/>
+   <attributeSet docName="City" prompt="市・区"/>
+   <attributeSet docName="Address1" prompt="住所1"/>
+   <attributeSet docName="Address2" prompt="住所2"/>
+   <attributeSet docName="PhoneNumber" prompt="電話番号"/>
+   <attributeSet docName="EmployeeNumber" prompt="従業員番号"/>
+   <attributeSet docName="EmployeeName" prompt="従業員氏名"/>
+   <attributeSet docName="BaseCode" prompt="拠点コード"/>
+   <attributeSet docName="BaseShortName" prompt="拠点名（略称）"/>
+   <attributeSet docName="BaseName" prompt="拠点名"/>
+   <attributeSet docName="VendorNumber" prompt="送付先コード"/>
+   <attributeSet docName="ContractNumber" prompt="契約先コード"/>
+   <attributeSet docName="ContractName" prompt="契約先名"/>
+   <attributeSet docName="VendorName" prompt="送付先名"/>
+   <attributeSet docName="BankName" prompt="銀行名"/>
+   <attributeSet docName="BankBranchName" prompt="支店名"/>
+   <attributeSet docName="BankAccountTypeName" prompt="預金種別"/>
+   <attributeSet docName="BankAccountNum" prompt="預金種別"/>
+   <attributeSet docName="AccountHolderName" prompt="口座名義人"/>
+   <attributeSet docName="UnNumber" prompt="機種コード"/>
+   <attributeSet docName="SeleNumber" prompt="セレ数"/>
+   <attributeSet docName="AccountTblRN" shortDesc="顧客選択"/>
+   <attributeSet docName="ApplyUserTblRN" shortDesc="申請者選択"/>
+   <attributeSet docName="ContractTblRN" shortDesc="契約先選択"/>
+   <attributeSet docName="PublishTblRN" shortDesc="担当拠点選択"/>
+   <attributeSet docName="VendorTblRN" shortDesc="送付先選択"/>
+   <attributeSet docName="ApproveCodeTblRN" shortDesc="回送先選択"/>
+   <attributeSet docName="VendorModelTblRN" shortDesc="機種選択"/>
+   <attributeSet docName="OtherContentTblRN" shortDesc="特約事項選択"/>
+   <attributeSet docName="Description" prompt="摘要"/>
+   <attributeSet docName="OtherContent" prompt="メッセージテキスト"/>
+</package>

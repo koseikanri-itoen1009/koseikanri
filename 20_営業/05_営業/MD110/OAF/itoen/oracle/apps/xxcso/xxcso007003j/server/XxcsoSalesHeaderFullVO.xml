@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSalesHeaderFullVO"
+   SelectList="XxcsoSalesHeadersEO.SALES_HEADER_ID, 
+       XxcsoSalesHeadersEO.LEAD_ID, 
+
+       XxcsoSalesHeadersEO.OTHER_CONTENT, 
+       XxcsoSalesHeadersEO.CREATED_BY, 
+
+       XxcsoSalesHeadersEO.CREATION_DATE, 
+       XxcsoSalesHeadersEO.LAST_UPDATED_BY, 
+
+       XxcsoSalesHeadersEO.LAST_UPDATE_DATE, 
+       XxcsoSalesHeadersEO.LAST_UPDATE_LOGIN, 
+
+       XxcsoSalesHeadersEO.REQUEST_ID, 
+       XxcsoSalesHeadersEO.PROGRAM_APPLICATION_ID, 
+
+       XxcsoSalesHeadersEO.PROGRAM_ID, 
+       XxcsoSalesHeadersEO.PROGRAM_UPDATE_DATE"
+   FromList="XXCSO_SALES_HEADERS XxcsoSalesHeadersEO"
+   Where="XxcsoSalesHeadersEO.lead_id = :1"
+   BindingStyle="Oracle"
+   CustomQuery="false"
+   RowClass="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesHeaderFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesHeaderFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoSalesHeadersEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSalesHeadersEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="true" />
+         <Attr Name="_queryWhere" Value="XxcsoSalesHeadersEO.lead_id = :1" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="SalesHeaderId"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="SalesHeaderId"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="SALES_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeadId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LeadId"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="LEAD_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OtherContent"
+      Precision="2000"
+      EntityAttrName="OtherContent"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="OTHER_CONTENT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoSalesHeadersEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewLinkAccessor
+      Name="XxcsoSalesLineFullVO"
+      ViewLink="itoen.oracle.apps.xxcso.xxcso007003j.server.XxcsoSalesHeaderLineVL"
+      Type="oracle.jbo.RowIterator"
+      IsUpdateable="false" >
+   </ViewLinkAccessor>
+</ViewObject>

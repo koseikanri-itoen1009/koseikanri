@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoInstallBaseViewColumnVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBaseViewColumnVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoInstallBaseViewColumnVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT   XXCSO_UTIL_COMMON_PKG.get_lookup_attribute(
+           'XXCSO1_IB_PV_COLUMN_DEF'
+          ,xpvcd.column_code
+          ,7
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         ) AS view_column_id
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_description(
+           'XXCSO1_IB_PV_COLUMN_DEF'
+          ,xpvcd.column_code
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         ) AS view_column_name
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_meaning(
+           'XXCSO1_IB_PV_COLUMN_DEF'
+          ,xpvcd.column_code
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         ) AS view_column_attribute_name
+        ,XXCSO_UTIL_COMMON_PKG.get_lookup_attribute(
+           'XXCSO1_IB_PV_COLUMN_DEF'
+          ,xpvcd.column_code
+          ,4
+          ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+         ) AS view_data_type
+        ,SUBSTRB(
+           XXCSO_UTIL_COMMON_PKG.get_lookup_attribute(
+             'XXCSO1_IB_PV_COLUMN_DEF'
+            ,xpvcd.column_code
+            ,1
+            ,XXCSO_UTIL_COMMON_PKG.get_online_sysdate
+           )
+         , :1, 1) AS enable_flag
+FROM     xxcso_pv_view_column_def xpvcd
+WHERE    xpvcd.view_id = :2
+ORDER BY xpvcd.setup_number
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="ViewColumnId"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_COLUMN_ID"
+      Passivate="true"
+      Expression="VIEW_COLUMN_ID"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ViewColumnName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_COLUMN_NAME"
+      Passivate="true"
+      Expression="VIEW_COLUMN_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ViewColumnAttributeName"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_COLUMN_ATTRIBUTE_NAME"
+      Passivate="true"
+      Expression="VIEW_COLUMN_ATTRIBUTE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ViewDataType"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_DATA_TYPE"
+      Passivate="true"
+      Expression="VIEW_DATA_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EnableFlag"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ENABLE_FLAG"
+      Passivate="true"
+      Expression="ENABLE_FLAG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

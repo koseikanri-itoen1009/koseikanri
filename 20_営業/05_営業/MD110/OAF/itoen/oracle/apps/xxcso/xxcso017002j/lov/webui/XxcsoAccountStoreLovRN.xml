@@ -1,0 +1,25 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Search customer information LOV region by shared for quote for sales.
+
+@see itoen.oracle.apps.xxcso.xxcso017002j.lov.server.XxcsoQuoteStoreRegistLovAM.xml
+@see itoen.oracle.apps.xxcso.xxcso017002j.lov.server.XxcsoQuoteStoreRegistLovAM.java
+
+HISTORY
+2009/01/15  R.Oikawa        new-->
+<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" amDefName="itoen.oracle.apps.xxcso.xxcso017002j.lov.server.XxcsoQuoteStoreRegistLovAM" advancedSearchAllowed="true">
+   <ui:contents>
+      <oa:table name="XxcsoAccountStoreLovRN" id="XxcsoAccountStoreTIRN" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/XxcsoAccountStoreTIRN">
+         <ui:contents>
+            <oa:messageStyledText id="AccountNumber" dataType="VARCHAR2" viewName="XxcsoAccountStoreLovVO1" viewAttr="AccountNumber" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/AccountNumber" queryable="true"/>
+            <oa:messageStyledText id="PartyName" dataType="VARCHAR2" viewName="XxcsoAccountStoreLovVO1" viewAttr="PartyName" maximumLength="360" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/PartyName" queryable="true"/>
+            <oa:formValue id="CustomerClassName" dataType="VARCHAR2" prompt="CustomerClassName" viewName="XxcsoAccountStoreLovVO1" viewAttr="CustomerClassName"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>

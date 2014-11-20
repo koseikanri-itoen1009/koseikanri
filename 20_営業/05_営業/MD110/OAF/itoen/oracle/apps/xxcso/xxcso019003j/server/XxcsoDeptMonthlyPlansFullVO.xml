@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoDeptMonthlyPlansFullVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoDeptMonthlyPlansFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoDeptMonthlyPlansFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoDeptMonthlyPlansVEO.BASE_CODE, 
+       XxcsoDeptMonthlyPlansVEO.TARGET_YEAR, 
+       XxcsoDeptMonthlyPlansVEO.TARGET_MONTH, 
+       XxcsoDeptMonthlyPlansVEO.DEPT_MONTHLY_PLAN_ID, 
+       XxcsoDeptMonthlyPlansVEO.SALES_PLAN_REL_DIV, 
+       XxcsoDeptMonthlyPlansVEO.CREATED_BY, 
+       XxcsoDeptMonthlyPlansVEO.CREATION_DATE, 
+       XxcsoDeptMonthlyPlansVEO.LAST_UPDATED_BY, 
+       XxcsoDeptMonthlyPlansVEO.LAST_UPDATE_DATE, 
+       XxcsoDeptMonthlyPlansVEO.LAST_UPDATE_LOGIN, 
+       XxcsoDeptMonthlyPlansVEO.BASE_NAME
+FROM XXCSO_DEPT_MONTHLY_PLANS_V XxcsoDeptMonthlyPlansVEO
+WHERE XxcsoDeptMonthlyPlansVEO.BASE_CODE = :1
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoDeptMonthlyPlansVEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDeptMonthlyPlansVEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="BaseCode"
+      IsNotNull="true"
+      Precision="150"
+      EntityAttrName="BaseCode"
+      EntityUsage="XxcsoDeptMonthlyPlansVEO"
+      AliasName="BASE_CODE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetYear"
+      Precision="4"
+      EntityAttrName="TargetYear"
+      EntityUsage="XxcsoDeptMonthlyPlansVEO"
+      AliasName="TARGET_YEAR"
+      Passivate="true" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TargetMonth"
+      Precision="2"
+      EntityAttrName="TargetMonth"
+      EntityUsage="XxcsoDeptMonthlyPlansVEO"
+      AliasName="TARGET_MONTH" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeptMonthlyPlanId"
+      EntityAttrName="DeptMonthlyPlanId"
+      EntityUsage="XxcsoDeptMonthlyPlansVEO"
+      AliasName="DEPT_MONTHLY_PLAN_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SalesPlanRelDiv"
+      Precision="1"
+      EntityAttrName="SalesPlanRelDiv"
+      EntityUsage="XxcsoDeptMonthlyPlansVEO"
+      AliasName="SALES_PLAN_REL_DIV" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoDeptMonthlyPlansVEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoDeptMonthlyPlansVEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoDeptMonthlyPlansVEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoDeptMonthlyPlansVEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoDeptMonthlyPlansVEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseName"
+      Precision="240"
+      EntityAttrName="BaseName"
+      EntityUsage="XxcsoDeptMonthlyPlansVEO"
+      AliasName="BASE_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Title"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="Title"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="YearAttrReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="YEARATTRREADONLY"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MonthAttrReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="MONTHATTRREADONLY"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
+</ViewObject>

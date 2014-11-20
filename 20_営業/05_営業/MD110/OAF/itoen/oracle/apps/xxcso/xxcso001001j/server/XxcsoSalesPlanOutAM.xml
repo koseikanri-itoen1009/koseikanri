@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxcsoSalesPlanOutAM"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso001001j.server.XxcsoSalesPlanOutAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="XxcsoCreateBasePlanCsvVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso001001j.server.XxcsoCreateBasePlanCsvVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoCreateSalesPersonCsvVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso001001j.server.XxcsoCreateSalesPersonCsvVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoCsvDownVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso001001j.server.XxcsoCsvDownVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSalesPlanSearchVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso001001j.server.XxcsoSalesPlanSearchVO" >
+   </ViewUsage>
+</AppModule>

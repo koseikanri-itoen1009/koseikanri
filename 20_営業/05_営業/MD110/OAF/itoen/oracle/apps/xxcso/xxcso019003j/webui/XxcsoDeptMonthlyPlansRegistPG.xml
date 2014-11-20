@@ -1,0 +1,93 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" windowTitle="売上計画の選択" title="売上計画の選択" controllerClass="itoen.oracle.apps.xxcso.xxcso019003j.webui.XxcsoDeptMonthlyPlansRegistCO" amDefName="itoen.oracle.apps.xxcso.xxcso019003j.server.XxcsoDeptMonthlyPlansRegistAM">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:tableLayout id="PageButtonTlRN" width="100%">
+                     <ui:contents>
+                        <oa:rowLayout id="PageButtonRlRN01" width="100%">
+                           <ui:contents>
+                              <oa:cellFormat id="PageButtonCfRN0101">
+                                 <ui:contents>
+                                    <oa:submitButton id="CancelButton" text="取消" prompt="取消"/>
+                                    <oa:submitButton id="ApplicableButton" text="適用" prompt="適用"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:tableLayout>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:header id="DeptHdrRN" text="拠点">
+                     <ui:contents>
+                        <oa:rowLayout id="DeptRlRN" width="60%">
+                           <ui:contents>
+                              <oa:cellFormat id="DeptCfRN01" width="10%">
+                                 <ui:contents>
+                                    <oa:messageComponentLayout id="DeptMclRN01">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="BaseCode" dataType="VARCHAR2" viewName="XxcsoDeptMonthlyPlansInitVO1" viewAttr="WorkBaseCode" maximumLength="4" styleClass="OraDataText" prompt="拠点コード"/>
+                                       </ui:contents>
+                                    </oa:messageComponentLayout>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="DeptCfRN02" width="50%">
+                                 <ui:contents>
+                                    <oa:messageComponentLayout id="DeptMclRN02">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="BaseName" dataType="VARCHAR2" viewName="XxcsoDeptMonthlyPlansInitVO1" viewAttr="WorkBaseName" maximumLength="4000" styleClass="OraDataText" prompt="拠点名"/>
+                                       </ui:contents>
+                                    </oa:messageComponentLayout>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                           </ui:contents>
+                        </oa:rowLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="PlansHdrRN" text="計画選択">
+                     <ui:contents>
+                        <oa:advancedTable id="PlansAdvTblRN" tableBanding="rowBanding" width="27%" viewName="XxcsoDeptMonthlyPlansFullVO1" rowHeaderViewAttr="Title">
+                           <ui:contents>
+                              <oa:column id="TargetYearCol" cellNoWrapFormat="true" width="7%">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="TargetYearColHdr" cellNoWrapFormat="true" prompt="年"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageChoice id="TargetYear" dataType="VARCHAR2" viewAttr="TargetYear" pickListViewName="XxcsoYearListVO1" pickListValAttr="YearDate" pickListDispAttr="YearName" required="yes" readOnly="${oa.XxcsoDeptMonthlyPlansFullVO1.YearAttrReadOnly}"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="TargetMonthCol" cellNoWrapFormat="true" width="5%">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="TargetMonthColHdr" cellNoWrapFormat="true" prompt="月"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageChoice id="TargetMonth" dataType="VARCHAR2" viewAttr="TargetMonth" pickListViewName="XxcsoMonthListVO1" pickListDispAttr="MonthName" pickListValAttr="MonthDate" required="yes" readOnly="${oa.XxcsoDeptMonthlyPlansFullVO1.MonthAttrReadOnly}"/>
+                                 </ui:contents>
+                              </oa:column>
+                              <oa:column id="SalesPlanRelDivCol" cellNoWrapFormat="true" width="8%">
+                                 <ui:columnHeader>
+                                    <oa:sortableHeader id="SalesPlanRelDivColHdr" cellNoWrapFormat="true" prompt="計画"/>
+                                 </ui:columnHeader>
+                                 <ui:contents>
+                                    <oa:messageChoice id="SalesPlanRelDiv" dataType="VARCHAR2" viewAttr="SalesPlanRelDiv" pickListViewName="XxcsoSalesPlanRelDivLookupVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" required="yes"/>
+                                 </ui:contents>
+                              </oa:column>
+                           </ui:contents>
+                        </oa:advancedTable>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

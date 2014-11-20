@@ -1,0 +1,135 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <!--**Attention
+* For KROWN:124532, You must not use multi-byte character in this file.
+* If you use it example prompt, use attributesets.
+
+DESCRIPTION
+Parsonaraize View displayed in the view name of the screen is controlled.
+
+@see itoen.oracle.apps.xxcso.xxcso012001j.webui.XxcsoPvSearchCO.java
+@see itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvSearchAM.xml
+@see itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvSearchAM.java
+
+HISTORY 2008/12/27  N.Yanagitaira        Initialcode drop.-->
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso012001j.server.XxcsoPvSearchAM" controllerClass="itoen.oracle.apps.xxcso.xxcso012001j.webui.XxcsoPvSearchCO" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/PageLayoutRN">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="CancelButton" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/CancelButton"/>
+                  <oa:submitButton id="ApplicationButton" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/ApplicationButton"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:stackLayout id="MainSlRN">
+               <ui:contents>
+                  <oa:staticStyledText id="DisplayMassage" messageName="APP-XXCSO1-00334" messageAppShortName="XXCSO" styleClass="OraInstructionText"/>
+                  <oa:advancedTable id="SelectViewAdvTblRN" width="100%" viewName="PvDefFullVO" tableBanding="rowBanding">
+                     <ui:contents>
+                        <oa:column id="ViewNameCol" width="25%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ViewNameColHdr" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/ViewNameColHdr"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="ViewName" viewAttr="ViewName"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="DescriptionCol" width="30%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="DescriptionColHdr" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/DescriptionColHdr"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageStyledText id="Description" viewAttr="Description"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="ViewOpenCodeCol" width="15%">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="ViewOpenCodeColHdr" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/ViewOpenCodeColHdr"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageChoice id="ViewOpenCode" pickListViewName="ViewDispLookupVO" pickListDispAttr="Description" pickListValAttr="LookupCode" viewAttr="ViewOpenCode" allowBlankValue="false" disabled="${oa.PvDefFullVO.SeedDataFlag}"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="DefaultFlagCol" width="10%" columnDataFormat="iconButtonFormat">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="DefaultFlagColHdr" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/DefaultFlagColHdr"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:switcher id="DefaultFlagSwitcherRN" viewAttr="DefaultFlagSwitcher">
+                                 <ui:case name="DefaultFlag">
+                                    <oa:image id="DefaultFlag" source="default_status.gif" imageHeight="25" imageWidth="25" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/DefaultFlag"/>
+                                 </ui:case>
+                              </oa:switcher>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="UpdateIconCol" width="10%" columnDataFormat="iconButtonFormat">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="UpdateIconColHdr" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/UpdateIconColHdr"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:switcher id="UpdateEnabledSwitcherRN" viewAttr="UpdateEnableSwitcher">
+                                 <ui:case name="UpdateEnabled">
+                                    <oa:image id="UpdateEnabled" source="updateicon_enabled.gif" imageHeight="25" imageWidth="25" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/UpdateEnabled">
+                                       <ui:primaryClientAction>
+                                          <ui:fireAction event="UpdateIconClick" formSubmitted="true">
+                                             <ui:parameters>
+                                                <ui:parameter key="SelectedViewId" value="${oa.PvDefFullVO.ViewId}"/>
+                                             </ui:parameters>
+                                          </ui:fireAction>
+                                       </ui:primaryClientAction>
+                                    </oa:image>
+                                 </ui:case>
+                                 <ui:case name="UpdateDisabled">
+                                    <oa:image id="UpdateDisabled" source="updateicon_disabled.gif" imageHeight="25" imageWidth="25" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/UpdateDisabled"/>
+                                 </ui:case>
+                              </oa:switcher>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="DeleteIconCol" width="10%" columnDataFormat="iconButtonFormat">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="DeleteIconColHdr" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/DeleteIconColHdr"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:switcher id="DeleteEnabledSwitcherRN" viewAttr="DeleteEnableSwitcher">
+                                 <ui:case name="DeleteEnabled">
+                                    <oa:image id="DeleteEnabled" source="deleteicon_enabled.gif" imageHeight="25" imageWidth="25" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/DeleteEnabled">
+                                       <ui:primaryClientAction>
+                                          <ui:fireAction event="DeleteIconClick">
+                                             <ui:parameters>
+                                                <ui:parameter key="SelectedViewId" value="${oa.PvDefFullVO.ViewId}"/>
+                                                <ui:parameter key="SelectedViewName" value="${oa.PvDefFullVO.ViewName}"/>
+                                             </ui:parameters>
+                                          </ui:fireAction>
+                                       </ui:primaryClientAction>
+                                    </oa:image>
+                                 </ui:case>
+                                 <ui:case name="DeleteDisabled">
+                                    <oa:image id="DeleteDisabled" source="deleteicon_disabled.gif" imageHeight="25" imageWidth="25" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/DeleteDisabled"/>
+                                 </ui:case>
+                              </oa:switcher>
+                           </ui:contents>
+                        </oa:column>
+                     </ui:contents>
+                     <ui:tableSelection>
+                        <oa:singleSelection id="SelectFlag" viewAttr="LineSelectFlag" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/SelectFlag">
+                           <ui:contents>
+                              <oa:flowLayout id="SelectVIewFlRN" comment="">
+                                 <ui:contents>
+                                    <oa:submitButton id="CopyButton" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/CopyButton"/>
+                                    <oa:submitButton id="CreateViewButton" use="/itoen/oracle/apps/xxcso/xxcso012001j/attributesets/XxcsoPvSearchAttrSets/CreateViewButton"/>
+                                 </ui:contents>
+                              </oa:flowLayout>
+                           </ui:contents>
+                        </oa:singleSelection>
+                     </ui:tableSelection>
+                  </oa:advancedTable>
+               </ui:contents>
+            </oa:stackLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

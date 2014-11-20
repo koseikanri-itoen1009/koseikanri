@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE Entity SYSTEM "jbo_03_01.dtd">
+
+<Entity
+   Name="XxcsoAcctWeeklyPlansVEO"
+   DBObjectType="view"
+   DBObjectName="XXCSO_ACCT_WEEKLY_PLANS_V"
+   AliasName="XxcsoAcctWeeklyPlansVEO"
+   BindingStyle="Oracle"
+   UseGlueCode="false"
+   CodeGenFlag="4"
+   RowClass="itoen.oracle.apps.xxcso.common.schema.server.XxcsoAcctWeeklyPlansVEOImpl"
+   DefClass="oracle.apps.fnd.framework.server.OAEntityDefImpl"
+   CollClass="oracle.apps.fnd.framework.server.OAEntityCache" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_superClass" Value="oracle.apps.fnd.framework.server.OAPlsqlEntityImpl" />
+      <AttrArray Name="_publishEvents">
+      </AttrArray>
+   </DesignTime>
+   <Attribute
+      Name="BaseCode"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnName="BASE_CODE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="AccountNumber"
+      Precision="9"
+      Type="java.lang.String"
+      ColumnName="ACCOUNT_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="9" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="YearMonth"
+      Precision="6"
+      Type="java.lang.String"
+      ColumnName="YEAR_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="6" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="WeekIndex"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="WEEK_INDEX"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="MondayColumn"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnName="MONDAY_COLUMN"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="MondaySalesPlanId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="MONDAY_SALES_PLAN_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="MondayValue"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnName="MONDAY_VALUE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="8" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TuesdayColumn"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnName="TUESDAY_COLUMN"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TuesdaySalesPlanId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="TUESDAY_SALES_PLAN_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TuesdayValue"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnName="TUESDAY_VALUE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="8" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="WednesdayColumn"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnName="WEDNESDAY_COLUMN"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="WednesdaySalesPlanId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="WEDNESDAY_SALES_PLAN_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="WednesdayValue"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnName="WEDNESDAY_VALUE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="8" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ThursdayColumn"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnName="THURSDAY_COLUMN"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ThursdaySalesPlanId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="THURSDAY_SALES_PLAN_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ThursdayValue"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnName="THURSDAY_VALUE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="8" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="FridayColumn"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnName="FRIDAY_COLUMN"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="FridaySalesPlanId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="FRIDAY_SALES_PLAN_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="FridayValue"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnName="FRIDAY_VALUE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="8" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SaturdayColumn"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnName="SATURDAY_COLUMN"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SaturdaySalesPlanId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="SATURDAY_SALES_PLAN_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SaturdayValue"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnName="SATURDAY_VALUE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="8" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SundayColumn"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnName="SUNDAY_COLUMN"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SundaySalesPlanId"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="SUNDAY_SALES_PLAN_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="SundayValue"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnName="SUNDAY_VALUE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="8" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreatedBy"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="CREATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreationDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="CREATION_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdatedBy"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="LAST_UPDATE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateLogin"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATE_LOGIN"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_ACCT_WEEKLY_PLANS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Key
+      Name="XxcsoacctweeklyplansveoPrimaryKey" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoAcctWeeklyPlansVEO.BaseCode" />
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoAcctWeeklyPlansVEO.AccountNumber" />
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoAcctWeeklyPlansVEO.YearMonth" />
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoAcctWeeklyPlansVEO.WeekIndex" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="XXCSOACCTWEEKLYPLANSVEO_PRIMAR" />
+         <Attr Name="_isPrimary" Value="true" />
+      </DesignTime>
+   </Key>
+</Entity>

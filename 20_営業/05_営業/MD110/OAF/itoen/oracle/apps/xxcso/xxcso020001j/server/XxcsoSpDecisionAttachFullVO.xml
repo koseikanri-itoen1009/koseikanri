@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSpDecisionAttachFullVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionAttachFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionAttachFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   Passivate="All"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoSpDecisionAttachesEO.SP_DECISION_ATTACH_ID, 
+       XxcsoSpDecisionAttachesEO.SP_DECISION_HEADER_ID, 
+       XxcsoSpDecisionAttachesEO.FILE_NAME, 
+       XxcsoSpDecisionAttachesEO.EXCERPT, 
+       XxcsoSpDecisionAttachesEO.FILE_DATA, 
+       XxcsoSpDecisionAttachesEO.CREATED_BY, 
+       XxcsoSpDecisionAttachesEO.CREATION_DATE, 
+       XxcsoSpDecisionAttachesEO.LAST_UPDATED_BY, 
+       XxcsoSpDecisionAttachesEO.LAST_UPDATE_DATE, 
+       XxcsoSpDecisionAttachesEO.LAST_UPDATE_LOGIN, 
+       XxcsoSpDecisionAttachesEO.REQUEST_ID, 
+       XxcsoSpDecisionAttachesEO.PROGRAM_APPLICATION_ID, 
+       XxcsoSpDecisionAttachesEO.PROGRAM_ID, 
+       XxcsoSpDecisionAttachesEO.PROGRAM_UPDATE_DATE
+      ,xev.full_name
+FROM XXCSO_SP_DECISION_ATTACHES XxcsoSpDecisionAttachesEO
+    ,xxcso_employees_v2 xev
+WHERE xev.user_id = XxcsoSpDecisionAttachesEO.last_updated_by
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoSpDecisionAttachesEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionAttachesEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="SpDecisionAttachId"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="SpDecisionAttachId"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="SP_DECISION_ATTACH_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionHeaderId"
+      IsNotNull="true"
+      EntityAttrName="SpDecisionHeaderId"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="SP_DECISION_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FileName"
+      Precision="100"
+      EntityAttrName="FileName"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="FILE_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Excerpt"
+      Precision="100"
+      EntityAttrName="Excerpt"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="EXCERPT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FileData"
+      IsQueriable="false"
+      EntityAttrName="FileData"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="FILE_DATA" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoSpDecisionAttachesEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SelectFlag"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="$none$"
+      AliasName="SELECTFLAG"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ExcerptReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AttachSelectionRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+</ViewObject>

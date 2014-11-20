@@ -1,0 +1,35 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*注意
+* KROWN:124532により、1ファイルが32Kバイトを超えないようにしてください。
+* 超えてしまう場合は、ファイルを分割してください。
+
+詳細
+売上計画（複数顧客）画面用の属性セットファイルです。
+
+修正履歴
+2009/01/06  朴邦彦        新規作成-->
+<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <attributeSet docName="PageLayoutRN" windowTitle="売上計画(複数顧客)" title="売上計画(複数顧客)"/>
+   <attributeSet docName="CancelButton" prompt="取消"/>
+   <attributeSet docName="SubmitButton" prompt="適用"/>
+   <attributeSet docName="SelectHdr" text="対象年月・営業員選択"/>
+   <attributeSet docName="SearchPlanYearMonthLayout" prompt="対象年月"/>
+   <attributeSet docName="SearchPlanYear" shortDesc="対象年"/>
+   <attributeSet docName="SearchPlanMonth" shortDesc="対象月"/>
+   <attributeSet docName="ResourceLayout" prompt="営業員"/>
+   <attributeSet docName="EmployeeNumber" shortDesc="従業員番号"/>
+   <attributeSet docName="SearchButton" prompt="進む"/>
+   <attributeSet docName="RsrcPlanHdrRN" text="営業員計画情報"/>
+   <attributeSet docName="TrgtRsrcMonthlyPlanLayout" prompt="月間売上計画"/>
+   <attributeSet docName="MoneyLabel" text="（千円）" prompt="（千円）"/>
+   <attributeSet docName="TrgtRsrcAcctMonthlyPlanSumLayout" prompt="設定済売上計画"/>
+   <attributeSet docName="TrgtRsrcAcctDifferLayout" prompt="差額"/>
+   <attributeSet docName="ResultHdr" prompt="顧客別売上計画設定"/>
+   <attributeSet docName="IndustryDivColHdr" prompt="業種コード"/>
+   <attributeSet docName="TrgtRouteNoColHdr" prompt="ルートNo"/>
+   <attributeSet docName="AccountNumberColHdr" prompt="顧客コード"/>
+   <attributeSet docName="PartyNameColHdr" prompt="顧客名"/>
+   <attributeSet docName="TrgtSalesPlanAmtColHdr" prompt="対象月"/>
+   <attributeSet docName="NextSalesPlanAmtColHdr" prompt="対象翌月"/>
+</package>
