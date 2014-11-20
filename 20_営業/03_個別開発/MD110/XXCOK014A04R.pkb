@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/04/17    1.4   SCS T.Taniguchi  [障害T1_0647] 桁数修正
  *  2009/04/23    1.5   SCS T.Taniguchi  [障害T1_0684] 問合せ拠点修正
  *  2009/05/19    1.6   SCS T.Taniguchi  [障害T1_1070] グローバルカーソルのソート順追加
+ *  2009/07/15    1.7   SCS T.Taniguchi  [障害0000689] 銀行手数料負担者、全支払の保留フラグの取得先変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -189,7 +190,10 @@ AS
   gt_bank_acct_name_bk       xxcok_rep_bm_balance.bank_acct_name%TYPE             DEFAULT NULL; -- 銀行口座名
   gt_ref_base_code_bk        xxcok_rep_bm_balance.ref_base_code%TYPE              DEFAULT NULL; -- 問合せ担当拠点コード
   gt_ref_base_name_bk        xxcok_rep_bm_balance.ref_base_name%TYPE              DEFAULT NULL; -- 問合せ担当拠点名
-  gt_bm_type_bk              xxcmn_lookup_values_v.lookup_code%TYPE               DEFAULT NULL; -- BM支払区分
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi START
+--  gt_bm_type_bk              xxcmn_lookup_values_v.lookup_code%TYPE               DEFAULT NULL; -- BM支払区分
+  gt_bm_type_bk              xxcok_lookups_v.lookup_code%TYPE                     DEFAULT NULL; -- BM支払区分
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi END
   gt_bm_payment_type_bk      xxcok_rep_bm_balance.bm_payment_type%TYPE            DEFAULT NULL; -- BM支払区分名
   gt_bank_trns_fee_bk        xxcok_rep_bm_balance.bank_trns_fee%TYPE              DEFAULT NULL; -- 振込手数料
   gt_payment_stop_bk         xxcok_rep_bm_balance.payment_stop%TYPE               DEFAULT NULL; -- 支払停止
@@ -1003,10 +1007,16 @@ AS
   , ov_bank_num                OUT ap_bank_branches.bank_num%TYPE                     -- 銀行支店番号
   , ov_bank_branch_name        OUT ap_bank_branches.bank_branch_name%TYPE             -- 銀行支店名
   , ov_account_name            OUT hz_cust_accounts.account_name%TYPE                 -- 問合せ担当拠点名
-  , ov_bm_kbn                  OUT xxcmn_lookup_values_v.lookup_code%TYPE             -- BM支払区分
-  , ov_bm_kbn_nm               OUT xxcmn_lookup_values_v.meaning%TYPE                 -- BM支払区分名
-  , ov_bk_account_type         OUT xxcmn_lookup_values_v.lookup_code%TYPE             -- 口座種別
-  , ov_bk_account_type_nm      OUT xxcmn_lookup_values_v.meaning%TYPE                 -- 口座種別名
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi START
+--  , ov_bm_kbn                  OUT xxcmn_lookup_values_v.lookup_code%TYPE             -- BM支払区分
+--  , ov_bm_kbn_nm               OUT xxcmn_lookup_values_v.meaning%TYPE                 -- BM支払区分名
+--  , ov_bk_account_type         OUT xxcmn_lookup_values_v.lookup_code%TYPE             -- 口座種別
+--  , ov_bk_account_type_nm      OUT xxcmn_lookup_values_v.meaning%TYPE                 -- 口座種別名
+  , ov_bm_kbn                  OUT xxcok_lookups_v.lookup_code%TYPE                   -- BM支払区分
+  , ov_bm_kbn_nm               OUT xxcok_lookups_v.meaning%TYPE                       -- BM支払区分名
+  , ov_bk_account_type         OUT xxcok_lookups_v.lookup_code%TYPE                   -- 口座種別
+  , ov_bk_account_type_nm      OUT xxcok_lookups_v.meaning%TYPE                       -- 口座種別名
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi END
   )
   IS
     -- ===============================================
@@ -1034,8 +1044,12 @@ AS
     -- ===============================================
     BEGIN
       SELECT pv.vendor_name                    -- 仕入先名
-            ,pv.bank_charge_bearer             -- 銀行手数料負担者
-            ,pv.hold_all_payments_flag         -- 全支払の保留フラグ
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi START
+--            ,pv.bank_charge_bearer             -- 銀行手数料負担者
+--            ,pv.hold_all_payments_flag         -- 全支払の保留フラグ
+            ,pvsa.bank_charge_bearer           -- 銀行手数料負担者
+            ,pvsa.hold_all_payments_flag       -- 全支払の保留フラグ
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi END
             ,pvsa.attribute4                   -- DFF4(BM支払区分)
             ,pvsa.attribute5                   -- DFF5(問合せ担当拠点コード)
             ,bank_data.bank_number             -- 銀行番号
@@ -1136,7 +1150,10 @@ AS
             ,meaning      -- BM支払区分名
       INTO   ov_bm_kbn
             ,ov_bm_kbn_nm
-      FROM   xxcmn_lookup_values_v
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi START
+--      FROM   xxcmn_lookup_values_v
+      FROM   xxcok_lookups_v
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi END
       WHERE  lookup_type = cv_lookup_type_bm_kbn
       AND    lookup_code = ov_bm_kbn_dff4
       ;
@@ -1165,7 +1182,10 @@ AS
               ,meaning      -- 口座種別名
         INTO   ov_bk_account_type
               ,ov_bk_account_type_nm
-        FROM   xxcmn_lookup_values_v
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi START
+--        FROM   xxcmn_lookup_values_v
+        FROM   xxcok_lookups_v
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi END
         WHERE  lookup_type = cv_lookup_type_bank
         AND    lookup_code = ov_bank_account_type
         ;
@@ -1408,8 +1428,10 @@ AS
     lt_account_number_dummy     hz_cust_accounts.account_number%TYPE              DEFAULT NULL; -- 顧客コード
     lt_party_name_dummy         hz_parties.party_name%TYPE                        DEFAULT NULL; -- 顧客名
     lt_vendor_name              po_vendors.vendor_name%TYPE                       DEFAULT NULL; -- 仕入先名
-    lt_bank_charge_bearer       po_vendors.bank_charge_bearer%TYPE                DEFAULT NULL; -- 銀行手数料負担者
-    lt_hold_all_payments_flag   po_vendors.hold_all_payments_flag%TYPE            DEFAULT NULL; -- 全支払の保留フラグ
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi START
+    lt_bank_charge_bearer       po_vendor_sites_all.bank_charge_bearer%TYPE       DEFAULT NULL; -- 銀行手数料負担者
+    lt_hold_all_payments_flag   po_vendor_sites_all.hold_all_payments_flag%TYPE   DEFAULT NULL; -- 全支払の保留フラグ
+-- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi END
     lv_ref_base_code            VARCHAR2(4)                                       DEFAULT NULL; -- 問合せ担当拠点ｺｰﾄﾞ
     lv_bm_kbn_dff4              VARCHAR2(2)                                       DEFAULT NULL; -- DFF4(BM支払区分)
     lt_bank_number              ap_bank_branches.bank_number%TYPE                 DEFAULT NULL; -- 銀行番号
