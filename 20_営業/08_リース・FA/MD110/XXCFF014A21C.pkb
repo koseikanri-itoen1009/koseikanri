@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF014A21C(body)
  * Description      : 別表16(4)リース資産
  * MD.050           : 別表16(4)リース資産 MD050_CFF_014_A21
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,12 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/15    1.0   SCS山岸          新規作成
  *  2009/02/26    1.1   SCS山岸          [障害CFF_064] 解約時資産簿価の不具合対応
+ *  2009/07/17    1.2   SCS萱原          [統合テスト障害0000417] 支払計画の当期支払リース料取得処理修正
+ *  2009/07/31    1.3   SCS渡辺          [統合テスト障害0000417(追加)]
+ *                                         ・取得価額、減価償却累計額の取得条件を修正
+ *                                         ・支払利息相当額、当期支払リース料（控除額）の取得条件修正
+ *                                         ・未経過リース期末残高相当額、未経過リース消費税額、
+ *                                           解約時リース債務残高の取得方法修正
  *
  *****************************************************************************************/
 --
@@ -96,6 +102,14 @@ AS
   cv_lease_kind_fin   CONSTANT VARCHAR2(1)   := '0';  -- Finリース
   cv_lease_kind_op    CONSTANT VARCHAR2(1)   := '1';  -- Opリース
   cv_lease_kind_qfin  CONSTANT VARCHAR2(1)   := '2';  -- 旧Finリース
+-- 0000417 2009/07/31 ADD START --
+  -- 除売却ステータス
+  cv_processed        CONSTANT VARCHAR2(9)   := 'PROCESSED'; --処理済
+  -- 会計IFフラグステータス
+  cv_if_aft           CONSTANT VARCHAR2(1)   := '2'; --連携済
+  -- 照合済フラグ
+  cv_match   CONSTANT VARCHAR2(1)            := '1'; --照合済
+-- 0000417 2009/07/31 ADD END --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -377,11 +391,20 @@ AS
     CURSOR planning_cur
     IS
       SELECT xpp.contract_header_id
-            ,SUM(CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
-                   (CASE WHEN xpp.period_name <= TO_CHAR(id_start_date_now,'YYYY-MM') THEN
-                      xpp.lease_charge
-                    ELSE 0 END)
-                 ELSE 0 END) AS lease_charge_this_month   -- 当期支払リース料
+-- 0000417 2009/07/17 ADD START --
+          ,SUM(CASE WHEN xpp.accounting_if_flag = cv_if_aft THEN
+-- 0000417 2009/07/17 ADD END --
+-- 0000417 2009/07/17 MOD START --    
+--            ,SUM(CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                 (CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+-- 0000417 2009/07/17 MOD END --
+                    (CASE WHEN xpp.period_name <= TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+                       xpp.lease_charge
+                     ELSE 0 END)
+-- 0000417 2009/07/17 ADD START --
+                  ELSE 0 END)
+-- 0000417 2009/07/17 ADD END --
+               ELSE 0 END) AS lease_charge_this_month   -- 当期支払リース料
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
                    xpp.lease_charge
                  ELSE 0 END) AS lease_charge_future       -- 未経過リース料
@@ -393,15 +416,25 @@ AS
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
                    xpp.lease_charge
                  ELSE 0 END) AS lease_charge_over_1year   -- 1年越未経過リース料
-            ,SUM(CASE WHEN xpp.period_name = TO_CHAR(id_start_date_now,'YYYY-MM') THEN
-                   xpp.fin_debt_rem
+-- 0000417 2009/07/31 MOD START --
+--            ,SUM(CASE WHEN xpp.period_name = TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+--                   xpp.fin_debt_rem
+--                 ELSE 0 END) AS lease_charge_debt         -- 未経過リース期末残高相当額
+            ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+                   xpp.fin_debt
                  ELSE 0 END) AS lease_charge_debt         -- 未経過リース期末残高相当額
+-- 0000417 2009/07/31 MOD END --
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
                    xpp.fin_interest_due
                  ELSE 0 END) AS interest_future           -- 未経過リース支払利息額
-            ,SUM(CASE WHEN xpp.period_name = TO_CHAR(id_start_date_now,'YYYY-MM') THEN
-                   xpp.fin_tax_debt_rem
+-- 0000417 2009/07/31 MOD START --
+--            ,SUM(CASE WHEN xpp.period_name = TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+--                   xpp.fin_tax_debt_rem
+--                 ELSE 0 END) AS tax_future                -- 未経過リース消費税額
+            ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+                   xpp.fin_tax_debt
                  ELSE 0 END) AS tax_future                -- 未経過リース消費税額
+-- 0000417 2009/07/31 MOD END --
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
                    (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
                       xpp.fin_debt
@@ -495,15 +528,33 @@ AS
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,60),'YYYY-MM') THEN
                    xpp.fin_tax_debt
                  ELSE 0 END) AS tax_over_5year            -- 5年越消費税
-            ,SUM(CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
-                   (CASE WHEN xpp.period_name <= TO_CHAR(id_start_date_now,'YYYY-MM') THEN
-                      xpp.fin_interest_due
+-- 0000417 2009/07/31 ADD START --
+            ,SUM(CASE WHEN xpp.accounting_if_flag = cv_if_aft THEN
+-- 0000417 2009/07/31 ADD END --
+-- 0000417 2009/07/31 MOD START --
+--            ,SUM(CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+-- 0000417 2009/07/31 MOD END --
+                      (CASE WHEN xpp.period_name <= TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+                         xpp.fin_interest_due
+                       ELSE 0 END)
+-- 0000417 2009/07/31 ADD START --
                     ELSE 0 END)
+-- 0000417 2009/07/31 ADD END --
                  ELSE 0 END) AS interest_amount           -- 支払利息相当額
-            ,SUM(CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
-                   (CASE WHEN xpp.period_name <= TO_CHAR(id_start_date_now,'YYYY-MM') THEN
-                      xpp.lease_deduction
+-- 0000417 2009/07/31 ADD START --
+            ,SUM(CASE WHEN xpp.accounting_if_flag = cv_if_aft THEN
+-- 0000417 2009/07/31 ADD END --
+-- 0000417 2009/07/31 MOD START --
+--            ,SUM(CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   (CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+-- 0000417 2009/07/31 MOD END --
+                      (CASE WHEN xpp.period_name <= TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+                         xpp.lease_deduction
+                       ELSE 0 END)
+-- 0000417 2009/07/31 ADD START --
                     ELSE 0 END)
+-- 0000417 2009/07/31 ADD END --
                  ELSE 0 END) AS deduction_this_month      -- 当期支払リース料（控除額）
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
                    xpp.lease_deduction
@@ -516,13 +567,25 @@ AS
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
                    xpp.lease_deduction
                  ELSE 0 END) AS deduction_over_1year      -- 1年越未経過リース料（控除額）
-            ,SUM(CASE WHEN xpp.period_name = TO_CHAR(ADD_MONTHS(io_csv_rec.cancellation_date,-1),'YYYY-MM') THEN
-                   xpp.fin_debt_rem
+-- 0000417 2009/07/31 MOD START --
+--            ,SUM(CASE WHEN xpp.period_name = TO_CHAR(ADD_MONTHS(io_csv_rec.cancellation_date,-1),'YYYY-MM') THEN
+--                   xpp.fin_debt_rem
+--                 ELSE 0 END) AS cxl_debt_bal              -- 解約時リース債務残高
+            ,SUM(CASE WHEN xpp.period_name = TO_CHAR(io_csv_rec.cancellation_date,'YYYY-MM') THEN
+                   (CASE WHEN xpp.payment_match_flag = cv_match THEN
+                      xpp.fin_debt_rem
+                    ELSE
+                      xpp.fin_debt_rem + xpp.fin_debt
+                    END)
                  ELSE 0 END) AS cxl_debt_bal              -- 解約時リース債務残高
+-- 0000417 2009/07/31 MOD END --
         FROM xxcff_pay_planning xpp
        WHERE xpp.contract_line_id = io_csv_rec.contract_line_id
          AND xpp.contract_header_id = io_csv_rec.contract_header_id
-         AND NOT (xpp.period_name >= TO_CHAR(io_csv_rec.cancellation_date,'YYYY-MM') AND
+-- 0000417 2009/07/17 MOD START --
+--         AND NOT (xpp.period_name >= TO_CHAR(io_csv_rec.cancellation_date,'YYYY-MM') AND
+         AND NOT (xpp.period_name > TO_CHAR(io_csv_rec.cancellation_date,'YYYY-MM') AND
+-- 0000417 2009/07/17 MOD END --
                   io_csv_rec.cancellation_date IS NOT NULL)
       GROUP BY xpp.contract_header_id
               ,xpp.contract_line_id
@@ -648,6 +711,8 @@ AS
     -- *** ローカル変数 ***
 --
     -- *** ローカル・カーソル ***
+-- 0000417 2009/08/06 DEL START --
+/*
     CURSOR contract_cur
     IS
       SELECT xch.contract_header_id             -- 契約内部ID
@@ -677,14 +742,25 @@ AS
             ,SUM(CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                    xcl.gross_charge
                  ELSE 0 END) AS gross_charge    -- リース料総額
-            ,SUM(CASE WHEN xcl.cancellation_date IS NULL THEN
+-- 0000417 2009/07/31 MOD START --
+--            ,SUM(CASE WHEN xcl.cancellation_date IS NULL THEN
+            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+                           fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
+-- 0000417 2009/07/31 MOD END --
                       xcl.original_cost
                     ELSE 0 END)
                  ELSE 0 END) AS original_cost   -- 取得価額総額
-            ,SUM(CASE WHEN xcl.cancellation_date IS NULL THEN
+-- 0000417 2009/07/31 MOD START --
+--            ,SUM(CASE WHEN xcl.cancellation_date IS NULL THEN
+            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+                           fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
-                      fds.deprn_reserve
+-- 0000417 2009/07/31 MOD END --
+-- 0000417 2009/07/31 MOD START --
+--                      fds.deprn_reserve
+                      NVL(fds.deprn_reserve,xcl.original_cost)
+-- 0000417 2009/07/31 MOD END --
                     ELSE 0 END)
                  ELSE 0 END) AS deprn_reserve   -- 減価償却累計額相当額
             ,SUM(CASE WHEN NVL(fdp.period_name,iv_period_from) >= iv_period_from THEN
@@ -709,6 +785,12 @@ AS
           ON xcl.object_header_id = xoh.object_header_id
        LEFT JOIN fa_additions_b fab           -- 資産詳細情報
           ON fab.attribute10 = xcl.contract_line_id
+-- 0000417 2009/07/31 ADD START --
+       LEFT JOIN fa_retirements fret  -- 除売却
+          ON fret.asset_id                  = fab.asset_id
+         AND fret.book_type_code            = iv_book_type_code
+         AND fret.transaction_header_id_out IS NULL
+-- 0000417 2009/07/31 ADD END --
        LEFT JOIN fa_deprn_periods fdp         -- 減価償却期間
           ON fdp.book_type_code = iv_book_type_code
        LEFT JOIN fa_deprn_summary fds         -- 減価償却サマリ
@@ -740,6 +822,122 @@ AS
               ,xcl.contract_line_num
               ,xch.lease_start_date
       ;
+*/
+-- 0000417 2009/08/06 DEL END --
+--
+-- 0000417 2009/08/06 ADD START --
+    CURSOR contract_cur
+    IS
+      SELECT xch.contract_header_id             -- 契約内部ID
+            ,xcl.contract_line_id               -- 契約明細内部ID
+            ,xch.lease_company                  -- リース会社コード
+            ,(SELECT xlcv.lease_company_name
+                FROM xxcff_lease_company_v xlcv
+               WHERE xlcv.lease_company_code = xch.lease_company
+              ) AS lease_company_name           -- リース会社
+            ,xch.contract_number                -- 契約No
+            ,xcl.contract_line_num              -- 契約明細No
+            ,xoh.object_code                    -- 物件コード
+            ,(SELECT xlsv.lease_class_name
+                FROM xxcff_lease_class_v xlsv
+               WHERE xlsv.lease_class_code = xch.lease_class
+              ) AS lease_class_name             -- リース種別
+            ,(SELECT xltv.lease_type_name
+                FROM xxcff_lease_type_v xltv
+               WHERE xltv.lease_type_code = xch.lease_type
+              ) AS lease_type_name              -- リース区分
+            ,xch.lease_start_date               -- リース開始日
+            ,xch.lease_end_date                 -- リース終了日
+            ,xch.payment_frequency              -- 月数
+            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+                           fret.status <> cv_processed   THEN
+                   (CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                      xcl.second_charge
+                    ELSE 0 END)
+                 ELSE 0 END) AS monthly_charge  -- 月間リース料
+            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+                           fret.status <> cv_processed   THEN
+                   (CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                      xcl.gross_charge
+                    ELSE 0 END)
+                 ELSE 0 END) AS gross_charge    -- リース料総額
+            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+                           fret.status <> cv_processed   THEN
+                   (CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                      xcl.original_cost
+                    ELSE 0 END)
+                 ELSE 0 END) AS original_cost   -- 取得価額総額
+            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+                           fret.status <> cv_processed   THEN
+                   (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
+                      NVL(fds.deprn_reserve,original_cost)
+                    ELSE 0 END)
+                 ELSE 0 END) AS deprn_reserve   -- 減価償却累計額相当額
+            ,SUM(CASE WHEN NVL(fdp.period_name,iv_period_from) >= iv_period_from THEN
+                   (CASE WHEN NVL(fdp.period_name,iv_period_to) <= iv_period_to THEN
+                      fds.deprn_amount
+                    ELSE 0 END)
+                 ELSE 0 END) AS deprn_amount    -- 減価償却相当額
+            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+                           fret.status <> cv_processed   THEN
+                   (CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                      xcl.second_deduction
+                    ELSE 0 END)
+                 ELSE 0 END) AS monthly_deduction -- 月間リース料（控除額）
+            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+                           fret.status <> cv_processed   THEN
+                   (CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   xcl.gross_deduction
+                    ELSE 0 END)
+                 ELSE 0 END) AS gross_deduction -- リース料総額（控除額）
+            ,xcl.cancellation_date              -- 中途解約日
+            ,SUM(CASE WHEN NVL(fdp.period_name,TO_CHAR(id_start_date_1st,'YYYY-MM')) = TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                   xcl.original_cost
+                 ELSE 0 END) - SUM(fds.deprn_amount) AS cxl_amount -- 解約時資産簿価
+        FROM xxcff_contract_headers xch       -- リース契約
+       INNER JOIN xxcff_contract_lines xcl    -- リース契約明細
+          ON xcl.contract_header_id = xch.contract_header_id
+       INNER JOIN xxcff_object_headers xoh    -- リース物件
+          ON xcl.object_header_id = xoh.object_header_id
+       INNER JOIN fa_additions_b fab           -- 資産詳細情報
+          ON fab.attribute10 = xcl.contract_line_id
+       LEFT JOIN fa_retirements fret  -- 除売却
+          ON fret.asset_id                  = fab.asset_id
+         AND fret.book_type_code            = iv_book_type_code
+         AND fret.transaction_header_id_out IS NULL
+       INNER JOIN fa_deprn_periods fdp         -- 減価償却期間
+          ON fdp.book_type_code = iv_book_type_code
+       LEFT JOIN fa_deprn_summary fds         -- 減価償却サマリ
+          ON fds.asset_id = fab.asset_id
+         AND fds.book_type_code = fdp.book_type_code
+         AND fds.period_counter = fdp.period_counter
+         AND fds.deprn_source_code = 'DEPRN'
+       WHERE xch.lease_type = cv_lease_type1
+         AND xcl.lease_kind = cv_lease_kind_qfin
+         AND xch.contract_date >= cd_contract_date_fr
+         AND xch.contract_date <  cd_contract_date_to
+         AND xcl.contract_line_id = fab.attribute10
+         AND fdp.period_name <= iv_period_to
+      GROUP BY xch.lease_company
+              ,xch.contract_number
+              ,xcl.contract_line_num
+              ,xoh.object_code
+              ,xch.lease_class
+              ,xch.lease_type
+              ,xch.lease_start_date
+              ,xch.lease_end_date
+              ,xch.payment_frequency
+              ,xcl.cancellation_date
+              ,xch.contract_header_id
+              ,xcl.contract_line_id
+      ORDER BY xcl.cancellation_date DESC
+              ,xch.lease_company
+              ,xch.contract_number
+              ,xcl.contract_line_num
+              ,xch.lease_start_date
+      ;
+-- 0000417 2009/08/06 ADD START --
+--
     contract_rec contract_cur%ROWTYPE;
 --
     -- *** ローカル・レコード ***
