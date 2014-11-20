@@ -7,7 +7,7 @@ AS
  * Description      : 請求更新処理
  * MD.050           : 運賃計算（月次）   T_MD050_BPO_740
  * MD.070           : 請求更新           T_MD070_BPO_74B
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/09/29    1.1  Oracle 吉田 夏樹  T_S_614対応
  *  2008/10/21    1.2  Oracle 野村 正幸  T_S_571対応
  *  2008/11/07    1.3  Oracle 野村 正幸  統合#552、553対応
+ *  2008/12/18    1.4  野村 正幸         本番#42対応
  *
  *****************************************************************************************/
 --
@@ -874,9 +875,15 @@ AS
         SELECT    SUM(adj_charges.billing_sum)
                 , SUM(adj_charges.billing_tax_sum)
                 , SUM(adj_charges.adj_tax_extra)
+-- ##### 20081218 Ver.1.4 本番#42対応 START #####
+                , SUM(adj_charges.tax_free_bil_sum)             -- 非課税調整合計
+-- ##### 20081218 Ver.1.4 本番#42対応 END   #####
         INTO      gt_masters_tbl(ln_index).amount_bil_sum       -- 請求調整合計額
                 , gt_masters_tbl(ln_index).tax_bil_sum          -- 課税調整合計
                 , gt_masters_tbl(ln_index).adj_tax_extra_sum    -- 消費税調整合計
+-- ##### 20081218 Ver.1.4 本番#42対応 START #####
+                , gt_masters_tbl(ln_index).tax_free_bil_sum     -- 非課税調整合計
+-- ##### 20081218 Ver.1.4 本番#42対応 END   #####
         FROM
           (
             SELECT    xac.billing_code AS billing_code
@@ -888,6 +895,36 @@ AS
                       NVL(amount_billing4, 0) + 
                       NVL(amount_billing5, 0)
                     ) AS billing_sum             -- 請求金額計（請求金額１～５を加算）
+-- ##### 20081218 Ver.1.4 本番#42対応 START #####
+                    -- 非課税請求調整金額（合計）
+                    ,(
+                      CASE    -- 請求金額1
+                        WHEN (NVL(xac.tax_free_billing1, gv_tax_free_bil_off) <> gv_tax_free_bil_off) THEN
+                          NVL(amount_billing1, 0)
+                        ELSE 0
+                      END +
+                      CASE    -- 請求金額2
+                        WHEN (NVL(xac.tax_free_billing2, gv_tax_free_bil_off) <> gv_tax_free_bil_off) THEN
+                          NVL(amount_billing2, 0)
+                        ELSE 0
+                      END +
+                      CASE    -- 請求金額3
+                        WHEN (NVL(xac.tax_free_billing3, gv_tax_free_bil_off) <> gv_tax_free_bil_off) THEN
+                          NVL(amount_billing3, 0)
+                        ELSE 0
+                      END +
+                      CASE    -- 請求金額4
+                        WHEN (NVL(xac.tax_free_billing4, gv_tax_free_bil_off) <> gv_tax_free_bil_off) THEN
+                          NVL(amount_billing4, 0)
+                        ELSE 0
+                      END +
+                      CASE    -- 請求金額5
+                        WHEN (NVL(xac.tax_free_billing5, gv_tax_free_bil_off) <> gv_tax_free_bil_off) THEN
+                          NVL(amount_billing5, 0)
+                        ELSE 0
+                      END 
+                      ) AS tax_free_bil_sum
+-- ##### 20081218 Ver.1.4 本番#42対応 END   #####
                     ,(
                       CASE    -- 請求金額1
                         WHEN (NVL(xac.tax_free_billing1, gv_tax_free_bil_off) <> gv_tax_free_bil_on) THEN
@@ -984,6 +1021,9 @@ AS
           gt_masters_tbl(ln_index).amount_bil_sum   := 0;    -- 請求調整合計額
           gt_masters_tbl(ln_index).tax_bil_sum := 0;         -- 課税調整合計
           gt_masters_tbl(ln_index).adj_tax_extra_sum := 0;   -- 消費税調整合計
+-- ##### 20081218 Ver.1.4 本番#42対応 START #####
+          gt_masters_tbl(ln_index).tax_free_bil_sum  := 0;   -- 非課税調整合計
+-- ##### 20081218 Ver.1.4 本番#42対応 END   #####
       END;
 -- 2008/09/29 1.1 N.Yoshida end
 --
@@ -1336,6 +1376,7 @@ AS
           NVL(gt_masters_tbl(ln_index).amount_receipt_money, 0) -
           NVL(gt_masters_tbl(ln_index).amount_adjustment,    0);
         -- 今回請求金額
+        -- 請求データの合計＋通行料＋請求調整合計金額＋消費税
 -- 2008/09/29 1.1 N.Yoshida start
         i_bil_chrg_amt_tab(gn_i_bil_tab_cnt) :=
           NVL(gt_masters_tbl(ln_index).charged_amt_sum,  0) +
@@ -1344,23 +1385,32 @@ AS
           NVL(gt_masters_tbl(ln_index).amount_bil_sum,   0) +
           ln_consumption_tax;
 -- 2008/09/29 1.1 N.Yoshida end
-        -- 請求金額合計
+        -- 請求金額合計（今回請求金額＋繰越額）
         i_bil_chrg_amt_ttl_tab(gn_i_bil_tab_cnt) :=
           NVL(i_bil_chrg_amt_tab(gn_i_bil_tab_cnt),   0) +
           NVL(i_bil_blc_crd_fw_tab(gn_i_bil_tab_cnt), 0);
-        -- 今月売上額
+        -- 今月売上額（請求データの合計＋課税調整額）
         i_bil_month_sales_tab(gn_i_bil_tab_cnt) :=
           NVL(gt_masters_tbl(ln_index).charged_amt_sum, 0) +
-          NVL(gt_masters_tbl(ln_index).amount_bil_sum,   0);
+-- ##### 20081218 Ver.1.4 本番#42対応 START #####
+--          NVL(gt_masters_tbl(ln_index).amount_bil_sum,   0);
+          NVL(gt_masters_tbl(ln_index).tax_bil_sum,   0);
+-- ##### 20081218 Ver.1.4 本番#42対応 END   #####
+--
         -- 消費税
 -- 2008/09/29 1.1 N.Yoshida start
         i_bil_consumption_tax_tab(gn_i_bil_tab_cnt) := 
           --NVL(gt_masters_tbl(ln_index).consumption_tax,  0) +
           ln_consumption_tax;
 -- 2008/09/29 1.1 N.Yoshida end
-        -- 通行料等
+--
+        -- 通行料等（請求データの通行料＋非課税調整額）
         i_bil_cn_chrg_tab(gn_i_bil_tab_cnt) :=
-          NVL(gt_masters_tbl(ln_index).cong_charge_sum, 0);
+-- ##### 20081218 Ver.1.4 本番#42対応 START #####
+--          NVL(gt_masters_tbl(ln_index).cong_charge_sum, 0);
+          NVL(gt_masters_tbl(ln_index).cong_charge_sum, 0) +
+          NVL(gt_masters_tbl(ln_index).tax_free_bil_sum, 0);     -- 非課税調整合計
+-- ##### 20081218 Ver.1.4 本番#42対応 END   #####
 --
       -- データが存在する場合
       ELSIF (lt_billing_id IS NOT NULL) THEN
@@ -1412,19 +1462,27 @@ AS
         u_bil_chrg_amt_ttl_tab(gn_u_bil_tab_cnt) :=
           NVL(u_bil_chrg_amt_tab(gn_u_bil_tab_cnt),   0) +
           NVL(u_bil_blc_crd_fw_tab(gn_u_bil_tab_cnt), 0);
-        -- 今月売上額
+        -- 今月売上額（請求データの合計＋課税調整額）
         u_bil_month_sales_tab(gn_u_bil_tab_cnt) :=
           NVL(gt_masters_tbl(ln_index).charged_amt_sum, 0) +
-          NVL(gt_masters_tbl(ln_index).amount_bil_sum,   0);
+-- ##### 20081218 Ver.1.4 本番#42対応 START #####
+--          NVL(gt_masters_tbl(ln_index).amount_bil_sum,   0);
+          NVL(gt_masters_tbl(ln_index).tax_bil_sum,   0);
+-- ##### 20081218 Ver.1.4 本番#42対応 END   #####
         -- 消費税
 -- 2008/09/29 1.1 N.Yoshida start
         u_bil_consumption_tax_tab(gn_u_bil_tab_cnt) :=
           --NVL(gt_masters_tbl(ln_index).consumption_tax,  0) +
           ln_consumption_tax;
 -- 2008/09/29 1.1 N.Yoshida end
-        -- 通行料等
+        -- 通行料等（請求データの通行料＋非課税調整額）
         u_bil_cn_chrg_tab(gn_u_bil_tab_cnt) :=
-          NVL(gt_masters_tbl(ln_index).cong_charge_sum, 0);
+-- ##### 20081218 Ver.1.4 本番#42対応 START #####
+--          NVL(gt_masters_tbl(ln_index).cong_charge_sum, 0);
+          NVL(gt_masters_tbl(ln_index).cong_charge_sum, 0) +
+          NVL(gt_masters_tbl(ln_index).tax_free_bil_sum, 0);     -- 非課税調整合計
+-- ##### 20081218 Ver.1.4 本番#42対応 END   #####
+--
       END IF;
 --
     END LOOP gt_masters_tbl_loop;
