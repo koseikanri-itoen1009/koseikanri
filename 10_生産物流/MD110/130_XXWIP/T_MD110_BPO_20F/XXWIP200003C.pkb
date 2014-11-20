@@ -7,7 +7,7 @@ AS
  * Description      : 出来高実績アップロード
  * MD.050           : 生産バッチ T_MD050_BPO_202
  * MD.070           : 出来高実績アップロード T_MD070_BPO_20F
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/06/12    1.2   Oracle 二瓶 大輔    STテスト不具合対応#81
  *  2008/07/09    1.3   Oracle 山根 一浩    I_S_192対応
  *  2009/02/05    1.4   SCS    伊藤 ひとみ  本番障害#32対応
+ *  2009/02/26    1.5   SCS    伊藤 ひとみ  本番障害#32対応(再対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -229,6 +230,10 @@ AS
 -- 2009/02/05 H.Itou ADD START
       AND    itp.doc_type   = 'PROD'
 -- 2009/02/05 H.Itou ADD END
+-- 2009/02/26 H.Itou ADD START
+      AND    itp.delete_mark = 0                              -- 削除済でない
+      AND    itp.reverse_id  IS NULL                          --
+-- 2009/02/26 H.Itou ADD END
       FOR UPDATE OF itp.trans_id NOWAIT;
 --
   /***********************************************************************************
@@ -1020,11 +1025,13 @@ AS
 --
     -- 試験有無区分が有かつ検査依頼NOがNULLかつ作成区分が生産実績計上の場合
     IF ((ir_masters_rec.test_code = gv_test_code_on)
+-- 2009/02/26 H.Itou MOD START 本番障害#32対応(再対応)作成区分は見ない。
 -- 2009/02/05 H.Itou MOD START 本番障害#32対応
---    AND (ir_masters_rec.attribute22 IS NULL)) THEN
-    AND (ir_masters_rec.attribute22 IS NULL)
-    AND (ir_masters_rec.create_lot_div = gv_create_lot_div_p)) THEN
+    AND (ir_masters_rec.attribute22 IS NULL)) THEN
+--    AND (ir_masters_rec.attribute22 IS NULL)
+--    AND (ir_masters_rec.create_lot_div = gv_create_lot_div_p)) THEN
 -- 2009/02/05 H.Itou MOD END
+-- 2009/02/26 H.Itou MOD END
 --
       lv_division     := gv_division_prod;                    -- 区分：生産
       lv_disposal_div := gv_disposal_div_add;                 -- 処理区分：追加
@@ -1067,8 +1074,11 @@ AS
 -- 2009/02/05 H.Itou ADD START 本番障害#32対応
     -- 試験有無区分が有かつ検査依頼NO有かつ作成区分が生産実績計上の場合
     ELSIF ((ir_masters_rec.test_code = gv_test_code_on)
-    AND    (ir_masters_rec.attribute22 IS NOT NULL)
-    AND    (ir_masters_rec.create_lot_div = gv_create_lot_div_p)) THEN
+-- 2009/02/26 H.Itou MOD START 本番障害#32対応(再対応)作成区分は見ない。
+--    AND    (ir_masters_rec.attribute22 IS NOT NULL)
+--    AND    (ir_masters_rec.create_lot_div = gv_create_lot_div_p)) THEN
+    AND    (ir_masters_rec.attribute22 IS NOT NULL)) THEN
+-- 2009/02/26 H.Itou MOD END
 --
       lv_division     := gv_division_prod;                    -- 区分：生産
       lv_disposal_div := gv_disposal_div_upd;                 -- 処理区分：更新

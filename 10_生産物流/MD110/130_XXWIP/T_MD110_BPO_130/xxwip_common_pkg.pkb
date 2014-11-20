@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.21
+ * Version                : 1.22
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *                                        本番障害#666対応(実績開始日修正)
  *  2009/02/16   1.20  Oracle 二瓶 大輔   本番障害#1198対応
  *  2009/02/16   1.21  Oracle 伊藤 ひとみ 本番障害#32,1096対応(品質検査依頼情報作成 数量加算 ロットステータス初期化)
+ *  2009/02/27   1.22  Oracle 伊藤 ひとみ 本番障害#32再対応(品質検査依頼情報作成)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -3292,6 +3293,9 @@ AS
   PROCEDURE qt_get_vendor_supply_data(
     it_lot_id               IN  xxwip_qt_inspection.lot_id%TYPE,   -- IN  1.ロットID
     it_item_id              IN  xxwip_qt_inspection.item_id%TYPE,  -- IN  2.品目ID
+-- 2009/02/27 H.Itou Add Start 本番障害#32再対応
+    it_qty                  IN  xxwip_qt_inspection.qty%TYPE,      -- IN  3.数量
+-- 2009/02/27 H.Itou Add End
     or_xxwip_qt_inspection  OUT NOCOPY xxwip_qt_inspection%ROWTYPE,       -- OUT 1.xxwip_qt_inspectionレコード型
     ov_errbuf               OUT NOCOPY VARCHAR2,                          -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT NOCOPY VARCHAR2,                          -- リターン・コード             --# 固定 #
@@ -3330,11 +3334,13 @@ AS
     -- データ取得
     --================================
     SELECT xvst.vendor_code        vendor_line          -- 仕入先コード/ラインNo
-          ,DECODE (
-             xvst.txns_type
-            ,gt_txns_type_aite , xvst.quantity            -- 処理タイプ：1（相手先在庫）の場合 数量
-            ,gt_txns_type_sok  , xvst.corrected_quantity  -- 処理タイプ：2（即時仕入）の場合 訂正数量
-           )                        qty                 -- 数量
+-- 2009/02/27 H.Itou Del Start 本番障害#32再対応
+--          ,DECODE (
+--             xvst.txns_type
+--            ,gt_txns_type_aite , xvst.quantity            -- 処理タイプ：1（相手先在庫）の場合 数量
+--            ,gt_txns_type_sok  , xvst.corrected_quantity  -- 処理タイプ：2（即時仕入）の場合 訂正数量
+--           )                        qty                 -- 数量
+-- 2009/02/27 H.Itou Del End
           ,FND_DATE.STRING_TO_DATE(ilm.attribute1,'YYYY/MM/DD')
                                     prod_dely_date      -- 生産/納入日
           ,xvst.producted_date      producted_date      -- 製造日
@@ -3344,7 +3350,9 @@ AS
                                     use_by_date         -- 賞味期限
           ,ilm.attribute2           unique_sign         -- 固有記号
     INTO   lr_xxwip_qt_inspection.vendor_line           -- 仕入先コード/ラインNo
-          ,lr_xxwip_qt_inspection.qty                   -- 数量
+-- 2009/02/27 H.Itou Del Start 本番障害#32再対応
+--          ,lr_xxwip_qt_inspection.qty                   -- 数量
+-- 2009/02/27 H.Itou Del End
           ,lr_xxwip_qt_inspection.prod_dely_date        -- 生産/納入日
           ,lr_xxwip_qt_inspection.product_date          -- 製造日
           ,lr_xxwip_qt_inspection.inspect_period        -- 検査L/T
@@ -3367,6 +3375,9 @@ AS
     lr_xxwip_qt_inspection.item_id        := it_item_id;                              -- 品目ID
     lr_xxwip_qt_inspection.lot_id         := it_lot_id;                               -- ロットID
     lr_xxwip_qt_inspection.batch_po_id    := NULL;                                    -- 番号
+-- 2009/02/27 H.Itou Add Start 本番障害#32再対応
+    lr_xxwip_qt_inspection.qty            := it_qty;                                  -- 数量
+-- 2009/02/27 H.Itou Add End
 --
     -- ====================================
     -- OUTパラメータセット
@@ -3402,6 +3413,9 @@ AS
     it_lot_id               IN  xxwip_qt_inspection.lot_id%TYPE,  -- IN  1.ロットID
     it_item_id              IN  xxwip_qt_inspection.item_id%TYPE, -- IN  2.品目ID
     iv_qt_object            IN  VARCHAR2,                         -- IN  3.対象先
+-- 2009/02/27 H.Itou Add Start 本番障害#32再対応
+    it_qty                  IN  xxwip_qt_inspection.qty%TYPE,     -- IN  4.数量
+-- 2009/02/27 H.Itou Add End
     or_xxwip_qt_inspection  OUT NOCOPY xxwip_qt_inspection%ROWTYPE,      -- OUT 1.xxwip_qt_inspectionレコード型
     ov_errbuf               OUT NOCOPY VARCHAR2,                         -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT NOCOPY VARCHAR2,                         -- リターン・コード             --# 固定 #
@@ -3455,16 +3469,20 @@ AS
             ,gv_qt_object_bp2 , xnpt.byproduct2_lot_id  -- 対象先：3（副産物２）の場合 副産物２ロットID
             ,gv_qt_object_bp3 , xnpt.byproduct3_lot_id  -- 対象先：4（副産物３）の場合 副産物３ロットID
            )                                   lot_id     -- ロットID
-          ,DECODE (
-             iv_qt_object
-            ,gv_qt_object_tea , xnpt.aracha_quantity      -- 対象先：1（荒茶）の場合 荒茶数量
-            ,gv_qt_object_bp1 , xnpt.byproduct1_quantity  -- 対象先：2（副産物１）の場合 副産物１数量
-            ,gv_qt_object_bp2 , xnpt.byproduct2_quantity  -- 対象先：3（副産物２）の場合 副産物２数量
-            ,gv_qt_object_bp3 , xnpt.byproduct3_quantity  -- 対象先：4（副産物３）の場合 副産物３数量
-           )                                   qty        -- 数量
+-- 2009/02/27 H.Itou Del Start 本番障害#32再対応
+--          ,DECODE (
+--             iv_qt_object
+--            ,gv_qt_object_tea , xnpt.aracha_quantity      -- 対象先：1（荒茶）の場合 荒茶数量
+--            ,gv_qt_object_bp1 , xnpt.byproduct1_quantity  -- 対象先：2（副産物１）の場合 副産物１数量
+--            ,gv_qt_object_bp2 , xnpt.byproduct2_quantity  -- 対象先：3（副産物２）の場合 副産物２数量
+--            ,gv_qt_object_bp3 , xnpt.byproduct3_quantity  -- 対象先：4（副産物３）の場合 副産物３数量
+--           )                                   qty        -- 数量
+-- 2009/02/27 H.Itou Del End
     INTO   lr_xxwip_qt_inspection.item_id        -- 品目ID
           ,lr_xxwip_qt_inspection.lot_id         -- ロットID
-          ,lr_xxwip_qt_inspection.qty            -- 数量
+-- 2009/02/27 H.Itou Del Start 本番障害#32再対応
+--          ,lr_xxwip_qt_inspection.qty            -- 数量
+-- 2009/02/27 H.Itou Del End
     FROM   xxpo_namaha_prod_txns      xnpt       -- 生葉実績アドオン
     WHERE  xnpt.aracha_item_id = it_item_id      -- 品目ID
     AND    xnpt.aracha_lot_id  = it_lot_id       -- ロットID
@@ -3505,6 +3523,9 @@ AS
     lr_xxwip_qt_inspection.inspect_class  := gt_inspect_class_po;                     -- 検査種別：2（発注仕入）
     lr_xxwip_qt_inspection.prod_dely_date := lr_xxwip_qt_inspection.product_date;     -- 生産/納入日
     lr_xxwip_qt_inspection.batch_po_id    := NULL;                                    -- 番号
+-- 2009/02/27 H.Itou Add Start 本番障害#32再対応
+    lr_xxwip_qt_inspection.qty            := it_qty;                                  -- 数量
+-- 2009/02/27 H.Itou Add End
 --
     -- ====================================
     -- OUTパラメータセット
@@ -3684,19 +3705,23 @@ AS
             ,xqi.lot_id                  = lr_xxwip_qt_inspection.lot_id                 -- ロットID
             ,xqi.vendor_line             = lr_xxwip_qt_inspection.vendor_line            -- 仕入先コード/ラインNo
             ,xqi.product_date            = lr_xxwip_qt_inspection.product_date           -- 製造日
--- 2009/02/16 H.Itou Mod Start 本番障害#32対応
---            ,xqi.qty                     = lr_xxwip_qt_inspection.qty                    -- 数量
-            ,xqi.qty
-               = CASE
-                   --  1:生産、2:発注、3:ロット情報の場合は、前回登録との差分が渡されるので、数量加算
-                   WHEN (it_division IN (gt_division_gme, gt_division_po, gt_division_lot)) THEN
-                     xqi.qty + lr_xxwip_qt_inspection.qty          -- 前回数量＋今回数量
---
-                   -- 上記以外は実数が渡されるので、そのまま更新
-                   ELSE
-                     lr_xxwip_qt_inspection.qty                    -- 今回数量
-                 END
--- 2009/02/16 H.Itou Mod End
+-- 2009/02/27 H.Itou Mod Start 本番障害#32再対応 すべての場合で数量を加算する。
+---- 2009/02/16 H.Itou Mod Start 本番障害#32対応
+----            ,xqi.qty                     = lr_xxwip_qt_inspection.qty                    -- 数量
+--            ,xqi.qty
+--               = CASE
+--                   --  1:生産、2:発注、3:ロット情報の場合は、前回登録との差分が渡されるので、数量加算
+--                   WHEN (it_division IN (gt_division_gme, gt_division_po, gt_division_lot)) THEN
+--                     xqi.qty + lr_xxwip_qt_inspection.qty          -- 前回数量＋今回数量
+----
+--                   -- 上記以外は実数が渡されるので、そのまま更新
+--                   ELSE
+--                     lr_xxwip_qt_inspection.qty                    -- 今回数量
+--                 END
+---- 2009/02/16 H.Itou Mod End
+             -- 数量 ＝ 前回数量＋今回数量（検査ロットの場合は数量がNULLだが、NVLせず、NULLのままでOK。品質検査画面で表示できなくなるため）
+            ,xqi.qty                     = xqi.qty + lr_xxwip_qt_inspection.qty
+-- 2009/02/27 H.Itou Mod End
             ,xqi.prod_dely_date          = lr_xxwip_qt_inspection.prod_dely_date         -- 生産/納入日
 -- 2008/07/14 H.Itou DEL START 検査予定日・結果は更新不要
 --            ,xqi.inspect_due_date1       = lr_xxwip_qt_inspection.inspect_due_date1      -- 検査予定日１
@@ -3983,7 +4008,10 @@ AS
       WHERE  som.orgn_code      = lv_orgn_code               -- オルグコード
       AND    msd.calendar_id    = som.mfg_calendar_id        -- カレンダーID（結合条件）
       AND    msd.delete_mark    = 0                          -- 削除マーク = 0 (稼働日)
-      AND    msd.calendar_date >= id_date                    -- カレンダ日付
+-- 2009/02/27 H.Itou Mod Start
+--      AND    msd.calendar_date >= id_date                    -- カレンダ日付
+      AND    msd.calendar_date >= TRUNC(id_date)             -- カレンダ日付
+-- 2009/02/27 H.Itou Mod End
       ORDER BY calendar_date asc
     ;
 --
@@ -4171,6 +4199,9 @@ AS
         it_lot_id                => it_lot_id              -- IN  1.ロットID
        ,it_item_id               => it_item_id             -- IN  2.品目ID
        ,iv_qt_object             => iv_qt_object           -- IN  3.対象先
+-- 2009/02/16 H.Itou Add Start 本番障害#32対応 生産は数量をINパラメータから取得する。
+       ,it_qty                   => it_qty                 -- IN  4.数量
+-- 2009/02/16 H.Itou Add End
        ,or_xxwip_qt_inspection   => lr_xxwip_qt_inspection -- OUT 1.xxwip_qt_inspectionレコード型
        ,ov_errbuf                => lv_errbuf              -- エラー・メッセージ           --# 固定 #
        ,ov_retcode               => lv_retcode             -- リターン・コード             --# 固定 #
@@ -4278,6 +4309,9 @@ AS
         qt_get_vendor_supply_data(
           it_lot_id               => it_lot_id              -- IN  1.ロットID
          ,it_item_id              => it_item_id             -- IN  2.品目ID
+-- 2009/02/16 H.Itou Add Start 本番障害#32対応 生産は数量をINパラメータから取得する。
+         ,it_qty                  => it_qty                 -- IN  3.数量
+-- 2009/02/16 H.Itou Add End
          ,or_xxwip_qt_inspection  => lr_xxwip_qt_inspection -- OUT 1.xxwip_qt_inspectionレコード型
          ,ov_errbuf               => lv_errbuf              -- エラー・メッセージ           --# 固定 #
          ,ov_retcode              => lv_retcode             -- リターン・コード             --# 固定 #
