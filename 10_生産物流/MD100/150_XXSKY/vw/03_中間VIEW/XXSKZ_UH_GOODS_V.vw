@@ -3,13 +3,14 @@
  * View  Name      : XXSKZ_UH_GOODS_V
  * Description     : XXSKZ_UH_GOODS_V
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
- * ------------- ----- ------------  -------------------------------------
- *  Date          Ver.  Editor       Description
- * ------------- ----- ------------  -------------------------------------
- *  2012/11/28    1.0   SCSK M.Nagai 初回作成
+ * ------------- ----- ---------------- -------------------------------------
+ *  Date          Ver.  Editor          Description
+ * ------------- ----- ---------------- -------------------------------------
+ *  2012/11/28    1.0   SCSK M.Nagai    初回作成
+ *  2013/03/19    1.1   SCSK D.Sugahara E_本稼働_10479 課題20対応
  ************************************************************************/
 --*******************************************************************
 -- 受払情報_製品 中間VIEW
@@ -134,7 +135,10 @@ AS
 --                              AND    gic.category_id = mcb.category_id
 --                              AND    mcb.segment1    = xrpm.item_div_ahead))
 --             ))
-      AND  xrpm.routing_class       <> '70'
+--Mod 2013/3/19 V1.1 Start 解体データがバックアップされるまではここでは解体データも参照しない（解体は下のUnionで参照）
+--      AND  xrpm.routing_class       <> '70'
+      AND  xrpm.routing_class        NOT IN ( '61', '62', '70' )  -- 品目振替(70)、解体(61,62) 以外
+--Mod 2013/3/19 V1.1 End
       AND  xrpm.doc_type             = 'PROD'
 -- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
 -- 2009/11/12 Add Start
@@ -144,6 +148,55 @@ AS
       AND  itp.item_id               = gic_h.item_id
 -- 2009/11/12 Add End
       UNION ALL
+--Add 2013/3/19 V1.1 Start 解体データがバックアップされるまではここで解体データを参照（元テーブル）
+      ------------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）解体のみ・元テーブル
+      -- ----------------------------------------------------
+      SELECT
+             itp.whse_code                    whse_code
+            ,itp.item_id                      item_id
+            ,itp.lot_id                       lot_id
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,CASE WHEN INSTR(xrpm.break_col_02,'-') = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = '1'
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,'-')-1)
+                  WHEN xrpm.dealings_div_name = '仕入'
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,'-')-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,'-')+1)
+             END                              column_no
+            ,itp.trans_date                   trans_date
+      FROM   ic_tran_pnd            itp
+            ,gme_material_details   gmd
+            ,gme_batch_header       gbh
+            ,gmd_routings_b         grb
+            ,xxcmn_rcv_pay_mst      xrpm
+             -- 品目区分
+            ,gmi_item_categories    gic_h
+            ,mtl_categories_b       mcb_h
+      WHERE  itp.doc_type            = 'PROD'
+      AND    itp.completed_ind       = 1
+      AND    itp.reverse_id          IS NULL
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_02       IS NOT NULL
+      AND  xrpm.routing_class        IN ( '61', '62' )  -- 解体(61,62)
+      AND  xrpm.doc_type             = 'PROD'
+      AND  mcb_h.segment1 = '5'
+      AND  gic_h.category_id         = mcb_h.category_id
+      AND  gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND  itp.item_id               = gic_h.item_id
+      UNION ALL
+--Add 2013/3/19 V1.1 End
       --拠点
       -- ----------------------------------------------------
       -- PORC1 :経理受払区分購買関連 (製品出荷,有償)

@@ -3,13 +3,14 @@
  * View  Name      : XXSKZ_INOUT_YJ_TRANS_V
  * Description     : XXSKZ_INOUT_YJ_TRANS_V
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
- * ------------- ----- ------------  -------------------------------------
- *  Date          Ver.  Editor       Description
- * ------------- ----- ------------  -------------------------------------
- *  2012/11/28    1.0   SCSK M.Nagai 初回作成
+ * ------------- ----- ---------------- -------------------------------------
+ *  Date          Ver.  Editor          Description
+ * ------------- ----- ---------------- -------------------------------------
+ *  2012/11/28    1.0   SCSK M.Nagai    初回作成
+ *  2013/03/19    1.1   SCSK D.Sugahara E_本稼働_10479 課題20対応
  ************************************************************************/
 --*******************************************************************
 -- 入出庫予実 中間VIEW
@@ -2293,11 +2294,16 @@ UNION ALL
          ,xxskz_item_mst2_v                             ximv_in_pr_e70            -- OPM品目情報VIEW
          ,ic_lots_mst                                   ilm_in_pr_e70             -- OPMロットマスタ
          ,xxcmn_rcv_pay_mst                             xrpm_in_pr_e70            -- 受払区分アドオンマスタ -- <---- ここまで共通
-         ,xxcmn_gme_batch_header_arc                    gbh_in_pr_e70             -- 生産バッチヘッダ（標準）バックアップ
-         ,xxcmn_gme_material_details_arc                gmd_in_pr_e70             -- 生産原料詳細（標準）バックアップ
+--Mod 2013/3/19 V1.1 Start 解体データがバックアップされるまでは元テーブル参照
+--         ,xxcmn_gme_batch_header_arc                    gbh_in_pr_e70             -- 生産バッチヘッダ（標準）バックアップ
+--         ,xxcmn_gme_material_details_arc                gmd_in_pr_e70             -- 生産原料詳細（標準）バックアップ
+         ,gme_batch_header                              gbh_in_pr_e70             -- 生産バッチ
+         ,gme_material_details                          gmd_in_pr_e70             -- 生産原料詳細
          ,gmd_routings_b                                grb_in_pr_e70             -- 工順マスタ
          ,gmd_routings_tl                               grt_in_pr_e70             -- 工順マスタ日本語
-         ,xxcmn_ic_tran_pnd_arc                         itp_in_pr_e70             -- OPM保留在庫トランザクション
+--         ,xxcmn_ic_tran_pnd_arc                         itp_in_pr_e70             -- OPM保留在庫トランザクション
+         ,ic_tran_pnd                                   itp_in_pr_e70             -- OPM保留在庫トランザクション
+--Mod 2013/3/19 V1.1 End
    WHERE
      -- 受払区分アドオンマスタの条件
           xrpm_in_pr_e70.doc_type                       = 'PROD'
@@ -3357,11 +3363,16 @@ UNION ALL
          ,xxskz_item_mst2_v                             ximv_out_pr_e70           -- OPM品目情報VIEW
          ,ic_lots_mst                                   ilm_out_pr_e70            -- OPMロットマスタ
          ,xxcmn_rcv_pay_mst                             xrpm_out_pr_e70           -- 受払区分アドオンマスタ -- <---- ここまで共通
-         ,xxcmn_gme_batch_header_arc                    gbh_out_pr_e70            -- 生産バッチヘッダ（標準）バックアップ
-         ,xxcmn_gme_material_details_arc                gmd_out_pr_e70            -- 生産原料詳細（標準）バックアップ
+--Mod 2013/3/19 V1.1 Start 解体データがバックアップされるまでは元テーブル参照
+--         ,xxcmn_gme_batch_header_arc                    gbh_out_pr_e70            -- 生産バッチヘッダ（標準）バックアップ
+--         ,xxcmn_gme_material_details_arc                gmd_out_pr_e70            -- 生産原料詳細（標準）バックアップ
+         ,gme_batch_header                              gbh_out_pr_e70            -- 生産バッチ
+         ,gme_material_details                          gmd_out_pr_e70            -- 生産原料詳細
          ,gmd_routings_b                                grb_out_pr_e70            -- 工順マスタ
          ,gmd_routings_tl                               grt_out_pr_e70            -- 工順マスタ日本語
-         ,xxcmn_ic_tran_pnd_arc                         itp_out_pr_e70            -- OPM保留在庫トランザクション
+--         ,xxcmn_ic_tran_pnd_arc                         itp_out_pr_e70            -- OPM保留在庫トランザクション
+         ,ic_tran_pnd                                   itp_out_pr_e70            -- OPM保留在庫トランザクション
+--Mod 2013/3/19 V1.1 End
    WHERE
      --受払区分アドオンマスタの条件
           xrpm_out_pr_e70.doc_type                      = 'PROD'

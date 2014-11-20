@@ -3,13 +3,14 @@
  * View  Name      : XXSKZ_解体明細_基本_V
  * Description     : XXSKZ_解体明細_基本_V
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
- * ------------- ----- ------------  -------------------------------------
- *  Date          Ver.  Editor       Description
- * ------------- ----- ------------  -------------------------------------
- *  2012/11/26    1.0   SCSK M.Nagai 初回作成
+ * ------------- ----- ---------------- -------------------------------------
+ *  Date          Ver.  Editor          Description
+ * ------------- ----- ---------------- -------------------------------------
+ *  2012/11/26    1.0   SCSK M.Nagai    初回作成
+ *  2013/03/19    1.1   SCSK D.Sugahara E_本稼働_10479 課題20対応
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXSKZ_解体明細_基本_V
 (
@@ -115,10 +116,15 @@ FROM
                 ,NVL( TO_DATE( GBH.actual_cmplt_date ), TRUNC( GBH.plan_start_date ) )    --NVL( 実績完了日, 計画開始日 )
                                              act_date       -- 実施日 (⇒品目名称取得で使用)
         FROM
-                 xxcmn_gme_batch_header_arc            GBH            -- 生産バッチヘッダ（標準）バックアップ
-                ,xxcmn_gme_material_details_arc        GMD            -- 生産原料詳細（標準）バックアップ
+--Mod 2013/3/19 V1.1 Start 解体データがバックアップされるまでは元テーブル参照
+--                 xxcmn_gme_batch_header_arc            GBH            -- 生産バッチヘッダ（標準）バックアップ
+--                ,xxcmn_gme_material_details_arc        GMD            -- 生産原料詳細（標準）バックアップ
+                 gme_batch_header            GBH            -- 生産バッチ
+                ,gme_material_details        GMD            -- 生産原料詳細(解体先情報)
                 ,gmd_routings_b                        GRB            -- 工順マスタ
-                ,xxcmn_ic_tran_pnd_arc                 ITP            -- OPM保留在庫トランザクション（標準）バックアップ
+--                ,xxcmn_ic_tran_pnd_arc                 ITP            -- OPM保留在庫トランザクション（標準）バックアップ
+                ,ic_tran_pnd                 ITP            -- 保留在庫トランザクション(ロットID取得用)
+--Mod 2013/3/19 V1.1 End
         WHERE
                 -- ヘッダテーブルとの結合
                     GBH.batch_type           = 0
