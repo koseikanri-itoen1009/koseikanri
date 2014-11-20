@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009-05-26    1.9   M.Ohtsuki        【T1_1141対応】初回取引日更新漏れの対応
  *  2009-05-28    1.10  M.Ohtsuki        【T1_1203対応】先月データ更新障害の対応
  *  2009-06-01    1.11  K.Satomura       【T1_1107対応】
+ *  2009-06-04    1.12  K.Satomura       【T1_1107再修正対応】
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2572,7 +2573,17 @@ AS
       /* 2009.06.01 K.Satomura T1_1107対応 START */
       IF (NVL(iv_skip_flag, cv_no) = cv_yes) THEN
         UPDATE xxcso_in_work_data xiw -- 作業データ
-        SET    xiw.process_no_target_flag = cv_yes -- 作業依頼処理対象外フラグ
+        /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
+        --SET    xiw.process_no_target_flag = cv_yes -- 作業依頼処理対象外フラグ
+        SET    xiw.install1_process_no_target_flg = DECODE(lv_install_code
+                                                          ,NVL(lv_install_code1, ' '), cv_yes
+                                                          ,xiw.install1_process_no_target_flg
+                                                          ) -- 物件１作業依頼処理対象外フラグ
+              ,xiw.install2_process_no_target_flg = DECODE(lv_install_code
+                                                          ,NVL(lv_install_code2, ' '), cv_yes
+                                                          ,xiw.install2_process_no_target_flg
+                                                          ) -- 物件２作業依頼処理対象外フラグ
+        /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
               ,xiw.last_updated_by        = cn_last_updated_by
               ,xiw.last_update_date       = cd_last_update_date
               ,xiw.last_update_login      = cn_last_update_login
@@ -6623,16 +6634,32 @@ AS
                SELECT xiwd2.slip_no
                FROM   xxcso_in_work_data xiwd2
                WHERE  (
-                            xiwd2.install_code1           = xiid.install_code
-                        AND xiwd2.install1_processed_flag = cv_no
+                        /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
+                        (
+                        /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
+                              xiwd2.install_code1           = xiid.install_code
+                          AND xiwd2.install1_processed_flag = cv_no
+                          /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
+                          AND xiwd2.install1_process_no_target_flg = cv_no
+                        )
+                          /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
                       )
                OR     (
-                            xiwd2.install_code2           = xiid.install_code
-                        AND xiwd2.install2_processed_flag = cv_no
+                        /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
+                        (
+                        /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
+                              xiwd2.install_code2           = xiid.install_code
+                          AND xiwd2.install2_processed_flag = cv_no
+                          /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
+                          AND xiwd2.install2_process_no_target_flg = cv_no
+                        )
+                          /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
                       )
                /* 2009.06.01 K.Satomura T1_1107対応 START */
                -- 本処理で処理対象となる作業データについて物件の処理が行われていること
-               AND    xiwd2.process_no_target_flag = cv_no
+               /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
+               --AND    xiwd2.process_no_target_flag = cv_no
+               /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
                AND    xiwd2.completion_kbn         = ct_comp_kbn_comp
                /* 2009.06.01 K.Satomura T1_1107対応 END */
              );
@@ -6790,13 +6817,28 @@ AS
       FROM     xxcso_in_work_data    xciwd
               ,xxcso_in_item_data    xciid
       WHERE    xciwd.completion_kbn   = cn_kbn1
-        AND    ((xciid.install_code     = NVL(xciwd.install_code1, ' ') 
-                  AND xciwd.install1_processed_flag = cv_no) OR 
-               (xciid.install_code     = NVL(xciwd.install_code2, ' ') 
-                  AND xciwd.install2_processed_flag = cv_no))
-         /* 2009.06.01 K.Satomura T1_1107対応 START */
-         AND   xciwd.process_no_target_flag = cv_no
-         /* 2009.06.01 K.Satomura T1_1107対応 END */
+        AND    (
+                 (
+                       xciid.install_code                   = NVL(xciwd.install_code1, ' ')
+                   AND xciwd.install1_processed_flag        = cv_no
+                   /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
+                   AND xciwd.install1_process_no_target_flg = cv_no
+                   /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
+                 )
+               OR
+                 (
+                       xciid.install_code                   = NVL(xciwd.install_code2, ' ') 
+                   AND xciwd.install2_processed_flag        = cv_no
+                   /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
+                   AND xciwd.install2_process_no_target_flg = cv_no
+                   /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
+                 )
+               )
+         /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
+         --/* 2009.06.01 K.Satomura T1_1107対応 START */
+         --AND   xciwd.process_no_target_flag = cv_no
+         --/* 2009.06.01 K.Satomura T1_1107対応 END */
+         /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
       ORDER BY xciwd.actual_work_date
               ,xciwd.actual_work_time2 
     ;
