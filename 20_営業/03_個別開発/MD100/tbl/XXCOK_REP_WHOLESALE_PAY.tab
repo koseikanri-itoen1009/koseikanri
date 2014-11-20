@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_WHOLESALE_PAY
  * Description : –â‰®”Ì”„ðŒŽx•¥ƒ`ƒFƒbƒN’ •[ƒ[ƒNƒe[ƒuƒ‹
- * Version     : 1.4
+ * Version     : 1.5
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -14,6 +14,7 @@
  *  2009/07/09    1.2   K.Yamaguchi      [áŠQ0000515]STORAGE‹å’Ç‰Á
  *  2009/12/03    1.3   S.Moriyama       [E_–{‰Ò“®_00289]NETŠ|—¦Aƒ}[ƒWƒ“—¦‚ÌŒ…”•ÏX(¬”’è‹`œŠO)
  *  2009/12/25    1.4   S.Moriyama       [E_–{‰Ò“®_00608]Š¨’è‰È–ÚŽx•¥Žž‚Ì¿‹’P‰¿AŽx•¥’P‰¿‚Ì‹–—eŒ…”•ÏX
+ *  2012/02/20    1.5   K.Nakamura       [E_–{‰Ò“®_08318]ƒŒƒCƒAƒEƒg•ÏX‚É”º‚¤€–Ú’Ç‰Á
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_WHOLESALE_PAY
@@ -25,6 +26,16 @@ CREATE TABLE XXCOK.XXCOK_REP_WHOLESALE_PAY
    P_SALES_OUTLETS_CODE            VARCHAR2(9),            -- –â‰®’ ‡æƒR[ƒh(“ü—Íƒpƒ‰ƒ[ƒ^)
    P_PAYMENT_DATE                  VARCHAR2(10),           -- Žx•¥”NŒŽ“ú(“ü—Íƒpƒ‰ƒ[ƒ^)
    P_SELLING_MONTH                 VARCHAR2(7),            -- ”„ã‘ÎÛ”NŒŽ(“ü—Íƒpƒ‰ƒ[ƒ^)
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD START
+   STAMP1                          VARCHAR2(2),            -- ƒwƒbƒ_—pˆó‚P
+   STAMP1_DESCRIPTION              VARCHAR2(40),           -- ƒwƒbƒ_—pˆó‚P“E—v
+   STAMP2                          VARCHAR2(2),            -- ƒwƒbƒ_—pˆó‚Q
+   STAMP2_DESCRIPTION              VARCHAR2(40),           -- ƒwƒbƒ_—pˆó‚Q“E—v
+   STAMP3                          VARCHAR2(2),            -- ƒwƒbƒ_—pˆó‚R
+   STAMP3_DESCRIPTION              VARCHAR2(40),           -- ƒwƒbƒ_—pˆó‚R“E—v
+   BASE_CODE                       VARCHAR2(4),            -- ‹’“_ƒR[ƒh
+   BASE_NAME                       VARCHAR2(360),          -- ‹’“_–¼
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD END
    PAYMENT_DATE                    VARCHAR2(10),           -- Žx•¥”NŒŽ“ú
    SELLING_MONTH                   VARCHAR2(7),            -- ”„ã‘ÎÛ”NŒŽ
    BILL_NO                         VARCHAR2(10),           -- ¿‹‘NO.
@@ -61,12 +72,19 @@ CREATE TABLE XXCOK.XXCOK_REP_WHOLESALE_PAY
    NORMAL_STORE_DELIVER_AMT        NUMBER(8,2),            -- ’Êí“X”[
    ONCE_STORE_DELIVER_AMT          NUMBER(8,2),            -- ¡‰ñ“X”[
    NET_SELLING_PRICE               NUMBER(8,2),            -- NET‰¿Ši
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD START
+   NET_SELLING_PRICE_LOW           NUMBER(8,2),            -- NET‰¿Ši(‰º’i)
+   STAMP                           VARCHAR2(2),            -- ˆó
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD END
 -- 2009/12/03 Ver.1.3 [E_–{‰Ò“®_00289] SCS S.Moriyama UPD START
 --   NET_PCT                         NUMBER(4,2),            -- NETŠ|—¦
 --   MARGIN_PCT                      NUMBER(4,2),            -- ƒ}[ƒWƒ“—¦
    NET_PCT                         NUMBER,                 -- NETŠ|—¦
    MARGIN_PCT                      NUMBER,                 -- ƒ}[ƒWƒ“—¦
 -- 2009/12/03 Ver.1.3 [E_–{‰Ò“®_00289] SCS S.Moriyama UPD END
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD START
+   ERROR_RATE                      VARCHAR2(2),            -- ˆÙí—¦
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD END
    CS_MARGIN_AMT                   NUMBER(8,2),            -- C/Sƒ}[ƒWƒ“Šz
    COVERAGE_AMT                    NUMBER(9),              -- •â“U
    WHOLESALE_MARGIN_SUM            NUMBER(9),              -- –â‰®ƒ}[ƒWƒ“
@@ -103,6 +121,24 @@ COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.P_PAYMENT_DATE           IS 'Žx•
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.P_SELLING_MONTH          IS '”„ã‘ÎÛ”NŒŽ(“ü—Íƒpƒ‰ƒ[ƒ^)'
 /
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.STAMP1                   IS 'ƒwƒbƒ_—pˆó‚P'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.STAMP1_DESCRIPTION       IS 'ƒwƒbƒ_—pˆó‚P“E—v'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.STAMP2                   IS 'ƒwƒbƒ_—pˆó‚Q'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.STAMP2_DESCRIPTION       IS 'ƒwƒbƒ_—pˆó‚Q“E—v'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.STAMP3                   IS 'ƒwƒbƒ_—pˆó‚R'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.STAMP3_DESCRIPTION       IS 'ƒwƒbƒ_—pˆó‚R“E—v'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.BASE_CODE                IS '‹’“_ƒR[ƒh'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.BASE_NAME                IS '‹’“_–¼'
+/
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.PAYMENT_DATE             IS 'Žx•¥”NŒŽ“ú'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.SELLING_MONTH            IS '”„ã”NŒŽ'
@@ -163,10 +199,20 @@ COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.ONCE_STORE_DELIVER_AMT   IS '¡‰
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.NET_SELLING_PRICE        IS 'NET‰¿Ši'
 /
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.NET_SELLING_PRICE_LOW    IS 'NET‰¿Ši‰º’i(‰º’i)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.STAMP                    IS 'ˆó'
+/
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.NET_PCT                  IS 'NETŠ|—¦'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.MARGIN_PCT               IS 'ƒ}[ƒWƒ“—¦'
 /
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.ERROR_RATE               IS 'ˆÙí—¦'
+/
+-- 2012/02/20 Ver.1.5 [E_–{‰Ò“®_08318] SCSK K.Nakamura ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.CS_MARGIN_AMT            IS 'C/Sƒ}[ƒWƒ“Šz'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.COVERAGE_AMT             IS '•â“U'

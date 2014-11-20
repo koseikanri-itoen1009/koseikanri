@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : 帳合問屋に関する請求書と見積書を突き合わせ、品目別に請求書と見積書の内容を表示
  * MD.050           : 問屋販売条件支払チェック表 MD050_COK_021_A06
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/12/24    1.8   S.Moriyama       [E_本稼動_00608] SQLチューニング
  *  2010/01/27    1.9   K.Kiriu          [E_本稼動_01176] 口座種別追加に伴う口座種別名取得元クイックコード変更
  *  2010/04/23    1.10  K.Yamaguchi      [E_本稼動_02088] NET掛け率・CSマージン額で請求単位（ボール）を考慮
+ *  2012/03/12    1.11  K.Nakamura       [E_本稼動_08318] レイアウト改修対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -66,6 +67,9 @@ AS
   cv_msg_code_00001          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00001';          -- 対象データなしメッセージ
   cv_msg_code_00003          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00003';          -- プロファイル取得エラー
   cv_msg_code_00013          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00013';          -- 在庫組織ID取得エラー
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+  cv_msg_code_00015          CONSTANT VARCHAR2(25)  := 'APP-XXCOK1-00015';          -- クイックコード取得エラーメッセージ
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
   cv_msg_code_00018          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00018';          -- 拠点コード(入力パラメータ)
   cv_msg_code_00028          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00028';          -- 業務処理日付取得エラー
   cv_msg_code_00040          CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-00040';          -- SVF起動APIエラー
@@ -98,6 +102,9 @@ AS
   cv_token_demand_unit       CONSTANT VARCHAR2(15)  := 'DEMAND_UNIT';
   cv_token_request_id        CONSTANT VARCHAR2(15)  := 'REQUEST_ID';
   cv_token_count             CONSTANT VARCHAR2(15)  := 'COUNT';
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+  cv_token_lookup_value_set  CONSTANT VARCHAR2(25)  := 'LOOKUP_VALUE_SET';
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
   -- プロファイル
   cv_prof_org_code_sales     CONSTANT VARCHAR2(25)  := 'XXCOK1_ORG_CODE_SALES';     -- 在庫組織コード_営業組織
   cv_prof_org_id             CONSTANT VARCHAR2(25)  := 'ORG_ID';                    -- 営業単位ID
@@ -107,6 +114,9 @@ AS
   cv_prof_aff4_fee           CONSTANT VARCHAR2(25)  := 'XXCOK1_AFF4_SELL_FEE';      -- 補助科目_問屋条件
   cv_prof_aff4_support       CONSTANT VARCHAR2(25)  := 'XXCOK1_AFF4_SELL_SUPPORT';  -- 補助科目_拡売費
 -- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama ADD END
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+  cv_prof_warn_margin_rate   CONSTANT VARCHAR2(25)  := 'XXCOK1_WARN_MARGIN_RATE';   -- 警告マージン率
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
   -- フォーマット
   cv_format_fxyyyy_mm_dd     CONSTANT VARCHAR2(12)  := 'FXYYYY/MM/DD';
   cv_format_fxyyyy_mm        CONSTANT VARCHAR2(9)   := 'FXYYYY/MM';
@@ -132,12 +142,30 @@ AS
 --  cv_lookup_type_bank        CONSTANT VARCHAR2(20)  := 'JP_BANK_ACCOUNT_TYPE';
   cv_lookup_type_bank        CONSTANT VARCHAR2(20)  := 'XXCSO1_KOZA_TYPE';
 -- 2010/01/27 Ver.1.9 [E_本稼動_01176] SCS K.Kiiru UPD END
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+  cv_lookup_type_stamp       CONSTANT VARCHAR2(30)  := 'XXCOK1_WHOLESALE_PAY_STAMP';
+  cv_lookup_type_chilled     CONSTANT VARCHAR2(30)  := 'XXCOK1_ITM_YOKIGUN_CHILLED';
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
   -- 請求単位
   cv_unit_type_cs            CONSTANT VARCHAR2(1)   := '2';   -- C/S
 -- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi ADD START
   cv_unit_type_unit          CONSTANT VARCHAR2(1)   := '1';   -- 本
   cv_unit_type_bl            CONSTANT VARCHAR2(1)   := '3';   -- ボール
 -- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi ADD END
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+  -- 有効フラグ
+  cv_enabled_flag            CONSTANT VARCHAR2(1)   := 'Y';   -- 有効
+  -- チルド品判定フラグ
+  cv_chilled_flag            CONSTANT VARCHAR2(1)   := 'Y';   -- チルド品
+  -- 見積区分
+  cv_quote_div_no            CONSTANT VARCHAR2(1)   := '0';   -- 0:見積書なし
+  -- 添え字(記号用)
+  cv_index_1                 CONSTANT VARCHAR2(1)   := '1';   -- クイックコード
+  cv_index_2                 CONSTANT VARCHAR2(1)   := '2';   -- クイックコード
+  cv_index_3                 CONSTANT VARCHAR2(1)   := '3';   -- クイックコード
+  -- ダミー値
+  cv_dummy                   CONSTANT VARCHAR2(5)   := 'dummy';              -- ダミー値
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
   -- SVF起動パラメータ
   cv_file_id                 CONSTANT VARCHAR2(20)  := 'XXCOK021A06R';       -- 帳票ID
   cv_output_mode             CONSTANT VARCHAR2(1)   := '1';                  -- 出力区分(PDF出力)
@@ -160,6 +188,9 @@ AS
   gn_normal_store_deliver_amt  NUMBER        DEFAULT NULL;  -- 通常店納
   gn_once_store_deliver_amt    NUMBER        DEFAULT NULL;  -- 今回店納
   gn_net_selling_price         NUMBER        DEFAULT NULL;  -- NET価格
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+  gn_normal_net_selling_price  NUMBER        DEFAULT NULL;  -- 通常NET価格(NET価格差照合時のみ)
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
   gv_estimated_type            VARCHAR2(1)   DEFAULT NULL;  -- 見積区分
 -- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama ADD START
   gv_aff3_fee                  VARCHAR2(50);                -- プロファイル値(販売手数料（問屋）)
@@ -167,6 +198,9 @@ AS
   gv_aff4_fee                  VARCHAR2(50);                -- プロファイル値(問屋条件)
   gv_aff4_support              VARCHAR2(50);                -- プロファイル値(拡売費)
 -- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama ADD END
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+  gn_warn_margin_rate          NUMBER        DEFAULT NULL;  -- プロファイル値(警告マージン率)
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
   -- ===============================================
   -- グローバルカーソル
   -- ===============================================
@@ -182,11 +216,20 @@ AS
     SELECT xwbl.wholesale_bill_detail_id  AS wholesale_bill_detail_id       -- 問屋請求書明細ID
          , xwbl.bill_no                   AS bill_no                        -- 請求書No
          , xwbh.base_code                 AS base_code                      -- 拠点コード
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+         , ( SELECT xbav.base_name                                          -- 拠点名称
+             FROM   xxcok_base_all_v xbav                                   -- 拠点ビュー
+             WHERE  xbav.base_code = xwbh.base_code                         -- 拠点コード
+           )                              AS base_name                      -- 拠点名
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
          , xwbh.cust_code                 AS cust_code                      -- 顧客コード
          , xwbl.sales_outlets_code        AS sales_outlets_code             -- 問屋帳合先コード
          , xwbl.selling_month             AS selling_month                  -- 売上対象年月
          , NVL( xwbl.item_code, xwbl.acct_code || cv_hyphen || xwbl.sub_acct_code )
                                           AS item_code                      -- 品目コード(NULL：勘定科目コード-補助科目コード)
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+         , xwbl.item_code                 AS item_code_judge                -- 品目コード(判定用)
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
          , xwbl.demand_qty                AS demand_qty                     -- 請求数量
          , xwbl.demand_unit_price         AS demand_unit_price              -- 請求単価
          , xwbl.demand_amt                AS demand_amt                     -- 請求金額
@@ -211,6 +254,10 @@ AS
            THEN item.old_fixed_price                                        -- 旧定価
            ELSE item.new_fixed_price                                        -- 定価(新)
            END                            AS fixed_price                    -- 定価
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+         , item.new_trading_cost          AS trading_cost                   -- 営業原価(新)
+         , item.vessel_group              AS vessel_group                   -- 容器群
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
          , pv.vendor_name                 AS vendor_name                    -- 仕入先名
          , bank.bank_name                 AS bank_name                      -- 銀行名
          , bank.bank_branch_name          AS bank_branch_name               -- 銀行支店名
@@ -236,6 +283,10 @@ AS
                  , TO_NUMBER( iimb.attribute4 )  AS old_fixed_price         -- 旧定価
                  , TO_NUMBER( iimb.attribute5 )  AS new_fixed_price         -- 定価(新)
                  , iimb.attribute6               AS fixed_price_start_date  -- 定価適用開始日
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+                 , TO_NUMBER( iimb.attribute8 )  AS new_trading_cost        -- 営業原価(新)
+                 , xsib.vessel_group             AS vessel_group            -- 容器群
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
 -- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi REPAIR START
 --                 , TO_NUMBER( iimb.attribute11 ) AS inc_num                 -- 入数
                  , TO_NUMBER( iimb.attribute11 ) AS cs_count                -- ケース入数
@@ -310,6 +361,37 @@ AS
     AND    xwbh.wholesale_bill_header_id = xwbl.wholesale_bill_header_id;
   TYPE g_target_ttype IS TABLE OF g_target_cur%ROWTYPE INDEX BY BINARY_INTEGER;
   g_target_tab g_target_ttype;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+  CURSOR lookup_stamp_cur
+  IS
+    SELECT flv.lookup_code   AS lookup_code
+         , flv.meaning       AS meaning
+         , flv.description   AS description
+    FROM   fnd_lookup_values flv
+    WHERE  flv.lookup_type  = cv_lookup_type_stamp
+    AND    gd_process_date BETWEEN NVL( flv.start_date_active, gd_process_date )
+                               AND NVL( flv.end_date_active, gd_process_date )
+    AND    flv.language     = USERENV('LANG')
+    AND    flv.enabled_flag = cv_enabled_flag
+    ORDER BY flv.lookup_code
+  ;
+  lookup_stamp_rec   lookup_stamp_cur%ROWTYPE;
+  TYPE g_lookup_stamp_ttype IS TABLE OF lookup_stamp_cur%ROWTYPE INDEX BY VARCHAR2(1);
+  g_lookup_stamp_tab g_lookup_stamp_ttype;
+  --
+  CURSOR lookup_chilled_cur
+  IS
+    SELECT flv.lookup_code   AS lookup_code
+    FROM   fnd_lookup_values flv
+    WHERE  flv.lookup_type  = cv_lookup_type_chilled
+    AND    gd_process_date BETWEEN NVL( flv.start_date_active, gd_process_date )
+                               AND NVL( flv.end_date_active, gd_process_date )
+    AND    flv.language     = USERENV('LANG')
+    AND    flv.enabled_flag = cv_enabled_flag
+  ;
+  TYPE g_lookup_chilled_ttype IS TABLE OF lookup_chilled_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+  g_lookup_chilled_tab g_lookup_chilled_ttype;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
   -- ===============================================
   -- 共通例外
   -- ===============================================
@@ -550,6 +632,11 @@ AS
 -- 2009/12/01 Ver.1.6 [E_本稼動_00229] SCS S.Moriyama ADD START
     ln_fraction_amount       NUMBER         DEFAULT NULL;              -- 端数計算用
 -- 2009/12/01 Ver.1.6 [E_本稼動_00229] SCS S.Moriyama ADD END
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+    lv_stamp                 VARCHAR2(2)    DEFAULT NULL;              -- 印
+    lv_error_rate            VARCHAR2(2)    DEFAULT NULL;              -- 異常率
+    lv_chilled_flag          VARCHAR2(1)    DEFAULT NULL;              -- チルド品判定フラグ
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
 --
   BEGIN
     -- ===============================================
@@ -578,6 +665,19 @@ AS
       -- (実)建値(建値-値引)
       -- ===============================================
       ln_market_amt := NVL( gn_market_amt, 0 ) - NVL( gn_allowance_amt, 0 );
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+      -- ===============================================
+      -- 印
+      -- ===============================================
+      -- 見積書なしの場合の表示
+      IF ( gv_estimated_type = cv_quote_div_no ) THEN
+        lv_stamp := g_lookup_stamp_tab( cv_index_1 ).meaning;
+      -- 営業原価＞NET価格の場合の表示
+      ELSIF ( gv_estimated_type IS NOT NULL )
+        AND ( g_target_tab( in_i ).trading_cost > gn_net_selling_price ) THEN
+        lv_stamp := g_lookup_stamp_tab( cv_index_2 ).meaning;
+      END IF;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
       -- ===============================================
       -- NET掛率(NET価格/定価*100)  請求単位が2(C/S)の場合、NET価格/入数/定価*100
       -- ===============================================
@@ -646,6 +746,28 @@ AS
           ln_margin_pct := cn_number_0;
         END IF;
       END IF;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+      -- ===============================================
+      -- 異常マージン率  チルド品以外かつ、マージン率がプロファイル値(警告マージン率)を超えている場合、表示
+      -- ===============================================
+      -- マージン率がプロファイル値(警告マージン率)を超えている場合
+      IF ( TRUNC( ln_margin_pct, 1 ) > gn_warn_margin_rate ) THEN
+        <<error_margin_loop>>
+        FOR i IN 1 .. g_lookup_chilled_tab.COUNT LOOP
+          -- チルド品以外の場合
+          IF ( g_lookup_chilled_tab(i).lookup_code <> NVL( g_target_tab( in_i ).vessel_group, cv_dummy ) ) THEN
+            lv_error_rate := g_lookup_stamp_tab( cv_index_3 ).meaning;
+          -- チルド品の場合
+          ELSE
+            lv_chilled_flag := cv_chilled_flag;
+          END IF;
+        END LOOP error_margin_loop;
+        -- チルド品の場合、NULLにする
+        IF ( lv_chilled_flag = cv_chilled_flag ) THEN
+          lv_error_rate := NULL;
+        END IF;
+      END IF;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
       -- ===============================================
       -- C/Sマージン額((今回店納-NET価格)*入数  今回店納がNULL・0以外の場合今回店納、NULLまたは0の場合通常店納  請求単位が2(C/S)の場合、入数を掛けない
       -- ===============================================
@@ -881,6 +1003,16 @@ AS
       , p_sales_outlets_code                           -- 問屋帳合先コード(入力パラメータ)
       , p_payment_date                                 -- 支払年月日(入力パラメータ)
       , p_selling_month                                -- 売上対象年月(入力パラメータ)
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+      , stamp1                                         -- ヘッダ用印１
+      , stamp1_description                             -- ヘッダ用印１摘要
+      , stamp2                                         -- ヘッダ用印２
+      , stamp2_description                             -- ヘッダ用印２摘要
+      , stamp3                                         -- ヘッダ用印３
+      , stamp3_description                             -- ヘッダ用印３摘要
+      , base_code                                      -- 拠点コード
+      , base_name                                      -- 拠点名
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
       , payment_date                                   -- 支払年月日
       , selling_month                                  -- 売上年月
       , bill_no                                        -- 請求書No.
@@ -911,8 +1043,15 @@ AS
       , normal_store_deliver_amt                       -- 通常店納
       , once_store_deliver_amt                         -- 今回店納
       , net_selling_price                              -- NET価格
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+      , net_selling_price_low                          -- NET価格(下段)
+      , stamp                                          -- 印
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
       , net_pct                                        -- NET掛率
       , margin_pct                                     -- マージン率
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+      , error_rate                                     -- 異常率
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
       , cs_margin_amt                                  -- C/Sマージン額
       , coverage_amt                                   -- 補填
       , wholesale_margin_sum                           -- 問屋マージン
@@ -936,6 +1075,16 @@ AS
       , iv_sales_outlets_code                          -- p_sales_outlets_code
       , iv_payment_date                                -- p_payment_date
       , iv_selling_month                               -- p_selling_month
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+      , g_lookup_stamp_tab( cv_index_1 ).meaning       -- stamp1
+      , g_lookup_stamp_tab( cv_index_1 ).description   -- stamp1_description
+      , g_lookup_stamp_tab( cv_index_2 ).meaning       -- stamp1
+      , g_lookup_stamp_tab( cv_index_2 ).description   -- stamp1_description
+      , g_lookup_stamp_tab( cv_index_3 ).meaning       -- stamp1
+      , g_lookup_stamp_tab( cv_index_3 ).description   -- stamp1_description
+      , g_target_tab( in_i ).base_code                 -- base_code
+      , g_target_tab( in_i ).base_name                 -- base_name
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
       , iv_payment_date                                -- payment_date
       , lv_selling_month                               -- selling_month
       , g_target_tab( in_i ).bill_no                   -- bill_no
@@ -965,9 +1114,16 @@ AS
       , ln_market_amt                                  -- market_amt
       , gn_normal_store_deliver_amt                    -- normal_store_deliver_amt
       , gn_once_store_deliver_amt                      -- once_store_deliver_amt
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura MOD START
       , gn_net_selling_price                           -- net_selling_price
+      , gn_normal_net_selling_price                    -- net_selling_price_low
+      , lv_stamp                                       -- stamp
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura MOD END
       , ln_net_pct                                     -- net_pct
       , ln_margin_pct                                  -- margin_pct
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+      , lv_error_rate                                  -- error_rate
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
       , ln_cs_margin_amt                               -- cs_margin_amt
       , ln_coverage_amt                                -- coverage_amt
       , ln_wholesale_margin_sum                        -- wholesale_margin_sum
@@ -1137,7 +1293,10 @@ AS
         , ov_errmsg                    => lv_errmsg                              -- エラーメッセージ
         , iv_wholesale_code            => g_target_tab( i ).wholesale_ctrl_code  -- 問屋管理コード
         , iv_sales_outlets_code        => g_target_tab( i ).sales_outlets_code   -- 問屋帳合先コード
-        , iv_item_code                 => g_target_tab( i ).item_code            -- 品目コード
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura MOD START
+--        , iv_item_code                 => g_target_tab( i ).item_code            -- 品目コード
+        , iv_item_code                 => g_target_tab( i ).item_code_judge      -- 品目コード(判定用)
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura MOD END
         , in_demand_unit_price         => g_target_tab( i ).payment_unit_price   -- 支払単価
         , iv_demand_unit_type          => g_target_tab( i ).demand_unit_type     -- 請求単位
         , iv_selling_month             => g_target_tab( i ).selling_month        -- 売上対象年月
@@ -1149,6 +1308,9 @@ AS
         , on_normal_store_deliver_amt  => gn_normal_store_deliver_amt            -- 通常店納
         , on_once_store_deliver_amt    => gn_once_store_deliver_amt              -- 今回店納
         , on_net_selling_price         => gn_net_selling_price                   -- NET価格
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+        , on_normal_net_selling_price  => gn_normal_net_selling_price            -- 通常NET価格(NET価格差照合時のみ)
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
         , ov_estimated_type            => gv_estimated_type                      -- 見積区分
 -- Start 2009/04/16 Ver_ T1_ M.Hiruta
 --        , on_backmargin_amt            => ln_dummy                               -- 販売手数料(未使用)
@@ -1492,6 +1654,26 @@ AS
                     );
       RAISE init_fail_expt;
     END IF;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+    -- ===============================================
+    -- プロファイル取得(警告マージン率)
+    -- ===============================================
+    gn_warn_margin_rate := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_warn_margin_rate ) );
+    IF ( gn_warn_margin_rate IS NULL ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00003
+                    , iv_token_name1  => cv_token_profile
+                    , iv_token_value1 => cv_prof_warn_margin_rate
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG
+                    , iv_message  => lv_errmsg
+                    , in_new_line => cn_number_0
+                    );
+      RAISE init_fail_expt;
+    END IF;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
 -- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama ADD END
     -- ===============================================
     -- 在庫組織ID取得
@@ -1527,12 +1709,64 @@ AS
                     );
       RAISE init_fail_expt;
     END IF;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+    -- ===============================================
+    -- クイックコード取得(問屋販売条件支払チェック表印)
+    -- ===============================================
+    <<lookup_stamp_loop>>
+    FOR lookup_stamp_rec IN lookup_stamp_cur LOOP
+      g_lookup_stamp_tab( lookup_stamp_rec.lookup_code ).meaning     := lookup_stamp_rec.meaning;
+      g_lookup_stamp_tab( lookup_stamp_rec.lookup_code ).description := lookup_stamp_rec.description;
+    END LOOP lookup_stamp_loop;
+    IF ( g_lookup_stamp_tab.COUNT = 0 ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00015
+                    , iv_token_name1  => cv_token_lookup_value_set
+                    , iv_token_value1 => cv_lookup_type_stamp
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG
+                    , iv_message  => lv_errmsg
+                    , in_new_line => cn_number_0
+                    );
+      RAISE init_fail_expt;
+    END IF;
+    -- ===============================================
+    -- クイックコード取得(容器群コード（チルド）)
+    -- ===============================================
+    OPEN lookup_chilled_cur;
+    FETCH lookup_chilled_cur BULK COLLECT INTO g_lookup_chilled_tab;
+    CLOSE lookup_chilled_cur;
+    IF ( g_lookup_chilled_tab.COUNT = 0 ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00015
+                    , iv_token_name1  => cv_token_lookup_value_set
+                    , iv_token_value1 => cv_lookup_type_chilled
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG
+                    , iv_message  => lv_errmsg
+                    , in_new_line => cn_number_0
+                    );
+      RAISE init_fail_expt;
+    END IF;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
   EXCEPTION
     -- *** 初期処理エラー ***
     WHEN init_fail_expt THEN
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+      IF ( lookup_stamp_cur%ISOPEN ) THEN
+        CLOSE lookup_stamp_cur;
+      END IF;
+      IF ( lookup_chilled_cur%ISOPEN ) THEN
+        CLOSE lookup_chilled_cur;
+      END IF;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
     -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
@@ -1541,6 +1775,14 @@ AS
     WHEN OTHERS THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
+      IF ( lookup_stamp_cur%ISOPEN ) THEN
+        CLOSE lookup_stamp_cur;
+      END IF;
+      IF ( lookup_chilled_cur%ISOPEN ) THEN
+        CLOSE lookup_chilled_cur;
+      END IF;
+-- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
   END init;
 --
   /**********************************************************************************
