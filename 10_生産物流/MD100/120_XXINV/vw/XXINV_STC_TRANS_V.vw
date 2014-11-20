@@ -550,8 +550,14 @@ SELECT xstv.whse_code
         AND    grb_in_pr.routing_id               = gbh_in_pr.routing_id
         AND    xrpm_in_pr.routing_class           = grb_in_pr.routing_class
         AND    xrpm_in_pr.line_type               = gmd_in_pr.line_type
-        AND (( gmd_in_pr.attribute5              IS NULL )
-          OR ( xrpm_in_pr.hit_in_div              = gmd_in_pr.attribute5 ) )
+--mod start 2008/06/23
+--        AND (( gmd_in_pr.attribute5              IS NULL )
+--          OR ( xrpm_in_pr.hit_in_div              = gmd_in_pr.attribute5 ) )
+        AND ((( gmd_in_pr.attribute5              IS NULL )
+          AND ( xrpm_in_pr.hit_in_div             IS NULL ))
+        OR   (( gmd_in_pr.attribute5              IS NOT NULL )
+          AND ( xrpm_in_pr.hit_in_div              = gmd_in_pr.attribute5 )))
+--mod start 2008/06/23
         AND    flv_in_pr.lookup_type              = 'XXCMN_NEW_DIVISION'
         AND    flv_in_pr.language                 = 'JA'
         AND    flv_in_pr.lookup_code              = xrpm_in_pr.new_div_invent
@@ -1271,8 +1277,14 @@ SELECT xstv.whse_code
         AND    grb_out_pr.routing_id               = gbh_out_pr.routing_id
         AND    xrpm_out_pr.routing_class           = grb_out_pr.routing_class
         AND    xrpm_out_pr.line_type               = gmd_out_pr.line_type
-        AND (( gmd_out_pr.attribute5              IS NULL )
-          OR ( xrpm_out_pr.hit_in_div              = gmd_out_pr.attribute5 ) )
+--mod start 2008/06/23
+--        AND (( gmd_out_pr.attribute5              IS NULL )
+--          OR ( xrpm_out_pr.hit_in_div              = gmd_out_pr.attribute5 ) )
+        AND ((( gmd_out_pr.attribute5              IS NULL )
+          AND ( xrpm_out_pr.hit_in_div             IS NULL ))
+        OR   (( gmd_out_pr.attribute5              IS NOT NULL )
+          AND ( xrpm_out_pr.hit_in_div             = gmd_out_pr.attribute5 )))
+--mod start 2008/06/23
         AND    flv_out_pr.lookup_type              = 'XXCMN_NEW_DIVISION'
         AND    flv_out_pr.language                 = 'JA'
         AND    flv_out_pr.lookup_code              = xrpm_out_pr.new_div_invent
@@ -1801,8 +1813,14 @@ SELECT xstv.whse_code
         AND    grb_in_pr_e.routing_id               = gbh_in_pr_e.routing_id
         AND    xrpm_in_pr_e.routing_class           = grb_in_pr_e.routing_class
         AND    xrpm_in_pr_e.line_type               = gmd_in_pr_e.line_type
-        AND (( gmd_in_pr_e.attribute5              IS NULL )
-          OR ( xrpm_in_pr_e.hit_in_div              = gmd_in_pr_e.attribute5 ))
+--mod start 2008/06/23
+--        AND (( gmd_in_pr_e.attribute5              IS NULL )
+--          OR ( xrpm_in_pr_e.hit_in_div              = gmd_in_pr_e.attribute5 ))
+        AND ((( gmd_in_pr_e.attribute5              IS NULL )
+          AND ( xrpm_in_pr_e.hit_in_div             IS NULL ))
+        OR   (( gmd_in_pr_e.attribute5              IS NOT NULL )
+          AND ( xrpm_in_pr_e.hit_in_div             = gmd_in_pr_e.attribute5 )))
+--mod start 2008/06/23
         AND    flv_in_pr_e.lookup_type              = 'XXCMN_NEW_DIVISION'
         AND    flv_in_pr_e.language                 = 'JA'
         AND    flv_in_pr_e.lookup_code              = xrpm_in_pr_e.new_div_invent
@@ -2690,8 +2708,14 @@ SELECT xstv.whse_code
         AND    grb_out_pr_e.routing_id               = gbh_out_pr_e.routing_id
         AND    xrpm_out_pr_e.routing_class           = grb_out_pr_e.routing_class
         AND    xrpm_out_pr_e.line_type               = gmd_out_pr_e.line_type
-        AND (( gmd_out_pr_e.attribute5              IS NULL )
-          OR ( xrpm_out_pr_e.hit_in_div              = gmd_out_pr_e.attribute5 ))
+--mod start 2008/06/23
+--        AND (( gmd_out_pr_e.attribute5              IS NULL )
+--          OR ( xrpm_out_pr_e.hit_in_div              = gmd_out_pr_e.attribute5 ))
+        AND ((( gmd_out_pr_e.attribute5              IS NULL )
+          AND ( xrpm_out_pr_e.hit_in_div             IS NULL ))
+        OR   (( gmd_out_pr_e.attribute5              IS NOT NULL )
+          AND ( xrpm_out_pr_e.hit_in_div             = gmd_out_pr_e.attribute5 )))
+--mod start 2008/06/23
         AND    flv_out_pr_e.lookup_type              = 'XXCMN_NEW_DIVISION'
         AND    flv_out_pr_e.language                 = 'JA'
         AND    flv_out_pr_e.lookup_code              = xrpm_out_pr_e.new_div_invent

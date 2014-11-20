@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2008/05/19    1.1  Oracle 宮田 隆史  指摘事項Seq262，263，
  *  2008/06/05    1.2  Oracle 宮田 隆史  結合テスト実施に伴う改修
  *  2008/06/13    1.3  Oracle 宮田 隆史  結合テスト実施に伴う改修
+ *  2008/06/23    1.4  Oracle 宮田 隆史  ST不具合#230対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4561,74 +4562,80 @@ AS
         END IF;
 --
         IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
-          -- マスタチェック[運送業者]
-          IF (lt_eos_data_type = gv_eos_data_cd_220) THEN     -- 移動出庫
 --
-            SELECT COUNT(xcv.party_number) item_cnt
-            INTO   ln_cnt
-            FROM   xxcmn_carriers2_v xcv
-            WHERE  xcv.party_number = gr_interface_info_rec(i).freight_carrier_code --運送業者情報VIEW2.組織番号
-            AND    xcv.start_date_active <= gr_interface_info_rec(i).shipped_date   --適用開始日<=出荷日
-            AND    xcv.end_date_active >= gr_interface_info_rec(i).shipped_date     --適用終了日>=出荷日
-            ;
+          -- 運送業者≠NULLの場合のみチェックします。
+          IF (TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) THEN
 --
-          ELSIF (lt_eos_data_type = gv_eos_data_cd_230) THEN  -- 移動入庫
+            -- マスタチェック[運送業者]
+            IF (lt_eos_data_type = gv_eos_data_cd_220) THEN     -- 移動出庫
 --
-            SELECT COUNT(xcv.party_number) item_cnt
-            INTO   ln_cnt
-            FROM   xxcmn_carriers2_v xcv
-            WHERE  xcv.party_number = gr_interface_info_rec(i).freight_carrier_code --運送業者情報VIEW2.組織番号
-            AND    xcv.start_date_active <= gr_interface_info_rec(i).arrival_date   --適用開始日<=着荷日
-            AND    xcv.end_date_active >= gr_interface_info_rec(i).arrival_date     --適用終了日>=着荷日
-            ;
+              SELECT COUNT(xcv.party_number) item_cnt
+              INTO   ln_cnt
+              FROM   xxcmn_carriers2_v xcv
+              WHERE  xcv.party_number = gr_interface_info_rec(i).freight_carrier_code --運送業者情報VIEW2.組織番号
+              AND    xcv.start_date_active <= gr_interface_info_rec(i).shipped_date   --適用開始日<=出荷日
+              AND    xcv.end_date_active >= gr_interface_info_rec(i).shipped_date     --適用終了日>=出荷日
+              ;
 --
-          END IF;
+            ELSIF (lt_eos_data_type = gv_eos_data_cd_230) THEN  -- 移動入庫
 --
-          IF (ln_cnt = 0) THEN
+              SELECT COUNT(xcv.party_number) item_cnt
+              INTO   ln_cnt
+              FROM   xxcmn_carriers2_v xcv
+              WHERE  xcv.party_number = gr_interface_info_rec(i).freight_carrier_code --運送業者情報VIEW2.組織番号
+              AND    xcv.start_date_active <= gr_interface_info_rec(i).arrival_date   --適用開始日<=着荷日
+              AND    xcv.end_date_active >= gr_interface_info_rec(i).arrival_date     --適用終了日>=着荷日
+              ;
 --
-            -- マスタに存在しなければ、配送No単位にエラーflagをセット
-            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
-                           gv_msg_kbn          -- 'XXWSH'
-                          ,gv_msg_93a_010  -- マスタチェックエラーメッセージ
-                          ,gv_param1_token
-                          ,gv_param1_token06_nm                           --エラー項目名
-                          ,gv_param2_token
-                          ,gr_interface_info_rec(i).delivery_no           --IF_H.配送No
-                          ,gv_param3_token
-                          ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
-                          ,gv_param4_token
-                          ,gr_interface_info_rec(i).eos_data_type         --IF_H.EOSデータ種別
-                          ,gv_param5_token
-                          ,gr_interface_info_rec(i).location_code         --IF_H.出荷元
-                          ,gv_param6_token
-                          ,gr_interface_info_rec(i).party_site_code       --IF_H.出荷先
-                          ,gv_param7_token
-                          ,gr_interface_info_rec(i).freight_carrier_code  --IF_H.運送業者
-                          ,gv_param8_token
-                          ,gr_interface_info_rec(i).orderd_item_code      --IF_L.受注品目
-                          ,gv_param9_token
-                          ,gr_interface_info_rec(i).ship_to_location      --IF_H.入庫倉庫
-                          ,gv_param10_token
-                          ,gr_interface_info_rec(i).shipping_method_code  --IF_H.配送区分
-                          )
-                          ,1
-                          ,5000);
+            END IF;
 --
-            -- 配送NO-EOSデータ種別単位にエラーflagセット
-            set_deliveryno_unit_errflg(
-              lt_delivery_no,         -- 配送No
-              lt_eos_data_type,       -- EOSデータ種別
-              gv_err_class,           -- エラー種別：エラー
-              lv_msg_buff,            -- エラー・メッセージ(出力用)
-              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-              lv_retcode,             -- リターン・コード             --# 固定 #
-              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
-            );
+            IF (ln_cnt = 0) THEN
 --
-            -- エラーフラグ
-            ln_err_flg := 1;
-            -- 処理ステータス：警告
-            ov_retcode := gv_status_warn;
+              -- マスタに存在しなければ、配送No単位にエラーflagをセット
+              lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                             gv_msg_kbn          -- 'XXWSH'
+                            ,gv_msg_93a_010  -- マスタチェックエラーメッセージ
+                            ,gv_param1_token
+                            ,gv_param1_token06_nm                           --エラー項目名
+                            ,gv_param2_token
+                            ,gr_interface_info_rec(i).delivery_no           --IF_H.配送No
+                            ,gv_param3_token
+                            ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
+                            ,gv_param4_token
+                            ,gr_interface_info_rec(i).eos_data_type         --IF_H.EOSデータ種別
+                            ,gv_param5_token
+                            ,gr_interface_info_rec(i).location_code         --IF_H.出荷元
+                            ,gv_param6_token
+                            ,gr_interface_info_rec(i).party_site_code       --IF_H.出荷先
+                            ,gv_param7_token
+                            ,gr_interface_info_rec(i).freight_carrier_code  --IF_H.運送業者
+                            ,gv_param8_token
+                            ,gr_interface_info_rec(i).orderd_item_code      --IF_L.受注品目
+                            ,gv_param9_token
+                            ,gr_interface_info_rec(i).ship_to_location      --IF_H.入庫倉庫
+                            ,gv_param10_token
+                            ,gr_interface_info_rec(i).shipping_method_code  --IF_H.配送区分
+                            )
+                            ,1
+                            ,5000);
+--
+              -- 配送NO-EOSデータ種別単位にエラーflagセット
+              set_deliveryno_unit_errflg(
+                lt_delivery_no,         -- 配送No
+                lt_eos_data_type,       -- EOSデータ種別
+                gv_err_class,           -- エラー種別：エラー
+                lv_msg_buff,            -- エラー・メッセージ(出力用)
+                lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+                lv_retcode,             -- リターン・コード             --# 固定 #
+                lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+--
+              -- エラーフラグ
+              ln_err_flg := 1;
+              -- 処理ステータス：警告
+              ov_retcode := gv_status_warn;
+--
+            END IF;
 --
           END IF;
 --
@@ -5069,60 +5076,65 @@ AS
 --
         IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
-          -- マスタチェック[運送業者]
-          SELECT COUNT(xcv.party_number) item_cnt
-          INTO   ln_cnt
-          FROM   xxcmn_carriers2_v xcv
-          WHERE  xcv.party_number = gr_interface_info_rec(i).freight_carrier_code  --運送業者情報VIEW2.組織番号
-          AND    xcv.start_date_active <= gr_interface_info_rec(i).shipped_date    --適用開始日<=出荷日
-          AND    xcv.end_date_active   >= gr_interface_info_rec(i).shipped_date    --適用終了日>=出荷日
-          ;
+          -- 運送業者≠NULLの場合のみチェックします。
+          IF (TRIM(gr_interface_info_rec(i).freight_carrier_code) IS NOT NULL) THEN
 --
-          IF (ln_cnt = 0) THEN
+            -- マスタチェック[運送業者]
+            SELECT COUNT(xcv.party_number) item_cnt
+            INTO   ln_cnt
+            FROM   xxcmn_carriers2_v xcv
+            WHERE  xcv.party_number = gr_interface_info_rec(i).freight_carrier_code  --運送業者情報VIEW2.組織番号
+            AND    xcv.start_date_active <= gr_interface_info_rec(i).shipped_date    --適用開始日<=出荷日
+            AND    xcv.end_date_active   >= gr_interface_info_rec(i).shipped_date    --適用終了日>=出荷日
+            ;
 --
-            -- マスタに存在しなければ、配送No単位にエラーflagをセット
-            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
-                           gv_msg_kbn          -- 'XXWSH'
-                          ,gv_msg_93a_010  -- マスタチェックエラーメッセージ
-                          ,gv_param1_token
-                          ,gv_param1_token06_nm                           --エラー項目名
-                          ,gv_param2_token
-                          ,gr_interface_info_rec(i).delivery_no           --IF_H.配送No
-                          ,gv_param3_token
-                          ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
-                          ,gv_param4_token
-                          ,gr_interface_info_rec(i).eos_data_type         --IF_H.EOSデータ種別
-                          ,gv_param5_token
-                          ,gr_interface_info_rec(i).location_code         --IF_H.出荷元
-                          ,gv_param6_token
-                          ,gr_interface_info_rec(i).party_site_code       --IF_H.出荷先
-                          ,gv_param7_token
-                          ,gr_interface_info_rec(i).freight_carrier_code  --IF_H.運送業者
-                          ,gv_param8_token
-                          ,gr_interface_info_rec(i).orderd_item_code      --IF_L明細.受注品目
-                          ,gv_param9_token
-                          ,gr_interface_info_rec(i).ship_to_location      --IF_H.入庫倉庫
-                          ,gv_param10_token
-                          ,gr_interface_info_rec(i).shipping_method_code  --IF_H.配送区分
-                          )
-                          ,1
-                          ,5000);
+            IF (ln_cnt = 0) THEN
 --
-            -- 配送NO-EOSデータ種別単位にエラーflagセット
-            set_deliveryno_unit_errflg(
-              lt_delivery_no,         -- 配送No
-              lt_eos_data_type,       -- EOSデータ種別
-              gv_err_class,           -- エラー種別：エラー
-              lv_msg_buff,            -- エラー・メッセージ(出力用)
-              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-              lv_retcode,             -- リターン・コード             --# 固定 #
-              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
-            );
+              -- マスタに存在しなければ、配送No単位にエラーflagをセット
+              lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                             gv_msg_kbn          -- 'XXWSH'
+                            ,gv_msg_93a_010  -- マスタチェックエラーメッセージ
+                            ,gv_param1_token
+                            ,gv_param1_token06_nm                           --エラー項目名
+                            ,gv_param2_token
+                            ,gr_interface_info_rec(i).delivery_no           --IF_H.配送No
+                            ,gv_param3_token
+                            ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
+                            ,gv_param4_token
+                            ,gr_interface_info_rec(i).eos_data_type         --IF_H.EOSデータ種別
+                            ,gv_param5_token
+                            ,gr_interface_info_rec(i).location_code         --IF_H.出荷元
+                            ,gv_param6_token
+                            ,gr_interface_info_rec(i).party_site_code       --IF_H.出荷先
+                            ,gv_param7_token
+                            ,gr_interface_info_rec(i).freight_carrier_code  --IF_H.運送業者
+                            ,gv_param8_token
+                            ,gr_interface_info_rec(i).orderd_item_code      --IF_L明細.受注品目
+                            ,gv_param9_token
+                            ,gr_interface_info_rec(i).ship_to_location      --IF_H.入庫倉庫
+                            ,gv_param10_token
+                            ,gr_interface_info_rec(i).shipping_method_code  --IF_H.配送区分
+                            )
+                            ,1
+                            ,5000);
 --
-            -- エラーフラグ
-            ln_err_flg := 1;
-            -- 処理ステータス：警告
-            ov_retcode := gv_status_warn;
+              -- 配送NO-EOSデータ種別単位にエラーflagセット
+              set_deliveryno_unit_errflg(
+                lt_delivery_no,         -- 配送No
+                lt_eos_data_type,       -- EOSデータ種別
+                gv_err_class,           -- エラー種別：エラー
+                lv_msg_buff,            -- エラー・メッセージ(出力用)
+                lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+                lv_retcode,             -- リターン・コード             --# 固定 #
+                lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+--
+              -- エラーフラグ
+              ln_err_flg := 1;
+              -- 処理ステータス：警告
+              ov_retcode := gv_status_warn;
+--
+            END IF;
 --
           END IF;
 --
