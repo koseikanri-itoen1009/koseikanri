@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2008/12/06    1.10  Oracle 伊藤 ひとみ 本番障害No528対応
  *  2008/12/15    1.11  Oracle 北寒寺 正夫 本番障害No648対応
  *  2008/12/19    1.12  Oracle 二瓶 大輔 本番障害No648再対応
+ *  2008/12/30    1.13  Oracle 吉元 強樹 標準-ｱﾄﾞｵﾝ受入差異対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -559,6 +560,9 @@ AS
     ir_masters_rec  IN OUT NOCOPY masters_rec,
     ir_mst_rec      IN OUT NOCOPY mst_b_5_rec,
     in_group_id     IN            NUMBER,
+-- 2008/12/30 v1.13 T.Yoshimoto Add Start
+    ln_dest_type    IN            NUMBER,       -- 受入(0), 搬送(1)
+-- 2008/12/30 v1.13 T.Yoshimoto Add End
     ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -610,8 +614,11 @@ AS
       ln_use_mtl_lot := 2;
     END IF;
 --
+-- 2008/12/30 v1.13 T.Yoshimoto Add Start
     -- 受入訂正
-    IF (ir_masters_rec.rcv_cov_qty > 0) THEN
+--    IF (ir_masters_rec.rcv_cov_qty > 0) THEN
+    IF (ln_dest_type = 0) THEN
+-- 2008/12/30 v1.13 T.Yoshimoto Add End
       lv_dest_code := gv_dest_type_receive;
       lv_dest_text := gv_dest_type_receive;
 --
@@ -1065,6 +1072,9 @@ AS
       ir_masters_rec,
       lr_mst_rec,
       in_group_id,
+-- 2008/12/30 v1.13 T.Yoshimoto Add Start
+      0,                  -- 受入(0), 搬送(1)
+-- 2008/12/30 v1.13 T.Yoshimoto Add End
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1165,6 +1175,9 @@ AS
       ir_masters_rec,
       lr_mst_rec,
       in_group_id,
+-- 2008/12/30 v1.13 T.Yoshimoto Add Start
+      1,                  -- 受入(0), 搬送(1)
+-- 2008/12/30 v1.13 T.Yoshimoto Add End
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4146,7 +4159,12 @@ AS
         END IF;
 --
         -- 仕入先出荷数量
-        IF (lr_mst_rec.def_qty6 > 0) THEN
+-- 2008/12/30 v1.13 T.Yoshimoto Mod Start
+        --IF (lr_mst_rec.def_qty6 > 0) THEN
+        -- 受入且つ仕入先出荷実績が0より大きい、又は、訂正の場合OIFへ書き込む
+        IF (((lr_mst_rec.trans_type = gv_trans_type_receive) AND (lr_mst_rec.def_qty6 > 0))
+          OR (lr_mst_rec.trans_type = gv_trans_type_correct)) THEN
+-- 2008/12/30 v1.13 T.Yoshimoto Mod End
 --
           -- 受入オープンインタフェースの作成
           proc_rcv_if(

@@ -7,7 +7,7 @@ AS
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,9 +44,10 @@ AS
  *                                       結合テスト不具合ログ#300_3対応
  *  2008/05/23    1.3   Oracle 山根 一浩 結合テスト不具合ログ対応
  *  2008/06/26    1.4   Oracle 山根 一浩 結合テスト不具合No84,86対応
- *  2008/07/09    1.5   Oracle 山根一浩  I_S_192対応
+ *  2008/07/09    1.5   Oracle 山根 一浩 I_S_192対応
  *  2008/08/06    1.6   Oracle 山根 一浩 課題#32対応
  *  2008/09/25    1.7   Oracle 山根 一浩 指摘23対応
+ *  2008/12/30    1.8   Oracle 吉元 強樹 標準-ｱﾄﾞｵﾝ受入差異対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -163,6 +164,9 @@ AS
   gv_add_status_end      CONSTANT VARCHAR2(5)  := '99';              -- 取消済み     2008/09/25 Add
   gv_po_type_rev         CONSTANT VARCHAR2(1)  := '3';               -- 相手先在庫
   gv_prod_class_code     CONSTANT VARCHAR2(1)  := '2';               -- ドリンク
+-- 2008/12/30 v1.8 T.Yoshimoto Add Start
+  gv_item_class_code     CONSTANT VARCHAR2(1)  := '5';               -- 製品
+-- 2008/12/30 v1.8 T.Yoshimoto Add End
   gv_txns_type_po        CONSTANT VARCHAR2(1)  := '1';               -- 受入
   gn_lot_ctl_on          CONSTANT NUMBER       := 1;                 -- ロット管理品
   gv_flg_on              CONSTANT VARCHAR2(1)  := 'Y';
@@ -231,6 +235,10 @@ AS
     num_of_cases       xxcmn_item_mst_v.num_of_cases%TYPE,                    -- ケース入数
     vendor_stock_whse  xxcmn_vendor_sites_v.vendor_stock_whse%TYPE,           -- 相手先在庫入庫先
     prod_class_code    xxcmn_item_categories3_v.prod_class_code%TYPE,         -- 商品区分
+--
+-- 2008/12/30 v1.8 T.Yoshimoto Add Start
+    item_class_code   xxcmn_item_categories3_v.item_class_code%TYPE,          -- 品目区分
+-- 2008/12/30 v1.8 T.Yoshimoto Add End
 --
     lot_ctl            xxcmn_item_mst_v.lot_ctl%TYPE,                         -- ロット
     item_no            xxcmn_item_mst_v.item_no%TYPE,                         -- 品目コード
@@ -1244,6 +1252,9 @@ AS
             ,xivv.item_idv                 -- 品目ID
             ,xsv.vendor_stock_whse         -- 相手先在庫入庫先
             ,xicv.prod_class_code          -- 商品区分
+-- 2008/12/30 v1.8 T.Yoshimoto Add Start
+            ,xicv.item_class_code          -- 品目区分
+-- 2008/12/30 v1.8 T.Yoshimoto Add End
             ,xvv.segment1                  -- 仕入先番号
 --2008/08/06 Add ↓
             ,xivv.conv_unit                -- 入出庫換算単位
@@ -1294,12 +1305,12 @@ AS
             ,(SELECT xiv.item_no                       -- 品目コード
                     ,xiv.num_of_cases                  -- ケース入数
                     ,xiv.lot_ctl                       -- ロット
+-- 2008/12/30 v1.8 T.Yoshimoto Mod Start 取得ID不正
 --2008/09/25 Mod ↓
-/*
                     ,xiv.item_id as opm_item_id        -- OPM品目ID
-*/
-                    ,xiv.inventory_item_id as opm_item_id  -- OPM品目ID
+                    --,xiv.inventory_item_id as opm_item_id  -- OPM品目ID     -- 
 --2008/09/25 Mod ↑
+-- 2008/12/30 v1.8 T.Yoshimoto Mod End 取得ID不正
 --2008/08/06 Add ↓
                     ,xiv.conv_unit                     -- 入出庫換算単位
 --2008/08/06 Add ↑
@@ -1390,6 +1401,9 @@ AS
       mst_rec.item_idv           := lr_mst_data_rec.item_idv;
       mst_rec.vendor_stock_whse  := lr_mst_data_rec.vendor_stock_whse;
       mst_rec.prod_class_code    := lr_mst_data_rec.prod_class_code;
+-- 2008/12/30 v1.8 T.Yoshimoto Add Start
+      mst_rec.item_class_code    := lr_mst_data_rec.item_class_code;
+-- 2008/12/30 v1.8 T.Yoshimoto Add End
       mst_rec.vendor_no          := lr_mst_data_rec.segment1;
 --
       -- 2008/08/06 Add ↓
@@ -1476,6 +1490,9 @@ AS
 --
         -- ドリンク製品(入出庫換算単位あり) の場合
         IF ((mst_rec.prod_class_code = gv_prod_class_code)
+-- 2008/12/30 v1.8 T.Yoshimoto Add Start
+         AND (mst_rec.item_class_code = gv_item_class_code)
+-- 2008/12/30 v1.8 T.Yoshimoto Add End
          AND (mst_rec.conv_unit IS NOT NULL)) THEN
           ln_qty := ln_qty * mst_rec.num_of_cases;
           gt_conversion_factor(ln_cnt) := mst_rec.num_of_cases;
@@ -2528,6 +2545,9 @@ AS
 --
     -- ドリンク製品(入出庫換算単位あり) の場合
     IF ((ir_mst_rec.prod_class_code = gv_prod_class_code)
+-- 2008/12/30 v1.8 T.Yoshimoto Add Start
+     AND (ir_mst_rec.item_class_code = gv_item_class_code)
+-- 2008/12/30 v1.8 T.Yoshimoto Add End
      AND (ir_mst_rec.conv_unit IS NOT NULL)) THEN
       ln_qty := ln_qty * ir_mst_rec.num_of_cases;
     END IF;
