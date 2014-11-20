@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2010/01/27    1.11  SCS K.Kiriu      [障害E_本稼動_01176] 口座種別追加に伴う口座種別名取得元クイックコード変更
  *  2011/01/24    1.12  SCS S.Niki       [障害E_本稼動_06199] パフォーマンス改善対応
  *  2011/03/15    1.13  SCS S.Niki       [障害E_本稼動_05408,05409] 年次切替対応
+ *  2011/04/28    1.14  SCS S.Niki       [障害E_本稼動_02100] 現金支払の場合、銀行情報に固定文字を出力する対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -166,6 +167,10 @@ AS
   cv_target_disp1            CONSTANT VARCHAR2(1)   := '1'; -- 自拠点のみ
   cv_target_disp2            CONSTANT VARCHAR2(1)   := '2'; -- 自拠点含む
   cv_target_disp1_nm         CONSTANT VARCHAR2(1)   := '1'; -- 自拠点のみ
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki ADD START
+  -- 固定文字
+  cv_em_dash                 CONSTANT VARCHAR2(2)   := '―'; -- 全角ダッシュ
+-- 20.1/04/26 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki ADD END
   -- ===============================================
   -- グローバル変数
   -- ===============================================
@@ -250,7 +255,10 @@ AS
    ,BANK_BRANCH_NO               VARCHAR2(25)  -- 銀行支店番号
 -- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD END
    ,BANK_BRANCH_NAME             VARCHAR2(60)  -- 銀行支店名
-   ,BANK_ACCT_TYPE               VARCHAR2(1)   -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki ADD START
+--   ,BANK_ACCT_TYPE               VARCHAR2(1)   -- 口座種別
+   ,BANK_ACCT_TYPE               VARCHAR2(2)   -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki ADD END
    ,BANK_ACCT_TYPE_NAME          VARCHAR2(4)   -- 口座種別名
 -- 2009/04/17 Ver.1.4 [障害T1_0647] SCS T.Taniguchi START
 --   ,BANK_ACCT_NO                 VARCHAR2(7)   -- 口座番号
@@ -893,7 +901,10 @@ AS
   , it_bank_name               IN  ap_bank_branches.bank_name%TYPE                   DEFAULT NULL -- 銀行口座名
   , it_bank_num                IN  ap_bank_branches.bank_num%TYPE                    DEFAULT NULL -- 銀行支店番号
   , it_bank_branch_name        IN  ap_bank_branches.bank_branch_name%TYPE            DEFAULT NULL -- 銀行支店名
-  , it_bank_account_type       IN  ap_bank_accounts_all.bank_account_type%TYPE       DEFAULT NULL -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD START
+--  , it_bank_account_type       IN  ap_bank_accounts_all.bank_account_type%TYPE       DEFAULT NULL -- 口座種別
+  , iv_bank_account_type       IN  VARCHAR2                                          DEFAULT NULL -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD END
   , iv_bk_account_type_nm      IN  VARCHAR2                                          DEFAULT NULL -- 口座種別名
   , it_bank_account_num        IN  ap_bank_accounts_all.bank_account_num%TYPE        DEFAULT NULL -- 銀行口座番号
   , it_account_holder_name_alt IN  ap_bank_accounts_all.account_holder_name_alt%TYPE DEFAULT NULL -- 口座名義人カナ
@@ -1001,6 +1012,15 @@ AS
 --
           g_bm_balance_ttype( gn_index ).PAYMENT_CODE              := gt_payment_code_bk;        -- 支払先コード
           g_bm_balance_ttype( gn_index ).PAYMENT_NAME              := gt_payment_name_bk;        -- 支払先名
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki ADD START
+        IF ( gt_bm_type_bk = cv_bm_payment_type4 ) THEN
+          -- BM支払区分「4：現金支払」の場合、固定文字を設定する
+          g_bm_balance_ttype( gn_index ).BANK_NO                   := cv_em_dash;                -- 銀行番号
+          g_bm_balance_ttype( gn_index ).BANK_BRANCH_NO            := cv_em_dash;                -- 銀行支店番号
+          g_bm_balance_ttype( gn_index ).BANK_ACCT_TYPE            := cv_em_dash;                -- 口座種別
+          g_bm_balance_ttype( gn_index ).BANK_ACCT_NAME            := cv_em_dash;                -- 銀行口座名
+        ELSE
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki ADD END
           g_bm_balance_ttype( gn_index ).BANK_NO                   := gt_bank_no_bk;             -- 銀行番号
           g_bm_balance_ttype( gn_index ).BANK_NAME                 := gt_bank_name_bk;           -- 銀行名
           g_bm_balance_ttype( gn_index ).BANK_BRANCH_NO            := gt_bank_branch_no_bk;      -- 銀行支店番号
@@ -1009,6 +1029,9 @@ AS
           g_bm_balance_ttype( gn_index ).BANK_ACCT_TYPE_NAME       := gt_bank_acct_type_name_bk; -- 口座種別名
           g_bm_balance_ttype( gn_index ).BANK_ACCT_NO              := gt_bank_acct_no_bk;        -- 口座番号
           g_bm_balance_ttype( gn_index ).BANK_ACCT_NAME            := gt_bank_acct_name_bk;      -- 銀行口座名
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki ADD START
+        END IF;
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki ADD END
 -- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD START
           g_bm_balance_ttype( gn_index ).BM_PAYMENT_CODE           := gt_bm_type_bk;             -- BM支払区分(コード値)
 -- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD END
@@ -1119,7 +1142,10 @@ AS
     gt_bank_name_bk                 := it_bank_name;                     -- 銀行名
     gt_bank_branch_no_bk            := it_bank_num;                      -- 銀行支店番号
     gt_bank_branch_name_bk          := it_bank_branch_name;              -- 銀行支店名
-    gt_bank_acct_type_bk            := it_bank_account_type;             -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD START
+--    gt_bank_acct_type_bk            := it_bank_account_type;             -- 口座種別
+    gt_bank_acct_type_bk            := iv_bank_account_type;             -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD END
     gt_bank_acct_type_name_bk       := iv_bk_account_type_nm;            -- 口座種別名
     gt_bank_acct_no_bk              := it_bank_account_num;              -- 口座番号
     gt_bank_acct_name_bk            := it_account_holder_name_alt;       -- 銀行口座名
@@ -1218,7 +1244,10 @@ AS
   , ov_bm_kbn_dff4             OUT po_vendor_sites_all.attribute4%TYPE                -- DFF4(BM支払区分)
   , ov_bank_number             OUT ap_bank_branches.bank_number%TYPE                  -- 銀行番号
   , ov_bank_name               OUT ap_bank_branches.bank_name%TYPE                    -- 銀行口座名
-  , ov_bank_account_type       OUT ap_bank_accounts_all.bank_account_type%TYPE        -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD START
+--  , ov_bank_account_type       OUT ap_bank_accounts_all.bank_account_type%TYPE        -- 口座種別
+  , ov_bank_account_type       OUT VARCHAR2                                           -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD END
   , ov_bank_account_num        OUT ap_bank_accounts_all.bank_account_num%TYPE         -- 銀行口座番号
   , ov_account_holder_name_alt OUT ap_bank_accounts_all.account_holder_name_alt%TYPE  -- 口座名義人カナ
   , ov_bank_num                OUT ap_bank_branches.bank_num%TYPE                     -- 銀行支店番号
@@ -1655,7 +1684,10 @@ AS
     lv_bm_kbn_dff4              VARCHAR2(2)                                       DEFAULT NULL; -- DFF4(BM支払区分)
     lt_bank_number              ap_bank_branches.bank_number%TYPE                 DEFAULT NULL; -- 銀行番号
     lt_bank_name                ap_bank_branches.bank_name%TYPE                   DEFAULT NULL; -- 銀行口座名
-    lt_bank_account_type        ap_bank_accounts_all.bank_account_type%TYPE       DEFAULT NULL; -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD START
+--    lt_bank_account_type        ap_bank_accounts_all.bank_account_type%TYPE       DEFAULT NULL; -- 口座種別
+    lv_bank_account_type        VARCHAR2(2)                                       DEFAULT NULL; -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD END
     lt_bank_account_num         ap_bank_accounts_all.bank_account_num%TYPE        DEFAULT NULL; -- 銀行口座番号
     lt_account_holder_name_alt  ap_bank_accounts_all.account_holder_name_alt%TYPE DEFAULT NULL; -- 口座名義人カナ
     lt_bank_num                 ap_bank_branches.bank_num%TYPE                    DEFAULT NULL; -- 銀行支店番号
@@ -1748,7 +1780,10 @@ AS
             , ov_bm_kbn_dff4             => lv_bm_kbn_dff4                  -- DFF4(BM支払区分)
             , ov_bank_number             => lt_bank_number                  -- 銀行番号
             , ov_bank_name               => lt_bank_name                    -- 銀行口座名
-            , ov_bank_account_type       => lt_bank_account_type            -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD START
+--            , ov_bank_account_type       => lt_bank_account_type            -- 口座種別
+            , ov_bank_account_type       => lv_bank_account_type            -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD END
             , ov_bank_account_num        => lt_bank_account_num             -- 銀行口座番号
             , ov_account_holder_name_alt => lt_account_holder_name_alt      -- 口座名義人カナ
             , ov_bank_num                => lt_bank_num                     -- 銀行支店番号
@@ -1798,7 +1833,10 @@ AS
           , it_bank_name               => lt_bank_name               -- 銀行口座名
           , it_bank_num                => lt_bank_num                -- 銀行支店番号
           , it_bank_branch_name        => lt_bank_branch_name        -- 銀行支店名
-          , it_bank_account_type       => lt_bank_account_type       -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD START
+--          , it_bank_account_type       => lt_bank_account_type       -- 口座種別
+          , iv_bank_account_type       => lv_bank_account_type       -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD END
           , iv_bk_account_type_nm      => lv_bk_account_type_nm      -- 口座種別名
           , it_bank_account_num        => lt_bank_account_num        -- 銀行口座番号
           , it_account_holder_name_alt => lt_account_holder_name_alt -- 口座名義人カナ
@@ -1890,7 +1928,10 @@ AS
             , ov_bm_kbn_dff4             => lv_bm_kbn_dff4                  -- DFF4(BM支払区分)
             , ov_bank_number             => lt_bank_number                  -- 銀行番号
             , ov_bank_name               => lt_bank_name                    -- 銀行口座名
-            , ov_bank_account_type       => lt_bank_account_type            -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD START
+--            , ov_bank_account_type       => lt_bank_account_type            -- 口座種別
+            , ov_bank_account_type       => lv_bank_account_type            -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD END
             , ov_bank_account_num        => lt_bank_account_num             -- 銀行口座番号
             , ov_account_holder_name_alt => lt_account_holder_name_alt      -- 口座名義人カナ
             , ov_bank_num                => lt_bank_num                     -- 銀行支店番号
@@ -1940,7 +1981,10 @@ AS
           , it_bank_name               => lt_bank_name               -- 銀行口座名
           , it_bank_num                => lt_bank_num                -- 銀行支店番号
           , it_bank_branch_name        => lt_bank_branch_name        -- 銀行支店名
-          , it_bank_account_type       => lt_bank_account_type       -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD START
+--          , it_bank_account_type       => lt_bank_account_type       -- 口座種別
+          , iv_bank_account_type       => lv_bank_account_type       -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD END
           , iv_bk_account_type_nm      => lv_bk_account_type_nm      -- 口座種別名
           , it_bank_account_num        => lt_bank_account_num        -- 銀行口座番号
           , it_account_holder_name_alt => lt_account_holder_name_alt -- 口座名義人カナ
@@ -2120,7 +2164,10 @@ AS
       , it_bank_name               => lt_bank_name               -- 銀行口座名
       , it_bank_num                => lt_bank_num                -- 銀行支店番号
       , it_bank_branch_name        => lt_bank_branch_name        -- 銀行支店名
-      , it_bank_account_type       => lt_bank_account_type       -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD START
+--      , it_bank_account_type       => lt_bank_account_type       -- 口座種別
+      , iv_bank_account_type       => lv_bank_account_type       -- 口座種別
+-- 2011/04/28 Ver.1.14 [障害E_本稼動_02100] SCS S.Niki UPD END
       , iv_bk_account_type_nm      => lv_bk_account_type_nm      -- 口座種別名
       , it_bank_account_num        => lt_bank_account_num        -- 銀行口座番号
       , it_account_holder_name_alt => lt_account_holder_name_alt -- 口座名義人カナ
