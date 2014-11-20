@@ -7,29 +7,30 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.19
+ * Version          : 1.21
  *
  * Program List
- * ---------------------- ----------------------------------------------------------
- *  Name                   Description
- * ---------------------- ----------------------------------------------------------
- *  pro_err_list_make      P エラーリスト作成
- *  pro_get_cus_option     P 関連データ取得                     (B-1)
- *  pro_param_chk          P 入力パラメータチェック             (B-2)
- *  pro_get_head_line      P 出荷依頼インターフェース情報取得   (B-3)
- *  pro_interface_chk      P インターフェイス情報チェック       (B-4)
- *  pro_day_time_chk       P 稼働日/リードタイムチェック        (B-5)
- *  pro_item_chk           P 明細情報マスタ存在チェック         (B-6)
- *  pro_xsr_chk            P 物流構成存在チェック               (B-7)
- *  pro_total_we_ca        P 合計重量/合計容積算出              (B-8)
- *  pro_ship_y_n_chk       P 出荷可否チェック                   (B-9)
- *  pro_lines_create       P 受注明細アドオンレコード作成       (B-10)
- *  pro_load_eff_chk       P 積載効率チェック                   (B-11)
- *  pro_headers_create     P 受注ヘッダアドオンレコード作成     (B-12)
- *  pro_order_ins_del      P 受注アドオン出力                   (B-13)
- *  pro_purge_del          P パージ処理                         (B-14)
- *  submain                P メイン処理プロシージャ
- *  main                   P コンカレント実行ファイル登録プロシージャ
+ * ------------------------ ----------------------------------------------------------
+ *  Name                     Description
+ * ------------------------ ----------------------------------------------------------
+ *  pro_err_list_make        P エラーリスト作成
+ *  pro_get_cus_option       P 関連データ取得                     (B-1)
+ *  pro_param_chk            P 入力パラメータチェック             (B-2)
+ *  pro_get_head_line        P 出荷依頼インターフェース情報取得   (B-3)
+ *  pro_interface_chk        P インターフェイス情報チェック       (B-4)
+ *  pro_day_time_chk         P 稼働日/リードタイムチェック        (B-5)
+ *  pro_item_chk             P 明細情報マスタ存在チェック         (B-6)
+ *  pro_xsr_chk              P 物流構成存在チェック               (B-7)
+ *  pro_total_we_ca          P 合計重量/合計容積算出              (B-8)
+ *  pro_ship_y_n_chk         P 出荷可否チェック                   (B-9)
+ *  pro_lines_create         P 受注明細アドオンレコード作成       (B-10)
+ *  pro_duplication_item_chk P 品目重複チェック                   (B-15)  -- 2008/10/14 H.Itou Add 統合テスト指摘118
+ *  pro_load_eff_chk         P 積載効率チェック                   (B-11)
+ *  pro_headers_create       P 受注ヘッダアドオンレコード作成     (B-12)
+ *  pro_order_ins_del        P 受注アドオン出力                   (B-13)
+ *  pro_purge_del            P パージ処理                         (B-14)
+ *  submain                  P メイン処理プロシージャ
+ *  main                     P コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -69,6 +70,9 @@ AS
  *                                       結合テスト指摘#91 エラーリスト出力項目から「摘要」「顧客発注番号」を削除
  *                                       出荷追加_1 積載効率チェックをヘッダ単位で行い、明細分エラーリストを出力する
  *  2008/08/26    1.19  伊藤  ひとみ     T_S_618 締めステータスチェックを追加
+ *  2008/10/10    1.20  丸下             「依頼区分」から『受注タイプID』を取得の条件修正
+ *  2008/10/14    1.21  伊藤  ひとみ     統合テスト指摘118 1依頼に重複品目がある場合はエラー終了とする。
+ *                                       統合テスト指摘240 積載効率チェック(合計値算出)のINパラメータに基準日を追加。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -115,6 +119,9 @@ AS
      ,ca_loading_msg_seq NUMBER                                         -- 積載効率(容積)メッセージ格納SEQ
      ,prt_max_msg_seq    NUMBER                                         -- パレット最大枚数メッセージ格納SEQ
 -- 2008/08/20 H.Itou Add End
+-- 2008/10/14 H.Itou Add Start 統合テスト指摘240
+     ,dup_item_msg_seq   NUMBER                                         -- 品目重複メッセージ格納SEQ
+-- 2008/10/14 H.Itou Add End
     );
   TYPE tab_data_head_line IS TABLE OF rec_head_line INDEX BY PLS_INTEGER;
 --
@@ -290,6 +297,9 @@ AS
   gv_msg_44          CONSTANT VARCHAR2(50) := '対象の出荷日は既に締め済みです';
   gv_msg_45          CONSTANT VARCHAR2(50) := '締めステータスチェックエラー';
 -- 2008/08/26 H.Itou Add End
+-- 2008/10/14 H.Itou Add Start 統合テスト指摘118
+  gv_msg_46          CONSTANT VARCHAR2(50) := '１依頼内に同一品目が重複しています';
+-- 2008/10/14 H.Itou Add End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -935,6 +945,9 @@ AS
             ,NULL                                       -- 積載効率(容積)メッセージ格納SEQ
             ,NULL                                       -- パレット最大枚数メッセージ格納SEQ
 -- 2008/08/20 H.Itou Add End
+-- 2008/10/14 H.Itou Add Start 統合テスト指摘240
+            ,NULL                                       -- 品目重複メッセージ格納SEQ
+-- 2008/10/14 H.Itou Add End
       FROM (SELECT xshi1.header_id
                   ,MAX (xshi1.last_update_date)
                    OVER (PARTITION BY xshi1.order_source_ref) max_date
@@ -973,6 +986,9 @@ AS
             ,NULL                                       -- 積載効率(容積)メッセージ格納SEQ
             ,NULL                                       -- パレット最大枚数メッセージ格納SEQ
 -- 2008/08/20 H.Itou Add End
+-- 2008/10/14 H.Itou Add Start 統合テスト指摘240
+            ,NULL                                       -- 品目重複メッセージ格納SEQ
+-- 2008/10/14 H.Itou Add End
       FROM (SELECT xshi1.header_id
                   ,MAX (xshi1.last_update_date)
                    OVER (PARTITION BY xshi1.order_source_ref) max_date
@@ -1469,7 +1485,7 @@ AS
 --
     EXCEPTION
       -- 「出荷先」がパーティサイトマスタに登録されていない場合、エラー
-      WHEN NO_DATA_FOUND THEN
+      WHEN OTHERS THEN
         pro_err_list_make
           (
             iv_kind         => gv_msg_err                     --  in 種別   'エラー'
@@ -1545,7 +1561,7 @@ AS
 --
     EXCEPTION
       -- 「出荷保管場所」がOPM保管場所マスタに登録されていない場合、エラー
-      WHEN NO_DATA_FOUND THEN
+      WHEN OTHERS THEN
         pro_err_list_make
           (
             iv_kind         => gv_msg_err                     --  in 種別   'エラー'
@@ -1653,7 +1669,7 @@ AS
 --
       EXCEPTION
         -- 『商品区分』が取得できない場合、エラー
-        WHEN NO_DATA_FOUND THEN
+        WHEN OTHERS THEN
           pro_err_list_make
             (
               iv_kind         => gv_msg_err                     --  in 種別   'エラー'
@@ -1737,19 +1753,34 @@ AS
     -------------------------------------------------------------------------------
     BEGIN
 --
+--2008/10/10 MOD↓
+--      SELECT xettv.transaction_type_id           -- 引取タイプID
+--      INTO   gr_odr_type
+--      FROM   xxcmn_lookup_values_v  xlvv            -- クイックコード情報View
+--            ,xxwsh_oe_transaction_types_v  xettv    -- 受注タイプ情報View
+--      WHERE  xlvv.lookup_type            = gv_shipping_class
+--      AND    xlvv.attribute2             = gt_head_line(gn_i).order_class  -- 依頼区分
+--      AND    xettv.order_category_code   = gv_order_c_code                 -- 受注カテゴリコード
+--      AND    xettv.transaction_type_name = xlvv.attribute5                 -- 取引タイプ
+--
       SELECT xettv.transaction_type_id           -- 引取タイプID
       INTO   gr_odr_type
-      FROM   xxcmn_lookup_values_v  xlvv            -- クイックコード情報View
+      FROM   xxwsh_shipping_class_v xscv
             ,xxwsh_oe_transaction_types_v  xettv    -- 受注タイプ情報View
-      WHERE  xlvv.lookup_type            = gv_shipping_class
-      AND    xlvv.attribute2             = gt_head_line(gn_i).order_class  -- 依頼区分
+      WHERE  xscv.request_class          = gt_head_line(gn_i).order_class  -- 依頼区分
       AND    xettv.order_category_code   = gv_order_c_code                 -- 受注カテゴリコード
-      AND    xettv.transaction_type_name = xlvv.attribute5                 -- 取引タイプ
+      AND    xscv.order_transaction_type_name = xettv.transaction_type_name
+      AND    xscv.order_transaction_type_name = 
+        CASE 
+          WHEN xscv.request_class in ('2','4') THEN '出荷依頼'
+          WHEN xscv.request_class in ('1','3') THEN xscv.order_transaction_type_name
+        END
+--2008/10/10 MOD↑
       ;
 --
     EXCEPTION
       -- 『受注タイプID』が取得できない場合、エラー
-      WHEN NO_DATA_FOUND THEN
+      WHEN OTHERS THEN
         pro_err_list_make
           (
             iv_kind         => gv_msg_err                     --  in 種別   'エラー'
@@ -2081,7 +2112,10 @@ AS
     gv_opm_c_p := xxcmn_common_pkg.get_opminv_close_period;
 --
     -- 出荷予定日がOPM在庫会計期間でクローズの場合
-    IF (gv_opm_c_p > TO_CHAR(gt_head_line(gn_i).ship_date,'YYYYMM')) THEN
+-- 2008/10/14 H.Itou Mod Start クローズ年月と同じ年月の場合もエラー
+--    IF (gv_opm_c_p > TO_CHAR(gt_head_line(gn_i).ship_date,'YYYYMM')) THEN
+    IF (gv_opm_c_p >= TO_CHAR(gt_head_line(gn_i).ship_date,'YYYYMM')) THEN
+-- 2008/10/14 H.Itou Mod End
       pro_err_list_make
         (
           iv_kind         => gv_msg_err                     --  in 種別   'エラー'
@@ -2797,6 +2831,9 @@ AS
                              ,gn_ttl_we                     -- 合計重量         out 合計重量
                              ,gn_ttl_ca                     -- 合計容積         out 合計容積
                              ,gn_ttl_prt_we                 -- 合計パレット重量 out 合計パレット重量
+-- 2008/10/14 H.Itou Add Start 統合テスト指摘240
+                             ,gt_head_line(gn_i).ship_date  -- 基準日       in 出荷予定日
+-- 2008/10/14 H.Itou Add End
                             );
 --
     -------------------------------------------------------------------------------
@@ -3637,6 +3674,124 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END pro_lines_create;
+--
+-- 2008/10/14 H.Itou Add Start 統合テスト指摘118
+  /**********************************************************************************
+   * Procedure Name   : pro_duplication_item_chk
+   * Description      : 品目重複チェック (B-15)
+   ***********************************************************************************/
+  PROCEDURE pro_duplication_item_chk
+    (
+      iv_line_if_cnt IN NUMBER       -- ヘッダ毎明細IFカウント
+     ,ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ           --# 固定 #
+     ,ov_retcode    OUT VARCHAR2     -- リターン・コード             --# 固定 #
+     ,ov_errmsg     OUT VARCHAR2     -- ユーザー・エラー・メッセージ --# 固定 #
+    )
+  IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'pro_duplication_item_chk'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    -- *** ローカル変数 ***
+    lv_dup_item_err_flg VARCHAR2(1);  -- 品目重複エラーフラグ
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    <<line_loop>>  -- ヘッダに紐付く明細全件ループ
+    FOR ln_line_loop_cnt IN gn_i - iv_line_if_cnt + 1..gn_i LOOP
+      <<chk_loop>>  -- 品目重複エラーチェックループ
+      FOR ln_chk_loop_cnt IN gn_i - iv_line_if_cnt + 1..gn_i LOOP
+        -- 同一品目がある場合、品目重複エラー
+        IF ((ln_line_loop_cnt <> ln_chk_loop_cnt)
+        AND (gt_head_line(ln_line_loop_cnt).ord_i_code  = gt_head_line(ln_chk_loop_cnt).ord_i_code)) THEN
+          -- エラーリスト作成
+          pro_err_list_make
+            (
+              iv_kind         => gv_msg_err                                        --  in 種別   'エラー'
+             ,iv_dec          => gv_msg_hfn                                        --  in 確定   '－'
+             ,iv_req_no       => gv_new_order_no                                   --  in 依頼No
+             ,iv_kyoten       => gt_head_line(ln_line_loop_cnt).h_s_branch         --  in 管轄拠点
+             ,iv_ship_to      => gt_head_line(ln_line_loop_cnt).p_s_code           --  in 出荷先
+             ,iv_description  => gt_head_line(ln_line_loop_cnt).ship_ins           --  in 摘要
+             ,iv_cust_pono    => gt_head_line(ln_line_loop_cnt).c_po_num           --  in 顧客発注番号
+             ,iv_ship_date    => TO_CHAR(gt_head_line(ln_line_loop_cnt).ship_date,'YYYY/MM/DD')
+                                                                                   --  in 出庫日
+             ,iv_arrival_date => TO_CHAR(gt_head_line(ln_line_loop_cnt).arr_date,'YYYY/MM/DD')
+                                                                                   --  in 着日
+             ,iv_ship_from    => gt_head_line(ln_line_loop_cnt).lo_code            --  in 出荷元
+             ,iv_item         => gt_head_line(ln_line_loop_cnt).ord_i_code         --  in 品目
+             ,in_qty          => gt_head_line(ln_line_loop_cnt).ord_quant          --  in 数量
+             ,iv_err_msg      => gv_msg_46                                         --  in エラーメッセージ
+             ,iv_err_clm      => gv_msg_hfn                                        --  in エラー項目 '－'
+             ,in_msg_seq      => gt_head_line(ln_line_loop_cnt).dup_item_msg_seq   --  in 品目重複メッセージ格納SEQ
+             ,ov_errbuf       => lv_errbuf                                         -- out エラー・メッセージ
+             ,ov_retcode      => lv_retcode                                        -- out リターン・コード
+             ,ov_errmsg       => lv_errmsg                                         -- out ユーザー・エラー・メッセージ
+            );
+--
+          -- 品目重複エラーフラグ：エラーあり
+          lv_dup_item_err_flg := gv_status_error;
+--
+          -- 品目重複エラーをみつけたら、品目重複エラーチェックループ終了
+          EXIT;
+        END IF;
+      END LOOP chk_loop;
+    END LOOP line_loop;
+--
+    -- 品目重複エラーがあった場合
+    IF (lv_dup_item_err_flg = gv_status_error) THEN
+      -- 共通エラーメッセージ 終了ST エラー登録
+      gv_err_sts := gv_status_error;
+      RAISE err_header_expt;
+    END IF;
+--
+  EXCEPTION
+--
+    -- *** 共通関数 警告・エラー ***
+    WHEN err_header_expt THEN
+      gv_err_flg := gv_1;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END pro_duplication_item_chk;
+-- 2008/10/14 H.Itou Add End
 --
   /**********************************************************************************
    * Procedure Name   : pro_load_eff_chk
@@ -4948,6 +5103,11 @@ AS
         END IF;
       END IF;
 --
+-- 2008/10/14 H.Itou Add Start 統合テスト指摘118
+      gn_cut := gn_cut + 1; -- テーブルカウント
+      gt_err_msg(gn_cut).err_msg  := NULL;
+      gt_head_line(gn_i).dup_item_msg_seq := gn_cut; -- 品目重複メッセージ格納SEQ
+-- 2008/10/14 H.Itou Add End
 -- 2008/08/20 H.Itou Add Start 積載効率(重量)・積載効率(容積)・パレット最大枚数エラーメッセージ用にダミーエラーメッセージ作成。
       gn_cut := gn_cut + 1; -- テーブルカウント
       gt_err_msg(gn_cut).err_msg  := NULL;
@@ -4982,6 +5142,22 @@ AS
       -- 最終レコードで、ヘッダに紐付く明細すべてにB-4エラーがない場合
       IF ((lv_load_eff_chk_flag = gv_0)
       AND (gn_i = gt_head_line.COUNT)) THEN
+-- 2008/10/14 H.Itou Add Start 統合テスト指摘118
+        -- =====================================================
+        --  品目重複チェック (B-15)
+        -- =====================================================
+        pro_duplication_item_chk
+          (
+            iv_line_if_cnt  => ln_line_if_cnt   -- ヘッダ毎明細IFカウント
+           ,ov_errbuf       => lv_errbuf        -- エラー・メッセージ           --# 固定 #
+           ,ov_retcode      => lv_retcode       -- リターン・コード             --# 固定 #
+           ,ov_errmsg       => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+-- 2008/10/14 H.Itou Add End
+--
         -- =====================================================
         --  積載効率チェック (B-11)
         -- =====================================================
@@ -4999,6 +5175,22 @@ AS
       -- 次レコードが現在レコードのヘッダIDと異なる場合で、ヘッダに紐付く明細すべてにB-4エラーがない場合
       ELSIF ((lv_load_eff_chk_flag = gv_0)
       AND    (gt_head_line(gn_i).h_id <> gt_head_line(gn_i + 1).h_id)) THEN
+-- 2008/10/14 H.Itou Add Start 統合テスト指摘118
+        -- =====================================================
+        --  品目重複チェック (B-15)
+        -- =====================================================
+        pro_duplication_item_chk
+          (
+            iv_line_if_cnt  => ln_line_if_cnt   -- ヘッダ毎明細IFカウント
+           ,ov_errbuf       => lv_errbuf        -- エラー・メッセージ           --# 固定 #
+           ,ov_retcode      => lv_retcode       -- リターン・コード             --# 固定 #
+           ,ov_errmsg       => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+-- 2008/10/14 H.Itou Add End
+--
         -- =====================================================
         --  積載効率チェック (B-11)
         -- =====================================================
