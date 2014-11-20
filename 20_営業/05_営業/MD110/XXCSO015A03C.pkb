@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,8 @@ AS
  *  2009-12-11    1.20  K.Satomura       E_本稼動_00420 完了区分が設置中止の場合の処理変更
  *  2009-12-14    1.21  K.Hosoi          E_本稼動_00466 顧客アドオンマスタ更新処理時の
  *                                       分岐条件変更
+ *  2009-12-16    1.22  K.Hosoi          E_本稼動_00502 作業依頼中フラグを更新する際の条件を
+ *                                       設定、顧客ステータス更新処理時の更新する値を変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2789,6 +2791,10 @@ AS
     lv_new_old_flag          csi_item_instances.attribute5%type;  -- 新古台フラグ
     lv_last_po_req_number    csi_item_instances.attribute6%type;  -- 最終発注依頼番号
     lv_po_req_number         NUMBER;                    -- 発注依頼番号
+    /* 2009.12.16 K.Hosoi E_本稼動_00502対応 START*/
+    ln_seq_no                NUMBER;                    -- シーケンス番号
+    ln_slip_no               NUMBER;                    -- 伝票No.
+    /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END*/
 --
     -- *** ローカル例外 ***
     skip_process_expt       EXCEPTION;
@@ -2812,6 +2818,10 @@ AS
     lv_install_code1  := io_inst_base_data_rec.install_code1;
     lv_install_code2  := io_inst_base_data_rec.install_code2;
     lv_po_req_number  := io_inst_base_data_rec.po_req_number;
+    /* 2009.12.16 K.Hosoi E_本稼動_00502対応 START*/
+    ln_seq_no         := io_inst_base_data_rec.seq_no;        -- シーケンス番号
+    ln_slip_no        := io_inst_base_data_rec.slip_no;       -- 伝票No.
+    /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END*/
 --
     -- 物件情報抽出
     BEGIN
@@ -2955,12 +2965,24 @@ AS
         lv_errmsg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_app_name                  -- アプリケーション短縮名
                        ,iv_name         => cv_tkn_number_18             -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_bukken                -- トークンコード1
-                       ,iv_token_value1 => lv_install_code              -- トークン値1
-                       ,iv_token_name2  => cv_tkn_last_req_no           -- トークンコード2
-                       ,iv_token_value2 => lv_last_po_req_number        -- トークン値2
-                       ,iv_token_name3  => cv_tkn_req_no                -- トークンコード3
-                       ,iv_token_value3 => lv_po_req_number             -- トークン値3
+                       /* 2009.12.16 K.Hosoi E_本稼動_00502対応 START*/
+                       --,iv_token_name1  => cv_tkn_bukken                -- トークンコード1
+                       --,iv_token_value1 => lv_install_code              -- トークン値1
+                       --,iv_token_name2  => cv_tkn_last_req_no           -- トークンコード2
+                       --,iv_token_value2 => lv_last_po_req_number        -- トークン値2
+                       --,iv_token_name3  => cv_tkn_req_no                -- トークンコード3
+                       --,iv_token_value3 => lv_po_req_number             -- トークン値3
+                       ,iv_token_name1  => cv_tkn_seq_no                -- トークンコード1
+                       ,iv_token_value1 => ln_seq_no                    -- トークン値1
+                       ,iv_token_name2  => cv_tkn_slip_num              -- トークンコード2
+                       ,iv_token_value2 => ln_slip_no                   -- トークン値2
+                       ,iv_token_name3  => cv_tkn_bukken                -- トークンコード3
+                       ,iv_token_value3 => lv_install_code              -- トークン値3
+                       ,iv_token_name4  => cv_tkn_last_req_no           -- トークンコード3
+                       ,iv_token_value4 => lv_last_po_req_number        -- トークン値3
+                       ,iv_token_name5  => cv_tkn_req_no                -- トークンコード3
+                       ,iv_token_value5 => lv_po_req_number             -- トークン値3
+                       /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END*/
                      );
         lv_errbuf := lv_errmsg;
         RAISE skip_process_expt;
@@ -5733,7 +5755,13 @@ AS
           io_inst_base_data_rec.first_install_date),'yyyy/mm/dd'), 'yyyy/mm/dd hh24:mi:ss'); -- 初回設置日
       END IF;
       /* 2009.05.26 M.Ohtsuki T1_1141対応 END*/
-      l_instance_rec.attribute4                 := cv_flg_no;                    -- 作業依頼中フラグ
+      /* 2009.12.16 K.Hosoi E_本稼動_00502対応 START*/
+      IF (ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_2 OR
+          ln_job_kbn = cn_jon_kbn_3 OR ln_job_kbn = cn_jon_kbn_4 OR
+          ln_job_kbn = cn_jon_kbn_5 OR ln_job_kbn = cn_job_kbn_6) THEN
+        l_instance_rec.attribute4               := cv_flg_no;                    -- 作業依頼中フラグ
+      END IF;
+      /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END*/
       l_instance_rec.attribute5                 := cv_flg_no;                    -- 新古台フラグ
       IF (io_inst_base_data_rec.po_req_number IS NOT NULL AND
           io_inst_base_data_rec.po_req_number <> 0) THEN
@@ -6518,6 +6546,10 @@ AS
             lv_errbuf := lv_errmsg;
             RAISE update_error_expt;
         END;
+        /* 2009.12.16 K.Hosoi E_本稼動_00502対応 START */
+        -- 顧客ステータス「休止」更新フラグを「TRUE」に設定
+        gb_cust_status_free_flg := TRUE;
+        /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END */
 --
         IF (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(id_process_date , -1 ),'YYYYMM') AND
             gv_chk_rslt_flag = 'N') THEN
@@ -6590,7 +6622,10 @@ AS
           BEGIN
 --
             UPDATE xxcmm_cust_accounts                                      -- 顧客アドオンマスタ
-            SET    past_customer_status   = cv_cust_status50,               -- 前月顧客ステータス
+            /* 2009.12.16 K.Hosoi E_本稼動_00502対応 START */
+            --SET    past_customer_status   = cv_cust_status50,               -- 前月顧客ステータス
+            SET    past_customer_status   = cv_cust_status40,               -- 前月顧客ステータス
+            /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END */
                    last_updated_by        = cn_last_updated_by,
                    last_update_date       = cd_last_update_date,
                    last_update_login      = cn_last_update_login,
@@ -6631,8 +6666,10 @@ AS
               RAISE update_error_expt;
           END;
 --
-          -- 顧客ステータス「休止」更新フラグを「TRUE」に設定
-          gb_cust_status_free_flg := TRUE;
+          /* 2009.12.16 K.Hosoi E_本稼動_00502対応 START */
+          ---- 顧客ステータス「休止」更新フラグを「TRUE」に設定
+          --gb_cust_status_free_flg := TRUE;
+          /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END */
         END IF;
 --
       END IF;  
@@ -7130,6 +7167,10 @@ AS
               lv_errbuf := lv_errmsg;
               RAISE update_error_expt;
           END;
+          /* 2009.12.16 K.Hosoi E_本稼動_00502対応 START */
+          -- 顧客ステータス「承認済」更新フラグを「TRUE」に設定
+          gb_cust_status_appr_flg  := TRUE;
+          /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END */
 --
           IF (TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ADD_MONTHS(id_process_date , -1 ),'YYYYMM') AND
               gv_chk_rslt_flag = 'N') THEN
@@ -7202,7 +7243,10 @@ AS
             BEGIN
 --
               UPDATE xxcmm_cust_accounts                                      -- 顧客アドオンマスタ
-              SET    past_customer_status   = cv_cust_status30,               -- 前月顧客ステータス
+              /* 2009.12.16 K.Hosoi E_本稼動_00502対応 START */
+              --SET    past_customer_status   = cv_cust_status30,               -- 前月顧客ステータス
+              SET    past_customer_status   = cv_cust_status40,               -- 前月顧客ステータス
+              /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END */
                      last_updated_by        = cn_last_updated_by,
                      last_update_date       = cd_last_update_date,
                      last_update_login      = cn_last_update_login,
@@ -7242,8 +7286,10 @@ AS
                 lv_errbuf := lv_errmsg;
                 RAISE update_error_expt;
             END;
-            -- 顧客ステータス「承認済」更新フラグを「TRUE」に設定
-            gb_cust_status_appr_flg  := TRUE;
+            /* 2009.12.16 K.Hosoi E_本稼動_00502対応 START */
+            ---- 顧客ステータス「承認済」更新フラグを「TRUE」に設定
+            --gb_cust_status_appr_flg  := TRUE;
+            /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END */
           END IF;
 --
         END IF;
@@ -7876,17 +7922,23 @@ AS
 --
           /* 2009.12.11 K.Satomura E_本稼動_00420対応 START */
           ELSE
-            -- ========================================
-            -- A-8-1.物件データ更新処理2
-            -- ========================================
-            update_item_instances2(
-               io_inst_base_data_rec => l_g_get_data_rec --(IN)物件マスタ情報
-              ,id_process_date       => ld_process_date  -- 業務処理日付
-              ,ov_errbuf             => lv_errbuf        -- エラー・メッセージ            --# 固定 #
-              ,ov_retcode            => lv_sub_retcode   -- リターン・コード              --# 固定 #
-              ,ov_errmsg             => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
-            );
-            --
+            /* 2009.12.16 K.Hosoi E_本稼動_00502対応 START */
+            IF (ln_job_kbn = cn_work_kbn1 OR ln_job_kbn = cn_work_kbn2 OR
+                ln_job_kbn = cn_work_kbn3 OR ln_job_kbn = cn_work_kbn4 OR
+                ln_job_kbn = cn_work_kbn5 OR ln_job_kbn = cn_work_kbn6) THEN
+              -- ========================================
+              -- A-8-1.物件データ更新処理2
+              -- ========================================
+              update_item_instances2(
+                 io_inst_base_data_rec => l_g_get_data_rec --(IN)物件マスタ情報
+                ,id_process_date       => ld_process_date  -- 業務処理日付
+                ,ov_errbuf             => lv_errbuf        -- エラー・メッセージ            --# 固定 #
+                ,ov_retcode            => lv_sub_retcode   -- リターン・コード              --# 固定 #
+                ,ov_errmsg             => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
+              );
+              --
+            END IF;
+            /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END */
           END IF;
           --
           /* 2009.12.11 K.Satomura E_本稼動_00420対応 END */
