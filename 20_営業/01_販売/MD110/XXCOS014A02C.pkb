@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009/09/08    1.12  M.Sano           [0001211] 税関連項目取得基準日修正
  *  2009/09/15    1.12  M.Sano           [0001211] レビュー指摘対応
  *  2010/01/04    1.13  M.Sano           [E_本稼動_00738] 受注連携済フラグ「S(対象外)」追加に伴う修正
+ *  2010/01/06    1.14  N.Maeda          [E_本稼動_00552] 取引先名(漢字)のスペース削除
  *
  *****************************************************************************************/
 --
@@ -3132,7 +3133,11 @@ AS
                     ,cdm.address2                       cdm_address2
                     ,DECODE(cdm.account_number
                            ,NULL, g_msg_rec.customer_notfound
-                           ,i_prf_rec.company_name || cv_space || cdm.base_name
+-- ************************* 2010/01/06 N.Maeda MOD START **************** --
+--                           ,i_prf_rec.company_name || cv_space || cdm.base_name
+                           ,i_prf_rec.company_name || cv_space 
+                           || REPLACE ( cdm.base_name , cv_space)
+-- ************************* 2010/01/06 N.Maeda MOD  END  **************** --
                      )                                  cdm_vendor_name                 -- 取引先名
              FROM    xxcos_edi_headers                  xeh                             -- EDIヘッダ情報テーブル
                     ,xxcos_edi_lines                    xel                             -- EDI明細情報テーブル

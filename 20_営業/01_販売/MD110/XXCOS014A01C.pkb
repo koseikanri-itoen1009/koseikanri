@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2009/10/14    1.17  M.Sano           [0001376] 納品書用データ作成済フラグの更新を明細単位へ変更
  *  2009/12/09    1.18  K.Nakamura       [本稼動_00171] 伝票計の計算を伝票単位へ変更
  *  2010/01/05    1.19  N.Maeda          [E_本稼動_00862] ＪＡＮコード取得設定内容修正
+ *  2010/01/06    1.20  N.Maeda          [E_本稼動_00552] 取引先名称のスペース削除
  *
  *****************************************************************************************/
 --
@@ -2489,7 +2490,11 @@ AS
             ,DECODE( cdm.account_number
                     ,NULL,g_msg_rec.customer_notfound
                     ,i_prf_rec.company_name
-                          || cv_space_fullsize || cdm.base_name)                vendor_name                   --取引先名（漢字）
+-- *********** 2010/01/06 1.20 N.Maeda MOD START ************** --
+--                          || cv_space_fullsize || cdm.base_name)                vendor_name                   --取引先名（漢字）
+                            || cv_space_fullsize
+                            || REPLACE ( cdm.base_name,cv_space_fullsize ) )    vendor_name                   --取引先名（漢字）
+-- *********** 2010/01/06 1.20 N.Maeda MOD  END  ************** --
             ,i_prf_rec.company_name_kana                                        vendor_name1_alt              --取引先名１（カナ）
             ,cdm.base_name_kana                                                 vendor_name2_alt              --取引先名２（カナ）
             ,cdm.phone_number                                                   vendor_tel                    --取引先ＴＥＬ
