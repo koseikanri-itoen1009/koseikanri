@@ -8,7 +8,7 @@ AS
  *                    対象予算年度の商品計画データを抽出し、情報系システムに
  *                    連携するためのI/Fファイルを作成します。
  * MD.050           : MD050_CSM_002_A14_年間商品計画情報系システムIF
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-01-21    1.0   T.Shimoji       新規作成
  *  2009-07-27    1.1   K.Kubo          ［SCS障害管理番号0000784］対象0件時のハンドリング変更
+ *  2011-12-20    1.2   Y.Horikawa       [E_本稼動_08372] 対応 売上値引、入金値引のデータを連携対象に追加
  *
  *****************************************************************************************/
 --
@@ -114,6 +115,10 @@ AS
   cv_item_kbn_g           CONSTANT VARCHAR2(1)  := '0';                                             -- 商品区分(0:商品群)
 --
   cb_true                 CONSTANT BOOLEAN := TRUE;
+-- 2011/12/20 Add Start Ver.1.2
+  cv_sales_discount_item_cd    CONSTANT VARCHAR2(100) := 'XXCOS1_DISCOUNT_ITEM_CODE';               -- XXCOS:売上値引品目
+  cv_receipt_discount_item_cd  CONSTANT VARCHAR2(100) := 'XXCSM1_RECEIPT_DISCOUNT_ITEM_CODE';       -- XXCSM:入金値引品目
+-- 2011/12/20 Add End Ver.1.2
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -124,6 +129,10 @@ AS
   gd_sysdate              DATE;
   gv_budget_year          VARCHAR2(4);
   gv_budget_month         VARCHAR2(2);
+-- 2011/12/20 Add Start Ver.1.2
+  gv_prf_sales_discnt_item_cd    VARCHAR2(100);
+  gv_prf_receipt_discnt_item_cd  VARCHAR2(100);
+-- 2011/12/20 Add End Ver.1.2
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -185,7 +194,7 @@ AS
 --###########################  固定部 END   ############################
 --
     -- =================================
-    -- 入力パラメータなしメッセージ出力 
+    -- 入力パラメータなしメッセージ出力
     -- =================================
     lv_noprm_msg   := xxccp_common_pkg.get_msg(
                         iv_application  => cv_appl_short_name                                       --アプリケーション短縮名
@@ -197,15 +206,45 @@ AS
       ,buff   => lv_noprm_msg || CHR(10) ||
                  ''                                                                                 -- 空行の挿入
     );
-    -- 
+    --
     fnd_file.put_line(
        which  => FND_FILE.OUTPUT
       ,buff   => lv_noprm_msg || CHR(10) ||
                  ''                                                                                 -- 空行の挿入
     );
     -- =======================
-    -- プロファイル値取得処理 
+    -- プロファイル値取得処理
     -- =======================
+-- 2011/12/20 Add Start Ver.1.2
+    -- 売上値引品目取得
+    gv_prf_sales_discnt_item_cd := FND_PROFILE.VALUE(cv_sales_discount_item_cd);
+    -- プロファイル値取得に失敗した場合
+    IF (gv_prf_sales_discnt_item_cd IS NULL) THEN
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                   iv_application  => cv_app_name                                                   --アプリケーション短縮名
+                  ,iv_name         => cv_xxcsm_msg_031                                              --メッセージコード
+                  ,iv_token_name1  => cv_tkn_prf_name                                               --トークンコード1
+                  ,iv_token_value1 => cv_sales_discount_item_cd                                     --トークン値1
+                 );
+      lv_errbuf := lv_errmsg || SQLERRM;
+      RAISE global_api_expt;
+    END IF;
+    -- 入金値引品目取得
+    gv_prf_receipt_discnt_item_cd := FND_PROFILE.VALUE(cv_receipt_discount_item_cd);
+    -- プロファイル値取得に失敗した場合
+    IF (gv_prf_receipt_discnt_item_cd IS NULL) THEN
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                   iv_application  => cv_app_name                                                   --アプリケーション短縮名
+                  ,iv_name         => cv_xxcsm_msg_031                                              --メッセージコード
+                  ,iv_token_name1  => cv_tkn_prf_name                                               --トークンコード1
+                  ,iv_token_value1 => cv_receipt_discount_item_cd                                   --トークン値1
+                 );
+      lv_errbuf := lv_errmsg || SQLERRM;
+      RAISE global_api_expt;
+    END IF;
+-- 2011/12/20 Add End Ver.1.2
     -- 情報系データファイル作成ディレクトリ名取得
     gv_file_dir   := FND_PROFILE.VALUE(cv_file_dir);
     -- プロファイル値取得に失敗した場合
@@ -248,7 +287,7 @@ AS
                  ''                                                                                 -- 空行の挿入
     );
     -- ========================
-    -- CSVファイル存在チェック 
+    -- CSVファイル存在チェック
     -- ========================
     UTL_FILE.FGETATTR(
        location    => gv_file_dir
@@ -271,15 +310,15 @@ AS
       RAISE global_api_expt;
     END IF;
     -- ===========================
-    -- システム日付取得処理 
+    -- システム日付取得処理
     -- ===========================
     gd_sysdate := SYSDATE;
     -- =====================
-    -- 業務処理日付取得処理 
+    -- 業務処理日付取得処理
     -- =====================
     ld_process_date := xxccp_common_pkg2.get_process_date;
     -- =====================
-    -- 年度・月の算出 
+    -- 年度・月の算出
     -- =====================
     xxcsm_common_pkg.get_year_month(
          iv_process_years   => TO_CHAR(ld_process_date,'YYYYMM')                                    -- 年月
@@ -370,7 +409,7 @@ AS
 --###########################  固定部 END   ############################
 --
     -- ========================
-    -- CSVファイルオープン 
+    -- CSVファイルオープン
     -- ========================
     BEGIN
       -- ファイルオープン
@@ -509,10 +548,10 @@ AS
 --###########################  固定部 END   ############################
 --
     -- ======================
-    -- CSV出力処理 
+    -- CSV出力処理
     -- ======================
     -- データ作成
-    lv_data := 
+    lv_data :=
       cv_sep_wquot  || cv_company_cd         || cv_sep_wquot                         -- 会社コード
       || cv_sep_com || TO_CHAR(ir_plan_item.plan_year)                               -- 予算年度
       || cv_sep_com || TO_CHAR(ir_plan_item.year_month)                              -- 年月
@@ -594,7 +633,7 @@ AS
 --###########################  固定部 END   ############################
 --
     -- ====================
-    -- CSVファイルクローズ 
+    -- CSVファイルクローズ
     -- ====================
     BEGIN
       UTL_FILE.FCLOSE(
@@ -711,6 +750,11 @@ AS
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
+-- 2011/12/20 Add Start Ver.1.2
+    -- *** ローカル定数 ***
+    cn_qty_of_discount_item  CONSTANT NUMBER := 0;  -- 値引品目に対する数量
+    cn_no_discount           CONSTANT NUMBER := 0;  -- 値引無し
+-- 2011/12/20 Add End Ver.1.2
     -- *** ローカル変数 ***
     -- ファイルオープン確認戻り値格納
     lb_fopn_retcd        BOOLEAN;
@@ -731,9 +775,40 @@ AS
         AND     xiph.plan_year           = TO_NUMBER(gv_budget_year)                      -- 予算年度
         AND     xipl.year_bdgt_kbn       = cv_bdgt_kbn_m                                  -- 年間群予算区分(0:各月単位)
         AND     xipl.item_kbn           <> cv_item_kbn_g                                  -- 商品区分(0:商品群)以外
-      ORDER BY  xipl.year_month                                                           -- ソート条件:年月
-               ,xiph.location_cd                                                          --   拠点コード
-               ,xipl.item_no                                                              --   商品コード
+-- 2011/12/20 Add Start Ver.1.2
+      UNION ALL
+      SELECT    xiph.plan_year                AS plan_year                                -- 予算年度
+               ,xiplb.year_month              AS year_month                               -- 年月
+               ,xiph.location_cd              AS location_cd                              -- 拠点コード
+               ,gv_prf_sales_discnt_item_cd   AS item_no                                  -- 商品コード
+               ,cn_qty_of_discount_item       AS amount                                   -- 数量
+               ,xiplb.sales_discount          AS sales_budget                             -- 売上金額（売上値引額）
+      FROM      xxcsm_item_plan_headers  xiph                                             -- 商品計画ヘッダテーブル
+               ,xxcsm_item_plan_loc_bdgt xiplb                                            -- 商品計画拠点別予算テーブル
+      WHERE     xiplb.item_plan_header_id = xiph.item_plan_header_id                      -- ヘッダIDで関連付け
+      AND       xiph.plan_year            = TO_NUMBER(gv_budget_year)                     -- 商品計画ヘッダテーブル．予算年度 ＝ A-1で取得した年度
+      AND       xiplb.sales_discount     <> cn_no_discount                                -- 商品計画拠点別予算テーブル．売上値引 <> 0
+      UNION ALL
+      SELECT    xiph.plan_year                AS plan_year                                -- 予算年度
+               ,xiplb.year_month              AS year_month                               -- 年月
+               ,xiph.location_cd              AS location_cd                              -- 拠点コード
+               ,gv_prf_receipt_discnt_item_cd AS item_no                                  -- 商品コード
+               ,cn_qty_of_discount_item       AS amount                                   -- 数量
+               ,xiplb.receipt_discount        AS sales_budget                             -- 売上金額（入金値引額）
+      FROM      xxcsm_item_plan_headers  xiph                                             -- 商品計画ヘッダテーブル
+               ,xxcsm_item_plan_loc_bdgt xiplb                                            -- 商品計画拠点別予算テーブル
+      WHERE     xiplb.item_plan_header_id = xiph.item_plan_header_id                      -- ヘッダIDで関連付け
+      AND       xiph.plan_year            = TO_NUMBER(gv_budget_year)                     -- 商品計画ヘッダテーブル．予算年度 ＝ A-1で取得した年度
+      AND       xiplb.receipt_discount   <> cn_no_discount                                -- 商品計画拠点別予算テーブル．入金値引 <> 0
+-- 2011/12/20 Add End Ver.1.2
+-- 2011/12/20 Mod Start Ver.1.2
+--      ORDER BY  xipl.year_month                                                           -- ソート条件:年月
+--               ,xiph.location_cd                                                          --   拠点コード
+--               ,xipl.item_no                                                              --   商品コード
+      ORDER BY  year_month                                                                -- ソート条件:年月
+               ,location_cd                                                               --   拠点コード
+               ,item_no                                                                   --   商品コード
+-- 2011/12/20 Mod End Ver.1.2
       ;
     -- *** ローカル・レコード ***
     l_get_data_rec       g_get_data_rtype;
@@ -753,7 +828,7 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     -- ========================================
-    -- A-1.初期処理 
+    -- A-1.初期処理
     -- ========================================
     init(
        ov_errbuf  => lv_errbuf                                                                      -- エラー・メッセージ
@@ -765,7 +840,7 @@ AS
       RAISE global_process_expt;
     END IF;
     -- =========================================
-    -- A-2.ファイルオープン処理 
+    -- A-2.ファイルオープン処理
     -- =========================================
     open_csv_file(
        ov_errbuf    => lv_errbuf                                                                    -- エラー・メッセージ
@@ -788,7 +863,7 @@ AS
       EXIT WHEN get_item_plan_cur%NOTFOUND;
       -- 処理対象件数格納
       gn_target_cnt := get_item_plan_cur%ROWCOUNT;
-      -- 
+      --
       -- ========================================
       -- A-4.年間商品計画データファイル作成処理
       -- ========================================
@@ -964,7 +1039,7 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name        CONSTANT VARCHAR2(100) := 'main';                                            -- プログラム名
-    cv_xxcsm           CONSTANT VARCHAR2(100) := 'XXCSM';                                           -- アプリケーション短縮名 
+    cv_xxcsm           CONSTANT VARCHAR2(100) := 'XXCSM';                                           -- アプリケーション短縮名
 --
     cv_appl_short_name CONSTANT VARCHAR2(10)  := 'XXCCP';                                           -- アドオン：共通・IF領域
     cv_target_rec_msg  CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90000';                                -- 対象件数メッセージ
@@ -1038,7 +1113,7 @@ AS
     END IF;
 --
     -- =======================
-    -- A-6.終了処理 
+    -- A-6.終了処理
     -- =======================
     --空行の出力
     fnd_file.put_line(
