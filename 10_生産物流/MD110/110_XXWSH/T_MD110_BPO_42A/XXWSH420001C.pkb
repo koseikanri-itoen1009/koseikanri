@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/10/10    1.7   Oracle 伊藤 ひとみ 統合テスト指摘116対応
  *  2008/12/02    1.8   Oracle 北寒寺正夫  本番障害対応
  *  2008/12/13    1.9   Oracle 二瓶 大輔   本番障害#568対応
+ *  2008/12/15    1.10  Oracle 吉元 強樹   検証用ログ設定
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3683,6 +3684,16 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+-- 2008/12/15 v1.10 T.Yoshimoto Add Start
+    lv_log                          VARCHAR2(32767); -- ログ出力用変数
+    -- WHOカラム
+    ln_user_id                      NUMBER;          -- ログインしているユーザーのID取得
+    ln_login_id                     NUMBER;          -- 最終更新ログイン
+    ln_conc_request_id              NUMBER;          -- 要求ID
+    ln_prog_appl_id                 NUMBER;          -- プログラム・アプリケーションID
+    ln_conc_program_id              NUMBER;          -- プログラムID
+    ld_sysdate                      DATE;            -- システム現在日付
+-- 2008/12/15 v1.10 T.Yoshimoto Add End
 --
 --#####################################  固定部 END   #############################################
 --
@@ -3831,7 +3842,50 @@ AS
       lt_header_rec.attribute10             := TO_CHAR(iot_order_tbl(ln_shori_count).arrival_date,'YYYY/MM/DD');          -- 着荷日
       lt_header_rec.attribute11             := iot_order_tbl(ln_shori_count).performance_management_dept;                 -- 成績管理部署
       lt_header_rec.attribute12             := TO_CHAR(iot_order_tbl(ln_shori_count).schedule_arrival_date,'YYYY/MM/DD'); -- 着荷予定日
+--
+-- 2008/12/15 v1.10 T.Yoshimoto Add Start 検証用
+      --==============================================================
+      -- 検証用ログ
+      --==============================================================
+      -- WHOカラム情報取得
+      ln_user_id           := FND_GLOBAL.USER_ID;           -- ログインしているユーザーのID取得
+      ln_login_id          := FND_GLOBAL.LOGIN_ID;          -- 最終更新ログイン
+      ln_conc_request_id   := FND_GLOBAL.CONC_REQUEST_ID;   -- 要求ID
+      ln_prog_appl_id      := FND_GLOBAL.PROG_APPL_ID;      -- プログラム・アプリケーションID
+      ln_conc_program_id   := FND_GLOBAL.CONC_PROGRAM_ID;   -- プログラムID
+      ld_sysdate           := SYSDATE;                      -- システム現在日付
+--
+      BEGIN
+        lv_log := '【XXWSH42A-A13RMA(標準API_PARAMETER)】'
+               || ' ユーザID/'        || ln_user_id
+               || ' 要求ID/'          || ln_conc_request_id
+               || ' プログラムID/'    || ln_conc_program_id;
+--
+        lv_log :=  lv_log || CHR(10)
+               || '　【出荷指示】'      || lt_header_rec.shipping_instructions || CHR(10)        -- 出荷指示
+               || '　【顧客発注】'      || lt_header_rec.cust_po_number        || CHR(10)        -- 顧客発注
+               || '　【在庫組織ID】'    || lt_header_rec.ship_from_org_id      || CHR(10)        -- 在庫組織ID
+               || '　【依頼No】'        || lt_header_rec.attribute1            || CHR(10)        -- 依頼No
+               || '　【配送No】'        || lt_header_rec.attribute2            || CHR(10)        -- 配送No
+               || '　【運送業者_実績】' || lt_header_rec.attribute3            || CHR(10)        -- 運送業者_実績
+               || '　【配送区分_実績】' || lt_header_rec.attribute4            || CHR(10)        -- 配送区分_実績
+               || '　【出荷予定日】'    || lt_header_rec.attribute6            || CHR(10)        -- 出荷予定日
+               || '　【管轄拠点】'      || lt_header_rec.attribute7            || CHR(10)        -- 管轄拠点
+               || '　【出荷元】'        || lt_header_rec.attribute8            || CHR(10)        -- 出荷元
+               || '　【出荷日】'        || lt_header_rec.attribute9            || CHR(10)        -- 出荷日
+               || '　【着荷日】'        || lt_header_rec.attribute10           || CHR(10)        -- 着荷日
+               || '　【成績管理部署】'  || lt_header_rec.attribute11           || CHR(10)        -- 成績管理部署
+               || '　【着荷予定日】'    || lt_header_rec.attribute12;                            -- 着荷予定日
+--
+       FND_LOG.STRING('6', gv_pkg_name || '.' || cv_prg_name, SUBSTRB(lv_log, 1, 4000));
+--
+      EXCEPTION
+        WHEN  OTHERS THEN
+          NULL;
+      END;
   --
+-- 2008/12/15 v1.10 T.Yoshimoto Add End 検証用
+--
       -- ***************************************
       -- ***       A13-RMA受注作成API起動        ***
       -- ***************************************
@@ -3908,6 +3962,40 @@ AS
       FROM   dual;
 --
       ot_new_order_header_id       := lt_new_order_header_id;
+--
+-- 2008/12/15 v1.10 T.Yoshimoto Add Start 検証用
+      --==============================================================
+      -- 検証用ログ
+      --==============================================================
+      -- WHOカラム情報取得
+      ln_user_id           := FND_GLOBAL.USER_ID;           -- ログインしているユーザーのID取得
+      ln_login_id          := FND_GLOBAL.LOGIN_ID;          -- 最終更新ログイン
+      ln_conc_request_id   := FND_GLOBAL.CONC_REQUEST_ID;   -- 要求ID
+      ln_prog_appl_id      := FND_GLOBAL.PROG_APPL_ID;      -- プログラム・アプリケーションID
+      ln_conc_program_id   := FND_GLOBAL.CONC_PROGRAM_ID;   -- プログラムID
+      ld_sysdate           := SYSDATE;                      -- システム現在日付
+--
+      BEGIN
+        lv_log := '【XXWSH42A-A13RMA(受注ﾍｯﾀﾞｱﾄﾞｵﾝ_PARAMETER)】'
+            || ' ユーザID/'        || ln_user_id
+            || ' 要求ID/'          || ln_conc_request_id
+            || ' プログラムID/'    || ln_conc_program_id;
+--
+        lv_log :=  lv_log || CHR(10)
+            || '【受注ﾍｯﾀﾞｱﾄﾞｵﾝID】' || lt_new_order_header_id                            || CHR(10)        -- 受注明細ID
+            || '【受注ﾀｲﾌﾟID】'      || iot_order_tbl(ln_shori_count).transaction_type_id || CHR(10)        -- CREATE
+            || '【受注ﾍｯﾀﾞID】'      || lt_header_rec.header_id                           || CHR(10)        -- 受注ヘッダID
+            || '【出荷日】'          || iot_order_tbl(ln_shori_count).shipped_date        || CHR(10)        -- 出荷品目ID
+            || '【着荷日】'          || iot_order_tbl(ln_shori_count).arrival_date;                         -- 出荷実績数量
+--
+       FND_LOG.STRING('6', gv_pkg_name || '.' || cv_prg_name, SUBSTRB(lv_log, 1, 4000));
+--
+      EXCEPTION
+        WHEN  OTHERS THEN
+          NULL;
+      END;
+--
+-- 2008/12/15 v1.10 T.Yoshimoto Add End 検証用
 --
       INSERT INTO xxwsh_order_headers_all
         (order_header_id,                -- 受注ヘッダアドオンID
@@ -4167,6 +4255,16 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+-- 2008/12/15 v1.10 T.Yoshimoto Add Start
+    lv_log                          VARCHAR2(32767); -- ログ出力用変数
+    -- WHOカラム
+    ln_user_id                      NUMBER;          -- ログインしているユーザーのID取得
+    ln_login_id                     NUMBER;          -- 最終更新ログイン
+    ln_conc_request_id              NUMBER;          -- 要求ID
+    ln_prog_appl_id                 NUMBER;          -- プログラム・アプリケーションID
+    ln_conc_program_id              NUMBER;          -- プログラムID
+    ld_sysdate                      DATE;            -- システム現在日付
+-- 2008/12/15 v1.10 T.Yoshimoto Add End
 --
 --#####################################  固定部 END   #############################################
 --
@@ -4384,6 +4482,48 @@ AS
     END IF;
 --
     IF (ln_order_line_count > 0) THEN --明細の対象件数が0件より大きい場合に後続の処理を行う。
+-- 2008/12/15 v1.10 T.Yoshimoto Add Start 検証用
+      --==============================================================
+      -- 検証用ログ
+      --==============================================================
+      -- WHOカラム情報取得
+      ln_user_id           := FND_GLOBAL.USER_ID;           -- ログインしているユーザーのID取得
+      ln_login_id          := FND_GLOBAL.LOGIN_ID;          -- 最終更新ログイン
+      ln_conc_request_id   := FND_GLOBAL.CONC_REQUEST_ID;   -- 要求ID
+      ln_prog_appl_id      := FND_GLOBAL.PROG_APPL_ID;      -- プログラム・アプリケーションID
+      ln_conc_program_id   := FND_GLOBAL.CONC_PROGRAM_ID;   -- プログラムID
+      ld_sysdate           := SYSDATE;                      -- システム現在日付
+--
+      BEGIN
+        lv_log := '【XXWSH42A-A15RMA(標準API_PARAMETER)】'
+               || ' ユーザID/'        || ln_user_id
+               || ' 要求ID/'          || ln_conc_request_id
+               || ' プログラムID/'    || ln_conc_program_id;
+--
+        lv_log :=  lv_log || CHR(10)
+               || '　【受注明細ID】'         || lt_input_line_id                                             || CHR(10)        -- 受注明細ID
+               || '　【受注ヘッダID】'       || lt_order_line_tbl(ln_order_line_count).header_id             || CHR(10)        -- 受注ヘッダID
+               || '　【出荷品目ID】'         || lt_order_line_tbl(ln_order_line_count).inventory_item_id     || CHR(10)        -- 出荷品目ID
+               || '　【出荷実績数量】'       || lt_order_line_tbl(ln_order_line_count).ordered_quantity      || CHR(10)        -- 出荷実績数量
+               || '　【出荷予定日】'         || lt_order_line_tbl(ln_order_line_count).schedule_ship_date    || CHR(10)        -- 出荷予定日
+               || '　【単価】'               || lt_order_line_tbl(ln_order_line_count).unit_selling_price    || CHR(10)        -- 単価
+               || '　【単価】'               || lt_order_line_tbl(ln_order_line_count).unit_list_price       || CHR(10)        -- 単価
+               || '　【要求日】'             || lt_order_line_tbl(ln_order_line_count).request_date          || CHR(10)        -- 要求日
+               || '　【数量】'               || lt_order_line_tbl(ln_order_line_count).attribute1            || CHR(10)        -- 数量
+               || '　【拠点依頼数量】'       || lt_order_line_tbl(ln_order_line_count).attribute2            || CHR(10)        -- 拠点依頼数量
+               || '　【依頼品目】'           || lt_order_line_tbl(ln_order_line_count).attribute3            || CHR(10)        -- 依頼品目
+               || '　【返品事由】'           || lt_order_line_tbl(ln_order_line_count).return_reason_code    || CHR(10)        -- 返品事由
+               || '　【凍結価格計算フラグ】' || lt_order_line_tbl(ln_order_line_count).calculate_price_flag;                   -- 凍結価格計算フラグ
+--
+       FND_LOG.STRING('6', gv_pkg_name || '.' || cv_prg_name, SUBSTRB(lv_log, 1, 4000));
+--
+      EXCEPTION
+        WHEN  OTHERS THEN
+          NULL;
+      END;
+--
+-- 2008/12/15 v1.10 T.Yoshimoto Add End 検証用
+--
       -- ***************************************
       -- ***       A15-RMA受注作成API起動    ***
       -- ***************************************
@@ -4450,6 +4590,51 @@ AS
       -- ********************************************************
       -- ***      訂正受注時受注明細アドオンに訂正データを登録***
       -- ********************************************************
+--
+-- 2008/12/15 v1.10 T.Yoshimoto Add Start 検証用
+      <<log_loop>>
+      FOR i IN 1..lt_order_line_id.COUNT LOOP
+        --==============================================================
+        -- 検証用ログ
+        --==============================================================
+        -- WHOカラム情報取得
+        ln_user_id           := FND_GLOBAL.USER_ID;           -- ログインしているユーザーのID取得
+        ln_login_id          := FND_GLOBAL.LOGIN_ID;          -- 最終更新ログイン
+        ln_conc_request_id   := FND_GLOBAL.CONC_REQUEST_ID;   -- 要求ID
+        ln_prog_appl_id      := FND_GLOBAL.PROG_APPL_ID;      -- プログラム・アプリケーションID
+        ln_conc_program_id   := FND_GLOBAL.CONC_PROGRAM_ID;   -- プログラムID
+        ld_sysdate           := SYSDATE;                      -- システム現在日付
+--
+        BEGIN
+          lv_log := '【XXWSH42A-A15RMA(受注明細ｱﾄﾞｵﾝ_PARAMETER)】'
+                || ' ユーザID/'        || ln_user_id
+                || ' 要求ID/'          || ln_conc_request_id
+                || ' プログラムID/'    || ln_conc_program_id;
+--
+          lv_log :=  lv_log || CHR(10)
+                || '　【受注明細ｱﾄﾞｵﾝID】' || lt_order_line_id(i)              || CHR(10)        -- 受注明細アドオンID
+                || '　【受注ﾍｯﾀﾞｱﾄﾞｵﾝID】' || lt_order_header_id(i)            || CHR(10)        -- 受注ヘッダアドオンID
+                || '　【明細番号】'        || lt_order_line_number(i)          || CHR(10)        -- 明細番号
+                || '　【受注ﾍｯﾀﾞID】'      || lt_header_id(i)                  || CHR(10)        -- 受注ヘッダID
+                || '　【受注明細ID】'      || lt_line_id(i)                    || CHR(10)        -- 受注明細ID
+                || '　【依頼No】'          || lt_request_no(i)                 || CHR(10)        -- 依頼No
+                || '　【出荷品目ID】'      || lt_shipping_inventory_item_id(i) || CHR(10)        -- 出荷品目ID
+                || '　【出荷品目】'        || lt_shipping_item_code(i)         || CHR(10)        -- 出荷品目
+                || '　【数量】'            || lt_quantity(i)                   || CHR(10)        -- 数量
+                || '　【依頼品目ID】'      || lt_request_item_id(i)            || CHR(10)        -- 依頼品目ID
+                || '　【依頼品目ｺｰﾄﾞ】'    || lt_request_item_code(i)          || CHR(10)        -- 依頼品目コード
+                || '　【入庫実績数量】'    || lt_ship_to_quantity(i);                            -- 入庫実績数量
+--
+         FND_LOG.STRING('6', gv_pkg_name || '.' || cv_prg_name, SUBSTRB(lv_log, 1, 4000));
+--
+        EXCEPTION
+          WHEN  OTHERS THEN
+            NULL;
+        END;
+      END LOOP log_loop;
+--
+-- 2008/12/15 v1.10 T.Yoshimoto Add End 検証用
+--
       FORALL i IN 1..lt_order_line_id.COUNT
         INSERT INTO xxwsh_order_lines_all
           (order_line_id,
