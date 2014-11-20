@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.52
+ * Version          : 1.53
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -150,6 +150,7 @@ AS
  *                                       本番障害対応#1085,1159 実績0作成時で、実績報告済み品目かチェックする時に、IF依頼No単位の品目のみでチェックするように修正
  *  2009/04/07    1.51 SCS    伊藤ひとみ 本番障害対応#1105,1164(再対応) dummy_lot_checkでIFデータを検索する時の条件が漏れていたので修正
  *  2009/04/08    1.52 SCS    伊藤ひとみ 本番障害対応#1232 運送業者、出庫日、入庫日がNULLの場合の考慮ができていないため修正。配送Noが指示を同じかチェックを追加
+ *  2009/04/27    1.53 SCS    伊藤ひとみ 本番障害対応#1435 指示と報告比較チェックで、運賃区分OFFの場合は、運送業者の比較は行わない
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -8871,10 +8872,14 @@ AS
 --
             -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
             -- 取込報告:運送業者 <> トランザクション:NVL(運送業者_実績, 運送業者)
--- 2009/04/08 MOD START 本番障害#1232 運送業者がNULLの場合、ダミーコード「X」と比較する。
---            IF (gr_interface_info_rec(i).freight_carrier_code <> NVL(lt_mov_actual_freight_code,lt_mov_freight_code)) THEN
-            IF (NVL(gr_interface_info_rec(i).freight_carrier_code, gv_delivery_no_null) <> NVL(lt_mov_actual_freight_code, NVL(lt_mov_freight_code, gv_delivery_no_null))) THEN
--- 2009/04/08 MOD END
+-- 2009/04/27 MOD START 本番障害#1435 運賃区分OFFの場合、運送業者チェックを行わない。
+---- 2009/04/08 MOD START 本番障害#1232 運送業者がNULLの場合、ダミーコード「X」と比較する。
+----            IF (gr_interface_info_rec(i).freight_carrier_code <> NVL(lt_mov_actual_freight_code,lt_mov_freight_code)) THEN
+--            IF (NVL(gr_interface_info_rec(i).freight_carrier_code, gv_delivery_no_null) <> NVL(lt_mov_actual_freight_code, NVL(lt_mov_freight_code, gv_delivery_no_null))) THEN
+---- 2009/04/08 MOD END
+            IF ((gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1)
+            AND (NVL(gr_interface_info_rec(i).freight_carrier_code, gv_delivery_no_null) <> NVL(lt_mov_actual_freight_code, NVL(lt_mov_freight_code, gv_delivery_no_null)))) THEN
+-- 2009/04/27 MOD END
               ln_errflg := 1;
               lv_err_msg_sai := gv_msg_sai_3;
             END IF;
@@ -9092,10 +9097,14 @@ AS
 --
               -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
               -- 取込報告:運送業者 <> トランザクション:NVL(運送業者_実績, 運送業者)
--- 2009/04/08 MOD START 本番障害#1232 運送業者がNULLの場合、ダミーコード「X」と比較する。
---              IF (gr_interface_info_rec(i).freight_carrier_code <> NVL(lt_req_result_freight_code,lt_req_freight_code)) THEN
-              IF (NVL(gr_interface_info_rec(i).freight_carrier_code, gv_delivery_no_null)  <> NVL(lt_req_result_freight_code, NVL(lt_req_freight_code, gv_delivery_no_null))) THEN
--- 2009/04/08 MOD END
+-- 2009/04/27 MOD START 本番障害#1435 運賃区分OFFの場合、運送業者チェックを行わない。
+---- 2009/04/08 MOD START 本番障害#1232 運送業者がNULLの場合、ダミーコード「X」と比較する。
+----              IF (gr_interface_info_rec(i).freight_carrier_code <> NVL(lt_req_result_freight_code,lt_req_freight_code)) THEN
+--              IF (NVL(gr_interface_info_rec(i).freight_carrier_code, gv_delivery_no_null)  <> NVL(lt_req_result_freight_code, NVL(lt_req_freight_code, gv_delivery_no_null))) THEN
+---- 2009/04/08 MOD END
+              IF ((gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1)
+              AND (NVL(gr_interface_info_rec(i).freight_carrier_code, gv_delivery_no_null)  <> NVL(lt_req_result_freight_code, NVL(lt_req_freight_code, gv_delivery_no_null)))) THEN
+-- 2009/04/27 MOD END
                 ln_errflg := 1;
                 lv_err_msg_sai := gv_msg_sai_3;
               END IF;
