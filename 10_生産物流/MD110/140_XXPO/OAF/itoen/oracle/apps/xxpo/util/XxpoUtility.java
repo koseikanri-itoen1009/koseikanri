@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,8 @@
 * 2008-01-10 1.0  伊藤ひとみ   新規作成
 * 2008-06-11 1.1  吉元強樹     ST不具合ログ#72を対応
 * 2008-06-17 1.2  二瓶大輔     ST不具合ログ#126を対応
+* 2008-06-18 1.3  伊藤ひとみ   結合バグ 発注明細IFの単価、仕入定価を
+*                              仕入/標準単価ヘッダの内訳合計に変更。
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -30,7 +32,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -2260,7 +2262,10 @@ public class XxpoUtility
     String uomCode           = (String)params.get("Uom");               // 単位コード
     String productedQuantity = (String)params.get("ProductedQuantity"); // 出来高数量
     Number conversionFactor  = (Number)params.get("ConversionFactor");  // 換算入数    
-    String unitPrice         = (String)params.get("StockValue");        // 在庫単価    
+// 2008-06-18 H.Itou MOD START
+//    String unitPrice         = (String)params.get("StockValue");        // 在庫単価    
+    String unitPrice         = getTotalAmount(trans, params);           // 内訳合計
+// 2008-06-18 H.Itou MOD END
     Date   promisedDate      = (Date)params.get("ManufacturedDate");    // 生産日
     String lotNumber         = (String)params.get("LotNumber");         // ロット番号
     String factoryCode       = (String)params.get("FactoryCode");       // 工場コード
@@ -10149,4 +10154,110 @@ public class XxpoUtility
     }
     return retHashMap;
   } // getProvUserData
+
+// 2008-06-18 H.Itou ADD START
+  /*****************************************************************************
+   * 内訳合計を取得します。
+   * @param trans            - トランザクション
+   * @param params           - パラメータ
+   * @return String          - 内訳合計
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static String getTotalAmount(
+    OADBTransaction trans,
+    HashMap params
+  ) throws OAException
+  {
+    String apiName    = "getTotalAmount"; // API名
+    String totalAmount = "";    // 内訳合計
+
+    // パラメータ値取得
+    String unitPriceCalcCode = (String)params.get("UnitPriceCalcCode");// 仕入単価導出日タイプ
+    Number itemId            = (Number)params.get("ItemId");           // 品目ID
+    Number vendorId          = (Number)params.get("VendorId");         // 取引先ID
+    Number factoryId         = (Number)params.get("FactoryId");        // 工場ID
+    Date   manufacturedDate  = (Date)params.get("ManufacturedDate");   // 生産日
+    Date   productedDate     = (Date)params.get("ProductedDate");      // 製造日
+
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("DECLARE "                                                 );
+    sb.append("  lt_total_amount  xxpo_price_headers.total_amount%TYPE; ");
+    sb.append("BEGIN "                                                   );
+    sb.append("  SELECT xph.total_amount    total_amount "               ); // 内訳合計
+    sb.append("  INTO   lt_total_amount "                                );
+    sb.append("  FROM   xxpo_price_headers  xph "                        ); // 仕入･標準単価ヘッダ
+    sb.append("  WHERE  xph.item_id             = :1 "                   ); // 品目ID
+    sb.append("  AND    xph.vendor_id           = :2 "                   ); // 取引先ID
+    sb.append("  AND    xph.factory_id          = :3 "                   ); // 工場ID
+    sb.append("  AND    xph.futai_code          = '0' "                  ); // 付帯コード
+    sb.append("  AND    xph.price_type          = '1' "                  ); // マスタ区分1:仕入
+    sb.append("  AND    (((:4                   = '1') "                 ); // 仕入単価導入日タイプが1:製造日の場合、条件が製造日
+    sb.append("    AND  (xph.start_date_active <= :5) "                  ); // 適用開始日 <= 製造日
+    sb.append("    AND  (xph.end_date_active   >= :5)) "                 ); // 適用終了日 >= 製造日
+    sb.append("  OR     ((:4                    = '2') "                 ); // 仕入単価導入日タイプが2:納入日の場合、条件が生産日
+    sb.append("    AND  (xph.start_date_active <= :6) "                  ); // 適用開始日 <= 生産日
+    sb.append("    AND  (xph.end_date_active   >= :6))); "               ); // 適用終了日 >= 生産日
+    sb.append("  :7 := TO_CHAR(lt_total_amount); "                       );
+    sb.append("EXCEPTION "                                               );
+    sb.append("  WHEN OTHERS THEN "                                      ); // データがない場合は0
+    sb.append("    :7 := '0'; "                                          );
+    sb.append("END; "                                                    );
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(1, XxcmnUtility.intValue(itemId));            // 品目ID
+      cstmt.setInt(2, XxcmnUtility.intValue(vendorId));          // 取引先ID
+      cstmt.setInt(3, XxcmnUtility.intValue(factoryId));         // 工場ID
+      cstmt.setString(4, unitPriceCalcCode);                     // 仕入単価導入タイプ
+      cstmt.setDate(5, XxcmnUtility.dateValue(productedDate));   // 製造日
+      cstmt.setDate(6, XxcmnUtility.dateValue(manufacturedDate));// 生産日
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(7, Types.VARCHAR); // 内訳合計
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      return cstmt.getString(7);
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // getTotalAmount
+// 2008-06-18 H.Itou ADD END
 }

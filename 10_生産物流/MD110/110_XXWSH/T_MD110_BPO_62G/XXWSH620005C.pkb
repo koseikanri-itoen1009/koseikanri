@@ -7,7 +7,7 @@ AS
  * Description      : 出庫指示確認表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫指示確認表 T_MD070_BPO_62G
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/06/04    1.1   Jun Nakada            クイックコード警告区分の結合を外部結合に変更(出荷移動)
  *  2008/06/17    1.2   Masao Hokkanji        システムテスト不具合No150対応
  *  2008/06/18    1.3   Kazuo Kumamoto        事業所情報VIEWの結合を外部結合に変更
+ *  2008/06/19    1.4   SCS yamane            配車配送情報VIEWの結合を外部結合に変更
  *
  *****************************************************************************************/
 --
@@ -1323,7 +1324,9 @@ AS
       || '          xoha.sum_pallet_weight + xoha.sum_weight'
       || '        WHEN xoha.weight_capacity_class = ''' || gv_wei_cap_kbn_c || ''' THEN'
       || '          xoha.sum_pallet_weight + xoha.sum_capacity'
-      || '        END'
+      || '      END'
+      || '    WHEN xsm2v.small_amount_class IS NULL THEN'
+      || '      NULL '
       || '    END                            AS  req_weight_volume_total' -- 依頼重量体積（合計）
       || ' ,CASE'
       || '    WHEN xoha.weight_capacity_class = ''' || gv_wei_cap_kbn_w || ''''
@@ -1485,7 +1488,7 @@ AS
            -------------------------------------------------------------------------------
            -- 配送区分情報VIEW2
            -------------------------------------------------------------------------------
-      || ' AND xoha.shipping_method_code            = xsm2v.ship_method_code'
+      || ' AND xoha.shipping_method_code            = xsm2v.ship_method_code(+)'
            -------------------------------------------------------------------------------
            -- クイックコード（運賃区分）-- 1:対象、2:対象外
            -------------------------------------------------------------------------------
@@ -1715,7 +1718,9 @@ AS
       || '          xmrih.sum_pallet_weight + xmrih.sum_weight'
       || '        WHEN xmrih.weight_capacity_class = ''' || gv_wei_cap_kbn_c || ''' THEN'
       || '          xmrih.sum_pallet_weight + xmrih.sum_capacity'
-      || '        END'
+      || '      END'
+      || '    WHEN xsm2v.small_amount_class IS NULL THEN'
+      || '      NULL '
       || '    END                                 AS  req_weight_volume_total' -- 依頼重量体積_合計
       || ' ,CASE'
       || '    WHEN xmrih.weight_capacity_class = ''' || gv_wei_cap_kbn_w || ''''
@@ -1825,7 +1830,7 @@ AS
            -------------------------------------------------------------------------------
            -- 配送区分情報VIEW2
            -------------------------------------------------------------------------------
-      || ' AND xmrih.shipping_method_code        = xsm2v.ship_method_code'
+      || ' AND xmrih.shipping_method_code        = xsm2v.ship_method_code(+)'
            -------------------------------------------------------------------------------
            -- クイックコード（運賃区分）-- 1:対象、2:対象外
            -------------------------------------------------------------------------------
