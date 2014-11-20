@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A13C(body)
  * Description      : 棚卸減耗データ作成
  * MD.050           : 棚卸減耗データ作成 <MD050_COI_A13>
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/05/08    1.1   T.Nakamura       [T1_0782]異常終了時に成功件数を0とするよう修正
  *  2009/06/03    1.2   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
  *  2009/06/26    1.3   H.Sasaki         [0000258]棚卸対象外を処理対象とする
+ *  2009/07/14    1.4   H.Sasaki         [0000679]棚卸減耗情報抽出カーソルのPT対応
  *
  *****************************************************************************************/
 --
@@ -100,9 +101,11 @@ AS
   -- ===============================
   -- ユーザー定義グローバル定数
   -- ===============================
-  cv_pkg_name         CONSTANT VARCHAR2(100) := 'XXCOI006A13C'; -- パッケージ名
+  cv_pkg_name           CONSTANT VARCHAR2(100)  := 'XXCOI006A13C';        -- パッケージ名
 --
-  cv_xxcoi_short_name CONSTANT VARCHAR2(10)  := 'XXCOI';        -- アドオン：販物・在庫領域
+  cv_xxcoi_short_name   CONSTANT VARCHAR2(10)   := 'XXCOI';               -- アドオン：販物・在庫領域
+  --メッセージ
+  cv_xxcoi1_msg_10144   CONSTANT  VARCHAR2(16)  := 'APP-XXCOI1-10144';    --棚卸管理ロックエラー
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -823,8 +826,18 @@ AS
     cv_9      CONSTANT VARCHAR2(1)  := '9';
 --
     -- *** ローカル変数 ***
+-- == 2009/07/14 V1.4 Added START ===============================================================
+    ln_dummy  NUMBER;
 --
     -- *** ローカル・カーソル ***
+    CURSOR  record_rock_cur
+    IS
+      SELECT  1
+      FROM    xxcoi_inv_control   xic
+      WHERE   xic.inventory_year_month    = iv_period_date    --年月 = 会計期間の年月
+      AND     xic.inventory_kbn           = cv_2              --棚卸区分 = 2(月末)
+      FOR UPDATE NOWAIT;
+-- == 2009/07/14 V1.4 Added END   ===============================================================
 --
     -- *** ローカル・レコード ***
 --
@@ -842,6 +855,11 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- == 2009/07/14 V1.4 Added START ===============================================================
+    -- ロック処理を実行
+    OPEN  record_rock_cur;
+-- == 2009/07/14 V1.4 Added END   ===============================================================
+    --
     --棚卸管理テーブル更新
     UPDATE  xxcoi_inv_control xic
     SET     xic.inventory_status        = cv_9
@@ -855,6 +873,9 @@ AS
     WHERE   xic.inventory_year_month    = iv_period_date    --年月 = 会計期間の年月
     AND     xic.inventory_kbn           = cv_2              --棚卸区分 = 2(月末)
     ;
+-- == 2009/07/14 V1.4 Added START ===============================================================
+    CLOSE record_rock_cur;
+-- == 2009/07/14 V1.4 Added END   ===============================================================
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -862,19 +883,45 @@ AS
 --
   EXCEPTION
 --
+-- == 2009/07/14 V1.4 Added START ===============================================================
+    --*** 棚卸管理ロック取得エラー ***
+    WHEN lock_expt THEN
+      IF (record_rock_cur%ISOPEN) THEN
+        CLOSE record_rock_cur;
+      END IF;
+      --メッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcoi_short_name
+                 ,iv_name         => cv_xxcoi1_msg_10144
+                );
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;                                            --# 任意 #
+-- == 2009/07/14 V1.4 Added END   ===============================================================
+--
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
+      IF (record_rock_cur%ISOPEN) THEN
+        CLOSE record_rock_cur;
+      END IF;
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
+      IF (record_rock_cur%ISOPEN) THEN
+        CLOSE record_rock_cur;
+      END IF;
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+      IF (record_rock_cur%ISOPEN) THEN
+        CLOSE record_rock_cur;
+      END IF;
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
@@ -911,8 +958,6 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    --メッセージ
-    cv_xxcoi1_msg_10144   CONSTANT  VARCHAR2(16)  := 'APP-XXCOI1-10144';        --棚卸管理ロックエラー
     --
     cv_2                  CONSTANT  VARCHAR2(1)   := '2';
     cv_9                  CONSTANT  VARCHAR2(1)   := '9';
@@ -938,31 +983,49 @@ AS
                   in_organization_id  IN NUMBER
                  ,iv_period_date      IN VARCHAR2)
     IS
-      SELECT    xirm.inv_seq                                  --棚卸SEQ
+-- == 2009/07/14 V1.4 Modified START ===============================================================
+--      SELECT
+--                xirm.inv_seq                                  --棚卸SEQ
+--               ,xirm.base_code                                --拠点コード
+--               ,xirm.organization_id                          --組織ID
+--               ,xirm.subinventory_code                        --保管場所コード
+--               ,xirm.inventory_item_id                        --品目ID
+--               ,(xirm.inv_wear * -1)  inv_wear                --棚卸減耗
+--      FROM      xxcoi_inv_reception_monthly xirm              --月次在庫受払表
+--               ,xxcoi_inv_control           xic               --棚卸管理
+--               ,mtl_secondary_inventories   msi               --保管場所マスタ
+--      WHERE     xirm.organization_id    = in_organization_id
+--      AND       xirm.inventory_kbn      = cv_2                --棚卸区分 = '2'(月末)
+--      AND       xirm.practice_month     = iv_period_date      --年月 = 会計期間年月
+--      AND       xirm.inv_wear          <> 0                   --棚卸減耗 <> 0
+--      AND       xirm.inv_seq            = xic.inventory_seq
+--      AND       xirm.subinventory_code  = msi.secondary_inventory_name
+---- == 2009/06/03 V1.2 Added START ===============================================================
+--      AND       xirm.organization_id    = msi.organization_id
+---- == 2009/06/03 V1.2 Added END   ===============================================================
+---- == 2009/06/26 V1.3 Deleted START ===============================================================
+----      AND       msi.attribute5         <> cv_9                --棚卸対象 <> '9'(対象外)
+---- == 2009/06/26 V1.3 Deleted END   ===============================================================
+--      ORDER BY  xirm.base_code
+--               ,xirm.subinventory_code
+--      FOR UPDATE OF xic.inventory_seq NOWAIT
+--      ;
+--
+      SELECT
+                xirm.inv_seq                                  --棚卸SEQ
                ,xirm.base_code                                --拠点コード
                ,xirm.organization_id                          --組織ID
                ,xirm.subinventory_code                        --保管場所コード
                ,xirm.inventory_item_id                        --品目ID
                ,(xirm.inv_wear * -1)  inv_wear                --棚卸減耗
       FROM      xxcoi_inv_reception_monthly xirm              --月次在庫受払表
-               ,xxcoi_inv_control           xic               --棚卸管理
-               ,mtl_secondary_inventories   msi               --保管場所マスタ
       WHERE     xirm.organization_id    = in_organization_id
       AND       xirm.inventory_kbn      = cv_2                --棚卸区分 = '2'(月末)
       AND       xirm.practice_month     = iv_period_date      --年月 = 会計期間年月
       AND       xirm.inv_wear          <> 0                   --棚卸減耗 <> 0
-      AND       xirm.inv_seq            = xic.inventory_seq
-      AND       xirm.subinventory_code  = msi.secondary_inventory_name
--- == 2009/06/03 V1.2 Added START ===============================================================
-      AND       xirm.organization_id    = msi.organization_id
--- == 2009/06/03 V1.2 Added END   ===============================================================
--- == 2009/06/26 V1.3 Deleted START ===============================================================
---      AND       msi.attribute5         <> cv_9                --棚卸対象 <> '9'(対象外)
--- == 2009/06/26 V1.3 Deleted END   ===============================================================
       ORDER BY  xirm.base_code
-               ,xirm.subinventory_code
-      FOR UPDATE OF xic.inventory_seq NOWAIT
-      ;
+               ,xirm.subinventory_code;
+-- == 2009/07/14 V1.4 Modified END   ===============================================================
     -- <カーソル名>レコード型
     get_month_data_rec get_month_data_cur%ROWTYPE;
 --
@@ -1103,22 +1166,24 @@ AS
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
       -- カーソルのクローズをここに記述する
-    --*** 棚卸管理ロック取得エラー ***
-    WHEN lock_expt THEN
-      IF (get_month_data_cur%ISOPEN) THEN
-        CLOSE get_month_data_cur;
-      END IF;
-      --エラー件数カウント
-      gn_error_cnt := gn_error_cnt + 1;
-      --メッセージ取得
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                  iv_application  => cv_xxcoi_short_name
-                 ,iv_name         => cv_xxcoi1_msg_10144
-                );
-      lv_errbuf  := lv_errmsg;
-      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;                                            --# 任意 #
+-- == 2009/07/14 V1.4 Deleted START ===============================================================
+--    --*** 棚卸管理ロック取得エラー ***
+--    WHEN lock_expt THEN
+--      IF (get_month_data_cur%ISOPEN) THEN
+--        CLOSE get_month_data_cur;
+--      END IF;
+--      --エラー件数カウント
+--      gn_error_cnt := gn_error_cnt + 1;
+--      --メッセージ取得
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                  iv_application  => cv_xxcoi_short_name
+--                 ,iv_name         => cv_xxcoi1_msg_10144
+--                );
+--      lv_errbuf  := lv_errmsg;
+--      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;                                            --# 任意 #
+-- == 2009/07/14 V1.4 Deleted END   ===============================================================
 --
 --#################################  固定例外処理部 START   ###################################
 --
