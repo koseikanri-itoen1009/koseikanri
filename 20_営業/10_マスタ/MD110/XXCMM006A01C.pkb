@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM006A01C(body)
  * Description      : 倉庫マスタIF出力(HHT)
  * MD.050           : 倉庫マスタIF出力(HHT) MD050_CMM_006_A01
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -14,6 +14,7 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理プロシージャ(A-1)
  *  get_souko_data         保管場所マスタ情報取得プロシージャ(A-2)
+ *  get_item_group_sum     商品別売上集計マスタ取得(A-5)
  *  output_csv             CSVファイル出力プロシージャ(A-3)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行プロシージャ
@@ -23,6 +24,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/06    1.0   SCS 福間 貴子    初回作成
+ *  2013/05/15    1.1   SCSK 石渡 賢和   [E_本稼動_10735]対応
  *
  *****************************************************************************************/
 --
@@ -71,6 +73,10 @@ AS
   cv_filepath               CONSTANT VARCHAR2(30)  := 'XXCMM1_HHT_OUT_DIR';         -- HHTCSVファイル出力先
   cv_filename               CONSTANT VARCHAR2(30)  := 'XXCMM1_006A01_OUT_FILE';     -- 連携用CSVファイル名
   cv_cal_code               CONSTANT VARCHAR2(30)  := 'XXCMM1_006A01_SYS_CAL_CODE'; -- システム稼働日カレンダコード値
+/* 2013/05/15 Ver1.1 Add Start */
+  -- 参照タイプ
+  cv_item_group_summary     CONSTANT VARCHAR2(30)  := 'XXCMM1_ITEM_GROUP_SUMMARY';   -- 商品別売上集計マスタ
+/* 2013/05/15 Ver1.1 Add End   */
   -- トークン
   cv_tkn_profile            CONSTANT VARCHAR2(10)  := 'NG_PROFILE';                 -- プロファイル名
   cv_tkn_filepath_nm        CONSTANT VARCHAR2(20)  := 'CSVファイル出力先';
@@ -85,6 +91,10 @@ AS
   cv_tkn_param2             CONSTANT VARCHAR2(20)  := '最終更新日(終了)';
   cv_tkn_param3             CONSTANT VARCHAR2(20)  := '入力パラメータ';
   cv_tkn_value              CONSTANT VARCHAR2(10)  := 'VALUE';                      -- パラメータ値
+/* 2013/05/15 Ver1.1 Add Start */
+  cv_tkn_input              CONSTANT VARCHAR2(10)  := 'INPUT';                      -- トークンINPUT
+  cv_tkn_item               CONSTANT VARCHAR2(10)  := 'ITEM';                       -- トークンITEM
+/* 2013/05/15 Ver1.1 Add End   */
   -- メッセージ区分
   cv_msg_kbn_cmm            CONSTANT VARCHAR2(5)   := 'XXCMM';
   cv_msg_kbn_ccp            CONSTANT VARCHAR2(5)   := 'XXCCP';
@@ -100,8 +110,23 @@ AS
   cv_msg_00003              CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00003';           -- ファイルパス不正エラー
   cv_msg_00007              CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00007';           -- ファイルアクセス権限エラー
   cv_msg_00009              CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00009';           -- CSVデータ出力エラー
+/* 2013/05/15 Ver1.1 Add Start */
+  cv_msg_10318              CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10318';           -- 全角チェック
+  cv_msg_10114              CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-10114';           -- NUMBER型チェックエラー
+  cv_msg_00602              CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00602';           -- 目標管理項目コード
+  cv_msg_00603              CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00603';           -- 見出し・明細名称
+  cv_target_rec_msg2        CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00604';           -- 商品別売上集計マスタ対象件数
+  cv_success_rec_msg2       CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00605';           -- 商品別売上集計マスタ成功件数
+  cv_skip_rec_msg2          CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00606';           -- スキップ件数メッセージ
+  cv_warn_msg               CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90005';           -- 警告終了メッセージ
+/* 2013/05/15 Ver1.1 Add End   */
   -- 固定値(設定値、抽出条件)
   cv_kbn_souko              CONSTANT VARCHAR2(1)   := '1';                          -- 保管場所区分(倉庫)
+/* 2013/05/15 Ver1.1 Add Start */
+  cv_status_warn            CONSTANT VARCHAR2(1)   := xxccp_common_pkg.set_status_warn;   --警告:1
+  cv_y                      CONSTANT VARCHAR2(1)   := 'Y';                          -- フラグ「Y」
+  cv_n                      CONSTANT VARCHAR2(1)   := 'N';                          -- フラグ「N」
+/* 2013/05/15 Ver1.1 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -122,6 +147,13 @@ AS
   gv_update_sdate           VARCHAR2(10);         -- 入力パラメータ：最終更新日(開始)
   gv_update_edate           VARCHAR2(10);         -- 入力パラメータ：最終更新日(終了)
   gv_param_output_flg       VARCHAR2(1);          -- 入力パラメータ出力フラグ(出力前:0、出力後:1)
+/* 2013/05/15 Ver1.1 Add Start */
+  gn_warn_cnt               NUMBER;               -- スキップ件数
+  gn_target_cnt2            NUMBER;               -- 対象件数(商品別売上集計マスタ)
+  gn_normal_cnt2            NUMBER;               -- 正常件数(商品別売上集計マスタ)
+  gd_min_start_date         DATE;                 -- 最小有効開始日
+  gd_max_end_date           DATE;                 -- 最大有効終了日
+/* 2013/05/15 Ver1.1 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -139,6 +171,22 @@ AS
   ;
   TYPE g_souko_data_ttype IS TABLE OF get_souko_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
   gt_souko_data            g_souko_data_ttype;
+/* 2013/05/15 Ver1.1 Add Start */
+  CURSOR get_item_group_sum_cur
+  IS
+    SELECT   SUBSTRB(flv.lookup_code,1,9)                       AS sales_target_sum_code, -- 目標管理項目コード
+             SUBSTRB(TO_MULTI_BYTE(flv.description),1,20)       AS description,           -- 見出し・明細名称(マルチバイト変換済み)
+             NULL                                               AS disable_date,          -- 適用開始日
+             TO_CHAR(flv.last_update_date,'YYYY/MM/DD HH24:MI:SS')  AS last_update_date   -- ファイル作成日
+    FROM     fnd_lookup_values flv
+    WHERE    flv.lookup_type        = cv_item_group_summary                               -- 商品別売上集計マスタ
+    AND      flv.language           = userenv('LANG')                                     -- 有効なもののみ
+    AND      flv.enabled_flag       = cv_y                                                -- 有効なもののみ
+    AND      flv.attribute3        <> cv_n                                                -- 出力対象外は除く
+  ;
+  TYPE g_item_group_sum_ttype IS TABLE OF get_item_group_sum_cur%ROWTYPE INDEX BY PLS_INTEGER;
+  gt_item_group_sum       g_item_group_sum_ttype;
+/* 2013/05/15 Ver1.1 Add End   */
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -535,6 +583,200 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END get_souko_data;
+/* 2013/05/15 Ver1.1 Add Start */
+--
+  /**********************************************************************************
+   * Procedure Name   : get_item_group_sum
+   * Description      : 商品別売上集計マスタ取得(A-5)
+   ***********************************************************************************/
+  PROCEDURE get_item_group_sum(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_item_group_sum';       -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_paren1           CONSTANT VARCHAR2(2)  := '( ';    -- 左カッコ
+    cv_paren2           CONSTANT VARCHAR2(2)  := ' )';    -- 右カッコ
+--
+    -- *** ローカル変数 ***
+    ln_loop_cnt         NUMBER;                          -- ループカウンタ
+    lv_err_flg          VARCHAR2(1);                     -- エラーフラグ
+    lv_msg_00602        VARCHAR2(150);                   -- メッセージ文言格納変数
+    lv_msg_00603        VARCHAR2(150);                   -- メッセージ文言格納変数
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+-- 
+    -- エラーフラグ初期化
+    lv_err_flg  := '0';
+    --
+    --==============================================================
+    -- 1. 商品別売上集計マスタ情報の取得
+    --==============================================================
+    -- カーソルオープン
+    OPEN get_item_group_sum_cur;
+--
+    -- データの一括取得
+    FETCH get_item_group_sum_cur BULK COLLECT INTO gt_item_group_sum;
+--
+    -- 対象件数をセット
+    gn_target_cnt2 := gt_item_group_sum.COUNT;
+--
+    -- カーソルクローズ
+    CLOSE get_item_group_sum_cur;
+--
+    IF( gn_target_cnt2 > 0 ) THEN
+      --==============================================================
+      -- 2. 項目の型チェック
+      --==============================================================
+      --
+      <<chk_loop>>
+      FOR ln_loop_cnt IN gt_item_group_sum.FIRST..gt_item_group_sum.LAST LOOP
+        -- (1) 目標管理項目コード
+        IF( xxccp_common_pkg.chk_number( gt_item_group_sum(ln_loop_cnt).sales_target_sum_code ) = FALSE )
+        THEN
+          --固定文字抽出
+          lv_msg_00602 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_msg_kbn_cmm         -- 'XXCMM'
+                          ,iv_name         => cv_msg_00602           -- 入力パラメータ出力メッセージ
+                         );
+          --エラーメッセージ生成
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_msg_kbn_ccp         -- 'XXCCP'
+                          ,iv_name         => cv_msg_10114           -- 入力パラメータ出力メッセージ
+                          ,iv_token_name1  => cv_tkn_item            -- トークン(ITEM)
+                          ,iv_token_value1 => lv_msg_00602 || cv_paren1
+                                              || gt_item_group_sum(ln_loop_cnt).sales_target_sum_code || cv_paren2
+                         );
+          IF ( gn_warn_cnt = 0 ) THEN
+            -- 空行挿入
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff => ''
+            );
+          END IF;
+          --エラー出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff => lv_errmsg --エラーメッセージ
+          );
+          -- エラーフラグ更新
+          lv_err_flg := '1';
+          -- スキップ件数カウントアップ
+          gn_warn_cnt := gn_warn_cnt + 1;
+          --
+        END IF;
+        --
+        -- (2) 見出し・明細名称
+        IF( xxccp_common_pkg.chk_double_byte( gt_item_group_sum(ln_loop_cnt).description ) = FALSE )
+        THEN
+          --固定文字抽出
+          lv_msg_00603 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_msg_kbn_cmm         -- 'XXCMM'
+                          ,iv_name         => cv_msg_00603           -- 入力パラメータ出力メッセージ
+                         );
+          --エラーメッセージ生成
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_msg_kbn_cmm         -- 'XXCMM'
+                          ,iv_name         => cv_msg_10318           -- 入力パラメータ出力メッセージ
+                          ,iv_token_name1  => cv_tkn_input            -- トークン(INPUT)
+                          ,iv_token_value1 => lv_msg_00603 || cv_paren1
+                                              || gt_item_group_sum(ln_loop_cnt).description || cv_paren2
+                         );
+          IF ( gn_warn_cnt = 0 ) THEN
+            -- 空行挿入
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff => ''
+            );
+          END IF;
+          --エラー出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff => lv_errmsg --エラーメッセージ
+          );
+          -- エラーフラグ更新
+          lv_err_flg := '1';
+          -- スキップ件数カウントアップ
+          gn_warn_cnt := gn_warn_cnt + 1;
+          --
+        END IF;
+      END LOOP chk_loop;
+    END IF;
+    --
+    --==============================================================
+    -- 3. エラー時配列初期化
+    --==============================================================
+    IF( lv_err_flg = '1' ) THEN
+      gt_item_group_sum.delete;
+      ov_retcode   := cv_status_warn;
+    END IF;
+    --
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_item_group_sum;
+/* 2013/05/15 Ver1.1 Add End   */
 --
   /**********************************************************************************
    * Procedure Name   : output_csv
@@ -587,6 +829,9 @@ AS
     -- ***       処理部の呼び出し          ***
     -- ***************************************
 --
+/* 2013/05/15 Ver1.1 Add Start */
+    IF (gn_target_cnt > 0) THEN
+/* 2013/05/15 Ver1.1 Add End */
     <<out_loop>>
     FOR ln_loop_cnt IN gt_souko_data.FIRST..gt_souko_data.LAST LOOP
       lv_csv_text := cv_enclosed || gt_souko_data(ln_loop_cnt).name || cv_enclosed || cv_delimiter    -- 保管場所コード
@@ -626,6 +871,53 @@ AS
       -- 処理件数のカウント
       gn_normal_cnt := gn_normal_cnt + 1;
     END LOOP out_loop;
+/* 2013/05/15 Ver1.1 Add Start */
+    END IF;
+/* 2013/05/15 Ver1.1 Add End */
+/* 2013/05/15 Ver1.1 Add Start */
+    IF ( gt_item_group_sum.COUNT > 0 ) THEN
+      <<out_loop2>>
+      FOR ln_loop_cnt IN gt_item_group_sum.FIRST..gt_item_group_sum.LAST LOOP
+        lv_csv_text
+          := cv_enclosed || gt_item_group_sum(ln_loop_cnt).sales_target_sum_code || cv_enclosed || cv_delimiter    -- 目標管理項目コード
+          || cv_enclosed || gt_item_group_sum(ln_loop_cnt).description           || cv_enclosed || cv_delimiter    -- 見出し・明細名称
+          || gt_item_group_sum(ln_loop_cnt).disable_date                                        || cv_delimiter    -- 無効日
+          || cv_enclosed || gt_item_group_sum(ln_loop_cnt).last_update_date      || cv_enclosed                    -- 更新日時
+        ;
+        BEGIN
+          -- ファイル書き込み
+          UTL_FILE.PUT_LINE(gf_file_hand,lv_csv_text);
+        EXCEPTION
+          -- ファイルアクセス権限エラー
+          WHEN UTL_FILE.INVALID_OPERATION THEN
+            lv_errmsg := xxcmn_common_pkg.get_msg(
+                             iv_application  => cv_msg_kbn_cmm                         -- 'XXCMM'
+                            ,iv_name         => cv_msg_00007                           -- ファイルアクセス権限エラー
+                           );
+            lv_errbuf := lv_errmsg;
+            RAISE global_api_expt;
+          --
+          -- CSVデータ出力エラー
+          WHEN UTL_FILE.WRITE_ERROR THEN
+            lv_errmsg := xxcmn_common_pkg.get_msg(
+                             iv_application  => cv_msg_kbn_cmm                         -- 'XXCMM'
+                            ,iv_name         => cv_msg_00009                           -- CSVデータ出力エラー
+                            ,iv_token_name1  => cv_tkn_word                            -- トークン(NG_WORD)
+                            ,iv_token_value1 => cv_tkn_word1                           -- NG_WORD
+                            ,iv_token_name2  => cv_tkn_data                            -- トークン(NG_DATA)
+                            ,iv_token_value2 => gt_item_group_sum(ln_loop_cnt).sales_target_sum_code        -- NG_WORDのDATA
+                           );
+            lv_errbuf := lv_errmsg;
+            RAISE global_api_expt;
+          WHEN OTHERS THEN
+            RAISE global_api_others_expt;
+        END;
+        --
+        -- 処理件数のカウント
+        gn_normal_cnt2 := gn_normal_cnt2 + 1;
+      END LOOP out_loop2;
+    END IF;
+/* 2013/05/15 Ver1.1 Add End   */
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -701,6 +993,11 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     gv_param_output_flg := '0';
+/* 2013/05/15 Ver1.1 Add Start */
+    gn_warn_cnt    := 0;
+    gn_target_cnt2 := 0;
+    gn_normal_cnt2 := 0;
+/* 2013/05/15 Ver1.1 Add End   */
     --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -729,10 +1026,33 @@ AS
       RAISE global_process_expt;
     END IF;
     --
+/* 2013/05/15 Ver1.1 Add Start */
+    -- =====================================================
+    --  商品別売上集計マスタ取得(A-5)
+    -- =====================================================
+    get_item_group_sum(
+       lv_errbuf             -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode            -- リターン・コード             --# 固定 #
+      ,lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+    --
+    IF ( lv_retcode = cv_status_warn ) THEN
+       ov_errbuf   :=  lv_errbuf;
+       ov_retcode  :=  lv_retcode;
+       ov_errmsg   :=  lv_errmsg;
+    END IF;
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+    --
+/* 2013/05/15 Ver1.1 Add End   */
     -- =====================================================
     --  CSVファイル出力プロシージャ(A-3)
     -- =====================================================
-    IF (gn_target_cnt > 0) THEN
+/* 2013/05/15 Ver1.1 Mod Start */
+--    IF (gn_target_cnt > 0) THEN
+    IF ((gn_target_cnt > 0) OR (gt_item_group_sum.COUNT > 0)) THEN
+/* 2013/05/15 Ver1.1 Mod End   */
       output_csv(
          lv_errbuf             -- エラー・メッセージ           --# 固定 #
         ,lv_retcode            -- リターン・コード             --# 固定 #
@@ -868,6 +1188,20 @@ AS
       gn_target_cnt := 0;
       gn_normal_cnt := 0;
       gn_error_cnt  := 1;
+/* 2013/05/15 Ver1.1 Add Start */
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      --警告の場合、メッセージのあとに１行加える
+      -- 空行挿入
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => ''
+      );
+      -- 空行挿入
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => ''
+      );
+/* 2013/05/15 Ver1.1 Add End   */
     END IF;
     --
     --対象件数出力
@@ -894,6 +1228,43 @@ AS
       ,buff   => gv_out_msg
     );
     --
+/* 2013/05/15 Ver1.1 Add Start */
+    --対象件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_cmm
+                    ,iv_name         => cv_target_rec_msg2
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_target_cnt2)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    --成功件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_cmm
+                    ,iv_name         => cv_success_rec_msg2
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_normal_cnt2)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    --スキップ件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_cmm
+                    ,iv_name         => cv_skip_rec_msg2
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+/* 2013/05/15 Ver1.1 Add End   */
     --エラー件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
@@ -915,6 +1286,10 @@ AS
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
       lv_message_code := cv_normal_msg;
+/* 2013/05/15 Ver1.1 Add Start */
+    ELSIF(lv_retcode = cv_status_warn) THEN
+      lv_message_code := cv_warn_msg;
+/* 2013/05/15 Ver1.1 Add End   */
     ELSIF(lv_retcode = cv_status_error) THEN
       lv_message_code := cv_error_msg;
     END IF;
