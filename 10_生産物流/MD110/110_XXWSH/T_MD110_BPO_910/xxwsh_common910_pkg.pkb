@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.34
+ * Version                : 1.35
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2009/07/21   1.34  SCS   伊藤ひとみ [配送区分優先順取得関数] 本番障害#1336対応
  *                                      [配送区分検索用入出庫場所取得関数] 本番障害#1336対応
  *                                      [積載効率チェック(積載効率算出)] 本番障害#1336対応
+ *  2009/07/28   1.35  SCS   伊藤ひとみ [積載効率チェック(積載効率算出)] 本番障害#1336再対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1853,16 +1854,18 @@ AS
          '        ,xdlv.leaf_loading_capacity   loading_capacity       ';-- リーフ積載容積
     cv_select_drink_capacity CONSTANT VARCHAR2(32000) :=
          '        ,xdlv.drink_loading_capacity  loading_capacity       ';-- ドリンク積載容積
+-- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合に必要なのでコメントアウト解除
 -- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
---    cv_select_sql_sort1      CONSTANT VARCHAR2(32000) :=
---         '        ,1                            sql_sort               ';-- 優先① 入出庫場所（個別－個別）
---    cv_select_sql_sort2      CONSTANT VARCHAR2(32000) :=
---         '        ,2                            sql_sort               ';-- 優先② 入出庫場所（ZZZZ－個別）
---    cv_select_sql_sort3      CONSTANT VARCHAR2(32000) :=
---         '        ,3                            sql_sort               ';-- 優先③ 入出庫場所（個別－ZZZZ）
---    cv_select_sql_sort4      CONSTANT VARCHAR2(32000) :=
---         '        ,4                            sql_sort               ';-- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+    cv_select_sql_sort1      CONSTANT VARCHAR2(32000) :=
+         '        ,1                            sql_sort               ';-- 優先① 入出庫場所（個別－個別）
+    cv_select_sql_sort2      CONSTANT VARCHAR2(32000) :=
+         '        ,2                            sql_sort               ';-- 優先② 入出庫場所（ZZZZ－個別）
+    cv_select_sql_sort3      CONSTANT VARCHAR2(32000) :=
+         '        ,3                            sql_sort               ';-- 優先③ 入出庫場所（個別－ZZZZ）
+    cv_select_sql_sort4      CONSTANT VARCHAR2(32000) :=
+         '        ,4                            sql_sort               ';-- 優先④ 入出庫場所（ZZZZ－ZZZZ）
 -- 2009/07/21 H.Itou Del End
+-- 2009/07/28 H.Itou Mod End
     cv_from                  CONSTANT VARCHAR2(32000) := 
          '  FROM   xxcmn_delivery_lt2_v  xdlv                          ' -- 配送L/T情報VIEW2
       || '        ,xxwsh_ship_method2_v  xsmv                          ';-- 配送区分情報VIEW2
@@ -1895,9 +1898,11 @@ AS
          '  AND    xsmv.mixed_class                     = ''0''                          '; -- 混載区分='0'(混載なし)
     cv_order_by              CONSTANT VARCHAR2(32000) :=
          '  ORDER BY ship_method DESC ' -- 出荷方法         降順 
+-- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合に必要なのでコメントアウト解除
 -- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
---      || '          ,sql_sort         ' -- 入出庫場所優先順 昇順 
+      || '          ,sql_sort         ' -- 入出庫場所優先順 昇順 
 -- 2009/07/21 H.Itou Del End
+-- 2009/07/28 H.Itou Mod End
       ;
     cv_union_all             CONSTANT VARCHAR2(32000) := ' UNION ALL ';
 -- 2008/09/05 H.Itou Add End
@@ -2072,9 +2077,11 @@ AS
        ,mixed_ship_method_code     xxwsh_ship_method2_v.mixed_ship_method_code%TYPE -- 混載配送区分
        ,deadweight                 NUMBER                                       -- 積載重量
        ,loading_capacity           NUMBER                                       -- 積載容積
+-- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合に必要なのでコメントアウト解除
 -- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
---       ,sql_sort                   NUMBER                                       -- ソート順 -- 2008/08/05 H.Itou Add
+       ,sql_sort                   NUMBER                                       -- ソート順 -- 2008/08/05 H.Itou Add
 -- 2009/07/21 H.Itou Del End
+-- 2009/07/28 H.Itou Mod End
       );
     lr_ref        ret_value ;
 -- 2008/09/05 H.Itou Mod End
@@ -2250,13 +2257,17 @@ AS
     ln_sum_capacity               := CEIL(TRUNC(in_sum_capacity, 1));-- 合計容積
 -- 2008/08/06 H.Itou Mod End
     lv_code_class1                := iv_code_class1;                 -- コード区分１
+-- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合に必要なのでコメントアウト解除
 -- 2009/07/21 H.Itou Del Start 本番障害#1336 入出庫場所コード１は関数で決定するため、ここでセットしない。
---    lv_entering_despatching_code1 := iv_entering_despatching_code1;  -- 入出庫場所コード１
+    lv_entering_despatching_code1 := iv_entering_despatching_code1;  -- 入出庫場所コード１
 -- 2009/07/21 H.Itou Del End
+-- 2009/07/28 H.Itou Mod End
     lv_code_class2                := iv_code_class2;                 -- コード区分２
+-- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合に必要なのでコメントアウト解除
 -- 2009/07/21 H.Itou Del Start 本番障害#1336 入出庫場所コード１は関数で決定するため、ここでセットしない。
---    lv_entering_despatching_code2 := iv_entering_despatching_code2;  -- 入出庫場所コード２
+    lv_entering_despatching_code2 := iv_entering_despatching_code2;  -- 入出庫場所コード２
 -- 2009/07/21 H.Itou Del End
+-- 2009/07/28 H.Itou Mod End
 -- 2008/10/15 H.Itou Mod Start 統合テスト指摘298
 --    lv_ship_method                := iv_ship_method;                 -- 出荷方法
     -- 出荷方法を混載なしの出荷方法に変換
@@ -2276,34 +2287,45 @@ AS
       lv_all_z_dummy_code2 := cv_all_4; -- 入出庫場所コード2のダミーコードはZZZZ
     END IF;
 -- 2008/09/05 H.Itou Add End
+-- 2009/07/28 H.Itou Add Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合は優先順の考えは不要。配送区分→優先順の順で検索。
+--                                           最適配送区分算出(出荷方法指定なし)の場合、優先順→配送区分の順で検索する。
+    -- 出荷方法に指定なしの場合、配送区分検索用入出庫場所取得を取得する。
+    IF (lv_ship_method IS NULL) THEN
+-- 2009/07/28 H.Itou Add End
 -- 2009/07/21 H.Itou Add Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
-    -- 入出庫場所１・入出庫場所２決定
-    -- 配送区分検索用入出庫場所取得
-    get_ship_method_search_code(
-      it_code_class1                => lv_code_class1                -- 01.コード区分１
-     ,it_entering_despatching_code1 => iv_entering_despatching_code1 -- 02.入出庫場所１
-     ,it_code_class2                => lv_code_class2                -- 03.コード区分２
-     ,it_entering_despatching_code2 => iv_entering_despatching_code2 -- 04.入出庫場所２
-     ,it_prod_class                 => lv_prod_class                 -- 05.商品区分
-     ,it_weight_capacity_class      => CASE                          -- 06.重量容積区分
-                                         WHEN (ln_sum_weight IS NOT NULL) THEN cv_weight   -- 重量に値がある場合、1
-                                         ELSE                                  cv_capacity -- 容積に値がある場合、2
-                                       END
-     ,id_standard_date              => ld_standard_date              -- 07.基準日
-     ,iv_where_zero_flg             => CASE                          -- 08.0条件追加フラグ
-                                         WHEN (lv_ship_method IS NULL) THEN cv_where_zero_add  -- 出荷方法に値がない場合、重量容積>0を条件に追加する
-                                         ELSE                               cv_where_zero_no   -- 出荷方法に値がある場合、重量容積>0を条件に追加しない
-                                       END
-     ,ov_retcode                    => lv_retcode                    -- 08.リターンコード
-     ,ov_errmsg                     => lv_errmsg                     -- 10.エラーメッセージ
-     ,ot_entering_despatching_code1 => lv_entering_despatching_code1 -- 11.配送区分検索用入出庫場所１
-     ,ot_entering_despatching_code2 => lv_entering_despatching_code2 -- 12.配送区分検索用入出庫場所２
-    );
+      -- 入出庫場所１・入出庫場所２決定
+      -- 配送区分検索用入出庫場所取得
+      get_ship_method_search_code(
+        it_code_class1                => lv_code_class1                -- 01.コード区分１
+       ,it_entering_despatching_code1 => iv_entering_despatching_code1 -- 02.入出庫場所１
+       ,it_code_class2                => lv_code_class2                -- 03.コード区分２
+       ,it_entering_despatching_code2 => iv_entering_despatching_code2 -- 04.入出庫場所２
+       ,it_prod_class                 => lv_prod_class                 -- 05.商品区分
+       ,it_weight_capacity_class      => CASE                          -- 06.重量容積区分
+                                           WHEN (ln_sum_weight IS NOT NULL) THEN cv_weight   -- 重量に値がある場合、1
+                                           ELSE                                  cv_capacity -- 容積に値がある場合、2
+                                         END
+       ,id_standard_date              => ld_standard_date              -- 07.基準日
+-- 2009/07/28 H.Itou Add Start 本番障害#1336
+--       ,iv_where_zero_flg             => CASE                          -- 08.0条件追加フラグ
+--                                           WHEN (lv_ship_method IS NULL) THEN cv_where_zero_add  -- 出荷方法に値がない場合、重量容積>0を条件に追加する
+--                                           ELSE                               cv_where_zero_no   -- 出荷方法に値がある場合、重量容積>0を条件に追加しない
+--                                         END
+       ,iv_where_zero_flg             => cv_where_zero_add             -- 08.0条件追加フラグ 重量容積>0を条件に追加する
+-- 2009/07/28 H.Itou Add End
+       ,ov_retcode                    => lv_retcode                    -- 08.リターンコード
+       ,ov_errmsg                     => lv_errmsg                     -- 10.エラーメッセージ
+       ,ot_entering_despatching_code1 => lv_entering_despatching_code1 -- 11.配送区分検索用入出庫場所１
+       ,ot_entering_despatching_code2 => lv_entering_despatching_code2 -- 12.配送区分検索用入出庫場所２
+      );
 --
-   IF (lv_retcode = gv_status_error) THEN
-     RAISE global_api_expt;
-   END IF;
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
 -- 2009/07/21 H.Itou Add End
+-- 2009/07/28 H.Itou Add Start 本番障害#1336
+    END IF;
+-- 2009/07/28 H.Itou Add End
 --
 -- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応 動的SQLに変更
    -- 動的SQL生成
@@ -2351,95 +2373,70 @@ AS
      END IF;
    END IF;
 --
--- 2009/07/21 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可 コメントだけ削除
---   lv_sql := -- 優先① 入出庫場所（個別－個別）
-   lv_sql :=
--- 2009/07/21 H.Itou Mod End
-             cv_select                   -- SELECT句   [不変項目]
-          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
-          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
--- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
---          || cv_select_sql_sort1         -- SELECT句   [不変項目]ソート順=1
--- 2009/07/21 H.Itou Del End
-          || cv_from                     -- FROM句     [不変項目]
-          || cv_where                    -- WHERE句    [不変項目]
-          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
-          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
--- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
---             -- 優先② 入出庫場所（ZZZZ－個別）
---          || cv_union_all
---          || cv_select                   -- SELECT句   [不変項目]
+-- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合は優先順の考えは不要。配送区分→優先順の順で検索。
+--                                           最適配送区分算出(出荷方法指定なし)の場合、優先順→配送区分の順で検索する。
+---- 2009/07/21 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可 コメントだけ削除
+----   lv_sql := -- 優先① 入出庫場所（個別－個別）
+--   lv_sql :=
+---- 2009/07/21 H.Itou Mod End
+--             cv_select                   -- SELECT句   [不変項目]
 --          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
 --          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
---          || cv_select_sql_sort2         -- SELECT句   [不変項目]ソート順=2
+---- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
+----          || cv_select_sql_sort1         -- SELECT句   [不変項目]ソート順=1
+---- 2009/07/21 H.Itou Del End
 --          || cv_from                     -- FROM句     [不変項目]
 --          || cv_where                    -- WHERE句    [不変項目]
 --          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
 --          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
---             -- 優先③ 入出庫場所（個別－ZZZZ）
---          || cv_union_all
---          || cv_select                   -- SELECT句   [不変項目]
---          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
---          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
---          || cv_select_sql_sort3         -- SELECT句   [不変項目]ソート順=3
---          || cv_from                     -- FROM句     [不変項目]
---          || cv_where                    -- WHERE句    [不変項目]
---          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
---          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
---             -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
---          || cv_union_all
---          || cv_select                   -- SELECT句   [不変項目]
---          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
---          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
---          || cv_select_sql_sort4         -- SELECT句   [不変項目]ソート順=4
---          || cv_from                     -- FROM句     [不変項目]
---          || cv_where                    -- WHERE句    [不変項目]
---          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
---          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
--- 2009/07/21 H.Itou Del End
-          || cv_order_by                 -- ORDER BY句 [不変項目]
-          ;
--- 2008/09/05 H.Itou Add End
--- 2008/09/05 H.Itou Del Start PT 6-2_34 指摘#34対応 動的SQLに変更
----- 2008/08/04 H.Itou Add Start
-----    -- カーソルオープン
-----    OPEN lc_ref;
----- 2008/08/04 H.Itou Add End
--- 2008/09/05 H.Itou Del End
--- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応 動的SQLに変更
-    OPEN  lc_ref FOR lv_sql
--- 2009/07/21 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可 コメントだけ削除
---    USING -- 優先① 入出庫場所（個別－個別）
-    USING
--- 2009/07/21 H.Itou Mod End
-          lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
-         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
-         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
-         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
-         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
-         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
-         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
-         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
-         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
-         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
-         ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
-         ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
--- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
---          -- 優先② 入出庫場所（ZZZZ－個別）
---         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
---         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
---         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
---         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
---         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
---         ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
---         ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
---          -- 優先③ 入出庫場所（個別－ZZZZ）
---         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+---- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
+----             -- 優先② 入出庫場所（ZZZZ－個別）
+----          || cv_union_all
+----          || cv_select                   -- SELECT句   [不変項目]
+----          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+----          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+----          || cv_select_sql_sort2         -- SELECT句   [不変項目]ソート順=2
+----          || cv_from                     -- FROM句     [不変項目]
+----          || cv_where                    -- WHERE句    [不変項目]
+----          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+----          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+----             -- 優先③ 入出庫場所（個別－ZZZZ）
+----          || cv_union_all
+----          || cv_select                   -- SELECT句   [不変項目]
+----          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+----          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+----          || cv_select_sql_sort3         -- SELECT句   [不変項目]ソート順=3
+----          || cv_from                     -- FROM句     [不変項目]
+----          || cv_where                    -- WHERE句    [不変項目]
+----          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+----          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+----             -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+----          || cv_union_all
+----          || cv_select                   -- SELECT句   [不変項目]
+----          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+----          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+----          || cv_select_sql_sort4         -- SELECT句   [不変項目]ソート順=4
+----          || cv_from                     -- FROM句     [不変項目]
+----          || cv_where                    -- WHERE句    [不変項目]
+----          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+----          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+---- 2009/07/21 H.Itou Del End
+--          || cv_order_by                 -- ORDER BY句 [不変項目]
+--          ;
+---- 2008/09/05 H.Itou Add End
+---- 2008/09/05 H.Itou Del Start PT 6-2_34 指摘#34対応 動的SQLに変更
+------ 2008/08/04 H.Itou Add Start
+------    -- カーソルオープン
+------    OPEN lc_ref;
+------ 2008/08/04 H.Itou Add End
+---- 2008/09/05 H.Itou Del End
+---- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応 動的SQLに変更
+--    OPEN  lc_ref FOR lv_sql
+---- 2009/07/21 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可 コメントだけ削除
+----    USING -- 優先① 入出庫場所（個別－個別）
+--    USING
+---- 2009/07/21 H.Itou Mod End
+--          lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
 --         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
 --         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
 --         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
@@ -2450,23 +2447,180 @@ AS
 --         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
 --         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
 --         ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
---         ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
---          -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
---         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
---         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
---         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
---         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
---         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
---         ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
---         ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
--- 2009/07/21 H.Itou Del End
-    ;
--- 2008/09/05 H.Itou Mod End
+--         ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
+---- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
+----          -- 優先② 入出庫場所（ZZZZ－個別）
+----         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+----         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+----         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+----         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+----         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+----         ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
+----         ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
+----          -- 優先③ 入出庫場所（個別－ZZZZ）
+----         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+----         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+----         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+----         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+----         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+----         ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
+----         ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
+----          -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+----         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+----         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+----         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+----         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+----         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+----         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+----         ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
+----         ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
+---- 2009/07/21 H.Itou Del End
+--    ;
+---- 2008/09/05 H.Itou Mod End
+    -- 出荷方法に指定なしの場合
+    IF (lv_ship_method IS NULL) THEN
+      lv_sql :=
+               cv_select                   -- SELECT句   [不変項目]
+            || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+            || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+            || cv_select_sql_sort1         -- SELECT句   [不変項目]ソート順=1(ダミーで入れるが、使用しない。)
+            || cv_from                     -- FROM句     [不変項目]
+            || cv_where                    -- WHERE句    [不変項目]
+            || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+            || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+            || cv_order_by                 -- ORDER BY句 [不変項目]
+            ;
+--
+      OPEN  lc_ref FOR lv_sql
+      USING
+            lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+           ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+           ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+           ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+           ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+           ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
+           ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
+      ;
+--
+    -- 出荷方法指定ありの場合
+    ELSE
+      lv_sql := -- 優先① 入出庫場所（個別－個別）
+               cv_select                   -- SELECT句   [不変項目]
+            || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+            || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+            || cv_select_sql_sort1         -- SELECT句   [不変項目]ソート順=1
+            || cv_from                     -- FROM句     [不変項目]
+            || cv_where                    -- WHERE句    [不変項目]
+            || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+            || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+               -- 優先② 入出庫場所（ZZZZ－個別）
+            || cv_union_all
+            || cv_select                   -- SELECT句   [不変項目]
+            || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+            || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+            || cv_select_sql_sort2         -- SELECT句   [不変項目]ソート順=2
+            || cv_from                     -- FROM句     [不変項目]
+            || cv_where                    -- WHERE句    [不変項目]
+            || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+            || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+               -- 優先③ 入出庫場所（個別－ZZZZ）
+            || cv_union_all
+            || cv_select                   -- SELECT句   [不変項目]
+            || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+            || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+            || cv_select_sql_sort3         -- SELECT句   [不変項目]ソート順=3
+            || cv_from                     -- FROM句     [不変項目]
+            || cv_where                    -- WHERE句    [不変項目]
+            || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+            || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+               -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+            || cv_union_all
+            || cv_select                   -- SELECT句   [不変項目]
+            || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+            || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+            || cv_select_sql_sort4         -- SELECT句   [不変項目]ソート順=4
+            || cv_from                     -- FROM句     [不変項目]
+            || cv_where                    -- WHERE句    [不変項目]
+            || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+            || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+            || cv_order_by                 -- ORDER BY句 [不変項目]
+            ;
+--
+      OPEN  lc_ref FOR lv_sql
+      USING -- 優先① 入出庫場所（個別－個別）
+            lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+           ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+           ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+           ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+           ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+           ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
+           ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
+            -- 優先② 入出庫場所（ZZZZ－個別）
+           ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+           ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+           ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+           ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+           ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+           ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
+           ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
+            -- 優先③ 入出庫場所（個別－ZZZZ）
+           ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+           ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+           ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+           ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+           ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+           ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
+           ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
+            -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+           ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+           ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+           ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+           ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+           ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+           ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+           ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
+           ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
+      ;
+    END IF;
+-- 2009/07/28 H.Itou Add End
 --
     /**********************************
      *  最適出荷方法の算出(C-3)       *
