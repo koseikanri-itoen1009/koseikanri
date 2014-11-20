@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2011/01/11    1.29  H.Sekine         [E_本稼動_01762]管轄拠点の取得、設定の対応
  *  2011/02/10    1.30  Y.Nishino        [E_本稼動_01010]単価0円が可能な受注明細タイプを除いた
  *                                                       販売単価0円の受注データをクローズしないように修正
+ *  2011/03/25    1.31  K.Kiriu          [E_本稼動_03559]検収日不一致チェックの修正
  *
  *****************************************************************************************/
 --
@@ -3703,6 +3704,10 @@ AS
     lt_last_inspect_date  xxcos_sales_exp_headers.inspect_date%TYPE;        -- 最終履歴検収予定日
     lt_last_order_number  oe_order_headers_all.order_number%TYPE;           -- 受注番号
 /* 2010/05/26 Ver1.25 M.Sano Add End   */
+/* 2011/03/25 Ver1.31 K.Kiriu Add Start */
+    lt_chk_insp_date      xxcos_sales_exp_headers.inspect_date%TYPE;        -- 検収日不一致チェック用
+    ln_chk_data_cnt       NUMBER := 0;                                      -- 検収日不一致チェック用
+/* 2011/03/25 Ver1.31 K.Kiriu Add End   */
 -- ******* 2009/12/28 1.20 DEL START *******--
 --/* 2009/12/25 Ver1.19 Add Start */
 --    lv_log_msg            VARCHAR2(10000);  -- デバック出力用文字列
@@ -3849,6 +3854,10 @@ AS
 --        lv_base_order_num    := '';
 --/* 2009/12/25 Ver1.19 Add End   */
 -- ******* 2009/12/28 1.20 DEL  END  *******--
+/* 2011/03/25 Ver1.31 K.Kiriu Add Start */
+        ln_chk_data_cnt      := 0;              -- 検収日チェック対象件数の初期化
+        lt_chk_insp_date     := NULL;           -- チェック用検収日の初期化
+/* 2011/03/25 Ver1.31 K.Kiriu Add End   */
 --
 --
         -- 取得した依頼No／品目の単位のPL/SQL表の添え字がNULLになるまでループする
@@ -4159,57 +4168,76 @@ AS
               -- 2.同一出荷依頼･品目内の
               --   検収日不一致チェック
               -- ===============================
-              IF (   ( lt_last_inspect_date IS NOT NULL AND ld_inspect_date IS NULL )
-                  OR ( lt_last_inspect_date IS NULL AND ld_inspect_date IS NOT NULL )
-                  OR ( lt_last_inspect_date <> ld_inspect_date ) ) THEN
-                lv_errmsg := lv_errmsg
-                          || xxccp_common_pkg.get_msg(
-                              iv_application => cv_xxcos_appl_short_nm
-                             ,iv_name        => cv_msg_err_inspect_err
-                             ,iv_token_name1 => cv_tkn_req_no
-                             ,iv_token_value1=> g_order_req_tab( lv_now ).request_no          -- 依頼No
-                             ,iv_token_name2 => cv_tkn_item_code
-                             ,iv_token_value2=> g_order_req_tab( lv_now ).shipping_item_code  -- 品目
-                             ,iv_token_name3 => cv_tkn_kdate
-                             ,iv_token_value3=> TO_CHAR(ld_inspect_date, cv_fmt_date)         -- 検収予定日
-                             ,iv_token_name4 => cv_tkn_order_number
-                             ,iv_token_value4=> lt_last_order_number                          -- 受注番号
-                             ,iv_token_name5 => cv_tkn_chk_date
-                             ,iv_token_value5=> TO_CHAR(lt_last_inspect_date, cv_fmt_date)    -- 着荷日
-                            )
-                          || cv_line_feed;
-                g_order_req_tab( lv_now ).check_status := cn_check_status_error;
+/* 2011/03/25 Ver1.31 K.Kiriu Add Start */
+              --チェック対象の件数をカウントアップ
+              ln_chk_data_cnt := ln_chk_data_cnt + 1;
+--
+              --チェック対象が最初の1件目以外の場合
+              IF ( ln_chk_data_cnt <> 1) THEN
+/* 2011/03/25 Ver1.31 K.Kiriu Add End   */
+/* 2011/03/25 Ver1.31 K.Kiriu Mod Start */
+--              IF (   ( lt_last_inspect_date IS NOT NULL AND ld_inspect_date IS NULL )
+--                  OR ( lt_last_inspect_date IS NULL AND ld_inspect_date IS NOT NULL )
+--                  OR ( lt_last_inspect_date <> ld_inspect_date ) ) THEN
+                --チェック対象の最初の1件目と他のチェック対象データの検収日を比較
+                IF (   ( lt_chk_insp_date IS NOT NULL AND ld_inspect_date IS NULL )
+                    OR ( lt_chk_insp_date IS NULL AND ld_inspect_date IS NOT NULL )
+                    OR ( lt_chk_insp_date <> ld_inspect_date ) ) THEN
+/* 2011/03/25 Ver1.31 K.Kiriu Mod End   */
+                  lv_errmsg := lv_errmsg
+                            || xxccp_common_pkg.get_msg(
+                                iv_application => cv_xxcos_appl_short_nm
+                               ,iv_name        => cv_msg_err_inspect_err
+                               ,iv_token_name1 => cv_tkn_req_no
+                               ,iv_token_value1=> g_order_req_tab( lv_now ).request_no          -- 依頼No
+                               ,iv_token_name2 => cv_tkn_item_code
+                               ,iv_token_value2=> g_order_req_tab( lv_now ).shipping_item_code  -- 品目
+                               ,iv_token_name3 => cv_tkn_kdate
+                               ,iv_token_value3=> TO_CHAR(ld_inspect_date, cv_fmt_date)         -- 検収予定日
+                               ,iv_token_name4 => cv_tkn_order_number
+                               ,iv_token_value4=> lt_last_order_number                          -- 受注番号
+                               ,iv_token_name5 => cv_tkn_chk_date
+                               ,iv_token_value5=> TO_CHAR(lt_last_inspect_date, cv_fmt_date)    -- 着荷日
+                              )
+                            || cv_line_feed;
+                  g_order_req_tab( lv_now ).check_status := cn_check_status_error;
 -- == 2010/08/23 V1.26 Added START ===============================================================
-                IF (gv_prm_exec_flg = cv_exec_1) THEN
-                  --  定期実行の場合
-                  gn_msg_cnt  :=  gn_msg_cnt + 1;
-                  --  汎用エラーリスト用キー情報
-                  --  納品拠点
-                  gt_err_key_msg_tab(gn_msg_cnt).base_code      :=  g_order_req_tab( lv_now ).delivery_base_code;
-                  --  エラーメッセージ名
-                  gt_err_key_msg_tab(gn_msg_cnt).message_name   :=  cv_msg_err_inspect_err;
-                  --  キーメッセージ
-                  gt_err_key_msg_tab(gn_msg_cnt).message_text
-                                  :=  SUBSTRB(
-                                        xxccp_common_pkg.get_msg(
-                                            iv_application    =>  cv_xxcos_appl_short_nm
-                                          , iv_name           =>  ct_msg_xxcos_00212
-                                          , iv_token_name1    =>  cv_tkn_req_no
-                                          , iv_token_value1   =>  g_order_req_tab( lv_now ).request_no          -- 依頼No
-                                          , iv_token_name2    =>  cv_tkn_item_code
-                                          , iv_token_value2   =>  g_order_req_tab( lv_now ).shipping_item_code  -- 品目
-                                          , iv_token_name3    =>  cv_tkn_kdate
-                                          , iv_token_value3   =>  TO_CHAR(ld_inspect_date, cv_fmt_date)         -- 検収予定日
-                                          , iv_token_name4    =>  cv_tkn_order_number
-                                          , iv_token_value4   =>  lt_last_order_number                          -- 受注番号
-                                          , iv_token_name5    =>  cv_tkn_chk_date
-                                          , iv_token_value5   =>  TO_CHAR(lt_last_inspect_date, cv_fmt_date)    -- 着荷日
-                                        ), 1, 2000
-                                      );
-                END IF;
+                  IF (gv_prm_exec_flg = cv_exec_1) THEN
+                    --  定期実行の場合
+                    gn_msg_cnt  :=  gn_msg_cnt + 1;
+                    --  汎用エラーリスト用キー情報
+                    --  納品拠点
+                    gt_err_key_msg_tab(gn_msg_cnt).base_code      :=  g_order_req_tab( lv_now ).delivery_base_code;
+                    --  エラーメッセージ名
+                    gt_err_key_msg_tab(gn_msg_cnt).message_name   :=  cv_msg_err_inspect_err;
+                    --  キーメッセージ
+                    gt_err_key_msg_tab(gn_msg_cnt).message_text
+                                    :=  SUBSTRB(
+                                          xxccp_common_pkg.get_msg(
+                                              iv_application    =>  cv_xxcos_appl_short_nm
+                                            , iv_name           =>  ct_msg_xxcos_00212
+                                            , iv_token_name1    =>  cv_tkn_req_no
+                                            , iv_token_value1   =>  g_order_req_tab( lv_now ).request_no          -- 依頼No
+                                            , iv_token_name2    =>  cv_tkn_item_code
+                                            , iv_token_value2   =>  g_order_req_tab( lv_now ).shipping_item_code  -- 品目
+                                            , iv_token_name3    =>  cv_tkn_kdate
+                                            , iv_token_value3   =>  TO_CHAR(ld_inspect_date, cv_fmt_date)         -- 検収予定日
+                                            , iv_token_name4    =>  cv_tkn_order_number
+                                            , iv_token_value4   =>  lt_last_order_number                          -- 受注番号
+                                            , iv_token_name5    =>  cv_tkn_chk_date
+                                            , iv_token_value5   =>  TO_CHAR(lt_last_inspect_date, cv_fmt_date)    -- 着荷日
+                                          ), 1, 2000
+                                        );
+                  END IF;
 -- == 2010/08/23 V1.26 Added END   ===============================================================
-              END IF;
+                END IF;
 /* 2010/05/26 Ver1.25 M.Sano Add End   */
+/* 2011/03/25 Ver1.31 K.Kiriu Add Start */
+              ELSE
+                --チェック対象が最初の1件目の場合は、検収日の保持のみ実施
+                lt_chk_insp_date := ld_inspect_date;
+              END IF;
+/* 2011/03/25 Ver1.31 K.Kiriu Add End   */
 --
               -- ===============================
               -- 3.納品日不一致チェック

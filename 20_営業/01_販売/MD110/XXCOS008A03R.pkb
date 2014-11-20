@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A03R (body)
  * Description      : 直送受注例外データリスト
  * MD.050           : 直送受注例外データリスト MD050_COS_008_A03
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,8 @@ AS
  *  2010/03/25    1.14  N.Maeda          [E_本稼動_01548] 検収予定日違い対応
  *                                       [E_本稼動_02019] PT対応
  *  2010/04/09    1.14  M.Sano           [E_本稼動_02019] PT対応(追加)
+ *  2011/03/08    1.15  K.Kiriu          [E_本稼動_04367] 対象月含む以前のデータのみ出力の対応
+ *                                                        クローズデータの日付参照不具合対応
  *
  *****************************************************************************************/
 --
@@ -346,6 +348,9 @@ AS
 -- ******************** 2009/12/11 1.12 N.Maeda ADD START ****************************** --
   gd_target_closed_month DATE;  -- 工場直送例外リストCLOSED取得月
 -- ******************** 2009/12/11 1.12 N.Maeda ADD  END  ****************************** --
+-- 2011/03/08 Ver.1.15 Add K.Kiriu Start
+  gd_trans_end_date      DATE;  -- ALL用対象終了年月日
+-- 2011/03/08 Ver.1.15 Add K.Kiriu End
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -547,6 +552,10 @@ AS
                                          );
     --
 -- ******************** 2009/12/11 1.12 N.Maeda ADD  END  ****************************** --
+-- 2011/03/08 Ver.1.15 Add K.Kiriu Start
+    --ALL用対象終了年月日取得(業務日付の月初)
+    gd_trans_end_date := TRUNC( gd_process_date, cv_month );
+-- 2011/03/08 Ver.1.15 Add K.Kiriu End
 --
   EXCEPTION
     -- プロファイル取得例外
@@ -2650,7 +2659,11 @@ AS
          AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
          AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
                                                                        -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-               AND  ( ( iv_base_code = cv_base_all )
+-- 2011/03/08 Ver.1.15 Mod K.Kiriu Start
+--               AND  ( ( iv_base_code = cv_base_all )
+               AND  ( 
+                      ( ( iv_base_code = cv_base_all ) AND ( oola.request_date < gd_trans_end_date ) ) --'ALL'の場合、前月納品日(業務日付の月初より前)のみ出力
+-- 2011/03/08 Ver.1.15 Mod K.Kiriu End
                       OR
                       ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
                     )
@@ -2668,7 +2681,10 @@ AS
          AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
          AND  ( ( oola.flow_status_code = cv_status_closed
                 AND oola.request_date >= to_date(gd_target_closed_month))
-              OR ( oola.flow_status_code <> cv_status_cancelled
+-- 2011/03/08 Ver.1.15 Mod K.Kiriu Start
+--              OR ( oola.flow_status_code <> cv_status_cancelled
+              OR ( oola.flow_status_code <> cv_status_closed
+-- 2011/03/08 Ver.1.15 Mod K.Kiriu End
                 AND oola.request_date >= to_date(gd_trans_start_date))
                 AND oola.request_date <  gd_process_date
               )
@@ -3155,7 +3171,11 @@ AS
                                )
                AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
                AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-               AND  ( ( iv_base_code = cv_base_all )
+-- 2011/03/08 Ver.1.15 Mod K.Kiriu Start
+--               AND  ( ( iv_base_code = cv_base_all )
+               AND  ( 
+                      ( ( iv_base_code = cv_base_all ) AND ( oola.request_date < gd_trans_end_date ) )  --'ALL'の場合、前月納品日(業務日付の月初より前)のみ出力
+-- 2011/03/08 Ver.1.15 Mod K.Kiriu End
                       OR
                       ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
                     )
@@ -3376,6 +3396,9 @@ AS
             OR ( oola.flow_status_code <> cv_status_closed
               AND oola.request_date >= to_date( gd_trans_start_date ) )
             )
+-- 2011/03/08 Ver.1.15 Add K.Kiriu Start
+       AND  oola.request_date < gd_trans_end_date --前月納品日(業務日付の月初より前)のみ出力
+-- 2011/03/08 Ver.1.15 Add K.Kiriu End
      UNION ALL
     -- ======================================================
     -- [ALL指定]例外２
@@ -3508,6 +3531,9 @@ AS
 --     ;
 --
 -- 2010/04/09 Ver.1.14 Mod M.Sano Start
+-- 2011/03/08 Ver.1.15 Add K.Kiriu Start
+     AND  xoha.arrival_date < gd_trans_end_date --前月着荷日(業務日付の月初より前)のみ出力
+-- 2011/03/08 Ver.1.15 Add K.Kiriu End
      ;
 --
     -- =========================================================================
@@ -4173,6 +4199,22 @@ AS
 --     AND  ooa1.schedule_dlv_date    =   ooa2.arrival_date
 --     AND  NVL( TO_DATE(ooa1.min_schedule_inspect_date,cv_yyyymmddhhmiss),ooa1.schedule_dlv_date ) >= ooa1.schedule_dlv_date
 --     AND  NVL( TO_DATE(ooa1.max_schedule_inspect_date,cv_yyyymmddhhmiss),ooa1.schedule_dlv_date ) >= ooa1.schedule_dlv_date
+-- 2011/03/08 Ver.1.15 Add K.Kiriu Start
+    AND   ( 
+            ( 
+              ( iv_base_code = cv_base_all )
+              AND
+              ( ( ooa1.schedule_dlv_date < gd_trans_end_date )
+                OR
+                ( ooa2.arrival_date      < gd_trans_end_date )
+              )
+            )  --'ALL'の場合、納品日or着荷日が前月(業務日付の月初より前)のみ出力
+            OR
+            (
+              ( iv_base_code != cv_base_all )
+            )
+          )
+-- 2011/03/08 Ver.1.15 Add K.Kiriu End
      ;
 --
 --
