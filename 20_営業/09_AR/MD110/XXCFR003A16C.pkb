@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税抜
  * MD.050           : MD050_CFR_003_A16_標準請求書税抜
  * MD.070           : MD050_CFR_003_A16_標準請求書税抜
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/04/14    1.2  SCS 大川 恵      [障害T1_0533] 出力ファイル名変数文字列オーバーフロー対応
  *  2009/09/25    1.3  SCS 廣瀬 真佐人  [共通課題:IE535] 標準請求書の出力概念変更
  *  2009/11/20    1.4  SCS 廣瀬 真佐人  [共通課題:IE691] 単独店の請求先名取得元変更
+ *  2009/12/11    1.5  SCS 廣瀬 真佐人  [E_本稼動_00423] 単独店時の出力形式不具合
  *
  *****************************************************************************************/
 --
@@ -752,6 +753,9 @@ AS
     get_all_account_cur cursor_ref_type;
     all_account_rec cursor_rec_type;
     lr_main_data rtype_main_data;
+-- Modify 2009.12.11 Ver1.5 Start
+    lr_main_data2 rtype_main_data;  --単独店の売掛管理先チェック用
+-- Modify 2009.12.11 Ver1.5 End
 --
     -- 顧客10取得カーソル文字列
     cv_get_all_account_cur   CONSTANT VARCHAR2(3000) := 
@@ -1058,6 +1062,9 @@ AS
 -- Modify 2009.09.10 Ver1.3 Start
     BEGIN
 --
+-- Modify 2009.12.11 Ver1.5 Start
+      lr_main_data2     := NULL;  -- 初期化
+-- Modify 2009.12.11 Ver1.5 End
       lr_main_data      := NULL;  -- 初期化
       all_account_rec   := NULL;  -- 初期化
       get_20account_rec := NULL;  -- 初期化
@@ -1095,6 +1102,20 @@ AS
           OPEN get_10account_cur(all_account_rec.customer_id);
           FETCH get_10account_cur INTO lr_main_data;
           CLOSE get_10account_cur;
+-- Modify 2009.12.11 Ver1.5 Start
+          -- 出荷先に紐付く売掛管理先が存在しているかチェックする。
+          OPEN get_14account_cur(all_account_rec.customer_id);
+          FETCH get_14account_cur INTO lr_main_data2;
+          CLOSE get_14account_cur;
+          -- 売掛管理先がいる時は、売掛管理先を見る。以下3点。
+          IF ( lr_main_data2.cash_account_id IS NOT NULL ) THEN
+            lr_main_data.bill_tax_div      := lr_main_data2.bill_tax_div;       -- 消費税区分
+            lr_main_data.bill_invoice_type := lr_main_data2.bill_invoice_type;  -- 請求書印刷単位
+            lr_main_data.cons_inv_flag     := lr_main_data2.cons_inv_flag;      -- 一括請求区分
+          END IF;
+          -- 初期化
+          lr_main_data2 := NULL;
+-- Modify 2009.12.11 Ver1.5 End
         END IF;
 --
         -- 紐づく顧客区分14の顧客が存在しない場合
