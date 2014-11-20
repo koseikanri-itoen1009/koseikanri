@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
  * Package Name     : XXCSM002A03C(spec)
  * Description      : 商品計画参考資料出力
  * MD.050           : 商品計画参考資料出力 MD050_CSM_002_A03
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- --------------------------------------------------------
@@ -39,6 +39,7 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
  *  2009/06/10    1.4   SCS M.Ohtsuki    [障害T1_1399]
  *  2009/07/10    1.5   SCS T.Tsukino    [障害0000637]PT(政策群２ビューへのヒント句追加）
  *  2010/12/13    1.6   SCS Y.Kanami     [E_本稼動_05803]
+ *  2011/03/31    1.7   SCS H.Sasaki     [E_本稼動_06952]一時表からの対象品目取得SQL修正
  *
  ******************************************************************************/
 --
@@ -2505,19 +2506,37 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
     CURSOR  
             get_item_cd_cur
         IS
-          SELECT
---//+UPD START 2010/12/13 E_本稼動_05803 Y.Kanami
---                  DISTINCT(item_cd)
-                  DISTINCT group_cd
-                         , item_cd
---//+UPD END 2010/12/13 E_本稼動_05803 Y.Kanami
-          FROM     
-                  xxcsm_tmp_sales_plan_ref         -- 商品計画参考資料ワークテーブル
---//+UPD START 2010/12/13 E_本稼動_05803 Y.Kanami
---          ORDER BY item_cd ASC;
-          ORDER BY group_cd ASC
-                 , item_cd ASC;
---//+UPD END 2010/12/13 E_本稼動_05803 Y.Kanami
+--//+UPD START 2011/03/29 Ver1.7
+--          SELECT
+----//+UPD START 2010/12/13 E_本稼動_05803 Y.Kanami
+----                  DISTINCT(item_cd)
+--                  DISTINCT group_cd
+--                         , item_cd
+----//+UPD END 2010/12/13 E_本稼動_05803 Y.Kanami
+--          FROM     
+--                  xxcsm_tmp_sales_plan_ref         -- 商品計画参考資料ワークテーブル
+----//+UPD START 2010/12/13 E_本稼動_05803 Y.Kanami
+----          ORDER BY item_cd ASC;
+--          ORDER BY group_cd ASC
+--                 , item_cd ASC;
+----//+UPD END 2010/12/13 E_本稼動_05803 Y.Kanami
+      SELECT  DISTINCT
+              CASE  WHEN  nic.attribute3 IS NOT NULL  THEN  tspr.group_cd
+                    ELSE  cgv4.group4_cd
+              END                 group_code
+            , tspr.item_cd        item_cd
+      FROM    xxcsm_tmp_sales_plan_ref      tspr
+            , xxcsm_commodity_group4_v      cgv4
+            , ( SELECT  DISTINCT  icv.attribute3
+                FROM    xxcsm_item_category_v   icv
+                WHERE   icv.attribute3  IS NOT NULL
+              )   nic
+      WHERE   tspr.item_cd        =   cgv4.item_cd
+      AND     tspr.item_cd        =   nic.attribute3(+)
+      ORDER BY
+              group_code        ASC
+            , tspr.item_cd      ASC;
+--//+UPD END   2011/03/29 Ver1.7
 --
 
   BEGIN
