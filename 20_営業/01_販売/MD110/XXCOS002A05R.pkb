@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *                                       従業員マスタの抽出条件の追加
  *  2009/09/01    1.15  M.Sano           障害[0000900]対応
  *                                       MainSQL,INSERT文にヒント句の追加、検索条件の最適化
+ *  2009/09/30    1.16  S.Miyakoshi      障害[0001378]帳票テーブルの桁あふれ対応
  *
  *****************************************************************************************/
 --
@@ -930,7 +931,10 @@ AS
         ,infh.sales_base_code                      AS base_code                       -- 拠点コード
         ,SUBSTRB( parb.party_name, 1, 40 )         AS base_name                       -- 拠点名称
         ,riv.employee_number                       AS employee_num                    -- 納品者コード
-        ,riv.employee_name                         AS employee_name                   -- 営業員氏名
+-- ************************ 2009/09/30 S.Miyakoshi Var1.16 MOD START ************************ --
+--        ,riv.employee_name                         AS employee_name                   -- 営業員氏名
+        ,SUBSTRB( riv.employee_name, 1, 40 )       AS employee_name                   -- 営業員氏名
+-- ************************ 2009/09/30 S.Miyakoshi Var1.16 MOD  END  ************************ --
         ,riv.group_code                            AS group_code                      -- グループ番号
         ,riv.group_in_sequence                     AS group_in_sequence               -- グループ内順序
         ,infh.dlv_invoice_number                   AS invoice_no                      -- 伝票番号
@@ -939,7 +943,10 @@ AS
         ,SUBSTRB( parc.party_name, 1, 40 )         AS customer_name                   -- 顧客名
         ,incl.meaning                              AS input_class                     -- 入力区分
         ,infh.results_employee_code                AS performance_by_code             -- 成績計上者コード
-        ,ppf.per_information18 || ' ' || ppf.per_information19
+-- ************************ 2009/09/30 S.Miyakoshi Var1.16 MOD START ************************ --
+--        ,ppf.per_information18 || ' ' || ppf.per_information19
+        ,SUBSTRB( ppf.per_information18 || ' ' || ppf.per_information19, 1, 40 )
+-- ************************ 2009/09/30 S.Miyakoshi Var1.16 MOD  END  ************************ --
                                                    AS performance_by_name             -- 成績者名
         ,CASE gysm1.vd_gyotai
            WHEN  cv_yes  THEN cscl.meaning
@@ -2039,7 +2046,10 @@ AS
           ,pay.base_code                          -- 拠点コード
           ,SUBSTRB( parb.party_name, 1, 40 )      -- 拠点名称
           ,riv.employee_number                    -- 営業員コード
-          ,riv.employee_name                      -- 営業員氏名
+-- ************************ 2009/09/30 S.Miyakoshi Var1.16 MOD START ************************ --
+--          ,riv.employee_name                      -- 営業員氏名
+          ,SUBSTRB( riv.employee_name, 1, 40 )    -- 営業員氏名
+-- ************************ 2009/09/30 S.Miyakoshi Var1.16 MOD  END  ************************ --
           ,riv.group_code                         -- グループ番号
           ,riv.group_in_sequence                  -- グループ内順序
           ,pay.hht_invoice_no                     -- 伝票番号
