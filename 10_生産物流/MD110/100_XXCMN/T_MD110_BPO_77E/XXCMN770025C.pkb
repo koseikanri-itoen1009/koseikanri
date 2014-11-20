@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/06/24    1.3   I.Higa           データが無い項目でも０を出力する
  *  2008/06/25    1.4   T.Endou          特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/07/22    1.5   T.Endou          改ページ時、ヘッダが出ないパターン対応
  *
  *****************************************************************************************/
 --
@@ -1320,6 +1321,7 @@ AS
      ,ov_errmsg                    OUT VARCHAR2          -- ﾕｰｻﾞｰ･ｴﾗｰ･ﾒｯｾｰｼﾞ
      ,ir_param                     IN  rec_param_data    -- ﾊﾟﾗﾒｰﾀ
      ,it_data_rec                  IN  rec_data_type_dtl -- 取得ﾚｺｰﾄﾞ
+     ,in_i                         IN  NUMBER            -- 連番
      ,iot_xml_idx                  IN OUT NUMBER         -- ＸＭＬﾃﾞｰﾀﾀｸﾞ表のｲﾝﾃﾞｯｸｽ
      ,iot_xml_data_table           IN OUT XML_DATA       -- XMLﾃﾞｰﾀ
      ,on_sum_quantity              IN OUT NUMBER         -- 数量計
@@ -1559,6 +1561,11 @@ AS
       iot_xml_data_table(iot_xml_idx).tag_value := ln_difference_amount;
       on_sum_difference_amount := on_sum_difference_amount + ln_difference_amount;
     END IF;
+    -- 品目連番
+    iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
+    iot_xml_data_table(iot_xml_idx).tag_name  := 'item_position' ;
+    iot_xml_data_table(iot_xml_idx).tag_type  := 'D' ;
+    iot_xml_data_table(iot_xml_idx).tag_value := in_i;
     -- -----------------------------------------------------
     -- 品目Ｇ終了タグ出力
     -- -----------------------------------------------------
@@ -2034,6 +2041,7 @@ AS
                      ,ov_errmsg          => lv_errmsg             -- ﾕｰｻﾞｰ･ｴﾗｰ･ﾒｯｾｰｼﾞ
                      ,ir_param           => ir_param              -- ﾊﾟﾗﾒｰﾀ
                      ,it_data_rec        => it_data_rec(ln_i)     -- 取得ﾚｺｰﾄﾞ
+                     ,in_i               => ln_i                  -- 連番
                      ,iot_xml_idx        => lt_xml_idx            -- XMLﾃﾞｰﾀﾀｸﾞ表のｲﾝﾃﾞｯｸｽ
                      ,iot_xml_data_table => ot_xml_data_table     -- XMLﾃﾞｰﾀ
                      ,on_sum_quantity           => ln_sum_quantity                 -- 数量計
