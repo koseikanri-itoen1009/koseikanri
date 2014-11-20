@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.63
+ * Version          : 1.64
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -162,6 +162,7 @@ AS
  *  2009/12/28    1.61 SCS    伊藤ひとみ 本稼動障害  #695  57A入出庫実績登録処理move_results_regist_processを行わないようにする
  *  2010/02/02    1.62 SCS    宮川真理子 本稼動障害  #1322 運送業者マスタチェック条件に、運賃区分がONの場合およびOFFでも運送業者入力済の場合を追加
  *  2010/03/11    1.63 SCS    北寒寺正夫 本稼働障害  #1871 依頼No/移動番号重複チェックを追加
+ *  2010/03/12    1.64 SCS    北寒寺正夫 本稼働障害  #1622 移動の実績訂正の際に実績計上済区分をYからNに更新するように修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -15883,6 +15884,29 @@ AS
     ;
 --
     gr_mov_req_instr_h_rec.mov_hdr_id := lt_mov_hdr_id;
+-- 2010/03/12 M.Hokkanji Add Start
+   -- 実績訂正時、移動ロット詳細の実績訂正済区分をYからNに変更するように修正
+   UPDATE xxinv_mov_lot_details xmld
+      SET xmld.actual_confirm_class    = gv_yesno_n
+         ,xmld.last_updated_by         = gt_user_id
+         ,xmld.last_update_date        = gt_sysdate
+         ,xmld.last_update_login       = gt_login_id
+         ,xmld.request_id              = gt_conc_request_id
+         ,xmld.program_application_id  = gt_prog_appl_id
+         ,xmld.program_id              = gt_conc_program_id
+         ,xmld.program_update_date     = gt_sysdate
+    WHERE xmld.document_type_code = gv_document_type_20
+      AND xmld.record_type_code IN (gv_record_type_20,gv_record_type_30)
+      AND xmld.mov_line_id IN (
+                                SELECT xmril.mov_line_id
+                                  FROM xxinv_mov_req_instr_headers xmrih
+                                      ,xxinv_mov_req_instr_lines xmril
+                                 WHERE xmrih.mov_hdr_id = gr_mov_req_instr_h_rec.mov_hdr_id
+                                   AND xmril.mov_hdr_id = xmrih.mov_hdr_id
+                                   AND xmril.delete_flg = gv_yesno_n
+                                   AND xmril.mov_line_id = xmld.mov_line_id
+         );
+-- 2010/03/12 M.Hokkanji Add End
 --
 --********** 2008/07/07 ********** DELETE START ***
 --* gn_mov_h_upd_y_cnt := gn_mov_h_upd_y_cnt + 1;
