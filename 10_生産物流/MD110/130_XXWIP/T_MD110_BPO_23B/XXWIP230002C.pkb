@@ -8,7 +8,7 @@ AS
  * Description      : 生産帳票機能（生産日報）
  * MD.050/070       : 生産帳票機能（生産日報）Issue1.0  (T_MD050_BPO_230)
  *                    生産帳票機能（生産日報）          (T_MD070_BPO_23B)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -46,7 +46,8 @@ AS
  *                                          結合テスト不具合対応　パーセント計算式不備対応
  *  2008/07/02    1.4   Satoshi Yunba       禁則文字対応
  *  2008/10/28    1.5   Daisuke  Nihei      T_TE080_BPO_230 No15対応 入力日時の結合先を作成日から更新日に変更する
- *  2008/10/08    1.6   Daisuke  Nihei      本番障害#325対応
+ *  2008/12/02    1.6   Daisuke  Nihei      本番障害#325対応
+ *  2008/12/17    1.7   Daisuke  Nihei      本番障害#709対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -143,10 +144,10 @@ AS
   gv_item_cat_name_item_kbn     CONSTANT xxcmn_item_categories_v.category_set_name%TYPE := '品目区分';
 --
   -- 品目区分
-  gv_hinmoku_kbn_genryou        CONSTANT xxcmn_item_categories3_v.item_class_code%TYPE := '1';     -- 原料
-  gv_hinmoku_kbn_sizai          CONSTANT xxcmn_item_categories3_v.item_class_code%TYPE := '2';     -- 資材
-  gv_hinmoku_kbn_hanseihin      CONSTANT xxcmn_item_categories3_v.item_class_code%TYPE := '4';     -- 半製品
-  gv_hinmoku_kbn_seihin         CONSTANT xxcmn_item_categories3_v.item_class_code%TYPE := '5';     -- 製品
+  gv_hinmoku_kbn_genryou        CONSTANT xxcmn_item_categories5_v.item_class_code%TYPE := '1';     -- 原料
+  gv_hinmoku_kbn_sizai          CONSTANT xxcmn_item_categories5_v.item_class_code%TYPE := '2';     -- 資材
+  gv_hinmoku_kbn_hanseihin      CONSTANT xxcmn_item_categories5_v.item_class_code%TYPE := '4';     -- 半製品
+  gv_hinmoku_kbn_seihin         CONSTANT xxcmn_item_categories5_v.item_class_code%TYPE := '5';     -- 製品
 --
   -- 予定区分
   gv_yotei_kbn_tonyu            CONSTANT xxwip_material_detail.plan_type%TYPE := '4';              -- 投入
@@ -247,6 +248,9 @@ AS
      ,l_stock                 NUMBER                                        -- 在庫入数
      ,l_total                 xxwip_material_detail.invested_qty%TYPE       -- 総数量
      ,l_unit                  xxcmn_item_mst_v.item_um%TYPE                 -- 単位
+-- 2008/12/17 v1.7 D.Nihei ADD START
+     ,l_net                   xxcmn_item_mst_v.net%TYPE                     -- NET
+-- 2008/12/17 v1.7 D.Nihei ADD END
     ) ;
   TYPE type_tounyu_data_tbl IS TABLE OF type_tounyu_data_rec INDEX BY BINARY_INTEGER ;
 --
@@ -777,6 +781,10 @@ AS
 -- 2008/10/28 v1.5 D.Nihei ADD START
     ln_invest_total          NUMBER DEFAULT 0;
 -- 2008/10/28 v1.5 D.Nihei ADD END
+-- 2008/12/17 v1.7 D.Nihei ADD START
+    ln_tounyu_net_total      NUMBER DEFAULT 0;
+    ln_rei_tou_net_total     NUMBER DEFAULT 0;
+-- 2008/12/17 v1.7 D.Nihei ADD END
 --
   BEGIN
 --
@@ -1072,6 +1080,11 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(it_tonyu_data(l_cnt).l_total ,gv_num_format1);
       -- 投入品明細総数の合計
       ln_tounyu_total := ln_tounyu_total + it_tonyu_data(l_cnt).l_total ;
+-- 2008/12/17 v1.7 D.Nihei ADD START
+      IF ( it_tonyu_data(l_cnt).l_unit = gv_um_hon ) THEN
+        ln_tounyu_net_total := ln_tounyu_net_total + ( it_tonyu_data(l_cnt).l_total * it_tonyu_data(l_cnt).l_net / 1000 );
+      END IF;
+-- 2008/12/17 v1.7 D.Nihei ADD END
 --
       -- 【データ】単位
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
@@ -1236,6 +1249,11 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(it_reinyu_tonyu_data(l_cnt).l_total ,gv_num_format1);
       -- 戻入品明細総数の合計
       ln_reinyu_tounyu_total := ln_reinyu_tounyu_total + it_reinyu_tonyu_data(l_cnt).l_total ;
+-- 2008/12/17 v1.7 D.Nihei ADD START
+      IF ( it_reinyu_tonyu_data(l_cnt).l_unit = gv_um_hon ) THEN
+        ln_rei_tou_net_total := ln_rei_tou_net_total + ( it_reinyu_tonyu_data(l_cnt).l_total * it_reinyu_tonyu_data(l_cnt).l_net / 1000 );
+      END IF;
+-- 2008/12/17 v1.7 D.Nihei ADD END
 --
       -- 【データ】単位
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
@@ -1287,6 +1305,11 @@ AS
 -- 2008/10/28 v1.5 D.Nihei ADD START
     ln_invest_total := NVL(ln_tounyu_total, 0) - NVL(ln_reinyu_tounyu_total, 0);
 -- 2008/10/28 v1.5 D.Nihei ADD END
+-- 2008/12/17 v1.7 D.Nihei ADD START
+    IF ( NVL(ln_tounyu_net_total, 0) > 0 ) THEN
+      ln_invest_total := NVL(ln_tounyu_net_total, 0) - NVL(ln_rei_tou_net_total, 0);
+    END IF;
+-- 2008/12/17 v1.7 D.Nihei ADD END
 --
 --=========================================================================
     -- -----------------------------------------------------
@@ -1577,12 +1600,12 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
     -- 仕上数計算
 -- Changed 2008/05/29
-    -- （ヘッダの完成品品目の「NET」項目×ヘッダ出来高　／　1000）－　打込総数
+--    -- （ヘッダの完成品品目の「NET」項目×ヘッダ出来高　／　1000）－　打込総数
 --    ln_siage_total := ((ir_head_data.l_dekidaka * ir_head_data.l_net) / 1000) - ln_utikomi_total ;
 -- 2008/12/02 v1.6 D.Nihei MOD START 本番障害#325
 --    IF ir_head_data.l_item_class = gv_hinmoku_kbn_seihin THEN
 --      -- 品目区分＝「製品」の時
-    IF ( ( ir_head_data.l_item_class = gv_hinmoku_kbn_seihin ) AND ( ir_head_data.l_item_unit = '本' ) ) THEN
+    IF ( ( ir_head_data.l_item_class = gv_hinmoku_kbn_seihin ) AND ( ir_head_data.l_item_unit = gv_um_hon ) ) THEN
       -- 品目区分＝「製品」で単位が「本」の時
 -- 2008/12/02 v1.6 D.Nihei MOD START 本番障害#325
       -- （ヘッダの完成品品目の「NET」項目×ヘッダ出来高　／　1000）－　打込総数
@@ -1762,10 +1785,13 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
     -- 切／計込明細合計の計算
     -- 投入合計－（仕上数＋副産物計）の値をセット
--- 2008/06/04 D.Nihei MOD START
---    ln_kirikeikomi_total := ln_tounyu_total - (ln_siage_total + ln_fukusanbutu_total) ;
-    ln_kirikeikomi_total := ln_tounyu_total - (ln_siage_total + ln_fukusanbutu_total) - (ln_reinyu_tounyu_total + ln_reinyu_utikomi_total);
--- 2008/06/04 D.Nihei MOD END
+-- 2008/12/17 D.Nihei MOD START
+---- 2008/06/04 D.Nihei MOD START
+----    ln_kirikeikomi_total := ln_tounyu_total - (ln_siage_total + ln_fukusanbutu_total) ;
+--    ln_kirikeikomi_total := ln_tounyu_total - (ln_siage_total + ln_fukusanbutu_total) - (ln_reinyu_tounyu_total + ln_reinyu_utikomi_total);
+    ln_kirikeikomi_total := ln_invest_total - (ln_siage_total + ln_fukusanbutu_total) + ln_reinyu_utikomi_total;
+---- 2008/06/04 D.Nihei MOD END
+-- 2008/12/17 D.Nihei MOD END
     gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(ln_kirikeikomi_total ,gv_num_format1);
 --
     -- 【データ】切／計込明細単位
@@ -2592,22 +2618,25 @@ AS
            gmd.material_detail_id                                    AS material_detail_id -- 生産原料詳細.生産原料詳細ID
           ,NVL(gmd.attribute8 , gv_tounyuguchi_kbn_default)          AS tounyuguchi_kbn    -- 生産原料詳細.DFF8(投入口区分)
            --以下データ用項目
-          ,xim1v.item_no                                             AS tonyu_hinmk_cd     -- OPM品目情報VIEW.品目コード
-          ,xim1v.item_short_name                                     AS tonyu_hinmk_nm     -- OPM品目情報VIEW.品名・略称
+          ,ximv.item_no                                              AS tonyu_hinmk_cd     -- OPM品目情報VIEW.品目コード
+          ,ximv.item_short_name                                      AS tonyu_hinmk_nm     -- OPM品目情報VIEW.品名・略称
           ,ilm.lot_no                                                AS tonyu_lot_no       -- OPMロットマスタ.ロットNo
           ,FND_DATE.STRING_TO_DATE(SUBSTRB(ilm.attribute1 , 1 , 10)
                                   ,gv_date_format3)                  AS tonyu_make_date    -- OPMロットマスタ.DFF1(製造年月日)
           ,TO_NUMBER(ilm.attribute6)                                 AS tonyu_stock        -- OPMロットマスタ.DFF6(在庫入数)
           ,xmd.invested_qty                                          AS tonyu_total        -- 生産原料詳細アドオン.投入数量
-          ,xim1v.item_um                                             AS tonyu_unit         -- OPM品目情報VIEW.単位
+          ,ximv.item_um                                              AS tonyu_unit         -- OPM品目情報VIEW.単位
+-- 2008/12/17 v1.7 D.Nihei ADD START
+          ,NVL(TO_NUMBER(ximv.net) , gv_net_default_val)             AS tonyu_net          -- OPM品目情報VIEW.NET
+-- 2008/12/17 v1.7 D.Nihei ADD END
     --
     BULK COLLECT INTO ot_tonyu_data
     --
     FROM   gme_material_details       gmd     -- 生産原料詳細
           ,xxwip_material_detail      xmd     -- 生産原料詳細アドオン
           ,ic_lots_mst                ilm     -- OPMロットマスタ
-          ,xxcmn_item_mst_v           xim1v   -- OPM品目情報VIEW
-          ,xxcmn_item_categories3_v   xic3v   -- OPM品目カテゴリ割当情報VIEW3
+          ,xxcmn_item_mst_v           ximv    -- OPM品目情報VIEW
+          ,xxcmn_item_categories5_v   xicv   -- OPM品目カテゴリ割当情報VIEW
     WHERE
     --以下固定条件
     ------------------------------------------------------------------------
@@ -2625,13 +2654,13 @@ AS
     AND   xmd.lot_id                =  ilm.lot_id
     ------------------------------------------------------------------------
     -- OPM品目情報VIEW条件
-    AND   gmd.item_id               =  xim1v.item_id
+    AND   gmd.item_id               =  ximv.item_id
     ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW3条件
-    AND   gmd.item_id               =  xic3v.item_id
-    AND   xic3v.item_class_code     IN (gv_hinmoku_kbn_genryou
-                                       ,gv_hinmoku_kbn_hanseihin
-                                       ,gv_hinmoku_kbn_seihin)        -- 原材料、半製品、製品
+    -- OPM品目カテゴリ割当情報VIEW条件
+    AND   gmd.item_id               =  xicv.item_id
+    AND   xicv.item_class_code     IN (gv_hinmoku_kbn_genryou
+                                      ,gv_hinmoku_kbn_hanseihin
+                                      ,gv_hinmoku_kbn_seihin)        -- 原材料、半製品、製品
     ------------------------------------------------------------------------
     ------------------------------------------------------------------------
     --以下変動条件
@@ -2641,8 +2670,8 @@ AS
     ------------------------------------------------------------------------
     ------------------------------------------------------------------------
     ORDER BY gmd.attribute8            -- 生産原料詳細.DFF8(投入口区分)
-            ,xic3v.item_class_code     -- OPM品目カテゴリ割当情報VIEW3.品目カテゴリコード
-            ,TO_NUMBER(xim1v.item_no)  -- OPM品目情報VIEW.品目コード
+            ,xicv.item_class_code      -- OPM品目カテゴリ割当情報VIEW.品目カテゴリコード
+            ,TO_NUMBER(ximv.item_no)   -- OPM品目情報VIEW.品目コード
             ,TO_NUMBER(ilm.lot_no)     -- OPMロットマスタ.ロットNO
     ;
 --
@@ -2712,22 +2741,25 @@ AS
            gmd.material_detail_id                                    AS material_detail_id -- 生産原料詳細.生産原料詳細ID
           ,NVL(gmd.attribute8 , gv_tounyuguchi_kbn_default)          AS tounyuguchi_kbn    -- 生産原料詳細.DFF8(投入口区分)
            --以下データ用項目
-          ,xim1v.item_no                                             AS modori_hinmk_cd     -- OPM品目情報VIEW.品目コード
-          ,xim1v.item_short_name                                     AS modori_hinmk_nm     -- OPM品目情報VIEW.品名・略称
+          ,ximv.item_no                                              AS modori_hinmk_cd     -- OPM品目情報VIEW.品目コード
+          ,ximv.item_short_name                                      AS modori_hinmk_nm     -- OPM品目情報VIEW.品名・略称
           ,ilm.lot_no                                                AS modori_lot_no       -- OPMロットマスタ.ロットNO
           ,FND_DATE.STRING_TO_DATE(SUBSTRB(ilm.attribute1 , 1 , 10)
                                   ,gv_date_format3)                  AS modori_make_date    -- OPMロットマスタ.DFF1(製造年月日)
           ,TO_NUMBER(ilm.attribute6)                                 AS modori_stock        -- OPMロットマスタ.DFF6(在庫入数)
           ,xmd.return_qty                                            AS modori_total        -- 生産原料詳細アドオン.戻入数量
-          ,xim1v.item_um                                             AS modori_unit         -- OPM品目情報VIEW.単位
+          ,ximv.item_um                                              AS modori_unit         -- OPM品目情報VIEW.単位
+-- 2008/12/17 v1.7 D.Nihei ADD START
+          ,NVL(TO_NUMBER(ximv.net) , gv_net_default_val)             AS modori_net          -- OPM品目情報VIEW.NET
+-- 2008/12/17 v1.7 D.Nihei ADD END
     --
     BULK COLLECT INTO ot_reinyu_tonyu_data
     --
     FROM   gme_material_details       gmd     -- 生産原料詳細
           ,xxwip_material_detail      xmd     -- 生産原料詳細アドオン
           ,ic_lots_mst                ilm     -- OPMロットマスタ
-          ,xxcmn_item_mst_v           xim1v   -- OPM品目情報VIEW
-          ,xxcmn_item_categories3_v   xic3v   -- OPM品目カテゴリ割当情報VIEW3
+          ,xxcmn_item_mst_v           ximv    -- OPM品目情報VIEW
+          ,xxcmn_item_categories5_v   xicv    -- OPM品目カテゴリ割当情報VIEW
     WHERE
     --以下固定条件
     ------------------------------------------------------------------------
@@ -2746,13 +2778,13 @@ AS
     AND   xmd.lot_id                =  ilm.lot_id
     ------------------------------------------------------------------------
     -- OPM品目情報VIEW条件
-    AND   gmd.item_id               =  xim1v.item_id
+    AND   gmd.item_id               =  ximv.item_id
     ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW3条件
-    AND   gmd.item_id               =  xic3v.item_id
-    AND   xic3v.item_class_code     IN (gv_hinmoku_kbn_genryou
-                                       ,gv_hinmoku_kbn_hanseihin
-                                       ,gv_hinmoku_kbn_seihin)  -- 原材料、半製品、製品
+    -- OPM品目カテゴリ割当情報VIEW条件
+    AND   gmd.item_id               =  xicv.item_id
+    AND   xicv.item_class_code     IN (gv_hinmoku_kbn_genryou
+                                      ,gv_hinmoku_kbn_hanseihin
+                                      ,gv_hinmoku_kbn_seihin)  -- 原材料、半製品、製品
     ------------------------------------------------------------------------
     ------------------------------------------------------------------------
     --以下変動条件
@@ -2761,8 +2793,8 @@ AS
     AND   gmd.batch_id              =  iv_batch_id
     ------------------------------------------------------------------------
     ORDER BY gmd.attribute8              -- 生産原料詳細.DFF8(投入口区分)
-            ,xic3v.item_class_code       -- OPM品目カテゴリ割当情報VIEW3.品目カテゴリコード
-            ,TO_NUMBER(xim1v.item_no)    -- OPM品目情報VIEW.品目コード
+            ,xicv.item_class_code        -- OPM品目カテゴリ割当情報VIEW.品目カテゴリコード
+            ,TO_NUMBER(ximv.item_no)     -- OPM品目情報VIEW.品目コード
             ,TO_NUMBER(ilm.lot_no)       -- OPMロットマスタ.ロットNO
     ;
 --
@@ -2832,20 +2864,23 @@ AS
            TO_NUMBER(NULL)                                           AS material_detail_id    -- ダミーカラム
           ,TO_CHAR(NULL)                                             AS tounyuguchi_kbn       -- ダミーカラム
            --以下データ用項目
-          ,xim1v.item_no                                             AS fsanbutu_hinmk_cd     -- OPM品目情報VIEW.品目コード
-          ,xim1v.item_short_name                                     AS fsanbutu_hinmk_nm     -- OPM品目情報VIEW.品名・略称
+          ,ximv.item_no                                              AS fsanbutu_hinmk_cd     -- OPM品目情報VIEW.品目コード
+          ,ximv.item_short_name                                      AS fsanbutu_hinmk_nm     -- OPM品目情報VIEW.品名・略称
           ,ilm.lot_no                                                AS fsanbutu_lot_no       -- OPMロットマスタ.ロットno
           ,FND_DATE.STRING_TO_DATE(SUBSTRB(ilm.attribute1 , 1 , 10)
                                   ,gv_date_format3)                  AS fsanbutu_make_date    -- OPMロットマスタ.DFF1(製造年月日)
           ,TO_NUMBER(ilm.attribute6)                                 AS fsanbutu_stock        -- OPMロットマスタ.DFF6(在庫入数)
           ,gmd.actual_qty                                            AS fsanbutu_total        -- 生産原料詳細.実績数量
-          ,xim1v.item_um                                             AS fsanbutu_unit         -- OPM品目情報VIEW.単位
+          ,ximv.item_um                                              AS fsanbutu_unit         -- OPM品目情報VIEW.単位
+-- 2008/12/17 v1.7 D.Nihei ADD START
+          ,NVL(TO_NUMBER(ximv.net) , gv_net_default_val)             AS fsanbutu_net          -- OPM品目情報VIEW.NET
+-- 2008/12/17 v1.7 D.Nihei ADD END
 --
     BULK COLLECT INTO ot_fukusanbutu_data
 --
     FROM   gme_material_details       gmd     -- 生産原料詳細
           ,ic_lots_mst                ilm     -- OPMロットマスタ
-          ,xxcmn_item_mst_v           xim1v   -- OPM品目情報VIEW
+          ,xxcmn_item_mst_v           ximv    -- OPM品目情報VIEW
           ,xxcmn_item_categories_v    xic1v   -- OPM品目カテゴリ割当情報VIEW
           ,ic_tran_pnd                itp     -- OPM保留在庫トランザクション
     WHERE
@@ -2856,7 +2891,7 @@ AS
     AND   gmd.attribute24           IS NULL     -- DFF24(原料削除フラグ)が未入力
     ------------------------------------------------------------------------
     -- OPM品目情報VIEW条件
-    AND   gmd.item_id               =  xim1v.item_id
+    AND   gmd.item_id               =  ximv.item_id
     ------------------------------------------------------------------------
     -- OPM品目カテゴリ割当情報VIEW条件
     AND   gmd.item_id               =  xic1v.item_id
@@ -2889,7 +2924,7 @@ AS
     AND   gmd.batch_id              =  iv_batch_id
     ------------------------------------------------------------------------
     ORDER BY xic1v.segment1            -- OPM品目カテゴリ割当情報VIEW.品目カテゴリコード
-            ,TO_NUMBER(xim1v.item_no)  -- OPM品目情報VIEW.品目コード
+            ,TO_NUMBER(ximv.item_no)   -- OPM品目情報VIEW.品目コード
             ,TO_NUMBER(ilm.lot_no)     -- OPMロットマスタ.ロットno
     ;
 --
@@ -2959,22 +2994,25 @@ AS
            TO_NUMBER(NULL)                                        AS material_detail_id   -- ダミーカラム
           ,TO_CHAR(NULL)                                          AS tounyuguchi_kbn       -- ダミーカラム
            --以下データ用項目
-          ,xim1v.item_no                                          AS utikomi_hinmk_cd     -- OPM品目情報VIEW.品目コード
-          ,xim1v.item_short_name                                  AS utikomi_hinmk_nm     -- OPM品目情報VIEW.品名・略称
+          ,ximv.item_no                                           AS utikomi_hinmk_cd     -- OPM品目情報VIEW.品目コード
+          ,ximv.item_short_name                                   AS utikomi_hinmk_nm     -- OPM品目情報VIEW.品名・略称
           ,ilm.lot_no                                             AS utikomi_lot_no       -- OPMロットマスタ.ロットno
           ,FND_DATE.STRING_TO_DATE(SUBSTRB(ilm.attribute1 , 1 , 10)
                                   ,gv_date_format3)               AS utikomi_make_date    -- OPMロットマスタ.DFF1(製造年月日)
           ,TO_NUMBER(ilm.attribute6)                              AS utikomi_stock        -- OPMロットマスタ.DFF6(在庫入数)
           ,xmd.invested_qty                                       AS utikomi_total        -- 生産原料詳細アドオン.投入数量
-          ,xim1v.item_um                                          AS utikomi_unit         -- OPM品目情報VIEW.単位
+          ,ximv.item_um                                           AS utikomi_unit         -- OPM品目情報VIEW.単位
+-- 2008/12/17 v1.7 D.Nihei ADD START
+          ,NVL(TO_NUMBER(ximv.net) , gv_net_default_val)          AS utikomi_net          -- OPM品目情報VIEW.NET
+-- 2008/12/17 v1.7 D.Nihei ADD END
 --
     BULK COLLECT INTO ot_utikomi_data
 --
     FROM   gme_material_details       gmd     -- 生産原料詳細
           ,xxwip_material_detail      xmd     -- 生産原料詳細アドオン
           ,ic_lots_mst                ilm     -- OPMロットマスタ
-          ,xxcmn_item_mst_v           xim1v   -- OPM品目情報VIEW
-          ,xxcmn_item_categories3_v   xic3v   -- OPM品目カテゴリ割当情報VIEW3
+          ,xxcmn_item_mst_v           ximv    -- OPM品目情報VIEW
+          ,xxcmn_item_categories5_v   xicv    -- OPM品目カテゴリ割当情報VIEW
           ,ic_tran_pnd                itp     -- OPM保留在庫トランザクション
     WHERE
     --以下固定条件
@@ -2989,13 +3027,13 @@ AS
     AND   xmd.plan_type             =  gv_yotei_kbn_tonyu       -- 予定区分＝「4:投入」
     ------------------------------------------------------------------------
     -- OPM品目情報VIEW条件
-    AND   gmd.item_id               =  xim1v.item_id
+    AND   gmd.item_id               =  ximv.item_id
     ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW3条件
-    AND   gmd.item_id               =  xic3v.item_id
-    AND   xic3v.item_class_code     IN (gv_hinmoku_kbn_genryou
-                                       ,gv_hinmoku_kbn_hanseihin
-                                       ,gv_hinmoku_kbn_seihin)  -- 原材料、半製品、製品
+    -- OPM品目カテゴリ割当情報VIEW条件
+    AND   gmd.item_id               =  xicv.item_id
+    AND   xicv.item_class_code     IN (gv_hinmoku_kbn_genryou
+                                      ,gv_hinmoku_kbn_hanseihin
+                                      ,gv_hinmoku_kbn_seihin)  -- 原材料、半製品、製品
     ------------------------------------------------------------------------
     --  OPM保留在庫トランザクション条件
     AND   gmd.batch_id              =  itp.doc_id
@@ -3027,8 +3065,8 @@ AS
     --生産原料詳細パラメータ条件
     AND   gmd.batch_id              =  iv_batch_id
     ------------------------------------------------------------------------
-    ORDER BY xic3v.item_class_code      -- OPM品目カテゴリ割当情報VIEW3.品目カテゴリコード
-            ,TO_NUMBER(xim1v.item_no)   -- OPM品目情報VIEW.品目コード
+    ORDER BY xicv.item_class_code       -- OPM品目カテゴリ割当情報VIEW.品目カテゴリコード
+            ,TO_NUMBER(ximv.item_no)    -- OPM品目情報VIEW.品目コード
             ,TO_NUMBER(ilm.lot_no)      -- OPMロットマスタ.ロットno
     ;
 --
@@ -3098,22 +3136,25 @@ AS
            TO_NUMBER(NULL)                                           AS material_detail_id          -- ダミーカラム
           ,TO_CHAR(NULL)                                             AS tounyuguchi_kbn             -- ダミーカラム
            --以下データ用項目
-          ,xim1v.item_no                                             AS modori_utikomi_hinmk_cd     -- OPM品目情報VIEW.品目コード
-          ,xim1v.item_short_name                                     AS modori_utikomi_hinmk_nm     -- OPM品目情報VIEW.品名・略称
+          ,ximv.item_no                                              AS modori_utikomi_hinmk_cd     -- OPM品目情報VIEW.品目コード
+          ,ximv.item_short_name                                      AS modori_utikomi_hinmk_nm     -- OPM品目情報VIEW.品名・略称
           ,ilm.lot_no                                                AS modori_utikomi_lot_no       -- OPMロットマスタ.ロットNo
           ,FND_DATE.STRING_TO_DATE(SUBSTRB(ilm.attribute1 , 1 , 10)
                                   ,gv_date_format3)                  AS modori_utikomi_make_date    -- OPMロットマスタ.DFF1(製造年月日)
           ,TO_NUMBER(ilm.attribute6)                                 AS modori_utikomi_stock        -- OPMロットマスタ.DFF6(在庫入数)
           ,xmd.return_qty                                            AS modori_utikomi_total        -- 生産原料詳細アドオン.戻入数量
-          ,xim1v.item_um                                             AS modori_utikomi_unit         -- OPM品目情報VIEW.単位
+          ,ximv.item_um                                              AS modori_utikomi_unit         -- OPM品目情報VIEW.単位
+-- 2008/12/17 v1.7 D.Nihei ADD START
+          ,NVL(TO_NUMBER(ximv.net) , gv_net_default_val)             AS modori_utikomi_net          -- OPM品目情報VIEW.NET
+-- 2008/12/17 v1.7 D.Nihei ADD END
 --
     BULK COLLECT INTO ot_reinyu_utikomi_data
 --
     FROM   gme_material_details       gmd     -- 生産原料詳細
           ,xxwip_material_detail      xmd     -- 生産原料詳細アドオン
           ,ic_lots_mst                ilm     -- OPMロットマスタ
-          ,xxcmn_item_mst_v           xim1v   -- OPM品目情報VIEW
-          ,xxcmn_item_categories3_v   xic3v   -- OPM品目カテゴリ割当情報VIEW3
+          ,xxcmn_item_mst_v           ximv    -- OPM品目情報VIEW
+          ,xxcmn_item_categories5_v   xicv    -- OPM品目カテゴリ割当情報VIEW
           ,ic_tran_pnd                itp     -- OPM保留在庫トランザクション
     WHERE
     --以下固定条件
@@ -3133,7 +3174,7 @@ AS
     AND   itp.lot_id                =  ilm.lot_id
     ------------------------------------------------------------------------
     -- OPM品目情報VIEW条件
-    AND   gmd.item_id               =  xim1v.item_id
+    AND   gmd.item_id               =  ximv.item_id
     ------------------------------------------------------------------------
     --  OPM保留在庫トランザクション条件
     AND   gmd.batch_id              =  itp.doc_id
@@ -3155,11 +3196,11 @@ AS
                       WHERE itp3.trans_id = itp.reverse_id)     -- リバースIDが保留トランIDに存在しないもの
     AND   itp.completed_ind    =  gv_comp_flag                  -- 完了フラグ＝「完了」
     ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW3条件
-    AND   gmd.item_id               =  xic3v.item_id
-    AND   xic3v.item_class_code     IN (gv_hinmoku_kbn_genryou
-                                       ,gv_hinmoku_kbn_hanseihin
-                                       ,gv_hinmoku_kbn_seihin)  -- 原材料、半製品、製品
+    -- OPM品目カテゴリ割当情報VIEW条件
+    AND   gmd.item_id               =  xicv.item_id
+    AND   xicv.item_class_code     IN (gv_hinmoku_kbn_genryou
+                                      ,gv_hinmoku_kbn_hanseihin
+                                      ,gv_hinmoku_kbn_seihin)  -- 原材料、半製品、製品
     ------------------------------------------------------------------------
     ------------------------------------------------------------------------
     --以下変動条件
@@ -3168,8 +3209,8 @@ AS
     AND   gmd.batch_id              =  iv_batch_id
     ------------------------------------------------------------------------
     ORDER BY gmd.attribute8             -- 生産原料詳細.DFF8(投入口区分)
-            ,xic3v.item_class_code      -- OPM品目カテゴリ割当情報VIEW3.品目カテゴリコード
-            ,TO_NUMBER(xim1v.item_no)   -- OPM品目情報VIEW.品目コード
+            ,xicv.item_class_code       -- OPM品目カテゴリ割当情報VIEW.品目カテゴリコード
+            ,TO_NUMBER(ximv.item_no)    -- OPM品目情報VIEW.品目コード
             ,TO_NUMBER(ilm.lot_no)      -- OPMロットマスタ.ロットNo
     ;
 --
@@ -3236,23 +3277,26 @@ AS
     -- ====================================================
     SELECT
            --以下処理用項目
-           TO_NUMBER(NULL)                         AS material_detail_id       -- ダミーカラム
-          ,TO_CHAR(NULL)                           AS tounyuguchi_kbn          -- ダミーカラム
+           TO_NUMBER(NULL)                                 AS material_detail_id       -- ダミーカラム
+          ,TO_CHAR(NULL)                                   AS tounyuguchi_kbn          -- ダミーカラム
            --以下データ用項目
-          ,xim1v.item_no                           AS tonyu_sizai_hinmk_cd     -- OPM品目情報VIEW.品目コード
-          ,xim1v.item_short_name                   AS tonyu_sizai_hinmk_nm     -- OPM品目情報VIEW.品名・略称
-          ,TO_CHAR(NULL)                           AS tonyu_sizai_lot_no       -- ダミーカラム
-          ,TO_DATE(NULL)                           AS tonyu_sizai_make_date    -- ダミーカラム
-          ,TO_NUMBER(NULL)                         AS tonyu_sizai_stock        -- ダミーカラム
-          ,xmd.invested_qty                        AS tonyu_sizai_total        -- 生産原料詳細アドオン.投入数量
-          ,xim1v.item_um                           AS tonyu_sizai_unit         -- OPM品目情報VIEW.単位
+          ,ximv.item_no                                    AS tonyu_sizai_hinmk_cd     -- OPM品目情報VIEW.品目コード
+          ,ximv.item_short_name                            AS tonyu_sizai_hinmk_nm     -- OPM品目情報VIEW.品名・略称
+          ,TO_CHAR(NULL)                                   AS tonyu_sizai_lot_no       -- ダミーカラム
+          ,TO_DATE(NULL)                                   AS tonyu_sizai_make_date    -- ダミーカラム
+          ,TO_NUMBER(NULL)                                 AS tonyu_sizai_stock        -- ダミーカラム
+          ,xmd.invested_qty                                AS tonyu_sizai_total        -- 生産原料詳細アドオン.投入数量
+          ,ximv.item_um                                    AS tonyu_sizai_unit         -- OPM品目情報VIEW.単位
+-- 2008/12/17 v1.7 D.Nihei ADD START
+          ,NVL(TO_NUMBER(ximv.net) , gv_net_default_val)   AS tonyu_sizai_net          -- OPM品目情報VIEW.NET
+-- 2008/12/17 v1.7 D.Nihei ADD END
 --
     BULK COLLECT INTO ot_tonyu_sizai_data
 --
     FROM   gme_material_details       gmd     -- 生産原料詳細
           ,xxwip_material_detail      xmd     -- 生産原料詳細アドオン
-          ,xxcmn_item_mst_v           xim1v   -- OPM品目情報VIEW
-          ,xxcmn_item_categories3_v   xic3v   -- OPM品目カテゴリ割当情報VIEW3
+          ,xxcmn_item_mst_v           ximv    -- OPM品目情報VIEW
+          ,xxcmn_item_categories5_v   xicv    -- OPM品目カテゴリ割当情報VIEW
     WHERE
     --以下固定条件
     ------------------------------------------------------------------------
@@ -3266,11 +3310,11 @@ AS
     AND   xmd.plan_type             =  gv_yotei_kbn_tonyu       -- 予定区分＝「投入」
     ------------------------------------------------------------------------
     -- OPM品目情報VIEW条件
-    AND   gmd.item_id               =  xim1v.item_id
+    AND   gmd.item_id               =  ximv.item_id
     ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW3条件
-    AND   gmd.item_id               =  xic3v.item_id
-    AND   xic3v.item_class_code     =  gv_hinmoku_kbn_sizai                      -- 資材
+    -- OPM品目カテゴリ割当情報VIEW条件
+    AND   gmd.item_id               =  xicv.item_id
+    AND   xicv.item_class_code      =  gv_hinmoku_kbn_sizai                      -- 資材
     ------------------------------------------------------------------------
     ------------------------------------------------------------------------
     --以下変動条件
@@ -3278,8 +3322,8 @@ AS
     --生産原料詳細パラメータ条件
     AND   gmd.batch_id              =  iv_batch_id
     ------------------------------------------------------------------------
-    ORDER BY xic3v.item_class_code     -- OPM品目カテゴリ割当情報VIEW3.品目カテゴリコード
-            ,TO_NUMBER(xim1v.item_no)  -- OPM品目情報VIEW.品目コード
+    ORDER BY xicv.item_class_code      -- OPM品目カテゴリ割当情報VIEW.品目カテゴリコード
+            ,TO_NUMBER(ximv.item_no)   -- OPM品目情報VIEW.品目コード
     ;
 --
   EXCEPTION
@@ -3345,23 +3389,26 @@ AS
     -- ====================================================
     SELECT
            --以下処理用項目
-           TO_NUMBER(NULL)                         AS material_detail_id        -- ダミーカラム
-          ,TO_CHAR(NULL)                           AS tounyuguchi_kbn           -- ダミーカラム
+           TO_NUMBER(NULL)                                AS material_detail_id        -- ダミーカラム
+          ,TO_CHAR(NULL)                                  AS tounyuguchi_kbn           -- ダミーカラム
            --以下データ用項目
-          ,xim1v.item_no                           AS modori_sizai_hinmk_cd     -- OPM品目情報VIEW.品目コード
-          ,xim1v.item_short_name                   AS modori_sizai_hinmk_nm     -- OPM品目情報VIEW.品名・略称
-          ,TO_CHAR(NULL)                           AS modori_sizai_lot_no       -- ダミーカラム
-          ,TO_DATE(NULL)                           AS modori_sizaii_make_date   -- ダミーカラム
-          ,TO_NUMBER(NULL)                         AS modori_sizai_stock        -- ダミーカラム
-          ,xmd.return_qty                          AS modori_sizai_total        -- 生産原料詳細アドオン.戻入数量
-          ,xim1v.item_um                           AS modori_sizai_unit         -- OPM品目情報VIEW.単位
+          ,ximv.item_no                                   AS modori_sizai_hinmk_cd     -- OPM品目情報VIEW.品目コード
+          ,ximv.item_short_name                           AS modori_sizai_hinmk_nm     -- OPM品目情報VIEW.品名・略称
+          ,TO_CHAR(NULL)                                  AS modori_sizai_lot_no       -- ダミーカラム
+          ,TO_DATE(NULL)                                  AS modori_sizaii_make_date   -- ダミーカラム
+          ,TO_NUMBER(NULL)                                AS modori_sizai_stock        -- ダミーカラム
+          ,xmd.return_qty                                 AS modori_sizai_total        -- 生産原料詳細アドオン.戻入数量
+          ,ximv.item_um                                   AS modori_sizai_unit         -- OPM品目情報VIEW.単位
+-- 2008/12/17 v1.7 D.Nihei ADD START
+          ,NVL(TO_NUMBER(ximv.net) , gv_net_default_val) AS modori_sizai_net           -- OPM品目情報VIEW.NET
+-- 2008/12/17 v1.7 D.Nihei ADD END
 --
     BULK COLLECT INTO ot_reinyu_sizai_data
 --
     FROM   gme_material_details       gmd     -- 生産原料詳細
           ,xxwip_material_detail      xmd     -- 生産原料詳細アドオン
-          ,xxcmn_item_mst_v           xim1v   -- OPM品目情報VIEW
-          ,xxcmn_item_categories3_v   xic3v   -- OPM品目カテゴリ割当情報VIEW3
+          ,xxcmn_item_mst_v           ximv    -- OPM品目情報VIEW
+          ,xxcmn_item_categories5_v   xicv    -- OPM品目カテゴリ割当情報VIEW
     WHERE
     --以下固定条件
     ------------------------------------------------------------------------
@@ -3376,11 +3423,11 @@ AS
     AND   NVL(xmd.return_qty,0)     <> 0         -- 戻入数量が0でない
     ------------------------------------------------------------------------
     -- OPM品目情報VIEW条件
-    AND   gmd.item_id               =  xim1v.item_id
+    AND   gmd.item_id               =  ximv.item_id
     ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW3条件
-    AND   gmd.item_id               =  xic3v.item_id
-    AND   xic3v.item_class_code     =  gv_hinmoku_kbn_sizai                      -- 資材
+    -- OPM品目カテゴリ割当情報VIEW条件
+    AND   gmd.item_id               =  xicv.item_id
+    AND   xicv.item_class_code      =  gv_hinmoku_kbn_sizai                      -- 資材
     ------------------------------------------------------------------------
     ------------------------------------------------------------------------
     --以下変動条件
@@ -3388,8 +3435,8 @@ AS
     --生産原料詳細パラメータ条件
     AND   gmd.batch_id              =  iv_batch_id
     ------------------------------------------------------------------------
-    ORDER BY xic3v.item_class_code      -- OPM品目カテゴリ割当情報VIEW3.品目カテゴリコード
-            ,TO_NUMBER(xim1v.item_no)   -- OPM品目情報VIEW.品目コード
+    ORDER BY xicv.item_class_code      -- OPM品目カテゴリ割当情報VIEW.品目カテゴリコード
+            ,TO_NUMBER(ximv.item_no)   -- OPM品目情報VIEW.品目コード
     ;
 --
   EXCEPTION
@@ -3455,23 +3502,26 @@ AS
     -- ====================================================
     SELECT
            --以下処理用項目
-           TO_NUMBER(NULL)                         AS material_detail_id       -- ダミーカラム
-          ,TO_CHAR(NULL)                           AS tounyuguchi_kbn          -- ダミーカラム
+           TO_NUMBER(NULL)                                AS material_detail_id       -- ダミーカラム
+          ,TO_CHAR(NULL)                                  AS tounyuguchi_kbn          -- ダミーカラム
            --以下データ用項目
-          ,xim1v.item_no                           AS make_furyou_hinmk_cd     -- OPM品目情報VIEW.品目コード
-          ,xim1v.item_short_name                   AS make_furyou_hinmk_nm     -- OPM品目情報VIEW.品名・略称
-          ,TO_CHAR(NULL)                           AS make_furyou_lot_no       -- ダミーカラム
-          ,TO_DATE(NULL)                           AS make_furyou_make_date    -- ダミーカラム
-          ,TO_NUMBER(NULL)                         AS make_furyou_stock        -- ダミーカラム
-          ,xmd.mtl_prod_qty                        AS make_furyou_total        -- 生産原料詳細アドオン.資材製造不良数
-          ,xim1v.item_um                           AS make_furyou_unit         -- OPM品目情報VIEW.単位
+          ,ximv.item_no                                   AS make_furyou_hinmk_cd     -- OPM品目情報VIEW.品目コード
+          ,ximv.item_short_name                           AS make_furyou_hinmk_nm     -- OPM品目情報VIEW.品名・略称
+          ,TO_CHAR(NULL)                                  AS make_furyou_lot_no       -- ダミーカラム
+          ,TO_DATE(NULL)                                  AS make_furyou_make_date    -- ダミーカラム
+          ,TO_NUMBER(NULL)                                AS make_furyou_stock        -- ダミーカラム
+          ,xmd.mtl_prod_qty                               AS make_furyou_total        -- 生産原料詳細アドオン.資材製造不良数
+          ,ximv.item_um                                   AS make_furyou_unit         -- OPM品目情報VIEW.単位
+-- 2008/12/17 v1.7 D.Nihei ADD START
+          ,NVL(TO_NUMBER(ximv.net) , gv_net_default_val)  AS make_furyou_net          -- OPM品目情報VIEW.NET
+-- 2008/12/17 v1.7 D.Nihei ADD END
 --
     BULK COLLECT INTO ot_seizou_furyo_data
 --
     FROM   gme_material_details       gmd     -- 生産原料詳細
           ,xxwip_material_detail      xmd     -- 生産原料詳細アドオン
-          ,xxcmn_item_mst_v           xim1v   -- OPM品目情報VIEW
-          ,xxcmn_item_categories3_v   xic3v   -- OPM品目カテゴリ割当情報VIEW3
+          ,xxcmn_item_mst_v           ximv    -- OPM品目情報VIEW
+          ,xxcmn_item_categories5_v   xicv    -- OPM品目カテゴリ割当情報VIEW
     WHERE
     --以下固定条件
     ------------------------------------------------------------------------
@@ -3486,11 +3536,11 @@ AS
     AND   NVL(xmd.mtl_prod_qty,0)   <> 0         -- 資材製造不良数が0でない
     ------------------------------------------------------------------------
     -- OPM品目情報VIEW条件
-    AND   gmd.item_id               =  xim1v.item_id
+    AND   gmd.item_id               =  ximv.item_id
     ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW3条件
-    AND   gmd.item_id               =  xic3v.item_id
-    AND   xic3v.item_class_code     =  gv_hinmoku_kbn_sizai                      -- 資材
+    -- OPM品目カテゴリ割当情報VIEW条件
+    AND   gmd.item_id               =  xicv.item_id
+    AND   xicv.item_class_code      =  gv_hinmoku_kbn_sizai                      -- 資材
     ------------------------------------------------------------------------
     ------------------------------------------------------------------------
     --以下変動条件
@@ -3498,8 +3548,8 @@ AS
     --生産原料詳細パラメータ条件
     AND   gmd.batch_id              =  iv_batch_id
     ------------------------------------------------------------------------
-    ORDER BY xic3v.item_class_code      -- OPM品目カテゴリ割当情報VIEW3.品目カテゴリコード
-            ,TO_NUMBER(xim1v.item_no)   -- OPM品目情報VIEW.品目コード
+    ORDER BY xicv.item_class_code       -- OPM品目カテゴリ割当情報VIEW.品目カテゴリコード
+            ,TO_NUMBER(ximv.item_no)    -- OPM品目情報VIEW.品目コード
     ;
 --
   EXCEPTION
@@ -3565,23 +3615,26 @@ AS
     -- ====================================================
     SELECT
            --以下処理用項目
-           TO_NUMBER(NULL)                         AS material_detail_id         -- ダミーカラム
-          ,TO_CHAR(NULL)                           AS tounyuguchi_kbn            -- ダミーカラム
+           TO_NUMBER(NULL)                                AS material_detail_id         -- ダミーカラム
+          ,TO_CHAR(NULL)                                  AS tounyuguchi_kbn            -- ダミーカラム
            --以下データ用項目
-          ,xim1v.item_no                           AS gyosya_furyou_hinmk_cd     -- OPM品目情報VIEW.品目コード
-          ,xim1v.item_short_name                   AS gyosya_furyou_hinmk_nm     -- OPM品目情報VIEW.品名・略称
-          ,TO_CHAR(NULL)                           AS gyosya_furyou_lot_no       -- ダミーカラム
-          ,TO_DATE(NULL)                           AS gyosya_furyou_make_date    -- ダミーカラム
-          ,TO_NUMBER(NULL)                         AS gyosya_furyou_stock        -- ダミーカラム
-          ,xmd.mtl_mfg_qty                         AS gyosya_furyou_total        -- 生産原料詳細アドオン.資材業者不良数
-          ,xim1v.item_um                           AS gyosya_furyou_unit         -- OPM品目情報VIEW.単位
+          ,ximv.item_no                                   AS gyosya_furyou_hinmk_cd     -- OPM品目情報VIEW.品目コード
+          ,ximv.item_short_name                           AS gyosya_furyou_hinmk_nm     -- OPM品目情報VIEW.品名・略称
+          ,TO_CHAR(NULL)                                  AS gyosya_furyou_lot_no       -- ダミーカラム
+          ,TO_DATE(NULL)                                  AS gyosya_furyou_make_date    -- ダミーカラム
+          ,TO_NUMBER(NULL)                                AS gyosya_furyou_stock        -- ダミーカラム
+          ,xmd.mtl_mfg_qty                                AS gyosya_furyou_total        -- 生産原料詳細アドオン.資材業者不良数
+          ,ximv.item_um                                   AS gyosya_furyou_unit         -- OPM品目情報VIEW.単位
+-- 2008/12/17 v1.7 D.Nihei ADD START
+          ,NVL(TO_NUMBER(ximv.net) , gv_net_default_val)  AS gyosya_furyou_net          -- OPM品目情報VIEW.NET
+-- 2008/12/17 v1.7 D.Nihei ADD END
 --
     BULK COLLECT INTO ot_gyousha_furyo_data
 --
     FROM   gme_material_details       gmd     -- 生産原料詳細
           ,xxwip_material_detail      xmd     -- 生産原料詳細アドオン
-          ,xxcmn_item_mst_v           xim1v   -- OPM品目情報VIEW
-          ,xxcmn_item_categories3_v   xic3v   -- OPM品目カテゴリ割当情報VIEW3
+          ,xxcmn_item_mst_v           ximv    -- OPM品目情報VIEW
+          ,xxcmn_item_categories5_v   xicv    -- OPM品目カテゴリ割当情報VIEW
     WHERE
     --以下固定条件
     ------------------------------------------------------------------------
@@ -3596,11 +3649,11 @@ AS
     AND   NVL(xmd.mtl_mfg_qty,0)    <> 0         -- 資材業者不良数が0でない
     ------------------------------------------------------------------------
     -- OPM品目情報VIEW条件
-    AND   gmd.item_id               =  xim1v.item_id
+    AND   gmd.item_id               =  ximv.item_id
     ------------------------------------------------------------------------
-    -- OPM品目カテゴリ割当情報VIEW3条件
-    AND   gmd.item_id               =  xic3v.item_id
-    AND   xic3v.item_class_code     =  gv_hinmoku_kbn_sizai                      -- 資材
+    -- OPM品目カテゴリ割当情報VIEW条件
+    AND   gmd.item_id               =  xicv.item_id
+    AND   xicv.item_class_code      =  gv_hinmoku_kbn_sizai                      -- 資材
     ------------------------------------------------------------------------
     ------------------------------------------------------------------------
     --以下変動条件
@@ -3608,8 +3661,8 @@ AS
     --生産原料詳細パラメータ条件
     AND   gmd.batch_id              =  iv_batch_id
     ------------------------------------------------------------------------
-    ORDER BY xic3v.item_class_code      -- OPM品目カテゴリ割当情報VIEW3.品目カテゴリコード
-            ,TO_NUMBER(xim1v.item_no)   -- OPM品目情報VIEW.品目コード
+    ORDER BY xicv.item_class_code       -- OPM品目カテゴリ割当情報VIEW.品目カテゴリコード
+            ,TO_NUMBER(ximv.item_no)    -- OPM品目情報VIEW.品目コード
     ;
 --
   EXCEPTION
