@@ -9,6 +9,7 @@
 * 2008-12-17 1.0  SCS小川浩    新規作成
 * 2009-03-23 1.1  SCS柳平直人  [ST障害T1_0163]課題No.115取り込み
 * 2009-04-20 1.2  SCS柳平直人  [ST障害T1_0302]返却ボタン押下後表示不正対応
+* 2009-04-27 1.3  SCS柳平直人  [ST障害T1_0708]文字列チェック処理統一修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -466,4 +467,10 @@ public class XxcsoSpDecisionConstants
     TOKEN_VALUE_SALES_COND            = "売価別条件";
   public static final String
     TOKEN_VALUE_EMPLOYEE_NUMBER       = "社員番号";
+// 2009-04-27 [ST障害T1_0708] Add Start
+  public static final String
+    TOKEN_VALUE_SINGLE_BYTE_KANA_CHK  = "半角カナチェック";
+  public static final String
+    TOKEN_VALUE_DOUBLE_BYTE_CHK       = "全角文字チェック";
+// 2009-04-27 [ST障害T1_0708] Add End
 }

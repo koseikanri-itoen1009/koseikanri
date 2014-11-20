@@ -31,6 +31,8 @@ AS
  *  get_appr_auth_level_num_0 F    N     承認権限レベル番号（デフォルト）取得
  *  conv_number_separate      P    -     数値セパレート変換
  *  conv_line_number_separate P    -     数値セパレート変換（明細）
+ *  chk_double_byte           F    V     全角文字チェック（共通関数ラッピング）
+ *  chk_single_byte_kana      F    V     半角カナチェック（共通関数ラッピング）
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -41,6 +43,9 @@ AS
  *  2009/04/06    1.2   N.Yanagitaira    [障害T1_0316]回送先レコード更新処理修正
  *  2009/04/09    1.3   K.Satomura       [障害T1_0424]承認完了日・決裁日設定値修正
  *  2009/04/17    1.4   N.Yanagitaira    [障害T1_0536]通知ワークフロー送信元設定値修正
+ *  2009/04/27    1.3   N.Yanagitaira    [障害T1_0708]入力項目チェック処理統一修正
+ *                                                    chk_double_byte
+ *                                                    chk_single_byte_kana
  *****************************************************************************************/
 --
   -- ===============================
@@ -2347,6 +2352,93 @@ AS
 --
 --#####################################  固定部 END   ##########################################
   END conv_line_number_separate;
+--
+-- 20090427_N.Yanagitaira T1_0708 Add START
+  /**********************************************************************************
+   * Function Name    : chk_double_byte
+   * Description      : 全角文字チェック（共通関数ラッピング）
+   ***********************************************************************************/
+  FUNCTION chk_double_byte(
+    iv_value                       IN  VARCHAR2
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_double_byte';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_return_value              VARCHAR2(1);
+    lb_return_value              BOOLEAN;
+--
+  BEGIN
+--
+    lv_return_value := '1';
+--
+    lb_return_value := xxccp_common_pkg.chk_double_byte(iv_value);
+--
+    IF NOT ( lb_return_value ) THEN
+--
+      lv_return_value := '0';
+--
+    END IF;
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_double_byte;
+--
+  /**********************************************************************************
+   * Function Name    : chk_single_byte_kana
+   * Description      : 半角カナチェック（共通関数ラッピング）
+   ***********************************************************************************/
+  FUNCTION chk_single_byte_kana(
+    iv_value                       IN  VARCHAR2
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_single_byte_kana';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_return_value              VARCHAR2(1);
+    lb_return_value              BOOLEAN;
+--
+  BEGIN
+--
+    lv_return_value := '1';
+--
+    lb_return_value := xxccp_common_pkg.chk_single_byte_kana(iv_value);
+--
+    IF NOT ( lb_return_value ) THEN
+--
+      lv_return_value := '0';
+--
+    END IF;
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_single_byte_kana;
+--
+-- 20090427_N.Yanagitaira T1_0708 Add END
 --
 END xxcso_020001j_pkg;
 /

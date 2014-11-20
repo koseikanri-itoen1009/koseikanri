@@ -10,6 +10,7 @@
 * 2009-03-04 1.1  SCS¬ì_     ‰Û‘èˆê——No.73‘Î‰
 * 2009-03-23 1.2  SCS–ö•½’¼l   [STáŠQT1_0163]‰Û‘èNo.115æ‚è‚İ
 * 2009-04-14 1.3  SCS–ö•½’¼l   [STáŠQT1_0225]Œ_–ñævalidateC³
+* 2009-04-27 1.4  SCS–ö•½’¼l   [STáŠQT1_0294]”„‰¿•ÊğŒŠm’è–€”½‰fC³
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -2428,7 +2429,10 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
 
     fixedPriceListVo.initQuery(
       "XXCSO1_SP_RULE_SELL_PRICE"
-     ,"lookup_code"
+// 2009-04-27 [STáŠQT1_0294] Mod Start
+//     ,"lookup_code"
+     ,"TO_NUMBER(lookup_code)"
+// 2009-04-27 [STáŠQT1_0294] Mod End
     );
 
     // ‘S—eŠí‹æ•ª

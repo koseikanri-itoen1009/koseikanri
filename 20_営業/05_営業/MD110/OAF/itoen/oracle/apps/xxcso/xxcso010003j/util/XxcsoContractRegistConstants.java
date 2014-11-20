@@ -10,6 +10,7 @@
 * 2009-02-16 1.1  SCS柳平直人  [CT1-008]BM指定チェックボックス不正対応
 *                                       BM支払区分の追加
 * 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
+* 2009-04-27 1.3  SCS柳平直人  [ST障害T1_0708]文字列チェック処理統一修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -332,6 +333,14 @@ public class XxcsoContractRegistConstants
     TOKEN_VALUE_AR_GL_PERIOD_STATUS     = "AR会計期間クローズチェック";
   public static final String
     TOKEN_VALUE_BM_VENDOR_NAME          = "ＢＭ１送付先名～ＢＭ３送付先名";
+// 2009-04-27 [ST障害T1_0708] Add Start
+  public static final String
+    TOKEN_VALUE_BFA_SINGLE_BYTE_KANA_CHK = "BFA半角カナチェック";
+  public static final String
+    TOKEN_VALUE_SINGLE_BYTE_KANA_CHK    = "半角カナチェック";
+  public static final String
+    TOKEN_VALUE_DOUBLE_BYTE_CHK         = "全角文字チェック";
+// 2009-04-27 [ST障害T1_0708] Add End
 
   // PDF出力時付加文言
   public static final String

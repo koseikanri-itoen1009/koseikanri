@@ -19,19 +19,25 @@ AS
  *  chk_tel_format            F    V      電話番号チェック（共通関数ラッピング）
  *  chk_duplicate_vendor_name F    V      送付先名重複チェック
  *  get_authority             F    V      権限判定関数
- *  chk_single_byte_kana      F    V      半角カナチェック（共通関数ラッピング）
+ *  chk_bfa_single_byte_kana  F    V      半角カナチェック（BFA関数ラッピング）
  *  decode_cont_manage_info   F    V      契約管理情報分岐取得
  *  get_sales_charge          F    V      販売手数料発生可否判別
+ *  chk_double_byte           F    V      全角文字チェック（共通関数ラッピング）
+ *  chk_single_byte_kana      F    V      半角カナチェック（共通関数ラッピング）
+ *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/27    1.0   H.Ogawa          新規作成
- *  2009/02/16    1.0   N.Yanagitaira    [UT後修正]chk_single_byte_kana追加
+ *  2009/02/16    1.0   N.Yanagitaira    [UT後修正]chk_bfa_single_byte_kana追加
  *  2009/02/17    1.1   N.Yanagitaira    [CT1-012]decode_cont_manage_info追加
  *  2009/02/23    1.1   N.Yanagitaira    [内部障害-028]全角カナチェック処理不正修正
  *  2009/03/12    1.1   N.Yanagitaira    [CT2-058]get_sales_charge追加
  *  2009/04/03    1.2   N.Yanagitaira    [障害T1_0223]chk_duplicate_vendor_name修正
+ *  2009/04/27    1.3   N.Yanagitaira    [ST障害T1_0708]入力項目チェック処理統一修正
+ *                                                      chk_double_byte
+ *                                                      chk_single_byte_kana
  *****************************************************************************************/
 --
   -- ===============================
@@ -935,17 +941,17 @@ AS
   END get_authority;
 --
   /**********************************************************************************
-   * Function Name    : chk_single_byte_kana
-   * Description      : 半角カナチェック（共通関数ラッピング）
+   * Function Name    : chk_bfa_single_byte_kana
+   * Description      : 半角カナチェック（BFA関数ラッピング）
    ***********************************************************************************/
-  FUNCTION chk_single_byte_kana(
+  FUNCTION chk_bfa_single_byte_kana(
     iv_value                       IN  VARCHAR2
   ) RETURN VARCHAR2
   IS
     -- ===============================
     -- 固定ローカル定数
     -- ===============================
-    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_single_byte_kana';
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_bfa_single_byte_kana';
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -976,7 +982,7 @@ AS
       xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
 --
 --#####################################  固定部 END   ##########################################
-  END chk_single_byte_kana;
+  END chk_bfa_single_byte_kana;
 --
   /**********************************************************************************
    * Function Name    : decode_cont_manage_info
@@ -1127,6 +1133,93 @@ AS
 --
 --#####################################  固定部 END   ##########################################
   END get_sales_charge;
+--
+-- 20090427_N.Yanagitaira T1_0708 Add START
+  /**********************************************************************************
+   * Function Name    : chk_double_byte
+   * Description      : 全角文字チェック（共通関数ラッピング）
+   ***********************************************************************************/
+  FUNCTION chk_double_byte(
+    iv_value                       IN  VARCHAR2
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_double_byte';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_return_value              VARCHAR2(1);
+    lb_return_value              BOOLEAN;
+--
+  BEGIN
+--
+    lv_return_value := '1';
+--
+    lb_return_value := xxccp_common_pkg.chk_double_byte(iv_value);
+--
+    IF NOT ( lb_return_value ) THEN
+--
+      lv_return_value := '0';
+--
+    END IF;
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_double_byte;
+--
+  /**********************************************************************************
+   * Function Name    : chk_single_byte_kana
+   * Description      : 半角カナチェック（共通関数ラッピング）
+   ***********************************************************************************/
+  FUNCTION chk_single_byte_kana(
+    iv_value                       IN  VARCHAR2
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_single_byte_kana';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_return_value              VARCHAR2(1);
+    lb_return_value              BOOLEAN;
+--
+  BEGIN
+--
+    lv_return_value := '1';
+--
+    lb_return_value := xxccp_common_pkg.chk_single_byte_kana(iv_value);
+--
+    IF NOT ( lb_return_value ) THEN
+--
+      lv_return_value := '0';
+--
+    END IF;
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_single_byte_kana;
+--
+-- 20090427_N.Yanagitaira T1_0708 Add END
 --
 END xxcso_010003j_pkg;
 /

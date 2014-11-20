@@ -11,6 +11,7 @@
 *                              [CT1障害]BM口座名義カナ半角カナチェック修正
 * 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
 * 2009-04-09 1.3  SCS柳平直人  [ST障害T1_0327]月末締翌20日払チェック処理修正
+* 2009-04-27 1.4  SCS柳平直人  [ST障害T1_0708]入力項目チェック処理統一修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -121,6 +122,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, cntrctVoRow.getContractName() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_INFO
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_NAME
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 代表者名
@@ -146,6 +162,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, cntrctVoRow.getDelegateName() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_INFO
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_DELEGATE_NAME
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 郵便番号
@@ -199,6 +230,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, cntrctVoRow.getPrefectures() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_INFO
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_PREFECTURES
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 市・区
@@ -224,6 +270,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, cntrctVoRow.getCityWard() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_INFO
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_CITY_WARD
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 住所１
@@ -249,12 +310,27 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, cntrctVoRow.getAddress1() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_INFO
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_ADDRESS_1
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 住所２
     // ///////////////////////////////////
     token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_ADDRESS_1;
+            + XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_ADDRESS_2;
     // 禁則文字チェック
     errorList
       = utils.checkIllegalString(
@@ -263,6 +339,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, cntrctVoRow.getAddress2() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_INFO
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CONTRACT_ADDRESS_2
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 契約書発行日
@@ -567,6 +658,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm1DestVoRow.getPaymentName() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_PAYMENT_NAME
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先名カナ
@@ -593,12 +699,26 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
-    // 全角カナチェック
-    if ( ! isDoubleByteKana(txn, bm1DestVoRow.getPaymentNameAlt()) )
+// 2009-04-27 [ST障害T1_0708] Mod Start
+//    // 全角カナチェック
+//    if ( ! isDoubleByteKana(txn, bm1DestVoRow.getPaymentNameAlt()) )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00286
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_PAYMENT_NAME_ALT
+//          );
+//      errorList.add(error);
+//    }
+    // 半角カナチェック
+    if ( ! isSingleByteKana( txn, bm1DestVoRow.getPaymentNameAlt() ) )
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00286
+            XxcsoConstants.APP_XXCSO1_00533
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
            ,XxcsoConstants.TOKEN_COLUMN
@@ -606,6 +726,7 @@ public class XxcsoContractRegistValidateUtils
           );
       errorList.add(error);
     }
+// 2009-04-27 [ST障害T1_0708] Mod End
 
     // ///////////////////////////////////
     // 送付先住所（郵便番号）
@@ -658,6 +779,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm1DestVoRow.getPrefectures() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先住所（市・区）
@@ -683,6 +819,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm1DestVoRow.getCityWard() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先住所（住所１）
@@ -708,6 +859,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm1DestVoRow.getAddress1() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_ADDRESS_1
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先住所（住所２）
@@ -722,6 +888,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm1DestVoRow.getAddress2() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_ADDRESS_2
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先電話番号
@@ -825,8 +1006,8 @@ public class XxcsoContractRegistValidateUtils
          ,0
         );
 
-    // 半角カナチェック
-    if ( ! isSingleByteKana(txn, bm1BankAccVoRow.getBankAccountNameKana()) )
+    // 半角カナチェック（BFA関数）
+    if ( ! isBfaSingleByteKana(txn, bm1BankAccVoRow.getBankAccountNameKana()) )
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
@@ -863,6 +1044,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm1BankAccVoRow.getBankAccountNameKanji() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     XxcsoUtils.debug(txn, "[END]");
     return errorList;
@@ -995,6 +1191,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm2DestVoRow.getPaymentName() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_PAYMENT_NAME
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先名カナ
@@ -1021,12 +1232,26 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
-    // 全角カナチェック
-    if ( ! isDoubleByteKana(txn, bm2DestVoRow.getPaymentNameAlt()) )
+// 2009-04-27 [ST障害T1_0708] Mod Start
+//    // 全角カナチェック
+//    if ( ! isDoubleByteKana(txn, bm2DestVoRow.getPaymentNameAlt()) )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00286
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_PAYMENT_NAME_ALT
+//          );
+//      errorList.add(error);
+//    }
+      // 半角カナチェック
+    if ( ! isSingleByteKana( txn, bm2DestVoRow.getPaymentNameAlt() ) )
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00286
+            XxcsoConstants.APP_XXCSO1_00533
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
            ,XxcsoConstants.TOKEN_COLUMN
@@ -1034,6 +1259,7 @@ public class XxcsoContractRegistValidateUtils
           );
       errorList.add(error);
     }
+// 2009-04-27 [ST障害T1_0708] Mod End
 
     // ///////////////////////////////////
     // 送付先住所（郵便番号）
@@ -1087,6 +1313,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm2DestVoRow.getPrefectures() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先住所（市・区）
@@ -1112,6 +1353,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm2DestVoRow.getCityWard() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先住所（住所１）
@@ -1137,6 +1393,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm2DestVoRow.getAddress1() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_ADDRESS_1
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先住所（住所２）
@@ -1151,6 +1422,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm2DestVoRow.getAddress2() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_ADDRESS_2
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先電話番号
@@ -1254,8 +1540,8 @@ public class XxcsoContractRegistValidateUtils
          ,0
         );
 
-    // 半角カナチェック
-    if ( ! isSingleByteKana(txn, bm2BankAccVoRow.getBankAccountNameKana()) )
+    // 半角カナチェック（BFA関数）
+    if ( ! isBfaSingleByteKana(txn, bm2BankAccVoRow.getBankAccountNameKana()) )
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
@@ -1292,6 +1578,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm2BankAccVoRow.getBankAccountNameKanji() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     XxcsoUtils.debug(txn, "[END]");
 
@@ -1424,6 +1725,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm3DestVoRow.getPaymentName() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_PAYMENT_NAME
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先名カナ
@@ -1450,12 +1766,26 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
-    // 全角カナチェック
-    if ( ! isDoubleByteKana(txn, bm3DestVoRow.getPaymentNameAlt()) )
+// 2009-04-27 [ST障害T1_0708] Mod Start
+//    // 全角カナチェック
+//    if ( ! isDoubleByteKana(txn, bm3DestVoRow.getPaymentNameAlt()) )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00286
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_PAYMENT_NAME_ALT
+//          );
+//      errorList.add(error);
+//    }
+    // 半角カナチェック
+    if ( ! isSingleByteKana( txn, bm3DestVoRow.getPaymentNameAlt() ) )
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00286
+            XxcsoConstants.APP_XXCSO1_00533
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
            ,XxcsoConstants.TOKEN_COLUMN
@@ -1463,6 +1793,7 @@ public class XxcsoContractRegistValidateUtils
           );
       errorList.add(error);
     }
+// 2009-04-27 [ST障害T1_0708] Mod End
 
     // ///////////////////////////////////
     // 送付先住所（郵便番号）
@@ -1516,6 +1847,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm3DestVoRow.getPrefectures() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先住所（市・区）
@@ -1541,6 +1887,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm3DestVoRow.getCityWard() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先住所（住所１）
@@ -1566,6 +1927,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm3DestVoRow.getAddress1() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_ADDRESS_1
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先住所（住所２）
@@ -1580,6 +1956,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm3DestVoRow.getAddress2() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_ADDRESS_2
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 送付先電話番号
@@ -1685,7 +2076,7 @@ public class XxcsoContractRegistValidateUtils
          ,0
         );
     // 半角カナチェック
-    if ( ! isSingleByteKana(txn, bm3BankAccVoRow.getBankAccountNameKana()) )
+    if ( ! isBfaSingleByteKana(txn, bm3BankAccVoRow.getBankAccountNameKana()) )
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
@@ -1722,6 +2113,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, bm3BankAccVoRow.getBankAccountNameKanji() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add Start
 
     XxcsoUtils.debug(txn, "[END]");
 
@@ -1788,6 +2194,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, contMngVoRow.getInstallPartyName() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_INFO
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_PARTY_NAME
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 設置先住所（郵便番号）
@@ -1843,6 +2264,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, contMngVoRow.getInstallState() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_INFO
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_STATE
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 設置先住所（市・区）
@@ -1868,6 +2304,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, contMngVoRow.getInstallCity() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_INFO
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_CITY
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 設置先住所（住所１）
@@ -1893,6 +2344,21 @@ public class XxcsoContractRegistValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, contMngVoRow.getInstallAddress1() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_INFO
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_ADDRESS1
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 設置先住所（住所２）
@@ -1903,10 +2369,25 @@ public class XxcsoContractRegistValidateUtils
     errorList
       = utils.checkIllegalString(
           errorList
-         ,contMngVoRow.getInstallAddress1()
+         ,contMngVoRow.getInstallAddress2()
          ,token1
          ,0
         );
+// 2009-04-27 [ST障害T1_0708] Add Start
+    // 全角文字チェック
+    if ( ! isDoubleByte( txn, contMngVoRow.getInstallAddress2() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_INFO
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_ADDRESS2
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [ST障害T1_0708] Add End
 
     // ///////////////////////////////////
     // 設置日
@@ -2792,13 +3273,13 @@ public class XxcsoContractRegistValidateUtils
   }
 
   /*****************************************************************************
-   * 半角カナの検証
+   * 半角カナの検証（BFA関数）
    * @param txn                 OADBTransactionインスタンス
    * @param value               チェック対象の値
    * @return boolean            検証結果
    *****************************************************************************
    */
-  private static boolean isSingleByteKana(
+  private static boolean isBfaSingleByteKana(
     OADBTransaction   txn
    ,String            value
   )
@@ -2815,7 +3296,7 @@ public class XxcsoContractRegistValidateUtils
     {
       StringBuffer sql = new StringBuffer(100);
       sql.append("BEGIN");
-      sql.append("  :1 := xxcso_010003j_pkg.chk_single_byte_kana(:2);");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_bfa_single_byte_kana(:2);");
       sql.append("END;");
 
       stmt
@@ -2839,7 +3320,7 @@ public class XxcsoContractRegistValidateUtils
       throw
         XxcsoMessage.createSqlErrorMessage(
           e
-         ,XxcsoContractRegistConstants.TOKEN_VALUE_DOUBLE_BYTE_KANA_CHK
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_BFA_SINGLE_BYTE_KANA_CHK
         );
     }
     finally
@@ -3235,5 +3716,142 @@ public class XxcsoContractRegistValidateUtils
   }
 // 2009-04-08 [ST障害T1_0364] Add End
 
+// 2009-04-27 [ST障害T1_0708] Add Start
+  /*****************************************************************************
+   * 全角文字の検証
+   * @param txn                 OADBTransactionインスタンス
+   * @param value               チェック対象の値
+   * @return boolean            検証結果
+   *****************************************************************************
+   */
+  private static boolean isDoubleByte(
+    OADBTransaction   txn
+   ,String            value
+  )
+  {
+    OracleCallableStatement stmt = null;
+    boolean returnValue = true;
+
+    if ( value == null || "".equals(value.trim()) )
+    {
+      return true;
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_double_byte(:2);");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setString(2, value);
+
+      stmt.execute();
+
+      String returnString = stmt.getString(1);
+      if ( ! "1".equals(returnString) )
+      {
+        returnValue = false;
+      }
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_DOUBLE_BYTE_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+
+  /*****************************************************************************
+   * 半角カナの検証（共通関数）
+   * @param txn                 OADBTransactionインスタンス
+   * @param value               チェック対象の値
+   * @return boolean            検証結果
+   *****************************************************************************
+   */
+  private static boolean isSingleByteKana(
+    OADBTransaction   txn
+   ,String            value
+  )
+  {
+    OracleCallableStatement stmt = null;
+    boolean returnValue = true;
+
+    if ( value == null || "".equals(value.trim()) )
+    {
+      return true;
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_single_byte_kana(:2);");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setString(2, value);
+
+      stmt.execute();
+
+      String returnString = stmt.getString(1);
+      if ( ! "1".equals(returnString) )
+      {
+        returnValue = false;
+      }
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_SINGLE_BYTE_KANA_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+// 2009-04-27 [ST障害T1_0708] Add End
 
 }

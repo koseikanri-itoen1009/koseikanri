@@ -10,6 +10,7 @@
 * 2009-03-04 1.1  SCSè¨êÏç_     â€ëËàÍóóNo.73ëŒâû
 * 2009-03-23 1.2  SCSñˆïΩíºêl   [STè·äQT1_0163]â€ëËNo.115éÊÇËçûÇ›
 * 2009-04-13 1.3  SCSñˆïΩíºêl   [STè·äQT1_0225]å_ñÒêÊvalidateèCê≥
+* 2009-04-27 1.4  SCSñˆïΩíºêl   [STè·äQT1_0708]ì¸óÕçÄñ⁄É`ÉFÉbÉNèàóùìùàÍèCê≥
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -114,7 +115,25 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
-    
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,installRow.getPartyName()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_INST_PARTY_NAME
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
+
     /////////////////////////////////////
     // ê›íuêÊÅFå⁄ãqñºÅiÉJÉiÅj
     /////////////////////////////////////
@@ -128,7 +147,25 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
-    if ( ! isDoubleByteKana(
+// 2009-04-27 [STè·äQT1_0708] Mod Start
+//    if ( ! isDoubleByteKana(
+//             txn
+//            ,installRow.getPartyNameAlt()
+//           )
+//       )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00286
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_INST_PARTY_NAME_ALT
+//          );
+//      errorList.add(error);
+//    }
+    // îºäpÉJÉiÉ`ÉFÉbÉN
+    if ( ! isSingleByteKana(
              txn
             ,installRow.getPartyNameAlt()
            )
@@ -136,7 +173,7 @@ public class XxcsoSpDecisionValidateUtils
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00286
+            XxcsoConstants.APP_XXCSO1_00533
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
            ,XxcsoConstants.TOKEN_COLUMN
@@ -144,7 +181,40 @@ public class XxcsoSpDecisionValidateUtils
           );
       errorList.add(error);
     }
-    
+// 2009-04-27 [STè·äQT1_0708] Mod End
+
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    /////////////////////////////////////
+    // ê›íuêÊÅFê›íuêÊñº
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_INST_NAME;
+    errorList
+      = utils.checkIllegalString(
+          errorList
+         ,installRow.getInstallName()
+         ,token1
+         ,0
+        );
+    if ( ! isDoubleByte(
+             txn
+            ,installRow.getInstallName()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_INST_NAME
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
+
     /////////////////////////////////////
     // ê›íuêÊÅFóXï÷î‘çÜ
     /////////////////////////////////////
@@ -209,6 +279,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,installRow.getState()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_STATE
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // ê›íuêÊÅFésÅEãÊ
@@ -233,6 +321,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,installRow.getCity()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_CITY
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // ê›íuêÊÅFèZèä1
@@ -257,6 +363,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,installRow.getAddress1()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS1
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // ê›íuêÊÅFèZèä2
@@ -271,6 +395,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,installRow.getAddress2()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS2
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // ê›íuêÊÅFìdòbî‘çÜ
@@ -537,6 +679,25 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+      if ( ! isDoubleByte(
+               txn
+              ,cntrctRow.getPartyName()
+             )
+         )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00565
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTR_PARTY_NAME
+            );
+        errorList.add(error);
+      }
+// 2009-04-27 [STè·äQT1_0708] Add End
+
 // 2009-04-03 [STè·äQT1_0225] Add Start
     }
 // 2009-04-03 [STè·äQT1_0225] Add End
@@ -558,22 +719,41 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
-    if ( ! isDoubleByteKana(
-             txn
-            ,cntrctRow.getPartyNameAlt()
-           )
-       )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00286
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTR_PARTY_NAME_ALT
-          );
-      errorList.add(error);
-    }
+// 2009-04-27 [STè·äQT1_0708] Mod Start
+//    if ( ! isDoubleByteKana(
+//             txn
+//            ,cntrctRow.getPartyNameAlt()
+//           )
+//       )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00286
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTR_PARTY_NAME_ALT
+//          );
+//      errorList.add(error);
+//    }
+      // îºäpÉJÉiÉ`ÉFÉbÉN
+      if ( ! isSingleByteKana(
+               txn
+              ,cntrctRow.getPartyNameAlt()
+             )
+         )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00533
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTR_PARTY_NAME_ALT
+            );
+        errorList.add(error);
+      }
+// 2009-04-27 [STè·äQT1_0708] Mod End
 // 2009-04-03 [STè·äQT1_0225] Add Start
     }
 // 2009-04-03 [STè·äQT1_0225] Add End
@@ -652,6 +832,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+      if ( ! isDoubleByte(
+               txn
+              ,cntrctRow.getState()
+             )
+         )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00565
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_STATE
+            );
+        errorList.add(error);
+      }
+// 2009-04-27 [STè·äQT1_0708] Add End
 // 2009-04-03 [STè·äQT1_0225] Add Start
     }
 // 2009-04-03 [STè·äQT1_0225] Add End
@@ -683,6 +881,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+      if ( ! isDoubleByte(
+               txn
+              ,cntrctRow.getCity()
+             )
+         )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00565
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CITY
+            );
+        errorList.add(error);
+      }
+// 2009-04-27 [STè·äQT1_0708] Add End
 // 2009-04-03 [STè·äQT1_0225] Add Start
     }
 // 2009-04-03 [STè·äQT1_0225] Add End
@@ -714,6 +930,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+      if ( ! isDoubleByte(
+               txn
+              ,cntrctRow.getAddress1()
+             )
+         )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00565
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS1
+            );
+        errorList.add(error);
+      }
+// 2009-04-27 [STè·äQT1_0708] Add End
 // 2009-04-03 [STè·äQT1_0225] Add Start
     }
 // 2009-04-03 [STè·äQT1_0225] Add End
@@ -735,6 +969,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+      if ( ! isDoubleByte(
+               txn
+              ,cntrctRow.getAddress2()
+             )
+         )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00565
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS2
+            );
+        errorList.add(error);
+      }
+// 2009-04-27 [STè·äQT1_0708] Add End
 // 2009-04-03 [STè·äQT1_0225] Add Start
     }
 // 2009-04-03 [STè·äQT1_0225] Add End
@@ -777,6 +1029,25 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+      if ( ! isDoubleByte(
+               txn
+              ,cntrctRow.getRepresentativeName()
+             )
+         )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00565
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_REGION
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_DELEGATE
+            );
+        errorList.add(error);
+      }
+// 2009-04-27 [STè·äQT1_0708] Add End
+
 // 2009-04-03 [STè·äQT1_0225] Add Start
     }
 // 2009-04-03 [STè·äQT1_0225] Add End
@@ -1179,7 +1450,25 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
-    
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm1Row.getPartyName()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM_PARTY_NAME
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
+
     /////////////////////////////////////
     // BM1ÅFëóïtêÊñºÅiÉJÉiÅj
     /////////////////////////////////////
@@ -1203,15 +1492,33 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
-    if ( ! isDoubleByteKana(
+// 2009-04-27 [STè·äQT1_0708] Mod Start
+//    if ( ! isDoubleByteKana(
+//             txn
+//            ,bm1Row.getPartyNameAlt()
+//           )
+//       )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00286
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM_PARTY_NAME_ALT
+//          );
+//      errorList.add(error);
+//    }
+    // îºäpÉJÉiÉ`ÉFÉbÉN
+    if ( ! isSingleByteKana(
              txn
             ,bm1Row.getPartyNameAlt()
-           )
+            )
        )
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00286
+            XxcsoConstants.APP_XXCSO1_00533
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION
            ,XxcsoConstants.TOKEN_COLUMN
@@ -1219,6 +1526,7 @@ public class XxcsoSpDecisionValidateUtils
           );
       errorList.add(error);
     }
+// 2009-04-27 [STè·äQT1_0708] Mod End
     
     /////////////////////////////////////
     // BM1ÅFóXï÷î‘çÜ
@@ -1284,6 +1592,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm1Row.getState()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_STATE
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM1ÅFésÅEãÊ
@@ -1308,6 +1634,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm1Row.getCity()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_CITY
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM1ÅFèZèä1
@@ -1332,6 +1676,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm1Row.getAddress1()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS1
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM1ÅFèZèä2
@@ -1346,6 +1708,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm1Row.getAddress2()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS2
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM1ÅFìdòbî‘çÜ
@@ -1448,6 +1828,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm2Row.getPartyName()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,regionName
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM_PARTY_NAME
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
     
     /////////////////////////////////////
     // BM2ÅFëóïtêÊñºÅiÉJÉiÅj
@@ -1472,7 +1870,25 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
-    if ( ! isDoubleByteKana(
+// 2009-04-27 [STè·äQT1_0708] Mod Start
+//    if ( ! isDoubleByteKana(
+//             txn
+//            ,bm2Row.getPartyNameAlt()
+//           )
+//       )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00286
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,regionName
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM_PARTY_NAME_ALT
+//          );
+//      errorList.add(error);
+//    }
+    // îºäpÉJÉiÉ`ÉFÉbÉN
+    if ( ! isSingleByteKana(
              txn
             ,bm2Row.getPartyNameAlt()
            )
@@ -1480,7 +1896,7 @@ public class XxcsoSpDecisionValidateUtils
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00286
+            XxcsoConstants.APP_XXCSO1_00533
            ,XxcsoConstants.TOKEN_REGION
            ,regionName
            ,XxcsoConstants.TOKEN_COLUMN
@@ -1488,6 +1904,7 @@ public class XxcsoSpDecisionValidateUtils
           );
       errorList.add(error);
     }
+// 2009-04-27 [STè·äQT1_0708] Mod End
     
     /////////////////////////////////////
     // BM2ÅFóXï÷î‘çÜ
@@ -1552,6 +1969,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm2Row.getState()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,regionName
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_STATE
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM2ÅFésÅEãÊ
@@ -1576,6 +2011,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm2Row.getCity()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,regionName
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_CITY
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM2ÅFèZèä1
@@ -1600,6 +2053,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm2Row.getAddress1()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,regionName
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS1
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM2ÅFèZèä2
@@ -1614,6 +2085,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm2Row.getAddress2()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,regionName
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS2
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM2ÅFìdòbî‘çÜ
@@ -1703,6 +2192,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm3Row.getPartyName()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM_PARTY_NAME
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
     
     /////////////////////////////////////
     // BM3ÅFëóïtêÊñºÅiÉJÉiÅj
@@ -1727,7 +2234,25 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
-    if ( ! isDoubleByteKana(
+// 2009-04-27 [STè·äQT1_0708] Add Start
+//    if ( ! isDoubleByteKana(
+//             txn
+//            ,bm3Row.getPartyNameAlt()
+//           )
+//       )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00286
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM_PARTY_NAME_ALT
+//          );
+//      errorList.add(error);
+//    }
+    // îºäpÉJÉiÉ`ÉFÉbÉN
+    if ( ! isSingleByteKana(
              txn
             ,bm3Row.getPartyNameAlt()
            )
@@ -1735,7 +2260,7 @@ public class XxcsoSpDecisionValidateUtils
     {
       OAException error
         = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00286
+            XxcsoConstants.APP_XXCSO1_00533
            ,XxcsoConstants.TOKEN_REGION
            ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION
            ,XxcsoConstants.TOKEN_COLUMN
@@ -1743,6 +2268,7 @@ public class XxcsoSpDecisionValidateUtils
           );
       errorList.add(error);
     }
+// 2009-04-27 [STè·äQT1_0708] Add End
     
     /////////////////////////////////////
     // BM3ÅFóXï÷î‘çÜ
@@ -1808,6 +2334,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm3Row.getState()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_STATE
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM3ÅFésÅEãÊ
@@ -1832,6 +2376,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm3Row.getCity()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_CITY
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM3ÅFèZèä1
@@ -1856,6 +2418,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm3Row.getAddress1()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS1
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM3ÅFèZèä2
@@ -1870,6 +2450,24 @@ public class XxcsoSpDecisionValidateUtils
          ,token1
          ,0
         );
+// 2009-04-27 [STè·äQT1_0708] Add Start
+    if ( ! isDoubleByte(
+             txn
+            ,bm3Row.getAddress2()
+           )
+       )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00565
+           ,XxcsoConstants.TOKEN_REGION
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION
+           ,XxcsoConstants.TOKEN_COLUMN
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_ADDRESS2
+          );
+      errorList.add(error);
+    }
+// 2009-04-27 [STè·äQT1_0708] Add End
 
     /////////////////////////////////////
     // BM3ÅFìdòbî‘çÜ
@@ -4838,4 +5436,143 @@ public class XxcsoSpDecisionValidateUtils
 
     return returnValue;
   }
+
+// 2009-04-27 [STè·äQT1_0708] Add Start
+  /*****************************************************************************
+   * ëSäpï∂éöÇÃåüèÿ
+   * @param txn                 OADBTransactionÉCÉìÉXÉ^ÉìÉX
+   * @param value               É`ÉFÉbÉNëŒè€ÇÃíl
+   * @return boolean            åüèÿåãâ 
+   *****************************************************************************
+   */
+  private static boolean isDoubleByte(
+    OADBTransaction   txn
+   ,String            value
+  )
+  {
+    OracleCallableStatement stmt = null;
+    boolean returnValue = true;
+
+    if ( value == null || "".equals(value.trim()) )
+    {
+      return true;
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_020001j_pkg.chk_double_byte(:2);");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setString(2, value);
+
+      stmt.execute();
+
+      String returnString = stmt.getString(1);
+      if ( ! "1".equals(returnString) )
+      {
+        returnValue = false;
+      }
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoSpDecisionConstants.TOKEN_VALUE_DOUBLE_BYTE_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+
+  /*****************************************************************************
+   * îºäpÉJÉiÇÃåüèÿÅiã§í ä÷êîÅj
+   * @param txn                 OADBTransactionÉCÉìÉXÉ^ÉìÉX
+   * @param value               É`ÉFÉbÉNëŒè€ÇÃíl
+   * @return boolean            åüèÿåãâ 
+   *****************************************************************************
+   */
+  private static boolean isSingleByteKana(
+    OADBTransaction   txn
+   ,String            value
+  )
+  {
+    OracleCallableStatement stmt = null;
+    boolean returnValue = true;
+
+    if ( value == null || "".equals(value.trim()) )
+    {
+      return true;
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_020001j_pkg.chk_single_byte_kana(:2);");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setString(2, value);
+
+      stmt.execute();
+
+      String returnString = stmt.getString(1);
+      if ( ! "1".equals(returnString) )
+      {
+        returnValue = false;
+      }
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoSpDecisionConstants.TOKEN_VALUE_SINGLE_BYTE_KANA_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+// 2009-04-27 [STè·äQT1_0708] Add End
+
 }

@@ -33,13 +33,17 @@ AS
  *  chk_tel_format            F    V     電話番号チェック（共通関数ラッピング）
  *  conv_number_separate      P    -     数値セパレート変換
  *  conv_line_number_separate P    -     数値セパレート変換（明細）
+ *  chk_double_byte           F    V      全角文字チェック（共通関数ラッピング）
+ *  chk_single_byte_kana      F    V      半角カナチェック（共通関数ラッピング）
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/23    1.0   H.Ogawa          新規作成
- *
+ *  2009/04/27    1.1   N.Yanagitaira    [障害T1_0708]入力項目チェック処理統一修正
+ *                                                    chk_double_byte
+ *                                                    chk_single_byte_kana
  *****************************************************************************************/
 --
   -- トランザクション初期化処理
@@ -289,6 +293,18 @@ AS
    ,ov_bm3_bm_rate                  OUT VARCHAR2
    ,ov_bm3_bm_amount                OUT VARCHAR2
   );
+--
+-- 20090427_N.Yanagitaira T1_0708 Add START
+  -- 全角文字チェック（共通関数ラッピング）
+  FUNCTION chk_double_byte(
+    iv_value                       IN  VARCHAR2
+  ) RETURN VARCHAR2;
+--
+  -- 半角カナ文字チェック（共通関数ラッピング）
+  FUNCTION chk_single_byte_kana(
+    iv_value                       IN  VARCHAR2
+  ) RETURN VARCHAR2;
+-- 20090427_N.Yanagitaira T1_0708 Add END
 --
 END xxcso_020001j_pkg;
 /
