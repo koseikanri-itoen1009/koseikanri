@@ -7,7 +7,7 @@ CREATE TABLE xxwip.xxwip_transfer_fare_inf
   delivery_date           DATE,
   jurisdicyional_hub      VARCHAR2(4)     NOT NULL,
   delivery_whs            VARCHAR2(4)     NOT NULL,
-  ship_to                 VARCHAR2(4)     NOT NULL,
+  ship_to                 VARCHAR2(9)     NOT NULL,
   item_code               VARCHAR2(32)    NOT NULL,
   price                   NUMBER(4,0)     NOT NULL,
   calc_qry                NUMBER(8,0)     NOT NULL,
