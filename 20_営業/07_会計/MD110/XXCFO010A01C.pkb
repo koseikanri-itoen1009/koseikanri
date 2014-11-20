@@ -7,7 +7,7 @@ AS
  * Description     : 情報系システムへのデータ連携（勘定科目明細）
  * MD.050          : MD050_CFO_010_A01_情報系システムへのデータ連携（勘定科目明細）
  * MD.070          : MD050_CFO_010_A01_情報系システムへのデータ連携（勘定科目明細）
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ------------- -------------------------------------
  *  2008-11-19    1.0  SCS 加藤 忠   初回作成
  *  2009-07-09    1.1  SCS 佐々木    [0000019]パフォーマンス改善
+ *  2009-08-04    1.2  SCS 廣瀬      [0000928]パフォーマンス改善
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -517,7 +518,18 @@ AS
     -- 勘定科目明細データ抽出
     CURSOR get_account_sum_no_param_cur
     IS
-      SELECT glcc.segment1                             segment1,
+-- == 2009/08/04 V1.2 Modified START ===============================================================
+--      SELECT glcc.segment1                             segment1,
+      SELECT /*+ ORDERED
+                 USE_NL(inlv1.glps1 gljh gljl gsob glcc gljs fnss)
+                 INDEX(gljh GL_JE_HEADERS_N2)
+                 INDEX(gsob GL_SETS_OF_BOOKS_U2)
+                 INDEX(gljl GL_JE_LINES_U1 )
+                 INDEX(glcc GL_CODE_COMBINATIONS_U1)
+                 INDEX(gljs GL_JE_SOURCES_TL_U1)
+             */
+             glcc.segment1                             segment1,
+-- == 2009/08/04 V1.2 Modified END   ===============================================================
              TO_CHAR( gljl.effective_date,'YYYYMMDD' ) effective_date,
              glcc.segment2                             segment2,
              glcc.segment3                             segment3,
@@ -528,39 +540,69 @@ AS
              SUM(DECODE( glcc.account_type,cv_account_type_e,
                           NVL( gljl.entered_dr,0 ) - NVL( gljl.entered_cr,0 ),
                           NVL( gljl.entered_cr,0 ) - NVL( gljl.entered_dr,0 ))) entered_sum
-      FROM gl_je_sources        gljs,
-           gl_je_headers        gljh,
-           gl_je_lines          gljl,
-           gl_code_combinations glcc,
-           fnd_lookup_values    fnss, -- クイックコード(売上仕訳ソース)
--- == 2009/07/09 V1.1 Modified START ===============================================================
---           ( SELECT glps1.period_name period_name
---             FROM   gl_period_statuses glps1
---             WHERE EXISTS (
---                   SELECT 'X'
---                   FROM ( SELECT TRUNC( glps2.start_date,'MM' ) start_date,
---                                 LAST_DAY( glps2.end_date )     end_date
---                          FROM gl_period_statuses glps2
---                          WHERE glps2.set_of_books_id = gn_set_of_bks_id
---                            AND glps2.application_id  = gn_appl_id_gl
---                            AND glps2.closing_status  = cv_closing_status_o
---                          UNION ALL
---                          SELECT TRUNC( glps3.start_date,'MM' ) start_date,
---                                 LAST_DAY( glps3.end_date )     end_date
---                          FROM gl_period_statuses glps3
---                          WHERE glps3.set_of_books_id  = gn_set_of_bks_id
---                            AND glps3.application_id   = gn_appl_id_gl
---                            AND glps3.closing_status   = cv_closing_status_c
---                            AND glps3.last_update_date >= gd_operation_date
---                        ) inlv2
---                   WHERE glps1.set_of_books_id = gn_set_of_bks_id
---                     AND glps1.application_id  = gn_appl_id_gl
---                     AND glps1.start_date      BETWEEN inlv2.start_date AND inlv2.end_date
---                   )
---           ) inlv1  -- 対象会計期間
-           (SELECT  glps1.period_name period_name
+-- == 2009/08/04 V1.2 Modified START ===============================================================
+--      FROM gl_je_sources        gljs,
+--           gl_je_headers        gljh,
+--           gl_je_lines          gljl,
+--           gl_code_combinations glcc,
+--           fnd_lookup_values    fnss, -- クイックコード(売上仕訳ソース)
+---- == 2009/07/09 V1.1 Modified START ===============================================================
+----           ( SELECT glps1.period_name period_name
+----             FROM   gl_period_statuses glps1
+----             WHERE EXISTS (
+----                   SELECT 'X'
+----                   FROM ( SELECT TRUNC( glps2.start_date,'MM' ) start_date,
+----                                 LAST_DAY( glps2.end_date )     end_date
+----                          FROM gl_period_statuses glps2
+----                          WHERE glps2.set_of_books_id = gn_set_of_bks_id
+----                            AND glps2.application_id  = gn_appl_id_gl
+----                            AND glps2.closing_status  = cv_closing_status_o
+----                          UNION ALL
+----                          SELECT TRUNC( glps3.start_date,'MM' ) start_date,
+----                                 LAST_DAY( glps3.end_date )     end_date
+----                          FROM gl_period_statuses glps3
+----                          WHERE glps3.set_of_books_id  = gn_set_of_bks_id
+----                            AND glps3.application_id   = gn_appl_id_gl
+----                            AND glps3.closing_status   = cv_closing_status_c
+----                            AND glps3.last_update_date >= gd_operation_date
+----                        ) inlv2
+----                   WHERE glps1.set_of_books_id = gn_set_of_bks_id
+----                     AND glps1.application_id  = gn_appl_id_gl
+----                     AND glps1.start_date      BETWEEN inlv2.start_date AND inlv2.end_date
+----                   )
+----           ) inlv1  -- 対象会計期間
+--           (SELECT  glps1.period_name period_name
+--            FROM    gl_period_statuses glps1
+--                   ,(SELECT   TRUNC( glps2.start_date,'MM' )  start_date,
+--                              LAST_DAY( glps2.end_date )      end_date
+--                     FROM     gl_period_statuses glps2
+--                     WHERE    glps2.set_of_books_id   = gn_set_of_bks_id
+--                     AND      glps2.application_id    = gn_appl_id_gl
+--                     AND      glps2.closing_status    = cv_closing_status_o
+--                     UNION
+--                     SELECT   TRUNC( glps3.start_date,'MM' )  start_date,
+--                              LAST_DAY( glps3.end_date )      end_date
+--                     FROM     gl_period_statuses glps3
+--                     WHERE    glps3.set_of_books_id   = gn_set_of_bks_id
+--                     AND      glps3.application_id    = gn_appl_id_gl
+--                     AND      glps3.closing_status    = cv_closing_status_c
+--                     AND      glps3.last_update_date >= gd_operation_date
+--                    )         temp
+--            WHERE   glps1.start_date BETWEEN temp.start_date AND temp.end_date
+--            AND     glps1.set_of_books_id   =   gn_set_of_bks_id
+--            AND     glps1.application_id    =   gn_appl_id_gl
+--           )                    inlv1 -- 対象会計期間
+---- == 2009/07/09 V1.1 Modified END   ===============================================================
+---- == 2009/07/09 V1.1 Added START ===============================================================
+--          ,gl_sets_of_books     gsob
+---- == 2009/07/09 V1.1 Added END   ===============================================================
+      FROM (SELECT  /*+ USE_NL(glps1 temp) 
+                        INDEX(glps1 XX03_GL_PERIOD_STATUSES_N2)
+                    */
+                    glps1.period_name period_name
             FROM    gl_period_statuses glps1
-                   ,(SELECT   TRUNC( glps2.start_date,'MM' )  start_date,
+                   ,(SELECT   /*+ INDEX(glps2 GL_PERIOD_STATUSES_U2) */
+                              TRUNC( glps2.start_date,'MM' )  start_date,
                               LAST_DAY( glps2.end_date )      end_date
                      FROM     gl_period_statuses glps2
                      WHERE    glps2.set_of_books_id   = gn_set_of_bks_id
@@ -578,11 +620,14 @@ AS
             WHERE   glps1.start_date BETWEEN temp.start_date AND temp.end_date
             AND     glps1.set_of_books_id   =   gn_set_of_bks_id
             AND     glps1.application_id    =   gn_appl_id_gl
-           )                    inlv1 -- 対象会計期間
--- == 2009/07/09 V1.1 Modified END   ===============================================================
--- == 2009/07/09 V1.1 Added START ===============================================================
-          ,gl_sets_of_books     gsob
--- == 2009/07/09 V1.1 Added END   ===============================================================
+           )                    inlv1, -- 対象会計期間
+           gl_je_headers        gljh,
+           gl_je_lines          gljl,
+           gl_sets_of_books     gsob,
+           gl_code_combinations glcc,
+           gl_je_sources        gljs,
+           fnd_lookup_values    fnss  -- クイックコード(売上仕訳ソース)
+-- == 2009/08/04 V1.2 Modified END   ===============================================================
       WHERE gljh.set_of_books_id        = gn_set_of_bks_id
         AND gljh.actual_flag            = cv_actual_flag_a
         AND gljh.status                 = cv_status_p
@@ -709,7 +754,17 @@ AS
     -- 勘定科目明細データ抽出
     CURSOR get_account_sum_cur
     IS
-      SELECT glcc.segment1                             segment1,
+-- == 2009/08/04 V1.2 Modified START ===============================================================
+--      SELECT glcc.segment1                             segment1,
+      SELECT /*+ ORDERED
+                 USE_NL(inlv1.glps1 gljh gljl glcc gljs fnss)
+                 INDEX(gljh GL_JE_HEADERS_N2)
+                 INDEX(gljl GL_JE_LINES_U1 )
+                 INDEX(glcc GL_CODE_COMBINATIONS_U1)
+                 INDEX(gljs GL_JE_SOURCES_TL_U1)
+             */
+             glcc.segment1                             segment1,
+-- == 2009/08/04 V1.2 Modified END   ===============================================================
              TO_CHAR( gljl.effective_date,'YYYYMMDD' ) effective_date,
              glcc.segment2                             segment2,
              glcc.segment3                             segment3,
@@ -720,27 +775,51 @@ AS
              SUM(DECODE( glcc.account_type,cv_account_type_e,
                           NVL( gljl.entered_dr,0 ) - NVL( gljl.entered_cr,0 ),
                           NVL( gljl.entered_cr,0 ) - NVL( gljl.entered_dr,0 ))) entered_sum
-      FROM gl_je_sources        gljs,
+-- == 2009/08/04 V1.2 Modified START ===============================================================
+--      FROM gl_je_sources        gljs,
+--           gl_je_headers        gljh,
+--           gl_je_lines          gljl,
+--           gl_code_combinations glcc,
+--           fnd_lookup_values    fnss, -- クイックコード(売上仕訳ソース)
+--           (SELECT  glps1.period_name period_name
+--             FROM gl_period_statuses glps1
+--             WHERE EXISTS (
+--                   SELECT 'X'
+--                   FROM ( SELECT TRUNC( glps2.start_date,'MM' ) start_date,
+--                                 LAST_DAY( glps2.end_date )     end_date
+--                          FROM gl_period_statuses glps2
+--                          WHERE glps2.set_of_books_id = gn_set_of_bks_id
+--                            AND glps2.application_id  = gn_appl_id_gl
+--                            AND glps2.period_name     = iv_period_name
+--                        ) inlv2
+--                   WHERE glps1.set_of_books_id = gn_set_of_bks_id
+--                     AND glps1.application_id  = gn_appl_id_gl
+--                     AND glps1.start_date      BETWEEN inlv2.start_date AND inlv2.end_date
+--                   )
+--           ) inlv1  -- 対象会計期間
+      FROM (SELECT  /*+ USE_NL(glps1 temp) 
+                        INDEX(glps1 XX03_GL_PERIOD_STATUSES_N2)
+                    */
+                    glps1.period_name period_name
+            FROM    gl_period_statuses glps1
+                   ,(SELECT /*+ INDEX(glps2 GL_PERIOD_STATUSES_U1) */
+                            TRUNC( glps2.start_date,'MM' ) start_date,
+                            LAST_DAY( glps2.end_date )     end_date
+                     FROM   gl_period_statuses glps2
+                     WHERE  glps2.set_of_books_id = gn_set_of_bks_id
+                       AND  glps2.application_id  = gn_appl_id_gl
+                       AND  glps2.period_name     = iv_period_name
+                    )                  temp
+            WHERE   glps1.start_date BETWEEN temp.start_date AND temp.end_date
+            AND     glps1.set_of_books_id   =   gn_set_of_bks_id
+            AND     glps1.application_id    =   gn_appl_id_gl
+           )                    inlv1,  -- 対象会計期間
            gl_je_headers        gljh,
            gl_je_lines          gljl,
            gl_code_combinations glcc,
-           fnd_lookup_values    fnss, -- クイックコード(売上仕訳ソース)
-           ( SELECT glps1.period_name period_name
-             FROM gl_period_statuses glps1
-             WHERE EXISTS (
-                   SELECT 'X'
-                   FROM ( SELECT TRUNC( glps2.start_date,'MM' ) start_date,
-                                 LAST_DAY( glps2.end_date )     end_date
-                          FROM gl_period_statuses glps2
-                          WHERE glps2.set_of_books_id = gn_set_of_bks_id
-                            AND glps2.application_id  = gn_appl_id_gl
-                            AND glps2.period_name     = iv_period_name
-                        ) inlv2
-                   WHERE glps1.set_of_books_id = gn_set_of_bks_id
-                     AND glps1.application_id  = gn_appl_id_gl
-                     AND glps1.start_date      BETWEEN inlv2.start_date AND inlv2.end_date
-                   )
-           ) inlv1  -- 対象会計期間
+           gl_je_sources        gljs,
+           fnd_lookup_values    fnss    -- クイックコード(売上仕訳ソース)
+-- == 2009/08/04 V1.2 Modified END   ===============================================================
       WHERE gljh.set_of_books_id     = gn_set_of_bks_id
         AND gljh.actual_flag         = cv_actual_flag_a
         AND gljh.status              = cv_status_p
