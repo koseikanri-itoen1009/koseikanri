@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009-05-20    1.9   Kazuo.Satomura   T1_1095対応
  *  2009-05-26    1.10  Daisuke.Abe      T1_1042対応
  *  2009-05-28    1.11  Daisuke.Abe      T1_1042(再)対応
+ *  2009-05-28    1.12  Daisuke.Abe      T1_1042(再２)対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2292,8 +2293,15 @@ AS
           ELSE
 --
             /* 2009.05.26 D.Abe T1_1042対応 START */
-            -- 処理区分が２のみ対象とする
-            IF (gv_prm_process_div = cv_prm_div) THEN
+            /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
+            -- 処理区分が1で処理日付が入力済み
+            IF (gv_prm_process_div = cv_prm_normal )
+                AND  (gv_prm_process_date IS NOT NULL) THEN
+              lv_change_flg := cv_yes;
+            ELSE
+            ---- 処理区分が２のみ対象とする
+            --IF (gv_prm_process_div = cv_prm_div) THEN
+            /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
             /* 2009.05.26 D.Abe T1_1042対応 END */
               -- ========================================
               -- A-6.物件関連情報変更チェック処理 
@@ -2319,16 +2327,18 @@ AS
                 RAISE global_process_expt;
               END IF;
               --
-/* 2009.05.26 D.Abe T1_1042対応 START */
-            ELSIF ((gv_prm_process_div = cv_prm_normal)
-                 AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_yes)) THEN
-              -- 処理区分が１で連携済み
-              lv_change_flg := cv_yes;
-            ELSE
-              -- 処理区分が１で未連携
-              NULL;
+            /* 2009.05.26 D.Abe T1_1042対応 START */
+            /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
+            --ELSIF ((gv_prm_process_div = cv_prm_normal)
+            --     AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_yes)) THEN
+            --  -- 処理区分が１で連携済み
+            --  lv_change_flg := cv_yes;
+            --ELSE
+            --  -- 処理区分が１で未連携
+            --  NULL;
+            /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
             END IF;
-/* 2009.05.26 D.Abe T1_1042対応 END */
+            /* 2009.05.26 D.Abe T1_1042対応 END */
             /* 2009.04.07 K.Satomura T1_0378対応 START */
             IF (lv_change_flg IS NOT NULL) THEN
             /* 2009.04.07 K.Satomura T1_0378対応 END */
@@ -2379,15 +2389,22 @@ AS
               AND (lv_retcode = cv_status_normal))
             THEN
             /* 2009.04.01 K.Satomura T1_0148対応 END */
-/* 2009.05.26 D.Abe T1_1042対応 START */
-              -- 処理区分が１でかつ未連携、または処理区分が２の場合
-              IF (((gv_prm_process_div = cv_prm_normal)
-                   AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_no))
-                  OR
-                  (gv_prm_process_div = cv_prm_div)
-                 )
-              THEN
-/* 2009.05.26 D.Abe T1_1042対応 END */
+              /* 2009.05.26 D.Abe T1_1042対応 START */
+              /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
+              -- 処理区分が1で処理日付が入力済み
+              IF (gv_prm_process_div = cv_prm_normal )
+                  AND  (gv_prm_process_date IS NOT NULL) THEN
+                NULL;
+              ELSE
+              ---- 処理区分が１でかつ未連携、または処理区分が２の場合
+              --IF (((gv_prm_process_div = cv_prm_normal)
+              --     AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_no))
+              --    OR
+              --    (gv_prm_process_div = cv_prm_div)
+              --   )
+              --THEN
+              /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
+              /* 2009.05.26 D.Abe T1_1042対応 END */
                 -- ========================================
                 -- A-8.物件関連変更履歴テーブルロック 
                 -- ========================================
@@ -2449,15 +2466,22 @@ AS
                 );
               ELSE
 --
-/* 2009.05.26 D.Abe T1_1042対応 START */
-                -- 処理区分が１でかつ未連携、または処理区分が２
-                IF (((gv_prm_process_div = cv_prm_normal)
-                     AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_no))
-                    OR
-                    (gv_prm_process_div = cv_prm_div)
-                   )
-                THEN
-/* 2009.05.26 D.Abe T1_1042対応 END */
+                /* 2009.05.26 D.Abe T1_1042対応 START */
+                /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
+                -- 処理区分が1で処理日付が入力済み
+                IF (gv_prm_process_div = cv_prm_normal )
+                    AND  (gv_prm_process_date IS NOT NULL) THEN
+                  gn_normal_cnt := gn_normal_cnt + 1;  
+                ELSE
+                ---- 処理区分が１でかつ未連携、または処理区分が２
+                --IF (((gv_prm_process_div = cv_prm_normal)
+                --     AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_no))
+                --    OR
+                --    (gv_prm_process_div = cv_prm_div)
+                --   )
+                --THEN
+                /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
+                /* 2009.05.26 D.Abe T1_1042対応 END */
                   -- ========================================
                   -- A-11.物件関連情報変更履歴テーブル更新処理 
                   -- ========================================
@@ -2502,12 +2526,14 @@ AS
                   /* 2009.04.01 K.Satomura T1_0148対応 START */
                   --END IF;
                   /* 2009.04.01 K.Satomura T1_0148対応 END */
-/* 2009.05.26 D.Abe T1_1042対応 START */
-                ELSE
-                  -- 正常件数取得
-                  gn_normal_cnt := gn_normal_cnt + 1;  
+                /* 2009.05.26 D.Abe T1_1042対応 START */
+                /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
+                --ELSE
+                --  -- 正常件数取得
+                --  gn_normal_cnt := gn_normal_cnt + 1;  
+                /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
                 END IF;
-/* 2009.05.26 D.Abe T1_1042対応 END */
+                /* 2009.05.26 D.Abe T1_1042対応 END */
               END IF;
             END IF;
           END IF;
