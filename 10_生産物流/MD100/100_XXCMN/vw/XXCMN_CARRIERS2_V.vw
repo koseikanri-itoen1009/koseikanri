@@ -81,7 +81,6 @@ AS
   AND     hp.party_id          = hca.owner_table_id(+) 
   AND     hca.owner_table_name(+) = 'HZ_PARTIES' 
   AND     hca.class_category(+)   = 'TRANSPORTATION_PROVIDERS'
-
 ;
 --
 COMMENT ON COLUMN xxcmn_carriers2_v.party_id                    IS 'パーティーID';
