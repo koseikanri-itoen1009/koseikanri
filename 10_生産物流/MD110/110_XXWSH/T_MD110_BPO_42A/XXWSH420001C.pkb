@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.10
+ * Version          : 1.12
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2008/12/13    1.9   Oracle 二瓶 大輔   本番障害#568対応
  *  2008/12/15    1.10  Oracle 吉元 強樹   検証用ログ設定
  *  2008/12/24    1.11  SCS    菅原 大輔   本番#845
+ *  2009/01/15    1.12  SCS    伊藤 ひとみ 本番#981
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5786,23 +5787,34 @@ AS
         gt_gen_request_no      := lt_order_tbl(gn_shori_count).request_no;      -- 依頼No
         gt_gen_order_header_id := lt_order_tbl(gn_shori_count).order_header_id; -- 受注ヘッダアドオンID
 --
-        -- ===============================
-        -- A-4同一依頼No検索処理
-        -- ===============================
-        get_same_request_number(lt_order_tbl(gn_shori_count).request_no,         -- 依頼No
+-- 2009/01/15 H.Itou Add Start 本番#981 倉替返品は42Aで複写処理を行わないので、同一依頼Noを取得しない。
+        -- 倉替返品以外の場合
+        IF (lt_order_tbl(gn_shori_count).shipping_shikyu_class <> gv_ship_class_3) THEN
+-- 2009/01/15 H.Itou Add End 本番#981
+          -- ===============================
+          -- A-4同一依頼No検索処理
+          -- ===============================
+          get_same_request_number(lt_order_tbl(gn_shori_count).request_no,         -- 依頼No
 -- 2008/12/13 v1.8 D.Nihei Add Start 本番障害#568対応
-                                lt_order_tbl(gn_shori_count).transaction_type_id,-- 受注タイプID
+                                  lt_order_tbl(gn_shori_count).transaction_type_id,-- 受注タイプID
 -- 2008/12/13 v1.8 D.Nihei Add End
-                                ln_same_request_no_count,                        -- 同一依頼No件数
-                                lt_old_order_header_id,                          -- 受注ヘッダアドオンID(OLD)
-                                lv_errbuf,                                       -- エラー・メッセージ --# 固定 #
-                                lv_retcode,                                      -- リターン・コード   --# 固定 #
-                                lv_errmsg                                        -- ユーザー・エラー・メッセージ --# 固定 #
-        );
+                                  ln_same_request_no_count,                        -- 同一依頼No件数
+                                  lt_old_order_header_id,                          -- 受注ヘッダアドオンID(OLD)
+                                  lv_errbuf,                                       -- エラー・メッセージ --# 固定 #
+                                  lv_retcode,                                      -- リターン・コード   --# 固定 #
+                                  lv_errmsg                                        -- ユーザー・エラー・メッセージ --# 固定 #
+          );
 --
-        IF (lv_retcode <> gv_status_normal) THEN
-          RAISE check_sub_main_expt;
+          IF (lv_retcode <> gv_status_normal) THEN
+            RAISE check_sub_main_expt;
+          END IF;
+-- 2009/01/15 H.Itou Add Start 本番#981
+        -- 倉替返品の場合
+        ELSE
+          lt_old_order_header_id := lt_order_tbl(gn_shori_count).order_header_id;
         END IF;
+-- 2009/01/15 H.Itou Add End 本番#981
+        
 --
         IF ( (lt_old_order_header_id = lt_order_tbl(gn_shori_count).order_header_id)
            OR(lt_order_tbl(gn_shori_count).shipping_shikyu_class = gv_ship_class_3)) THEN

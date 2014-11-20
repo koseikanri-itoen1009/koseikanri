@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品情報インターフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品情報インターフェース T_MD070_BPO_43B
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/12/22    1.7   ORACLE椎名昭圭   本番問合せ#743対応
  *  2009/01/06    1.8   Yuko Kawano      本番問合せ#908対応
  *  2009/01/13    1.9   Hitomi Itou      本番問合せ#981対応
+ *  2009/01/15    1.10  Masayoshi Uehara 本番問合せ#1019対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2596,11 +2597,18 @@ AS
       gt_xol_program_update_date(gn_idx_ln)    := gt_sysdate;         -- プログラム更新日
 --
       --明細数量チェック
-      IF (it_quantity_total >= 0) THEN   -- A-2で取得した数量>=0の場合
+-- mod start 2009/01/15 ver1.10 by M.Uehara
+--      IF (it_quantity_total >= 0) THEN   -- A-2で取得した数量>=0の場合
+--        gb_posi_flg := TRUE;
+--      ELSE                               -- A-2で取得した数量<0の場合
+--        gb_nega_flg := TRUE;
+--      END IF;
+      IF (it_quantity_total > 0) THEN   -- A-2で取得した数量>0の場合
         gb_posi_flg := TRUE;
-      ELSE                               -- A-2で取得した数量<0の場合
+      ELSIF (it_quantity_total < 0) THEN   -- A-2で取得した数量<0の場合
         gb_nega_flg := TRUE;
       END IF;
+-- mod end 2009/01/15 ver1.10 by M.Uehara
 --
     --***************************************************************************************
     --A-6で同一依頼Noが抽出できた場合
@@ -2651,11 +2659,18 @@ AS
       gt_xol_program_update_date(gn_idx_ln)    := gt_sysdate;          -- プログラム更新日
 --
       --明細数量チェック
-      IF (gt_sum_quantity >= 0) THEN     -- A-18で算出した合算数量>=0の場合
+-- mod start 2009/01/15 ver1.10 by M.Uehara
+--      IF (gt_sum_quantity >= 0) THEN     -- A-18で算出した合算数量>=0の場合
+--        gb_posi_flg := TRUE;
+--      ELSE                               -- A-18で算出した合算数量<0の場合
+--        gb_nega_flg := TRUE;
+--      END IF;
+      IF (gt_sum_quantity > 0) THEN     -- A-18で算出した合算数量>=の場合
         gb_posi_flg := TRUE;
-      ELSE                               -- A-18で算出した合算数量<0の場合
+      ELSIF (gt_sum_quantity < 0) THEN   -- A-18で算出した合算数量<0の場合
         gb_nega_flg := TRUE;
       END IF;
+-- mod end 2009/01/15 ver1.10 by M.Uehara
 --
       -------------移動ロット詳細-------------------------------------------------------
 --
@@ -2824,11 +2839,18 @@ AS
     gt_xol_program_update_date(gn_idx_ln)    := gt_sysdate;         -- プログラム更新日
 --
     --明細数量チェック
-    IF (it_quantity_total >= 0) THEN   -- A-2で取得した数量>=0の場合
+-- mod start 2009/01/15 ver1.10 by M.Uehara
+--    IF (it_quantity_total >= 0) THEN   -- A-2で取得した数量>=0の場合
+--      gb_posi_flg := TRUE;
+--    ELSE                               -- A-2で取得した数量<0の場合
+--      gb_nega_flg := TRUE;
+--    END IF;
+    IF (it_quantity_total > 0) THEN   -- A-2で取得した数量>0の場合
       gb_posi_flg := TRUE;
-    ELSE                               -- A-2で取得した数量<0の場合
+    ELSIF (it_quantity_total < 0) THEN  -- A-2で取得した数量<0の場合
       gb_nega_flg := TRUE;
     END IF;
+-- mod end 2009/01/15 ver1.10 by M.Uehara
 --
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -3040,11 +3062,18 @@ AS
     gt_xol_a13_program_update_date(gn_idx_ln_a13) := gt_sysdate;         -- プログラム更新日
 --
     --明細数量チェック
-    IF (gt_sum_quantity >= 0) THEN  -- A-18で算出した合算数量>=0の場合
+-- mod start 2009/01/15 ver1.10 by M.Uehara
+--    IF (gt_sum_quantity >= 0) THEN  -- A-18で算出した合算数量>=0の場合
+--      gb_posi_flg := TRUE;
+--    ELSE                            -- A-18で算出した合算数量<0の場合
+--      gb_nega_flg := TRUE;
+--    END IF;
+    IF (gt_sum_quantity > 0) THEN  -- A-18で算出した合算数量>0の場合
       gb_posi_flg := TRUE;
-    ELSE                            -- A-18で算出した合算数量<0の場合
+    ELSIF (gt_sum_quantity < 0) THEN -- A-18で算出した合算数量<0の場合
       gb_nega_flg := TRUE;
     END IF;
+-- mod end 2009/01/15 ver1.10 by M.Uehara
 --
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -3944,14 +3973,19 @@ AS
       IF (gt_reserve_interface_tbl(i).invoice_no <> lt_invoice_no_a2) THEN
         lb_break_flg_a2 := TRUE;
         lb_break_flg_a6 := TRUE;
+-- del start 2009/01/15 ver1.10 by M.Uehara
 --
-        -- 読み込んだA-2伝票Noを前回A-2伝票Noとして退避
-        lt_invoice_no_a2 := gt_reserve_interface_tbl(i).invoice_no;
+--        -- 読み込んだA-2伝票Noを前回A-2伝票Noとして退避
+--        lt_invoice_no_a2 := gt_reserve_interface_tbl(i).invoice_no;
+-- del start 2009/01/15 ver1.10 by M.Uehara
 --
         -- 明細数量チェック
         IF  (gb_posi_flg)
         AND (gb_nega_flg) THEN -- 同一A-2伝票No内で明細の数量に正数負数が混在している場合はエラー
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxwsh,gv_xxwsh_num_mix_err);
+-- mod start 2009/01/15 ver1.10 by M.Uehara
+--          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxwsh,gv_xxwsh_num_mix_err);
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxwsh,gv_xxwsh_num_mix_err,'invoice_no',lt_invoice_no_a2);
+-- mod end 2009/01/15 ver1.10 by M.Uehara
           lv_errbuf := lv_errmsg;
           lv_retcode := gv_status_error;
           RAISE global_process_expt;
@@ -3959,6 +3993,11 @@ AS
           gb_posi_flg := FALSE;         -- 正数用フラグ
           gb_nega_flg := FALSE;         -- 負数用フラグ
         END IF;
+-- add start 2009/01/15 ver1.10 by M.Uehara
+--
+        -- 読み込んだA-2伝票Noを前回A-2伝票Noとして退避
+        lt_invoice_no_a2 := gt_reserve_interface_tbl(i).invoice_no;
+-- add end 2009/01/15 ver1.10 by M.Uehara
 --
       --前回A-2伝票Noと同じ場合
       ELSE
