@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2009-05-28    1.12  Daisuke.Abe      T1_1042(再２)対応
  *  2009-07-02    1.13  Kazuo.Satomura   統合テスト障害対応(0000229,0000334)
  *  2009-07-17    1.14  Hiroshi.Ogawa    0000781対応
+ *  2009-08-19    1.15  Kazuo.Satomura   統合テスト障害対応(0001051)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -584,14 +585,18 @@ AS
                                       )
                               FROM    po_un_numbers_vl   punv
                               WHERE   punv.un_number               = cii.attribute1
-                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 START */
+                                --AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 END */
                              )
                        OR  NVL(xiih.age_type,' ')             <>                               -- 年式チェック
                              (
                               SELECT  NVL(punv.attribute3,' ')
                               FROM    po_un_numbers_vl   punv
                               WHERE   punv.un_number               = cii.attribute1
-                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 START */
+                                --AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 END */
                              )
                        OR  NVL(xiih.logical_delete_flag,' ')  <>                               -- 論理削除チェック
                              DECODE(cii.instance_status_id
@@ -694,14 +699,18 @@ AS
                                       )
                               FROM    po_un_numbers_vl   punv
                               WHERE   punv.un_number               = cii.attribute1
-                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 START */
+                                --AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 END */
                              )
                        OR  NVL(xiih.age_type,' ')             <>                               -- 年式チェック
                              (
                               SELECT  NVL(punv.attribute3,' ')
                               FROM    po_un_numbers_vl   punv
                               WHERE   punv.un_number               = cii.attribute1
-                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 START */
+                                --AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 END */
                              )
                        OR  NVL(xiih.logical_delete_flag,' ')  <>                               -- 論理削除チェック
                              DECODE(cii.instance_status_id
@@ -863,14 +872,18 @@ AS
                                       )
                               FROM    po_un_numbers_vl   punv
                               WHERE   punv.un_number               = cii.attribute1
-                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 START */
+                                --AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 EMD */
                              )
                        OR  NVL(xiih.age_type,' ')             <>                               -- 年式チェック
                              (
                               SELECT  NVL(punv.attribute3,' ')
                               FROM    po_un_numbers_vl   punv
                               WHERE   punv.un_number               = cii.attribute1
-                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 START */
+                                --AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 END */
                              )
                        OR  NVL(xiih.logical_delete_flag,' ')  <>                               -- 論理削除チェック
                              DECODE(cii.instance_status_id
@@ -971,14 +984,18 @@ AS
                                       )
                               FROM    po_un_numbers_vl   punv
                               WHERE   punv.un_number               = cii.attribute1
-                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 START */
+                                --AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 END */
                              )
                        OR  NVL(xiih.age_type,' ')             <>                               -- 年式チェック
                              (
                               SELECT  NVL(punv.attribute3,' ')
                               FROM    po_un_numbers_vl   punv
                               WHERE   punv.un_number               = cii.attribute1
-                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 START */
+                                --AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                                /* 2009.08.19 K.Satomura 0001051対応 END */
                              )
                        OR  NVL(xiih.logical_delete_flag,' ')  <>                               -- 論理削除チェック
                              DECODE(cii.instance_status_id
@@ -1818,7 +1835,9 @@ AS
             ,gv_age_type
       FROM   po_un_numbers_vl punv -- 国連番号マスタビュー
       WHERE  punv.un_number = g_get_xxcso_ib_info_h_rec.new_model -- 国連番号
-      AND    TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date) -- 作業区分
+      /* 2009.08.19 K.Satomura 0001051対応 START */
+      --AND    TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date) -- 作業区分
+      /* 2009.08.19 K.Satomura 0001051対応 START */
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
