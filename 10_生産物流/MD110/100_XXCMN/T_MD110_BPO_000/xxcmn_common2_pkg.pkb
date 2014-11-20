@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.12
+ * Version                : 1.13
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -75,7 +75,7 @@ AS
  *  2008/07/18   1.10  oracle 北寒寺   TE080_BPO540指摘5対応
  *  2008/09/16   1.11  oracle 椎名     TE080_BPO540指摘5修正
  *  2008/09/17   1.12  oracle 椎名     PT 6-1_28 指摘73 追加修正
- *
+ *  2008/11/19   1.13  oracle 伊藤     統合障害#681修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2148,6 +2148,9 @@ AS
     cn_line_type            CONSTANT NUMBER(5,0) := -1;    -- 投入品
     cv_doc_type             CONSTANT VARCHAR2(2) := '40';  -- 生産指示
     cv_rec_type             CONSTANT VARCHAR2(2) := '10';  -- 指示
+-- 2008/11/19 H.Itou Add Start 統合障害#681
+    lv_tran_doc_type        CONSTANT VARCHAR2(4) := 'PROD';
+-- 2008/11/19 H.Itou Add End
 --
   BEGIN
 --
@@ -2182,6 +2185,9 @@ AS
     AND     itp.line_id            = gmd.material_detail_id 
     AND     itp.item_id            = gmd.item_id
     AND     itp.lot_id             = mld.lot_id
+-- 2008/11/19 H.Itou Add Start 統合障害#681
+    AND     itp.doc_type           = lv_tran_doc_type
+-- 2008/11/19 H.Itou Add End
     AND     itp.completed_ind      = 0
     ;
     --==============================================================
