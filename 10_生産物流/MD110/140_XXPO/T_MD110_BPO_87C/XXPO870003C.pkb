@@ -7,7 +7,7 @@ AS
  * Description      : 発注単価洗替処理
  * MD.050           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD050_BPO_870
  * MD.070           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD070_BPO_870
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2008/09/24    1.8   Oracle山根一浩   変更#193対応
  *  2008/12/04    1.9   Oracle二瓶大輔   本番障害#381対応(TRUNC削除)
  *  2008/12/19    1.10  H.Marushita      本番障害#794対応
+ *  2008/12/25    1.11  T.Yoshimoto      発注EBS標準ステータス:未承認対応
  *
  *****************************************************************************************/
 --
@@ -229,6 +230,9 @@ AS
     delivery_day         po_headers_all.attribute4%TYPE,              -- 納入日
     po_no                po_headers_all.segment1%TYPE,                -- 発注番号
     revision_num         po_headers_all.revision_num%TYPE,            -- バージョン
+-- 2008/12/25 v1.11 T.Yoshimoto Add Start 未承認対応
+    approved_flag        po_headers_all.approved_flag%TYPE,           -- 承認済フラグ
+-- 2008/12/25 v1.11 T.Yoshimoto Add End 未承認対応
     po_line_id           po_lines_all.po_line_id%TYPE,                -- 発注明細ID
     po_l_no              po_lines_all.line_num%TYPE,                  -- 発注明細番号
     lot_no               po_lines_all.attribute1%TYPE,                -- ロット番号
@@ -551,6 +555,9 @@ AS
           || ' ,pha.attribute4            AS  delivery_day'          -- 納入日
           || ' ,pha.segment1              AS  po_no'                 -- 発注番号
           || ' ,pha.revision_num          AS  revision_num'          -- バージョン
+-- 2008/12/25 v1.11 T.Yoshimoto Add Start 未承認対応
+          || ' ,pha.approved_flag         AS  approved_flag'         -- 承認済フラグ
+-- 2008/12/25 v1.11 T.Yoshimoto Add End 未承認対応
           || ' ,pla.po_line_id            AS  po_line_id'            -- 発注明細ID
           || ' ,pla.line_num              AS  po_l_no'               -- 発注明細番号
           || ' ,pla.attribute1            AS  lot_no'                -- ロット番号
@@ -2765,25 +2772,58 @@ AS
             RAISE global_process_expt;
           END IF;
 --
-          -- ===============================
-          -- C-7.発注情報更新処理
-          -- ===============================
-          proc_upd_po_data(
-            ir_po_data          =>  lt_data_rec(i),             -- 発注情報
-            in_total_amount     =>  ln_total_amount,            -- 内訳合計
-            in_cohi_unit_price  =>  ln_cohi_unit_price,         -- 粉引後単価
-            in_depo_commission  =>  ln_depo_commission,         -- 預り口銭金額
-            in_cane             =>  ln_cane,                    -- 賦課金額
-            in_cohi_rest        =>  ln_cohi_rest,               -- 粉引後金額
-            ov_errbuf           =>  lv_errbuf,                  -- エラー・メッセージ
-            ov_retcode          =>  lv_retcode,                 -- リターン・コード
-            ov_errmsg           =>  lv_errmsg);                 -- ユーザー・エラー・メッセージ
+-- 2008/12/25 v1.11 T.Yoshimoto Add Start 未承認対応
+          -- EBS標準ステータスが承認済の場合のみ、発注単価の更新を実施。
+          IF (lt_data_rec(i).approved_flag = 'Y') THEN
+            -- ===============================
+            -- C-7.発注情報更新処理
+            -- ===============================
+            proc_upd_po_data(
+              ir_po_data          =>  lt_data_rec(i),             -- 発注情報
+              in_total_amount     =>  ln_total_amount,            -- 内訳合計
+              in_cohi_unit_price  =>  ln_cohi_unit_price,         -- 粉引後単価
+              in_depo_commission  =>  ln_depo_commission,         -- 預り口銭金額
+              in_cane             =>  ln_cane,                    -- 賦課金額
+              in_cohi_rest        =>  ln_cohi_rest,               -- 粉引後金額
+              ov_errbuf           =>  lv_errbuf,                  -- エラー・メッセージ
+              ov_retcode          =>  lv_retcode,                 -- リターン・コード
+              ov_errmsg           =>  lv_errmsg);                 -- ユーザー・エラー・メッセージ
 --
-          -- エラー処理
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_process_expt;
+            -- エラー処理
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--
+          -- EBS標準ステータスが承認済以外の場合、処理をスキップ
+          ELSE
+--
+            -- ===============================
+            -- C-12.未処理発注明細情報出力
+            -- ===============================
+            proc_put_po_log(
+              iv_msg_no         =>  gv_msg_xxpo30030,             -- メッセージ番号
+              iv_tkn_itm_no     =>  gv_tkn_ng_item_no,           -- トークン品目
+              iv_tkn_h_no       =>  gv_tkn_ng_h_no,              -- トークン発注番号
+              iv_tkn_m_no       =>  gv_tkn_ng_m_no,              -- トークン発注明細
+              iv_tkn_nonyu_date =>  gv_tkn_ng_nonyu_date,        -- トークン納入日
+              iv_po_no          =>  lt_data_rec(i).po_no,            -- 発注番号
+              iv_po_l_no        =>  lt_data_rec(i).po_l_no,          -- 明細番号
+              iv_item_no        =>  lt_data_rec(i).item_no,          -- 品目番号
+              iv_delivery_day   =>  lt_data_rec(i).delivery_day,     -- 納入日
+              ov_errbuf         =>  lv_errbuf,                   -- エラー・メッセージ
+              ov_retcode        =>  lv_retcode,                  -- リターン・コード
+              ov_errmsg         =>  lv_errmsg);                  -- ユーザー・エラー・メッセージ
+--
+            -- エラーの場合
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_user_expt;
+            END IF;
+--
+            -- スキップ件数をカウントアップ
+            gn_warn_cnt := gn_warn_cnt + 1;
+--
           END IF;
---
+-- 2008/12/25 v1.11 T.Yoshimoto Add End 未承認対応
 --
           -- ===============================
           -- C-8.ロットの在庫単価更新
@@ -2805,27 +2845,34 @@ AS
             RAISE global_process_expt;
           END IF;
 --
-          -- ===============================
-          -- C-9.処理済発注明細情報出力
-          -- ===============================
-          proc_put_po_log(
-            iv_msg_no         =>  gv_msg_xxpo30032,              -- メッセージ番号
-            iv_tkn_itm_no     =>  gv_tkn_item_no,                -- トークン品目
-            iv_tkn_h_no       =>  gv_tkn_h_no,                   -- トークン発注番号
-            iv_tkn_m_no       =>  gv_tkn_m_no,                   -- トークン発注明細
-            iv_tkn_nonyu_date =>  gv_tkn_nonyu_date,             -- トークン納入日
-            iv_po_no          =>  lt_data_rec(i).po_no,          -- 発注番号
-            iv_po_l_no        =>  lt_data_rec(i).po_l_no,        -- 明細番号
-            iv_item_no        =>  lt_data_rec(i).item_no,        -- 品目番号
-            iv_delivery_day   =>  lt_data_rec(i).delivery_day,   -- 納入日
-            ov_errbuf         =>  lv_errbuf,                     -- エラー・メッセージ
-            ov_retcode        =>  lv_retcode,                    -- リターン・コード
-            ov_errmsg         =>  lv_errmsg);                    -- ユーザー・エラー・メッセージ
+-- 2008/12/25 v1.11 T.Yoshimoto Add Start 未承認対応
+          -- EBS標準ステータスが承認済の場合のみ、発注単価の更新を実施。
+          IF (lt_data_rec(i).approved_flag = 'Y') THEN
 --
-          -- エラー処理
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_process_expt;
+            -- ===============================
+            -- C-9.処理済発注明細情報出力
+            -- ===============================
+            proc_put_po_log(
+              iv_msg_no         =>  gv_msg_xxpo30032,              -- メッセージ番号
+              iv_tkn_itm_no     =>  gv_tkn_item_no,                -- トークン品目
+              iv_tkn_h_no       =>  gv_tkn_h_no,                   -- トークン発注番号
+              iv_tkn_m_no       =>  gv_tkn_m_no,                   -- トークン発注明細
+              iv_tkn_nonyu_date =>  gv_tkn_nonyu_date,             -- トークン納入日
+              iv_po_no          =>  lt_data_rec(i).po_no,          -- 発注番号
+              iv_po_l_no        =>  lt_data_rec(i).po_l_no,        -- 明細番号
+              iv_item_no        =>  lt_data_rec(i).item_no,        -- 品目番号
+              iv_delivery_day   =>  lt_data_rec(i).delivery_day,   -- 納入日
+              ov_errbuf         =>  lv_errbuf,                     -- エラー・メッセージ
+              ov_retcode        =>  lv_retcode,                    -- リターン・コード
+              ov_errmsg         =>  lv_errmsg);                    -- ユーザー・エラー・メッセージ
+--
+            -- エラー処理
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_process_expt;
+            END IF;
+--
           END IF;
+-- 2008/12/25 v1.11 T.Yoshimoto Add End 未承認対応
 --
           -- 仕入単価ヘッダーIDの格納
           lt_p_header_id(ln_p_h_cnt) := ln_price_header_id;
