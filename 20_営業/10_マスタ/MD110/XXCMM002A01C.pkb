@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : Issue3.16
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -110,6 +110,8 @@ AS
  *                                       ・PT対応 ユーザー職責マスタ(fnd_user_resp_groups_all)の取得方法変更
  *  2010/11/29    1.18 SCS 仁木 重人     障害E_本稼動_05789 対応
  *                                       ・ユーザーマスタのパスワード失効日を初期設定
+ *  2011/03/03    1.19 SCS 堀籠 直樹     障害E_本稼動_02272 対応
+ *                                       ・新規／異動／退職いずれの場合もユーザーマスタ「摘要」を「カナ姓＋カナ名」で更新するよう変更
  *
  *****************************************************************************************/
 --
@@ -133,6 +135,9 @@ AS
   --
   cv_msg_part                CONSTANT VARCHAR2(3) := ' : ';
   cv_msg_cont                CONSTANT VARCHAR2(3) := '.';
+-- 2011/03/03 Ver1.19 障害E_本稼動_02272 add start by Naoki.Horigome
+  cv_half_space              CONSTANT VARCHAR2(3) := ' ';
+-- 2011/03/03 Ver1.19 障害E_本稼動_02272 add end by Naoki.Horigome
 --
 --################################  固定部 END   ##################################
 --
@@ -6135,6 +6140,10 @@ AS
            X_USER_NAME            => ir_masters_rec.employee_number -- 社員番号
           ,X_OWNER                => gv_owner                       -- 'CUST'
           ,X_END_DATE             => ir_retire_date                 -- 有効日（至）
+-- 2011/03/03 Ver1.19 障害E_本稼動_02272 add start by Naoki.Horigome
+          ,X_DESCRIPTION          => ir_masters_rec.last_name || cv_half_space ||
+                                     ir_masters_rec.first_name -- カナ姓＋カナ名
+-- 2011/03/03 Ver1.19 障害E_本稼動_02272 add end by Naoki.Horigome
         );
       --
       EXCEPTION
@@ -7057,7 +7066,11 @@ AS
                                ,X_UNENCRYPTED_PASSWORD  => gv_password -- ﾌﾟﾛﾌｧｲﾙ
                                ,X_START_DATE            => ir_masters_rec.hire_date -- 入社年月日
                                ,X_END_DATE              => ir_masters_rec.actual_termination_date -- 退職年月日
-                               ,X_DESCRIPTION           => ir_masters_rec.last_name -- カナ姓
+-- 2011/03/03 Ver1.19 障害E_本稼動_02272 modify start by Naoki.Horigome
+--                               ,X_DESCRIPTION           => ir_masters_rec.last_name -- カナ姓
+                               ,X_DESCRIPTION           => ir_masters_rec.last_name|| cv_half_space ||
+                                                           ir_masters_rec.first_name -- カナ姓＋カナ名
+-- 2011/03/03 Ver1.19 障害E_本稼動_02272 modify end by Naoki.Horigome
 -- 2010/11/29 Ver1.18 E_本稼動_05789 add start by Shigeto.Niki
                                ,X_PASSWORD_LIFESPAN_DAYS => gn_pw_lifespan_days -- パスワード失効日数
 -- 2010/11/29 Ver1.18 E_本稼動_05789 add end by Shigeto.Niki
@@ -7345,6 +7358,10 @@ AS
          ,X_OWNER                 =>  gv_owner                        --'CUST'
          ,X_START_DATE            =>  ir_masters_rec.hire_date        -- 入社年月日
          ,X_END_DATE              =>  FND_USER_PKG.NULL_DATE          -- 有効日（NULL）
+-- 2011/03/03 Ver1.19 障害E_本稼動_02272 add start by Naoki.Horigome
+         ,X_DESCRIPTION           =>  ir_masters_rec.last_name || cv_half_space ||
+                                      ir_masters_rec.first_name -- カナ姓＋カナ名
+-- 2011/03/03 Ver1.19 障害E_本稼動_02272 add end by Naoki.Horigome
         );
       --
       EXCEPTION
@@ -7587,6 +7604,10 @@ AS
          ,X_OWNER                 =>  gv_owner                        --'CUST'
          ,X_START_DATE            =>  ir_masters_rec.hire_date        -- 入社年月日
          ,X_END_DATE              =>  FND_USER_PKG.NULL_DATE          -- 有効日（NULL）
+-- 2011/03/03 Ver1.19 障害E_本稼動_02272 add start by Naoki.Horigome
+         ,X_DESCRIPTION           =>  ir_masters_rec.last_name || cv_half_space ||
+                                      ir_masters_rec.first_name -- カナ姓＋カナ名
+-- 2011/03/03 Ver1.19 障害E_本稼動_02272 add end by Naoki.Horigome
         );
       --
       EXCEPTION
