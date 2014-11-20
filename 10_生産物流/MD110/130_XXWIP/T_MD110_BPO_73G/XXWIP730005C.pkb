@@ -7,7 +7,7 @@ AS
  * Description      : 請求運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    請求運賃チェックリスト        (T_MD070_BPO_73G)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/07/24    1.6   Satoshi Takemoto ST障害対応#477
  *  2008/07/25    1.7   Masayuki Nomura  ST障害対応#456
  *  2008/07/28    1.8   Masayuki Nomura  変更要求結合テスト障害対応
+ *  2008/08/19    1.9   Takao Ohashi     T_TE080_BPO_730 指摘10対応
  *
  *****************************************************************************************/
 --
@@ -755,7 +756,10 @@ AS
 --          SELECT xvs.vendor_site_name
 --          INTO   gt_main_data(i).ship_to_name
 --          FROM xxcmn_vendor_sites_v   xvs-- 仕入先サイト情報VIEW2
-          SELECT SUBSTRB(xvs.vendor_site_name ,1,30)
+-- mod start ver 1.9
+--          SELECT SUBSTRB(xvs.vendor_site_name ,1,30)
+          SELECT xvs.vendor_site_short_name
+-- mod end ver 1.9
           INTO   gt_main_data(i).ship_to_name
           FROM xxcmn_vendor_sites2_v   xvs-- 仕入先サイト情報VIEW2
 -- E 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- E --
@@ -768,7 +772,10 @@ AS
         -- 配送先コード区分が「3」の場合
         ------------------------------------------------------------
         ELSIF ( gt_main_data(i).code_division = gc_code_division_m ) THEN
-          SELECT xps.party_site_short_name
+-- mod start ver 1.9
+--          SELECT xps.party_site_short_name
+          SELECT SUBSTRB(xps.party_site_full_name ,1,30)
+-- mod end ver 1.9
           INTO   gt_main_data(i).ship_to_name
           FROM xxcmn_party_sites2_v   xps     -- パーティサイト情報VIEW2
           WHERE gt_main_data(i).judge_date
