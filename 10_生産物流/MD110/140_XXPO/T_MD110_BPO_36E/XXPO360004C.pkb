@@ -7,7 +7,7 @@ AS
  * Description      : 仕入明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  *                  : 有償支給帳票Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -40,6 +40,10 @@ AS
  *  2008/05/23    1.5   Y.Majikina       セキュリティ区分２でログインしたときにSQLエラーになる点を
  *                                       修正
  *  2008/05/26    1.6   R.Tomoyose       発注あり仕入先返品時、単価は受入返品実績アドオンより取得
+ *  2008/05/29    1.7   T.Ikehara        計の出力ﾌﾗｸﾞを追加、修正(ﾚｲｱｳﾄのｾｯｼｮﾝ修正対応の為)
+ *                                        パラメータ：担当部署の際の出力内容を変更
+ *  2008/06/13    1.8   Y.Ishikawa        ロットコピーにより作成した発注の仕入帳票を出力すると
+ *                                       、１つの明細の情報が２件以上されないよう修正。
  *
  *****************************************************************************************/
 --
@@ -776,8 +780,9 @@ AS
     -- ============================================================================================
     -- < ロット＆品目 > --
     -- ============================================================================================
-             || ' AND rcrt.lot_id       =   ilm.lot_id(+) '                  -- ロットID
-             || ' AND rcrt.item_id      =   ximv.item_id '                   -- 品目ID
+             || ' AND rcrt.item_id      =  ilm.item_id(+) '                  -- 品目ID
+             || ' AND rcrt.lot_id       =  ilm.lot_id(+) '                   -- ロットID
+             || ' AND rcrt.item_id      =  ximv.item_id '                    -- 品目ID
     -- ============================================================================================
     -- < 部署 > --
     -- ============================================================================================
@@ -832,9 +837,19 @@ AS
     -- =======================================================================================
     lv_select_1 := ' SELECT '
                 || ' xcv.category_code          AS  category_cd,'
-                || ' xcv.category_description   AS  category_desc,'
-                || ' rcrt.department_code       AS loc_cd,'
-                || ' xlv.location_name          AS  loc_name,'
+                || ' xcv.category_description   AS  category_desc,';
+--
+      IF ( ir_param.dept_code = gv_dept_cd_all ) THEN
+        lv_select_1 := lv_select_1
+                || ' NULL                       AS  loc_cd, '
+                || ' NULL                       AS  loc_name,';
+      ELSE
+        lv_select_1 := lv_select_1
+                || ' rcrt.department_code       AS  loc_cd,'
+                || ' xlv.location_name          AS  loc_name,';
+      END IF;
+--
+    lv_select_1 := lv_select_1
                 || ' xvv.segment1               AS  xv_seg1,'
                 || ' xvv.vendor_short_name      AS  vend_shrt_nm,'
                 || ' xcv2.category_code         AS  category_cd2,'
@@ -901,6 +916,7 @@ AS
                || ' BETWEEN xvv.start_date_active AND xvv.end_date_active'
                || ' AND ''' || ir_param.deliver_from || ''''
                || ' BETWEEN xlv.start_date_active AND xlv.end_date_active '
+               || ' AND rcrt.item_id           =   ilm.item_id(+)'
                || ' AND rcrt.lot_id            =   ilm.lot_id(+)'
                || ' AND rcrt.item_id           =   ximv.item_id'
                || ' AND rcrt.department_code   =   xlv.location_code'
@@ -1296,6 +1312,28 @@ AS
           gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
 --
           ------------------------------
+          -- 取引先計フラグ
+          ------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'vendor_flg' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := lc_flg_y;
+          ------------------------------
+          -- 担当部署計フラグ
+          ------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'locations_flg' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := lc_flg_y;
+          ------------------------------
+          -- 商品区分計フラグ
+          ------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'goods_flg' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := lc_flg_y;
+--
+          ------------------------------
           -- 品目区分G終了タグ
           ------------------------------
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
@@ -1454,6 +1492,21 @@ AS
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_crow' ;
           gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--
+          ------------------------------
+          -- 取引先計フラグ
+          ------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'vendor_flg' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := lc_flg_y;
+          ------------------------------
+          -- 担当部署計フラグ
+          ------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'locations_flg' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := lc_flg_y;
 --
           ------------------------------
           -- 品目区分G終了タグ
@@ -1617,6 +1670,14 @@ AS
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_crow' ;
           gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--
+          ------------------------------
+          -- 取引先計フラグ
+          ------------------------------
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'vendor_flg' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := lc_flg_y;
 --
           ------------------------------
           -- 品目区分G終了タグ
@@ -2315,6 +2376,35 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
 --
     ------------------------------
+    -- 取引先計フラグ
+    ------------------------------
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'vendor_flg' ;
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+    gt_xml_data_table(gl_xml_idx).tag_value := lc_flg_y;
+    ------------------------------
+    -- 担当部署計フラグ
+    ------------------------------
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'locations_flg' ;
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+    gt_xml_data_table(gl_xml_idx).tag_value := lc_flg_y;
+    ------------------------------
+    -- 商品区分計フラグ
+    ------------------------------
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'goods_flg' ;
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+    gt_xml_data_table(gl_xml_idx).tag_value := lc_flg_y;
+    ------------------------------
+    -- 総合計フラグ
+    ------------------------------
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'sum_flg' ;
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+    gt_xml_data_table(gl_xml_idx).tag_value := lc_flg_y;
+--
+    ------------------------------
     -- 品目区分G終了タグ
     ------------------------------
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
@@ -2352,14 +2442,6 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_loc' ;
     gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
---
-    -- ---------------------------
-    -- 合計フラグ
-    -- ---------------------------
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := 'sum_flg' ;
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-    gt_xml_data_table(gl_xml_idx).tag_value := lc_flg_y;
 --
     -- ---------------------------
     -- 総数

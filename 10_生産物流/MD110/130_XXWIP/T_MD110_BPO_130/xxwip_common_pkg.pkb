@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.0
+ * Version                : 1.3
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2007/11/13   1.0   H.Itou           新規作成
  *  2008/05/28   1.1   Oracle 二瓶 大輔 結合テスト不具合対応(委託加工費更新関数修正)
  *  2008/06/02   1.2   Oracle 二瓶 大輔 内部変更要求#130(委託加工費更新関数修正)
+ *  2008/06/12   1.3   Oracle 二瓶 大輔 システムテスト不具合対応#78(委託加工費更新関数修正)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -2312,6 +2313,9 @@ AS
     lb_return_status         BOOLEAN;
     lt_trust_calculate_type  xxpo_price_headers.calculate_type%TYPE;       -- 計算区分
     lt_material_detail_id    gme_material_details.material_detail_id%TYPE; -- 生産原料詳細ID
+-- 2008/06/12 D.Nihei ADD START
+    lt_vendor_code           xxpo_price_headers.vendor_code%TYPE;          -- 取引先コード
+-- 2008/06/12 D.Nihei ADD END
 --
     -- *** ローカル・カーソル ***
 --
@@ -2360,6 +2364,27 @@ AS
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
     END;
+-- 2008/06/12 D.Nihei ADD START
+    -- ***********************************************
+    -- ***  取引先コード取得                       ***
+    -- ***********************************************
+    BEGIN
+      SELECT som.attribute1 vendor_code
+      INTO   lt_vendor_code
+      FROM   gme_batch_header gbh -- 生産バッチヘッダ
+            ,sy_orgn_mst      som -- プラントマスタ
+      WHERE  gbh.plant_code = som.orgn_code
+      AND    gbh.batch_id   = it_batch_id
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg := '取引先コードが取得できません。';
+        RAISE api_expt;
+--
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
+-- 2008/06/12 D.Nihei ADD END
     -- ***********************************************************
     -- ***  委託計算区分・委託加工単価・出来高実績数抽出      ***
     -- ***********************************************************
@@ -2386,7 +2411,11 @@ AS
       AND    xph.start_date_active(+) <= NVL(FND_DATE.STRING_TO_DATE(gmd.attribute11, 'YYYY/MM/DD'), TRUNC(SYSDATE))
       AND    xph.end_date_active(+)   >= NVL(FND_DATE.STRING_TO_DATE(gmd.attribute11, 'YYYY/MM/DD'), TRUNC(SYSDATE))
       AND    xph.futai_code(+)         = '9' -- 付帯コード9
--- 2008/05/28 D.Nihei MOD START
+-- 2008/05/28 D.Nihei MOD END
+-- 2008/06/12 D.Nihei ADD START
+      AND    xph.vendor_code(+)    = lt_vendor_code
+      AND    xph.factory_code(+)   = lt_vendor_code
+-- 2008/06/12 D.Nihei ADD END
       AND    gmd.batch_id          = it_batch_id
       AND    gmd.line_type         = gn_prod
       ;
@@ -2395,11 +2424,13 @@ AS
         lt_trust_calculate_type := null;
         ln_trust_price          := 0;
         ln_volume_actual_qty    := 0;
+        lv_errmsg               := SQLERRM;
 --
       WHEN TOO_MANY_ROWS THEN
         lt_trust_calculate_type := null;
         ln_trust_price          := 0;
         ln_volume_actual_qty    := 0;
+        lv_errmsg               := SQLERRM;
 --
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
@@ -2410,7 +2441,7 @@ AS
     -- ***********************************************
     -- 委託計算区分がnullの場合
     IF (lt_trust_calculate_type IS NULL) THEN
-      ov_errmsg  := lv_errmsg || '委託加工費更新関数に失敗しました。';
+      lv_errmsg  := lv_errmsg || ':委託加工費更新関数に失敗しました。';
       RAISE api_expt;
 --
     -- 委託計算区分が'出来高'の場合

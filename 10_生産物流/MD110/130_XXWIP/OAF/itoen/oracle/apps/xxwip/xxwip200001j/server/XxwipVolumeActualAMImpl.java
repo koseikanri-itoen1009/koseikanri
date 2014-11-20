@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualAMImpl
 * 概要説明   : 出来高実績入力アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2007-11-09 1.0  二瓶大輔     新規作成
 * 2008-05-12      二瓶大輔     変更要求対応(#75)
+* 2008-06-12 1.1  二瓶大輔     ST不具合対応(#78)
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.server;
@@ -771,6 +772,35 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     // 内外区分が委託先の場合
     if (XxwipConstants.IN_OUT_TYPE_ITAKU.equals(inOutType))
     {
+      // 委託加工単価がブランクの場合、自動導出を行う。
+      if (XxcmnUtility.isBlankOrNull(row.getAttribute("TrustProcessUnitPrice"))) 
+      {
+        Date tranDate = null;
+        if (XxcmnUtility.isBlankOrNull(row.getAttribute("ProductDate"))) 
+        {
+          // 生産予定日をセット
+          tranDate = (Date)row.getAttribute("PlanDate");
+        } else
+        {
+          // 生産日をセット
+          tranDate = (Date)row.getAttribute("ProductDate");
+        }
+        // 委託先情報を取得します。
+        HashMap retMap = XxwipUtility.getStockValue(
+                           getOADBTransaction(),
+                           (Number)row.getAttribute("ItemId"),
+                           (String)row.getAttribute("OrgnCode"),
+                           tranDate);
+        // 戻り値が0で無い場合、値をセット
+        if (XxcmnUtility.chkCompareNumeric(1, 
+                                           retMap.get("totalAmount"), 
+                                           XxcmnConstants.STRING_ZERO)) 
+        {
+          row.setAttribute("TrustProcessUnitPrice", retMap.get("totalAmount"));
+        }
+        row.setAttribute("TrustCalculateType",    retMap.get("calcType"));
+      }
+      
       // 委託加工単価
       Object trustProcUnitPrice = row.getAttribute("TrustProcessUnitPrice");
       if (XxcmnUtility.isBlankOrNull(trustProcUnitPrice)) 
@@ -1732,7 +1762,7 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       Number itemId  = (Number)row.getAttribute("ItemId");
       Number batchId = (Number)row.getAttribute("BatchId");
       // 品質検査Noを取得する。
-      String qtNumber = (String)row.getAttribute("QtNumber");
+      String qtNumber = getQtNumber(itemId, lotId);
       String retCode  = null;
       // 品質検査NoがNullの場合
       if (XxcmnUtility.isBlankOrNull(qtNumber)) 
@@ -2249,6 +2279,85 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     }
     return dialogMsg.toString();
   } // lotExecute
+
+  /***************************************************************************
+   * 検査依頼Noの取得を行うメソッドです。
+   * @param itemId  - 品目ID
+   * @param lotId   - ロットID
+   * @return String - 検査依頼No
+   ***************************************************************************
+   */
+  public String getQtNumber(
+    Number itemId,
+    Number lotId)
+  {
+    String apiName  = "getQtNumber";
+    CallableStatement cstmt = null;
+
+    try
+    {
+      // PL/SQLの作成を行います
+      StringBuffer sb = new StringBuffer(500);
+      sb.append("DECLARE ");
+      sb.append("  lv_qt_number VARCHAR2(10);   ");
+      sb.append("BEGIN ");
+      sb.append("  SELECT TO_CHAR(xqi.qt_inspect_req_no) "); // 品質検査依頼No
+      sb.append("  INTO   lv_qt_number ");
+      sb.append("  FROM   xxwip_qt_inspection  xqi "); // 品質検査依頼情報アドオン
+      sb.append("  WHERE  xqi.lot_id  = :1 "); // ロットID
+      sb.append("  AND    xqi.item_id = :2 "); // 品目ID
+      sb.append("  AND    ROWNUM      = 1  ");
+      sb.append("  ; ");
+      sb.append("    :3 := lv_qt_number;  ");
+      sb.append("EXCEPTION ");
+      sb.append("  WHEN NO_DATA_FOUND THEN "); // データがない場合は0
+      sb.append("    :3 := null; ");
+      sb.append("END; ");
+
+      //PL/SQLの設定を行います
+      cstmt = getOADBTransaction().createCallableStatement(
+                sb.toString(),
+                OADBTransaction.DEFAULT);
+
+      //PL/SQLを実行します
+      int i = 1;
+      cstmt.setInt(i++,  XxcmnUtility.intValue(lotId));
+      cstmt.setInt(i++,  XxcmnUtility.intValue(itemId));
+      cstmt.registerOutParameter(i++, Types.VARCHAR);
+      
+      cstmt.execute();
+
+      return cstmt.getString(3);
+
+    } catch (SQLException s) 
+    {
+      doRollBack();
+      XxcmnUtility.writeLog(getOADBTransaction(),
+                            XxwipConstants.CLASS_AM_XXWIP200001J + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally 
+    {
+      try 
+      {
+        if (cstmt != null)
+        { 
+          cstmt.close();
+        }
+      } catch (SQLException s) 
+      {
+        doRollBack();
+        XxcmnUtility.writeLog(getOADBTransaction(),
+                              XxwipConstants.CLASS_AM_XXWIP200001J + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      } 
+    }
+  } // getQtNumber
 
   /**
    * 

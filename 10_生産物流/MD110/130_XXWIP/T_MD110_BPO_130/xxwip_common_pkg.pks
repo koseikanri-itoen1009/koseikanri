@@ -6,26 +6,26 @@ AS
  * Package Name           : xxwip_common_pkg(SPEC)
  * Description            : 共通関数(XXWIP)(SPEC)
  * MD.070(CMD.050)        : なし
- * Version                : 1.0
+ * Version                : 1.3
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
  *   Name                Type  Ret   Description
  *  -------------------- ---- ----- --------------------------------------------------
- *  update_duty_status     P         業務ステータス更新関数
- *  insert_material_line   P         原料明細追加関数
- *  update_material_line   P         原料明細更新関数
- *  delete_material_line   P         原料明細削除関数
- *  get_batch_no           F   VAR   バッチNo取得関数
- *  lot_execute            P         ロット追加・更新関数
- *  insert_line_allocation P         明細割当追加関数
- *  update_line_allocation P         明細割当更新関数
- *  delete_line_allocation P         明細割当削除関数
- *  update_lot_dff_api     P         ロットマスタDFF更新(生産バッチ用)
+ *  update_duty_status     P          業務ステータス更新関数
+ *  insert_material_line   P          原料明細追加関数
+ *  update_material_line   P          原料明細更新関数
+ *  delete_material_line   P          原料明細削除関数
+ *  get_batch_no           F   VAR    バッチNo取得関数
+ *  lot_execute            P          ロット追加・更新関数
+ *  insert_line_allocation P          明細割当追加関数
+ *  update_line_allocation P          明細割当更新関数
+ *  delete_line_allocation P          明細割当削除関数
+ *  update_lot_dff_api     P          ロットマスタDFF更新(生産バッチ用)
  *  update_inv_price       P          在庫単価更新関数
  *  update_trust_price     P          委託加工費更新関数
- *  get_business_date      P         営業日取得
- *  make_qt_inspection     P         品質検査依頼情報作成
+ *  get_business_date      P          営業日取得
+ *  make_qt_inspection     P          品質検査依頼情報作成
  *  get_can_stock_qty      F          手持在庫数量算出API(投入実績用)
  *
  * Change Record
@@ -33,7 +33,9 @@ AS
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
  *  2007/11/13   1.0   H.Itou           新規作成
- *
+ *  2008/05/28   1.1   Oracle 二瓶 大輔 結合テスト不具合対応(委託加工費更新関数修正)
+ *  2008/06/02   1.2   Oracle 二瓶 大輔 内部変更要求#130(委託加工費更新関数修正)
+ *  2008/06/12   1.3   Oracle 二瓶 大輔 システムテスト不具合対応#78(委託加工費更新関数修正)
  *****************************************************************************************/
 --
   -- ステータス更新関数
