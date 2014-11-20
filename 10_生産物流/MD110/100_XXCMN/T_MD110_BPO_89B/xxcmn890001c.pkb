@@ -7,7 +7,7 @@ AS
  * Description      : 物流構成アドオンインポート
  * MD.050           : 物流構成マスタ T_MD050_BPO_890
  * MD.070           : 物流構成アドオンインポート T_MD070_BPO_89B
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/11/17    1.6   ORACLE 伊藤ひとみ 統合テスト指摘491対応
  *  2009/06/10    1.7   SCS 丸下          本番障害1204、1439対応
  *  2009/06/29    1.8   SCS 丸下          本番障害1552対応
+ *  2009/10/02    1.9   SCS 丸下          本番障害1648
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1318,6 +1319,9 @@ AS
       FROM xxcmn_cust_accounts2_v xcav        -- 顧客情報VIEW
       WHERE xcav.party_number = ir_sr_line.base_code
         AND xcav.customer_class_code = cv_customer_base
+-- 2009/10/02 ADD START
+        AND xcav.account_status = 'A' -- 有効
+-- 2009/10/02 ADD END
         AND ROWNUM = 1;
   --
       IF (ln_count = 0) THEN

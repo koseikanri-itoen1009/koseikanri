@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2009/01/10    1.23  A.Shiina         本番#987対応(再対応)
  *  2009/01/21    1.24  N.Yoshida        本番#1016対応(v1.23の取り止めを含む)
  *  2009/05/29    1.25  Marushita        本番障害1511対応
+ *  2009/10/02    1.26  Marushita        本番障害1648対応
  *
  *****************************************************************************************/
 --
@@ -457,7 +458,10 @@ AS
       BEGIN
         SELECT SUBSTRB( xpv.party_short_name, 1, 20)
         INTO   ir_param.party_name
-        FROM   xxcmn_parties_v xpv
+-- 2009/10/02 MOD START
+--        FROM   xxcmn_parties_v xpv
+        FROM   xxcmn_cust_accounts3_v xpv
+-- 2009/10/02 MOD START
         WHERE  xpv.party_number = ir_param.party_code
         AND    ROWNUM           = 1;
       EXCEPTION

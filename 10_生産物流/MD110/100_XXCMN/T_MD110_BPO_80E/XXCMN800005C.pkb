@@ -7,7 +7,7 @@ AS
  * Description      : 拠点マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 拠点マスタインタフェース T_MD070_BPO_80E
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/06/12    1.3  Oracle 丸下       日付項目書式変更
  *  2008/07/11    1.4  Oracle 椎名 昭圭  仕様不備障害#I_S_192.1.2対応
  *  2008/09/18    1.5  Oracle 山根 一浩  T_S_460,T_S_453,T_S_575,T_S_559対応
+ *  2009/10/02    1.6  SCS 丸下          本番障害#1648
  *
  *****************************************************************************************/
 --
@@ -229,6 +230,9 @@ AS
           WHERE    ((hp1.last_update_date >= ld_last_update) AND
                      (hp1.last_update_date  < gd_sysdate))))  hp2
     WHERE hca.customer_class_code   =  cv_cust_class
+--2009/10/02 ADD START
+    AND   hca.status                = 'A' -- 有効
+--2009/10/02 ADD END
     AND   xp.party_id               =  hca.party_id
     AND   xp.party_id               =  hp.party_id
     AND   xp.party_id               =  hp2.party_id
