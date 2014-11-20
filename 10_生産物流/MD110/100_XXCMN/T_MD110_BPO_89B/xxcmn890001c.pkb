@@ -7,7 +7,7 @@ AS
  * Description      : 物流構成アドオンインポート
  * MD.050           : 物流構成マスタ T_MD050_BPO_890
  * MD.070           : 物流構成アドオンインポート T_MD070_BPO_89B
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,7 +35,7 @@ AS
  *  2008/05/23    1.2   ORACLE 椎名昭圭  内部変更要求#110対応
  *  2008/06/09    1.3   ORACLE 椎名昭圭  仕入先配送先チェックの不具合修正
  *  2008/10/29    1.4   ORACLE 吉元強樹  統合指摘#251対応
- *
+ *  2008/11/11    1.5   ORACLE 伊藤ひとみ仕入先サイト参照先不正対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1289,10 +1289,14 @@ AS
     -- 仕入サイト1存在チェック
     IF (ir_sr_line.vendor_site_code1 IS NOT NULL)THEN
       SELECT COUNT(xvv.vendor_id)
-      INTO ln_count
-      FROM xxcmn_vendors_v xvv    -- 仕入先VIEW
-      WHERE xvv.segment1 = ir_sr_line.vendor_site_code1
-        AND ROWNUM = 1;
+      INTO   ln_count
+-- 2008/11/11 H.Itou Mod Start
+--      FROM xxcmn_vendors_v xvv    -- 仕入先VIEW
+--      WHERE xvv.segment1 = ir_sr_line.vendor_site_code1
+      FROM   xxcmn_vendor_sites_v xvv -- 仕入先サイトVIEW
+      WHERE  xvv.vendor_site_code = ir_sr_line.vendor_site_code1
+-- 2008/11/11 H.Itou Mod End
+      AND    ROWNUM = 1;
 --
       IF (ln_count = 0) THEN
       -- 仕入サイト1存在チェックNG
@@ -1305,10 +1309,14 @@ AS
     -- 仕入サイト2存在チェック
     IF (ir_sr_line.vendor_site_code2 IS NOT NULL)THEN
       SELECT COUNT(xvv.vendor_id)
-      INTO ln_count
-      FROM xxcmn_vendors_v xvv    -- 仕入先VIEW
-      WHERE xvv.segment1 = ir_sr_line.vendor_site_code2
-        AND ROWNUM = 1;
+      INTO   ln_count
+-- 2008/11/11 H.Itou Mod Start
+--      FROM xxcmn_vendors_v xvv    -- 仕入先VIEW
+--      WHERE xvv.segment1 = ir_sr_line.vendor_site_code2
+      FROM   xxcmn_vendor_sites_v xvv -- 仕入先サイトVIEW
+      WHERE  xvv.vendor_site_code = ir_sr_line.vendor_site_code2
+-- 2008/11/11 H.Itou Mod End
+      AND    ROWNUM = 1;
 --
       IF (ln_count = 0) THEN
       -- 仕入サイト2存在チェックNG
