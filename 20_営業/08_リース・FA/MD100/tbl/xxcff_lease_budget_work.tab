@@ -3,19 +3,23 @@
  * Table Name      : xxcff_lease_budget_work
  * Description     : ÉäÅ[ÉXóøó\éZÉèÅ[ÉN
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------- -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------- -------------------------------------
  *  2011/12/01    1.0  SCSK íÜë∫åíàÍ èââÒçÏê¨
+ *  2014/09/05    1.1  SCSK è¨òHã±çO ÅyE_ñ{â“ìÆ_11719Åz(VDéëéYâªëŒâû)
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_lease_budget_work(
      seqno                          NUMBER        NOT NULL
     ,record_type                    VARCHAR2(1)   NOT NULL
     ,lease_class                    VARCHAR2(2)   NOT NULL
-    ,lease_class_name               VARCHAR2(12)  NOT NULL
+--ÅyE_ñ{â“ìÆ_11719ÅzMOD START Y.Shouji
+--    ,lease_class_name               VARCHAR2(12)  NOT NULL
+    ,lease_class_name               VARCHAR2(14)  NOT NULL
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD END Y.Shouji
     ,lease_type                     VARCHAR2(1)
     ,lease_type_name                VARCHAR2(8)
     ,chiku_code                     VARCHAR2(5)
