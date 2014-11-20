@@ -8,6 +8,7 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-11-05 1.0  SCS及川領    新規作成
 * 2009-02-17 1.1  SCS柳平直人  [CT1内部]確認ダイアログパラメータ修正
+* 2009-06-10 1.2  SCS柳平直人  [ST障害T1_1317]明細チェック最大件数対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010001j.webui;
@@ -122,7 +123,16 @@ public class XxcsoContractSearchCO extends OAControllerImpl
     //進むボタン
     if ( pageContext.getParameter("SearchButton") != null )
     {
-      am.invokeMethod("executeSearch");
+// 2009-06-10 [ST障害T1_1317] Mod Start
+//      am.invokeMethod("executeSearch");
+      OAException oaMessage
+        = (OAException) am.invokeMethod("executeSearch");
+      if (oaMessage != null)
+      {
+        pageContext.putDialogMessage(oaMessage);
+      }
+// 2009-06-10 [ST障害T1_1317] Mod End
+
     }
 
     //消去ボタン
