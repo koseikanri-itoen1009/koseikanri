@@ -52,6 +52,7 @@ AS
  *                                       OPM品目マスタの「試験有無区分」をセットする
  *  2009/04/10    1.7   H.Yoshikawa      障害T1_0215,T1_0219,T1_0220,T1_0437 対応
  *  2009/05/18    1.8   H.Yoshikawa      障害T1_0317,T1_0318,T1_0322,T1_0737,T1_0906 対応 
+ *  2009/05/27    1.9   H.Yoshikawa      障害T1_0219 再対応
  *
  *****************************************************************************************/
 --
@@ -1141,11 +1142,12 @@ AS
       l_set_parent_item_rec.case_number              := i_wk_item_rec.case_inc_num;                 -- ケース入数(DFF)
       -- NETは値が入っていなければ内容量×内訳入数をセットします。
       IF ( i_wk_item_rec.net IS NULL ) THEN
-        l_set_parent_item_rec.net := TRUNC(TO_NUMBER(i_wk_item_rec.nets) * TO_NUMBER(i_wk_item_rec.inc_num));  -- NET
 -- Ver1.7  2009/04/10  Add  障害T1_0219 対応
         IF ( i_etc_rec.nets_uom_code IN ( cn_net_uom_code_kg, cn_net_uom_code_l ) ) THEN
           -- KG, L 時は係数(1000)をかける【NETは g のため】
-          l_set_parent_item_rec.net := l_set_parent_item_rec.net * 1000;    -- NET
+          l_set_parent_item_rec.net := TRUNC(TO_NUMBER(i_wk_item_rec.nets) * TO_NUMBER(i_wk_item_rec.inc_num) * 1000);
+        ELSE
+          l_set_parent_item_rec.net := TRUNC(TO_NUMBER(i_wk_item_rec.nets) * TO_NUMBER(i_wk_item_rec.inc_num));
         END IF;
 -- End
       ELSE
