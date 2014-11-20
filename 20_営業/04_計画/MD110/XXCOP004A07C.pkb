@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A07C(body)
  * Description      : 親コード出荷実績作成
  * MD.050           : 親コード出荷実績作成 MD050_COP_004_A07
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ----------------------   ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/04/13    1.3   SCS.Kikuchi      T1_0507対応
  *  2009/05/12    1.4   SCS.Kikuchi      T1_0951対応
  *  2009/06/15    1.5   SCS.Goto         T1_1193,T1_1194対応
+ *  2009/06/29    1.6   SCS.Fukada       統合テスト障害:0000169対応
  *
  *****************************************************************************************/
 --
@@ -106,6 +107,9 @@ AS
   cv_message_00027          CONSTANT VARCHAR2(16)  := 'APP-XXCOP1-00027';
   cv_message_00028          CONSTANT VARCHAR2(16)  := 'APP-XXCOP1-00028';
   cv_message_00048          CONSTANT VARCHAR2(16)  := 'APP-XXCOP1-00048';
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_START
+  cv_message_00065          CONSTANT VARCHAR2(16)  := 'APP-XXCOP1-00065';
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_END
   cv_message_10017          CONSTANT VARCHAR2(16)  := 'APP-XXCOP1-10017';
   -- メッセージトークン
   cv_message_00002_token_1  CONSTANT VARCHAR2(9)   := 'PROF_NAME';
@@ -136,6 +140,11 @@ AS
   -- ===============================
   gv_whse_code              VARCHAR2(3);    --   OPM倉庫別カレンダ.倉庫コード（原価倉庫）
   gd_last_process_date      DATE;           --   前回処理日時
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_START
+  gd_process_date           DATE;           --   業務日付
+  gd_last_sysdate           DATE;           --   前回処理システム日付（時分秒付き）
+  gd_sysdate                DATE;           --   システム日付設定（時分秒付き）
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_END
   gn_data_retention_period  NUMBER;         --   親コード出荷実績保持期間
   gd_delete_start_date      DATE;           --   過去データ削除基準日
   gv_itoe_ou_mfg            VARCHAR2(40);   --   生産営業単位
@@ -219,6 +228,24 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_START
+    --==============================================================
+    -- システム日付取得（時分秒付き）
+    --==============================================================
+    gd_sysdate := SYSDATE;
+--
+    --==============================================================
+    -- 共通関数＜業務処理日取得＞の呼び出し
+    --==============================================================
+    gd_process_date  :=  xxccp_common_pkg2.get_process_date;
+--
+    -- 業務処理日取得エラーの場合
+    IF ( gd_process_date IS NULL ) THEN
+        --BR100に業務処理日取得エラーメッセージを追加する
+        lv_errmsg := xxccp_common_pkg.get_msg( cv_msg_application, cv_message_00065 );
+      RAISE init_expt;
+    END IF;
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_END
 --
     --==============================================================
     --原価倉庫の取得
@@ -236,8 +263,14 @@ AS
                       );
 --
     BEGIN
-      SELECT xac.last_process_date  last_process_date
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_START
+--      SELECT xac.last_process_date  last_process_date
+--      INTO   gd_last_process_date
+      SELECT xac.last_process_date + (1/86400)  last_process_date     -- 前回処理日付（業務日付）+ 1秒
+      ,      xac.last_update_date  + (1/86400)  last_update_date      -- 最終更新日（システム日付）+ 1秒
       INTO   gd_last_process_date
+      ,      gd_last_sysdate
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_END
       FROM   xxcop_appl_controls xac    -- 計画用コントロールテーブル
       WHERE  xac.function_id = cv_pkg_name
       ;
@@ -250,7 +283,10 @@ AS
     END;
 --
     -- 取得できない場合はエラー
-    IF ( gd_last_process_date IS NULL ) THEN
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_START
+--    IF ( gd_last_process_date IS NULL ) THEN
+    IF ( gd_last_process_date IS NULL OR gd_last_sysdate IS NULL ) THEN
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_END
       lv_errmsg  := lv_errmsg_wk;
       RAISE init_expt;
     END IF;
@@ -297,7 +333,11 @@ AS
       INTO   ln_fiscal_year
       FROM   ic_cldr_dtl icd    -- OPM在庫カレンダ詳細
             ,ic_whse_sts iws    -- OPM倉庫別カレンダ
-      WHERE  TO_CHAR( icd.period_end_date, cv_date_format1 ) = TO_CHAR( SYSDATE, cv_date_format1 )
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_START
+--    業務日付で倉個別カレンダを参照
+--      WHERE  TO_CHAR( icd.period_end_date, cv_date_format1 ) = TO_CHAR( SYSDATE, cv_date_format1 )
+      WHERE  TO_CHAR( icd.period_end_date, cv_date_format1 ) = TO_CHAR( ADD_MONTHS(gd_process_date,-1), cv_date_format1 )
+--20090629_Ver1.6_0000169_SCS.Fukada_ADD_END
       AND    icd.period_id = iws.period_id
       AND    iws.whse_code = gv_whse_code
       ;
@@ -630,14 +670,22 @@ AS
                 ( SELECT xsrl.base_code         base_code
                         ,xsrl.item_code         item_no
                   FROM   xxcmn_sourcing_rules   xsrl      -- 物流構成表アドオンマスタ
-                  WHERE  xsrl.start_date_active BETWEEN TRUNC( gd_last_process_date )
-                                                    AND SYSDATE
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--                  WHERE  xsrl.start_date_active BETWEEN TRUNC( gd_last_process_date )
+--                                                    AND SYSDATE
+                  -- 前回処理日時から業務日付までの間に有効開始となるデータ
+                  WHERE  xsrl.start_date_active BETWEEN gd_last_process_date
+                                                    AND gd_process_date
                   UNION ALL
                   SELECT xsrl.base_code         base_code
                         ,xsrl.item_code         item_no
                   FROM   xxcmn_sourcing_rules   xsrl      -- 物流構成表アドオンマスタ
-                  WHERE  xsrl.last_update_date  BETWEEN TRUNC( gd_last_process_date )
-                                                    AND SYSDATE
+--                  WHERE  xsrl.last_update_date  BETWEEN TRUNC( gd_last_process_date )
+--                                                    AND SYSDATE
+                  -- 前回処理日時から更新があったものを差分抽出
+                  WHERE  xsrl.last_update_date  BETWEEN gd_last_sysdate
+                                                    AND gd_sysdate
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_END
                 ) xsrlv
               WHERE  xsr.base_code  = xsrlv.base_code
               AND    xsr.item_no LIKE DECODE( xsrlv.item_no
@@ -657,14 +705,22 @@ AS
                 ( SELECT xsrl.ship_to_code      ship_to_code
                         ,xsrl.item_code         item_no
                   FROM   xxcmn_sourcing_rules   xsrl      -- 物流構成表アドオンマスタ
-                  WHERE  xsrl.start_date_active BETWEEN TRUNC( gd_last_process_date )
-                                                    AND SYSDATE
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--                  WHERE  xsrl.start_date_active BETWEEN TRUNC( gd_last_process_date )
+--                                                    AND SYSDATE
+                  -- 前回処理日時から業務日付までの間に有効開始となるデータ
+                  WHERE  xsrl.start_date_active BETWEEN gd_last_process_date
+                                                    AND gd_process_date
                   UNION ALL
                   SELECT xsrl.ship_to_code      ship_to_code
                         ,xsrl.item_code         item_no
                   FROM   xxcmn_sourcing_rules   xsrl      -- 物流構成表アドオンマスタ
-                  WHERE  xsrl.last_update_date  BETWEEN TRUNC( gd_last_process_date )
-                                                    AND SYSDATE
+--                  WHERE  xsrl.last_update_date  BETWEEN TRUNC( gd_last_process_date )
+--                                                    AND SYSDATE
+                  -- 前回処理日時から更新があったものを差分抽出
+                  WHERE  xsrl.last_update_date  BETWEEN gd_last_sysdate
+                                                    AND gd_sysdate
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_END
                 ) xsrlv
               WHERE  xsr.deliver_to = xsrlv.ship_to_code
               AND    xsr.item_no LIKE DECODE( xsrlv.item_no
@@ -683,9 +739,13 @@ AS
       FROM   xxcmn_sourcing_rules   xsrl  -- 物流構成表アドオンマスタ
       WHERE  xsrl.item_code      = lv_item_code
       AND    xsrl.ship_to_code   = lv_ship_to_code
-        -- システム日時時点で有効なデータ
-      AND    SYSDATE BETWEEN xsrl.start_date_active
-                     AND     xsrl.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--      AND    SYSDATE BETWEEN xsrl.start_date_active
+--                     AND     xsrl.end_date_active
+      -- 業務日付時点で有効なデータ
+      AND    gd_process_date BETWEEN xsrl.start_date_active
+                             AND     xsrl.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_END
       ;
 --
     -- 物流構成表アドオン参照パターン２(品目コード＋拠点コード)
@@ -697,9 +757,13 @@ AS
       FROM   xxcmn_sourcing_rules   xsrl  -- 物流構成表アドオンマスタ
       WHERE  xsrl.item_code      = lv_item_code
       AND    xsrl.base_code      = lv_base_code
-        -- システム日時時点で有効なデータ
-      AND    SYSDATE BETWEEN xsrl.start_date_active
-                     AND     xsrl.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--      AND    SYSDATE BETWEEN xsrl.start_date_active
+--                     AND     xsrl.end_date_active
+      -- 業務日付時点で有効なデータ
+      AND    gd_process_date BETWEEN xsrl.start_date_active
+                             AND     xsrl.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_END
       ;
 --
     -- 物流構成表アドオン参照パターン３(ZZZZZZZ(品目ワイルドカード)＋配送先コード)
@@ -710,9 +774,13 @@ AS
       FROM   xxcmn_sourcing_rules   xsrl  -- 物流構成表アドオンマスタ
       WHERE  xsrl.item_code      = cv_wild_item_code    -- 品目ワイルドカード
       AND    xsrl.ship_to_code   = lv_ship_to_code
-        -- システム日時時点で有効なデータ
-      AND    SYSDATE BETWEEN xsrl.start_date_active
-                     AND     xsrl.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--      AND    SYSDATE BETWEEN xsrl.start_date_active
+--                     AND     xsrl.end_date_active
+      -- 業務日付時点で有効なデータ
+      AND    gd_process_date BETWEEN xsrl.start_date_active
+                             AND     xsrl.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_END
       ;
 --
     -- 物流構成表アドオン参照パターン４(ZZZZZZZ(品目ワイルドカード)＋拠点コード)
@@ -723,9 +791,13 @@ AS
       FROM   xxcmn_sourcing_rules   xsrl  -- 物流構成表アドオンマスタ
       WHERE  xsrl.item_code      = cv_wild_item_code    -- 品目ワイルドカード
       AND    xsrl.base_code      = lv_base_code
-        -- システム日時時点で有効なデータ
-      AND    SYSDATE BETWEEN xsrl.start_date_active
-                     AND     xsrl.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--      AND    SYSDATE BETWEEN xsrl.start_date_active
+--                     AND     xsrl.end_date_active
+      -- 業務日付時点で有効なデータ
+      AND    gd_process_date BETWEEN xsrl.start_date_active
+                             AND     xsrl.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_END
       ;
 --
 --★1.2 2009/02/16 UPD END
@@ -1054,7 +1126,11 @@ AS
 --      AND    xola.shipping_result_if_flg         = cv_chr_y
       AND    xoha.actual_confirm_class           = cv_chr_y                -- 実績計上済区分
 --20090512_Ver1.4_T1_0951_SCS.Kikuchi_MOD_END
-      AND    xola.last_update_date              >= gd_last_process_date
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--      AND    xola.last_update_date              >= gd_last_process_date
+      -- 前回起動日時以降に更新、または新規作成されたデータ
+      AND    xola.last_update_date              >= gd_last_sysdate
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_END
       AND    otta.attribute1                     = cv_chr_1
       AND    NVL( otta.attribute4, cv_chr_1 )   <> cv_chr_2
       AND    otta.org_id                         = gn_org_id
@@ -1159,8 +1235,13 @@ AS
       FROM   xxcmn_sourcing_rules xsr   -- 物流構成表アドオンマスタ
       WHERE  xsr.item_code          = i_shipment_result_rec.shipping_item_code    -- 受注明細アドオン.出荷品目
       AND    xsr.ship_to_code       = i_shipment_result_rec.result_deliver_to     -- 受注ヘッダアドオン.出荷先_実績
-      AND    SYSDATE          BETWEEN xsr.start_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--      AND    SYSDATE          BETWEEN xsr.start_date_active
+--                              AND     xsr.end_date_active
+      -- 業務日付時点で有効なデータ
+      AND    gd_process_date  BETWEEN xsr.start_date_active
                               AND     xsr.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_END
       ;
 --
       -- データが取得できた場合は戻る
@@ -1186,8 +1267,13 @@ AS
 --★      AND    xsr.ship_to_code       = i_shipment_result_rec.head_sales_branch     -- 受注ヘッダアドオン.管轄拠点
       AND    xsr.base_code          = i_shipment_result_rec.head_sales_branch     -- 受注ヘッダアドオン.管轄拠点
 --★1.1 2009/02/09 UPD END
-      AND    SYSDATE          BETWEEN xsr.start_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--      AND    SYSDATE          BETWEEN xsr.start_date_active
+--                              AND     xsr.end_date_active
+      -- 業務日付時点で有効なデータ
+      AND    gd_process_date  BETWEEN xsr.start_date_active
                               AND     xsr.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_END
       ;
 --
       -- データが取得できた場合は戻る
@@ -1210,8 +1296,13 @@ AS
       FROM   xxcmn_sourcing_rules xsr   -- 物流構成表アドオンマスタ
       WHERE  xsr.item_code          = cv_wild_item_code                           -- 品目ワイルドカード
       AND    xsr.ship_to_code       = i_shipment_result_rec.result_deliver_to     -- 受注ヘッダアドオン.出荷先_実績
-      AND    SYSDATE          BETWEEN xsr.start_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--      AND    SYSDATE          BETWEEN xsr.start_date_active
+--                              AND     xsr.end_date_active
+      -- 業務日付時点で有効なデータ
+      AND    gd_process_date  BETWEEN xsr.start_date_active
                               AND     xsr.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_END
       ;
 --
       -- データが取得できた場合は戻る
@@ -1237,8 +1328,13 @@ AS
 --★      AND    xsr.ship_to_code       = i_shipment_result_rec.head_sales_branch     -- 受注ヘッダアドオン.管轄拠点
       AND    xsr.base_code          = i_shipment_result_rec.head_sales_branch     -- 受注ヘッダアドオン.管轄拠点
 --★1.1 2009/02/09 UPD END
-      AND    SYSDATE          BETWEEN xsr.start_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--      AND    SYSDATE          BETWEEN xsr.start_date_active
+--                              AND     xsr.end_date_active
+      -- 業務日付時点で有効なデータ
+      AND    gd_process_date  BETWEEN xsr.start_date_active
                               AND     xsr.end_date_active
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_END
       ;
 --
       -- データが取得できた場合は戻る
@@ -1645,7 +1741,10 @@ AS
     --==============================================================
     BEGIN
       UPDATE xxcop_appl_controls xac    -- 計画用コントロールテーブル
-      SET    xac.last_process_date        = SYSDATE                       -- 前回処理日時
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
+--      SET    xac.last_process_date        = SYSDATE                       -- 前回処理日時
+      SET    xac.last_process_date        = gd_process_date               -- 前回処理日時（業務日付）
+--20090629_Ver1.6_0000169_SCS.Fukada_MOD_START
             ,xac.last_updated_by          = cn_last_updated_by            -- 最終更新者
             ,xac.last_update_date         = cd_last_update_date           -- 最終更新日
             ,xac.last_update_login        = cn_last_update_login          -- 最終更新ログイン
