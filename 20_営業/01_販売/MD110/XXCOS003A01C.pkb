@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A01C(body)
  * Description      : HHT向け納品予定データ作成
  * MD.050           : HHT向け納品予定データ作成 MD050_COS_003_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/08/06   1.4    M.Sano           [0000426]『HHT向け納品予定データ作成』PTの考慮
  *  2009/09/01   1.5    M.Sano           [0001066]『HHT向け納品予定データ作成』PTの考慮
  *  2010/03/30   1.6    S.Miyakoshi      [E_本稼動_02058]単位換算処理の追加
+ *  2014/03/04   1.7    T.Nakano         [E_本稼動_11551]パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -150,6 +151,10 @@ AS
 -- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD START ************************ --
   cv_msg_change_err       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10670';          -- 単位換算エラー
 -- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD  END  ************************ --
+/* 2014/03/04 Ver1.7 Add Start */
+  cv_msg_proc_date_err    CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00014';         -- 業務日付取得エラーメッセージ
+  cv_msg_ord_keep_day     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10671';         -- HHT納品用受注保持日数
+/* 2014/03/04 Ver1.7 Add End */
   -- その他
   cv_file_access_mode     CONSTANT VARCHAR2(10) := 'W';                         -- ファイルアクセスモード
   cv_cust_class_cust      CONSTANT VARCHAR2(10) := '10';                        -- 顧客区分（顧客）
@@ -209,6 +214,11 @@ AS
   gv_l_file_data              VARCHAR2(2000);
   gv_edi_order_source         fnd_lookup_values.meaning%TYPE;       -- 受注ソース
   gv_transaction_status       VARCHAR2(1);                          -- チェックステータス
+/* 2014/03/04 Ver1.7 Add Start */
+  gd_proc_date                DATE;                                 -- 業務日付
+  gn_hht_deli_ord_keep_day    NUMBER;                               -- HHT納品用受注保持日数
+  gv_msg_tkn_ord_keep_day     fnd_new_messages.message_text%TYPE;   -- 'HHT納品用受注保持日数'
+/* 2014/03/04 Ver1.7 Add End */
 --
   --カーソル
   CURSOR main_cur
@@ -220,15 +230,22 @@ AS
 --               use_nl(xieh)
 --               index(ooha xxcos_oe_order_headers_all_n12)
 --               index(xiel xxcos_edi_lines_n01) */
-      SELECT /*+ leading(oosa)
-                 use_nl(ooha)
-                 use_nl(xieh)
-                 use_nl(xiel)
-                 use_nl(msiv)
-                 index(ooha xxcos_oe_order_headers_all_n12)
+/* 2014/03/04 Ver1.7 Mod Start */
+--      SELECT /*+ leading(oosa)
+--                 use_nl(ooha)
+--                 use_nl(xieh)
+--                 use_nl(xiel)
+--                 use_nl(msiv)
+--                 index(ooha xxcos_oe_order_headers_all_n12)
+--                 index(oola oe_order_lines_n1)
+--                 index(xiel xxcos_edi_lines_n01)
+--              */
+    SELECT /*+   leading(ooha)
+                 index(ooha xxcos_oe_order_headers_all_n10)
+                 use_nl(xieh xiel ooha oola oosc msiv xcac)
                  index(oola oe_order_lines_n1)
-                 index(xiel xxcos_edi_lines_n01)
               */
+/* 2014/03/04 Ver1.7 Mod End */
 /* 2009/09/01 Ver1.5 Mod End   */
            ooha.order_number               order_number               --受注ヘッダテーブル．受注番号
 /* 2009/08/06 Ver1.4 Add End   */
@@ -291,6 +308,10 @@ AS
             ooha.global_attribute3          = cv_target_order_01
           )
 /* 2009/07/08 Ver1.4 Add End   */
+/* 2014/03/04 Ver1.7 Add Start */
+    AND   ooha.ordered_date >=  gd_proc_date - gn_hht_deli_ord_keep_day + 1
+    AND   ooha.ordered_date <   gd_proc_date + 1
+/* 2014/03/04 Ver1.7 Add End */
     ORDER BY
           xieh.edi_header_info_id
         , xiel.line_no
@@ -399,6 +420,9 @@ AS
     cv_prf_l_filename        CONSTANT VARCHAR2(50) := 'XXCOS1_EOS_LINE_FILE_NAME';  -- EOS明細ファイル名
     cv_prf_org_id            CONSTANT VARCHAR2(50) := 'ORG_ID';                     -- MO:営業単位
     cv_prf_organization_code CONSTANT VARCHAR2(50) := 'XXCOI1_ORGANIZATION_CODE';   -- XXCOI:在庫組織コード
+/* 2014/03/04 Ver1.7 Add Start */
+    cv_prof_ord_keep_day     CONSTANT VARCHAR2(50) := 'XXCOS1_HHT_DELI_ORD_KEEP_DAY';  -- XXCOS:HHT納品用受注保持日数
+/* 2014/03/04 Ver1.7 Add End */
     -- クイックコードタイプ
     cv_qck_odr_src_mst_type  CONSTANT VARCHAR2(50) := 'XXCOS1_ODR_SRC_MST_003_A01'; -- 受注ソース特定タイプ
     cv_qck_odr_src_mst_code  CONSTANT VARCHAR2(50) := 'XXCOS_003_A01_01';           -- 受注ソース特定コード
@@ -533,6 +557,11 @@ AS
     gv_msg_edi_line_id          := xxccp_common_pkg.get_msg(iv_application  => cv_application
                                                            ,iv_name         => cv_edi_line_id
                                                            );
+/* 2014/03/04 Ver1.7 Add Start */
+    gv_msg_tkn_ord_keep_day := xxccp_common_pkg.get_msg(iv_application  => cv_application
+                                                       ,iv_name         => cv_msg_ord_keep_day
+                                                           );
+/* 2014/03/04 Ver1.7 Add End */
 --
     --==============================================================
     -- プロファイルの取得(XXCOS:HHTアウトバウンド用ディレクトリパス)
@@ -693,6 +722,34 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+--
+/* 2014/03/04 Ver1.7 Add Start */
+    --==============================================================
+    -- 業務日付取得
+    --==============================================================
+    gd_proc_date := TRUNC( xxccp_common_pkg2.get_process_date );
+    -- 業務日付が取得できない場合はエラー
+    IF ( gd_proc_date IS NULL ) THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(cv_application
+                                           , cv_msg_proc_date_err);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --==============================================================
+    -- HHT納品用受注保持日数
+    --==============================================================
+    gn_hht_deli_ord_keep_day := FND_PROFILE.VALUE( cv_prof_ord_keep_day );
+    -- プロファイルが取得できない場合はエラー
+    IF ( gn_hht_deli_ord_keep_day IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                          , cv_msg_pro
+                                          , cv_tkn_profile
+                                          , gv_msg_tkn_ord_keep_day );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+/* 2014/03/04 Ver1.7 Add End */
 --
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
