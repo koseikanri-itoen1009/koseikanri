@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.27
+ * Version                : 1.28
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *                                                         ※FORMSではON_UPDATE以外でUPDATE文を発行できないため外出し
  *  2008/10/06   1.26  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘240対応 積載効率チェック(合計値算出)にパラメータ.基準日追加
  *  2008/10/15   1.27  Oracle 伊藤ひとみ[混載配送区分変換関数][最大パレット枚数算出関数] 統合テスト指摘298対応
+ *  2008/10/23   1.28  Oracle 二瓶大輔  [配車解除関数] TE080_BPO_600 No22対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4900,6 +4901,7 @@ AS
 --
   END cancel_reserve;
 --
+-- 2008/10/23 v1.28 D.Nihei Del Start TE_080_600 No22(対応完了後削除予定)
   /**********************************************************************************
    * Function Name    : cancel_careers_schedule
    * Description      : 配車解除関数
@@ -4908,6 +4910,59 @@ AS
     iv_biz_type             IN         VARCHAR2,                              -- 1.業務種別
     iv_request_no           IN         VARCHAR2,                              -- 2.依頼No/移動番号
     ov_errmsg               OUT NOCOPY VARCHAR2)                              -- 3.エラーメッセージ
+    RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name            CONSTANT VARCHAR2(100) := 'cancel_careers_schedule';  -- プログラム名
+    cv_app_name_xxwsh      CONSTANT VARCHAR2(5)   := 'XXWSH';            -- アプリケーション短縮名
+    cv_msg_lock_err        CONSTANT VARCHAR2(15)  := 'APP-XXWSH-10006';  -- ロック処理エラー
+    cv_career_cancel_err   CONSTANT VARCHAR2(2)   := '-1';               -- 配車解除失敗
+--
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+    lock_expt                  EXCEPTION;  -- ロック取得例外
+--
+    PRAGMA EXCEPTION_INIT(lock_expt, -54); -- ロック取得例外
+--
+  BEGIN
+--
+    RETURN cancel_careers_schedule(
+               iv_biz_type
+             , iv_request_no
+             , '1'
+             , ov_errmsg);
+--
+  EXCEPTION 
+    WHEN lock_expt THEN
+      -- ロック処理エラー
+      ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh, cv_msg_lock_err);
+      RETURN cv_career_cancel_err;                             -- 配車解除失敗
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END cancel_careers_schedule;
+-- 2008/10/23 v1.28 D.Nihei Del End
+--
+  /**********************************************************************************
+   * Function Name    : cancel_careers_schedule
+   * Description      : 配車解除関数
+   ***********************************************************************************/
+  FUNCTION cancel_careers_schedule(
+    iv_biz_type             IN         VARCHAR2,                              -- 1.業務種別
+    iv_request_no           IN         VARCHAR2,                              -- 2.依頼No/移動番号
+-- 2008/10/23 v1.28 D.Nihei Add Start TE080_BPO_600 No22
+    iv_calcel_flag          IN         VARCHAR2,                              -- 3.配車解除フラグ 1:解除、0:通知ステータス更新のみ
+-- 2008/10/23 v1.28 D.Nihei Add End
+    ov_errmsg               OUT NOCOPY VARCHAR2)                              -- 4.エラーメッセージ
     RETURN VARCHAR2
   IS
     -- ===============================
@@ -4972,6 +5027,10 @@ AS
     cv_tkn_cap_char        CONSTANT VARCHAR2(30)  := '積載効率(容積)の取得';   -- トークン「積載効率(容積)」
     cv_include             CONSTANT VARCHAR2(1)   := '1';                -- 小口区分(対象)
 -- Ver1.20 M.Hokkanji END
+-- 2008/10/23 v1.28 D.Nihei Add Start TE080_BPO_600 No22
+    cv_cancel_flag_on      CONSTANT VARCHAR2(1)   := '1';                -- 配車解除フラグ：ON
+    cv_cancel_flag_off     CONSTANT VARCHAR2(1)   := '0';                -- 配車解除フラグ：OFF
+-- 2008/10/23 v1.28 D.Nihei Add End
 -- 2008/09/03 H.Itou Add Start PT 1-2_8対応
     cv_delivery_mixed_flag_deli CONSTANT VARCHAR2(1) := '1'; -- 配送No/混載元No識別フラグ「配送No」
     cv_delivery_mixed_flag_mix  CONSTANT VARCHAR2(1) := '2'; -- 配送No/混載元No識別フラグ「混載元No」
@@ -5192,7 +5251,12 @@ AS
     -- **************************************************
     IF ((iv_biz_type  IS NULL) OR
        (iv_biz_type NOT IN (cv_ship, cv_supply, cv_move)) OR
-       (iv_request_no IS NULL)) THEN
+-- 2008/10/23 v1.28 D.Nihei Mod Start TE080_BPO_600 No22
+--       (iv_request_no IS NULL)) THEN
+       (iv_request_no  IS NULL) OR
+       (iv_calcel_flag IS NULL)) 
+    THEN
+-- 2008/10/23 v1.28 D.Nihei Mod End
          -- パラメータ指定不正
          ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh, cv_msg_para_err);
          RETURN cv_para_check_err;                          -- パラメータチェックエラー
@@ -5398,8 +5462,14 @@ AS
 --
 -- Ver1.20 M.Hokkanji START
         ELSE
+-- 2008/10/23 v1.28 D.Nihei Mod Start TE080_BPO_600 No22
+--          -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
+--          IF (gt_chk_ship_tbl(i).freight_charge_class = gv_freight_charge_yes) THEN
           -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
-          IF (gt_chk_ship_tbl(i).freight_charge_class = gv_freight_charge_yes) THEN
+          -- 且つ配車解除フラグがONの場合、処理をおこなう
+          IF ( ( gt_chk_ship_tbl(i).freight_charge_class = gv_freight_charge_yes )
+           AND ( iv_calcel_flag                          = cv_cancel_flag_on     ) ) THEN
+-- 2008/10/23 v1.28 D.Nihei Mod End
             lv_err_chek := '0'; -- エラーチェックフラグを初期値に戻す
             -- 最大配送区分取得
             ln_ret_code := get_max_ship_method(
@@ -5702,8 +5772,14 @@ AS
           ln_no_count     := ln_no_count + 1;
 -- Ver1.20 M.Hokkanji START
         ELSE
+-- 2008/10/23 v1.28 D.Nihei Mod Start TE080_BPO_600 No22
+--          -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
+--          IF (gt_chk_move_tbl(i).freight_charge_class = gv_freight_charge_yes) THEN
           -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
-          IF (gt_chk_move_tbl(i).freight_charge_class = gv_freight_charge_yes) THEN
+          -- 且つ配車解除フラグがONの場合、処理をおこなう
+          IF ( ( gt_chk_move_tbl(i).freight_charge_class = gv_freight_charge_yes )
+           AND ( iv_calcel_flag                          = cv_cancel_flag_on     ) ) THEN
+-- 2008/10/23 v1.28 D.Nihei Mod End
             lv_err_chek := '0'; -- エラーチェックフラグを初期値に戻す
             -- 最大配送区分取得
             ln_ret_code := get_max_ship_method(
@@ -5996,8 +6072,14 @@ AS
 --
 -- Ver1.20 M.Hokkanji START
         ELSE
+-- 2008/10/23 v1.28 D.Nihei Mod Start TE080_BPO_600 No22
+--          -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
+--          IF (gt_chk_supply_tbl(i).freight_charge_class = gv_freight_charge_yes) THEN
           -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
-          IF (gt_chk_supply_tbl(i).freight_charge_class = gv_freight_charge_yes) THEN
+          -- 且つ配車解除フラグがONの場合、処理をおこなう
+          IF ( ( gt_chk_supply_tbl(i).freight_charge_class = gv_freight_charge_yes )
+           AND ( iv_calcel_flag                            = cv_cancel_flag_on     ) ) THEN
+-- 2008/10/23 v1.28 D.Nihei Mod End
             lv_err_chek := '0'; -- エラーチェックフラグを初期値に戻す
             -- 最大配送区分取得
             ln_ret_code := get_max_ship_method(
@@ -6127,7 +6209,11 @@ AS
     -- **************************************************
     -- *** 5.配車解除処理
     -- **************************************************
-    IF (lv_delivery_no IS NOT NULL) THEN
+-- 2008/10/23 v1.28 D.Nihei Mod Start TE080_BPO_600 No22
+--    IF (lv_delivery_no IS NOT NULL) THEN
+    IF (    ( lv_delivery_no IS NOT NULL        )
+        AND ( iv_calcel_flag = cv_cancel_flag_on) ) THEN
+-- 2008/10/23 v1.28 D.Nihei Mod End
 --
       -- 配車解除不可のデータが存在する場合はエラー
       IF (ln_no_count > 0) THEN

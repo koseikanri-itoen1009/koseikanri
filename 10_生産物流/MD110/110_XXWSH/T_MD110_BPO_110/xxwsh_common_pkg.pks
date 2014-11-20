@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(SPEC)
  * Description            : 共通関数(SPEC)
  * MD.070(CMD.050)        : なし
- * Version                : 1.27
+ * Version                : 1.28
  *
  * Program List
  *  ---------------------    ---- ----- --------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *                                                         ※FORMSではON_UPDATE以外でUPDATE文を発行できないため外出し
  *  2008/10/06   1.26  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘240対応 積載効率チェック(合計値算出)にパラメータ.基準日追加
  *  2008/10/15   1.27  Oracle 伊藤ひとみ[混載配送区分変換関数][最大パレット枚数算出関数] 統合テスト指摘298対応
+ *  2008/10/23   1.28  Oracle 二瓶大輔  [配車解除関数] TE080_BPO_600 No22対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -192,11 +193,22 @@ AS
     ov_errmsg               OUT NOCOPY VARCHAR2)                              -- 4.エラーメッセージ
     RETURN VARCHAR2;
 --
+-- 2008/10/23 v1.28 D.Nihei Del Start TE_080_600 No22(対応完了後削除予定)
   -- 配車解除関数
   FUNCTION cancel_careers_schedule(
     iv_biz_type             IN         VARCHAR2,                              -- 1.業務種別
     iv_request_no           IN         VARCHAR2,                              -- 2.依頼No/移動番号
     ov_errmsg               OUT NOCOPY VARCHAR2)                              -- 3.エラーメッセージ
+    RETURN VARCHAR2;
+-- 2008/10/23 v1.28 D.Nihei Del End
+  -- 配車解除関数
+  FUNCTION cancel_careers_schedule(
+    iv_biz_type             IN         VARCHAR2,                              -- 1.業務種別
+    iv_request_no           IN         VARCHAR2,                              -- 2.依頼No/移動番号
+-- 2008/10/23 v1.28 D.Nihei Add Start TE_080_600 No22
+    iv_calcel_flag          IN         VARCHAR2,                              -- 3.配車解除フラグ 1:解除、0:通知ステータス更新のみ
+-- 2008/10/23 v1.28 D.Nihei Add End
+    ov_errmsg               OUT NOCOPY VARCHAR2)                              -- 4.エラーメッセージ
     RETURN VARCHAR2;
 -- Ver1.25 M.Hokkanji Start
   -- 混載元No更新関数

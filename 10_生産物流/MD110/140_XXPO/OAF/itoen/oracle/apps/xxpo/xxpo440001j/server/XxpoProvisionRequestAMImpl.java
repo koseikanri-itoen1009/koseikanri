@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,8 @@
 * 2008-10-07 1.8  伊藤ひとみ   統合テスト指摘240対応
 * 2008-10-21 1.9  二瓶大輔     T_S_437対応
 *                             T_TE080_BPO_440 No14
+* 2008-10-27 1.10 二瓶大輔     T_TE080_BPO_600 No22
+
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -52,7 +54,7 @@ import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.9
+ * @version 1.10
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1904,6 +1906,9 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     boolean setMaxShipToFlag      = false; // 最大配送区分設定フラグ
     boolean freightOnFlag         = false; // 運賃区分「対象外⇒対象」設定フラグ
     boolean freightOffFlag        = false; // 運賃区分「対象⇒対象外」設定フラグ
+// 2008-10-27 D.Nihei ADD START
+    boolean updNotifStatusFlag    = false; // 通知ステータス更新フラグ
+// 2008-10-27 D.Nihei ADD END
 
     /****************************
      * ヘッダ各種情報取得
@@ -2058,6 +2063,14 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
             cancelCarriersFlag = true;  
 
           }
+// 2008-10-27 D.Nihei ADD START
+          // 「受領済」時に明細が追加された場合
+          if (XxpoConstants.PROV_STATUS_ZRZ.equals(transStatus)) 
+          {
+            // 通知ステータス更新フラグをtrueにする
+            updNotifStatusFlag = true; 
+          }
+// 2008-10-27 D.Nihei ADD RND
           // 挿入処理
           insertOrderLine(hdrRow, insRow);
 
@@ -2070,8 +2083,8 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
           // ステータスが「出荷実績計上済」の場合は、フラグを立てない。
           if (!XxpoConstants.PROV_STATUS_SJK.equals(transStatus)) 
           {
-            // 重要明細項目変更フラグをtrueに変更
-            changeLineFlag = true;  
+            // 重要明細項目変更フラグをfalseに変更
+            changeLineFlag = false;  
 
           }
         // それ以外
@@ -2288,14 +2301,29 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       // 配車解除フラグをtrueにする
       cancelCarriersFlag = true;
 
-    // 配送NoがNullでいずれかの項目が変更された場合
+    // 配送NoがNullでヘッダ、明細の重要項目が変更された場合
     } else if (XxcmnUtility.isBlankOrNull(hdrRow.getAttribute("ShipToNo"))
-            && (hdrExeFlag || lineExeFlag))
+// 2008-10-27 D.Nihei MOD START
+//            && (hdrExeFlag || lineExeFlag))
+            && (changeHdrFlag || changeLineFlag))
+// 2008-10-27 D.Nihei MOD END
     {
       // 配車解除フラグをtrueにする
       cancelCarriersFlag = true;
 
     }
+// 2008-10-27 D.Nihei ADD START
+    // 運賃区分が対象外⇒対象,、着荷時間From、着荷時間TO、摘要が変更された場合
+    if (freightOnFlag
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeFrom"),      hdrRow.getAttribute("DbArrivalTimeFrom"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeTo"),        hdrRow.getAttribute("DbArrivalTimeTo"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippingInstructions"), hdrRow.getAttribute("DbShippingInstructions"))) 
+    {
+      // 通知ステータス更新フラグをtrueにする
+      updNotifStatusFlag = true; 
+    }
+// 2008-10-27 D.Nihei ADD END
+
     /******************
      * 配車解除処理
      ******************/
@@ -2319,6 +2347,15 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         XxcmnUtility.putErrorMessage(XxpoConstants.TOKEN_NAME_CAN_CAREERS);
 
       }
+// 2008-10-27 D.Nihei ADD START
+    } else if (updNotifStatusFlag)
+    {
+      // 通知ステータス更新関数を実行する。
+      XxwshUtility.updateNotifStatus(
+        getOADBTransaction(),
+        XxcmnConstants.BIZ_TYPE_PROV,
+        reqNo);
+// 2008-10-27 D.Nihei ADD END
     }
 
     return (hdrExeFlag || lineExeFlag);
@@ -4660,7 +4697,6 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       handleEventAllOffHdr(prow);
       prow.setAttribute("NextBtnReject", Boolean.TRUE); // 次へボタン
       // エラーメッセージ出力
-      // TODO メッセージ変更
       throw new OAException(XxcmnConstants.APPL_XXCMN, 
                             XxcmnConstants.XXCMN10500);
     }
@@ -4678,7 +4714,6 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       handleEventAllOffHdr(prow);
       prow.setAttribute("NextBtnReject", Boolean.TRUE); // 次へボタン
       // エラーメッセージ出力
-      // TODO メッセージ変更
       throw new OAException(XxcmnConstants.APPL_XXCMN, 
                             XxcmnConstants.XXCMN10500);
 

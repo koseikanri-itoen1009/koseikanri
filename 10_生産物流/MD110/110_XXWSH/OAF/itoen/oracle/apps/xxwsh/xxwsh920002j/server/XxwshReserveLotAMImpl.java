@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-08-07 1.1  二瓶　大輔     内部変更要求#166,#173
 * 2008-10-07 1.2  伊藤ひとみ     統合テスト指摘240対応
 * 2008-10-22 1.3  二瓶　大輔     統合テスト指摘194対応
+* 2008-10-24 1.4  二瓶　大輔     TE080_BPO_600 No22
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -36,7 +37,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仮引当ロット入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
  
@@ -2014,6 +2015,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     HashMap data                     = new HashMap();                                       // 処理用配列
     HashMap lparam                   = new HashMap();                                       // 明細配列
     HashMap hparam                   = new HashMap();                                       // ヘッダ配列
+// 2008-10-24 D.Nihei ADD START TE080_BPO_600 No22
+    boolean updNotifStatusFlag      = false;                                               // 通知ステータス更新フラグ
+// 2008-10-24 D.Nihei ADD END
     // ********************************** // 
     // * 移動ロット詳細登録・更新・削除処理   *//
     // ********************************** //
@@ -2021,7 +2025,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     // 手持在庫数・引当可能数一覧リージョンの一行目をセット
     vo.first();
     // 全件ループ
-    while (vo.getCurrentRow() != null )
+    while ( vo.getCurrentRow() != null )
     {
       // 処理対象行を取得
       row = (OARow)vo.getCurrentRow();
@@ -2033,17 +2037,17 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       showLotNo         = (String)row.getAttribute("ShowLotNo");        // ロットNo
 
       // パラメータをセット
-      data.put("orderLineId",           lineId);                              // 明細ID
-      data.put("documentTypeCode",      documentTypeCode);                    // 文書タイプ
-      data.put("recordTypeCode",        XxwshConstants.RECORD_TYPE_INST);     // レコードタイプ
-      data.put("itemId",                itemId);                              // 品目ID
-      data.put("itemCode",              itemCode);                            // 品目コード
-      data.put("lotId",                 lotId);                               // ロットID
-      data.put("lotNo",                 showLotNo);                           // ロットNo
-      data.put("actualQuantity",        actualQuantity.toString());           // 実績数量
-      data.put("actualDate",            null);                            // 実績日
-      data.put("automanualReserveClass",XxwshConstants.AM_RESERVE_CLASS_MAN); // 自動手動引当区分
-      data.put("movLotDtlId",           movLotDtlId);                         // 移動ロット詳細ID
+      data.put("orderLineId",            lineId);                              // 明細ID
+      data.put("documentTypeCode",       documentTypeCode);                    // 文書タイプ
+      data.put("recordTypeCode",         XxwshConstants.RECORD_TYPE_INST);     // レコードタイプ
+      data.put("itemId",                 itemId);                              // 品目ID
+      data.put("itemCode",               itemCode);                            // 品目コード
+      data.put("lotId",                  lotId);                               // ロットID
+      data.put("lotNo",                  showLotNo);                           // ロットNo
+      data.put("actualQuantity",         actualQuantity.toString());           // 実績数量
+      data.put("actualDate",             null);                                // 実績日
+      data.put("automanualReserveClass", XxwshConstants.AM_RESERVE_CLASS_MAN); // 自動手動引当区分
+      data.put("movLotDtlId",            movLotDtlId);                         // 移動ロット詳細ID
     
       // 引当数量が0で移動ロット詳細IDが設定されている場合
       if ((actualQuantity.doubleValue() == 0)
@@ -2071,6 +2075,16 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
           getOADBTransaction(),
           data);
       }
+// 2008-10-24 D.Nihei ADD START TE080_BPO_600 No22
+      // DB引当数量と引当数量を比較し変更がある場合
+      Number actualQtyBk = (Number)row.getAttribute("ActualQuantityBk");
+      Number actualQty   = (Number)row.getAttribute("ActualQuantity");
+      if (!XxcmnUtility.isEquals(actualQtyBk, actualQty)) 
+      {
+        // 通知ステータス更新フラグをONにする
+        updNotifStatusFlag = true;
+      }
+// 2008-10-24 D.Nihei ADD END
       
       // 次のレコードへ
       vo.next();
@@ -2205,17 +2219,31 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
           headerId);
       }
     }
-    // 指示数量更新フラグが更新対象(1)の場合もしくは一括解除ボタン押下フラグが'1'で
-    // 引当数量が0の場合
-    if (XxwshConstants.INSTRUCT_QTY_UPD_FLAG_INCLUDE.equals(instructQtyUpdFlag)
-      || (XxwshConstants.PACKAGE_LIFT_FLAG_INCLUDE.equals(packageLiftFlag)
-        && sumReservedQuantityItem.doubleValue() == 0 ))
+// 2008-10-24 D.Nihei MOD START TE080_BPO_600 No22
+//    // 指示数量更新フラグが更新対象(1)の場合もしくは一括解除ボタン押下フラグが'1'で
+//    // 引当数量が0の場合
+//    if (XxwshConstants.INSTRUCT_QTY_UPD_FLAG_INCLUDE.equals(instructQtyUpdFlag)
+//      || (XxwshConstants.PACKAGE_LIFT_FLAG_INCLUDE.equals(packageLiftFlag)
+//        && sumReservedQuantityItem.doubleValue() == 0 ))
+    // 指示数量更新フラグが更新対象(1)の場合
+    if (XxwshConstants.INSTRUCT_QTY_UPD_FLAG_INCLUDE.equals(instructQtyUpdFlag))
+// 2008-10-24 D.Nihei MOD END
     {
       // 配車解除関数を起動
       XxwshUtility.doCancelCareersSchedule(
         getOADBTransaction(),
         callPictureKbn,
         requestNo);
+// 2008-10-24 D.Nihei ADD START TE080_BPO_600 No22
+    // 通知ステータス更新フラグがONの場合
+    } else if (updNotifStatusFlag) 
+    {
+      // 通知ステータス更新関数を起動
+      XxwshUtility.updateNotifStatus(
+        getOADBTransaction(),
+        callPictureKbn,
+        requestNo);
+// 2008-10-24 D.Nihei ADD END
     }
     // コミット処理
     XxwshUtility.commit(getOADBTransaction());

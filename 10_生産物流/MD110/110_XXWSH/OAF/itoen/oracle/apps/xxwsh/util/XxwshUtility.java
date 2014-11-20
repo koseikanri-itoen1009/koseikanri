@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2008-08-07 1.5  二瓶大輔　   内部変更要求#166対応
 * 2008-09-19 1.6  伊藤ひとみ   T_TE080_BPO_400指摘76対応
 * 2008-10-07 1.7  伊藤ひとみ   統合テスト指摘240対応
+* 2008-10-24 1.8  二瓶大輔     TE080_BPO_600 No22
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -35,7 +36,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.7
+ * @version 1.8
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -374,7 +375,10 @@ public class XxwshUtility
     // PL/SQL作成
     StringBuffer sb = new StringBuffer(1000);
     sb.append("BEGIN ");
-    sb.append("  :1 := xxwsh_common_pkg.cancel_careers_schedule(:2, :3, :4); ");
+// 2008-10-24 D.Nihei MOD START TE080_BPO_600 No22
+//    sb.append("  :1 := xxwsh_common_pkg.cancel_careers_schedule(:2, :3, :4); ");
+    sb.append("  :1 := xxwsh_common_pkg.cancel_careers_schedule(:2, :3, '1', :4); ");
+// 2008-10-24 D.Nihei MOD END
     sb.append("END; ");
 
     // PL/SQL設定
@@ -5273,12 +5277,15 @@ public class XxwshUtility
     
     //PL/SQL作成
     StringBuffer sb = new StringBuffer(1000);
-    sb.append("BEGIN "                                    );
+    sb.append("BEGIN ");
     sb.append("  :1 := xxwsh_common_pkg.cancel_careers_schedule( ");
-    sb.append("         iv_biz_type       => :2, "               );   // 2.業務種別
-    sb.append("         iv_request_no     => :3, "               );   // 3.依頼No/移動番号
-    sb.append("         ov_errmsg         => :4); "              );   // 4.エラーメッセージ
-    sb.append("END; "                                     );
+    sb.append("         iv_biz_type     => :2, "); // 2.業務種別
+    sb.append("         iv_request_no   => :3, "); // 3.依頼No/移動番号
+// 2008-10-24 D.Nihei ADD START TE080_BPO_600 No22
+    sb.append("          iv_calcel_flag => '1', "); // 4.配車解除フラグ
+// 2008-10-24 D.Nihei ADD END
+    sb.append("         ov_errmsg       => :4); "); // 5.エラーメッセージ
+    sb.append("END; ");
 
 
     //PL/SQL設定
@@ -5941,4 +5948,112 @@ public class XxwshUtility
     }
   } // getItemCode
 // 2008-07-23 H.Itou ADD End
+// 2008-10-24 D.Nihei ADD START TE080_BPO_600 No22
+  /*****************************************************************************
+   * 通知ステータス更新関数（配車解除関数）を実行します。
+   * @param trans        - トランザクション
+   * @param bizType      - 業務種別
+   * @param requestNo    - 依頼No/移動番号
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static void updateNotifStatus(
+    OADBTransaction trans,
+    String bizType,
+    String requestNo
+  ) throws OAException
+  {
+    String apiName = "updateNotifStatus";
+    HashMap ret    = new HashMap();
+    
+    //PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN ");
+    sb.append("  :1 := xxwsh_common_pkg.cancel_careers_schedule( ");
+    sb.append("          iv_biz_type    => :2,  "); // 2.業務種別
+    sb.append("          iv_request_no  => :3,  "); // 3.依頼No/移動番号
+    sb.append("          iv_calcel_flag => '0', "); // 4.配車解除フラグ
+    sb.append("          ov_errmsg      => :4); "); // 5.エラーメッセージ
+    sb.append("END; ");
+
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1,  Types.VARCHAR); // 1.リターンコード
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(2, bizType);                   // 2.業務種別
+      cstmt.setString(3, requestNo);                 // 3.依頼No/移動番号
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(4,  Types.VARCHAR); // エラーメッセージ
+      
+      //PL/SQL実行
+      cstmt.execute();
+
+      String retCode    = cstmt.getString(1);               // リターンコード
+      String errmsg     = cstmt.getString(4);               // エラーメッセージ
+
+      // API正常終了でない場合、エラー  
+      if (!XxcmnConstants.API_RETURN_NORMAL.equals(retCode))
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          errmsg, // エラーメッセージ
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      // ログ出力
+      XxcmnUtility.writeLog(
+        trans,
+        XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+        s.toString(),
+        6);
+      // エラーメッセージ出力
+      throw new OAException(
+        XxcmnConstants.APPL_XXCMN, 
+        XxcmnConstants.XXCMN10123);
+        
+    } finally
+    {
+      try
+      {
+        // PL/SQLクローズ
+        cstmt.close();
+        
+      // クローズ中ににエラーが発生した場合
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // doCancelCareersSchedule
+// 2008-10-24 D.Nihei ADD END
 }
