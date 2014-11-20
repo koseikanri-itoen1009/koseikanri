@@ -1,0 +1,1 @@
+DROP TABLE xxcsm.xxcsm_tmp_sales_result;
