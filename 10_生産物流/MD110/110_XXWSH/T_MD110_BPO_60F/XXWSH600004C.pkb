@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -58,6 +58,9 @@ AS
  *  2009/01/26    1.17  N.Yoshida        本番1017対応、本番#1044対応
  *  2009/02/09    1.18  M.Nomura         本番#1082対応
  *  2009/04/24    1.19  H.Itou           本番#1398対応
+ *  <<営業C/O後>>
+ *  2009/12/03    1.20  Marushita        本番276対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2722,7 +2725,10 @@ AS
                   || re_out_data.collected_pallet_qty     || ','  -- パレット回収枚数
                   || re_out_data.arrival_time_from        || ','  -- 着荷時間指定(FROM)
                   || re_out_data.arrival_time_to          || ','  -- 着荷時間指定(TO)
-                  || re_out_data.cust_po_number           || ','  -- 顧客発注番号
+-- ##### 20091203 Ver1.20 本番#276 START #####
+--                  || re_out_data.cust_po_number           || ','  -- 顧客発注番号
+                  || REPLACE(re_out_data.cust_po_number,',')           || ','  -- 顧客発注番号
+-- ##### 20091203 Ver1.20 本番#276 END   #####
                   || REPLACE(re_out_data.description,',')              || ','  -- 摘要
                   || re_out_data.status                   || ','  -- ステータス
                   || re_out_data.freight_charge_class     || ','  -- 運賃区分
