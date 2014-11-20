@@ -3,7 +3,7 @@
  *
  * View Name       : xxcoi_vd_col_m_mtc_v
  * Description     : VDƒRƒ‰ƒ€ƒ}ƒXƒ^ƒƒ“ƒeƒiƒ“ƒX‰æ–Êƒrƒ…[
- * Version         : 1.3
+ * Version         : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2008/12/04    1.1   SCS H.Wada       C³iVDƒRƒ‰ƒ€ƒ}ƒXƒ^–¼C³j
  *  2009/08/20    1.2   SCS T.Murakami   İŒÉ‘gD‚ğuS01v¨uZ99v‚É•ÏX
  *  2009/09/08    1.3   SCS H.Sasaki     [0001266]OPM•i–ÚƒAƒhƒIƒ“‚Ì”ÅŠÇ—‘Î‰
+ *  2011/09/29    1.4   SCS K.Nakamura   [E_–{‰Ò“®_08440]”[•i“ú1`5A–{”1`5AƒRƒ‰ƒ€XV“ú‚ğ’Ç‰Á
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_VD_COL_M_MTC_V
@@ -36,6 +37,19 @@ CREATE OR REPLACE VIEW XXCOI_VD_COL_M_MTC_V
   ,hot_cold                                                                   -- 16.H/C’l(“–Œ)
   ,last_hot_cold                                                              -- 17.H/C’l(‘OŒ)
   ,rack_quantity                                                              -- 18.ƒ‰ƒbƒN”
+-- == 2011/09/29 V1.4 Added   START ===============================================================
+  ,dlv_date_1                                                                 -- 28.”[•i“ú1
+  ,quantity_1                                                                 -- 29.–{”1
+  ,dlv_date_2                                                                 -- 30.”[•i“ú2
+  ,quantity_2                                                                 -- 31.–{”2
+  ,dlv_date_3                                                                 -- 32.”[•i“ú3
+  ,quantity_3                                                                 -- 33.–{”3
+  ,dlv_date_4                                                                 -- 34.”[•i“ú4
+  ,quantity_4                                                                 -- 35.–{”4
+  ,dlv_date_5                                                                 -- 36.”[•i“ú5
+  ,quantity_5                                                                 -- 37.–{”5
+  ,column_change_date                                                         -- 38.ƒRƒ‰ƒ€•ÏX“ú
+-- == 2011/09/29 V1.4 Added   END   ===============================================================
   ,created_by                                                                 -- 23.ì¬Ò
   ,creation_date                                                              -- 24.ì¬“ú
   ,last_updated_by                                                            -- 25.ÅIXVÒ
@@ -63,6 +77,19 @@ SELECT   xmvc.vd_column_mst_id               AS vd_column_mst_id              --
         ,xmvc.hot_cold                       AS hot_cold                      -- 16.H/C’l(“–Œ)
         ,xmvc.last_month_hot_cold            AS last_hot_cold                 -- 17.H/C’l(‘OŒ)
         ,xmvc.rack_quantity                  AS rack_quantity                 -- 18.ƒ‰ƒbƒN”
+-- == 2011/09/29 V1.4 Added START   ===============================================================
+        ,xmvc.dlv_date_1                     AS dlv_date1                     -- 28.”[•i“ú1
+        ,xmvc.quantity_1                     AS quantity_1                    -- 29.–{”1
+        ,xmvc.dlv_date_2                     AS dlv_date2                     -- 30.”[•i“ú2
+        ,xmvc.quantity_2                     AS quantity_2                    -- 31.–{”2
+        ,xmvc.dlv_date_3                     AS dlv_date3                     -- 32.”[•i“ú3
+        ,xmvc.quantity_3                     AS quantity_3                    -- 33.–{”3
+        ,xmvc.dlv_date_4                     AS dlv_date4                     -- 34.”[•i“ú4
+        ,xmvc.quantity_4                     AS quantity_4                    -- 35.–{”4
+        ,xmvc.dlv_date_5                     AS dlv_date_5                    -- 36.”[•i“ú5
+        ,xmvc.quantity_5                     AS quantity_5                    -- 37.–{”5
+        ,xmvc.column_change_date             AS column_change_date            -- 38.ƒRƒ‰ƒ€•ÏX“ú
+-- == 2011/09/29 V1.4 Added END     ===============================================================
         ,xmvc.created_by                     AS created_by                    -- 23.ì¬Ò
         ,xmvc.creation_date                  AS creation_date                 -- 24.ì¬“ú
         ,xmvc.last_updated_by                AS last_updated_by               -- 25.ÅIXVÒ
@@ -163,6 +190,30 @@ COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_hot_cold                 IS 'H/C’l(‘
 /
 COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.rack_quantity                 IS 'ƒ‰ƒbƒN”';
 /
+-- == 2011/09/29 V1.4 Added   START ===============================================================
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.dlv_date_1                    IS '”[•i“ú1';
+/
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.quantity_1                    IS '–{”1';
+/
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.dlv_date_2                    IS '”[•i“ú2';
+/
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.quantity_2                    IS '–{”2';
+/
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.dlv_date_3                    IS '”[•i“ú3';
+/
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.quantity_3                    IS '–{”3';
+/
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.dlv_date_4                    IS '”[•i“ú4';
+/
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.quantity_4                    IS '–{”4';
+/
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.dlv_date_5                    IS '”[•i“ú5';
+/
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.quantity_5                    IS '–{”5';
+/
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.column_change_date            IS 'ƒRƒ‰ƒ€•ÏX“ú';
+/
+-- == 2011/09/29 V1.4 Added   END   ===============================================================
 COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.created_by                    IS 'ì¬Ò';
 /
 COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.creation_date                 IS 'ì¬“ú';
