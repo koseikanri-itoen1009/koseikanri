@@ -133,10 +133,14 @@ SELECT xstv.whse_code
         AND    pla_in_po.attribute13           = 'N'                    -- 未承諾
         AND    pla_in_po.item_id               = ximv_in_po.inventory_item_id
         AND    ilm_in_po.item_id               = ximv_in_po.item_id
-        AND (( ximv_in_po.lot_ctl              = 1                      -- ロット管理品
-           AND pla_in_po.cancel_flag          <> 'Y'
-           AND pla_in_po.attribute1            = ilm_in_po.lot_no )
-          OR ( ximv_in_po.lot_ctl              = 0 ))                   -- 非ロット管理品
+--mod start 2008/06/10
+--        AND (( ximv_in_po.lot_ctl              = 1                      -- ロット管理品
+--           AND pla_in_po.cancel_flag          <> 'Y'
+--           AND pla_in_po.attribute1            = ilm_in_po.lot_no )
+--          OR ( ximv_in_po.lot_ctl              = 0 ))                   -- 非ロット管理品
+        AND    pla_in_po.cancel_flag          <> 'Y'
+        AND    pla_in_po.attribute1            = ilm_in_po.lot_no
+--mod end 2008/06/10
         AND    pha_in_po.attribute5            = xilv_in_po.segment1
         AND    TO_DATE( pha_in_po.attribute4, 'YYYY/MM/DD' )
                                               <= TRUNC( SYSDATE )
@@ -180,7 +184,10 @@ SELECT xstv.whse_code
               ,flv_in_xf.meaning
               ,xmrih_in_xf.mov_num
               ,xmrih_in_xf.shipped_locat_id
-              ,xilv_in_xf.description
+--mod start 2008/06/05
+--              ,xilv_in_xf.description
+              ,xilv_in_xf2.description
+--mod end 2008/06/05
               ,NULL                                    AS deliver_to_id
               ,NULL                                    AS deliver_to_name
 --mod start 2008/06/05 rev1.5
@@ -195,6 +202,9 @@ SELECT xstv.whse_code
               ,0                                       AS leaving_quantity
               ,ximv_in_xf.lot_ctl
         FROM   xxcmn_item_locations_v       xilv_in_xf                   -- OPM保管場所情報VIEW
+--add start 2008/06/10
+              ,xxcmn_item_locations_v       xilv_in_xf2                  -- OPM保管場所情報VIEW
+--add end 2008/06/10
               ,xxcmn_item_mst_v             ximv_in_xf                   -- OPM品目情報VIEW
               ,ic_lots_mst                  ilm_in_xf                    -- OPMロットマスタ
               ,xxcmn_rcv_pay_mst            xrpm_in_xf                   -- 受払区分アドオンマスタ
@@ -219,6 +229,9 @@ SELECT xstv.whse_code
 --        AND    xmrih_in_xf.ship_to_locat_id       = xilv_in_xf.segment1
         AND    xmrih_in_xf.ship_to_locat_id       = xilv_in_xf.inventory_location_id
 --mod end 2008/06/04 rev1.1
+--add start 2008/06/10
+        AND    xmrih_in_xf.shipped_locat_id       = xilv_in_xf2.inventory_location_id
+--add end 2008/06/10
         AND    xmril_in_xf.item_id                = ximv_in_xf.item_id
         AND    ilm_in_xf.item_id                  = ximv_in_xf.item_id
         AND    xmld_in_xf.mov_line_id             = xmril_in_xf.mov_line_id
@@ -276,7 +289,10 @@ SELECT xstv.whse_code
               ,flv_in_tr.meaning
               ,xmrih_in_tr.mov_num
               ,xmrih_in_tr.shipped_locat_id
-              ,xilv_in_tr.description
+--mod start 2008/06/10
+--              ,xilv_in_tr.description
+              ,xilv_in_tr2.description
+--mod end 2008/06/10
               ,NULL                                    AS deliver_to_id
               ,NULL                                    AS deliver_to_name
 --mod start 2008/06/05 rev1.5
@@ -291,6 +307,9 @@ SELECT xstv.whse_code
               ,0                                       AS leaving_quantity
               ,ximv_in_tr.lot_ctl
         FROM   xxcmn_item_locations_v       xilv_in_tr                -- OPM保管場所情報VIEW
+--add start 2008/06/10
+              ,xxcmn_item_locations_v       xilv_in_tr2               -- OPM保管場所情報VIEW
+--add end 2008/06/10
               ,xxcmn_item_mst_v             ximv_in_tr                -- OPM品目情報VIEW
               ,ic_lots_mst                  ilm_in_tr                 -- OPMロットマスタ
               ,xxcmn_rcv_pay_mst            xrpm_in_tr                -- 受払区分アドオンマスタ
@@ -313,6 +332,9 @@ SELECT xstv.whse_code
 --        AND    xmrih_in_tr.ship_to_locat_id       = xilv_in_tr.segment1
         AND    xmrih_in_tr.ship_to_locat_id       = xilv_in_tr.inventory_location_id
 --mod end 2008/06/04 rev1.1
+--add start 2008/06/10
+        AND    xmrih_in_tr.shipped_locat_id       = xilv_in_tr2.inventory_location_id
+--add end 2008/06/10
         AND    xmril_in_tr.item_id                = ximv_in_tr.item_id
         AND    ilm_in_tr.item_id                  = ximv_in_tr.item_id
         AND    xmld_in_tr.mov_line_id             = xmril_in_tr.mov_line_id
@@ -372,7 +394,10 @@ SELECT xstv.whse_code
               ,flv_in_xf20.meaning
               ,xmrih_in_xf20.mov_num
               ,xmrih_in_xf20.shipped_locat_id
-              ,xilv_in_xf20.description
+--mod start 2008/06/10
+--              ,xilv_in_xf20.description
+              ,xilv_in_xf202.description
+--mod end 2008/06/10
               ,NULL                                    AS deliver_to_id
               ,NULL                                    AS deliver_to_name
 --mod start 2008/06/05 rev1.5
@@ -387,6 +412,9 @@ SELECT xstv.whse_code
               ,0                                       AS leaving_quantity
               ,ximv_in_xf20.lot_ctl
         FROM   xxcmn_item_locations_v       xilv_in_xf20                 -- OPM保管場所情報VIEW
+--add start 2008/06/10
+              ,xxcmn_item_locations_v       xilv_in_xf202                -- OPM保管場所情報VIEW
+--add end 2008/06/10
               ,xxcmn_item_mst_v             ximv_in_xf20                 -- OPM品目情報VIEW
               ,ic_lots_mst                  ilm_in_xf20                  -- OPMロットマスタ
               ,xxcmn_rcv_pay_mst            xrpm_in_xf20                 -- 受払区分アドオンマスタ
@@ -411,6 +439,9 @@ SELECT xstv.whse_code
 --        AND    xmrih_in_xf20.ship_to_locat_id       = xilv_in_xf20.segment1
         AND    xmrih_in_xf20.ship_to_locat_id       = xilv_in_xf20.inventory_location_id
 --mod end 2008/06/04 rev1.1
+--add start 2008/06/10
+        AND    xmrih_in_xf20.shipped_locat_id       = xilv_in_xf202.inventory_location_id
+--add end 2008/06/10
         AND    xmril_in_xf20.item_id                = ximv_in_xf20.item_id
         AND    ilm_in_xf20.item_id                  = ximv_in_xf20.item_id
         AND    xmld_in_xf20.mov_line_id             = xmril_in_xf20.mov_line_id
@@ -553,7 +584,10 @@ SELECT xstv.whse_code
               ,flv_out_xf.meaning
               ,xmrih_out_xf.mov_num
               ,xmrih_out_xf.ship_to_locat_id
-              ,xilv_out_xf.description
+--mod start 2008/06/10
+--              ,xilv_out_xf.description
+              ,xilv_out_xf2.description
+--mod end 2008/06/10
               ,NULL                                    AS deliver_to_id
               ,NULL                                    AS deliver_to_name
               ,0                                       AS stock_quantity
@@ -568,6 +602,9 @@ SELECT xstv.whse_code
 --mod end 2008/06/05 rev1.5
               ,ximv_out_xf.lot_ctl
         FROM   xxcmn_item_locations_v       xilv_out_xf                  -- OPM保管場所情報VIEW
+--add start 2008/06/10
+              ,xxcmn_item_locations_v       xilv_out_xf2                 -- OPM保管場所情報VIEW
+--add end 2008/06/10
               ,xxcmn_item_mst_v             ximv_out_xf                  -- OPM品目情報VIEW
               ,ic_lots_mst                  ilm_out_xf                   -- OPMロットマスタ
               ,xxcmn_rcv_pay_mst            xrpm_out_xf                  -- 受払区分アドオンマスタ
@@ -592,6 +629,9 @@ SELECT xstv.whse_code
 --        AND    xmrih_out_xf.shipped_locat_id       = xilv_out_xf.segment1
         AND    xmrih_out_xf.shipped_locat_id       = xilv_out_xf.inventory_location_id
 --mod end 2008/06/04 rev1.1
+--add start 2008/06/10
+        AND    xmrih_out_xf.ship_to_locat_id       = xilv_out_xf2.inventory_location_id
+--add end 2008/06/10
         AND    xmril_out_xf.item_id                = ximv_out_xf.item_id
         AND    ilm_out_xf.item_id                  = ximv_out_xf.item_id
         AND    xmld_out_xf.mov_line_id             = xmril_out_xf.mov_line_id
@@ -648,7 +688,10 @@ SELECT xstv.whse_code
               ,flv_out_tr.meaning
               ,xmrih_out_tr.mov_num
               ,xmrih_out_tr.ship_to_locat_id
-              ,xilv_out_tr.description
+--mod start 2008/06/10
+--              ,xilv_out_tr.description
+              ,xilv_out_tr2.description
+--mod end 2008/06/10
               ,NULL                                    AS deliver_to_id
               ,NULL                                    AS deliver_to_name
               ,0                                       AS stock_quantity
@@ -663,6 +706,9 @@ SELECT xstv.whse_code
 --mod end 2008/06/05 rev1.5
               ,ximv_out_tr.lot_ctl
         FROM   xxcmn_item_locations_v       xilv_out_tr                -- OPM保管場所情報VIEW
+--mod start 2008/06/10
+              ,xxcmn_item_locations_v       xilv_out_tr2               -- OPM保管場所情報VIEW
+--mod end 2008/06/10
               ,xxcmn_item_mst_v             ximv_out_tr                -- OPM品目情報VIEW
               ,ic_lots_mst                  ilm_out_tr                 -- OPMロットマスタ
               ,xxcmn_rcv_pay_mst            xrpm_out_tr                -- 受払区分アドオンマスタ
@@ -685,6 +731,9 @@ SELECT xstv.whse_code
 --        AND    xmrih_out_tr.shipped_locat_id       = xilv_out_tr.segment1
         AND    xmrih_out_tr.shipped_locat_id       = xilv_out_tr.inventory_location_id
 --mod end 2008/06/04 rev1.1
+--add start 2008/06/10
+        AND    xmrih_out_tr.ship_to_locat_id       = xilv_out_tr2.inventory_location_id
+--add end 2008/06/10
         AND    xmril_out_tr.item_id                = ximv_out_tr.item_id
         AND    ilm_out_tr.item_id                  = ximv_out_tr.item_id
         AND    xmld_out_tr.mov_line_id             = xmril_out_tr.mov_line_id
@@ -744,7 +793,10 @@ SELECT xstv.whse_code
               ,flv_out_xf20.meaning
               ,xmrih_out_xf20.mov_num
               ,xmrih_out_xf20.ship_to_locat_id
-              ,xilv_out_xf20.description
+--mod start 2008/06/10
+--              ,xilv_out_xf20.description
+              ,xilv_out_xf202.description
+--mod end 2008/06/10
               ,NULL                                    AS deliver_to_id
               ,NULL                                    AS deliver_to_name
               ,0                                       AS stock_quantity
@@ -759,6 +811,9 @@ SELECT xstv.whse_code
 --mod end 2008/06/05 rev1.5
               ,ximv_out_xf20.lot_ctl
         FROM   xxcmn_item_locations_v       xilv_out_xf20                 -- OPM保管場所情報VIEW
+--mod start 2008/06/10
+              ,xxcmn_item_locations_v       xilv_out_xf202                -- OPM保管場所情報VIEW
+--mod end 2008/06/10
               ,xxcmn_item_mst_v             ximv_out_xf20                 -- OPM品目情報VIEW
               ,ic_lots_mst                  ilm_out_xf20                  -- OPMロットマスタ
               ,xxcmn_rcv_pay_mst            xrpm_out_xf20                 -- 受払区分アドオンマスタ
@@ -783,6 +838,9 @@ SELECT xstv.whse_code
 --        AND    xmrih_out_xf20.shipped_locat_id       = xilv_out_xf20.segment1
         AND    xmrih_out_xf20.shipped_locat_id       = xilv_out_xf20.inventory_location_id
 --mod end 2008/06/04 rev1.1
+--add start 2008/06/10
+        AND    xmrih_out_xf20.ship_to_locat_id       = xilv_out_xf202.inventory_location_id
+--add end 2008/06/10
         AND    xmril_out_xf20.item_id                = ximv_out_xf20.item_id
         AND    ilm_out_xf20.item_id                  = ximv_out_xf20.item_id
         AND    xmld_out_xf20.mov_line_id             = xmril_out_xf20.mov_line_id
@@ -936,8 +994,8 @@ SELECT xstv.whse_code
 --                                                            = xicv_out_om.item_class_code
 --        AND    NVL(xrpm_out_om.item_div_origin, xicv_out_om.item_class_code)
 --                                                            = xicv_out_om.item_class_code
-        AND NVL(xrpm_out_om.item_div_origin,'Dummy')        = DECODE(xicv_out_om_s.item_class_code,'5','5','Dummy') --振替元品目区分 = 出荷品目区分
-        AND NVL(xrpm_out_om.item_div_ahead ,'Dummy')        = DECODE(xicv_out_om_r.item_class_code,'5','5','Dummy') --振替先品目区分 = 依頼品目区分
+        AND    NVL(xrpm_out_om.item_div_origin,'Dummy')     = DECODE(xicv_out_om_s.item_class_code,'5','5','Dummy') --振替元品目区分 = 出荷品目区分
+        AND    NVL(xrpm_out_om.item_div_ahead ,'Dummy')     = DECODE(xicv_out_om_r.item_class_code,'5','5','Dummy') --振替先品目区分 = 依頼品目区分
         AND   (xrpm_out_om.ship_prov_rcv_pay_category       = otta_out_om.attribute11
         OR     xrpm_out_om.ship_prov_rcv_pay_category      IS NULL)
 --mod end 2008/06/04
@@ -1064,7 +1122,7 @@ SELECT xstv.whse_code
 --           AND xmld_out_om2.lot_id                           = ilm_out_om2.lot_id )
 --          OR ( ximv_out_om2_s.lot_ctl                        = 0 ))      -- 非ロット管理品
 --        AND ximv_out_om2_s.item_id                           = xmld_out_om2.item_id
-        AND xmld_out_om2.lot_id                              = ilm_out_om2.lot_id
+        AND    xmld_out_om2.lot_id                           = ilm_out_om2.lot_id
 --mod end 2008/06/07
 --mod end 2008/06/04 rev1.4
         AND    xoha_out_om2.req_status                       = '07'      -- 受領済
@@ -1085,24 +1143,24 @@ SELECT xstv.whse_code
 --                                                             = xicv_out_om2.item_class_code
 --        AND    NVL(xrpm_out_om2.item_div_origin, xicv_out_om2.item_class_code)
 --                                                             = xicv_out_om2.item_class_code
-        AND NVL(xrpm_out_om2.item_div_origin,'Dummy')          = DECODE(xicv_out_om2_s.item_class_code,'5','5','Dummy') --振替元品目区分 = 出荷品目区分
-        AND NVL(xrpm_out_om2.item_div_ahead ,'Dummy')          = DECODE(xicv_out_om2_r.item_class_code,'5','5','Dummy') --振替先品目区分 = 依頼品目区分
-        AND (xrpm_out_om2.ship_prov_rcv_pay_category           = otta_out_om2.attribute11
-        OR   xrpm_out_om2.ship_prov_rcv_pay_category          IS NULL)
+        AND    NVL(xrpm_out_om2.item_div_origin,'Dummy')     = DECODE(xicv_out_om2_s.item_class_code,'5','5','Dummy') --振替元品目区分 = 出荷品目区分
+        AND    NVL(xrpm_out_om2.item_div_ahead ,'Dummy')     = DECODE(xicv_out_om2_r.item_class_code,'5','5','Dummy') --振替先品目区分 = 依頼品目区分
+        AND   (xrpm_out_om2.ship_prov_rcv_pay_category       = otta_out_om2.attribute11
+        OR     xrpm_out_om2.ship_prov_rcv_pay_category      IS NULL)
 --mod start 2008/06/10
-        AND  ( (xola_out_om2.shipping_inventory_item_id        = xola_out_om2.request_item_id
-          AND   xrpm_out_om2.prod_div_origin                  IS NULL
-          AND   xrpm_out_om2.prod_div_ahead                   IS NULL )
-        OR     (xola_out_om2.shipping_inventory_item_id       <> xola_out_om2.request_item_id
-          AND   xicv_out_om2_s.item_class_code                 = '5'
-          AND   xicv_out_om2_r.item_class_code                 = '5'
-          AND   xrpm_out_om2.prod_div_origin                  IS NOT NULL
-          AND   xrpm_out_om2.prod_div_ahead                   IS NOT NULL )
-        OR     (xola_out_om2.shipping_inventory_item_id       <> xola_out_om2.request_item_id
-          AND  (xicv_out_om2_s.item_class_code                <> '5'
-          OR    xicv_out_om2_r.item_class_code                <> '5')
-          AND   xrpm_out_om2.prod_div_origin                  IS NULL
-          AND   xrpm_out_om2.prod_div_ahead                   IS NULL) )
+        AND  ( (xola_out_om2.shipping_inventory_item_id      = xola_out_om2.request_item_id
+          AND   xrpm_out_om2.prod_div_origin                IS NULL
+          AND   xrpm_out_om2.prod_div_ahead                 IS NULL )
+        OR     (xola_out_om2.shipping_inventory_item_id     <> xola_out_om2.request_item_id
+          AND   xicv_out_om2_s.item_class_code               = '5'
+          AND   xicv_out_om2_r.item_class_code               = '5'
+          AND   xrpm_out_om2.prod_div_origin                IS NOT NULL
+          AND   xrpm_out_om2.prod_div_ahead                 IS NOT NULL )
+        OR     (xola_out_om2.shipping_inventory_item_id     <> xola_out_om2.request_item_id
+          AND  (xicv_out_om2_s.item_class_code              <> '5'
+          OR    xicv_out_om2_r.item_class_code              <> '5')
+          AND   xrpm_out_om2.prod_div_origin                IS NULL
+          AND   xrpm_out_om2.prod_div_ahead                 IS NULL) )
 --mod end   2008/06/10
 --mod end 2008/06/04
         AND    flv_out_om2.lookup_type                       = 'XXCMN_NEW_DIVISION'
@@ -1144,7 +1202,10 @@ SELECT xstv.whse_code
               ,NULL                                    AS deliver_to_id
               ,NULL                                    AS deliver_to_name
               ,0                                       AS stock_quantity
-              ,xmd_out_pr.instructions_qty
+--mod start 2008/06/10
+--              ,xmd_out_pr.instructions_qty
+              ,xmld_out_pr.actual_quantity             AS leaving_quantity
+--mod end 2008/06/10
               ,ximv_out_pr.lot_ctl
         FROM   xxcmn_item_locations_v       xilv_out_pr                 -- OPM保管場所情報VIEW
               ,xxcmn_item_mst_v             ximv_out_pr                 -- OPM品目情報VIEW
@@ -1153,26 +1214,32 @@ SELECT xstv.whse_code
               ,fnd_lookup_values            flv_out_pr                  -- クイックコード <---- ここまで共通
               ,gme_batch_header             gbh_out_pr                  -- 生産バッチ
               ,gme_material_details         gmd_out_pr                  -- 生産原料詳細
-              ,xxwip_material_detail        xmd_out_pr                  -- 生産原料詳細(アドオン)
+--del start 2008/06/10
+--              ,xxwip_material_detail        xmd_out_pr                  -- 生産原料詳細(アドオン)
+--del end 2008/06/10
               ,gmd_routings_b               grb_out_pr                  -- 工順マスタ
 --mod start 2008/06/07
               ,gmd_routings_tl              grt_out_pr                  -- 工順マスタ日本語
 --mod end 2008/06/07
               ,xxinv_mov_lot_details        xmld_out_pr                 -- 移動ロット詳細(アドオン)
-              ,ic_tran_pnd                  itp_out_pr                  -- OPM保留在庫トランザクション
+--del start 2008/06/10
+--              ,ic_tran_pnd                  itp_out_pr                  -- OPM保留在庫トランザクション
+--del end 2008/06/10
         WHERE  xrpm_out_pr.doc_type                = 'PROD'
         AND    xrpm_out_pr.use_div_invent          = 'Y'
-        AND    itp_out_pr.delete_mark              = 0                  -- 有効チェック(OPM保留在庫)
+--        AND    itp_out_pr.delete_mark              = 0                  -- 有効チェック(OPM保留在庫)
         AND    gbh_out_pr.batch_id                 = gmd_out_pr.batch_id
-        AND    gmd_out_pr.batch_id                 = xmd_out_pr.batch_id
-        AND    gmd_out_pr.material_detail_id       = xmd_out_pr.material_detail_id
+--mod start 2008/06/10
+--        AND    gmd_out_pr.batch_id                 = xmd_out_pr.batch_id
+--        AND    gmd_out_pr.material_detail_id       = xmd_out_pr.material_detail_id
+--mod end 2008/06/10
         AND    gmd_out_pr.material_detail_id       = xmld_out_pr.mov_line_id
         AND    gmd_out_pr.line_type                = -1                 -- 投入品
-        AND    itp_out_pr.doc_type                 = xrpm_out_pr.doc_type
-        AND    itp_out_pr.doc_id                   = gmd_out_pr.batch_id
-        AND    itp_out_pr.doc_line                 = gmd_out_pr.line_no
-        AND    itp_out_pr.line_type                = gmd_out_pr.line_type
-        AND    itp_out_pr.completed_ind            = 0
+--        AND    itp_out_pr.doc_type                 = xrpm_out_pr.doc_type
+--        AND    itp_out_pr.doc_id                   = gmd_out_pr.batch_id
+--        AND    itp_out_pr.doc_line                 = gmd_out_pr.line_no
+--        AND    itp_out_pr.line_type                = gmd_out_pr.line_type
+--        AND    itp_out_pr.completed_ind            = 0
         AND    gmd_out_pr.material_detail_id       = xmld_out_pr.mov_line_id
 --mod start 2008/06/09
         AND    xmld_out_pr.document_type_code      = '40'
@@ -1180,10 +1247,13 @@ SELECT xstv.whse_code
 --mod end   2008/06/09
         AND    gmd_out_pr.item_id                  = ximv_out_pr.item_id
         AND    ilm_out_pr.item_id                  = ximv_out_pr.item_id
-        AND (( ximv_out_pr.lot_ctl                 = 1                  -- ロット管理品
-           AND xmld_out_pr.lot_id                  = ilm_out_pr.lot_id )
-          OR ( ximv_out_pr.lot_ctl                 = 0                  -- 非ロット管理品
-           AND xmd_out_pr.plan_type                = '4' ))             -- 投入
+--mod start 2008/06/10
+--        AND (( ximv_out_pr.lot_ctl                 = 1                  -- ロット管理品
+--           AND xmld_out_pr.lot_id                  = ilm_out_pr.lot_id )
+--          OR ( ximv_out_pr.lot_ctl                 = 0                  -- 非ロット管理品
+--           AND xmd_out_pr.plan_type                = '4' ))             -- 投入
+        AND xmld_out_pr.lot_id                     = ilm_out_pr.lot_id
+---mod end 2008/06/10
         AND    grb_out_pr.attribute9               = xilv_out_pr.segment1
         AND    NOT EXISTS( SELECT 'X'
                            FROM   gme_batch_header gbh_out_pr_ex
@@ -1392,6 +1462,123 @@ SELECT xstv.whse_code
               ,flv_in_xf_e.meaning
               ,xmrih_in_xf_e.mov_num
               ,xmrih_in_xf_e.shipped_locat_id
+              ,xilv_in_xf_e2.description
+              ,NULL                                    AS deliver_to_id
+              ,NULL                                    AS deliver_to_name
+              ,xmld_in_xf_e.actual_quantity            AS stock_quantity
+              ,0                                       AS leaving_quantity
+              ,ximv_in_xf_e.lot_ctl
+        FROM   xxcmn_item_locations_v       xilv_in_xf_e                   -- OPM保管場所情報VIEW
+              ,xxcmn_item_locations_v       xilv_in_xf_e2                  -- OPM保管場所情報VIEW
+              ,xxcmn_item_mst_v             ximv_in_xf_e                   -- OPM品目情報VIEW
+              ,ic_lots_mst                  ilm_in_xf_e                    -- OPMロットマスタ
+              ,xxcmn_rcv_pay_mst            xrpm_in_xf_e                   -- 受払区分アドオンマスタ
+              ,fnd_lookup_values            flv_in_xf_e                    -- クイックコード <---- ここまで共通
+              ,xxinv_mov_req_instr_headers  xmrih_in_xf_e                  -- 移動依頼/指示ヘッダ(アドオン)
+              ,xxinv_mov_req_instr_lines    xmril_in_xf_e                  -- 移動依頼/指示明細(アドオン)
+              ,xxinv_mov_lot_details        xmld_in_xf_e                   -- 移動ロット詳細(アドオン)
+        WHERE  xrpm_in_xf_e.doc_type                = 'XFER'               -- 移動積送あり
+        AND    xrpm_in_xf_e.use_div_invent          = 'Y'
+        AND    xrpm_in_xf_e.rcv_pay_div             = '1'
+        AND    xmrih_in_xf_e.mov_hdr_id             = xmril_in_xf_e.mov_hdr_id
+        AND    xmril_in_xf_e.item_id                = ximv_in_xf_e.item_id
+        AND    xmrih_in_xf_e.ship_to_locat_id       = xilv_in_xf_e.inventory_location_id
+        AND    xmrih_in_xf_e.shipped_locat_id       = xilv_in_xf_e2.inventory_location_id
+        AND    ilm_in_xf_e.item_id                  = xmril_in_xf_e.item_id
+        AND    ilm_in_xf_e.lot_id                   = xmld_in_xf_e.lot_id
+        AND    xmld_in_xf_e.mov_line_id             = xmril_in_xf_e.mov_line_id
+        AND    xmld_in_xf_e.document_type_code      = '20'                 -- 移動
+        AND    xmld_in_xf_e.record_type_code        = '30'                 -- 入庫実績
+        AND    xmrih_in_xf_e.mov_type               = '1'                  -- 積送あり
+        AND    xmril_in_xf_e.delete_flg             = 'N'                  -- OFF
+        AND    xmrih_in_xf_e.status                IN ( '06'               -- 入出庫報告有
+                                                       ,'05' )             -- 入庫報告有
+        AND    flv_in_xf_e.lookup_type              = 'XXCMN_NEW_DIVISION'
+        AND    flv_in_xf_e.language                 = 'JA'
+        AND    flv_in_xf_e.lookup_code              = xrpm_in_xf_e.new_div_invent
+        UNION ALL
+        -- 移動入庫実績(積送なし)
+        SELECT xilv_in_tr_e.whse_code
+              ,xilv_in_tr_e.mtl_organization_id
+              ,xilv_in_tr_e.customer_stock_whse
+              ,xilv_in_tr_e.inventory_location_id
+              ,xilv_in_tr_e.segment1
+              ,xilv_in_tr_e.description
+              ,ximv_in_tr_e.item_id
+              ,ximv_in_tr_e.item_no
+              ,ximv_in_tr_e.item_name
+              ,ximv_in_tr_e.item_short_name
+              ,ximv_in_tr_e.num_of_cases
+              ,ilm_in_tr_e.lot_id
+              ,ilm_in_tr_e.lot_no
+              ,ilm_in_tr_e.attribute1
+              ,ilm_in_tr_e.attribute2
+              ,ilm_in_tr_e.attribute3                                   -- <---- ここまで共通
+              ,xmrih_in_tr_e.actual_arrival_date
+              ,xmrih_in_tr_e.actual_ship_date
+              ,'2'                                     AS status        -- 実績
+              ,xrpm_in_tr_e.new_div_invent
+              ,flv_in_tr_e.meaning
+              ,xmrih_in_tr_e.mov_num
+              ,xmrih_in_tr_e.shipped_locat_id
+              ,xilv_in_tr_e2.description
+              ,NULL                                    AS deliver_to_id
+              ,NULL                                    AS deliver_to_name
+              ,xmld_in_tr_e.actual_quantity            AS stock_quantity
+              ,0                                       AS leaving_quantity
+              ,ximv_in_tr_e.lot_ctl
+        FROM   xxcmn_item_locations_v       xilv_in_tr_e                -- OPM保管場所情報VIEW
+              ,xxcmn_item_locations_v       xilv_in_tr_e2               -- OPM保管場所情報VIEW
+              ,xxcmn_item_mst_v             ximv_in_tr_e                -- OPM品目情報VIEW
+              ,ic_lots_mst                  ilm_in_tr_e                 -- OPMロットマスタ
+              ,xxcmn_rcv_pay_mst            xrpm_in_tr_e                -- 受払区分アドオンマスタ
+              ,fnd_lookup_values            flv_in_tr_e                 -- クイックコード <---- ここまで共通
+              ,xxinv_mov_req_instr_headers  xmrih_in_tr_e               -- 移動依頼/指示ヘッダ(アドオン)
+              ,xxinv_mov_req_instr_lines    xmril_in_tr_e               -- 移動依頼/指示明細(アドオン)
+              ,xxinv_mov_lot_details        xmld_in_tr_e                -- 移動ロット詳細(アドオン)
+        WHERE  xrpm_in_tr_e.doc_type                = 'TRNI'            -- 移動積送なし
+        AND    xrpm_in_tr_e.use_div_invent          = 'Y'
+        AND    xrpm_in_tr_e.rcv_pay_div             = '1'
+        AND    xmrih_in_tr_e.mov_hdr_id             = xmril_in_tr_e.mov_hdr_id
+        AND    xmril_in_tr_e.item_id                = ximv_in_tr_e.item_id
+        AND    xmrih_in_tr_e.ship_to_locat_id       = xilv_in_tr_e.inventory_location_id
+        AND    xmrih_in_tr_e.shipped_locat_id       = xilv_in_tr_e2.inventory_location_id
+        AND    ilm_in_tr_e.item_id                  = xmril_in_tr_e.item_id
+        AND    ilm_in_tr_e.lot_id                   = xmld_in_tr_e.lot_id
+        AND    xmld_in_tr_e.mov_line_id             = xmril_in_tr_e.mov_line_id
+        AND    xmld_in_tr_e.document_type_code      = '20'              -- 移動
+        AND    xmld_in_tr_e.record_type_code        = '30'              -- 入庫実績
+        AND    xmrih_in_tr_e.mov_type               = '2'               -- 積送なし
+        AND    xmrih_in_tr_e.status                 = '06'              -- 入出庫報告有
+        AND    xmril_in_tr_e.delete_flg             = 'N'               -- OFF
+        AND    flv_in_tr_e.lookup_type              = 'XXCMN_NEW_DIVISION'
+        AND    flv_in_tr_e.language                 = 'JA'
+        AND    flv_in_tr_e.lookup_code              = xrpm_in_tr_e.new_div_invent
+/*
+        -- 移動入庫実績(積送あり)
+        SELECT xilv_in_xf_e.whse_code
+              ,xilv_in_xf_e.mtl_organization_id
+              ,xilv_in_xf_e.customer_stock_whse
+              ,xilv_in_xf_e.inventory_location_id
+              ,xilv_in_xf_e.segment1
+              ,xilv_in_xf_e.description
+              ,ximv_in_xf_e.item_id
+              ,ximv_in_xf_e.item_no
+              ,ximv_in_xf_e.item_name
+              ,ximv_in_xf_e.item_short_name
+              ,ximv_in_xf_e.num_of_cases
+              ,ilm_in_xf_e.lot_id
+              ,ilm_in_xf_e.lot_no
+              ,ilm_in_xf_e.attribute1
+              ,ilm_in_xf_e.attribute2
+              ,ilm_in_xf_e.attribute3                                      -- <---- ここまで共通
+              ,xmrih_in_xf_e.actual_arrival_date
+              ,xmrih_in_xf_e.actual_ship_date
+              ,'2'                                     AS status           -- 実績
+              ,xrpm_in_xf_e.new_div_invent
+              ,flv_in_xf_e.meaning
+              ,xmrih_in_xf_e.mov_num
+              ,xmrih_in_xf_e.shipped_locat_id
               ,xilv_in_xf_e.description
               ,NULL                                    AS deliver_to_id
               ,NULL                                    AS deliver_to_name
@@ -1402,7 +1589,9 @@ SELECT xstv.whse_code
 --                WHEN ( ximv_in_xf_e.lot_ctl = 0  ) THEN
 --                  xmril_in_xf_e.ship_to_quantity                           -- 非ロット管理品(入庫実績数量)
 --               END                                        stock_quantity
-              ,xmld_in_xf_e.actual_quantity            stock_quantity
+--
+--              ,xmld_in_xf_e.actual_quantity            stock_quantity
+              ,itp_in_xf_e.trans_qty                   AS stock_quantity
 --mod end 2008/06/05 rev1.5
               ,0                                       AS leaving_quantity
               ,ximv_in_xf_e.lot_ctl
@@ -1484,7 +1673,8 @@ SELECT xstv.whse_code
 --                WHEN ( ximv_in_tr_e.lot_ctl = 0  ) THEN
 --                  xmril_in_tr_e.ship_to_quantity                        -- 非ロット管理品(入庫実績数量)
 --               END                                        stock_quantity
-              ,xmld_in_tr_e.actual_quantity            stock_quantity
+--              ,xmld_in_tr_e.actual_quantity            stock_quantity
+              ,itc_in_tr_e.trans_qty                   AS stock_quantity
 --mod end 2008/06/05 rev1.5
               ,0                                       AS leaving_quantity
               ,ximv_in_tr_e.lot_ctl
@@ -1535,6 +1725,7 @@ SELECT xstv.whse_code
         AND    flv_in_tr_e.lookup_type              = 'XXCMN_NEW_DIVISION'
         AND    flv_in_tr_e.language                 = 'JA'
         AND    flv_in_tr_e.lookup_code              = xrpm_in_tr_e.new_div_invent
+*/
         UNION ALL
         -- 生産入庫実績
         SELECT xilv_in_pr_e.whse_code
@@ -1780,141 +1971,141 @@ SELECT xstv.whse_code
 --mod end 2008/06/07
         UNION ALL
         -- 倉替返品 入庫実績
-        SELECT xilv_out_po_e_rma.whse_code
-              ,xilv_out_po_e_rma.mtl_organization_id
-              ,xilv_out_po_e_rma.customer_stock_whse
-              ,xilv_out_po_e_rma.inventory_location_id
-              ,xilv_out_po_e_rma.segment1
-              ,xilv_out_po_e_rma.description
-              ,ximv_out_po_e_rma.item_id
-              ,ximv_out_po_e_rma.item_no
-              ,ximv_out_po_e_rma.item_name
-              ,ximv_out_po_e_rma.item_short_name
-              ,ximv_out_po_e_rma.num_of_cases
-              ,ilm_out_po_e_rma.lot_id
-              ,ilm_out_po_e_rma.lot_no
-              ,ilm_out_po_e_rma.attribute1
-              ,ilm_out_po_e_rma.attribute2
-              ,ilm_out_po_e_rma.attribute3                                    -- <---- ここまで共通
-              ,xoha_out_po_e_rma.arrival_date
-              ,xoha_out_po_e_rma.shipped_date
+        SELECT xilv_in_po_e_rma.whse_code
+              ,xilv_in_po_e_rma.mtl_organization_id
+              ,xilv_in_po_e_rma.customer_stock_whse
+              ,xilv_in_po_e_rma.inventory_location_id
+              ,xilv_in_po_e_rma.segment1
+              ,xilv_in_po_e_rma.description
+              ,ximv_in_po_e_rma.item_id
+              ,ximv_in_po_e_rma.item_no
+              ,ximv_in_po_e_rma.item_name
+              ,ximv_in_po_e_rma.item_short_name
+              ,ximv_in_po_e_rma.num_of_cases
+              ,ilm_in_po_e_rma.lot_id
+              ,ilm_in_po_e_rma.lot_no
+              ,ilm_in_po_e_rma.attribute1
+              ,ilm_in_po_e_rma.attribute2
+              ,ilm_in_po_e_rma.attribute3                                    -- <---- ここまで共通
+              ,xoha_in_po_e_rma.arrival_date
+              ,xoha_in_po_e_rma.shipped_date
               ,'2'                                     AS status              -- 実績
-              ,xrpm_out_po_e_rma.new_div_invent
-              ,flv_out_po_e_rma.meaning
-              ,xoha_out_po_e_rma.request_no
-              ,xoha_out_po_e_rma.customer_id
-              ,xcav_out_po_e_rma.party_name
-              ,xoha_out_po_e_rma.deliver_to_id
-              ,xpsv_out_po_e_rma.party_site_full_name
-              ,xmld_out_po_e_rma.actual_quantity
+              ,xrpm_in_po_e_rma.new_div_invent
+              ,flv_in_po_e_rma.meaning
+              ,xoha_in_po_e_rma.request_no
+              ,xoha_in_po_e_rma.customer_id
+              ,xcav_in_po_e_rma.party_name
+              ,xoha_in_po_e_rma.deliver_to_id
+              ,xpsv_in_po_e_rma.party_site_full_name
+              ,xmld_in_po_e_rma.actual_quantity
               ,0                                       AS leaving_quantity
-              ,ximv_out_po_e_rma.lot_ctl
-        FROM   xxcmn_item_locations_v       xilv_out_po_e_rma                 -- OPM保管場所情報VIEW
-              ,xxcmn_item_mst_v             ximv_out_po_e_rma                 -- OPM品目情報VIEW
-              ,ic_lots_mst                  ilm_out_po_e_rma                  -- OPMロットマスタ
-              ,xxcmn_rcv_pay_mst            xrpm_out_po_e_rma                 -- 受払区分アドオンマスタ
-              ,fnd_lookup_values            flv_out_po_e_rma                  -- クイックコード <---- ここまで共通
-              ,xxwsh_order_headers_all      xoha_out_po_e_rma                 -- 受注ヘッダ(アドオン)
-              ,xxwsh_order_lines_all        xola_out_po_e_rma                 -- 受注明細(アドオン)
-              ,xxinv_mov_lot_details        xmld_out_po_e_rma                 -- 移動ロット詳細(アドオン)
-              ,oe_transaction_types_all     otta_out_po_e_rma                 -- 受注タイプ
-              ,xxcmn_cust_accounts_v        xcav_out_po_e_rma                 -- 顧客情報VIEW
-              ,xxcmn_party_sites_v          xpsv_out_po_e_rma                 -- パーティサイト情報VIEW
-        WHERE  xrpm_out_po_e_rma.doc_type                    = 'PORC'
-        AND    xrpm_out_po_e_rma.source_document_code        = 'RMA'
+              ,ximv_in_po_e_rma.lot_ctl
+        FROM   xxcmn_item_locations_v       xilv_in_po_e_rma                 -- OPM保管場所情報VIEW
+              ,xxcmn_item_mst_v             ximv_in_po_e_rma                 -- OPM品目情報VIEW
+              ,ic_lots_mst                  ilm_in_po_e_rma                  -- OPMロットマスタ
+              ,xxcmn_rcv_pay_mst            xrpm_in_po_e_rma                 -- 受払区分アドオンマスタ
+              ,fnd_lookup_values            flv_in_po_e_rma                  -- クイックコード <---- ここまで共通
+              ,xxwsh_order_headers_all      xoha_in_po_e_rma                 -- 受注ヘッダ(アドオン)
+              ,xxwsh_order_lines_all        xola_in_po_e_rma                 -- 受注明細(アドオン)
+              ,xxinv_mov_lot_details        xmld_in_po_e_rma                 -- 移動ロット詳細(アドオン)
+              ,oe_transaction_types_all     otta_in_po_e_rma                 -- 受注タイプ
+              ,xxcmn_cust_accounts_v        xcav_in_po_e_rma                 -- 顧客情報VIEW
+              ,xxcmn_party_sites_v          xpsv_in_po_e_rma                 -- パーティサイト情報VIEW
+        WHERE  xrpm_in_po_e_rma.doc_type                    = 'PORC'
+        AND    xrpm_in_po_e_rma.source_document_code        = 'RMA'
 --mod start 2008/06/09
-        AND    otta_out_po_e_rma.order_category_code         = 'RETURN'
+        AND    otta_in_po_e_rma.order_category_code         = 'RETURN'
 --mod end 2008/06/09
-        AND    xrpm_out_po_e_rma.use_div_invent              = 'Y'
-        AND    xrpm_out_po_e_rma.rcv_pay_div                 = '1'            -- 受入
-        AND    xoha_out_po_e_rma.order_header_id             = xola_out_po_e_rma.order_header_id
+        AND    xrpm_in_po_e_rma.use_div_invent              = 'Y'
+        AND    xrpm_in_po_e_rma.rcv_pay_div                 = '1'            -- 受入
+        AND    xoha_in_po_e_rma.order_header_id             = xola_in_po_e_rma.order_header_id
 --mod start 2008/06/04 rev1.1
---        AND    xoha_out_po_e_rma.deliver_from_id             = xilv_out_po_e_rma.segment1
-        AND    xoha_out_po_e_rma.deliver_from_id             = xilv_out_po_e_rma.inventory_location_id
+--        AND    xoha_in_po_e_rma.deliver_from_id             = xilv_in_po_e_rma.segment1
+        AND    xoha_in_po_e_rma.deliver_from_id             = xilv_in_po_e_rma.inventory_location_id
 --mod end 2008/06/04 rev1.1
-        AND    xola_out_po_e_rma.shipping_inventory_item_id  = ximv_out_po_e_rma.inventory_item_id
-        AND    ilm_out_po_e_rma.item_id                      = ximv_out_po_e_rma.item_id
-        AND    xmld_out_po_e_rma.mov_line_id                 = xola_out_po_e_rma.order_line_id
-        AND    xmld_out_po_e_rma.document_type_code          = '10'           -- 出荷依頼
-        AND    xmld_out_po_e_rma.record_type_code            = '20'           -- 出庫実績
+        AND    xola_in_po_e_rma.shipping_inventory_item_id  = ximv_in_po_e_rma.inventory_item_id
+        AND    ilm_in_po_e_rma.item_id                      = ximv_in_po_e_rma.item_id
+        AND    xmld_in_po_e_rma.mov_line_id                 = xola_in_po_e_rma.order_line_id
+        AND    xmld_in_po_e_rma.document_type_code          = '10'           -- 出荷依頼
+        AND    xmld_in_po_e_rma.record_type_code            = '20'           -- 出庫実績
 --mod start 2008/06/07
---        AND (( ximv_out_po_e_rma.lot_ctl                     = 1              -- ロット管理品
---           AND xmld_out_po_e_rma.item_id                     = ximv_out_po_e_rma.item_id
---           AND xmld_out_po_e_rma.lot_id                      = ilm_out_po_e_rma.lot_id )
---          OR ( ximv_out_po_e_rma.lot_ctl                     = 0 ))           -- 非ロット管理品
---        AND xmld_out_po_e_rma.item_id                        = ximv_out_po_e_rma.item_id
-        AND xmld_out_po_e_rma.lot_id                         = ilm_out_po_e_rma.lot_id
---        AND xmld_out_po_e_rma.item_id                        = ilm_out_po_e_rma.item_id
+--        AND (( ximv_in_po_e_rma.lot_ctl                     = 1              -- ロット管理品
+--           AND xmld_in_po_e_rma.item_id                     = ximv_in_po_e_rma.item_id
+--           AND xmld_in_po_e_rma.lot_id                      = ilm_in_po_e_rma.lot_id )
+--          OR ( ximv_in_po_e_rma.lot_ctl                     = 0 ))           -- 非ロット管理品
+--        AND xmld_in_po_e_rma.item_id                        = ximv_in_po_e_rma.item_id
+        AND    xmld_in_po_e_rma.lot_id                         = ilm_in_po_e_rma.lot_id
+--        AND xmld_in_po_e_rma.item_id                        = ilm_in_po_e_rma.item_id
 --mod end 2008/06/07
-        AND    xoha_out_po_e_rma.order_type_id               = otta_out_po_e_rma.transaction_type_id
-        AND    otta_out_po_e_rma.attribute1                  = '3'            -- 倉替返品
-        AND    otta_out_po_e_rma.attribute1                  = xrpm_out_po_e_rma.shipment_provision_div
-        AND    xoha_out_po_e_rma.req_status                  = '04'           -- 出荷実績計上済
+        AND    xoha_in_po_e_rma.order_type_id               = otta_in_po_e_rma.transaction_type_id
+        AND    otta_in_po_e_rma.attribute1                  = '3'            -- 倉替返品
+        AND    otta_in_po_e_rma.attribute1                  = xrpm_in_po_e_rma.shipment_provision_div
+        AND    xoha_in_po_e_rma.req_status                  = '04'           -- 出荷実績計上済
 --mod start 2008/06/07
---        AND    xrpm_out_po_e_rma.ship_prov_rcv_pay_category  = '03'           -- 受払区分アドオンを複数読まない為
-        AND    xrpm_out_po_e_rma.ship_prov_rcv_pay_category  = otta_out_po_e_rma.attribute11
+--        AND    xrpm_in_po_e_rma.ship_prov_rcv_pay_category  = '03'           -- 受払区分アドオンを複数読まない為
+        AND    xrpm_in_po_e_rma.ship_prov_rcv_pay_category  = otta_in_po_e_rma.attribute11
                                                                               -- 受払区分アドオンを複数読まない為
-        AND    otta_out_po_e_rma.attribute11                 in  ('03','04')
+        AND    otta_in_po_e_rma.attribute11                 in  ('03','04')
 --mod end 2008/06/07
-        AND    xoha_out_po_e_rma.latest_external_flag        = 'Y'            -- ON
-        AND    xola_out_po_e_rma.delete_flag                 = 'N'            -- OFF
-        AND    flv_out_po_e_rma.lookup_type                  = 'XXCMN_NEW_DIVISION'
-        AND    flv_out_po_e_rma.language                     = 'JA'
-        AND    flv_out_po_e_rma.lookup_code                  = xrpm_out_po_e_rma.new_div_invent
-        AND    xoha_out_po_e_rma.customer_id                 = xcav_out_po_e_rma.party_id
-        AND    xoha_out_po_e_rma.deliver_to_id               = xpsv_out_po_e_rma.party_site_id
+        AND    xoha_in_po_e_rma.latest_external_flag        = 'Y'            -- ON
+        AND    xola_in_po_e_rma.delete_flag                 = 'N'            -- OFF
+        AND    flv_in_po_e_rma.lookup_type                  = 'XXCMN_NEW_DIVISION'
+        AND    flv_in_po_e_rma.language                     = 'JA'
+        AND    flv_in_po_e_rma.lookup_code                  = xrpm_in_po_e_rma.new_div_invent
+        AND    xoha_in_po_e_rma.customer_id                 = xcav_in_po_e_rma.party_id
+        AND    xoha_in_po_e_rma.deliver_to_id               = xpsv_in_po_e_rma.party_site_id
         UNION ALL
 --mod start 2008/06/06
         -- 在庫調整 入庫実績(相手先在庫)
-        SELECT xilv_out_ad_e_x97.whse_code
-              ,xilv_out_ad_e_x97.mtl_organization_id
-              ,xilv_out_ad_e_x97.customer_stock_whse
-              ,xilv_out_ad_e_x97.inventory_location_id
-              ,xilv_out_ad_e_x97.segment1
-              ,xilv_out_ad_e_x97.description
-              ,ximv_out_ad_e_x97.item_id
-              ,ximv_out_ad_e_x97.item_no
-              ,ximv_out_ad_e_x97.item_name
-              ,ximv_out_ad_e_x97.item_short_name
-              ,ximv_out_ad_e_x97.num_of_cases
-              ,ilm_out_ad_e_x97.lot_id
-              ,ilm_out_ad_e_x97.lot_no
-              ,ilm_out_ad_e_x97.attribute1
-              ,ilm_out_ad_e_x97.attribute2
-              ,ilm_out_ad_e_x97.attribute3                                     -- <---- ここまで共通
-              ,itc_out_ad_e_x97.trans_date
-              ,itc_out_ad_e_x97.trans_date
+        SELECT xilv_in_ad_e_x97.whse_code
+              ,xilv_in_ad_e_x97.mtl_organization_id
+              ,xilv_in_ad_e_x97.customer_stock_whse
+              ,xilv_in_ad_e_x97.inventory_location_id
+              ,xilv_in_ad_e_x97.segment1
+              ,xilv_in_ad_e_x97.description
+              ,ximv_in_ad_e_x97.item_id
+              ,ximv_in_ad_e_x97.item_no
+              ,ximv_in_ad_e_x97.item_name
+              ,ximv_in_ad_e_x97.item_short_name
+              ,ximv_in_ad_e_x97.num_of_cases
+              ,ilm_in_ad_e_x97.lot_id
+              ,ilm_in_ad_e_x97.lot_no
+              ,ilm_in_ad_e_x97.attribute1
+              ,ilm_in_ad_e_x97.attribute2
+              ,ilm_in_ad_e_x97.attribute3                                     -- <---- ここまで共通
+              ,itc_in_ad_e_x97.trans_date
+              ,itc_in_ad_e_x97.trans_date
               ,'2'                                            AS status        -- 実績
-              ,xrpm_out_ad_e_x97.new_div_invent
-              ,flv_out_ad_e_x97.meaning
+              ,xrpm_in_ad_e_x97.new_div_invent
+              ,flv_in_ad_e_x97.meaning
               ,NULL                                           AS voucher_no
-              ,xilv_out_ad_e_x97.inventory_location_id        AS ukebaraisaki_id
-              ,xilv_out_ad_e_x97.description
+              ,xilv_in_ad_e_x97.inventory_location_id         AS ukebaraisaki_id
+              ,xilv_in_ad_e_x97.description
               ,NULL                                           AS deliver_to_id
               ,NULL                                           AS deliver_to_name
+              ,itc_in_ad_e_x97.trans_qty                      AS leaving_quantity
               ,0                                              AS stock_quantity
-              ,itc_out_ad_e_x97.trans_qty
-              ,ximv_out_ad_e_x97.lot_ctl
-        FROM   xxcmn_item_locations_v  xilv_out_ad_e_x97                       -- OPM保管場所情報VIEW
-              ,xxcmn_item_mst_v        ximv_out_ad_e_x97                       -- OPM品目情報VIEW
-              ,ic_lots_mst             ilm_out_ad_e_x97                        -- OPMロットマスタ
-              ,xxcmn_rcv_pay_mst       xrpm_out_ad_e_x97                       -- 受払区分アドオンマスタ
-              ,fnd_lookup_values       flv_out_ad_e_x97                        -- クイックコード <---- ここまで共通
-              ,ic_tran_cmp             itc_out_ad_e_x97                        -- OPM完了在庫トランザクション
-        WHERE  xrpm_out_ad_e_x97.doc_type               = 'ADJI'
-        AND    xrpm_out_ad_e_x97.reason_code            = 'X977'               -- 相手先在庫
-        AND    xrpm_out_ad_e_x97.rcv_pay_div            = '1'                  -- 受入
-        AND    xrpm_out_ad_e_x97.use_div_invent         = 'Y'
-        AND    itc_out_ad_e_x97.reason_code             = xrpm_out_ad_e_x97.reason_code
-        AND    SIGN( itc_out_ad_e_x97.trans_qty )       = xrpm_out_ad_e_x97.rcv_pay_div
-        AND    itc_out_ad_e_x97.item_id                 = ximv_out_ad_e_x97.item_id
-        AND    ilm_out_ad_e_x97.item_id                 = ximv_out_ad_e_x97.item_id
-        AND    itc_out_ad_e_x97.lot_id                  = ilm_out_ad_e_x97.lot_id
-        AND    itc_out_ad_e_x97.whse_code               = xilv_out_ad_e_x97.whse_code
-        AND    itc_out_ad_e_x97.location                = xilv_out_ad_e_x97.segment1
-        AND    flv_out_ad_e_x97.lookup_type             = 'XXCMN_NEW_DIVISION'
-        AND    flv_out_ad_e_x97.language                = 'JA'
-        AND    flv_out_ad_e_x97.lookup_code             = xrpm_out_ad_e_x97.new_div_invent
+              ,ximv_in_ad_e_x97.lot_ctl
+        FROM   xxcmn_item_locations_v  xilv_in_ad_e_x97                       -- OPM保管場所情報VIEW
+              ,xxcmn_item_mst_v        ximv_in_ad_e_x97                       -- OPM品目情報VIEW
+              ,ic_lots_mst             ilm_in_ad_e_x97                        -- OPMロットマスタ
+              ,xxcmn_rcv_pay_mst       xrpm_in_ad_e_x97                       -- 受払区分アドオンマスタ
+              ,fnd_lookup_values       flv_in_ad_e_x97                        -- クイックコード <---- ここまで共通
+              ,ic_tran_cmp             itc_in_ad_e_x97                        -- OPM完了在庫トランザクション
+        WHERE  xrpm_in_ad_e_x97.doc_type               = 'ADJI'
+        AND    xrpm_in_ad_e_x97.reason_code            = 'X977'               -- 相手先在庫
+        AND    xrpm_in_ad_e_x97.rcv_pay_div            = '1'                  -- 受入
+        AND    xrpm_in_ad_e_x97.use_div_invent         = 'Y'
+        AND    itc_in_ad_e_x97.reason_code             = xrpm_in_ad_e_x97.reason_code
+        AND    SIGN( itc_in_ad_e_x97.trans_qty )       = xrpm_in_ad_e_x97.rcv_pay_div
+        AND    itc_in_ad_e_x97.item_id                 = ximv_in_ad_e_x97.item_id
+        AND    ilm_in_ad_e_x97.item_id                 = ximv_in_ad_e_x97.item_id
+        AND    itc_in_ad_e_x97.lot_id                  = ilm_in_ad_e_x97.lot_id
+        AND    itc_in_ad_e_x97.whse_code               = xilv_in_ad_e_x97.whse_code
+        AND    itc_in_ad_e_x97.location                = xilv_in_ad_e_x97.segment1
+        AND    flv_in_ad_e_x97.lookup_type             = 'XXCMN_NEW_DIVISION'
+        AND    flv_in_ad_e_x97.language                = 'JA'
+        AND    flv_in_ad_e_x97.lookup_code             = xrpm_in_ad_e_x97.new_div_invent
 --mod end 2008/06/06
         UNION ALL
         -- 在庫調整 入庫実績(浜岡入庫)
@@ -2001,14 +2192,15 @@ SELECT xstv.whse_code
               ,xrpm_in_ad_e_xx.new_div_invent
               ,flv_in_ad_e_xx.meaning
               ,xmrih_in_ad_e_xx.mov_num
-              ,xmrih_in_ad_e_xx.ship_to_locat_id
-              ,xilv_in_ad_e_xx.description
+              ,xmrih_in_ad_e_xx.shipped_locat_id
+              ,xilv_in_ad_e2_xx.description
               ,NULL                                           AS deliver_to_id
               ,NULL                                           AS deliver_to_name
-              ,ABS(itc_in_ad_e_xx.trans_qty)
-              ,0                                              AS leaving_quantity
+              ,0
+              ,ABS(itc_in_ad_e_xx.trans_qty)                  AS leaving_quantity
               ,ximv_in_ad_e_xx.lot_ctl
         FROM   xxcmn_item_locations_v  xilv_in_ad_e_xx                       -- OPM保管場所情報VIEW
+              ,xxcmn_item_locations_v  xilv_in_ad_e2_xx                      -- OPM保管場所情報VIEW
               ,xxcmn_item_mst_v        ximv_in_ad_e_xx                       -- OPM品目情報VIEW
               ,ic_lots_mst             ilm_in_ad_e_xx                        -- OPMロットマスタ
               ,xxcmn_rcv_pay_mst       xrpm_in_ad_e_xx                       -- 受払区分アドオンマスタ
@@ -2044,6 +2236,7 @@ SELECT xstv.whse_code
         AND    xmril_in_ad_e_xx.item_id               = ximv_in_ad_e_xx.item_id
         AND    xmrih_in_ad_e_xx.mov_hdr_id            = xmril_in_ad_e_xx.mov_hdr_id
         AND    xmrih_in_ad_e_xx.ship_to_locat_id      = xilv_in_ad_e_xx.inventory_location_id
+        AND    xmrih_in_ad_e_xx.shipped_locat_id      = xilv_in_ad_e2_xx.inventory_location_id
 --mod end 2008/06/06
         UNION ALL
         -- 在庫調整 入庫実績(上記以外)
@@ -2150,6 +2343,123 @@ SELECT xstv.whse_code
               ,flv_out_xf_e.meaning
               ,xmrih_out_xf_e.mov_num
               ,xmrih_out_xf_e.ship_to_locat_id
+              ,xilv_out_xf_e2.description
+              ,NULL                                    AS deliver_to_id
+              ,NULL                                    AS deliver_to_name
+              ,0                                       AS stock_quantity
+              ,xmld_out_xf_e.actual_quantity           AS leaving_quantity
+              ,ximv_out_xf_e.lot_ctl
+        FROM   xxcmn_item_locations_v       xilv_out_xf_e                   -- OPM保管場所情報VIEW
+              ,xxcmn_item_locations_v       xilv_out_xf_e2                  -- OPM保管場所情報VIEW
+              ,xxcmn_item_mst_v             ximv_out_xf_e                   -- OPM品目情報VIEW
+              ,ic_lots_mst                  ilm_out_xf_e                    -- OPMロットマスタ
+              ,xxcmn_rcv_pay_mst            xrpm_out_xf_e                   -- 受払区分アドオンマスタ
+              ,fnd_lookup_values            flv_out_xf_e                    -- クイックコード <---- ここまで共通
+              ,xxinv_mov_req_instr_headers  xmrih_out_xf_e                  -- 移動依頼/指示ヘッダ(アドオン)
+              ,xxinv_mov_req_instr_lines    xmril_out_xf_e                  -- 移動依頼/指示明細(アドオン)
+              ,xxinv_mov_lot_details        xmld_out_xf_e                   -- 移動ロット詳細(アドオン)
+        WHERE  xrpm_out_xf_e.doc_type                = 'XFER'               -- 移動積送あり
+        AND    xrpm_out_xf_e.use_div_invent          = 'Y'
+        AND    xrpm_out_xf_e.rcv_pay_div             = '-1'
+        AND    xmrih_out_xf_e.mov_hdr_id             = xmril_out_xf_e.mov_hdr_id
+        AND    xmril_out_xf_e.item_id                = ximv_out_xf_e.item_id
+        AND    xmrih_out_xf_e.shipped_locat_id       = xilv_out_xf_e.inventory_location_id
+        AND    xmrih_out_xf_e.ship_to_locat_id       = xilv_out_xf_e2.inventory_location_id
+        AND    ilm_out_xf_e.item_id                  = xmril_out_xf_e.item_id
+        AND    ilm_out_xf_e.lot_id                   = xmld_out_xf_e.lot_id
+        AND    xmld_out_xf_e.mov_line_id             = xmril_out_xf_e.mov_line_id
+        AND    xmld_out_xf_e.document_type_code      = '20'                 -- 移動
+        AND    xmld_out_xf_e.record_type_code        = '20'                -- 出庫実績
+        AND    xmrih_out_xf_e.mov_type               = '1'                  -- 積送あり
+        AND    xmril_out_xf_e.delete_flg             = 'N'                  -- OFF
+        AND    xmrih_out_xf_e.status                IN ( '06'               -- 入出庫報告有
+                                                        ,'04' )             -- 出庫報告有
+        AND    flv_out_xf_e.lookup_type              = 'XXCMN_NEW_DIVISION'
+        AND    flv_out_xf_e.language                 = 'JA'
+        AND    flv_out_xf_e.lookup_code              = xrpm_out_xf_e.new_div_invent
+        UNION ALL
+        -- 移動出庫実績(積送なし)
+        SELECT xilv_out_tr_e.whse_code
+              ,xilv_out_tr_e.mtl_organization_id
+              ,xilv_out_tr_e.customer_stock_whse
+              ,xilv_out_tr_e.inventory_location_id
+              ,xilv_out_tr_e.segment1
+              ,xilv_out_tr_e.description
+              ,ximv_out_tr_e.item_id
+              ,ximv_out_tr_e.item_no
+              ,ximv_out_tr_e.item_name
+              ,ximv_out_tr_e.item_short_name
+              ,ximv_out_tr_e.num_of_cases
+              ,ilm_out_tr_e.lot_id
+              ,ilm_out_tr_e.lot_no
+              ,ilm_out_tr_e.attribute1
+              ,ilm_out_tr_e.attribute2
+              ,ilm_out_tr_e.attribute3                                   -- <---- ここまで共通
+              ,xmrih_out_tr_e.actual_arrival_date
+              ,xmrih_out_tr_e.actual_ship_date
+              ,'2'                                     AS status        -- 実績
+              ,xrpm_out_tr_e.new_div_invent
+              ,flv_out_tr_e.meaning
+              ,xmrih_out_tr_e.mov_num
+              ,xmrih_out_tr_e.ship_to_locat_id
+              ,xilv_out_tr_e2.description
+              ,NULL                                    AS deliver_to_id
+              ,NULL                                    AS deliver_to_name
+              ,0                                       AS stock_quantity
+              ,xmld_out_tr_e.actual_quantity           AS leaving_quantity
+              ,ximv_out_tr_e.lot_ctl
+        FROM   xxcmn_item_locations_v       xilv_out_tr_e                -- OPM保管場所情報VIEW
+              ,xxcmn_item_locations_v       xilv_out_tr_e2               -- OPM保管場所情報VIEW
+              ,xxcmn_item_mst_v             ximv_out_tr_e                -- OPM品目情報VIEW
+              ,ic_lots_mst                  ilm_out_tr_e                 -- OPMロットマスタ
+              ,xxcmn_rcv_pay_mst            xrpm_out_tr_e                -- 受払区分アドオンマスタ
+              ,fnd_lookup_values            flv_out_tr_e                 -- クイックコード <---- ここまで共通
+              ,xxinv_mov_req_instr_headers  xmrih_out_tr_e               -- 移動依頼/指示ヘッダ(アドオン)
+              ,xxinv_mov_req_instr_lines    xmril_out_tr_e               -- 移動依頼/指示明細(アドオン)
+              ,xxinv_mov_lot_details        xmld_out_tr_e                -- 移動ロット詳細(アドオン)
+        WHERE  xrpm_out_tr_e.doc_type                = 'TRNI'            -- 移動積送なし
+        AND    xrpm_out_tr_e.use_div_invent          = 'Y'
+        AND    xrpm_out_tr_e.rcv_pay_div             = '-1'
+        AND    xmrih_out_tr_e.mov_hdr_id             = xmril_out_tr_e.mov_hdr_id
+        AND    xmril_out_tr_e.item_id                = ximv_out_tr_e.item_id
+        AND    xmrih_out_tr_e.shipped_locat_id       = xilv_out_tr_e.inventory_location_id
+        AND    xmrih_out_tr_e.ship_to_locat_id       = xilv_out_tr_e2.inventory_location_id
+        AND    ilm_out_tr_e.item_id                  = xmril_out_tr_e.item_id
+        AND    ilm_out_tr_e.lot_id                   = xmld_out_tr_e.lot_id
+        AND    xmld_out_tr_e.mov_line_id             = xmril_out_tr_e.mov_line_id
+        AND    xmld_out_tr_e.document_type_code      = '20'              -- 移動
+        AND    xmld_out_tr_e.record_type_code        = '20'              -- 出庫実績
+        AND    xmrih_out_tr_e.mov_type               = '2'               -- 積送なし
+        AND    xmrih_out_tr_e.status                 = '06'              -- 入出庫報告有
+        AND    xmril_out_tr_e.delete_flg             = 'N'               -- OFF
+        AND    flv_out_tr_e.lookup_type              = 'XXCMN_NEW_DIVISION'
+        AND    flv_out_tr_e.language                 = 'JA'
+        AND    flv_out_tr_e.lookup_code              = xrpm_out_tr_e.new_div_invent
+/*
+        -- 移動出庫実績(積送あり)
+        SELECT xilv_out_xf_e.whse_code
+              ,xilv_out_xf_e.mtl_organization_id
+              ,xilv_out_xf_e.customer_stock_whse
+              ,xilv_out_xf_e.inventory_location_id
+              ,xilv_out_xf_e.segment1
+              ,xilv_out_xf_e.description
+              ,ximv_out_xf_e.item_id
+              ,ximv_out_xf_e.item_no
+              ,ximv_out_xf_e.item_name
+              ,ximv_out_xf_e.item_short_name
+              ,ximv_out_xf_e.num_of_cases
+              ,ilm_out_xf_e.lot_id
+              ,ilm_out_xf_e.lot_no
+              ,ilm_out_xf_e.attribute1
+              ,ilm_out_xf_e.attribute2
+              ,ilm_out_xf_e.attribute3                                     -- <---- ここまで共通
+              ,xmrih_out_xf_e.actual_arrival_date
+              ,xmrih_out_xf_e.actual_ship_date
+              ,'2'                                     AS status           -- 実績
+              ,xrpm_out_xf_e.new_div_invent
+              ,flv_out_xf_e.meaning
+              ,xmrih_out_xf_e.mov_num
+              ,xmrih_out_xf_e.ship_to_locat_id
               ,xilv_out_xf_e.description
               ,NULL                                    AS deliver_to_id
               ,NULL                                    AS deliver_to_name
@@ -2161,7 +2471,8 @@ SELECT xstv.whse_code
 --                WHEN ( ximv_out_xf_e.lot_ctl = 0  ) THEN
 --                  xmril_out_xf_e.shipped_quantity                           -- 非ロット管理品(入庫実績数量)
 --               END                                        leaving_quantity
-              ,xmld_out_xf_e.actual_quantity           leaving_quantity
+--              ,xmld_out_xf_e.actual_quantity           leaving_quantity
+              ,itp_out_xf_e.trans_qty                  AS leaving_quantity
 --mod end 2008/06/05 rev1.5
               ,ximv_out_xf_e.lot_ctl
         FROM   xxcmn_item_locations_v       xilv_out_xf_e                   -- OPM保管場所情報VIEW
@@ -2243,7 +2554,8 @@ SELECT xstv.whse_code
 --                WHEN ( ximv_out_tr_e.lot_ctl = 0  ) THEN
 --                  xmril_out_tr_e.shipped_quantity                           -- 非ロット管理品(入庫実績数量)
 --               END                                        leaving_quantity
-              ,xmld_out_tr_e.actual_quantity           leaving_quantity
+--              ,xmld_out_tr_e.actual_quantity           leaving_quantity
+              ,itc_out_tr_e.trans_qty                  AS leaving_quantity
 --mod end 2008/06/05 rev1.5
               ,ximv_out_tr_e.lot_ctl
         FROM   xxcmn_item_locations_v       xilv_out_tr_e                -- OPM保管場所情報VIEW
@@ -2290,6 +2602,7 @@ SELECT xstv.whse_code
         AND    flv_out_tr_e.lookup_type              = 'XXCMN_NEW_DIVISION'
         AND    flv_out_tr_e.language                 = 'JA'
         AND    flv_out_tr_e.lookup_code              = xrpm_out_tr_e.new_div_invent
+*/
         UNION ALL
         -- 生産出庫実績
         SELECT xilv_out_pr_e.whse_code
@@ -2490,7 +2803,7 @@ SELECT xstv.whse_code
               ,flv_out_pr_e70.meaning
               ,gbh_out_pr_e70.batch_no
               ,grb_out_pr_e70.routing_id
-              ,grb_out_pr_e70.routing_desc
+              ,grt_out_pr_e70.routing_desc
               ,NULL                                    AS deliver_to_id
               ,NULL                                    AS deliver_to_name
               ,0                                       AS stock_quantity
@@ -2773,11 +3086,11 @@ SELECT xstv.whse_code
 --mod end 2008/06/04 rev1.4
 --mod start 2008/06/09
 --        WHERE  xrpm_out_om2_e.doc_type                         = 'OMSO'
-        WHERE ((xrpm_out_om2_e.doc_type                         = 'OMSO'
-          AND   otta_out_om2_e.order_category_code              = 'ORDER')
-        OR     (xrpm_out_om2_e.doc_type                         = 'PORC'
-          AND   xrpm_out_om2_e.source_document_code             = 'RMA'
-          AND   otta_out_om2_e.order_category_code              = 'RETURN'))
+        WHERE ((xrpm_out_om2_e.doc_type                        = 'OMSO'
+          AND   otta_out_om2_e.order_category_code             = 'ORDER')
+        OR     (xrpm_out_om2_e.doc_type                        = 'PORC'
+          AND   xrpm_out_om2_e.source_document_code            = 'RMA'
+          AND   otta_out_om2_e.order_category_code             = 'RETURN'))
 --mod end 2008/06/09
         AND    xrpm_out_om2_e.use_div_invent                   = 'Y'
         AND    xoha_out_om2_e.order_header_id                  = xola_out_om2_e.order_header_id
@@ -2834,7 +3147,7 @@ SELECT xstv.whse_code
         AND NVL(xrpm_out_om2_e.item_div_origin,'Dummy')        = DECODE(xicv_out_om2_e_s.item_class_code,'5','5','Dummy') --振替元品目区分 = 出荷品目区分
         AND NVL(xrpm_out_om2_e.item_div_ahead ,'Dummy')        = DECODE(xicv_out_om2_e_r.item_class_code,'5','5','Dummy') --振替先品目区分 = 依頼品目区分
 --mod start 2008/06/10
-        AND  ((xola_out_om2_e.shipping_inventory_item_id      = xola_out_om2_e.request_item_id
+        AND  ((xola_out_om2_e.shipping_inventory_item_id       = xola_out_om2_e.request_item_id
           AND   xrpm_out_om2_e.prod_div_origin                IS NULL
           AND   xrpm_out_om2_e.prod_div_ahead                 IS NULL )
         OR     (xola_out_om2_e.shipping_inventory_item_id     <> xola_out_om2_e.request_item_id
@@ -3080,14 +3393,15 @@ SELECT xstv.whse_code
               ,xrpm_out_ad_e_12.new_div_invent
               ,flv_out_ad_e_12.meaning
               ,xmrih_out_ad_e_12.mov_num
-              ,xmrih_out_ad_e_12.shipped_locat_id
-              ,xilv_out_ad_e_12.description
+              ,xmrih_out_ad_e_12.ship_to_locat_id
+              ,xilv_out_ad_e2_12.description
               ,NULL                                           AS deliver_to_id
               ,NULL                                           AS deliver_to_name
               ,itc_out_ad_e_12.trans_qty
               ,0                                              AS leaving_quantity
               ,ximv_out_ad_e_12.lot_ctl
         FROM   xxcmn_item_locations_v  xilv_out_ad_e_12                      -- OPM保管場所情報VIEW
+              ,xxcmn_item_locations_v  xilv_out_ad_e2_12                     -- OPM保管場所情報VIEW
               ,xxcmn_item_mst_v        ximv_out_ad_e_12                      -- OPM品目情報VIEW
               ,ic_lots_mst             ilm_out_ad_e_12                       -- OPMロットマスタ
               ,xxcmn_rcv_pay_mst       xrpm_out_ad_e_12                      -- 受払区分アドオンマスタ
@@ -3123,6 +3437,7 @@ SELECT xstv.whse_code
         AND    xmril_out_ad_e_12.item_id              = ximv_out_ad_e_12.item_id
         AND    xmrih_out_ad_e_12.mov_hdr_id           = xmril_out_ad_e_12.mov_hdr_id
         AND    xmrih_out_ad_e_12.shipped_locat_id     = xilv_out_ad_e_12.inventory_location_id
+        AND    xmrih_out_ad_e_12.ship_to_locat_id     = xilv_out_ad_e2_12.inventory_location_id
 --mod end 2008/06/06
         UNION ALL
         -- 在庫調整 出庫実績(上記以外)
