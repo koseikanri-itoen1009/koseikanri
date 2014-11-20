@@ -267,8 +267,12 @@ SELECT
                  ,PLLA.attribute6                           fukakin_type                  --賦課金区分
                  ,TO_NUMBER( PLLA.attribute7 )              fukakin_rate_or_unit_price    --賦課金
                  ,TO_NUMBER( PLLA.attribute8 )              fukakin_price                 --賦課金額
-                 ,NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( PO.rcv_qty, 0 )
-                                                            kobki_converted_price         --粉引後金額（粉引後単価×受入数量）
+-- 2009-03-10 H.Iida MOD START 本番障害#1131
+--                 ,NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( PO.rcv_qty, 0 )
+--                                                            kobki_converted_price         --粉引後金額（粉引後単価×受入数量）
+                 ,NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( XRART.quantity, 0 )
+                                                            kobki_converted_price         --粉引後金額（粉引後単価×受入返品実績(アドオン).数量）
+-- 2009-03-10 H.Iida MOD END
                  ,XRART.created_by                          u_created_by                  --受入_作成者
                  ,XRART.creation_date                       u_creation_date               --受入_作成日
                  ,XRART.last_updated_by                     u_last_updated_by             --受入_最終更新者
