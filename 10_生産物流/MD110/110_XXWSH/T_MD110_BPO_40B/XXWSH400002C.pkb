@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *                                       結合テスト指摘#89 配数整数倍チェックを警告に変更
  *                                       結合テスト指摘#91 エラーリスト出力項目から「摘要」「顧客発注番号」を削除
  *                                       出荷追加_1 積載効率チェックをヘッダ単位で行い、明細分エラーリストを出力する
+ *  2008/08/26    1.19  伊藤  ひとみ     T_S_618 締めステータスチェックを追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -206,6 +207,14 @@ AS
 --  gv_delete          CONSTANT VARCHAR2(1)  := 'D';
   gv_delete          CONSTANT VARCHAR2(1)  := '1';
 -- 2008/08/11 H.Itou MOD END
+-- 2008/08/26 H.Itou Add Start T_S_618
+  -- 締めステータスチェック ステータス
+  gv_inside_err         CONSTANT VARCHAR2(2)   := '-1'; -- 内部エラー
+  gv_close_proc_n_enfo  CONSTANT VARCHAR2(1)   := '1';  -- 締め処理未実施
+  gv_first_close_fin    CONSTANT VARCHAR2(1)   := '2';  -- 初回締め済
+  gv_close_cancel       CONSTANT VARCHAR2(1)   := '3';  -- 締め解除
+  gv_re_close_fin       CONSTANT VARCHAR2(1)   := '4';  -- 再締め済
+-- 2008/08/26 H.Itou Add End
 --
   gv_ship_st         CONSTANT VARCHAR2(6)  := '入力中';
   gv_notice_st       CONSTANT VARCHAR2(6)  := '未通知';
@@ -277,6 +286,10 @@ AS
                              '対象の依頼Noデータがステータス確定済み以上で登録済みです';
   gv_msg_42          CONSTANT VARCHAR2(20) := '最大配送区分エラー';
   gv_msg_43          CONSTANT VARCHAR2(26) := '引当対象外の出庫元倉庫です';
+-- 2008/08/26 H.Itou Add Start T_S_618
+  gv_msg_44          CONSTANT VARCHAR2(50) := '対象の出荷日は既に締め済みです';
+  gv_msg_45          CONSTANT VARCHAR2(50) := '締めステータスチェックエラー';
+-- 2008/08/26 H.Itou Add End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -2100,6 +2113,84 @@ AS
 --
       RAISE err_header_expt;
     END IF;
+-- 2008/08/26 H.Itou Add Start T_S_618
+    ----------------------------------------------------------------------------
+    -- 9.出庫日が締め済みかどうかの判定                                       --
+    ----------------------------------------------------------------------------
+    -- 締めステータスチェック関数
+    lv_retcode :=xxwsh_common_pkg.check_tightening_status(
+                   in_order_type_id         =>  gr_odr_type                   -- 1.受注タイプID
+                  ,iv_deliver_from          =>  gt_head_line(gn_i).lo_code    -- 2.出荷元保管場所
+                  ,iv_sales_branch          =>  gt_head_line(gn_i).h_s_branch -- 3.拠点
+                  ,iv_sales_branch_category =>  NULL                          -- 4.拠点カテゴリ
+                  ,in_lead_time_day         =>  gv_leadtime                   -- 5.生産物流LT
+                  ,id_ship_date             =>  gt_head_line(gn_i).ship_date  -- 6.出庫日
+                  ,iv_prod_class            =>  gr_skbn                       -- 7.商品区分
+                 );
+--
+    -- 締めステータスが'-1'の場合は関数エラー
+    IF (lv_retcode = gv_inside_err) THEN
+      pro_err_list_make
+        (
+          iv_kind         => gv_msg_err                     --  in 種別   'エラー'
+         ,iv_dec          => gv_msg_hfn                     --  in 確定   '－'
+         ,iv_req_no       => gt_head_line(gn_i).o_r_ref     --  in 依頼No
+         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
+         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
+         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
+         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
+         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+                                                            --  in 出庫日
+         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
+                                                            --  in 着日
+         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
+         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
+         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
+         ,iv_err_msg      => gv_msg_45                      --  in エラーメッセージ
+         ,iv_err_clm      => gv_msg_hfn                     --  in エラー項目  '－'
+         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
+         ,ov_retcode      => lv_retcode                     -- out リターン・コード
+         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
+        );
+      -- 共通エラーメッセージ 終了ST エラー登録
+      gv_err_sts := gv_status_error;
+--
+      RAISE err_header_expt;
+--
+    END IF;
+--
+    -- 締めステータスが'2'または'4'の場合は、締め済みエラー
+    IF (lv_retcode IN (gv_first_close_fin, gv_re_close_fin)) THEN
+      pro_err_list_make
+        (
+          iv_kind         => gv_msg_err                     --  in 種別   'エラー'
+         ,iv_dec          => gv_msg_hfn                     --  in 確定   '－'
+         ,iv_req_no       => gt_head_line(gn_i).o_r_ref     --  in 依頼No
+         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
+         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
+         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
+         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
+         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+                                                            --  in 出庫日
+         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
+                                                            --  in 着日
+         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
+         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
+         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
+         ,iv_err_msg      => gv_msg_44                      --  in エラーメッセージ
+         ,iv_err_clm      => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+                                                            --  in エラー項目  出荷予定日
+         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
+         ,ov_retcode      => lv_retcode                     -- out リターン・コード
+         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
+        );
+      -- 共通エラーメッセージ 終了ST エラー登録
+      gv_err_sts := gv_status_error;
+--
+      RAISE err_header_expt;
+--
+    END IF;
+-- 2008/08/26 H.Itou Add End
 --
   EXCEPTION
     -- *** 共通関数 警告・エラー ***
@@ -3582,6 +3673,10 @@ AS
     lv_errmsg_code VARCHAR2(30);  -- エラー・メッセージ・コード
     --
     ln_h_ttl_weight NUMBER;
+    --
+    lv_errbuf2  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode2 VARCHAR2(1);     -- リターン・コード
+    lv_errmsg2  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
   BEGIN
 --
@@ -3675,7 +3770,10 @@ AS
                              ,gv_9                         -- コード区分To     in 配送先'9'
                              ,gt_head_line(gn_i).p_s_code  -- 入出庫区分To     in 出荷先
                              ,gv_max_kbn                   -- 最大配送区分     in 最大配送区分
-                             ,gr_item_skbn                 -- 商品区分         in 商品区分
+-- 2008/08/20 H.Itou MOD START 出荷追加_1
+--                             ,gr_item_skbn                 -- 商品区分         in 商品区分
+                             ,gr_skbn                      -- 商品区分         in 商品区分
+-- 2008/08/20 H.Itou MOD END
                              ,NULL                         -- 自動配車対象区分 in NULL
                              ,gt_head_line(gn_i).ship_date -- 基準日           in 出荷予定日
                              ,lv_retcode                   -- リターン・コード
@@ -3736,9 +3834,9 @@ AS
            ,iv_err_msg      => lv_errmsg                          --  in エラーメッセージ
            ,iv_err_clm      => lv_errmsg                          --  in エラー項目   品目
            ,in_msg_seq      => gt_head_line(i).we_loading_msg_seq --  in メッセージ格納SEQ
-           ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
-           ,ov_retcode      => lv_retcode                         -- out リターン・コード
-           ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
+           ,ov_errbuf       => lv_errbuf2                         -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode2                        -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg2                         -- out ユーザー・エラー・メッセージ
           );
 -- 2008/08/20 H.Itou MOD END
 -- 2008/08/20 H.Itou ADD START
@@ -3826,7 +3924,10 @@ AS
                              ,gv_9                         -- コード区分To     in 配送先'9'
                              ,gt_head_line(gn_i).p_s_code  -- 入出庫区分To     in 出荷先
                              ,gv_max_kbn                   -- 最大配送区分     in 最大配送区分
-                             ,gr_item_skbn                 -- 商品区分         in 商品区分
+-- 2008/08/20 H.Itou MOD START 出荷追加_1
+--                             ,gr_item_skbn                 -- 商品区分         in 商品区分
+                             ,gr_skbn                      -- 商品区分         in 商品区分
+-- 2008/08/20 H.Itou MOD END
                              ,NULL                         -- 自動配車対象区分 in NULL
                              ,gt_head_line(gn_i).ship_date -- 基準日           in 出荷予定日
                              ,lv_retcode                   -- リターン・コード
@@ -3887,9 +3988,9 @@ AS
            ,iv_err_msg      => lv_errmsg                          --  in エラーメッセージ
            ,iv_err_clm      => lv_errmsg                          --  in エラー項目   品目
            ,in_msg_seq      => gt_head_line(i).ca_loading_msg_seq -- in メッセージ格納SEQ
-           ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
-           ,ov_retcode      => lv_retcode                         -- out リターン・コード
-           ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
+           ,ov_errbuf       => lv_errbuf2                         -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode2                        -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg2                         -- out ユーザー・エラー・メッセージ
           );
 -- 2008/08/20 H.Itou MOD END
 -- 2008/08/20 H.Itou ADD START
