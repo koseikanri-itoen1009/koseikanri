@@ -1,0 +1,14 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * View Name       : XXCOS_REP_PICK_SALE_CAR_S01
+ * Description     : レコードID(ピックリスト（出荷元保管場所・商品別）帳票ワークテーブル)
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ * 2013/07/02   1.0    K.Kiriu          新規作成
+ ************************************************************************/
+CREATE SEQUENCE xxcos.xxcos_rep_pick_sale_car_s01 MINVALUE 1 MAXVALUE 999999999999999 INCREMENT BY 1 CACHE 20 NOORDER CYCLE;

@@ -1,0 +1,80 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_PICK_SALE_CAR
+ * Description : ピックリスト_出荷元保管場所_商品別帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ * 2013/07/02    1.0   K.Kiriu          新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_REP_PICK_SALE_CAR
+(
+    RECORD_ID                      NUMBER         NOT NULL,          --レコードID
+    BASE_CODE                      VARCHAR2(4),                      --拠点コード
+    BASE_NAME                      VARCHAR2(40),                     --拠点名称
+    WHSE_CODE                      VARCHAR2(10),                     --出荷元保管場所コード
+    WHSE_NAME                      VARCHAR2(50),                     --出荷元保管場所名称
+    CHAIN_CODE                     VARCHAR2(4),                      --チェーン店コード
+    SHIPPED_DATE                   DATE,                             --出荷日
+    ARRIVAL_DATE                   DATE,                             --着日
+    REGULAR_SALE_CLASS_HEAD        VARCHAR2(4),                      --定番特売区分（ヘッダ）
+    ITEM_CODE                      VARCHAR2(16),                     --商品コード
+    ITEM_NAME                      VARCHAR2(40),                     --商品名称
+    SHOP_CODE                      VARCHAR2(10),                     --店舗コード
+    CUST_NAME                      VARCHAR2(54),                     --顧客名称
+    CONTENT                        NUMBER,                           --入数
+    CASE_NUM                       NUMBER,                           --ケース
+    INDIVI                         NUMBER,                           --バラ
+    QUANTITY                       NUMBER,                           --数量
+    ENTRY_NUMBER                   VARCHAR2(12),                     --伝票NO
+    REGULAR_SALE_CLASS_LINE        VARCHAR2(4),                      --定番特売区分（明細）
+    EDI_RECEIVED_DATE              DATE,                             --EDI受信日
+    CREATED_BY                     NUMBER(15,0)   NOT NULL,          --作成者
+    CREATION_DATE                  DATE           NOT NULL,          --作成日
+    LAST_UPDATED_BY                NUMBER(15,0)   NOT NULL,          --最終更新者
+    LAST_UPDATE_DATE               DATE           NOT NULL,          --最終更新日
+    LAST_UPDATE_LOGIN              NUMBER(15,0),                     --最終更新ログイン
+    REQUEST_ID                     NUMBER(15,0),                     --要求ID
+    PROGRAM_APPLICATION_ID         NUMBER(15,0),                     --コンカレント・プログラム・アプリケーションID
+    PROGRAM_ID                     NUMBER(15,0),                     --コンカレント・プログラムID
+    PROGRAM_UPDATE_DATE            DATE,                             --プログラム更新日
+    CONSTRAINT XXCOS_REP_PICK_SALE_CAR_PK PRIMARY KEY (RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.RECORD_ID                 IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.BASE_CODE                 IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.BASE_NAME                 IS '拠点名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.WHSE_CODE                 IS '出荷元保管場所コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.WHSE_NAME                 IS '出荷元保管場所名';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.CHAIN_CODE                IS 'チェーン店コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.SHIPPED_DATE              IS '出荷日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.ARRIVAL_DATE              IS '着日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.REGULAR_SALE_CLASS_HEAD   IS '定番特売区分（ヘッダ）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.ITEM_CODE                 IS '商品コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.ITEM_NAME                 IS '商品名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.SHOP_CODE                 IS '店舗コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.CUST_NAME                 IS '顧客名称';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.CONTENT                   IS '入数';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.CASE_NUM                  IS 'ケース';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.INDIVI                    IS 'バラ';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.QUANTITY                  IS '数量';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.ENTRY_NUMBER              IS '伝票NO';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.REGULAR_SALE_CLASS_LINE   IS '定番特売区分（明細）';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.EDI_RECEIVED_DATE         IS 'EDI受信日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.CREATED_BY                IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.CREATION_DATE             IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.LAST_UPDATED_BY           IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.LAST_UPDATE_DATE          IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.LAST_UPDATE_LOGIN         IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.REQUEST_ID                IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.PROGRAM_APPLICATION_ID    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.PROGRAM_ID                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_PICK_SALE_CAR.PROGRAM_UPDATE_DATE       IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_REP_PICK_SALE_CAR                           IS 'ピックリスト_出荷元保管場所_商品別帳票ワークテーブル';
