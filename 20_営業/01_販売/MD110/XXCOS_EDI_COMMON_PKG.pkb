@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_edi_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.8
+ * Version                : 1.9
  *
  * Program List
  *  ----------------------------- ---- ----- -----------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/07/14   1.6   K.Kiriu          [0000064]対応
  *  2009/08/11   1.7   K.Kiriu          [0000966]対応
  *  2010/03/09   1.8   S.Karikomi       [E_本稼働_01637]対応
+ *  2010/04/15   1.9   S.Karikomi       [E_本稼動_02296]対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -72,6 +73,9 @@ AS
     cv_tkn_profile          CONSTANT VARCHAR2(20) := 'PROFILE';           --プロファイル
 /* 2009/08/11 Ver1.7 Add End   */
     cv_cstm_class_base      CONSTANT VARCHAR2(2)  := '1';       -- 顧客区分:拠点
+/* 2010/04/15 Ver1.9 Add Start */
+    cv_hw_slip_div_yes      CONSTANT VARCHAR2(1)  := '1';       -- EDI手書伝票伝送区分:伝送あり
+/* 2010/04/15 Ver1.9 Add End   */
     cv_cstm_class_customer  CONSTANT VARCHAR2(2)  := '10';      -- 顧客区分:顧客
     cv_cstm_class_chain     CONSTANT VARCHAR2(2)  := '18';      -- 顧客区分:チェーン店
     cv_flow_status_entry    CONSTANT VARCHAR2(6)  := 'BOOKED';  -- ステータス:記帳済み
@@ -363,6 +367,10 @@ AS
      AND   hca1.customer_class_code    =  cv_cstm_class_customer   -- 顧客マスタ(顧客).顧客区分='10'(顧客)
      AND   hca2.customer_class_code    =  cv_cstm_class_chain      -- 顧客マスタ(ﾁｪｰﾝ).顧客区分='18'(ﾁｪｰﾝ店)
      AND   hca3.customer_class_code    =  cv_cstm_class_base       -- 顧客マスタ(拠点).顧客区分='1'(拠点)
+/* 2010/04/15 Ver1.9 Add Start */
+     /* EDI手書伝票伝送区分 */ 
+     AND   xca2.handwritten_slip_div   =  cv_hw_slip_div_yes       -- 顧客追加(ﾁｪｰﾝ).EDI手書伝票伝送区分＝'1'(伝送あり)
+/* 2010/04/15 Ver1.9 Add End   */
      /* 受注ヘッダ抽出条件 */
 /* 2009/08/11 Ver1.7 Add Start */
      AND   ooha.org_id                 =  ln_org_id              -- ORG_ID＝プロファイル値
