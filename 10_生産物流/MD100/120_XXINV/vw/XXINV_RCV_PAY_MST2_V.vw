@@ -49,8 +49,14 @@ CREATE OR REPLACE VIEW xxinv_rcv_pay_mst2_v
         AND    grb_a.routing_id         = gbh_a.routing_id
         AND    xrpm_a.routing_class     = grb_a.routing_class
         AND    xrpm_a.line_type         = gmd_a.line_type
-        AND (( gmd_a.attribute5         IS NULL )
-          OR ( xrpm_a.hit_in_div        = gmd_a.attribute5 ) )
+--mod start 2008/07/08 Y.Yamamoto
+--        AND (( gmd_a.attribute5         IS NULL )
+--          OR ( xrpm_a.hit_in_div        = gmd_a.attribute5 ) )
+        AND ((( gmd_a.attribute5        IS NULL )
+          AND ( xrpm_a.hit_in_div       IS NULL ))
+         OR  (( gmd_a.attribute5        IS NOT NULL )
+          AND ( xrpm_a.hit_in_div       = gmd_a.attribute5 )))
+--mod start 2008/07/08 Y.Yamamoto
         UNION ALL
         SELECT xrpm_b.new_div_invent
               ,xrpm_b.use_div_invent
@@ -88,8 +94,14 @@ CREATE OR REPLACE VIEW xxinv_rcv_pay_mst2_v
         AND    grb_b.routing_id         = gbh_b.routing_id
         AND    xrpm_b.routing_class     = grb_b.routing_class
         AND    xrpm_b.line_type         = gmd_b.line_type
-        AND (( gmd_b.attribute5         IS NULL )
-          OR ( xrpm_b.hit_in_div        = gmd_b.attribute5 ) )
+--mod start 2008/07/08 Y.Yamamoto
+--        AND (( gmd_b.attribute5         IS NULL )
+--          OR ( xrpm_b.hit_in_div        = gmd_b.attribute5 ) )
+        AND ((( gmd_b.attribute5        IS NULL )
+          AND ( xrpm_b.hit_in_div       IS NULL ))
+         OR  (( gmd_b.attribute5        IS NOT NULL )
+          AND ( xrpm_b.hit_in_div       = gmd_b.attribute5 )))
+--mod start 2008/07/08 Y.Yamamoto
         AND    gmd_item_b.batch_id      = gmd_b.batch_id
         AND    gmd_item_b.line_no       = gmd_b.line_no
         AND    xrpm_b.item_div_ahead    = gmd_item_b.item_class_ahead

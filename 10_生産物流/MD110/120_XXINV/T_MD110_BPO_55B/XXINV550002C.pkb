@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/07/01    1.12  Kazuo Kumamoto   結合テスト障害対応(パラメータ.品目・商品区分・品目区分組み合わせチェック)
  *  2008/07/01    1.13  Kazuo Kumamoto   結合テスト障害対応(パラメータ.物流ブロック・倉庫/保管倉庫をOR条件とする)
  *  2008/07/02    1.14  Satoshi Yunba    禁則文字対応
+ *  2008/07/07    1.15 Yasuhisa Yamamoto 結合テスト障害対応(発注実績の取得数量を発注明細から取得するように変更)
  *
  *****************************************************************************************/
 --
@@ -1355,7 +1356,10 @@ AS
          ,''                                                  jrsd_name           --管轄拠点名
          ,xvv.segment1                                        other_code          --相手先コード
          ,xvv.vendor_name                                     other_name          --相手先名称
-         ,SUM(TO_NUMBER(NVL(pla.attribute7,'0')))             in_qty              --入庫数
+--mod start 1.15
+--         ,SUM(TO_NUMBER(NVL(pla.attribute7,'0')))             in_qty              --入庫数
+         ,SUM(NVL(pla.quantity,0))                            in_qty              --入庫数
+--mod end 1.15
          ,0                                                   out_qty             --出庫数
          ,itp.whse_code                                       whse_code           --倉庫コード
          ,xilv.whse_name                                      whse_name           --倉庫名

@@ -20,7 +20,8 @@ CREATE TABLE xxwsh.xxwsh_hht_delivery_info
     ,schedule_ship_date           DATE
     ,schedule_arrival_date        DATE
     ,shipping_method_code         VARCHAR2(3)
-    ,weight                       NUMBER(7)
+--    ,weight                       NUMBER(7)
+    ,weight                       NUMBER
     ,mixed_no                     VARCHAR2(12)
     ,collected_pallet_qty         NUMBER(3)
     ,arrival_time_from            VARCHAR2(4)
@@ -38,12 +39,14 @@ CREATE TABLE xxwsh.xxwsh_hht_delivery_info
     ,item_code                    VARCHAR2(7)
     ,item_name                    VARCHAR2(60)
     ,item_uom_code                VARCHAR2(3)
-    ,item_quantity                NUMBER(12,3)
+--    ,item_quantity                NUMBER(12,3)
+    ,item_quantity                NUMBER
     ,lot_no                       VARCHAR2(10)
     ,lot_date                     DATE
     ,best_bfr_date                DATE
     ,lot_sign                     VARCHAR2(6)
-    ,lot_quantity                 NUMBER(12,3)
+--    ,lot_quantity                 NUMBER(12,3)
+    ,lot_quantity                 NUMBER
     ,new_modify_del_class         NUMBER(1)
     ,update_date                  DATE
     ,line_number                  NUMBER
