@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_cust_accounts_n19
+ON xxcmm_cust_accounts
+(parnt_dept_shop_code) 
+TABLESPACE xxidx2
+/
