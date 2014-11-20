@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A03C (body)
  * Description      : 納品確定データ取込機能
  * MD.050           : 納品確定データ取込(MD050_COS_010_A03)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *                                       ・妥当性チェックの追加・修正（必須・担当営業員・受注関連明細番号)
  *                                       ・受注エラーリスト出力用の品目エラーメッセージの変更
  *                                       ・EDIエラー情報のパージ処理追加
+ *  2010/02/23    1.18  M.Sano           [E_本稼動_01159] エラー情報にセットする品目名の定義修正
  *
  *****************************************************************************************/
 --
@@ -2900,7 +2901,10 @@ AS
     lv_err_item_flag     VARCHAR2(1);
     lt_err_list_out_flag xxcos_edi_errors.err_list_out_flag%TYPE;
     lt_item_code         ic_item_mst_b.item_no%TYPE;
-    lt_item_name         xxcmn_item_mst_b.item_short_name%TYPE;
+-- 2010/02/23 Ver1.18 M.Sano Add Start
+--    lt_item_name         xxcmn_item_mst_b.item_short_name%TYPE;
+    lt_item_name         VARCHAR2(50);
+-- 2010/02/23 Ver1.18 M.Sano Add End
     ld_request_date      DATE;                                    -- 納品予定日
 -- 2010/01/29 Ver1.17 K.Hosoi Add End
 --

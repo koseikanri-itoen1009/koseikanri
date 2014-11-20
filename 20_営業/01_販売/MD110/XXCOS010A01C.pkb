@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *                                       ・受注エラーリスト出力用の品目エラーメッセージの変更
  *                                       ・EDIエラー情報のパージ処理追加
  *                                       ・情報区分「04」時はチェック処理を実施
+ *  2010/02/23    1.16  M.Sano           [E_本稼動_01159] エラー情報にセットする品目名の定義修正
  *
  *****************************************************************************************/
 --
@@ -2936,7 +2937,10 @@ AS
     lv_err_item_flag     VARCHAR2(1);
     lt_err_list_out_flag xxcos_edi_errors.err_list_out_flag%TYPE;
     lt_item_code         ic_item_mst_b.item_no%TYPE;
-    lt_item_name         xxcmn_item_mst_b.item_short_name%TYPE;
+-- 2010/02/23 Ver1.16 M.Sano Add Start
+--    lt_item_name         xxcmn_item_mst_b.item_short_name%TYPE;
+    lt_item_name         VARCHAR2(50);
+-- 2010/02/23 Ver1.16 M.Sano Add End
     ld_delivery_date     DATE;                                    -- 納品予定日
 -- 2010/01/19 Ver1.15 M.Sano Add End
 --
