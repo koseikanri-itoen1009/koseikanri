@@ -8,7 +8,7 @@ AS
  *                    作成します。
  * MD.050           : MD050_CSO_020_A04_自販機（什器）発注依頼データ連携機能
  *
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *                                       ・購買依頼インポート処理の第一パラメータに取引ＩＤ
  *                                         を設定
  *  2010-01-08    1.6   Kazuyo.Hosoi     E_本稼動_01017対応
+ *  2011-12-19    1.7   kazuyuki.kiriu   E_本稼動_08859対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1004,7 +1005,10 @@ AS
             ,iot_mst_regist_info_rec.ship_to_location_code
             ,iot_mst_regist_info_rec.ship_to_person_id
       FROM   xxcso_employees_v2 xev -- 従業員マスタ（最新）ビュー
-            ,xxcso_locations_v  xlv -- 事業所マスタ（最新）ビュー
+/* 2011-12-19 Ver1.7 Mod Start */
+--            ,xxcso_locations_v  xlv -- 事業所マスタ（最新）ビュー
+            ,xxcso_locations_v2 xlv -- 事業所マスタ（最新）ビュー
+/* 2011-12-19 Ver1.7 Mod End   */
       WHERE  xev.user_id            = fnd_global.user_id
       AND    xev.work_base_code_new = xlv.dept_code
       ;
