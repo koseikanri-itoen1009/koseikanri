@@ -31,16 +31,23 @@ public class XxinvMovementResultsLnVOImpl extends OAViewObjectImpl
   /*****************************************************************************
    * VOの初期化を行います。
    * @param searchHdrId 検索パラメータヘッダID
+   * @param productFlg  製品識別区分
    ****************************************************************************/
    public void initQuery(
-    String  searchHdrId         // 検索パラメータヘッダID
+    String  searchHdrId,
+    String  productFlg
    )
    {
      // 初期化
     setWhereClauseParams(null);
 
     // WHERE句のバインド変数に検索値をセット
-    setWhereClauseParam(0, searchHdrId);
+    setWhereClauseParam(0, productFlg);
+    setWhereClauseParam(1, productFlg);
+    setWhereClauseParam(2, productFlg);
+    setWhereClauseParam(3, productFlg);
+    setWhereClauseParam(4, productFlg);
+    setWhereClauseParam(5, searchHdrId);
 
     // SELECT文実行
     executeQuery();

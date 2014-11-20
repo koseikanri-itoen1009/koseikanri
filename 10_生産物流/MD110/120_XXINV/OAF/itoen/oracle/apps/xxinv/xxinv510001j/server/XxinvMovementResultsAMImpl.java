@@ -2006,6 +2006,11 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // ************************************* //
     OAViewObject lnVo = getXxinvMovementResultsLnVO1();
     lnVo.setWhereClauseParam(0,null);
+    lnVo.setWhereClauseParam(1,null);
+    lnVo.setWhereClauseParam(2,null);
+    lnVo.setWhereClauseParam(3,null);
+    lnVo.setWhereClauseParam(4,null);
+    lnVo.setWhereClauseParam(5,null);
     lnVo.executeQuery();
 
     addRowLine();
@@ -2066,16 +2071,24 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
   /***************************************************************************
    * 入出庫実績明細画面の検索処理を行うメソッドです。
-   * @param searchHdrId  - 検索パラメータヘッダID
+   * @param searchParams - パラメータHashMap
    * @throws OAException - OA例外
    ***************************************************************************
    */
-  public void doSearchLine(String searchHdrId) throws OAException
+  public void doSearchLine(
+    HashMap searchParams
+  ) throws OAException
   {
+    // パラメータ取得
+    String searchHdrId = (String)searchParams.get(XxinvConstants.URL_PARAM_SEARCH_MOV_ID);
+    String productFlg  = (String)searchParams.get(XxinvConstants.URL_PARAM_PRODUCT_FLAG);
+
     // 入出庫実績明細:登録VO取得
     XxinvMovementResultsLnVOImpl movementResultsLnVo = getXxinvMovementResultsLnVO1();
     // 検索
-    movementResultsLnVo.initQuery(searchHdrId);   // 検索パラメータヘッダID
+    movementResultsLnVo.initQuery(
+      searchHdrId,
+      productFlg);
     // 1行めを取得
     movementResultsLnVo.first();
     // 入出庫実績ヘッダVO取得
@@ -2091,6 +2104,11 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // *********************** //
       OAViewObject vo = getXxinvMovementResultsLnVO1();
       vo.setWhereClauseParam(0,null);
+      vo.setWhereClauseParam(1,null);
+      vo.setWhereClauseParam(2,null);
+      vo.setWhereClauseParam(3,null);
+      vo.setWhereClauseParam(4,null);
+      vo.setWhereClauseParam(5,null);
       vo.executeQuery();
       vo.insertRow(vo.createRow());
       // 1行目を取得

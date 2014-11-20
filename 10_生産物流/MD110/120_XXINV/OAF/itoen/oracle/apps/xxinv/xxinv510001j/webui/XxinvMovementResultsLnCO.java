@@ -79,6 +79,7 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
         searchParams.put(XxinvConstants.URL_PARAM_PEOPLE_CODE, peopleCode);
         searchParams.put(XxinvConstants.URL_PARAM_ACTUAL_FLAG, actualFlag);
         searchParams.put(XxinvConstants.URL_PARAM_PRODUCT_FLAG, productFlag);
+        searchParams.put(XxinvConstants.URL_PARAM_SEARCH_MOV_ID, searchHdrId);
         searchParams.put(XxinvConstants.URL_PARAM_UPDATE_FLAG, updateFlag);
 
         // 引数設定
@@ -99,11 +100,8 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
         // 更新フラグがNULL以外の場合
         if (!XxcmnUtility.isBlankOrNull(updateFlag))
         {
-          // 引数設定
-          Serializable params[] = { searchHdrId };
-        
           // 検索処理
-          am.invokeMethod("doSearchLine", params);
+          am.invokeMethod("doSearchLine", setParams, parameterTypes);
         }
       }
 

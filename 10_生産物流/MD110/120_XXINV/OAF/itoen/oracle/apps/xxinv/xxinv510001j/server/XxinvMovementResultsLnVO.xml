@@ -17,13 +17,49 @@ SELECT mov_hdr_id             mov_hdr_id                  -- 移動ヘッダID
       ,item_id                item_id                     -- OPM品目ID
       ,item_code              item_code                   -- 品目
       ,item_short_name        item_short_name             -- 品名略称
-      ,TO_CHAR(DECODE(conv_unit,NULL,instruct_qty/1,instruct_qty/num_of_cases), '999999999.999') instruct_sum  -- 指示総数
-      ,instruct_qty           instruct_qty                -- 指示総数(非表示)
-      ,NVL(conv_unit,uom_code) conv_unit                  -- 単位
+      ,CASE
+         WHEN conv_unit IS NOT NULL                              -- 入出庫換算単位がNULLでない
+          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
+          AND :0 = '1' THEN                                      -- 製品識別区分が1:製品
+             -- 換算する
+             REPLACE(TO_CHAR(instruct_qty/num_of_cases,'999,999,990.000'),' ')
+         ELSE
+             -- 換算しない
+             REPLACE(TO_CHAR(instruct_qty,'999,999,990.000'),' ')
+       END                           instruct_sum                -- 指示総数
+      ,instruct_qty           instruct_qty                       -- 指示総数(非表示)
+      ,CASE
+         WHEN conv_unit IS NOT NULL                              -- 入出庫換算単位がNULLでない
+          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
+          AND :1 = '1' THEN                                      -- 製品識別区分が1:製品
+             -- 換算単位
+             conv_unit
+         ELSE
+             -- 品目単位
+             item_um
+       END                    conv_unit                   -- 単位
       ,uom_code               uom_code                    -- 単位(非表示)
-      ,TO_CHAR(DECODE(conv_unit,NULL,shipped_quantity/1,shipped_quantity/num_of_cases), '999999999.999') shipped_sum  -- 出庫実績数量
-      ,shipped_quantity       shipped_quantity            -- 出庫実績数量(非表示)
-      ,TO_CHAR(DECODE(conv_unit,NULL,ship_to_quantity/1,ship_to_quantity/num_of_cases), '999999999.999') ship_to_sum  -- 入庫実績数量
+      ,CASE
+         WHEN conv_unit IS NOT NULL                              -- 入出庫換算単位がNULLでない
+          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
+          AND :2 = '1' THEN                                      -- 製品識別区分が1:製品
+             -- 換算する
+             REPLACE(TO_CHAR(shipped_quantity/num_of_cases,'999,999,990.000'),' ')
+         ELSE
+             -- 換算しない
+             REPLACE(TO_CHAR(shipped_quantity,'999,999,990.000'),' ')
+       END                           shipped_sum                 -- 出庫実績数量
+      ,shipped_quantity       shipped_quantity                   -- 出庫実績数量(非表示)
+      ,CASE
+         WHEN conv_unit IS NOT NULL                              -- 入出庫換算単位がNULLでない
+          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
+          AND :3 = '1' THEN                                      -- 製品識別区分が1:製品
+             -- 換算する
+             REPLACE(TO_CHAR(ship_to_quantity/num_of_cases,'999,999,990.000'),' ')
+         ELSE
+             -- 換算しない
+             REPLACE(TO_CHAR(ship_to_quantity,'999,999,990.000'),' ')
+       END                           ship_to_sum                 -- 入庫実績数量
       ,ship_to_quantity       ship_to_quantity            -- 入庫実績数量(非表示)
       ,created_by_l           created_by_l                -- 作成者
       ,creation_date_l        creation_date_l             -- 作成日
@@ -38,8 +74,18 @@ SELECT ximril.mov_hdr_id         mov_hdr_id                  -- 移動ヘッダID
       ,ximril.item_code          item_code                   -- 品目
       ,xim2v.item_short_name     item_short_name             -- 品名略称
       ,ximril.instruct_qty       instruct_qty                -- 指示数量
-      ,NVL(xim2v.num_of_cases,1) num_of_cases                -- ケース入数
+      ,CASE
+         WHEN xim2v.conv_unit IS NOT NULL                        -- 入出庫換算単位がNULLでない
+          AND FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') = '2' -- 商品区分(職責)が 2:ドリンク
+          AND :4 = '1' THEN                                      -- 製品識別区分が1:製品
+             -- 換算するので、ケース入数に値をセット
+             TO_NUMBER(xim2v.num_of_cases)
+         ELSE
+             -- 換算しないので、1
+             1
+       END                           num_of_cases            -- ケース入数
       ,xim2v.conv_unit           conv_unit                   -- 入出庫換算単位
+      ,xim2v.item_um             item_um                     -- 品目単位
       ,ximril.uom_code           uom_code                    -- 単位
       ,ximril.shipped_quantity   shipped_quantity            -- 出庫実績数量
       ,ximril.ship_to_quantity   ship_to_quantity            -- 入庫実績数量
@@ -58,7 +104,7 @@ AND   NVL(xim2v.end_date_active,NVL(ximrih.actual_ship_date,ximrih.schedule_ship
 AND   ximril.delete_flg   = 'N'
 AND   ximrih.mov_hdr_id   = ximril.mov_hdr_id
 AND   ximril.item_id      = xim2v.item_id
-AND   ximril.mov_hdr_id = :0
+AND   ximril.mov_hdr_id = :5
 )
    ]]></SQLQuery>
    <DesignTime>
@@ -103,7 +149,7 @@ AND   ximril.mov_hdr_id = :0
       Expression="LINE_NUMBER"
       SQLType="NUMERIC" >
       <DesignTime>
-         <Attr Name="_DisplaySize" Value="3" />
+         <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
@@ -148,14 +194,14 @@ AND   ximril.mov_hdr_id = :0
    <ViewAttribute
       Name="InstructSum"
       IsPersistent="false"
-      Precision="14"
+      Precision="16"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
       AliasName="INSTRUCT_SUM"
       Expression="INSTRUCT_SUM"
       SQLType="VARCHAR" >
       <DesignTime>
-         <Attr Name="_DisplaySize" Value="14" />
+         <Attr Name="_DisplaySize" Value="16" />
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
@@ -199,14 +245,14 @@ AND   ximril.mov_hdr_id = :0
    <ViewAttribute
       Name="ShippedSum"
       IsPersistent="false"
-      Precision="14"
+      Precision="16"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
       AliasName="SHIPPED_SUM"
       Expression="SHIPPED_SUM"
       SQLType="VARCHAR" >
       <DesignTime>
-         <Attr Name="_DisplaySize" Value="14" />
+         <Attr Name="_DisplaySize" Value="16" />
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
@@ -224,14 +270,14 @@ AND   ximril.mov_hdr_id = :0
    <ViewAttribute
       Name="ShipToSum"
       IsPersistent="false"
-      Precision="14"
+      Precision="16"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
       AliasName="SHIP_TO_SUM"
       Expression="SHIP_TO_SUM"
       SQLType="VARCHAR" >
       <DesignTime>
-         <Attr Name="_DisplaySize" Value="14" />
+         <Attr Name="_DisplaySize" Value="16" />
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
