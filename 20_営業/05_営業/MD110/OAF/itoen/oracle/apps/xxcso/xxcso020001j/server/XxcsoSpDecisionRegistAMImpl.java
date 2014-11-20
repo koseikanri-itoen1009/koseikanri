@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2010-01-08 1.9  SCS阿部大輔   [E_本稼動_01031]取引条件チェック対応
 * 2010-01-15 1.10 SCS阿部大輔   [E_本稼動_00950]画面値、ＤＢ値チェック対応
 * 2010-03-01 1.11 SCS阿部大輔   [E_本稼動_01678]現金支払対応
+* 2010-11-11 1.12 SCS桐生和幸   [E_本稼動_01954]変動電気代のみの顧客対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -3580,6 +3581,9 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       if ( XxcsoSpDecisionConstants.BIZ_COND_FULL_VD.equals(bizCondType) )
       {
         if ( XxcsoSpDecisionConstants.ELEC_FIXED.equals(elecType) ||
+// 2010-11-11 [E_本稼動_01954] Add Start
+             XxcsoSpDecisionConstants.ELEC_VALIABLE.equals(elecType) ||
+// 2010-11-11 [E_本稼動_01954] Add End
              bm1CheckFlag
            )
         {

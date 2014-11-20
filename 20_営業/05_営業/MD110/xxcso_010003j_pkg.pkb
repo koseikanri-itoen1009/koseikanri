@@ -48,6 +48,7 @@ AS
  *  2009/09/09    1.6   Daisuke.Abe      統合テスト障害対応(0001323)
  *  2010/02/10    1.7   D.Abe            E_本稼動_01538対応
  *  2010/03/01    1.8   D.Abe            E_本稼動_01678,E_本稼動_01868対応
+ *  2010/11/17    1.9   S.Arizumi        E_本稼動_01954対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -1105,8 +1106,13 @@ AS
         lv_return_value := '1';
     END;
 --
-    -- 電気代区分=定額の場合は販売手数料が発生
-    IF ( lv_electricity_type = cv_electricity_type_flat ) THEN
+-- 2010/11/17 Ver.1.9 [E_本稼動_01954] SCS S.Arizumi MOD START
+--    -- 電気代区分=定額の場合は販売手数料が発生
+--    IF ( lv_electricity_type = cv_electricity_type_flat ) THEN
+    -- 電気代区分=定額 or 変動の場合は販売手数料が発生
+    IF (    ( lv_electricity_type = cv_electricity_type_flat   )
+         OR ( lv_electricity_type = cv_electricity_type_change ) ) THEN
+-- 2010/11/17 Ver.1.9 [E_本稼動_01954] SCS S.Arizumi MOD END
        lv_return_value := '1';
     END IF;
 --
