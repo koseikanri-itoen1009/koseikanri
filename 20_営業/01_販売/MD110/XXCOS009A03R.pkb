@@ -28,6 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/10    1.0   H.Ri             新規作成
  *  2009/02/17    1.1   H.Ri             get_msgのパッケージ名修正
+ *  2009/04/21    1.2   K.Kiriu          [T1_0444]成績計上者コードの結合不正対応
  *
  *****************************************************************************************/
 --
@@ -696,7 +697,11 @@ AS
         seh.sales_base_code               base_code,        --売上拠点コード
         lbiv.base_name                    base_name,        --売上拠点名
         seh.results_employee_code         emp_code,         --営業担当者コード
-        riv.employee_name                 emp_name,         --営業担当者名
+/* 2009/04/21 Ver1.2 Mod Start */
+--        riv.employee_name                 emp_name,         --営業担当者名
+        papf.per_information18 || ' ' || papf.per_information19
+                                          emp_name,         --営業担当者名
+/* 2009/04/21 Ver1.2 Mod End   */
         seh.ship_to_customer_code         ship_to_cd,       --出荷先コード
         hp.party_name                     ship_to_nm,       --出荷先名
         seh.delivery_date                 dlv_date,         --納品日
@@ -712,7 +717,10 @@ AS
         xxcos_sales_exp_lines   sel,                        --販売実績明細
         oe_order_sources        oos,                        --受注ソースマスタ
         xxcos_login_base_info_v lbiv,                       --ログインユーザ拠点ビュー
-        xxcos_rs_info_v         riv,                        --営業員情報ビュー
+/* 2009/04/21 Ver1.2 Mod Start */
+--        xxcos_rs_info_v         riv,                        --営業員情報ビュー
+        per_all_people_f        papf,                       --従業員マスタ
+/* 2009/04/21 Ver1.2 Mod End   */
         hz_cust_accounts        hca,                        --顧客マスタ
         hz_parties              hp,                         --パーティ
         mtl_system_items_b      msib,                       --Disc品目マスタ
@@ -839,13 +847,16 @@ AS
       --営業担当を絞込み
       AND   1 = (
                  CASE
-                  WHEN iv_sale_emp_code IS NULL AND EXISTS( SELECT 'Y' 
-                                                            FROM   xxcos_rs_info_v riv1 
-                                                            WHERE  seh.sales_base_code       = riv1.base_code 
-                                                            AND    seh.results_employee_code = riv1.employee_number
-                                                            AND    seh.delivery_date >= riv1.effective_start_date
-                                                            AND    seh.delivery_date <= riv1.effective_end_date
-                                                          ) THEN
+/* 2009/04/21 Ver1.2 Mod Start */
+--                  WHEN iv_sale_emp_code IS NULL AND EXISTS( SELECT 'Y' 
+--                                                            FROM   xxcos_rs_info_v riv1 
+--                                                            WHERE  seh.sales_base_code       = riv1.base_code 
+--                                                            AND    seh.results_employee_code = riv1.employee_number
+--                                                            AND    seh.delivery_date >= riv1.effective_start_date
+--                                                            AND    seh.delivery_date <= riv1.effective_end_date
+--                                                          ) THEN
+                  WHEN iv_sale_emp_code IS NULL THEN
+/* 2009/04/21 Ver1.2 Mod End   */
                     1
                   WHEN iv_sale_emp_code IS NOT NULL AND iv_sale_emp_code = seh.results_employee_code THEN
                     1
@@ -899,10 +910,15 @@ AS
             --営業原価 IS NULL OR 納品単価 < 営業原価
       AND   ( sel.business_cost IS NULL OR NVL( sel.standard_unit_price_excluded, 0 ) < sel.business_cost )
       AND   seh.sales_base_code       = lbiv.base_code            --売上拠点コード
-      AND   seh.sales_base_code       = riv.base_code
-      AND   seh.results_employee_code = riv.employee_number       --営業担当者コード
-      AND   seh.delivery_date         >= riv.effective_start_date --納品日>=営業員情報ビュー.適用開始日
-      AND   seh.delivery_date         <= riv.effective_end_date   --納品日<=営業員情報ビュー.適用終了日
+/* 2009/04/21 Ver1.2 Mod Start */
+--      AND   seh.sales_base_code       = riv.base_code
+--      AND   seh.results_employee_code = riv.employee_number       --営業担当者コード
+--      AND   seh.delivery_date         >= riv.effective_start_date --納品日>=営業員情報ビュー.適用開始日
+--      AND   seh.delivery_date         <= riv.effective_end_date   --納品日<=営業員情報ビュー.適用終了日
+      AND   seh.results_employee_code = papf.employee_number       --従業員コード
+      AND   seh.delivery_date         >= papf.effective_start_date --納品日>=従業員マスタ.適用開始日
+      AND   seh.delivery_date         <= papf.effective_end_date   --納品日<=従業員マスタ.適用終了日
+/* 2009/04/21 Ver1.2 Mod End   */
       AND   seh.ship_to_customer_code = hca.account_number        --出荷先コード
       AND   hca.party_id              = hp.party_id               --パーティーID
       AND   sel.item_code             = msib.segment1             --品目コード
@@ -917,7 +933,11 @@ AS
         seh.sales_base_code               base_code,        --売上拠点コード
         lbiv.base_name                    base_name,        --売上拠点名
         seh.results_employee_code         emp_code,         --営業担当者コード
-        riv.employee_name                 emp_name,         --営業担当者名
+/* 2009/04/21 Ver1.2 Mod Start */
+--        riv.employee_name                 emp_name,         --営業担当者名
+        papf.per_information18 || ' ' || papf.per_information19
+                                          emp_name,         --営業担当者名
+/* 2009/04/21 Ver1.2 Mod End   */
         seh.ship_to_customer_code         ship_to_cd,       --出荷先コード
         hp.party_name                     ship_to_nm,       --出荷先名
         seh.delivery_date                 dlv_date,         --納品日
@@ -932,7 +952,10 @@ AS
         xxcos_sales_exp_headers seh,                        --販売実績ヘッダ
         xxcos_sales_exp_lines   sel,                        --販売実績明細
         xxcos_login_base_info_v lbiv,                       --ログインユーザ拠点ビュー
-        xxcos_rs_info_v         riv,                        --営業員情報ビュー
+/* 2009/04/21 Ver1.2 Mod Start */
+--        xxcos_rs_info_v         riv,                        --営業員情報ビュー
+        per_all_people_f        papf,                       --従業員マスタ
+/* 2009/04/21 Ver1.2 Mod End   */
         hz_cust_accounts        hca,                        --顧客マスタ
         hz_parties              hp,                         --パーティ
         mtl_system_items_b      msib,                       --Disc品目マスタ
@@ -1033,13 +1056,16 @@ AS
       --営業担当を絞込み
       AND   1 = (
                  CASE
-                  WHEN iv_sale_emp_code IS NULL AND EXISTS( SELECT 'Y' 
-                                                            FROM   xxcos_rs_info_v riv1 
-                                                            WHERE  seh.sales_base_code       = riv1.base_code 
-                                                            AND    seh.results_employee_code = riv1.employee_number
-                                                            AND    seh.delivery_date >= riv1.effective_start_date
-                                                            AND    seh.delivery_date <= riv1.effective_end_date
-                                                          ) THEN
+/* 2009/04/21 Ver1.2 Mod Start */
+--                  WHEN iv_sale_emp_code IS NULL AND EXISTS( SELECT 'Y' 
+--                                                            FROM   xxcos_rs_info_v riv1 
+--                                                            WHERE  seh.sales_base_code       = riv1.base_code 
+--                                                            AND    seh.results_employee_code = riv1.employee_number
+--                                                            AND    seh.delivery_date >= riv1.effective_start_date
+--                                                           AND    seh.delivery_date <= riv1.effective_end_date
+--                                                          ) THEN
+                  WHEN iv_sale_emp_code IS NULL THEN
+/* 2009/04/21 Ver1.2 Mod End   */
                     1
                   WHEN iv_sale_emp_code IS NOT NULL AND iv_sale_emp_code = seh.results_employee_code THEN
                     1
@@ -1093,10 +1119,15 @@ AS
             --営業原価 IS NULL OR 納品単価 < 営業原価
       AND   ( sel.business_cost IS NULL OR NVL( sel.standard_unit_price_excluded, 0 ) < sel.business_cost )
       AND   seh.sales_base_code       = lbiv.base_code            --売上拠点コード
-      AND   seh.sales_base_code       = riv.base_code
-      AND   seh.results_employee_code = riv.employee_number       --営業担当者コード
-      AND   seh.delivery_date         >= riv.effective_start_date --納品日>=営業員情報ビュー.適用開始日
-      AND   seh.delivery_date         <= riv.effective_end_date   --納品日<=営業員情報ビュー.適用終了日
+/* 2009/04/21 Ver1.2 Mod Start */
+--      AND   seh.sales_base_code       = riv.base_code
+--      AND   seh.results_employee_code = riv.employee_number       --営業担当者コード
+--      AND   seh.delivery_date         >= riv.effective_start_date --納品日>=営業員情報ビュー.適用開始日
+--      AND   seh.delivery_date         <= riv.effective_end_date   --納品日<=営業員情報ビュー.適用終了日
+      AND   seh.results_employee_code = papf.employee_number       --従業員コード
+      AND   seh.delivery_date         >= papf.effective_start_date --納品日>=従業員マスタ.適用開始日
+      AND   seh.delivery_date         <= papf.effective_end_date   --納品日<=従業員マスタ.適用終了日
+/* 2009/04/21 Ver1.2 Mod End   */
       AND   seh.ship_to_customer_code = hca.account_number        --出荷先コード
       AND   hca.party_id              = hp.party_id               --パーティーID
       AND   sel.item_code             = msib.segment1             --品目コード
