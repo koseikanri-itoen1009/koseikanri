@@ -7,7 +7,7 @@ AS
  * Description      : 運賃情報取込処理のアップロード
  * MD.050           : ファイルアップロード            T_MD050_BPO_990
  * MD.070           : 運賃情報取込処理のアップロード  T_MD070_BPO_99K
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,8 @@ AS
  *  2008/04/28    1.2   Y.Kawano         内部変更要求No74対応
  *  2008/05/28    1.3   Oracle 山根 一浩 変更要求No124対応
  *  2008/07/08    1.4   Oracle 山根 一浩 I_S_192対応
+ *  2008/10/03    1.5   M.Nomura         T_S_577対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -176,6 +178,12 @@ AS
 --
   -- CSVを格納するレコード
   TYPE file_data_rec IS RECORD(
+-- ##### 20081003 Ver.1.21 T_S_577対応 START #####
+    company_code      VARCHAR2(32767), -- 会社コード
+    data_class        VARCHAR2(32767), -- データ種別
+    tran_number       VARCHAR2(32767), -- 伝送用枝番
+    update_dtime      VARCHAR2(32767), -- 更新日時
+-- ##### 20081003 Ver.1.21 T_S_577対応 END   #####
     delivery_code     VARCHAR2(32767), -- 運送業者
     delivery_no       VARCHAR2(32767), -- 配送No
     invoice_no        VARCHAR2(32767), -- 送り状No
@@ -818,29 +826,65 @@ AS
         -- 運賃用
         IF (iv_file_format = gv_format_code_01) THEN
 --
-          -- 配送NO
+-- ##### 20081003 Ver.1.21 T_S_577対応 START #####
+--          IF (ln_col = 1) THEN
+          -- 会社名
           IF (ln_col = 1) THEN
+            gr_fdata_tbl(gn_target_cnt).company_code    := SUBSTR(lv_line, 1, ln_length);
+--
+          -- データ種別
+          ELSIF (ln_col = 2) THEN
+            gr_fdata_tbl(gn_target_cnt).data_class     := SUBSTR(lv_line, 1, ln_length);
+--
+          -- 伝送用枝番
+          ELSIF (ln_col = 3) THEN
+            gr_fdata_tbl(gn_target_cnt).tran_number := SUBSTR(lv_line, 1, ln_length);
+
+          -- 配送NO
+          ELSIF (ln_col = 4) THEN
+-- ##### 20081003 Ver.1.21 T_S_577対応 END   #####
             gr_fdata_tbl(gn_target_cnt).delivery_no    := SUBSTR(lv_line, 1, ln_length);
 --
           -- 送り状NO
-          ELSIF (ln_col = 2) THEN
+-- ##### 20081003 Ver.1.21 T_S_577対応 START #####
+--          ELSIF (ln_col = 2) THEN
+          ELSIF (ln_col = 5) THEN
+-- ##### 20081003 Ver.1.21 T_S_577対応 END   #####
             gr_fdata_tbl(gn_target_cnt).invoice_no     := SUBSTR(lv_line, 1, ln_length);
 --
           -- 請求運賃
-          ELSIF (ln_col = 3) THEN
+-- ##### 20081003 Ver.1.21 T_S_577対応 START #####
+--          ELSIF (ln_col = 3) THEN
+          ELSIF (ln_col = 6) THEN
+-- ##### 20081003 Ver.1.21 T_S_577対応 END   #####
             gr_fdata_tbl(gn_target_cnt).charged_amount := SUBSTR(lv_line, 1, ln_length);
 --
           -- 個数
-          ELSIF (ln_col = 4) THEN
+-- ##### 20081003 Ver.1.21 T_S_577対応 START #####
+--          ELSIF (ln_col = 4) THEN
+          ELSIF (ln_col = 7) THEN
+-- ##### 20081003 Ver.1.21 T_S_577対応 END   #####
             gr_fdata_tbl(gn_target_cnt).qty            := SUBSTR(lv_line, 1, ln_length);
 --
           -- 重量
-          ELSIF (ln_col = 5) THEN
+-- ##### 20081003 Ver.1.21 T_S_577対応 START #####
+--          ELSIF (ln_col = 5) THEN
+          ELSIF (ln_col = 8) THEN
+-- ##### 20081003 Ver.1.21 T_S_577対応 END   #####
             gr_fdata_tbl(gn_target_cnt).weight         := SUBSTR(lv_line, 1, ln_length);
 --
           -- 通行料
-          ELSIF (ln_col = 6) THEN
+-- ##### 20081003 Ver.1.21 T_S_577対応 START #####
+--          ELSIF (ln_col = 6) THEN
+          ELSIF (ln_col = 9) THEN
+-- ##### 20081003 Ver.1.21 T_S_577対応 END   #####
             gr_fdata_tbl(gn_target_cnt).congestion     := SUBSTR(lv_line, 1, ln_length);
+-- ##### 20081003 Ver.1.21 T_S_577対応 START #####
+          -- 更新日時
+          ELSIF (ln_col = 10) THEN
+            gr_fdata_tbl(gn_target_cnt).update_dtime     := SUBSTR(lv_line, 1, ln_length);
+--
+-- ##### 20081003 Ver.1.21 T_S_577対応 END   #####
           END IF;
 --
         -- 支払運賃用
@@ -1059,7 +1103,10 @@ AS
 --
     -- フォーマットパターンが「13」の場合
     IF (iv_file_format = gv_format_code_01) THEN
-      ln_c_col := 6;
+-- ##### 20081003 Ver.1.21 T_S_577対応 START #####
+--      ln_c_col := 6;
+      ln_c_col := 10;
+-- ##### 20081003 Ver.1.21 T_S_577対応 END   #####
 --
     -- フォーマットパターンが「14」の場合
     ELSIF (iv_file_format = gv_format_code_02) THEN
