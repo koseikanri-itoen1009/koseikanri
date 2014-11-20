@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP005A01C(body)
  * Description      : 工場出荷計画
  * MD.050           : 工場出荷計画 MD050_COP_005_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/04/28    1.5   SCS Uda          システムテスト障害対応（T1_0845、T1_0847）
  *  2009/05/20    1.6   SCS Uda          システムテスト障害対応（T1_1096）
  *  2009/06/04    1.7   SCS Fukada       システムテスト障害対応（T1_1328）プログラムの最後に「/」を追加
+ *  2009/06/16    1.8   SCS Kikuchi      システムテスト障害対応（T1_1463、T1_1464）
  *
  *****************************************************************************************/
 --
@@ -106,6 +107,10 @@ AS
   item_status_expt          EXCEPTION;     -- 品目ステータス不正警告メッセージ
 --20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
 
+--20090616_Ver1.8_T1_1463_SCS_Kikuchi_ADD_START
+  nested_loop_expt          EXCEPTION;     -- 階層ループエラー
+  PRAGMA EXCEPTION_INIT(nested_loop_expt, -01436);
+--20090616_Ver1.8_T1_1463_SCS_Kikuchi_ADD_END
   PRAGMA EXCEPTION_INIT(resource_busy_expt, -54);
 --
   -- ===============================
@@ -2534,31 +2539,33 @@ AS
           lr_xwsp_rec.receipt_org_code    := lv_organization_code;                 -- 受入組織コード
           lr_xwsp_rec.receipt_org_name    := lv_organization_name;                 -- 受入組織名称
           --
-          --===================================
-          --受入組織ループチェック処理
-          --===================================
-          BEGIN
-            SELECT COUNT(transaction_id)
-            INTO ln_loop_chk
-            FROM xxcop_wk_ship_planning
-            WHERE transaction_id = lr_xwsp_rec.transaction_id
-            AND plant_org_id   = lr_xwsp_rec.plant_org_id
-            AND inventory_item_id = lr_xwsp_rec.inventory_item_id
-            AND product_schedule_date = lr_xwsp_rec.product_schedule_date
-            AND ship_org_id = lr_xwsp_rec.receipt_org_id;
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-            NULL;
-          END;
-          IF ln_loop_chk > 0 THEN
-            lv_errmsg :=  xxccp_common_pkg.get_msg(
-                             iv_application  => cv_msg_appl_cont
-                            ,iv_name         => cv_msg_00060
-                            ,iv_token_name1  => cv_msg_00060_token_1
-                            ,iv_token_value1 => lr_xwsp_rec.receipt_org_code || cv_pm_part || lr_xwsp_rec.receipt_org_name
-                          );
-            RAISE internal_process_expt;
-          END IF;
+--20090616_Ver1.8_T1_1463_SCS_Kikuchi_DEL_START
+--          --===================================
+--          --受入組織ループチェック処理
+--          --===================================
+--          BEGIN
+--            SELECT COUNT(transaction_id)
+--            INTO ln_loop_chk
+--            FROM xxcop_wk_ship_planning
+--            WHERE transaction_id = lr_xwsp_rec.transaction_id
+--            AND plant_org_id   = lr_xwsp_rec.plant_org_id
+--            AND inventory_item_id = lr_xwsp_rec.inventory_item_id
+--            AND product_schedule_date = lr_xwsp_rec.product_schedule_date
+--            AND ship_org_id = lr_xwsp_rec.receipt_org_id;
+--          EXCEPTION
+--            WHEN NO_DATA_FOUND THEN
+--            NULL;
+--          END;
+--          IF ln_loop_chk > 0 THEN
+--            lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                             iv_application  => cv_msg_appl_cont
+--                            ,iv_name         => cv_msg_00060
+--                            ,iv_token_name1  => cv_msg_00060_token_1
+--                            ,iv_token_value1 => lr_xwsp_rec.receipt_org_code || cv_pm_part || lr_xwsp_rec.receipt_org_name
+--                          );
+--            RAISE internal_process_expt;
+--          END IF;
+--20090616_Ver1.8_T1_1463_SCS_Kikuchi_DEL_END
           --===================================
           --重複レコードチェック処理
           --===================================
@@ -2719,6 +2726,37 @@ AS
             IF lv_retcode = cv_status_error THEN
               RAISE internal_process_expt;
             END IF;
+
+--20090616_Ver1.8_T1_1463_SCS_Kikuchi_ADD_START
+            --===================================
+            --受入組織ループチェック処理
+            --===================================
+            BEGIN
+              SELECT COUNT(*)
+              INTO   ln_loop_chk
+              FROM(
+                SELECT ship_org_id
+                ,      receipt_org_id
+                FROM   xxcop_wk_ship_planning
+                WHERE  transaction_id        = lr_xwsp_rec.transaction_id
+                AND    plant_org_id          = lr_xwsp_rec.plant_org_id
+                AND    inventory_item_id     = lr_xwsp_rec.inventory_item_id
+                AND    product_schedule_date = lr_xwsp_rec.product_schedule_date
+              ) xwspv
+              START WITH       xwspv.ship_org_id    = lr_xwsp_rec.receipt_org_id
+              CONNECT BY PRIOR xwspv.receipt_org_id = xwspv.ship_org_id;
+            EXCEPTION
+              WHEN nested_loop_expt THEN
+                lv_errmsg :=  xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_msg_appl_cont
+                                ,iv_name         => cv_msg_00060
+                                ,iv_token_name1  => cv_msg_00060_token_1
+                                ,iv_token_value1 => lr_xwsp_rec.receipt_org_code || cv_pm_part || lr_xwsp_rec.receipt_org_name
+                              );
+                RAISE internal_process_expt;
+            END;
+--20090616_Ver1.8_T1_1463_SCS_Kikuchi_ADD_END
+
           EXCEPTION
             WHEN expt_next_record THEN
               NULL;
@@ -2970,6 +3008,7 @@ AS
                    ,ov_retcode                => lv_retcode
                    ,ov_errmsg                 => lv_errmsg
                    );
+
       --自倉庫出荷ペース＋下位倉庫出荷ペース
       ln_undr_lvl_pace := ROUND((get_wk_ship_planning_rec.shipping_pace + ln_undr_lvl_pace) /get_wk_ship_planning_rec.cnt_ship_org);
       BEGIN
@@ -3070,6 +3109,9 @@ AS
         ,receipt_org_code
         ,under_lvl_pace
         ,plant_org_id
+--20090616_Ver1.8_T1_1464_SCS_Kikuchi_UPD_START
+        ,cnt_ship_org
+--20090616_Ver1.8_T1_1464_SCS_Kikuchi_UPD_END
       FROM
         xxcop_wk_ship_planning
       WHERE org_data_lvl          = cn_data_lvl_output
@@ -3175,8 +3217,12 @@ AS
         IF lv_retcode = cv_status_error THEN
           RAISE global_api_expt;
         END IF;
+        
         --前在庫数（後在庫(同一倉庫の同品目で生産予定日が最大のものの後在庫) + 入庫予定数 - 出荷ペース * 稼働日）
-        ln_before_stock := ln_before_stock + ln_receipt_plan_qty - get_wk_ship_planning_rec.under_lvl_pace * ln_working_days;
+--20090616_Ver1.8_T1_1464_SCS_Kikuchi_UPD_START
+--        ln_before_stock := ln_before_stock + ln_receipt_plan_qty - get_wk_ship_planning_rec.under_lvl_pace * ln_working_days;
+        ln_before_stock := ln_before_stock + ln_receipt_plan_qty - get_wk_ship_planning_rec.under_lvl_pace * ln_working_days * get_wk_ship_planning_rec.cnt_ship_org;
+--20090616_Ver1.8_T1_1464_SCS_Kikuchi_UPD_END
       --
       --後在庫が存在しないとき
       ELSE
@@ -3222,9 +3268,22 @@ AS
         IF lv_retcode = cv_status_error THEN
           RAISE global_api_expt;
         END IF;
+        
+--20090616_Ver1.8_SCS_Uda_ADD_START
+--デバックメッセージ出力
+  xxcop_common_pkg.put_debug_message(
+    iov_debug_mode => gv_debug_mode
+   ,iv_value       => '手持数='||ln_onhand_qty || ',' || '入庫予定数='||ln_receipt_plan_qty || ',' || '総出荷ペース（親件数割り）='||get_wk_ship_planning_rec.under_lvl_pace
+                     || ',' || '稼働日数='||ln_working_days || ',' || '親件数='||get_wk_ship_planning_rec.cnt_ship_org
+  );
+--20090616_Ver1.8_SCS_Uda_ADD_END
+
         --
         --前在庫数（後在庫(同一倉庫の同品目で生産予定日が最大のものの後在庫) + 入庫予定数 - 出荷ペース * 稼働日）
-        ln_before_stock := ln_onhand_qty + ln_receipt_plan_qty - get_wk_ship_planning_rec.under_lvl_pace * ln_working_days;
+--20090616_Ver1.8_T1_1464_SCS_Kikuchi_UPD_START
+--        ln_before_stock := ln_onhand_qty + ln_receipt_plan_qty - get_wk_ship_planning_rec.under_lvl_pace * ln_working_days;
+        ln_before_stock := ln_onhand_qty + ln_receipt_plan_qty - get_wk_ship_planning_rec.under_lvl_pace * ln_working_days * get_wk_ship_planning_rec.cnt_ship_org;
+--20090616_Ver1.8_T1_1464_SCS_Kikuchi_UPD_END
       END IF;
       -- 前在庫更新
       BEGIN
@@ -3436,6 +3495,15 @@ AS
         ELSE
           ln_move_qty := 0;
         END IF;
+
+--20090616_Ver1.8_SCS_Uda_ADD_START
+--デバックメッセージ出力
+  xxcop_common_pkg.put_debug_message(
+    iov_debug_mode => gv_debug_mode
+   ,iv_value       => '計画数='||ln_move_qty
+  );
+--20090616_Ver1.8_SCS_Uda_ADD_END
+
 --20090428_Ver1.5_T1_0845_SCS_Uda_ADD_START
         IF ln_move_qty >= 0 THEN
 --20090428_Ver1.5_T1_0845_SCS_Uda_ADD_END
@@ -3455,10 +3523,19 @@ AS
 --        RAISE internal_process_expt;
 --      END IF;
 --20090428_Ver1.5_T1_0845_SCS_Uda_DEL_END
+
           --移動数パレット換算後
           ln_move_qty :=ln_palette_qty * ROUND(ln_move_qty / ln_palette_qty);
           --後在庫
           ln_after_stock := ln_move_qty + get_wk_ship_planning_rec.before_stock;
+
+--20090616_Ver1.8_SCS_Uda_ADD_START
+--デバックメッセージ出力
+  xxcop_common_pkg.put_debug_message(
+    iov_debug_mode => gv_debug_mode
+   ,iv_value       => '計画数='||ln_move_qty || ',' || '後在庫='||ln_after_stock || ',' || '在庫日数='||ln_stock_days
+  );
+--20090616_Ver1.8_SCS_Uda_ADD_END
           --
           BEGIN
             UPDATE xxcop_wk_ship_planning
