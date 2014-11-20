@@ -8,7 +8,7 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/18    1.0   Sai.u            新規作成
  *  2009/03/05    1.1   T.Nakamura       [障害COI_036] 件数出力の不具合対応
+ *  2009/05/13    1.2   T.Nakamura       [障害T1_0709] 出力区分チェックを削除
  *
  *****************************************************************************************/
 --
@@ -1286,18 +1287,20 @@ AS
       gn_error_cnt := gn_error_cnt + 1;
       RAISE global_process_expt;
     END IF;
-    -- 出力区分は倉庫の場合、月末対象外になり
-    IF (iv_output_kbn = cv_out_kbn1 AND iv_inventory_kbn = cv_inv_kbn3) THEN
-      -- 出力区分チェックエラーメッセージ(APP-XXCOI1-10314)
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                    iv_application  => cv_xxcoi_sn
-                   ,iv_name         => cv_msg_10314
-                   );
-      lv_errbuf := lv_errmsg;
-      lv_retcode := cv_status_error;    -- 異常:2
-      gn_error_cnt := gn_error_cnt + 1;
-      RAISE global_process_expt;
-    END IF;
+-- == 2009/05/13 V1.2 Deleted START ===============================================================
+--    -- 出力区分は倉庫の場合、月末対象外になり
+--    IF (iv_output_kbn = cv_out_kbn1 AND iv_inventory_kbn = cv_inv_kbn3) THEN
+--      -- 出力区分チェックエラーメッセージ(APP-XXCOI1-10314)
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                    iv_application  => cv_xxcoi_sn
+--                   ,iv_name         => cv_msg_10314
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      lv_retcode := cv_status_error;    -- 異常:2
+--      gn_error_cnt := gn_error_cnt + 1;
+--      RAISE global_process_expt;
+--    END IF;
+-- == 2009/05/13 V1.2 Deleted END   ===============================================================
     -- A-2-2.棚卸月チェック
     IF (iv_inventory_kbn = cv_inv_kbn3) THEN
       -- NULLチェック
