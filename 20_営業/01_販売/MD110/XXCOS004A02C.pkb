@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/06/11    1.13  T.kitajima       [T1_1415]納品伝票番号取得処理変更
  *  2009/08/17    1.14  K.Kiriu          [0000430]PT対応
  *  2009/09/11    1.15  M.Sano           [0001345]PT対応
+ *  2010/01/18    1.16  K.Atsushiba      [E_本稼動_01110]赤黒フラグの判定条件変更
  *
  *****************************************************************************************/
 --
@@ -1607,7 +1608,10 @@ AS
 --******************************* 2009/05/26 1.11 T.Kitajima MOD  END *******************************--
 --******************************* 2009/04/28 1.9 N.Maeda MOD  END  **************************************************************
         --赤黒フラグ取得
-        IF ( gt_tab_sales_exp_lines(ln_m).sale_amount < 0 ) THEN
+/* 2010/01/18 Ver1.16 Mod Start */
+        IF ( gt_tab_sales_exp_lines(ln_m).dlv_qty < 0 ) THEN
+--        IF ( gt_tab_sales_exp_lines(ln_m).sale_amount < 0 ) THEN
+/* 2010/01/18 Ver1.16 Mod Start */
           gt_tab_sales_exp_lines(ln_m).red_black_flag             := ct_red_black_flag_0;                                --赤
         ELSE
           gt_tab_sales_exp_lines(ln_m).red_black_flag             := ct_red_black_flag_1;                                --黒

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : Á‰»‚u‚c”[•iƒf[ƒ^ì¬
  * MD.050           : Á‰»‚u‚c”[•iƒf[ƒ^ì¬ MD050_COS_004_A04
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,8 @@ AS
  *  2009/08/10   1.19  K.Kiriu           [0000431]PT‘Î‰
  *  2009/09/14   1.20  M.Sano            [0001345]PT‘Î‰
  *  2009/12/15   1.21  K.Atsushiba       [E_–{‰Ò“®_00433]·Šz’²®‚ÌÁ”ïÅ‹àŠz‚ÌZoˆ—•ÏX
+ *  2010/01/12   1.22  K.Atsushiba       [E_–{‰Ò“®_01111]Á”ïÅ‚Ì·Šz‹àŠzZo•û–@•ÏX
+ *                                       [E_–{‰Ò“®_01110]Ô•ƒtƒ‰ƒO”»’èğŒ•ÏX
  *
  *****************************************************************************************/
 --
@@ -2012,6 +2014,15 @@ AS
     ln_amount_data         NUMBER;        -- –{‘Ì‹àŠzˆêŠi”[—p
 --**************************** 2009/04/27 1.13 T.kitajima ADD  END  ****************************
     lv_out_msg             VARCHAR(5000);
+/* 2010/01/12 Ver1.22 Add Start */
+    ln_tax_amount_total          NUMBER;     -- ÅŠz‡Œv(–¾×)
+    ln_ar_tax_total              NUMBER;     -- ARÅ‹àŠz‡Œv
+    ln_tax_rounding_af           NUMBER;     -- ’[”ˆ—Œã‚ÌÅŠz
+    ln_max_tax                   NUMBER;     -- Å‘å‚ÌÁ‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz‚ÌÅŠz
+    ln_difference_tax            NUMBER;     -- ÅŠz·Šz
+    ln_pure_amount_total         NUMBER;
+    ln_diff_pure_amount          NUMBER;
+/* 2010/01/12 Ver1.22 Add End */
 --
     -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
 --
@@ -2033,6 +2044,10 @@ AS
     --‰Šú‰»
     ln_m                   := cn_1;
     ln_h                   := cn_1;
+/* 2010/01/12 Ver1.22 Add Start */
+    ln_tax_amount_total  := cn_0;
+    ln_pure_amount_total := cn_0;
+/* 2010/01/12 Ver1.22 Add End */
     ln_amount_work_total   := cn_0;
 --****************************** 2009/04/27 1.13 N.Maeda    ADD START ******************************--
     ln_tax_work_total      := cn_0;
@@ -2754,6 +2769,10 @@ AS
         ELSE
           RAISE global_api_others_expt;
         END IF;
+/* 2010/01/12 Ver1.22 Add Start */
+        -- ’[”ˆ—Œã‚ÌÅŠz‚ğİ’è
+        ln_tax_rounding_af := gt_tab_sales_exp_lines(ln_m).tax_amount;
+/* 2010/01/12 Ver1.22 Add End */
         --
 --****************************** 2009/05/25 1.15 T.Kitajima MOD START ******************************--
 --        gt_tab_sales_exp_lines(ln_m).dlv_unit_price               :=
@@ -2769,7 +2788,10 @@ AS
 --****************************** 2009/05/25 1.15 T.Kitajima MOD  END  ******************************--
 --**************************** 2009/04/27 1.13 N.Maeda MOD  END  *********************************************************************
         --Ô•ƒtƒ‰ƒOæ“¾
-        IF ( gt_tab_sales_exp_lines(ln_m).sale_amount < cn_0 ) THEN
+/* 2010/01/12 Ver1.22 Mod Start */
+        IF ( gt_tab_sales_exp_lines(ln_m).dlv_qty < cn_0 ) THEN
+--        IF ( gt_tab_sales_exp_lines(ln_m).sale_amount < cn_0 ) THEN
+/* 2010/01/12 Ver1.22 Mod End */
           gt_tab_sales_exp_lines(ln_m).red_black_flag             := ct_red_black_flag_0;                                --Ô
         ELSE
           gt_tab_sales_exp_lines(ln_m).red_black_flag             := ct_red_black_flag_1;                                --•
@@ -2801,6 +2823,12 @@ AS
         --”„ãŒvZ
         --Á‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz‚Ì‡ŒvŠzŒvZ
         ln_amount_work_total     := ln_amount_work_total     + ln_amount_work;
+/* 2010/01/12 Ver1.22 Add Start */
+        --Á‰»ŒvZŠ|—¦Ï‚İ•i–Ú•ÊÅ‹àŠz‚Ì‡ŒvŠzŒvZ
+        ln_tax_amount_total     := ln_tax_amount_total  + gt_tab_sales_exp_lines(ln_m).tax_amount;
+        --Á‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê–{‘Ì‹àŠz‚Ì‡ŒvŠzŒvZ
+        ln_pure_amount_total    := ln_pure_amount_total + gt_tab_sales_exp_lines(ln_m).pure_amount;
+/* 2010/01/12 Ver1.22 Add End */
         --Å‘å‚ÌÁ‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz‚Æ“Ç‚İ‚ñ‚¾ƒe[ƒuƒ‹ƒCƒ“ƒfƒbƒNƒX‚Æ‘‚«o‚µ‚½ƒe[ƒuƒ‹ƒCƒ“ƒfƒbƒNƒX‚ğ•Û‘¶
 
 --****************************** 2009/05/25 1.15 T.Kitajima MOD START ******************************--
@@ -2809,6 +2837,9 @@ AS
           OR ( ln_amount_work_max IS NULL )
         THEN
           ln_amount_work_max := ln_amount_work; --Å‘å‚ÌÁ‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz
+/* 2010/01/12 Ver1.22 Add Start */
+          ln_max_tax := ln_tax_rounding_af;
+/* 2010/01/12 Ver1.22 Add End */
 --****************************** 2009/05/25 1.15 T.Kitajima MOD  END  ******************************--
           ln_i_max := ln_i; --Œ»İ‚Ì“Çƒe[ƒuƒ‹ƒCƒ“ƒfƒbƒNƒX
           ln_m_max := ln_m; --Œ»İ‚Ì‘oƒe[ƒuƒ‹ƒCƒ“ƒfƒbƒNƒX
@@ -2916,17 +2947,40 @@ AS
           --·•ªŒvZ
           --·Šz  AR”„ã‹àŠz | Á‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz‚Ì‡ŒvŠz
           ln_difference_money := gt_tab_work_data(ln_i).ar_sales_amount - ln_amount_work_total;
-          IF ( ln_difference_money = cn_0 ) THEN
+/* 2010/01/12 Ver1.22 Mod Start */
+          -- Å‹àŠz·ŠzZo
+          ln_difference_tax   := gt_tab_work_data(ln_i).tax_amount - ln_tax_amount_total;
+          --
+          -- –{‘Ì‹àŠz‚Ì·ŠzZo
+          ln_diff_pure_amount := gt_tab_work_data(ln_i).ar_sales_amount - ln_pure_amount_total;
+          IF ( ln_difference_money = cn_0 AND ln_difference_tax = cn_0 AND ln_diff_pure_amount = cn_0 ) THEN
+--          IF ( ln_difference_money = cn_0 ) THEN
+/* 2010/01/12 Ver1.22 Mod End */
             NULL; --·ˆÙ‚È‚µ
           ELSE
             --·Šz‚ğÅ‘å‚ÌÁ‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz‚É‰ÁZ‚·‚é
             --Å‘å‚ÌÁ‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz{·Šz
             ln_amount_work_max := ln_amount_work_max + ln_difference_money;
-            --Á”ïÅŠz‚ÌÄŒvZ
-            --·Šz‚ğ‰ÁZ‚µ‚½Å‘å‚ÌÁ‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz|i·Šz‚ğ‰ÁZ‚µ‚½Å‘å‚ÌÁ‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz^i‚P{Á”ïÅ—¦^‚P‚O‚Ojj
 /* 2009/12/15 Ver1.21 Mod Start */
-            ln_tax_work := ln_amount_work_max - gt_tab_sales_exp_lines(ln_m_max).pure_amount;
-             gt_tab_sales_exp_lines(ln_m_max).tax_amount := ln_tax_work;
+/* 2010/01/12 Ver1.22 Mod Start */
+            --Á”ïÅŠz‚ÌÄŒvZ
+            ln_max_tax := ln_max_tax + ln_difference_tax;
+            gt_tab_sales_exp_lines(ln_m_max).tax_amount := ln_max_tax;
+            -- –{‘Ì‹àŠz‚ÌÄŒvZ
+            IF ( gt_tab_work_data(ln_m_max).tax_rate > 0 ) THEN
+              -- Å”²‚«–{‘Ì‹àŠz‚Ìê‡
+              gt_tab_sales_exp_lines(ln_m_max).pure_amount :=   gt_tab_sales_exp_lines(ln_m_max).pure_amount
+                                                              + ln_diff_pure_amount;
+            ELSE
+              -- Å‚İ–{‘Ì‹àŠz‚Ìê‡
+              gt_tab_sales_exp_lines(ln_m_max).pure_amount :=   gt_tab_sales_exp_lines(ln_m_max).sale_amount
+                                                              - gt_tab_sales_exp_lines(ln_m_max).tax_amount
+                                                              + ln_diff_pure_amount;
+            END IF;
+--            --·Šz‚ğ‰ÁZ‚µ‚½Å‘å‚ÌÁ‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz|i·Šz‚ğ‰ÁZ‚µ‚½Å‘å‚ÌÁ‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz^i‚P{Á”ïÅ—¦^‚P‚O‚Ojj
+--            ln_tax_work := ln_amount_work_max - gt_tab_sales_exp_lines(ln_m_max).pure_amount;
+--             gt_tab_sales_exp_lines(ln_m_max).tax_amount := ln_tax_work;
+/* 2010/01/12 Ver1.22 Mod End */
 --            ln_tax_work := ln_amount_work_max - ( ln_amount_work_max / ( cn_1 + gt_tab_work_data(ln_i_max).tax_rate / cn_100 ) );
 /* 2009/12/15 Ver1.21 Mod End */
             --”„ã‹àŠz
@@ -2981,6 +3035,16 @@ AS
           ln_m_max                   := cn_0;
 --****************************** 2009/04/27 1.13 N.Maeda    ADD  END  ******************************--
 --
+/* 2010/01/12 Ver1.22 Add Start */
+          ln_tax_amount_total     := cn_0;
+          ln_ar_tax_total         := cn_0;
+          ln_tax_rounding_af      := cn_0;
+          ln_max_tax              := cn_0;
+          ln_difference_tax       := cn_0;
+          ln_pure_amount_total    := cn_0;
+          ln_diff_pure_amount     := cn_0;
+/* 2010/01/12 Ver1.22 Add Start */
+
           --Á‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‡Œv‹àŠz‚Ì‰Šú‰»
           ln_amount_work_total   := cn_0;
           --·Šz‚Ì‰Šú‰»
@@ -3095,6 +3159,7 @@ AS
 --
       -- ƒGƒ‰[ˆ—iƒf[ƒ^’Ç‰ÁƒGƒ‰[j
       WHEN OTHERS THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
         RAISE global_insert_expt;
 --
     END;
