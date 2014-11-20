@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -18,8 +18,8 @@ AS
  *  fnc_conv_xml              FUNCTION  : ＸＭＬタグに変換する。
  *  prc_out_xml               PROCEDURE : XML出力処理
  *  prc_initialize            PROCEDURE : 前処理(F-2)
- *  prc_get_report_data       PROCEDURE : 明細データ取得(F-3)
- *  prc_edit_data             PROCEDURE : 取得データ編集(-)
+ *  prc_get_report_data       PROCEDURE : 明細データ取得(F-3-1)
+ *  prc_edit_data             PROCEDURE : 取得データ編集(F-3-2)
  *  prc_create_xml_data       PROCEDURE : ＸＭＬデータ作成
  *  prc_set_param             PROCEDURE : パラメータの取得
  *  submain                   PROCEDURE : メイン処理プロシージャ
@@ -52,6 +52,7 @@ AS
  *  2009/05/26    1.15  T.Yoshimoto      本番障害#1478
  *  2009/06/02    1.16  T.Yoshimoto      本番障害#1516
  *  2009/06/22    1.17  T.Yoshimoto      本番障害#1516(再)※v1.15対応時の障害
+ *  2009/08/10    1.18  T.Yoshimoto      本番障害#1596
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -573,7 +574,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : prc_get_report_data
-   * Description      : 明細データ取得(F-3)
+   * Description      : 明細データ取得(F-3-1)
    ***********************************************************************************/
   PROCEDURE prc_get_report_data(
       ov_errbuf     OUT VARCHAR2                  -- エラー・メッセージ           --# 固定 #
@@ -1216,7 +1217,7 @@ AS
 -- 2009/05/26 v1.15 T.Yoshimoto Add Start
   /**********************************************************************************
    * Procedure Name   : prc_edit_data
-   * Description      : ＸＭＬデータ作成
+   * Description      : ＸＭＬデータ作成(F-3-2)
    ***********************************************************************************/
   PROCEDURE prc_edit_data(
       ov_errbuf         OUT VARCHAR2           -- エラー・メッセージ           --# 固定 #
@@ -1374,9 +1375,16 @@ AS
       -- ==========================
       -- 受入実績の場合
       IF (it_data_rec(ln_loop_index).txns_type = '1') THEN
-        -- 仕入金額
+-- 2009/08/10 v1.18 T.Yoshimoto Mod Start 本番#1596
+/*
+        -- 仕入金額(切捨て)
         ln_siire :=  TRUNC( NVL(it_data_rec(ln_loop_index).quantity, 0) *
                             NVL(it_data_rec(ln_loop_index).unit_price, 0) );
+*/
+        -- 仕入金額(四捨五入)
+        ln_siire :=  ROUND( NVL(it_data_rec(ln_loop_index).quantity, 0) *
+                            NVL(it_data_rec(ln_loop_index).unit_price, 0), 0);
+-- 2009/08/10 v1.18 T.Yoshimoto Mod End 本番#1596
 --
         -- 口銭金額
         -- 口銭区分が「率」の場合
@@ -1416,8 +1424,14 @@ AS
       -- 発注あり返品/発注なし返品の場合
       ELSE
 --
-        --仕入金額
+-- 2009/08/10 v1.18 T.Yoshimoto Mod Start 本番#1596
+/*
+        --仕入金額(切捨て)
         ln_siire  :=  TRUNC( NVL(it_data_rec(ln_loop_index).purchase_amount, 0));
+*/
+        --仕入金額(四捨五入)
+        ln_siire  :=  ROUND( NVL(it_data_rec(ln_loop_index).purchase_amount, 0), 0);
+-- 2009/08/10 v1.18 T.Yoshimoto Mod End 本番#1596
 --
         --口銭金額
         ln_kousen := it_data_rec(ln_loop_index).attribute5;
@@ -1901,10 +1915,12 @@ AS
       ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
       ot_xml_data_table(lt_xml_idx).tag_value := TO_CHAR(ln_quantity);
       -- 仕入金額
+-- 2009/08/10 v1.18 T.Yoshimoto Mod Start 本番#1596(四捨五入化)
 -- 2008/11/04 v1.11 Y.Yamamoto update start
---      ln_purchase_amount := ROUND(it_data_rec(i).purchase_amount);
-      ln_purchase_amount := TRUNC(it_data_rec(i).purchase_amount);
+      ln_purchase_amount := ROUND(it_data_rec(i).purchase_amount);
+--      ln_purchase_amount := TRUNC(it_data_rec(i).purchase_amount);
 -- 2008/11/04 v1.11 Y.Yamamoto update end
+-- 2009/08/10 v1.18 T.Yoshimoto Mod End 本番#1596(四捨五入化)
       lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
       ot_xml_data_table(lt_xml_idx).tag_name  := 'purchase_amount' ;
       ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;

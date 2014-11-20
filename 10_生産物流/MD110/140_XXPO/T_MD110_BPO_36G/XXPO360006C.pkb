@@ -7,7 +7,7 @@ AS
  * Description      : 仕入取引明細表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -19,7 +19,7 @@ AS
  *  fnc_set_xml               FUNCTION  : ＸＭＬ用配列に格納する。
  *  prc_initialize            PROCEDURE : 前処理(G-2)
  *  prc_get_report_data       PROCEDURE : 明細データ取得(G-3)
- *  prc_edit_data             PROCEDURE : 集計用データ編集(G-)
+ *  prc_edit_data             PROCEDURE : 集計用データ編集(G-4-3)
  *  prc_create_xml_data       PROCEDURE : ＸＭＬデータ作成(G-4-1)
  *  prc_create_xml_data2      PROCEDURE : 集計用ＸＭＬデータ作成(G-4-2)
  *  submain                   PROCEDURE : メイン処理プロシージャ
@@ -67,6 +67,7 @@ AS
  *  2009/06/02    1.27  T.Yoshimoto      本番障害#1515,1516対応
  *  2009/07/03    1.28  T.Yoshimoto      本番障害#1560対応
  *  2009/07/06    1.29  T.Yoshimoto      本番障害#1565対応
+ *  2009/08/10    1.30  T.Yoshimoto      本番障害#1596対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1129,10 +1130,12 @@ AS
         ||       ' ,ilm.lot_no )              order1 '       --表示順'
         -- 2008/12/02 ADD START
         -- 受入返品数量×単価=金額
+-- 2009/08/10 v1.30 T.Yoshimoto Mod Start 本番#1596(四捨五入化)
 -- 2009/7/3 v1.28 T.Yoshimoto Mod Start
---        || ',ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
-        || ',TRUNC(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
--- 2009/7/3 v1.XXXX T.Yoshimoto Mod End
+        || ',ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+--        || ',TRUNC(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+-- 2009/7/3 v1.28 T.Yoshimoto Mod End
+-- 2009/08/10 v1.30 T.Yoshimoto Mod End 本番#1596(四捨五入化)
         ||                                cv_type_hen  || ', xrart.quantity * -1  '
         ||                                                ', xrart.quantity)  *  '
         || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', xrart.kobki_converted_unit_price '
@@ -1142,9 +1145,11 @@ AS
         ||       ' , pl.unit_price),0) gaku '
 -- 2008/12/05 v1.19 UPDATE END
         -- 消費税額計算
+-- 2009/08/10 v1.30 T.Yoshimoto Mod Start 本番#1596(四捨五入化)
 -- 2009/7/3 v1.28 T.Yoshimoto Mod End
---        || ',ROUND(ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
-        || ',ROUND(TRUNC(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+        || ',ROUND(ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+--        || ',ROUND(TRUNC(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+-- 2009/08/10 v1.30 T.Yoshimoto Mod Start 本番#1596(四捨五入化)
 -- 2009/7/3 v1.28 T.Yoshimoto Mod End
         ||                                cv_type_hen  || ', xrart.quantity * -1  '
         ||                                                ', xrart.quantity)  *  '
@@ -1510,7 +1515,7 @@ AS
 -- 2009/05/20 v1.26 T.Yoshimoto Add Start 本番#1478
   /**********************************************************************************
    * Procedure Name   : prc_edit_data
-   * Description      : 集計用データ編集(G-)
+   * Description      : 集計用データ編集(G-4-3)
    ***********************************************************************************/
   PROCEDURE prc_edit_data(
       it_data_rec   IN  tab_data_type_dtl         --    編集前レコード群
@@ -1708,9 +1713,16 @@ AS
       -- ==========================
       -- 受入実績の場合
       IF (it_data_rec(ln_loop_index).txns_type = '1') THEN
-        -- 仕入金額
+-- 2009/08/10 v1.30 T.Yoshimoto Mod Start 本番#1596
+/*
+        -- 仕入金額(切捨て)
         ln_siire :=  TRUNC( NVL(it_data_rec(ln_loop_index).conv_quantity, 0) *
                             NVL(it_data_rec(ln_loop_index).kobikigo, 0) );
+*/
+        -- 仕入金額(四捨五入)
+        ln_siire :=  ROUND( NVL(it_data_rec(ln_loop_index).conv_quantity, 0) *
+                            NVL(it_data_rec(ln_loop_index).kobikigo, 0), 0);
+-- 2009/08/10 v1.30 T.Yoshimoto Mod End 本番#1596
 --
         -- 口銭金額
         -- 口銭区分が「率」の場合
@@ -1750,8 +1762,14 @@ AS
       -- 発注あり返品/発注なし返品の場合
       ELSE
 --
-        --仕入金額
+-- 2009/08/10 v1.30 T.Yoshimoto Mod Start 本番#1596
+/*
+        --仕入金額(切捨て)
         ln_siire  :=  TRUNC( NVL(it_data_rec(ln_loop_index).gaku, 0));
+*/
+        --仕入金額(四捨五入)
+        ln_siire  :=  ROUND( NVL(it_data_rec(ln_loop_index).gaku, 0), 0);
+-- 2009/08/10 v1.30 T.Yoshimoto Mod End 本番#1596
 --
         --口銭金額
         ln_kousen := it_data_rec(ln_loop_index).kousen_price;
@@ -1879,7 +1897,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : prc_create_xml_data
-   * Description      : ＸＭＬデータ作成(G-4)
+   * Description      : ＸＭＬデータ作成(G-4-1)
    ***********************************************************************************/
   PROCEDURE prc_create_xml_data(
       ov_errbuf         OUT VARCHAR2          --    エラー・メッセージ           --# 固定 #
@@ -2284,9 +2302,18 @@ AS
 --
 -- 2009/05/18 v1.26 T.Yoshimoto Add Start 本番#1478
       IF (gt_main_data(ln_loop_index).txns_type = '1') THEN
-        --仕入金額
+--
+-- 2009/08/10 v1.30 T.Yoshimoto Mod Start 本番#1596
+/*
+        --仕入金額(切捨て)
         ln_siire :=  TRUNC( NVL(gt_main_data(ln_loop_index).conv_quantity, 0)
                           * NVL(gt_main_data(ln_loop_index).kobikigo, 0) );
+*/
+        --仕入金額(四捨五入)
+        ln_siire :=  ROUND( NVL(gt_main_data(ln_loop_index).conv_quantity, 0)
+                          * NVL(gt_main_data(ln_loop_index).kobikigo, 0), 0);
+-- 2009/08/10 v1.30 T.Yoshimoto Mod End 本番#1596
+--
         lb_ret := fnc_set_xml('Z', 'purchase_amount', ln_siire);
 --
         --口銭金額
@@ -2397,8 +2424,11 @@ AS
 --                 * NVL(gt_main_data(ln_loop_index).kobikigo, 0);
 --      ln_siire :=  TRUNC( NVL(gt_main_data(ln_loop_index).quantity, 0)
 --                        * NVL(gt_main_data(ln_loop_index).kobikigo, 0) );
--- 2008/11/06 v1.16 Y.Yamamoto update start
-        ln_siire :=  TRUNC( NVL(gt_main_data(ln_loop_index).gaku, 0));
+-- 2008/11/06 v1.16 Y.Yamamoto update end
+-- 2009/08/10 v1.30 T.Yoshimoto Mod Start 本番#1596
+--        ln_siire :=  TRUNC( NVL(gt_main_data(ln_loop_index).gaku, 0));
+        ln_siire :=  ROUND( NVL(gt_main_data(ln_loop_index).gaku, 0), 0);
+-- 2009/08/10 v1.30 T.Yoshimoto Mod End 本番#1596
 -- 2008/12/02 MOD END
       lb_ret := fnc_set_xml('Z', 'purchase_amount', ln_siire);
 --
@@ -2656,7 +2686,7 @@ AS
 -- 2009/05/20 v1.26 T.Yoshimoto Add Start 本番#1478
   /**********************************************************************************
    * Procedure Name   : prc_create_xml_data2
-   * Description      : ＸＭＬデータ作成2(G-4_2)
+   * Description      : ＸＭＬデータ作成2(G-4-2)
    ***********************************************************************************/
   PROCEDURE prc_create_xml_data2(
       ov_errbuf         OUT VARCHAR2          --    エラー・メッセージ           --# 固定 #
@@ -3072,7 +3102,10 @@ AS
                                , gt_main_data(ln_loop_index).kobikigo);
 --
       --仕入金額
-      ln_siire :=  TRUNC( NVL(gt_main_data(ln_loop_index).gaku, 0));
+-- 2009/08/10 v1.30 T.Yoshimoto Mod Start 本番#1596
+--      ln_siire :=  TRUNC( NVL(gt_main_data(ln_loop_index).gaku, 0));
+      ln_siire :=  ROUND( NVL(gt_main_data(ln_loop_index).gaku, 0), 0);
+-- 2009/08/10 v1.30 T.Yoshimoto Mod End 本番#1596
       lb_ret := fnc_set_xml('Z', 'purchase_amount', ln_siire);
 --
       --口銭金額
