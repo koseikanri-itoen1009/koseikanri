@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼締め関数
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_BPO_40E_出荷依頼締め関数
- * Version                : 1.4
+ * Version                : 1.5
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *                                     （依頼Noのみをキー項目に更新対象のデータを取得する)
  *  2008/6/06    1.3   Oracle 石渡賢和 リードタイムチェック時の判定を変更
  *  2008/6/27    1.4   Oracle 上原正好 内部課題56対応 呼出元が画面の場合にも締め管理アドオン登録
+ *  2008/6/30    1.5   Oracle 北寒寺正夫 ST不具合対応#326
  *
  *****************************************************************************************/
 --
@@ -885,8 +886,8 @@ AS
                                          -- 受注タイプID - 受注ヘッダアドオン.締めコンカレントID
          , xoha.order_type_id         order_type_id
                                          -- 受注タイプID - 受注ヘッダアドオン.受注タイプID
-         , CASE xscv.shipping_class_code -- 出庫形態
-             WHEN :cv_order_type_id_04 THEN
+         , CASE xottv.transaction_type_id -- 受注タイプ
+             WHEN :ln_transaction_type_id THEN
                   -- 引取変更
               NVL(xdl.lt1_rcpt_cng_lead_time_day  -- 引き取り変更LT（倉庫・配送先）
                  ,xdl.lt2_rcpt_cng_lead_time_day) -- 引き取り変更LT（倉庫・拠点）
@@ -917,7 +918,6 @@ AS
            xxwsh_oe_transaction_types2_v xottv    --①受注タイプ情報VIEW2
           ,xxwsh_order_headers_all       xoha     --②受注ヘッダアドオン
           ,xxcmn_cust_accounts2_v        xcav     --④顧客情報VIEW2
-          ,xxwsh_shipping_class2_v       xscv     --出荷区分情報VIEW2
           ,xxcmn_cust_accounts2_v        xcav2    --顧客情報VIEW2-2
           ,xxcmn_cust_acct_sites2_v      xcasv2'; --顧客サイト情報VIEW2-2
 --
@@ -1122,11 +1122,8 @@ AS
                                      -- リーフ生産物流LT（倉庫・拠点）
 --
     cv_main_sql4                   CONSTANT VARCHAR2(32000) :=
-     ' AND   xottv.transaction_type_name    =  xscv.order_transaction_type_name
-                                -- 受注タイプview．取引タイプ名＝出荷区分ビュー．受注タイプ
-       AND   xoha.deliver_to_id             =  xcasv2.party_site_id
+     ' AND   xoha.deliver_to_id             =  xcasv2.party_site_id
        AND   xcasv2.party_id                =  xcav2.party_id
-       AND   xcav2.customer_class_code      =  xscv.customer_class(+)
        AND   xcav2.start_date_active        <= NVL(:id_schedule_ship_date,xoha.schedule_ship_date)
        AND   xcav2.end_date_active          >= NVL(:id_schedule_ship_date,xoha.schedule_ship_date)
        AND   xcasv2.start_date_active       <= NVL(:id_schedule_ship_date,xoha.schedule_ship_date)
@@ -1549,7 +1546,7 @@ AS
         -- SQLの実行
         OPEN upd_status_cur FOR lv_sql
           USING
-            cv_order_type_id_04,
+            ln_transaction_type_id,
             cv_prod_class_2,
             cv_prod_class_1,
             cv_code_class_4,
