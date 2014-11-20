@@ -7,7 +7,7 @@ AS
  * Description      : ¿‹XVˆ—
  * MD.050           : ‰^’ÀŒvZiŒŸj   T_MD050_BPO_740
  * MD.070           : ¿‹XV           T_MD070_BPO_74B
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,7 +35,8 @@ AS
  *  2008/10/21    1.2  Oracle –ì‘º ³K  T_S_571‘Î‰
  *  2008/11/07    1.3  Oracle –ì‘º ³K  “‡#552A553‘Î‰
  *  2008/12/18    1.4  –ì‘º ³K         –{”Ô#42‘Î‰
- *  2009/01/08    1.5  –ì‘º ³K         –{”Ô#42‘Î‰
+ *  2009/01/08    1.5  –ì‘º ³K         –{”Ô#960‘Î‰
+ *  2009/01/13    1.6  –ì‘º ³K         –{”Ô#XXX‘Î‰iŒJ‰z‹àŠzŒvZ‘Î‰j
  *
  *****************************************************************************************/
 --
@@ -1113,17 +1114,23 @@ AS
              xbm1.address,                        -- ZŠ
              xbm1.telephone_no,                   -- “d˜b”Ô†
              xbm1.fax_no,                         -- FAX”Ô†
-             xbm1.money_transfer_date,            -- U“ú
-             NVL(xbm1.amount_receipt_money, 0),   -- ¡‰ñ“ü‹àŠz
-             NVL(xbm1.amount_adjustment, 0)       -- ’²®Šz
+-- ##### 20090113 Ver.1.6 –{”Ô#977‘Î‰iŒJ‰z‹àŠzŒvZ‘Î‰j START #####
+             xbm1.money_transfer_date            -- U“ú
+--             xbm1.money_transfer_date,            -- U“ú
+--             NVL(xbm1.amount_receipt_money, 0),   -- ¡‰ñ“ü‹àŠz
+--             NVL(xbm1.amount_adjustment, 0)       -- ’²®Šz
+-- ##### 20090113 Ver.1.6 –{”Ô#977‘Î‰iŒJ‰z‹àŠzŒvZ‘Î‰j END   #####
       INTO   gt_masters_tbl(ln_index).billing_name,
              gt_masters_tbl(ln_index).post_no,
              gt_masters_tbl(ln_index).address,
              gt_masters_tbl(ln_index).telephone_no,
              gt_masters_tbl(ln_index).fax_no,
-             gt_masters_tbl(ln_index).money_transfer_date,
-             gt_masters_tbl(ln_index).amount_receipt_money,
-             gt_masters_tbl(ln_index).amount_adjustment
+-- ##### 20090113 Ver.1.6 –{”Ô#977‘Î‰iŒJ‰z‹àŠzŒvZ‘Î‰j START #####
+             gt_masters_tbl(ln_index).money_transfer_date
+--             gt_masters_tbl(ln_index).money_transfer_date,
+--             gt_masters_tbl(ln_index).amount_receipt_money,
+--             gt_masters_tbl(ln_index).amount_adjustment
+-- ##### 20090113 Ver.1.6 –{”Ô#977‘Î‰iŒJ‰z‹àŠzŒvZ‘Î‰j END   #####
       FROM   xxwip_billing_mst   xbm1   -- ¿‹æƒAƒhƒIƒ“ƒ}ƒXƒ^
       WHERE  xbm1.billing_code = gt_masters_tbl(ln_index).billing_code
       AND    DECODE(xbm1.billing_date, gv_charge_dmy_key,
@@ -1132,6 +1139,21 @@ AS
                                 '000000',          xbm2.billing_date))
               FROM   xxwip_billing_mst xbm2
               WHERE  xbm2.billing_code = gt_masters_tbl(ln_index).billing_code);
+--
+-- ##### 20090113 Ver.1.6 –{”Ô#977‘Î‰iŒJ‰z‹àŠzŒvZ‘Î‰j START #####
+      -- ¡‰ñ“ü‹àŠz‚Æ’²®Šz‚Íw’è“ú•t‚Ì’l‚ğæ“¾‚·‚é
+      SELECT NVL(xbm1.amount_receipt_money, 0),   -- ¡‰ñ“ü‹àŠz
+             NVL(xbm1.amount_adjustment, 0)       -- ’²®Šz
+      INTO   gt_masters_tbl(ln_index).amount_receipt_money,
+             gt_masters_tbl(ln_index).amount_adjustment
+      FROM   xxwip_billing_mst   xbm1   -- ¿‹æƒAƒhƒIƒ“ƒ}ƒXƒ^
+      WHERE  xbm1.billing_code = gt_masters_tbl(ln_index).billing_code
+      AND  xbm1.billing_date = (SELECT MIN(xbm2.billing_date)
+                                FROM   xxwip_billing_mst xbm2
+                                WHERE  xbm2.billing_code  = gt_masters_tbl(ln_index).billing_code
+                                AND (  xbm2.billing_date = TO_CHAR(id_sysdate,'YYYYMM')
+                                    OR xbm2.billing_date = gv_charge_dmy_key));
+-- ##### 20090113 Ver.1.6 –{”Ô#977‘Î‰iŒJ‰z‹àŠzŒvZ‘Î‰j END   #####
 --
       -- *********************************************
       -- x•¥ğŒİ’è“ú‚Ìæ“¾
