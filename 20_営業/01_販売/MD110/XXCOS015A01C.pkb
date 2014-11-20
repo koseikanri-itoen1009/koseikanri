@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.18
+ * Version          : 2.19
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -80,6 +80,7 @@ AS
  *  2010/02/23    2.17  K.Atsushiba      [E_本稼動_01675]ARの伝票番号から販売実績の納品伝票番号に変更(AR取引情報)
  *  2010/03/17    2.18  S.Miyakoshi      [E_本稼動_01907]顧客使用目的、顧客所在地からの抽出時に有効条件追加
  *                                       [E_本稼動_01916]MC顧客連携漏れの対応
+ *  2011/01/12    2.19  K.Kiriu          [E_本稼動_02458]PT対応
  *
  *****************************************************************************************/
 --
@@ -282,7 +283,9 @@ AS
   cv_val_y                    CONSTANT VARCHAR2(1)  := 'Y';            -- 値：Y
   cv_d_cot                    CONSTANT VARCHAR2(1)  := '"';            -- ダブルクォーテーション
   -- 使用目的
-  cv_site_ship_to             CONSTANT VARCHAR2(10) := 'SHIP_TO';      -- 出荷先
+/* 2011/01/12 Ver2.19 Del Start */
+--  cv_site_ship_to             CONSTANT VARCHAR2(10) := 'SHIP_TO';      -- 出荷先
+/* 2011/01/12 Ver2.19 Del End   */
   cv_site_bill_to             CONSTANT VARCHAR2(10) := 'BILL_TO';      -- 請求先
 --****************************** 2009/04/23 2.3 1 T.Kitajima ADD START ******************************--
   -- H/C
@@ -342,6 +345,10 @@ AS
   gt_ar_start_date       fnd_profile_option_values.profile_option_value%TYPE;      -- 納品形態区分
   gd_ar_start_date       DATE;
 -- 2010/02/02 Ver.2.15 Add End
+/* 2011/01/12 Ver2.19 Add Start */
+  gn_normal_sales_cnt    NUMBER DEFAULT 0;  --ログ出力用 販売実績処理件数
+  gn_normal_ar_cnt       NUMBER DEFAULT 0;  --ログ出力用 AR取引処理件数
+/* 2011/01/12 Ver2.19 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -627,9 +634,11 @@ AS
                 ,ar_vat_tax_all_b              avtab                        -- 税金マスタ
                 ,ra_cust_trx_types_all         rctta                        -- 取引タイプ
                 ,fnd_lookup_values             flv                          -- 参照タイプ
-                ,hz_cust_accounts              hca                            -- 顧客アカウントマスタ
-                ,hz_cust_acct_sites_all        hcasa                          -- 顧客所在地（請求先）
-                ,hz_cust_site_uses_all         hcsua                        -- 顧客使用目的
+/* 2011/01/12 Ver2.19 Del Start */
+--                ,hz_cust_accounts              hca                            -- 顧客アカウントマスタ
+--                ,hz_cust_acct_sites_all        hcasa                          -- 顧客所在地（請求先）
+--                ,hz_cust_site_uses_all         hcsua                        -- 顧客使用目的
+/* 2011/01/12 Ver2.19 Del End   */
                 ,ra_cust_trx_line_gl_dist_all   rctlgda                     -- AR取引配分(会計情報)
 -- 2010/02/02 Ver.2.15 Add Start
                 ,xxcfr_sales_data_reletes      xsdr                         -- 売上実績連携済テーブル
@@ -654,14 +663,17 @@ AS
          AND    flv.attribute1              = cv_val_y                      -- 属性1
          AND    flv.language                = USERENV('LANG')               -- 言語
          AND    rcta.cust_trx_type_id       = rctta.cust_trx_type_id        -- 取引タイプID
-         AND    hca.cust_account_id         = in_ship_account_id
-         AND    hca.cust_account_id         = hcasa.cust_account_id
-         AND    hcasa.cust_acct_site_id     = hcsua.cust_acct_site_id
---****************************** 2009/05/29 2.5 T.Kitajima ADD START ******************************
-         AND    hcasa.org_id                = gt_org_id
---****************************** 2009/05/29 2.5 T.Kitajima ADD  END  ******************************
-         AND    hcsua.site_use_id           = rcta.ship_to_site_use_id
-         AND    hcsua.site_use_code         = cv_site_ship_to
+/* 2011/01/12 Ver2.19 Mod Start */
+--         AND    hca.cust_account_id         = in_ship_account_id
+--         AND    hca.cust_account_id         = hcasa.cust_account_id
+--         AND    hcasa.cust_acct_site_id     = hcsua.cust_acct_site_id
+----****************************** 2009/05/29 2.5 T.Kitajima ADD START ******************************
+--         AND    hcasa.org_id                = gt_org_id
+----****************************** 2009/05/29 2.5 T.Kitajima ADD  END  ******************************
+--         AND    hcsua.site_use_id           = rcta.ship_to_site_use_id
+--         AND    hcsua.site_use_code         = cv_site_ship_to
+         AND    rcta.ship_to_customer_id    = in_ship_account_id
+/* 2011/01/12 Ver2.19 Mod End   */
          AND    rctla.customer_trx_id       = rctlgda.customer_trx_id       -- 取引データID
          AND    rctla.customer_trx_line_id  = rctlgda.customer_trx_line_id
          AND    rctlgda.set_of_books_id     = TO_NUMBER(gt_book_id)
@@ -1926,6 +1938,10 @@ AS
     );
     -- 出力件数カウント
     gn_normal_cnt := gn_normal_cnt + 1;
+/* 2011/01/12 Ver2.19 Add Start */
+    -- 調査用にログ出力する販売実績の処理件数カウント
+    gn_normal_sales_cnt := gn_normal_sales_cnt + 1;
+/* 2011/01/12 Ver2.19 Add End   */
     --
     IF ( ln_card_rec_flag = cn_output_flag_on) THEN
       -- 併用（カード）データの出力
@@ -2367,6 +2383,10 @@ AS
       );
       -- 出力件数カウント
       gn_normal_cnt := gn_normal_cnt + 1;
+/* 2011/01/12 Ver2.19 Add Start */
+      -- 調査用にログ出力するAR取引の処理件数カウント
+      gn_normal_ar_cnt := gn_normal_ar_cnt + 1;
+/* 2011/01/12 Ver2.19 Add End   */
     END LOOP ar_output_loop;
 --
   EXCEPTION
@@ -3205,6 +3225,13 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+/* 2011/01/12 Ver2.19 Add Start */
+    --ログに販売実績処理件数、AR取引処理件数をそれぞれ出力する(メッセージの登録なし)
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => 'SALES_COUNT:'||TO_CHAR(gn_normal_sales_cnt)||' '||'AR_COUNT:'||TO_CHAR(gn_normal_ar_cnt)
+    );
+/* 2011/01/12 Ver2.19 Add End   */
     --
     --エラー件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
