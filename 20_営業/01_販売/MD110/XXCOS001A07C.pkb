@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/02/16    1.1   S.Miyakoshi      [COS_062]カラム追加(VD_RESULTS_FORWARD_FLAG)
  *  2009/02/20    1.2   S.Miyakoshi      [COS_108]成績者をマスタより取得(入出庫データにおいて)
  *  2009/02/20    1.3   S.Miyakoshi      パラメータのログファイル出力対応
+ *  2009/04/15    1.4   N.Maeda          [T1_0576]補充数ケース数に対する伝票区分別処理の追加
  *
  *****************************************************************************************/
 --
@@ -1028,7 +1029,10 @@ AS
     lt_cancel_correct      xxcos_vd_column_headers.cancel_correct_class%TYPE;          -- 取消・訂正区分
     lt_vd_quantity         xxcos_vd_column_lines.quantity%TYPE;                        -- 数量
     lt_replenish_number    xxcos_vd_column_lines.replenish_number%TYPE;                -- 補充数
---
+--************************* 2009/04/15 N.Maeda Var1.4 ADD START ****************************************************
+    lt_vd_replenish_number xxcos_vd_column_lines.replenish_number%TYPE;                -- 補充数(数量加工用)
+    lt_vd_case_quant       xxcoi_hht_inv_transactions.case_quantity%TYPE;              -- ケース数(数量加工用)
+--************************* 2009/04/15 N.Maeda Var1.4 ADD END ******************************************************
     ln_inv_header_num      NUMBER DEFAULT  '1';                                        -- 入出庫ヘッダ件数ナンバー
     ln_inv_lines_num       NUMBER DEFAULT  '1';                                        -- 入出庫明細件数ナンバー
     ln_line_no             NUMBER DEFAULT  '1';                                        -- 行No.(HHT)
@@ -1160,8 +1164,16 @@ AS
       --== 数量加工 ==--
       IF ( lv_change = cv_tkn_yes ) THEN
         lt_vd_quantity := lt_quantity * -1;
+--************************* 2009/04/15 N.Maeda Var1.4 ADD START ****************************************************
+        lt_vd_replenish_number := lt_replenish_number * -1;
+        lt_vd_case_quant       := lt_case_quant * -1;
+--************************* 2009/04/15 N.Maeda Var1.4 ADD END ******************************************************
       ELSE
         lt_vd_quantity := lt_quantity;
+--************************* 2009/04/15 N.Maeda Var1.4 ADD START ****************************************************
+        lt_vd_replenish_number := lt_replenish_number;
+        lt_vd_case_quant       := lt_case_quant;
+--************************* 2009/04/15 N.Maeda Var1.4 ADD END ******************************************************
       END IF;
 --
       --== 税率の算出 ==--
@@ -1177,14 +1189,22 @@ AS
       --==============================================================
       -- 合計金額の導出（ヘッダ部）
       --==============================================================
+--************************* 2009/04/15 N.Maeda Var1.4 MOD START ****************************************************
+--      -- 補充数×単価
+--      lt_total_amount := lt_total_amount + lt_replenish_number * lt_unit_price;
       -- 補充数×単価
-      lt_total_amount := lt_total_amount + lt_replenish_number * lt_unit_price;
+      lt_total_amount := lt_total_amount + lt_vd_replenish_number * lt_unit_price;
+--************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
 --
       --==============================================================
       -- 税込み金額の導出（ヘッダ部）
       --==============================================================
+--************************* 2009/04/15 N.Maeda Var1.4 MOD START ****************************************************
+--      -- 本数×VDコラムマスタの単価
+--      lt_tax_include_tempo := lt_replenish_number * lt_inv_price;
       -- 本数×VDコラムマスタの単価
-      lt_tax_include_tempo := lt_replenish_number * lt_inv_price;
+      lt_tax_include_tempo := lt_vd_replenish_number * lt_inv_price;
+--************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
 --
       -- ヘッダ変数格納用データ算出
       lt_tax_include := lt_tax_include + lt_tax_include_tempo;
@@ -1222,12 +1242,18 @@ AS
       gt_content(ln_inv_lines_num)        := lt_case_in_quant;     -- 入数
       gt_item_id(ln_inv_lines_num)        := lt_item_id;           -- 品目ID
       gt_standard_unit(ln_inv_lines_num)  := lt_primary_code;      -- 基準単位
-      gt_case_number(ln_inv_lines_num)    := lt_case_quant;        -- ケース数
+--************************* 2009/04/15 N.Maeda Var1.4 MOD START ****************************************************
+--      gt_case_number(ln_inv_lines_num)    := lt_case_quant;        -- ケース数
+      gt_case_number(ln_inv_lines_num)    := lt_vd_replenish_number;        -- ケース数
+--************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
       gt_quantity(ln_inv_lines_num)       := lt_vd_quantity;       -- 数量
       gt_wholesale(ln_inv_lines_num)      := lt_unit_price;        -- 卸単価
       gt_column_no(ln_inv_lines_num)      := lt_column_no;         -- コラムNo.
       gt_h_and_c(ln_inv_lines_num)        := lt_hot_cold_div;      -- H/C
-      gt_replenish_num(ln_inv_lines_num)  := lt_replenish_number;  -- 補充数
+--************************* 2009/04/15 N.Maeda Var1.4 MOD START ****************************************************
+--      gt_replenish_num(ln_inv_lines_num)  := lt_replenish_number;  -- 補充数
+      gt_replenish_num(ln_inv_lines_num)  := lt_vd_replenish_number;  -- 補充数
+--************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
       ln_line_no := ln_line_no + 1;                                -- 行No.(HHT)更新
       ln_inv_lines_num := ln_inv_lines_num + 1;                    -- 入出庫明細件数ナンバー更新
 --
@@ -2414,3 +2440,4 @@ AS
 --
 END XXCOS001A07C;
 /
+
