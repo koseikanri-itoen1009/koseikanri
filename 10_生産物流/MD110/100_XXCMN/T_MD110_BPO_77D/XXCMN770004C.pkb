@@ -7,7 +7,7 @@ AS
  * Description      : 受払その他実績リスト
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/11/19    1.12  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *  2008/11/29    1.13  N.Yoshida        本番#210対応
  *  2008/12/03    1.14  H.Itou           本番#384対応
+ *  2008/12/04    1.15  T.Miyata         本番#454対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -10920,7 +10921,10 @@ AS
           FETCH get_data4nn_cur BULK COLLECT INTO lt_work_rec;
           CLOSE get_data4nn_cur;
         --受払区分:501/504/506/507/508
-        ELSIF (get_div_type_rec.div_type IN ('501','504','506','507','508')) THEN
+-- 2008/12/04 v1.15 UPDATE START
+--        ELSIF (get_div_type_rec.div_type IN ('501','504','506','507','508')) THEN
+        ELSIF (get_div_type_rec.div_type IN ('501','504','506','507','508','509')) THEN
+-- 2008/12/04 v1.15 UPDATE END
           OPEN  get_data5nn_cur(get_div_type_rec.div_type);
           FETCH get_data5nn_cur BULK COLLECT INTO lt_work_rec;
           CLOSE get_data5nn_cur;
@@ -11079,8 +11083,11 @@ AS
           OPEN  get_data4nn_r_cur(get_div_type_rec.div_type);
           FETCH get_data4nn_r_cur BULK COLLECT INTO lt_work_rec;
           CLOSE get_data4nn_r_cur;
-        --受払区分:501/504/506/507/508
-        ELSIF (get_div_type_rec.div_type IN ('501','504','506','507','508')) THEN
+        --受払区分:501/504/506/507/508/509
+-- 2008/12/04 v1.15 UPDATE START
+--        ELSIF (get_div_type_rec.div_type IN ('501','504','506','507','508')) THEN
+        ELSIF (get_div_type_rec.div_type IN ('501','504','506','507','508','509')) THEN
+-- 2008/12/04 v1.15 UPDATE END
           OPEN  get_data5nn_r_cur(get_div_type_rec.div_type);
           FETCH get_data5nn_r_cur BULK COLLECT INTO lt_work_rec;
           CLOSE get_data5nn_r_cur;

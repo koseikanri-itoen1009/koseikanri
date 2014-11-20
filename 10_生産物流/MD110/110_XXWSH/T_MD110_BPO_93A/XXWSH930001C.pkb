@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -115,6 +115,7 @@ AS
  *  2008/11/29    1.29 Oracle 上原 正好  本番障害対応#196(for update 文をnowaitからskip lockedに変更)
  *  2008/12/02    1.30 Oracle 福田 直樹  本番障害対応#320(指示なし実績登録時、指示項目へのセットは行わないようにする)
  *  2008/12/02    1.30 Oracle 福田 直樹  本番障害対応#188(A-5-3品目マスタ存在チェックの要件とmaster_data_get品目情報取得時の要件を同じにする)
+ *  2008/12/04    1.31 Oracle 福田 直樹  本番障害対応(移動指示なし実績訂正時、移動入出庫実績登録(57A)で赤なく黒伝票が作成されてしまう)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -13090,7 +13091,8 @@ AS
        ,xmrih.in_pallet_qty               = DECODE(gr_mov_req_instr_h_rec.in_pallet_qty,NULL,xmrih.in_pallet_qty,gr_mov_req_instr_h_rec.in_pallet_qty)  
        ,xmrih.based_weight                = gr_mov_req_instr_h_rec.based_weight
        ,xmrih.based_capacity              = gr_mov_req_instr_h_rec.based_capacity
-       ,xmrih.comp_actual_flg             = gv_yesno_n  -- 2008/11/27 本番障害#179 Add
+       --,xmrih.comp_actual_flg             = gv_yesno_n  --2008/11/27 本番障害#179 Add --2008/12/04 Del 本番障害対応(移動指示なし実績訂正時、移動入出庫実績登録(57A)で赤なく黒伝票が作成されてしまう)
+       ,xmrih.comp_actual_flg             = gv_yesno_y                                  --2008/12/04 Add 本番障害対応(移動指示なし実績訂正時、移動入出庫実績登録(57A)で赤なく黒伝票が作成されてしまう)
        ,xmrih.correct_actual_flg          = gr_mov_req_instr_h_rec.correct_actual_flg
        ,xmrih.last_updated_by             = gt_user_id
        ,xmrih.last_update_date            = gt_sysdate
