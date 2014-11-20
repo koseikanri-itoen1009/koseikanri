@@ -3,7 +3,7 @@
  * TABLE Name      : XXCMM_WK_ITEM_CSV
  * Description     : 品目一覧作成ワーク（現在設定値）
  * MD.070          : 品目一覧作成
- * Version         : 
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,7 +11,8 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/01/30    1.0  マスタTM      初回作成
  *  2009/04/10    1.1  H.Yoshikawa   内容量、内訳入数のサイズ変更
- *  2009/07/13    1.2  H.Yoshikawa   【0000366】コンポーネント原価追加
+ *  2009/07/13    1.2  H.Yoshikawa  【0000366】コンポーネント原価追加
+ *  2009/10/16    1.3  Shigeto.Niki 【E_T4_0022】ケース換算入数追加
  ************************************************************************/
 CREATE TABLE XXCMM.XXCMM_WK_ITEM_CSV
 (
@@ -26,6 +27,9 @@ CREATE TABLE XXCMM.XXCMM_WK_ITEM_CSV
     SALES_DIV_NAME                 VARCHAR2(100),
     PARENT_ITEM_CODE               VARCHAR2(7),
     NUM_OF_CASES                   NUMBER,
+-- 2009/10/16 Ver1.3 add start by Shigeto.Niki
+    CASE_CONV_INC_NUM              NUMBER,
+-- 2009/10/16 Ver1.3 add end by Shigeto.Niki
     ITEM_UM                        VARCHAR2(4),
     ITEM_PRODUCT_CLASS             VARCHAR2(10),
     ITEM_PRODUCT_CLASS_NAME        VARCHAR2(100),
@@ -125,6 +129,10 @@ COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.PARENT_ITEM_CODE IS '親品目コード'
 /
 COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.NUM_OF_CASES IS 'ケース入数'
 /
+-- 2009/10/16 Ver1.3 add start by Shigeto.Niki
+COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.CASE_CONV_INC_NUM IS 'ケース換算入数'
+/
+-- 2009/10/16 Ver1.3 add end by Shigeto.Niki
 COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.ITEM_UM IS '単位'
 /
 COMMENT ON COLUMN XXCMM.XXCMM_WK_ITEM_CSV.ITEM_PRODUCT_CLASS IS '商品製品区分'
