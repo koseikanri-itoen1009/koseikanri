@@ -148,7 +148,10 @@ AS
     AND xilv_move.segment1      (+) = gmd.attribute12
     AND ilm.lot_id              (+) = itp.lot_id
     AND ilm.item_id             (+) = itp.item_id
-    AND itp.reverse_id              IS NULL
+-- 2009/01/15 D.Nihei Mod Start –{”ÔáŠQ#836P‹v‘Î‰‡U
+--    AND itp.reverse_id           IS NULL
+    AND itp.reverse_id          (+) IS NULL
+-- 2009/01/15 D.Nihei Mod End
     AND itp.delete_mark         (+) = 0
     AND itp.lot_id              (+) > 0
     AND itp.line_id             (+) = gmd.material_detail_id

@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼締め関数
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_BPO_40E_出荷依頼締め関数
- * Version                : 1.14
+ * Version                : 1.15
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/12/17   1.13  SCS    上原/福田  本番#81
  *  2008/12/17   1.13  SCS    福田       APP-XXWSH-11204エラー発生時に即時終了しないようにする
  *  2008/12/23   1.14  SCS    上原       本番#81 再締め処理時の抽出条件にリードタイムを追加
+ *  2009/01/16   1.15  SCS    菅原大輔   本番#1009 ロックセッション切断対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2112,7 +2113,10 @@ AS
         INTO   ln_order_header_id_lock
         FROM   xxwsh_order_headers_all xoha
         WHERE  xoha.order_header_id = lr_u_rec.order_header_id
-        FOR UPDATE NOWAIT;
+--2009/01/16 D.Sugahara #1009 Mod Start
+--        FOR UPDATE NOWAIT;
+        FOR UPDATE ;  --ロックしていた場合、待機し、親コンカレントによる切断を待つ
+--2009/01/16 D.Sugahara #1009 Mod End
       EXCEPTION
         WHEN OTHERS THEN
           ln_lock_error_flg := 1;

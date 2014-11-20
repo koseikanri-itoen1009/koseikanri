@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2008/12/22    1.10  Takao Ohashi          本番#640対応
  *  2008/12/24    1.11  Masayoshi Uehara      本番#640対応
  *  2008/12/25    1.12  Masayoshi Uehara      本番#640対応取消(ver1.11は残し、ver1.9をver1.12に更新)
+ *  2009/01/15    1.13  Yasuhisa Yamamoto     本番#1021対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1471,6 +1472,9 @@ AS
          '  FROM   xxcmn_sourcing_rules      xsr    '           -- 物流構成アドオンマスタ
       || '        ,xxwsh_order_headers_all   xoha   '           -- 受注ヘッダアドオン
       || '        ,xxwsh_order_lines_all     xola   '           -- 受注明細アドオン
+-- 2009/01/15 Y.Yamamoto #1021 add start
+      || '        ,oe_transaction_types_all  otta   '           -- 受注タイプ
+-- 2009/01/15 Y.Yamamoto #1021 add end
       || '        ,xxcmn_item_mst2_v         ximv   '           -- OPM品目情報VIEW2
       || '        ,xxcmn_item_categories5_v  xicv   '           -- OPM品目カテゴリ割当情報VIEW5
       || '        ,xxcmn_lookup_values2_v    xlvv1  '           -- クイックコード1
@@ -1481,6 +1485,10 @@ AS
           ' WHERE                                                                  '
             -- *** 結合条件 *** --
       || '         xoha.order_header_id        = xola.order_header_id              '  -- 結合条件 受注ヘッダアドオン AND 受注明細アドオン
+-- 2009/01/15 Y.Yamamoto #1021 add start
+      || '  AND    xoha.order_type_id          = otta.transaction_type_id          '  -- 結合条件 受注ヘッダアドオン AND 受注タイプ
+      || '  AND    otta.attribute1             = ''1''                             '  -- 結合条件 受注タイプ AND 出荷依頼「1」
+-- 2009/01/15 Y.Yamamoto #1021 add end
       || '  AND    xsr.base_code               = xoha.head_sales_branch            '  -- 結合条件 物流構成アドオンマスタ AND 受注ヘッダアドオン
       || '  AND    xsr.delivery_whse_code      = xoha.deliver_from                 '  -- 結合条件 物流構成アドオンマスタ AND 受注ヘッダアドオン
       || '  AND    xoha.req_status             = xlvv2.lookup_code                 '  -- 結合条件 受注ヘッダアドオン AND クイックコード2
@@ -2682,6 +2690,9 @@ AS
                        )                                   AS confirm_quantity -- 予実数
            FROM  xxwsh_order_headers_all               xoha             -- 受注ヘッダアドオン
                 ,xxwsh_order_lines_all                 xola             -- 受注明細アドオン
+-- 2009/01/15 Y.Yamamoto #1021 add start
+                ,oe_transaction_types_all              otta             -- 受注タイプ
+-- 2009/01/15 Y.Yamamoto #1021 add end
                 ,xxcmn_lookup_values2_v                xlvv1            -- クイックコード1
                 ,xxcmn_lookup_values2_v                xlvv2            -- クイックコード2
                 ,xxcmn_item_mst2_v                     ximv             -- OPM品目情報VIEW
@@ -2708,6 +2719,10 @@ AS
 -- 2008/12/09 v1.9 ADD START
            AND NVL(xola.delete_flag, gv_n)         = gv_n
 -- 2008/12/09 v1.9 ADD END
+-- 2009/01/15 Y.Yamamoto #1021 add start
+           AND xoha.order_type_id                  = otta.transaction_type_id
+           AND otta.attribute1                     = '1'
+-- 2009/01/15 Y.Yamamoto #1021 add end
            ------------------------------------------------------------------------
            -- OPM品目情報VIEW条件
            AND xola.request_item_code              = ximv.item_no
@@ -3005,6 +3020,9 @@ AS
     cv_from CONSTANT VARCHAR2(32767) := 
          '  FROM   xxwsh_order_headers_all    xoha  '                                   -- 受注ヘッダアドオン
       || '        ,xxwsh_order_lines_all      xola  '                                   -- 受注明細アドオン
+-- 2009/01/15 Y.Yamamoto #1021 add start
+      || '        ,oe_transaction_types_all   otta   '                                  -- 受注タイプ
+-- 2009/01/15 Y.Yamamoto #1021 add end
       || '        ,xxcmn_item_mst2_v          ximv  '                                   -- OPM品目情報VIEW2
       || '        ,xxcmn_item_categories5_v   xicv  '                                   -- OPM品目カテゴリ割当情報VIEW5
       || '        ,xxcmn_lookup_values2_v     xlvv1 '                                   -- クイックコード1
@@ -3015,6 +3033,10 @@ AS
          '  WHERE                                                                   '
             -- *** 結合条件 *** --
       || '         xoha.order_header_id        = xola.order_header_id               '  -- 結合条件 受注ヘッダアドオン AND 受注明細アドオン
+-- 2009/01/15 Y.Yamamoto #1021 add start
+      || '  AND    xoha.order_type_id          = otta.transaction_type_id           '  -- 結合条件 受注ヘッダアドオン AND 受注タイプ
+      || '  AND    otta.attribute1             = ''1''                              '  -- 結合条件 受注タイプ AND 出荷依頼「1」
+-- 2009/01/15 Y.Yamamoto #1021 add end
       || '  AND    xoha.req_status             = xlvv2.lookup_code                  '  -- 結合条件 受注ヘッダアドオン AND クイックコード２
       || '  AND    xlvv2.lookup_type           = xlvv1.meaning                      '  -- 結合条件 クイックコード１ AND クイックコード２
       || '  AND    xola.request_item_code      = ximv.item_no                       '  -- 結合条件 受注明細アドオン AND OPM品目情報VIEW2

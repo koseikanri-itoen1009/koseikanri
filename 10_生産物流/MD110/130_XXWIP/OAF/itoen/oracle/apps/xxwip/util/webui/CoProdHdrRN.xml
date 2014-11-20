@@ -103,17 +103,24 @@
                   <oa:sortableHeader id="DeleteCoProdHdr" prompt="削除"/>
                </ui:columnHeader>
                <ui:contents>
-                  <oa:image id="DeleteCoProd" source="deleteicon_enabled.gif" shortDesc="削除" imageHeight="24" imageWidth="24" serverUnvalidated="true">
-                     <ui:primaryClientAction>
-                        <ui:fireAction id="fireAction1" event="deleteRow" unvalidated="true">
-                           <ui:parameters>
-                              <ui:parameter key="MTL_DTL_ID" value="${oa.XxwipBatchCoProdVO1.MaterialDetailId}"/>
-                              <ui:parameter key="TAB_TYPE" value="2"/>
-                              <ui:parameter key="BATCH_ID" value="${oa.XxwipBatchCoProdVO1.BatchId}"/>
-                           </ui:parameters>
-                        </ui:fireAction>
-                     </ui:primaryClientAction>
-                  </oa:image>
+                  <oa:switcher id="DeleteSwitcherCoProd" viewAttr="DeleteSwitcher">
+                     <ui:case name="DeleteCoProdEnable">
+                        <oa:image id="DeleteCoProdEnable" source="deleteicon_enabled.gif" shortDesc="削除" imageHeight="24" imageWidth="24" serverUnvalidated="true">
+                           <ui:primaryClientAction>
+                              <ui:fireAction id="fireAction1" event="deleteRow" unvalidated="true">
+                                 <ui:parameters>
+                                    <ui:parameter key="MTL_DTL_ID" value="${oa.XxwipBatchCoProdVO1.MaterialDetailId}"/>
+                                    <ui:parameter key="TAB_TYPE" value="2"/>
+                                    <ui:parameter key="BATCH_ID" value="${oa.XxwipBatchCoProdVO1.BatchId}"/>
+                                 </ui:parameters>
+                              </ui:fireAction>
+                           </ui:primaryClientAction>
+                        </oa:image>
+                     </ui:case>
+                     <ui:case name="DeleteCoProdDisable">
+                        <oa:image id="DeleteCoProdDisable" source="deleteicon_disabled.gif" shortDesc="削除" imageHeight="24" imageWidth="24"/>
+                     </ui:case>
+                  </oa:switcher>
                </ui:contents>
             </oa:column>
             <oa:formValue id="MaterialDetailIdCoProd" viewAttr="MaterialDetailId"/>

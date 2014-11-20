@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipInvestActualAMImpl
 * 概要説明   : 投入実績入力アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-09-10 1.2  二瓶大輔     結合テスト指摘対応No30
 * 2008-09-29 1.3  二瓶大輔     結合テスト指摘対応No15
 * 2008-10-31 1.4  二瓶大輔     統合障害#405
+* 2009-01-15 1.5  二瓶大輔     本番障害#823
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200002j.server;
@@ -41,7 +42,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 投入実績入力アプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.4
+ * @version 1.5
  ***************************************************************************
  */
 public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -128,9 +129,18 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
       prow.setAttribute("InvestItemNameReject",     Boolean.FALSE);
       prow.setAttribute("ReInvestItemNameReject",   Boolean.FALSE);
     }
+// 2009-01-15 v1.5 D.Nihei Add Start 本番障害#823対応
+    // 業務ステータス
+    String dutyStatusCode = (String)row.getAttribute("DutyStatusCode");
+// 2009-01-15 v1.5 D.Nihei Add End
     if (XxcmnUtility.isBlankOrNull(row.getAttribute("ProductDate"))) 
     {
       prow.setAttribute("GoBtnReject", Boolean.TRUE);
+// 2009-01-15 v1.5 D.Nihei Add Start 本番障害#823対応
+    } else if (XxwipConstants.DUTY_STATUS_CLS.equals(dutyStatusCode))
+    {
+      prow.setAttribute("GoBtnReject", Boolean.TRUE);
+// 2009-01-15 v1.5 D.Nihei Add End
     } else
     {
       prow.setAttribute("GoBtnReject", Boolean.FALSE);

@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.17
+ * Version                : 1.18
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2008/11/17   1.15  Oracle 二瓶 大輔   統合障害#678対応(処理日付更新関数)
  *  2008/12/22   1.16  Oracle 二瓶 大輔   本番障害#743対応(ロット追加・更新関数)
  *  2008/12/25   1.17  Oracle 二瓶 大輔   本番障害#851対応(手持在庫数量算出API(投入実績用))
+ *  2009/01/15   1.18  Oracle 二瓶 大輔   本番障害#836恒久対応Ⅱ(業務ステータス更新関数)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -421,6 +422,49 @@ AS
         RAISE api_expt;
       END IF;
 --
+-- 2009/01/15 D.Nihei ADD START 本番障害#836恒久対応Ⅱ
+    -- 更新ステータスがクローズの場合、バッチステータスをクローズに更新
+    ELSIF ( iv_duty_status = gt_duty_status_cls ) THEN
+      lr_gme_batch_header.batch_id          := in_batch_id;
+      lr_gme_batch_header.actual_start_date := ld_date;
+--
+      -- 生産完了関数を実行
+      GME_API_PUB.CERTIFY_BATCH(
+        p_api_version                   =>  GME_API_PUB.API_VERSION   -- IN              NUMBER := gme_api_pub.api_version
+      , p_validation_level              =>  GME_API_PUB.MAX_ERRORS    -- IN              NUMBER := gme_api_pub.max_errors
+      , p_init_msg_list                 =>  FALSE                     -- IN              BOOLEAN := FALSE
+      , p_commit                        =>  FALSE                     -- IN              BOOLEAN := FALSE
+      , x_message_count                 =>  ln_message_count          -- OUT NOCOPY      NUMBER
+      , x_message_list                  =>  lv_message_list           -- OUT NOCOPY      VARCHAR2
+      , x_return_status                 =>  lv_retcode                -- OUT NOCOPY      VARCHAR2
+      , p_del_incomplete_manual         =>  TRUE                      -- IN             ：p_del_incomplete_manual
+      , p_ignore_shortages              =>  FALSE                     -- IN             ：p_ignore_shortages
+      , p_batch_header                  =>  lr_gme_batch_header       -- IN              gme_batch_header%ROWTYPE
+      , x_batch_header                  =>  lr_gme_batch_header_temp  -- OUT NOCOPY      gme_batch_header%ROWTYPE
+      , x_unallocated_material          =>  lr_unallocated_materials  -- OUT            ：x_unallocated_material
+      );
+--
+      IF ( lv_retcode <> gv_api_s ) THEN
+        RAISE api_expt;
+      END IF;
+--
+      lr_gme_batch_header.batch_id          := in_batch_id;
+      lr_gme_batch_header.actual_start_date := NULL;
+      lr_gme_batch_header.batch_close_date  := ld_date; -- クローズ日付
+      -- 生産クローズ関数を実行
+      GME_API_PUB.CLOSE_BATCH (
+        p_api_version                   =>  GME_API_PUB.API_VERSION   -- IN ：p_api_version
+      , p_validation_level              =>  GME_API_PUB.MAX_ERRORS    -- IN ：p_validation_level
+      , p_init_msg_list                 =>  FALSE                     -- IN ：p_init_msg_list
+      , p_commit                        =>  FALSE                     -- IN ：p_commit
+      , x_message_count                 =>  ln_message_count          -- OUT：x_message_count
+      , x_message_list                  =>  lv_message_list           -- OUT：x_message_list
+      , x_return_status                 =>  lv_retcode                -- OUT：x_return_status
+      , p_batch_header                  =>  lr_gme_batch_header       -- IN ：p_batch_header  更新する値をセットしたレコード
+      , x_batch_header                  =>  lr_gme_batch_header_temp  -- OUT：x_batch_header
+      );
+--
+-- 2009/01/15 D.Nihei ADD END
     END IF;
 --
     ov_retcode := gv_status_normal;

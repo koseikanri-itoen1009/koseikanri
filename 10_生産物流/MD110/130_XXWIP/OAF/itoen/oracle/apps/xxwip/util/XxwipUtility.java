@@ -786,12 +786,14 @@ public class XxwipUtility
    * ステータスの更新を行います。
 	 * @param trans - トランザクション
    * @param batchId - バッチID
+   * @param dutyStatus - 更新ステータス
    * @return 処理フラグ true：処理実行、false：処理未実行
    * @throws OAException - OA例外
    ****************************************************************************/
   public static boolean updateStatus(
     OADBTransaction trans,
-    Number batchId
+    Number batchId,
+    String dutyStatus
   ) throws OAException 
   {
     String apiName  = "updateStatus";
@@ -816,7 +818,7 @@ public class XxwipUtility
       //PL/SQLを実行します
       int i = 1;
       cstmt.setInt(i++, XxcmnUtility.intValue(batchId));
-      cstmt.setString(i++, XxwipConstants.DUTY_STATUS_COM);
+      cstmt.setString(i++, dutyStatus);
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000);
       cstmt.registerOutParameter(i++, Types.VARCHAR, 1); 
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000);

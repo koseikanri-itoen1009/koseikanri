@@ -121,7 +121,7 @@ FROM   gme_batch_header          gbh     -- 生産バッチヘッダ
       ,xxcmn_item_locations_v    xilv1   -- 保管倉庫（納品場所用）
       ,xxcmn_item_locations_v    xilv2   -- 保管倉庫（移動場所用）
       ,xxcmn_item_mst2_v         ximv    -- OPM品目マスタビュー
-      ,xxcmn_item_categories3_v  xicv    -- 品目カテゴリ情報VIEW3
+      ,xxcmn_item_categories5_v  xicv    -- 品目カテゴリ情報VIEW
 WHERE
 /* 結合条件 */
        gbh.batch_id           = gmd.batch_id
@@ -129,24 +129,24 @@ AND    gbh.routing_id         = grv.routing_id
 AND    gmd.item_id            = ximv.item_id
 AND    gmd.material_detail_id = itp.line_id(+)
 AND    gmd.attribute12        = xilv2.segment1(+)
+AND    grv.attribute9         = xilv1.segment1
+AND    xicv.item_id           = ximv.item_id
 AND    itp.lot_id             = ilm.lot_id(+)
 AND    itp.item_id            = ilm.item_id(+)
-AND    grv.attribute9         = xilv1.segment1(+)
-AND    xicv.item_id           = ximv.item_id
-AND    xlvv1.lookup_code(+)   = gmd.line_type
-AND    xlvv2.lookup_code(+)   = gbh.attribute4
+AND    xlvv1.lookup_code      = gmd.line_type
+AND    xlvv2.lookup_code      = gbh.attribute4
 AND    xlvv3.lookup_code(+)   = grv.attribute14
 AND    xlvv4.lookup_code(+)   = grv.attribute13
 /* 抽出条件 */
 AND    gbh.batch_id           = TO_NUMBER(:1)
-AND    gbh.attribute4         IN('5', '6', '7')
+AND    gbh.attribute4         IN('5', '6', '7', '8')
 AND    gmd.line_type          = 1 -- 完成品
 AND    itp.lot_id(+)          > 0 -- デフォルトロット
 AND    itp.reverse_id(+)      IS NULL
 AND    itp.delete_mark(+)     = 0
 AND    itp.doc_type(+)        = 'PROD'
-AND    xlvv1.lookup_type(+)   = 'LINE_TYPE'
-AND    xlvv2.lookup_type(+)   = 'XXWIP_DUTY_STATUS'
+AND    xlvv1.lookup_type      = 'LINE_TYPE'
+AND    xlvv2.lookup_type      = 'XXWIP_DUTY_STATUS'
 AND    xlvv3.lookup_type(+)   = 'XXCMN_L10'
 AND    xlvv4.lookup_type(+)   = 'XXCMN_L03'
 AND    ximv.start_date_active  <= NVL(FND_DATE.STRING_TO_DATE(gmd.attribute11, 'YYYY/MM/DD'), TRUNC(gbh.plan_start_date))

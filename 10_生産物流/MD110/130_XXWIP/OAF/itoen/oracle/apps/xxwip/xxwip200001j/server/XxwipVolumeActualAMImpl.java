@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualAMImpl
 * 概要説明   : 出来高実績入力アプリケーションモジュール
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,8 @@
 * 2008-09-10 1.4  二瓶大輔     結合テスト指摘対応No30
 * 2008-10-31 1.5  二瓶大輔     統合障害#405
 * 2008-12-24 1.6  二瓶大輔     本番障害#836
+* 2009-01-15 1.7  二瓶大輔     本番障害#823
+*                              本番障害#836恒久対応Ⅱ
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.server;
@@ -48,7 +50,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出来高実績入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.6
+ * @version 1.7
  ***************************************************************************
  */
 public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -353,6 +355,19 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     OARow row       = (OARow)vo.first();
     if (row != null) 
     {
+// 2009-01-15 v1.7 D.Nihei Add Start 本番障害#823対応
+      OAViewObject hdrVo = getXxwipBatchHeaderVO1();
+      OARow hdrRow       = (OARow)hdrVo.first();
+      String dutyStatusCode = (String)hdrRow.getAttribute("DutyStatusCode");  // 業務ステータス;
+      String baseActualQty  = (String)hdrRow.getAttribute("BaseActualQty");   // 実績数量(DB)
+      if (XxwipConstants.DUTY_STATUS_CLS.equals(dutyStatusCode)) 
+      {
+        goBtnReject          = XxcmnConstants.STRING_TRUE;  
+        addRowInvestRender   = XxcmnConstants.STRING_FALSE;  
+        addRowReInvestRender = XxcmnConstants.STRING_FALSE;  
+        addRowCoProdRender   = XxcmnConstants.STRING_FALSE;  
+      }
+// 2009-01-15 v1.7 D.Nihei Add End
       // 適用ボタン制御
       if (XxcmnConstants.STRING_TRUE.equals(goBtnReject)) 
       {
@@ -409,6 +424,74 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
         row.setAttribute("TrustProcessUnitPriceRequired", trustProcessUnitPriceRequired);  
       }
       
+// 2009-01-15 v1.7 D.Nihei Add Start 本番障害#836恒久対応Ⅱ
+      if (XxwipConstants.DUTY_STATUS_COM.equals(dutyStatusCode)) 
+      {
+        boolean closeFlag = true;
+        if (!XxcmnUtility.chkCompareNumeric(3, baseActualQty, XxcmnConstants.STRING_ZERO)) 
+        {
+          closeFlag = false;
+        }
+        // 副産物情報VO取得
+        XxwipBatchCoProdVOImpl cpVo  = getXxwipBatchCoProdVO1();
+        // 更新行取得
+        Row[] rows = cpVo.getFilteredRows("ItemNoSwitcher", "ItemNoCoProdDisable");
+        if ((rows != null) && (rows.length > 0))
+        {
+          closeFlag = false;
+        }
+        // 投入品の実績があるか確認
+        String investedQty = XxcmnConstants.STRING_ZERO;
+        // 投入情報VO取得
+        XxwipBatchInvestVOImpl investVo = getXxwipBatchInvestVO1();
+        Row[] investRows = investVo.getAllRowsInRange();
+        if ((investRows != null) && (investRows.length > 0))
+        {
+          OARow investRow = null;
+          for (int i = 0; i < investRows.length; i++)
+          {
+            investRow = (OARow)investRows[i];
+            // 投入総数
+            investedQty = (String)investRow.getAttribute("InvestedQty");
+            // 数量チェック
+            if (XxcmnUtility.chkCompareNumeric(1, investedQty, XxcmnConstants.STRING_ZERO))
+            {
+              closeFlag = false;
+              break;
+            }
+          }
+        }
+        // 打込情報VO取得
+        XxwipBatchReInvestVOImpl reInvestVo = getXxwipBatchReInvestVO1();
+        Row[] reInvestRows = reInvestVo.getAllRowsInRange();
+        if ((reInvestRows != null) && (reInvestRows.length > 0))
+        {
+          OARow reInvestRow = null;
+          for (int i = 0; i < reInvestRows.length; i++)
+          {
+            reInvestRow = (OARow)reInvestRows[i];
+            // 投入総数
+            investedQty = (String)reInvestRow.getAttribute("InvestedQty");
+            // 数量チェック
+            if (XxcmnUtility.chkCompareNumeric(1, investedQty, XxcmnConstants.STRING_ZERO))
+            {
+              closeFlag = false;
+              break;
+            }
+          }
+        }
+        if (closeFlag) 
+        {
+          row.setAttribute("CloseBtnReject", Boolean.FALSE);
+        } else
+        {
+          row.setAttribute("CloseBtnReject", Boolean.TRUE);
+        }
+      } else
+      {
+        row.setAttribute("CloseBtnReject", Boolean.TRUE);
+      }
+// 2009-01-15 v1.7 D.Nihei Add End
     }
   } // handleVolumeActualEvent
 
@@ -495,6 +578,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       vo  = getXxwipBatchCoProdVO1();
       row = (OARow)vo.createRow();
       row.setAttribute("ItemNoSwitcher", "ItemNoCoProdEnable");
+// 2009-01-15 v1.7 D.Nihei Add Start 本番障害#823対応
+      row.setAttribute("DeleteSwitcher", "DeleteCoProdEnable");
+// 2009-01-15 v1.7 D.Nihei Add End
       row.setAttribute("LineType",       new Number(XxwipConstants.LINE_TYPE_CO_PROD_NUM));
       vo.last();
       vo.next();
@@ -1233,7 +1319,8 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       Number batchId  = (Number)row.getAttribute("BatchId");
       exeFlag = XxwipUtility.updateStatus(
                   getOADBTransaction(),
-                  batchId);
+                  batchId,
+                  XxwipConstants.DUTY_STATUS_COM);
     }
     return exeFlag;
 
@@ -1264,6 +1351,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
 
     // 完成品の場合
     if (!XxcmnUtility.isEquals(makerDate, baseMakerDate)
+// 2009-01-15 v1.7 D.Nihei Add Start 本番障害#823対応
+     ||  XxcmnUtility.isBlankOrNull(lotNo)
+// 2009-01-15 v1.7 D.Nihei Add End
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("Type"),           hdrRow.getAttribute("BaseType"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("Rank1"),          hdrRow.getAttribute("BaseRank1"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("Rank2"),          hdrRow.getAttribute("BaseRank2"))
@@ -2771,7 +2861,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       String dutyStatus     = cstmt.getString(2);
       String dutyStatusName = cstmt.getString(3);
       if ((XxwipConstants.DUTY_STATUS_CAN.equals(dutyStatus))
-       || (XxwipConstants.DUTY_STATUS_CLS.equals(dutyStatus))
+// 2009-01-15 v1.7 D.Nihei Del Start 本番障害#823対応
+//       || (XxwipConstants.DUTY_STATUS_CLS.equals(dutyStatus))
+// 2009-01-15 v1.7 D.Nihei Del End
        || (XxwipConstants.DUTY_STATUS_SZZ.equals(dutyStatus))
        || (XxwipConstants.DUTY_STATUS_THZ.equals(dutyStatus))
        || (XxwipConstants.DUTY_STATUS_IRZ.equals(dutyStatus))
@@ -2817,7 +2909,36 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     }
   } // chkDutyStatus 
 // 2008-09-10 v.1.4 D.Nihei Add End
+// 2009-01-15 v1.7 D.Nihei Add Start 本番障害#836恒久対応Ⅱ
+  /*****************************************************************************
+   * 廃止処理を行います。
+   ****************************************************************************/
+  public void doClose()
+  {
+    boolean exeFlag = false;
 
+    // バッチヘッダ情報VO取得
+    XxwipBatchHeaderVOImpl vo  = getXxwipBatchHeaderVO1();
+    OARow row = (OARow)vo.first();
+    // バッチID
+    Number batchId  = (Number)row.getAttribute("BatchId");
+    exeFlag = XxwipUtility.updateStatus(
+                getOADBTransaction(),
+                batchId,
+                XxwipConstants.DUTY_STATUS_CLS);
+    if (exeFlag) 
+    {
+      // バッチセーブ
+      XxwipUtility.saveBatch(getOADBTransaction(), XxcmnUtility.stringValue(batchId));
+      // コミット
+      getDBTransaction().commit();
+      // 初期化処理
+      initialize();
+      // 再検索
+      doSearch(XxcmnUtility.stringValue(batchId));
+    }
+  } // doClose
+// 2009-01-15 v1.7 D.Nihei Add End
   /**
    * 
    * Container's getter for TypeVO1

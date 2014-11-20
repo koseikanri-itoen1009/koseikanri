@@ -95,6 +95,16 @@
       AliasName="VIEW_ATTR"
       SQLType="VARCHAR" >
    </ViewAttribute>
+   <ViewAttribute
+      Name="CloseBtnReject"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
    <AttrArray Name="KeyAttributes">
       <Item Value="RowKey" />
    </AttrArray>

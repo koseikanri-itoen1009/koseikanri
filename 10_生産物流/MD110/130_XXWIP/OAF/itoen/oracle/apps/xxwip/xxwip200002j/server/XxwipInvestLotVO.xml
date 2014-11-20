@@ -46,7 +46,8 @@ SELECT TO_CHAR(MAX(xgmd.record_type)) record_type         -- 更新
 /** 結合テスト指摘対応No30 **/
        -- 元投入数量計が0で指示数量がNULLではない場合
       ,CASE WHEN (    (MAX(xgmd.instructions_qty)  IS NOT NULL) 
-                  AND (MAX(xgmd.base_invested_qty) = 0        ))
+                  AND (MAX(xgmd.base_invested_qty) = 0        )
+                  AND (gbhh.attribute4             <> '8'     ) )
               THEN  'InvestInstClearEnable'
             ELSE    'InvestInstClearDisable'
        END                            inst_clear_switcher -- 引当解除制御
@@ -167,10 +168,12 @@ FROM   (SELECT 1                         record_type         -- 更新
         AND    xxwip_common_pkg.get_can_stock_qty( gmd.batch_id, xilv.inventory_location_id, ilm.item_id, DECODE(xicv.item_class_code, 2, NULL, ilm.lot_id) ) > 0
         )                        xgmd
       ,xxinv_mov_lot_details     xmld -- 移動ロット詳細
+      ,gme_batch_header          gbhh -- 生産バッチヘッダ
 WHERE  
 /* 結合条件 */
        xgmd.material_detail_id    = xmld.mov_line_id(+)
 AND    xgmd.lot_id                = xmld.lot_id(+)
+AND    gbhh.batch_id              = xgmd.batch_id
 /* 抽出条件 */
 AND    xmld.document_type_code(+) = '40'
 AND    xmld.record_type_code(+)   = '40'
@@ -196,6 +199,7 @@ GROUP BY xgmd.batch_id
         ,xgmd.item_class_code
         ,xgmd.slit
         ,xmld.mov_lot_dtl_id
+        ,gbhh.attribute4
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

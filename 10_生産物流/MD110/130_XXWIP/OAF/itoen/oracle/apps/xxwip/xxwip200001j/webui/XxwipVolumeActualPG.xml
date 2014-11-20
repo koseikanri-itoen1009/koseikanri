@@ -438,6 +438,8 @@
             </oa:flowLayout>
             <oa:pageButtonBar id="PageButtonBarRN">
                <ui:contents>
+                  <oa:submitButton id="Close" disabled="${oa.XxwipVolumeActualPVO1.CloseBtnReject}" text="廃止" prompt="廃止" unvalidated="true"/>
+                  <oa:spacer id="item1" width="20"/>
                   <oa:submitButton id="Cancel" prompt="取消" text="取消"/>
                   <oa:submitButton id="Go" disabled="${oa.XxwipVolumeActualPVO1.GoBtnReject}" text="適用" prompt="適用" unvalidated="true"/>
                </ui:contents>

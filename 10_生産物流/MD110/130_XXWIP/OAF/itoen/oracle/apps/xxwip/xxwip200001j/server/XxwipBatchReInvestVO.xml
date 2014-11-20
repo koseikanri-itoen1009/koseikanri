@@ -25,9 +25,11 @@ SELECT gmd.batch_id                    batch_id             -- バッチID
                                        return_qty           -- 戻入数量計
       ,ximv.item_um                    item_um              -- 単位
       ,ximv.item_id                    item_id              -- 品目ID
-      ,DECODE(xmd.material_detail_id,
-         null,'DeleteReInvestEnable',
-              'DeleteReInvestDisable') delete_switcher      -- 削除アイコン 
+      ,CASE
+         WHEN ((xmd.material_detail_id IS NULL) AND (gbh.attribute4 <> '8'))
+           THEN 'DeleteReInvestEnable'
+           ELSE 'DeleteReInvestDisable'
+       END                             delete_switcher      -- 削除アイコン 
       ,'ItemNoReInvestDisable'         item_no_switcher     -- 品目制御
       ,gmd.line_no                     line_no              -- 行No
       ,grv.attribute9                  delivery_location    -- 納品場所

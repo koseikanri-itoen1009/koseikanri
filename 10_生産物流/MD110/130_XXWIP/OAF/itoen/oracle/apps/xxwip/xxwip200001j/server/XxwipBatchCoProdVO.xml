@@ -47,6 +47,11 @@ SELECT gbh.batch_id                   batch_id                  -- バッチID
       ,TO_CHAR(gmd.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                                       gmd_last_update_date      -- 最終更新日(排他制御用)
       ,ilm.attribute22                qt_number                 -- 検査依頼No
+      ,CASE
+         WHEN (gbh.attribute4 <> '8')
+           THEN 'DeleteCoProdEnable'
+           ELSE 'DeleteCoProdDisable'
+       END                            delete_switcher           -- 削除アイコン 
 FROM   gme_batch_header          gbh     -- 生産バッチヘッダ
       ,gme_material_details      gmd     -- 生産原料詳細
       ,gmd_routings_vl           grv     -- 工順マスタビュー
@@ -474,6 +479,19 @@ AND    ximv.end_date_active  >= NVL(gbhh.product_date, TRUNC(SYSDATE))
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeleteSwitcher"
+      IsPersistent="false"
+      Precision="19"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DELETE_SWITCHER"
+      Expression="DELETE_SWITCHER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="19" />
       </DesignTime>
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">

@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualCO
 * 概要説明   : 出来高実績入力コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2007-11-09 1.0  二瓶大輔     新規作成
 * 2008-05-12      二瓶大輔     変更要求対応(#75)
+* 2009-01-15 1.1  二瓶大輔     本番障害#836恒久対応Ⅱ
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.webui;
@@ -38,7 +39,7 @@ import oracle.apps.fnd.framework.webui.beans.table.OAAdvancedTableBean;
 /***************************************************************************
  * 出来高実績入力コントローラクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxwipVolumeActualCO extends XxcmnOAControllerImpl
@@ -112,6 +113,29 @@ public class XxwipVolumeActualCO extends XxcmnOAControllerImpl
       } else if (pageContext.getParameter("ReserveNo") != null) 
       {
         // 何もしない
+// 2009-01-15 v1.1 D.Nihei Add Start 本番障害#836恒久対応Ⅱ
+      // 廃止ダイアログ画面から「Yes」が押下された場合
+      } else if (pageContext.getParameter("CloseYes") != null) 
+      {
+        searchBatchId = pageContext.getParameter(XxwipConstants.URL_PARAM_MOVE_BATCH_ID);
+        // 引数設定
+        Serializable params[] = { searchBatchId };
+        // 廃止処理を行います。
+        am.invokeMethod("doClose");
+        // メインメッセージ作成 
+        MessageToken[] mainTokens = new MessageToken[1];
+        mainTokens[0] = new MessageToken(XxcmnConstants.TOKEN_TOKEN, "該当の手配は、廃止されました。");
+
+        throw new OAException(XxcmnConstants.APPL_XXCMN,
+                                                  XxcmnConstants.XXCMN00025,
+                                                  mainTokens,
+                                                  OAException.INFORMATION,
+                                                  null);
+      // 廃止ダイアログ画面から「No」が押下された場合
+      } else if (pageContext.getParameter("CloseNo") != null) 
+      {
+        // 何もしない
+// 2009-01-15 v1.1 D.Nihei Add End
       } else if (pageContext.getParameter("LotDetailInvest") == null &&
                  pageContext.getParameter("LotDetailReInvest") == null)
       {
@@ -167,6 +191,37 @@ public class XxwipVolumeActualCO extends XxcmnOAControllerImpl
           OAWebBeanConstants.ADD_BREAD_CRUMB_NO, 
           OAWebBeanConstants.IGNORE_MESSAGES);    
 
+// 2009-01-15 v1.1 D.Nihei Add Start 本番障害#836恒久対応Ⅱ
+      // 廃止ボタン押下された場合
+      } else if (pageContext.getParameter("Close") != null) 
+      {
+        // 検索条件取得
+        String batchId = pageContext.getParameter(XxwipConstants.PARAM_SC_BATCH_ID);
+        //パラメータ用HashMap生成
+        Hashtable pageParams = new Hashtable();
+        pageParams.put(XxwipConstants.URL_PARAM_MOVE_BATCH_ID, batchId.toString());
+        // メインメッセージ作成 
+        MessageToken[] mainTokens = new MessageToken[1];
+        mainTokens[0] = new MessageToken(XxcmnConstants.TOKEN_TOKEN, "該当の手配を廃止します。よろしいですか？");
+
+        OAException mainMessage = new OAException(XxcmnConstants.APPL_XXCMN,
+                                                  XxcmnConstants.XXCMN00025,
+                                                  mainTokens);
+                                            
+        // ダイアログメッセージを表示
+        XxcmnUtility.createDialog(
+          OAException.CONFIRMATION,
+          pageContext,
+          mainMessage,
+          null,
+          XxwipConstants.URL_XXWIP200001J,
+          XxwipConstants.URL_XXWIP200001J,
+          "Yes",
+          "No",
+          "CloseYes",
+          "CloseNo",
+          pageParams);          
+// 2009-01-15 v1.1 D.Nihei Add End
       // 適用ボタン押下された場合
       } else if (pageContext.getParameter(XxwipConstants.GO_BTN) != null) 
       {
