@@ -27,6 +27,8 @@ AS
  *  2009/10/23    1.2   Yutaka.Kuboshima 障害0001350の対応
  *  2010/01/04    1.3   Yutaka.Kuboshima 障害E_本稼動_00778の対応
  *  2010/01/27    1.4   Yutaka.Kuboshima 障害E_本稼動_01279,E_本稼動_01280の対応
+ *  2010/02/15    1.5   Yutaka.Kuboshima 障害E_本稼動_01582 顧客ステータス変更チェックの引数修正
+ *                                                          (lv_customer_status -> 
  *
  *****************************************************************************************/
 --
@@ -392,6 +394,9 @@ AS
 --
     lv_business_low_type     VARCHAR2(100)   := NULL;                     --ローカル変数・小分類
     lv_business_low_mst      xxcmm_cust_accounts.business_low_type%TYPE;  --小分類存在確認用変数
+-- 2010/02/15 Ver1.5 E_本稼動01582 add start by Yutaka.Kuboshima
+    lv_business_low_type_now xxcmm_cust_accounts.business_low_type%TYPE;  --現在設定されている小分類
+-- 2010/02/15 Ver1.5 E_本稼動01582 add end by Yutaka.Kuboshima
 --
     lv_check_status          VARCHAR2(1)     := NULL;                     --項目チェック結果格納用変数
 --
@@ -754,6 +759,19 @@ AS
     -- 会計期間クローズステータス取得レコード型
     get_period_status_rec  get_period_status_cur%ROWTYPE;
 -- 2010/01/04 Ver1.3 E_本稼動_00778 add end by Yutaka.Kuboshima
+--
+-- 2010/02/15 Ver1.5 E_本稼動_01582 add start by Yutaka.Kuboshima
+    -- 業態(小分類)取得カーソル
+    CURSOR get_business_low_type_cur(
+      in_cust_id IN NUMBER)
+    IS
+    SELECT xca.business_low_type business_low_type
+    FROM   xxcmm_cust_accounts xca
+    WHERE  xca.customer_id = in_cust_id
+    ;
+    -- 業態(小分類)取得レコード型
+    get_business_low_type_rec get_business_low_type_cur%ROWTYPE;
+-- 2010/02/15 Ver1.5 E_本稼動_01582 add end by Yutaka.Kuboshima
 --
   BEGIN
 --
@@ -1420,9 +1438,27 @@ AS
                 );
             END IF;
             IF (lv_customer_status = cv_stop_approved) THEN
+-- 2010/02/15 Ver1.5 E_本稼動01582 add start by Yutaka.Kuboshima
+              -- 現在設定されている業態(小分類)を取得
+              << get_business_low_type_loop >>
+              FOR get_business_low_type_rec IN get_business_low_type_cur( ln_cust_id )
+              LOOP
+                lv_business_low_type_now := get_business_low_type_rec.business_low_type;
+              END LOOP get_business_low_type_loop;
+              -- 新しく設定する業態(小分類)がNOT NULL かつ、'-'以外かつ、現在設定されている業態(小分類)と違う場合
+              IF (lv_business_low_type IS NOT NULL)
+                AND (lv_business_low_type <> cv_null_bar)
+                AND (lv_business_low_type_now <> lv_business_low_type)
+              THEN
+                lv_business_low_type_now := lv_business_low_type;
+              END IF;
+-- 2010/02/15 Ver1.5 E_本稼動01582 add end by Yutaka.Kuboshima
               --顧客ステータス変更チェック
               xxcmm_cust_sts_chg_chk_pkg.main( ln_cust_id
-                                              ,lv_customer_status
+-- 2010/02/15 Ver1.5 E_本稼動01582 modify start by Yutaka.Kuboshima
+--                                              ,lv_customer_status
+                                              ,lv_business_low_type_now
+-- 2010/02/15 Ver1.5 E_本稼動01582 modify end by Yutaka.Kuboshima
                                               ,lv_item_retcode
                                               ,lv_item_errmsg);
               IF (lv_item_retcode = cv_modify_err) THEN
