@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A04C(body)
  * Description      : 所属マスタIF出力（自販機管理）
  * MD.050           : 所属マスタIF出力（自販機管理） MD050_CMM_005_A04
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/09/02    1.8   Yutaka.Kuboshima 障害0001222の対応
  *  2009/10/02    1.9   Shigeto.Niki     障害I_E_542、E_T3_00469の対応
  *  2011/03/23    1.10  Naoki.Horigome   E_本稼動_02541、02550対応
+ *  2011/11/11    1.11  Atsushi.Shirakawa E_本稼動_08398対応
  *
  *****************************************************************************************/
 --
@@ -706,6 +707,9 @@ AS
 -- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
             ,xxcmm_cust_accounts      xca   -- (TABLE)顧客追加情報マスタ
             ,hz_parties               hp    -- (TABLE)パーティマスタ
+-- 2011/11/11 Ver1.11 add start by Atsushi.Shirakawa
+            ,fnd_lookup_values        flv   -- (TABLE)クイックコード
+-- 2011/11/11 Ver1.11 add end by Atsushi.Shirakawa
 -- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
       WHERE  xhdv.dpt6_cd             = hzac.account_number
       AND    hzac.customer_class_code = '1' -- 抽出対象：拠点
@@ -713,6 +717,18 @@ AS
 -- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
       AND    hzac.party_id            = hp.party_id
       AND    hzac.cust_account_id     = xca.customer_id
+-- 2011/11/11 Ver1.11 add start by Atsushi.Shirakawa
+      AND    flv.lookup_type(+)       = cv_lookup_area
+      AND    flv.enabled_flag(+)      = cv_y_flag
+      AND    flv.language(+)          = cv_language_ja
+      AND    flv.lookup_code(+)       = SUBSTRB((CASE
+                                                   WHEN (xhdv.dpt6_start_date_active IS NULL) THEN xhdv.dpt6_old_cd
+                                                   WHEN (xhdv.dpt6_start_date_active <= TO_CHAR(id_last_update_date_to + 1,
+                                                                                                  cv_date_format2 ) )
+                                                                                              THEN xhdv.dpt6_new_cd
+                                                   ELSE                                            xhdv.dpt6_old_cd
+                                                 END), 1, 4)
+-- 2011/11/11 Ver1.11 add end by Atsushi.Shirakawa
 -- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
 -- 2009/06/05 Ver1.6 delete start by Yutaka.Kuboshima
 --      AND    xpty.start_date_active BETWEEN id_last_update_date_from
@@ -726,6 +742,10 @@ AS
              OR ( xhdv.dpt6_start_date_active BETWEEN TO_CHAR(id_last_update_date_from + 1, cv_date_format2 ) 
                                                   AND TO_CHAR(id_last_update_date_to + 1, cv_date_format2 ) ) 
 -- 2009/10/02 Ver1.9 add end by Shigeto.Niki
+-- 2011/11/11 Ver1.11 add start by Atsushi.Shirakawa
+             OR ( flv.last_update_date  BETWEEN id_last_update_date_from 
+                                            AND id_last_update_date_to  )
+-- 2011/11/11 Ver1.11 add end by Atsushi.Shirakawa
 -- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
              OR (  hp.last_update_date  BETWEEN id_last_update_date_from
                                             AND id_last_update_date_to
