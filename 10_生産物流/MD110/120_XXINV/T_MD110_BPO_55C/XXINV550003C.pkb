@@ -8,7 +8,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.20
+ * Version          : 1.21
  * Program List
  * ---------------------------    ----------------------------------------------------------
  *  Name                           Description
@@ -56,6 +56,7 @@ AS
  *  2009/01/20    1.18 Akiyoshi Shiina  本番#263対応
  *  2009/03/06    1.19 H.Itou           本番#1283対応
  *  2009/03/12    1.20 Akiyoshi Shiina  本番#1296対応
+ *  2009/03/17    1.21 Akiyoshi Shiina  本番#1325対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -570,7 +571,10 @@ AS
     lv_sql_body := lv_sql_body || ' ,gbh.actual_cmplt_date       AS entry_date' ;
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS pay_reason_code' ;
     lv_sql_body := lv_sql_body || ' ,flv.meaning                 AS pay_reason_name' ;
-    lv_sql_body := lv_sql_body || ' ,flv2.attribute1             AS pay_purpose_name' ;
+-- 2009/03/17 v1.21 UPDATE START
+--    lv_sql_body := lv_sql_body || ' ,flv2.attribute1             AS pay_purpose_name' ;
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_purpose_name' ;
+-- 2009/03/17 v1.21 UPDATE END
     lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS pay_item_no' ;
     lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS pay_item_name' ;
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS pay_lot_no' ;
@@ -619,7 +623,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,xxcmn_item_locations2_v  xilv' ;
     lv_sql_body := lv_sql_body || ' ,xxcmn_locations2_v       xlv' ;
     lv_sql_body := lv_sql_body || ' ,fnd_lookup_values        flv' ;
-    lv_sql_body := lv_sql_body || ' ,fnd_lookup_values        flv2' ;
+-- 2009/03/17 v1.21 DELETE START
+--    lv_sql_body := lv_sql_body || ' ,fnd_lookup_values        flv2' ;
+-- 2009/03/17 v1.21 DELETE END
     lv_sql_body := lv_sql_body || ' ,xxcmn_stnd_unit_price_v  xsupv' ;
     lv_sql_body := lv_sql_body || ' ,fnd_user                 fu' ;
     lv_sql_body := lv_sql_body || ' ,per_all_assignments_f    paaf' ;
@@ -687,9 +693,11 @@ AS
     lv_sql_body := lv_sql_body || ' AND flv.language               = :para_language_code ' ;
     lv_sql_body := lv_sql_body || ' AND flv.lookup_code            = xrpm.new_div_invent ';
     -- クイックコード(品目振替目的)結合
-    lv_sql_body := lv_sql_body || ' AND flv2.lookup_type           = :para_lookup_type_purpose_id ' ;
-    lv_sql_body := lv_sql_body || ' AND flv2.language              = :para_language_code ' ;
-    lv_sql_body := lv_sql_body || ' AND flv2.lookup_code           = gbh.attribute7 ';
+-- 2009/03/17 v1.21 DELETE START
+--    lv_sql_body := lv_sql_body || ' AND flv2.lookup_type(+)           = :para_lookup_type_purpose_id ' ;
+--    lv_sql_body := lv_sql_body || ' AND flv2.language(+)              = :para_language_code ' ;
+--    lv_sql_body := lv_sql_body || ' AND flv2.lookup_code(+)           = gbh.attribute7 ';
+-- 2009/03/17 v1.21 DELETE END
     -- ユーザマスタ結合
     lv_sql_body := lv_sql_body || ' AND fu.user_id                 = gbh.created_by' ;
     -- 従業員マスタ結合
@@ -1094,8 +1102,10 @@ AS
                                                                       ,gv_sql_date_from
                                                                       ,gc_lookup_type_new_div
                                                                       ,gc_language_code
-                                                                      ,gc_lookup_type_purpose_id
-                                                                      ,gc_language_code
+-- 2009/03/17 v1.21 DELETE START
+--                                                                      ,gc_lookup_type_purpose_id
+--                                                                      ,gc_language_code
+-- 2009/03/17 v1.21 DELETE END
                                                                       ,gv_sql_date_from
                                                                       ,gv_sql_date_from
                                                                       ,gv_sql_date_from
@@ -2247,6 +2257,9 @@ AS
       lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS pay_item_no' ;
       lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS pay_item_name';
       lv_sql_body := lv_sql_body || ' ,DECODE(ilm.lot_id,0,NULL,ilm.lot_no) AS pay_lot_no';
+-- 2009/03/12 v1.20 ADD START
+      lv_sql_body := lv_sql_body || ' ,ilm. attribute14            AS pay_rank1' ;
+-- 2009/03/12 v1.20 ADD END
       lv_sql_body := lv_sql_body || ' ,ROUND(itc.trans_qty,4) * -1 AS pay_quant';
       lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
       lv_sql_body := lv_sql_body || '    WHEN '|| cv_sc || gc_cost_manage_code_n || cv_sc ||' THEN' ;
@@ -2262,6 +2275,9 @@ AS
       lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_no' ;
       lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_name';
       lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no';
+-- 2009/03/12 v1.20 ADD START
+      lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_rank1' ;
+-- 2009/03/12 v1.20 ADD END
       lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant';
       lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
 -- 2009/01/20 v1.18 ADD START
@@ -2520,6 +2536,26 @@ AS
     lv_sql_body := lv_sql_body || ' ,iimb.item_no' ;
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no' ;
 --
+FND_FILE.PUT_LINE( FND_FILE.LOG, lv_sql_body);
+FND_FILE.PUT_LINE( FND_FILE.LOG, gc_use_div_invent_rep );
+FND_FILE.PUT_LINE( FND_FILE.LOG, in_line_type );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gv_sql_date_from );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gc_language_code );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gc_language_code );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gc_item_class );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gv_sql_date_from );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gc_lookup_type_new_div );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gc_language_code );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gv_sql_date_from );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gv_sql_date_from );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gv_sql_date_from );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gr_param.date_from );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gc_date_mask );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gc_date_mask );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gr_param.date_to );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gc_date_mask );
+FND_FILE.PUT_LINE( FND_FILE.LOG, gc_date_mask );
+
     EXECUTE IMMEDIATE lv_sql_body BULK COLLECT INTO ot_data_rec USING  gc_use_div_invent_rep
                                                                       ,in_line_type
                                                                       ,gv_sql_date_from
