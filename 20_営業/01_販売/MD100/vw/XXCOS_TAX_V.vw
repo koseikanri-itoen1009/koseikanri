@@ -1,7 +1,25 @@
+/************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * View Name       : xxcos_tax_v
+ * Description     : 消費税view
+ * Version         : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/09/09    1.0   SCS              新規作成
+ *  2013/08/23    1.1   T.Shimoji        [E_本稼動_10904]消費税増税対応
+ *
+ ************************************************************************************/
 CREATE OR REPLACE FORCE VIEW "APPS"."XXCOS_TAX_V" ("TAX_CODE", "TAX_RATE", "HHT_TAX_CLASS", "TAX_CLASS", "START_DATE_ACTIVE", "END_DATE_ACTIVE", "SET_OF_BOOKS_ID") AS 
 SELECT  avtab.tax_code                     tax_code             -- 消費税コード
        ,avtab.tax_rate                     tax_rate             -- 消費税率
-       ,SUBSTRB(look_val.lookup_code,1,1)  hht_tax_class        -- HHT消費税区分
+-- 2013/08/23 Mod Start
+--       ,SUBSTRB(look_val.lookup_code,1,1)  hht_tax_class        -- HHT消費税区分
+       ,SUBSTRB(look_val.attribute1,1,1)  hht_tax_class        -- HHT消費税区分
+-- 2013/08/23 Mod End
        ,look_val.attribute3                tax_class            -- 販売実績連携時の消費税区分
        ,look_val.start_date_active         start_date_active    -- クイックコード適用開始日
        ,look_val.end_date_active           end_date_active      -- クイックコード適用終了日
