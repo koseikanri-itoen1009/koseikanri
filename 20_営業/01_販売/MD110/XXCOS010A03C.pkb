@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A03C (body)
  * Description      : 納品確定データ取込機能
  * MD.050           : 納品確定データ取込(MD050_COS_010_A03)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,9 @@ AS
  *  2009/05/08    1.4   T.Kitajima       [T1_0780]価格表未設定リカバリー対応
  *  2009/05/19    1.5   T.Kitajima       [T1_0242]品目取得時、OPM品目マスタ.発売（製造）開始日条件追加
  *                                       [T1_0243]品目取得時、子品目対象外条件追加
+ *  2009/06/26    1.6   N.Maeda          [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]
+ *                                       ・ブレーク条件変更
+ *                                       ・情報区分によるエラー処理実行判定の追加
  *
  *****************************************************************************************/
 --
@@ -233,6 +236,10 @@ AS
 --****************************** 2009/05/19 1.5 T.Kitajima ADD START  ******************************--
   cv_format_yyyymmdds    CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';                -- 日付フォーマット
 --****************************** 2009/05/19 1.5 T.Kitajima ADD  END  ******************************--
+-- **************************** 2009/06/26 N.Maeda ADD Ver1.6 START ************************************************ --
+  cv_info_class_type_01 CONSTANT VARCHAR2(2) := '01';                        -- 情報区分:'01'
+  cv_info_class_type_02 CONSTANT VARCHAR2(2) := '02';                        -- 情報区分:'02'
+-- **************************** 2009/06/26 N.Maeda ADD Ver1.6  END  ************************************************ --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -601,6 +608,9 @@ AS
     AND     edi.err_status                   = iv_status                        -- ステータス
     ORDER BY
             data_type_code,
+-- **************************** 2009/06/26 N.Maeda ADD Ver1.6 START ************************************************ --
+            edi.shop_code,
+-- **************************** 2009/06/26 N.Maeda ADD Ver1.6  END  ************************************************ --
             invoice_number,
             line_no
     FOR UPDATE NOWAIT;
@@ -2840,6 +2850,8 @@ AS
       iv_err_status      IN VARCHAR2
     )
     IS
+      -- *** ローカル定数 ***
+      cv_prg_name   CONSTANT VARCHAR2(100) := 'set_check_status_all'; -- プログラム名
       -- *** ローカル変数 ***
       ln_idx             NUMBER;
     BEGIN
@@ -2865,6 +2877,8 @@ AS
       it_edi_work        IN g_edi_work_ttype                -- IN：EDI納品返品情報ワークデータ
     ) RETURN NUMBER
     IS
+      -- *** ローカル定数 ***
+      cv_prg_name   CONSTANT VARCHAR2(100) := 'check_required'; -- プログラム名
       -- *** ローカル変数 ***
       ln_idx             NUMBER;
       ln_result          NUMBER;
@@ -2938,6 +2952,9 @@ AS
       ov_check_status    OUT NOCOPY VARCHAR2                -- OUT：チェックステータス
     )
     IS
+      -- *** ローカル定数 ***
+      cv_prg_name   CONSTANT VARCHAR2(100) := 'customer_conv_check'; -- プログラム名
+--
     BEGIN
 --
       -- OUTパラメータ(顧客情報)初期化
@@ -2971,23 +2988,35 @@ AS
     EXCEPTION
       -- データが存在しない場合
       WHEN NO_DATA_FOUND THEN
-        -- 顧客コード変換エラーを出力
-        lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
-                                               cv_msg_cust_conv,
-                                               cv_tkn_chain_shop_code,
-                                               it_edi_work.edi_chain_code,
-                                               cv_tkn_shop_code,
-                                               it_edi_work.shop_code
-                                             );
-        lv_errbuf := lv_errmsg;
-        -- ログ出力
-        proc_msg_output( cv_prg_name, lv_errbuf );
-        -- 警告ステータス設定
-        ov_check_status := cv_edi_status_warning;
-        -- EDIエラー情報追加
-        proc_set_edi_errors( it_edi_work, NULL, NULL, cv_msg_rep_cust_conv );
-        -- 伝票エラーフラグ設定
-        gn_invoice_err_flag := 1;
+--
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+--      -- 情報区分が「NULL」,「'01'」,「'02'」の場合、エラー。
+        IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+        OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+        OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+          -- 顧客コード変換エラーを出力
+          lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
+                                                 cv_msg_cust_conv,
+                                                 cv_tkn_chain_shop_code,
+                                                 it_edi_work.edi_chain_code,
+                                                 cv_tkn_shop_code,
+                                                 it_edi_work.shop_code
+                                               );
+          lv_errbuf := lv_errmsg;
+          -- ログ出力
+          proc_msg_output( cv_prg_name, lv_errbuf );
+          -- 警告ステータス設定
+          ov_check_status := cv_edi_status_warning;
+          -- EDIエラー情報追加
+          proc_set_edi_errors( it_edi_work, NULL, NULL, cv_msg_rep_cust_conv );
+          -- 伝票エラーフラグ設定
+          gn_invoice_err_flag := 1;
+        -- 情報区分がその他の場合
+        ELSE
+          ot_cust_info_rec.conv_cust_code := NULL;
+          ot_cust_info_rec.price_list_id  := NULL;
+        END IF;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
 --
     END;
 --
@@ -2999,6 +3028,9 @@ AS
       ov_edi_item_code_div     OUT NOCOPY VARCHAR2     -- OUT：EDI連携品目コード区分
     )
     IS
+      -- *** ローカル定数 ***
+      cv_prg_name   CONSTANT VARCHAR2(100) := 'get_edi_item_code_div'; -- プログラム名
+--
     BEGIN
       -- OUTパラメータ初期化
       ov_edi_item_code_div := NULL;
@@ -3036,6 +3068,9 @@ AS
       ov_unit               OUT NOCOPY VARCHAR2   -- OUT：単位
     ) RETURN NUMBER
     IS
+      -- *** ローカル定数 ***
+      cv_prg_name   CONSTANT VARCHAR2(100) := 'get_jan_code_item'; -- プログラム名
+--
     BEGIN
 --
 --****************************** 2009/05/19 1.5 T.Kitajima MOD START ******************************--
@@ -3138,6 +3173,9 @@ AS
       ov_unit               OUT NOCOPY VARCHAR2   -- OUT：単位
     ) RETURN NUMBER
     IS
+      -- *** ローカル定数 ***
+      cv_prg_name   CONSTANT VARCHAR2(100) := 'get_jan_code_item'; -- プログラム名
+--
     BEGIN
 --
 --****************************** 2009/05/19 1.5 T.Kitajima MOD START ******************************--
@@ -3241,6 +3279,9 @@ AS
       ov_unit               OUT NOCOPY VARCHAR2   -- OUT：単位
     ) RETURN NUMBER
     IS
+      -- *** ローカル定数 ***
+      cv_prg_name   CONSTANT VARCHAR2(100) := 'get_cust_item'; -- プログラム名
+--
     BEGIN
 --
       SELECT  cust_xref.inventory_item_id,                       -- 品目ID
@@ -3314,6 +3355,9 @@ AS
       ov_unit               OUT NOCOPY VARCHAR2   -- OUT：単位
     )
     IS
+      -- *** ローカル定数 ***
+      cv_prg_name   CONSTANT VARCHAR2(100) := 'get_disc_item_info'; -- プログラム名
+--
     BEGIN
 --
       SELECT  disc_item.inventory_item_id,                       -- 品目ID
@@ -3359,6 +3403,9 @@ AS
       ov_check_status         OUT NOCOPY VARCHAR2                -- OUT：チェックステータス
     )
     IS
+      -- *** ローカル定数 ***
+      cv_prg_name   CONSTANT VARCHAR2(100) := 'item_code_check'; -- プログラム名
+--
       -- *** ローカル変数 ***
       lv_error_type           VARCHAR2(1);
       lv_msg_prod_type        VARCHAR2(50);
@@ -3455,43 +3502,51 @@ AS
 --
       END IF;
 --
-      -- EDI品目エラーの場合
-      IF ( lv_error_type IS NOT NULL ) THEN
-        -- 商品コード変換エラーを出力
-        lv_tkn1   := xxccp_common_pkg.get_msg( cv_application, lv_msg_prod_type );
-        lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
-                                               cv_msg_item_conv,
-                                               cv_tkn_prod_code,
-                                               it_edi_work.product_code2,
-                                               cv_tkn_prod_type,
-                                               lv_tkn1
-                                             );
-        lv_errbuf := lv_errmsg;
-        -- ログ出力
-        proc_msg_output( cv_prg_name, lv_errbuf );
-        -- 警告ステータス設定
-        ov_check_status := cv_edi_status_warning;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+--    -- 情報区分が「NULL」,「'01'」,「'02'」の場合、エラー処理チェックを行う。
+      IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+      OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+      OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+      --
+        -- EDI品目エラーの場合
+        IF ( lv_error_type IS NOT NULL ) THEN
+          -- 商品コード変換エラーを出力
+          lv_tkn1   := xxccp_common_pkg.get_msg( cv_application, lv_msg_prod_type );
+          lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
+                                                 cv_msg_item_conv,
+                                                 cv_tkn_prod_code,
+                                                 it_edi_work.product_code2,
+                                                 cv_tkn_prod_type,
+                                                 lv_tkn1
+                                               );
+          lv_errbuf := lv_errmsg;
+          -- ログ出力
+          proc_msg_output( cv_prg_name, lv_errbuf );
+          -- 警告ステータス設定
+          ov_check_status := cv_edi_status_warning;
 --
-        -- ダミー品目コードを取得
-        IF ( gt_edi_item_err_type.EXISTS( lv_error_type ) ) THEN
-          lv_dummy_item := gt_edi_item_err_type( lv_error_type );
+          -- ダミー品目コードを取得
+          IF ( gt_edi_item_err_type.EXISTS( lv_error_type ) ) THEN
+            lv_dummy_item := gt_edi_item_err_type( lv_error_type );
+          END IF;
+--
+          -- 品目コードにダミー品目を設定する
+          ot_item_info_rec.item_no := lv_dummy_item;
+--
+          -- DISC品目情報を取得
+          get_disc_item_info( ot_item_info_rec.item_no,
+                              ot_item_info_rec.item_id,
+                              ot_item_info_rec.unit );
+--
+          -- EDIエラー情報追加
+          proc_set_edi_errors( it_edi_work, lv_dummy_item, cv_error_delete_flag, cv_msg_rep_item_conv );
+--
+          -- エラー件数インクリメント
+          gn_warn_cnt := gn_warn_cnt + 1;
+--
         END IF;
---
-        -- 品目コードにダミー品目を設定する
-        ot_item_info_rec.item_no := lv_dummy_item;
---
-        -- DISC品目情報を取得
-        get_disc_item_info( ot_item_info_rec.item_no,
-                            ot_item_info_rec.item_id,
-                            ot_item_info_rec.unit );
---
-        -- EDIエラー情報追加
-        proc_set_edi_errors( it_edi_work, lv_dummy_item, cv_error_delete_flag, cv_msg_rep_item_conv );
---
-        -- エラー件数インクリメント
-        gn_warn_cnt := gn_warn_cnt + 1;
---
       END IF;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
 --
     END;
 --
@@ -3517,15 +3572,24 @@ AS
     ----------------------------------------
     -- 必須入力チェック
     ----------------------------------------
-    IF ( check_required( gt_edi_work )  != 0 ) THEN
-      -- 全データに警告ステータスを設定
-      set_check_status_all( cv_edi_status_warning );
-      -- 伝票エラーフラグ設定
-      gn_invoice_err_flag := 1;
-      -- チェック処理終了
-      ov_retcode := cv_status_warn;
-      RETURN;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+--    -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
+    IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+--
+      IF ( check_required( gt_edi_work )  != 0 ) THEN
+        -- 全データに警告ステータスを設定
+        set_check_status_all( cv_edi_status_warning );
+        -- 伝票エラーフラグ設定
+        gn_invoice_err_flag := 1;
+        -- チェック処理終了
+        ov_retcode := cv_status_warn;
+        RETURN;
+      END IF;
+--
     END IF;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
 --
     -- 顧客コード変換チェック
     customer_conv_check(
@@ -3549,27 +3613,36 @@ AS
       lv_edi_item_code_div
     );
 --
-    -- EDI連携品目コード区分が「0:なし」の場合
-    IF ( NVL( lv_edi_item_code_div, 0 ) = 0 ) THEN
-      -- EDI連携品目コード区分エラーを出力
-      lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
-                                             cv_msg_edi_item,
-                                             cv_tkn_chain_shop_code,
-                                             gt_edi_work(gt_edi_work.first).edi_chain_code
-                                           );
-      lv_errbuf := lv_errmsg;
-      -- ログ出力
-      proc_msg_output( cv_prg_name, lv_errbuf );
-      -- 全データに警告ステータスを設定
-      set_check_status_all( cv_edi_status_warning );
-      -- EDIエラー情報追加
-      proc_set_edi_errors( gt_edi_work(gt_edi_work.first), NULL, NULL, cv_msg_rep_edi_item );
-      -- 伝票エラーフラグ設定
-      gn_invoice_err_flag := 1;
-      -- チェック処理終了
-      ov_retcode := cv_status_warn;
-      RETURN;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+--    -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
+    IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+    OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+--
+      -- EDI連携品目コード区分が「0:なし」の場合
+      IF ( NVL( lv_edi_item_code_div, 0 ) = 0 ) THEN
+        -- EDI連携品目コード区分エラーを出力
+        lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
+                                               cv_msg_edi_item,
+                                               cv_tkn_chain_shop_code,
+                                               gt_edi_work(gt_edi_work.first).edi_chain_code
+                                             );
+        lv_errbuf := lv_errmsg;
+        -- ログ出力
+        proc_msg_output( cv_prg_name, lv_errbuf );
+        -- 全データに警告ステータスを設定
+        set_check_status_all( cv_edi_status_warning );
+        -- EDIエラー情報追加
+        proc_set_edi_errors( gt_edi_work(gt_edi_work.first), NULL, NULL, cv_msg_rep_edi_item );
+        -- 伝票エラーフラグ設定
+        gn_invoice_err_flag := 1;
+        -- チェック処理終了
+        ov_retcode := cv_status_warn;
+        RETURN;
+      END IF;
+--
     END IF;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
 --
     -- 同一伝票内の全明細のチェック
     <<loop_edi_lines_check>>
@@ -3628,38 +3701,58 @@ AS
             gt_edi_work(gt_edi_work.first).price_list_header_id := lt_cust_info_rec.price_list_id;
 --
           ELSE
-            -- 単価が取得できなかった（共通関数でエラー）場合
-            lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_price_err );
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+          -- 単価が取得できなかった（共通関数でエラー）場合
+--          -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
+            IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+            OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+            OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+--
+              lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_price_err );
+              lv_errbuf := lv_errmsg;
+              -- ログ出力
+              proc_msg_output( cv_prg_name, lv_errbuf );
+              -- 警告ステータス設定
+              gt_edi_work(ln_idx).check_status := cv_edi_status_warning;
+              -- EDIエラー情報追加
+              proc_set_edi_errors( gt_edi_work(ln_idx), NULL, cv_error_delete_flag, cv_msg_rep_price_err );
+              -- エラー件数インクリメント
+              gn_warn_cnt := gn_warn_cnt + 1;
+            ELSE
+              NULL;
+            END IF;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
+--
+          END IF;
+--
+        ELSE
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+--        -- 情報区分が「NULL」,「'01'」,「'02'」の場合、エラー処理を行う。
+          IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+--
+            -- 価格表未設定エラーを出力
+            lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
+                                                   cv_msg_price_list,
+                                                   cv_tkn_chain_shop_code,
+                                                   gt_edi_work(ln_idx).edi_chain_code,
+                                                   cv_tkn_shop_code,
+                                                   gt_edi_work(ln_idx).shop_code
+                                                 );
             lv_errbuf := lv_errmsg;
             -- ログ出力
             proc_msg_output( cv_prg_name, lv_errbuf );
             -- 警告ステータス設定
             gt_edi_work(ln_idx).check_status := cv_edi_status_warning;
             -- EDIエラー情報追加
-            proc_set_edi_errors( gt_edi_work(ln_idx), NULL, cv_error_delete_flag, cv_msg_rep_price_err );
+            proc_set_edi_errors( gt_edi_work(ln_idx), NULL, cv_error_delete_flag, cv_msg_rep_price_list );
             -- エラー件数インクリメント
             gn_warn_cnt := gn_warn_cnt + 1;
---
+          ELSE
+            NULL;
           END IF;
---
-        ELSE
-          -- 価格表未設定エラーを出力
-          lv_errmsg := xxccp_common_pkg.get_msg( cv_application,
-                                                 cv_msg_price_list,
-                                                 cv_tkn_chain_shop_code,
-                                                 gt_edi_work(ln_idx).edi_chain_code,
-                                                 cv_tkn_shop_code,
-                                                 gt_edi_work(ln_idx).shop_code
-                                               );
-          lv_errbuf := lv_errmsg;
-          -- ログ出力
-          proc_msg_output( cv_prg_name, lv_errbuf );
-          -- 警告ステータス設定
-          gt_edi_work(ln_idx).check_status := cv_edi_status_warning;
-          -- EDIエラー情報追加
-          proc_set_edi_errors( gt_edi_work(ln_idx), NULL, cv_error_delete_flag, cv_msg_rep_price_list );
-          -- エラー件数インクリメント
-          gn_warn_cnt := gn_warn_cnt + 1;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
 --
         END IF;
 --
@@ -4278,7 +4371,11 @@ AS
     AND     ( ( head.order_date IS NULL AND it_edi_work.order_date IS NULL  )
             OR ( head.order_date = it_edi_work.order_date ) )                        -- 発注日
     AND     TRUNC( head.data_creation_date_edi_data ) = TRUNC( it_edi_work.data_creation_date_edi_data ) -- データ作成日（ＥＤＩデータ中）
-    AND     head.shop_code              = it_edi_work.shop_code;                     -- 店コード
+    AND     head.shop_code              = it_edi_work.shop_code                      -- 店コード
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+    AND     ( ( head.info_class IS NULL AND it_edi_work.info_class IS NULL  )
+            OR( head.info_class             = it_edi_work.info_class));                    -- 情報区分
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
 --
   EXCEPTION
     WHEN NO_DATA_FOUND THEN
@@ -6782,7 +6879,10 @@ AS
     ln_cnt                    NUMBER;
     ln_edi_head_id            NUMBER := NULL;          -- EDIヘッダ情報ID
     ln_edi_line_id            NUMBER := NULL;          -- EDI明細情報ID
-    lv_data_type_code         xxcos_edi_delivery_work.data_type_code%TYPE := NULL;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+--    lv_data_type_code         xxcos_edi_delivery_work.data_type_code%TYPE := NULL;
+    lt_shop_code              xxcos_edi_delivery_work.shop_code%TYPE := NULL;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
     lv_invoice_number         xxcos_edi_delivery_work.invoice_number%TYPE := NULL;
     ln_edi_head_ins_flag      NUMBER(1) := 0;          -- EDIヘッダ情報登録フラグ
     ln_head_duplicate_err     NUMBER := 0;             -- ヘッダ重複エラーフラグ
@@ -6801,9 +6901,14 @@ AS
     <<loop_edi_delivery_work>>
     FOR ln_idx IN 1..gt_edi_delivery_work.COUNT LOOP
 --
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
       -- キー情報（データ種コード、伝票番号）を保持する
-      lv_data_type_code := gt_edi_delivery_work(ln_idx).data_type_code;
+      lt_shop_code      := gt_edi_delivery_work(ln_idx).shop_code;
       lv_invoice_number := gt_edi_delivery_work(ln_idx).invoice_number;
+--      -- キー情報（データ種コード、伝票番号）を保持する
+--      lv_data_type_code := gt_edi_delivery_work(ln_idx).data_type_code;
+--      lv_invoice_number := gt_edi_delivery_work(ln_idx).invoice_number;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
 --
       -- ============================================
       -- EDI納品返品情報ワーク変数格納(A-5)
@@ -6820,10 +6925,17 @@ AS
         RAISE global_process_expt;
       END IF;
 --
-      -- データ種コード、伝票番号が変わったら
-      IF ( ( ln_idx = gt_edi_delivery_work.COUNT )
-      OR ( lv_data_type_code != gt_edi_delivery_work(ln_idx + 1).data_type_code )
-      OR ( lv_invoice_number != gt_edi_delivery_work(ln_idx + 1).invoice_number ) ) THEN
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+      -- 店舗コード、伝票番号が変わったら
+      IF ( ln_idx = gt_edi_delivery_work.COUNT )
+      OR ( ( TO_CHAR(lt_shop_code)||TO_CHAR(lv_invoice_number)) 
+         != ((TO_CHAR(gt_edi_delivery_work(ln_idx + 1).shop_code ))
+              ||TO_CHAR(gt_edi_delivery_work(ln_idx + 1).invoice_number )))THEN
+--      -- データ種コード、伝票番号が変わったら
+--      IF ( ( ln_idx = gt_edi_delivery_work.COUNT )
+--      OR ( lv_data_type_code != gt_edi_delivery_work(ln_idx + 1).data_type_code )
+--      OR ( lv_invoice_number != gt_edi_delivery_work(ln_idx + 1).invoice_number ) ) THEN
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
 --
         -- 伝票エラーフラグ初期化
         gn_invoice_err_flag := 0;
@@ -6853,21 +6965,30 @@ AS
           ln_edi_line_id := NULL;
           ln_edi_head_ins_flag := 0;
 --
-          -- ============================================
-          -- EDIヘッダ情報テーブルデータ抽出(A-7)
-          -- ============================================
-          proc_get_edi_headers(
-            gt_edi_work(gt_edi_work.first),
-            ln_edi_head_id,
-            lv_errbuf,
-            lv_retcode,
-            lv_errmsg
-          );
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+            -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
+          IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+          OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+            -- ============================================
+            -- EDIヘッダ情報テーブルデータ抽出(A-7)
+            -- ============================================
+            proc_get_edi_headers(
+              gt_edi_work(gt_edi_work.first),
+              ln_edi_head_id,
+              lv_errbuf,
+              lv_retcode,
+              lv_errmsg
+            );
 --
-          -- A-7でエラーが発生した場合、処理中止
-          IF ( lv_retcode = cv_status_error ) THEN
-            RAISE global_process_expt;
+            -- A-7でエラーが発生した場合、処理中止
+            IF ( lv_retcode = cv_status_error ) THEN
+              RAISE global_process_expt;
+            END IF;
+          ELSE
+            ln_edi_head_id := NULL;
           END IF;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
 --
           -- EDIヘッダ情報が存在しない場合
           IF ( ln_edi_head_id IS NULL ) THEN
@@ -6913,10 +7034,10 @@ AS
           -- ステータスが警告以外の場合
           ELSE
 --
-            -- ヘッダ重複エラーを設定
-            ln_head_duplicate_err := 1;
-            -- 終了ステータスに警告を設定
-            ov_retcode := cv_status_warn;
+              -- ヘッダ重複エラーを設定
+              ln_head_duplicate_err := 1;
+              -- 終了ステータスに警告を設定
+              ov_retcode := cv_status_warn;
 --
           END IF;
 --
@@ -6936,22 +7057,31 @@ AS
             -- 伝票エラー、ヘッダ重複エラーが発生していない場合
             IF (( gn_invoice_err_flag = 0 ) AND ( ln_head_duplicate_err = 0 )) THEN
 --
-              -- ============================================
-              -- EDI明細情報テーブルデータ抽出(A-10)
-              -- ============================================
-              proc_get_edi_lines(
-                gt_edi_work(ln_Idx),
-                ln_edi_head_id,
-                ln_edi_line_id,
-                lv_errbuf,
-                lv_retcode,
-                lv_errmsg
-              );
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6 START ************************************************ --
+              -- 情報区分が「NULL」,「'01'」,「'02'」の場合、必須チェックを行う。
+              IF ( gt_edi_work(gt_edi_work.first).info_class IS NULL )
+              OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_01 )
+              OR ( gt_edi_work(gt_edi_work.first).info_class = cv_info_class_type_02 )THEN
+                -- ============================================
+                -- EDI明細情報テーブルデータ抽出(A-10)
+                -- ============================================
+                proc_get_edi_lines(
+                  gt_edi_work(ln_Idx),
+                  ln_edi_head_id,
+                  ln_edi_line_id,
+                  lv_errbuf,
+                  lv_retcode,
+                  lv_errmsg
+                );
 --
-              -- A-10でエラーが発生した場合、処理中止
-              IF ( lv_retcode = cv_status_error ) THEN
-                RAISE global_process_expt;
+                -- A-10でエラーが発生した場合、処理中止
+                IF ( lv_retcode = cv_status_error ) THEN
+                  RAISE global_process_expt;
+                END IF;
+              ELSE
+                ln_edi_line_id := NULL;
               END IF;
+-- **************************** 2009/06/26 N.Maeda MOD Ver1.6  END  ************************************************ --
 --
               -- EDI明細情報が存在しない場合
               IF ( ln_edi_line_id IS NULL ) THEN
@@ -6996,10 +7126,10 @@ AS
               -- ステータスが警告以外の場合
               ELSE
 --
-                -- 明細重複エラーを設定
-                ln_line_duplicate_err := 1;
-                -- 終了ステータスに警告を設定
-                ov_retcode := cv_status_warn;
+                    -- 明細重複エラーを設定
+                    ln_line_duplicate_err := 1;
+                    -- 終了ステータスに警告を設定
+                    ov_retcode := cv_status_warn;
 --
               END IF;
 --
@@ -7020,31 +7150,32 @@ AS
 --
             END IF;
 --
-            -- ヘッダ重複エラー、明細重複エラーが発生した場合は、エラーメッセージを出力
-            IF (( ln_head_duplicate_err = 1 ) OR ( ln_line_duplicate_err = 1 )) THEN
 --
-              -- 重複登録エラーを出力
-              lv_errmsg  := xxccp_common_pkg.get_msg( cv_application,
-                                                      cv_msg_duplicate,
-                                                      cv_tkn_chain_shop_code,
-                                                      gt_edi_work(ln_Idx).edi_chain_code,
-                                                      cv_tkn_order_no,
-                                                      gt_edi_work(ln_Idx).invoice_number,
-                                                      cv_tkn_store_deliv_dt,
-                                                      gt_edi_work(ln_Idx).shop_delivery_date,
-                                                      cv_tkn_shop_code,
-                                                      gt_edi_work(ln_Idx).shop_code,
-                                                      cv_tkn_line_no,
-                                                      gt_edi_work(ln_Idx).line_no );
-              lv_errbuf  := lv_errmsg;
-              -- ログ出力
-              proc_msg_output( cv_prg_name, lv_errbuf );
-              -- 警告ステータス設定
-              gt_edi_work(ln_Idx).check_status := cv_edi_status_warning;
-              -- EDIエラー情報追加
-              proc_set_edi_errors( gt_edi_work(ln_Idx), NULL, cv_error_delete_flag, cv_msg_rep_duplicate );
+              -- ヘッダ重複エラー、明細重複エラーが発生した場合は、エラーメッセージを出力
+              IF (( ln_head_duplicate_err = 1 ) OR ( ln_line_duplicate_err = 1 )) THEN
 --
-            END IF;
+                -- 重複登録エラーを出力
+                lv_errmsg  := xxccp_common_pkg.get_msg( cv_application,
+                                                        cv_msg_duplicate,
+                                                        cv_tkn_chain_shop_code,
+                                                        gt_edi_work(ln_Idx).edi_chain_code,
+                                                        cv_tkn_order_no,
+                                                        gt_edi_work(ln_Idx).invoice_number,
+                                                        cv_tkn_store_deliv_dt,
+                                                        gt_edi_work(ln_Idx).shop_delivery_date,
+                                                        cv_tkn_shop_code,
+                                                        gt_edi_work(ln_Idx).shop_code,
+                                                        cv_tkn_line_no,
+                                                        gt_edi_work(ln_Idx).line_no );
+                lv_errbuf  := lv_errmsg;
+                -- ログ出力
+                proc_msg_output( cv_prg_name, lv_errbuf );
+                -- 警告ステータス設定
+                gt_edi_work(ln_Idx).check_status := cv_edi_status_warning;
+                -- EDIエラー情報追加
+                proc_set_edi_errors( gt_edi_work(ln_Idx), NULL, cv_error_delete_flag, cv_msg_rep_duplicate );
+--
+              END IF;
 --
           END LOOP;
 --
