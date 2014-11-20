@@ -75,6 +75,10 @@ WHERE
        xoha.order_header_id             = xola.order_header_id
 AND    xola.shipping_inventory_item_id  = ximv.inventory_item_id
 AND    ximv.whse_item_id                = whximv.item_id(+)
+-- 2008/07/15 D.Nihei ADD START
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN ximv.start_date_active
+                                                       AND     ximv.end_date_active
+-- 2008/07/15 D.Nihei ADD END
 /* ’ŠoğŒ */
 AND    xola.delete_flag     = 'N' -- –¢íœ
 AND    xola.order_header_id = :1

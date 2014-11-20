@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-05-15      伊藤ひとみ   結合バグ#340_2
 *                              外部ユーザーの場合、表示された取引先コードで検索できない。
 * 2008-05-21      伊藤ひとみ   内部変更要求対応(#104)
+* 2008-07-11 1.1  二瓶大輔     ST#421対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -37,7 +38,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 外注出来高報告のアプリケーションモジュールクラスです。
  * @author  ORACLE 伊藤 ひとみ
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -459,6 +460,12 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     Object correctedQuantity = vendorSupplyMakeRow.getAttribute("CorrectedQuantity");     // 訂正数量
     Object itemClassCode     = vendorSupplyMakeRow.getAttribute("ItemClassCode");         // 品目区分
     String costManageCode    = (String)vendorSupplyMakeRow.getAttribute("CostManageCode");// 原価管理区分
+// 2008-07-11 D.Nihei ADD START
+    String productResultType = (String)vendorSupplyMakeRow.getAttribute("ProductResultType");// 処理タイプ
+    String processFlag       = (String)vendorSupplyMakeRow.getAttribute("ProcessFlag");      // 処理フラグ
+    // システム日付を取得
+    Date currentDate = getOADBTransaction().getCurrentDBDate();
+// 2008-07-11 D.Nihei ADD END
     
     // 生産日必須チェック
     if (XxcmnUtility.isBlankOrNull(manufacturedDate)) 
@@ -471,6 +478,20 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
                             manufacturedDate,
                             XxcmnConstants.APPL_XXPO,         
                             XxpoConstants.XXPO10002));
+// 2008-07-11 D.Nihei ADD START
+    // 処理タイプが「1：相手先在庫管理」で且つ、生産日が未来日の場合
+    } else if (XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType)
+            && XxcmnUtility.chkCompareDate(1, (Date)manufacturedDate, currentDate)) 
+    {
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,          
+                            vendorSupplyMakeVo.getName(),
+                            vendorSupplyMakeRow.getKey(),
+                            "ManufacturedDate",
+                            manufacturedDate,
+                            XxcmnConstants.APPL_XXPO,         
+                            XxpoConstants.XXPO10244));
+// 2008-07-11 D.Nihei ADD END
     }
     
     // 取引先必須チェック
@@ -569,8 +590,27 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
                               XxcmnConstants.APPL_XXPO,         
                               XxpoConstants.XXPO10001));
 
-      // マイナス値はエラー
-      } else if(!XxcmnUtility.chkCompareNumeric(2, productedQuantity, "0"))
+// 2008-07-11 D.Nihei ADD START
+      // 新規の場合は、数量0をエラーとする
+      } else if(XxpoConstants.PROCESS_FLAG_I.equals(processFlag) 
+            &&  XxcmnUtility.chkCompareNumeric(2, XxcmnConstants.STRING_ZERO, productedQuantity))
+      {
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,          
+                              vendorSupplyMakeVo.getName(),
+                              vendorSupplyMakeRow.getKey(),
+                              "ProductedQuantity",
+                              productedQuantity,
+                              XxcmnConstants.APPL_XXPO,         
+                              XxpoConstants.XXPO10227));
+// 2008-07-11 D.Nihei ADD END
+// 2008-07-11 D.Nihei MOD START
+//      // マイナス値はエラー
+//      } else if(!XxcmnUtility.chkCompareNumeric(2, productedQuantity, "0"))
+      // 更新の場合は、マイナス値をエラーとする
+      } else if(XxpoConstants.PROCESS_FLAG_U.equals(processFlag) 
+            &&  XxcmnUtility.chkCompareNumeric(1, XxcmnConstants.STRING_ZERO, productedQuantity))
+// 2008-07-11 D.Nihei MOD END
       {
         exceptions.add( new OAAttrValException(
                               OAAttrValException.TYP_VIEW_OBJECT,          

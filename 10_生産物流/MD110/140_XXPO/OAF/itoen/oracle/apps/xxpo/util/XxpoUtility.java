@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,9 +10,10 @@
 * 2008-06-11 1.1  吉元強樹     ST不具合ログ#72を対応
 * 2008-06-17 1.2  二瓶大輔     ST不具合ログ#126を対応
 * 2008-06-18 1.3  伊藤ひとみ   結合バグ 発注明細IFの単価、仕入定価を
-*                              仕入/標準単価ヘッダの内訳合計に変更。
+*                             仕入/標準単価ヘッダの内訳合計に変更。
 * 2008-06-30 1.4  吉元強樹     ST不具合ログ#41を対応
 * 2008-07-02 1.5  吉元強樹     ST不具合ログ#104を対応
+* 2008-07-11 1.6  二瓶大輔     ST不具合ログ#421対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -34,7 +35,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.5
+ * @version 1.6
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -2283,7 +2284,22 @@ public class XxpoUtility
 
     //PL/SQLの作成を行います
     StringBuffer sb = new StringBuffer(1000);
+// 2008-07-11 D.Nihei ADD START
+    sb.append("DECLARE "                    );
+    sb.append("  lt_quantity      po_lines_interface.quantity%TYPE; " ); // 数量
+    sb.append("  lt_po_quantity   po_lines_interface.line_attribute11%TYPE; " ); // 発注数量
+    sb.append("  ln_unit_price    NUMBER; " );
+    sb.append("  ln_kobiki_price  NUMBER; " );
+    sb.append("  ln_kobiki_amount NUMBER; " );
+// 2008-07-11 D.Nihei ADD END
     sb.append("BEGIN "                                          );
+// 2008-07-11 D.Nihei ADD START
+    sb.append("  lt_po_quantity   := :1;                              "); // 発注数量
+    sb.append("  lt_quantity      := TO_NUMBER(lt_po_quantity) * :2;  "); // 数量
+    sb.append("  ln_unit_price    := :3;                              "); // 単価
+    sb.append("  ln_kobiki_price  := ln_unit_price * (100 - 0) / 100; "); // 粉引後単価
+    sb.append("  ln_kobiki_amount := ln_kobiki_price * lt_quantity;   "); // 粉引後金額
+// 2008-07-11 D.Nihei ADD END
                  // 発注明細オープンIF登録
     sb.append("  INSERT INTO po_lines_interface pli  ("         ); // 発注明細オープンIF
     sb.append("     pli.interface_line_id "                     ); //    IF明細ID
@@ -2292,7 +2308,7 @@ public class XxpoUtility
     sb.append("    ,pli.shipment_num "                          ); //    納入番号
     sb.append("    ,pli.line_type_id "                          ); //    明細タイプID
     sb.append("    ,pli.item_id "                               ); //  1:品目ID
-    sb.append("    ,pli.uom_code "                              ); //  2:単位コード
+    sb.append("    ,pli.uom_code "                              ); //  2:単位
     sb.append("    ,pli.quantity "                              ); //    数量 3:出来高数量× 4:換算入数
     sb.append("    ,pli.unit_price "                            ); //  5:価格
     sb.append("    ,pli.promised_date "                         ); //  6:納入日
@@ -2305,8 +2321,14 @@ public class XxpoUtility
     sb.append("    ,pli.line_attribute11 "                      ); //  3:発注数量(出来高数量)
     sb.append("    ,pli.line_attribute13 "                      ); //    数量確定フラグ
     sb.append("    ,pli.line_attribute14 "                      ); //    金額確定フラグ
+// 2008-07-11 D.Nihei ADD START
+    sb.append("    ,pli.shipment_attribute2 "                   ); //    粉引後単価
+// 2008-07-11 D.Nihei ADD END
     sb.append("    ,pli.shipment_attribute3 "                   ); //    口銭区分
     sb.append("    ,pli.shipment_attribute6 "                   ); //    賦課金区分
+// 2008-07-11 D.Nihei ADD START
+    sb.append("    ,pli.shipment_attribute9 "                   ); //    粉引後金額
+// 2008-07-11 D.Nihei ADD END
     sb.append("    ,pli.ship_to_organization_id "               ); //  11:在庫組織ID(入庫)
     sb.append("    ,pli.created_by "                            ); //    作成日
     sb.append("    ,pli.creation_date "                         ); //    作成者
@@ -2319,23 +2341,44 @@ public class XxpoUtility
     sb.append("    ,1 "                                         ); // 明細番号
     sb.append("    ,1 "                                         ); // 納入番号
     sb.append("    ,FND_PROFILE.VALUE('XXPO_PO_LINE_TYPE_ID') " ); // 明細タイプID
-    sb.append("    ,:1 "                                        ); // 品目ID
-    sb.append("    ,:2 "                                        ); // 単位コード
-    sb.append("    ,TO_NUMBER(:3) * :4 "                        ); // 数量
-    sb.append("    ,:5 "                                        ); // 価格
-    sb.append("    ,:6 "                                        ); // 納入日
-    sb.append("    ,:7 "                                        ); // ロット番号
-    sb.append("    ,:8 "                                        ); // 工場コード
-    sb.append("    ,0 "                                         ); // 付帯コード
-    sb.append("    ,:9 "                                        ); // 在庫入数
-    sb.append("    ,:5 "                                        ); // 仕入定価
+// 2008-07-11 D.Nihei MOD START
+//    sb.append("    ,:1 "                                        ); // 品目ID
+//    sb.append("    ,:2 "                                        ); // 単位コード
+//    sb.append("    ,TO_NUMBER(:3) * :4 "                        ); // 数量
+//    sb.append("    ,:5  "                                       ); // 価格
+//    sb.append("    ,:6  "                                       ); // 納入日
+//    sb.append("    ,:7  "                                       ); // ロット番号
+//    sb.append("    ,:8  "                                       ); // 工場コード
+//    sb.append("    ,0   "                                       ); // 付帯コード
+//    sb.append("    ,:9  "                                       ); // 在庫入数
+//    sb.append("    ,:5  "                                       ); // 仕入定価
+//    sb.append("    ,:10 "                                       ); // 発注単位
+//    sb.append("    ,:3  "                                       ); // 発注数量
+//    sb.append("    ,'N' "                                       ); // 数量確定フラグ
+//    sb.append("    ,'N' "                                       ); // 金額確定フラグ
+//    sb.append("    ,'3'  "                                      ); // 口銭区分
+//    sb.append("    ,'3'  "                                      ); // 賦課金区分
+//    sb.append("    ,:11  "                                      ); // 在庫組織ID(入庫)
+    sb.append("    ,:4  "                                       ); // 品目ID
+    sb.append("    ,:5  "                                       ); // 単位
+    sb.append("    ,lt_quantity "                               ); // 数量
+    sb.append("    ,ln_unit_price "                             ); // 価格
+    sb.append("    ,:6  "                                       ); // 納入日
+    sb.append("    ,:7  "                                       ); // ロット番号
+    sb.append("    ,:8  "                                       ); // 工場コード
+    sb.append("    ,'0' "                                       ); // 付帯コード
+    sb.append("    ,:9  "                                       ); // 在庫入数
+    sb.append("    ,ln_unit_price "                             ); // 仕入定価
     sb.append("    ,:10 "                                       ); // 発注単位
-    sb.append("    ,:3 "                                        ); // 発注数量
+    sb.append("    ,lt_po_quantity "                            ); // 発注数量
     sb.append("    ,'N' "                                       ); // 数量確定フラグ
     sb.append("    ,'N' "                                       ); // 金額確定フラグ
+    sb.append("    ,ln_kobiki_price "                           ); // 粉引後単価
     sb.append("    ,'3' "                                       ); // 口銭区分
     sb.append("    ,'3' "                                       ); // 賦課金区分
+    sb.append("    ,ln_kobiki_amount "                          ); // 粉引後金額
     sb.append("    ,:11 "                                       ); // 在庫組織ID(入庫)
+// 2008-07-11 D.Nihei MOD END
     sb.append("    ,FND_GLOBAL.USER_ID "                        ); // 作成者
     sb.append("    ,SYSDATE "                                   ); // 作成日
     sb.append("    ,FND_GLOBAL.USER_ID "                        ); // 最終更新者
@@ -2353,20 +2396,37 @@ public class XxpoUtility
     try
     {
       // パラメータ設定(INパラメータ)
-      cstmt.setInt(1, XxcmnUtility.intValue(itemId));             // 品目ID
-      cstmt.setString(2, uomCode);                                // 単位コード
-      cstmt.setString(3, productedQuantity);                      // 出来高数量
-      cstmt.setInt(4, XxcmnUtility.intValue(conversionFactor));   // 換算入数    
-      cstmt.setString(5, unitPrice);                              // 在庫単価    
-      cstmt.setDate(6, XxcmnUtility.dateValue(promisedDate));     // 生産日
-      cstmt.setString(7, lotNumber);                              // ロット番号
-      cstmt.setString(8, factoryCode);                            // 工場コード
-      cstmt.setString(9, stockQty);                               // 在庫入数
-      cstmt.setString(10, productedUom);                          // 出来高数量単位コード
-      cstmt.setInt(11, XxcmnUtility.intValue(organizationId));    // 在庫組織ID(入庫)
+// 2008-07-11 D.Nihei MOD START
+//      cstmt.setInt(1, XxcmnUtility.intValue(itemId));             // 品目ID
+//      cstmt.setString(2, uomCode);                                // 単位コード
+//      cstmt.setString(3, productedQuantity);                      // 出来高数量
+//      cstmt.setInt(4, XxcmnUtility.intValue(conversionFactor));   // 換算入数    
+//      cstmt.setString(5, unitPrice);                              // 在庫単価    
+//      cstmt.setDate(6, XxcmnUtility.dateValue(promisedDate));     // 生産日
+//      cstmt.setString(7, lotNumber);                              // ロット番号
+//      cstmt.setString(8, factoryCode);                            // 工場コード
+//      cstmt.setString(9, stockQty);                               // 在庫入数
+//      cstmt.setString(10, productedUom);                          // 出来高数量単位コード
+//      cstmt.setInt(11, XxcmnUtility.intValue(organizationId));    // 在庫組織ID(入庫)
+//      
+//      // パラメータ設定(OUTパラメータ)
+//      cstmt.registerOutParameter(12, Types.VARCHAR);   // リターンコード
+      int i = 1;
+      cstmt.setString(i++, productedQuantity);                      // 出来高数量
+      cstmt.setInt(i++, XxcmnUtility.intValue(conversionFactor));   // 換算入数    
+      cstmt.setString(i++, unitPrice);                              // 在庫単価    
+      cstmt.setInt(i++, XxcmnUtility.intValue(itemId));             // 品目ID
+      cstmt.setString(i++, uomCode);                                // 単位
+      cstmt.setDate(i++, XxcmnUtility.dateValue(promisedDate));     // 生産日
+      cstmt.setString(i++, lotNumber);                              // ロット番号
+      cstmt.setString(i++, factoryCode);                            // 工場コード
+      cstmt.setString(i++, stockQty);                               // 在庫入数
+      cstmt.setString(i++, productedUom);                           // 出来高数量単位コード
+      cstmt.setInt(i++, XxcmnUtility.intValue(organizationId));     // 在庫組織ID(入庫)
       
       // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(12, Types.VARCHAR);   // リターンコード
+      cstmt.registerOutParameter(i++, Types.VARCHAR);   // リターンコード
+// 2008-07-11 D.Nihei MOD END
       
       //PL/SQL実行
       cstmt.execute();
@@ -3097,6 +3157,9 @@ public class XxpoUtility
     sb.append("   WHERE  xph.item_id            = :2   " ); // 品目ID
     sb.append("   AND    xph.factory_id         = :3   " ); // 工場ID
     sb.append("   AND    xph.price_type         = '1'  " ); // マスタ区分 1(仕入)
+// 2008-07-11 D.Nihei ADD START
+    sb.append("   AND    xph.futai_code         = '0'  " ); // 付帯コード
+// 2008-07-11 D.Nihei ADD END
 // 20080702 yoshimoto add Start
     sb.append("   AND    xph.supply_to_code IS NULL    " ); // 支給先コード IS NULL
 // 20080702 yoshimoto add End
