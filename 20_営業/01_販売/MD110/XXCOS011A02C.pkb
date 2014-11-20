@@ -7,7 +7,7 @@ AS
  * Description      : SQL-LOADERによってEDI在庫情報ワークテーブルに取込まれたEDI在庫情報データを
  *                     EDI在庫情報テーブルにそれぞれ登録します。
  * MD.050           : 在庫情報データ取込（MD050_COS_011_A02）
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ----------------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *                                      [0001289]顧客導出エラー、品目導出エラー時の取得項目修正
  *  2009/09/24    1.6   M.Sano          [0001289]レビュー指摘対応 (「顧客コード」の妥当性チェックエラー処理修正)
  *  2010/03/04    1.7   T.Nakano        [E_本稼動_01695]EDI受信日の追加
+ *  2011/07/28    1.8   K.Kiriu         [E_本稼動_07906]流通BMS対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -699,10 +700,20 @@ AS
     chain_peculiar_area_footer         xxcos_edi_inventory_work.chain_peculiar_area_footer%TYPE,
                 -- ステータス                          
     err_status                         xxcos_edi_inventory_work.err_status%TYPE,
--- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
+/* 2011/07/28 Ver1.8 Mod Start */
+---- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
+--                -- EDI受信日
+--    creation_date                      xxcos_edi_inventory_work.creation_date%TYPE
+---- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
                 -- EDI受信日
-    creation_date                      xxcos_edi_inventory_work.creation_date%TYPE
--- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
+    creation_date                      xxcos_edi_inventory_work.creation_date%TYPE,
+/* 2011/07/28 Ver1.8 Mod End   */
+/* 2011/07/28 Ver1.8 Add Start */
+                -- 流通ＢＭＳヘッダデータ
+    bms_header_data                    xxcos_edi_inventory_work.bms_header_data%TYPE,
+                -- 流通ＢＭＳ明細データ
+    bms_line_data                      xxcos_edi_inventory_work.bms_line_data%TYPE
+/* 2011/07/28 Ver1.8 Add End   */
   );
   --
   -- ===============================
@@ -1225,10 +1236,20 @@ AS
     item_code                          xxcos_edi_inventory.item_code%TYPE,
                 -- 単位コード（EBS）
     ebs_uom_code                       xxcos_edi_inventory.ebs_uom_code%TYPE,
--- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
+/* 2011/07/28 Ver1.8 Mod Start */
+---- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
+--                -- EDI受信日
+--    edi_received_date                  xxcos_edi_inventory.edi_received_date%TYPE
+---- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
                 -- EDI受信日
-    edi_received_date                  xxcos_edi_inventory.edi_received_date%TYPE
--- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
+    edi_received_date                  xxcos_edi_inventory.edi_received_date%TYPE,
+/* 2011/07/28 Ver1.8 Mod End   */
+/* 2011/07/28 Ver1.8 Add Start */
+                -- 流通ＢＭＳヘッダデータ
+    bms_header_data                    xxcos_edi_inventory.bms_header_data%TYPE,
+                -- 流通ＢＭＳ明細データ
+    bms_line_data                      xxcos_edi_inventory.bms_line_data%TYPE
+/* 2011/07/28 Ver1.8 Add End   */
   );
   -- ===============================
   -- ユーザー定義グローバルTABLE型
@@ -2516,6 +2537,14 @@ AS
     gt_req_edi_inv_data(in_line_cnt).edi_received_date     
                                         :=  gt_ediinv_work_data(in_line_cnt).creation_date;
 -- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
+/* 2011/07/28 Ver1.8 Add Start */
+                -- 流通ＢＭＳヘッダデータ
+    gt_req_edi_inv_data(in_line_cnt).bms_header_data
+                                        := gt_ediinv_work_data(in_line_cnt).bms_header_data;
+                -- 流通ＢＭＳ明細データ
+    gt_req_edi_inv_data(in_line_cnt).bms_line_data
+                                        := gt_ediinv_work_data(in_line_cnt).bms_line_data;
+/* 2011/07/28 Ver1.8 Add End   */
 --
     -- ***************************************
     -- ***        実処理の記述             ***
@@ -3580,9 +3609,16 @@ AS
           program_application_id,
           program_id,
           program_update_date,
--- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
-          edi_received_date
--- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
+/* 2011/07/28 Ver1.8 Mod Start */
+---- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
+--          edi_received_date
+---- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
+          edi_received_date,
+/* 2011/07/28 Ver1.8 Mod End   */
+/* 2011/07/28 Ver1.8 Add Start */
+          bms_header_data,
+          bms_line_data
+/* 2011/07/28 Ver1.8 Add End   */
         )
       VALUES
         (
@@ -3812,9 +3848,16 @@ AS
           cn_program_application_id,          -- コンカレント・プログラム・アプリケーションID
           cn_program_id,                      -- コンカレント・プログラムID
           cd_program_update_date,             -- プログラム更新日
--- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
-          gt_req_edi_inv_data(ln_no).edi_received_date                 -- EDI受信日
--- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
+/* 2011/07/28 Ver1.8 Mod Start */
+---- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add Start
+--          gt_req_edi_inv_data(ln_no).edi_received_date                 -- EDI受信日
+---- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakano Add End
+          gt_req_edi_inv_data(ln_no).edi_received_date,                -- EDI受信日
+/* 2011/07/28 Ver1.8 Mod End   */
+/* 2011/07/28 Ver1.8 Add Start */
+          gt_req_edi_inv_data(ln_no).bms_header_data,                  -- 流通ＢＭＳヘッダデータ
+          gt_req_edi_inv_data(ln_no).bms_line_data                     -- 流通ＢＭＳ明細データ
+/* 2011/07/28 Ver1.8 Add End   */
         );
 --
     END LOOP  xxcos_edi_inventory_insert;
@@ -4425,9 +4468,16 @@ AS
       ediinvwk.collect_bottle_amt_sum         collect_bottle_amt_sum,         -- 回収容器金額合計
       ediinvwk.chain_peculiar_area_footer     chain_peculiar_area_footer,     -- ﾁｪｰﾝ店固有ｴﾘｱ(ﾌｯﾀ)
       ediinvwk.err_status                     err_status,                     -- ｽﾃｰﾀｽ
--- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakanao Add Start
-      ediinvwk.creation_date                  creation_date                   -- 作成日
--- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakanao Add End
+/* 2011/07/28 Ver1.8 Mod Start */
+---- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakanao Add Start
+--      ediinvwk.creation_date                  creation_date                   -- 作成日
+---- Ver1.7  [E_本稼動_01695]  2010/03/04 T.Nakanao Add End
+      ediinvwk.creation_date                  creation_date,                  -- 作成日
+/* 2011/07/28 Ver1.8 Mod Start */
+/* 2011/07/28 Ver1.8 Add Start */
+      ediinvwk.bms_header_data                bms_header_data,                -- 流通ＢＭＳヘッダデータ
+      ediinvwk.bms_line_data                  bms_line_data                   -- 流通ＢＭＳ明細データ
+/* 2011/07/28 Ver1.8 Add End   */
     FROM    xxcos_edi_inventory_work    ediinvwk                            -- EDI在庫情報ワークテーブル
     WHERE   ediinvwk.if_file_name       =    lv_cur_param3                  -- インタフェースファイル名
       AND   ediinvwk.err_status         =    lv_cur_param1                  -- ステータス

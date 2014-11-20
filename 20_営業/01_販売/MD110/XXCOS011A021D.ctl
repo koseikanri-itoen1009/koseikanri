@@ -6,7 +6,7 @@
 --              EDI在庫情報ワークテーブルに格納する
 -- MD.050       :在庫情報データ取込（MD050_COS_011_A02）
 -- MD.070       :
--- Version      :1.4
+-- Version      :1.5
 --
 -- Target Table :xxcos_edi_inventory_work(EDI在庫情報ワークテーブル)
 --
@@ -19,6 +19,7 @@
 --  2009/02/24     1.2 T.Nakamura       結合テスト不具合#131 IFファイル名の設定値を修正
 --  2009/06/11     1.3 M.Sano           [T1_1353]前スペース削除対応
 --  2009/12/01     1.4 M.Sano           [E_本稼動_00255]2桁以上の少数点不正対応
+--  2011/07/28     1.5 K.Kiriu          [E_本稼動_07906]流通BMS対応
 --
 -- **************************************************************************************
 LOAD DATA
@@ -258,6 +259,10 @@ APPEND INTO TABLE xxcos_edi_inventory_work
    COLLECT_BOTTLE_AMT_SUM         POSITION(2757:2768) INTEGER EXTERNAL(12) "decode(:COLLECT_BOTTLE_AMT_SUM,        '000000000000',NULL, TO_NUMBER(SUBSTRB(:COLLECT_BOTTLE_AMT_SUM, 1, 10)||'.'||SUBSTRB(:COLLECT_BOTTLE_AMT_SUM, 11, 2)))",             --回収容器金額合計
    CHAIN_PECULIAR_AREA_FOOTER     POSITION(2769:2968) CHAR(200)             NULLIF  CHAIN_PECULIAR_AREA_FOOTER = BLANKS,            --チェーン店固有エリア（フッター）
 -- 2009/12/01 M.Sano Ver.1.4 mod end
+-- 2011/07/28 K.Kiriu Ver.1.5 add start
+   BMS_HEADER_DATA                POSITION(3000:4999) CHAR(2000)            NULLIF  BMS_HEADER_DATA = BLANKS,                       --流通ＢＭＳヘッダデータ
+   BMS_LINE_DATA                  POSITION(5000:6499) CHAR(1500)            NULLIF  BMS_LINE_DATA   = BLANKS,                       --流通ＢＭＳ明細データ
+-- 2011/07/28 K.Kiriu Ver.1.5 add end
 -- 2009/02/24 T.Nakamura Ver.1.2 mod start
 --   IF_FILE_NAME                   CHAR(255),      --インターフェースファイル名
    IF_FILE_NAME                   CONSTANT "???????????",  --インターフェースファイル名
