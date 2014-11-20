@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSalesPlanResorcesLovVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso019002j.lov.server.XxcsoSalesPlanResorcesLovVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso019002j.lov.server.XxcsoSalesPlanResorcesLovVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT   xrv.employee_number  AS employee_number
+        ,xrv.full_name        AS full_name
+FROM     xxcso_resources_v2 xrv
+        ,(
+            SELECT   xxcso_util_common_pkg.get_emp_parameter(
+                       xrv.work_base_code_new
+                      ,xrv.work_base_code_old
+                      ,xrv.issue_date
+                      ,TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
+                     ) AS base_code
+            FROM     xxcso_resources_v2 xrv
+            WHERE    xrv.user_id = fnd_global.user_id
+         ) login_user
+WHERE    (
+           (
+             TO_DATE(xrv.issue_date, 'YYYYMMDD') > TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+             AND
+             xrv.work_base_code_old = login_user.base_code
+           )
+           OR
+           (
+             TO_DATE(xrv.issue_date, 'YYYYMMDD') <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+             AND
+             xrv.work_base_code_new = login_user.base_code
+           )
+         )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="EmployeeNumber"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EMPLOYEE_NUMBER"
+      Expression="EMPLOYEE_NUMBER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FullName"
+      IsPersistent="false"
+      Precision="301"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FULL_NAME"
+      Expression="FULL_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="301" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>
