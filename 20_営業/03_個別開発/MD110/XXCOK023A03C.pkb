@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK023A03C(body)
  * Description      : 運送費予算及び運送費実績を拠点別品目別（単品別）月別にCSVデータ形式で要求出力します。
  * MD.050           : 運送費予算一覧表出力 MD050_COK_023_A03
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/02/06    1.1   SCS T.Taniguchi  [障害COK_017] クイックコードビューの有効日・無効日の判定追加
  *  2009/03/02    1.2   SCS T.Taniguchi  [障害COK_069] 入力パラメータ「職責タイプ」により、拠点の取得範囲を制御
  *  2009/05/15    1.3   SCS A.Yano       [障害T1_1001] 出力される金額単位を千円に修正
+ *  2009/09/03    1.4   S.Moriyama       [障害0001257] OPM品目マスタ取得条件追加
  *
  *****************************************************************************************/
 --
@@ -959,6 +960,10 @@ AS
              AND    xsibh.item_code       = msib.segment1
              AND    xsibh.apply_flag      = cv_flag_y
              AND    xsibh.policy_group IS NOT NULL
+-- 2009/09/03 Ver.1.4 [障害0001257] SCS S.Moriyama ADD START
+             AND    gd_process_date BETWEEN ximb.start_date_active
+                                    AND NVL ( ximb.end_date_active , gd_process_date )
+-- 2009/09/03 Ver.1.4 [障害0001257] SCS S.Moriyama ADD END
              AND    (xsibh.apply_date,xsibh.item_id) IN (SELECT MAX( xsibh.apply_date ), -- 適用日
                                                                 item_id                  -- 品目ID
                                                          FROM   xxcmm_system_items_b_hst xsibh

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK023A01C(body)
  * Description      : 運送費予算算出
  * MD.050           : 運送費予算算出 MD050_COK_023_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/12/22    1.3   A.Yano           メッセージ出力、ログ出力修正
  *  2009/03/25    1.4   A.Yano           [障害T1_0064] オープン年度を取得する条件追加
  *  2009/05/12    1.5   A.Yano           [障害T1_0772] 設定単価エラーメッセージに品目コード追加
+ *  2009/09/03    1.6   S.Moriyama       [障害0001257] OPM品目マスタ取得条件追加
  *
  *****************************************************************************************/
 --
@@ -485,6 +486,10 @@ AS
     AND    mcst.language                = USERENV( 'LANG' )
     AND    mcst.category_set_name       = gv_item_div_h
     AND    msib.organization_id         = gn_organization_id
+-- 2009/09/03 Ver.1.6 [障害0001257] SCS S.Moriyama ADD START
+    AND    gd_process_date BETWEEN ximb.start_date_active
+                           AND NVL ( ximb.end_date_active , gd_process_date )
+-- 2009/09/03 Ver.1.6 [障害0001257] SCS S.Moriyama ADD END
     ;
 --
   EXCEPTION
