@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A03R(body)
  * Description      : 工場入庫明細リスト
  * MD.050           : 工場入庫明細リスト MD050_COI_009_A03
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/10/22    1.7   H.Sasaki         [障害E_T4_00057]資材品目の取得方法変更
  *  2010/02/02    1.8   N.Abe            [E_本稼動_01411]商品分のPT対応
  *  2014/03/26    1.9   K.Nakamura       [E_本稼動_11556]資材取引の抽出条件修正、不要な定数・変数削除
+ *  2014/08/26    1.10  S.Niki           [E_本稼動_12271]パフォーマンス改善対応
  *
  *****************************************************************************************/
 --
@@ -733,7 +734,15 @@ AS
              ,sub.item_no
              ,sub.item_short_name
              ,sub.item_category
-      FROM    (SELECT  /*+ use_nl(iimb ximb cat msib mmt msi hca) */
+-- == V1.10 Moded START
+--      FROM    (SELECT  /*+ use_nl(iimb ximb cat msib mmt msi hca) */
+      FROM    (SELECT  /*+ 
+                         LEADING(msi mmt)
+                         USE_NL(iimb ximb msib mmt msi hca)
+                         INDEX(msi MTL_SECONDARY_INVENTORIES_N1)
+                         INDEX(mmt MTL_MATERIAL_TRANSACTIONS_N3)
+                       */
+-- == V1.10 Moded END
                        msi.attribute7                in_base_code                   -- 入庫拠点
                       ,SUBSTRB(hca.account_name,1,8) account_name                   -- 入庫拠点名
                       ,mmt.inventory_item_id         inventory_item_id              -- 品目ID
@@ -784,7 +793,10 @@ AS
 -- == 2014/03/26 V1.9 Modified START ===============================================================
 --               AND    mmt.transaction_date           BETWEEN ximb.start_date_active
 --                                                     AND     NVL(ximb.end_date_active, mmt.transaction_date)
-               AND    TRUNC(mmt.transaction_date)    BETWEEN ximb.start_date_active AND ximb.end_date_active
+-- == V1.10 Moded START
+--               AND    TRUNC(mmt.transaction_date)    BETWEEN ximb.start_date_active AND ximb.end_date_active
+               AND    mmt.transaction_date           BETWEEN ximb.start_date_active AND ximb.end_date_active
+-- == V1.10 Moded END
 -- == 2014/03/26 V1.9 Modified END   ===============================================================
               ) sub
       WHERE     sub.item_category = NVL(gr_param.item_ctg, sub.item_category)
