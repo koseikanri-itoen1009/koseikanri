@@ -7,7 +7,7 @@ AS
  * Description      : 物流構成アドオンのアップロード
  * MD.050           : ファイルアップロード T_MD050_BPO_990
  * MD.070           : 物流構成アドオンのアップロード T_MD070_BPO_99G
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ----------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/04/18    1.1   Oracle 山根 一浩  変更要求No63対応
  *  2008/07/08    1.2   Oracle 山根 一浩  I_S_192対応
  *  2009/06/10    1.3   SCS 丸下          本番障害1204、1439対応
+ *  2009/06/22    1.4   SCS 丸下          本番障害1204、1439追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1050,6 +1051,7 @@ AS
           lb_col    := TRUE;
         END IF;
 --
+/* 2009/06/22 DEL START
         -- CSV形式を項目ごとにレコードに格納
         IF (ln_col = 1) THEN
           fdata_tbl(gn_target_cnt).item_code            := SUBSTR(lv_line, 1, ln_length);
@@ -1078,6 +1080,36 @@ AS
           fdata_tbl(gn_target_cnt).sourcing_rules_id    := SUBSTR(lv_line, 1, ln_length);
 -- 2009/06/10 ADD END
         END IF;
+  2009/06/22 DEL END */
+-- 2009/06/22 ADD START
+        -- CSV形式を項目ごとにレコードに格納
+        -- 項目位置変更
+        IF (ln_col = 2) THEN
+          fdata_tbl(gn_target_cnt).item_code            := SUBSTR(lv_line, 1, ln_length);
+        ELSIF  (ln_col = 3) THEN
+          fdata_tbl(gn_target_cnt).base_code            := SUBSTR(lv_line, 1, ln_length);
+        ELSIF  (ln_col = 4) THEN
+          fdata_tbl(gn_target_cnt).ship_to_code         := SUBSTR(lv_line, 1, ln_length);
+        ELSIF  (ln_col = 5) THEN
+          fdata_tbl(gn_target_cnt).start_date_active    := SUBSTR(lv_line, 1, ln_length);
+        ELSIF  (ln_col = 6) THEN
+          fdata_tbl(gn_target_cnt).end_date_active      := SUBSTR(lv_line, 1, ln_length);
+        ELSIF  (ln_col = 7) THEN
+          fdata_tbl(gn_target_cnt).delivery_whse_code   := SUBSTR(lv_line, 1, ln_length);
+        ELSIF  (ln_col = 8) THEN
+          fdata_tbl(gn_target_cnt).move_from_whse_code1 := SUBSTR(lv_line, 1, ln_length);
+        ELSIF  (ln_col = 9) THEN
+          fdata_tbl(gn_target_cnt).move_from_whse_code2 := SUBSTR(lv_line, 1, ln_length);
+        ELSIF  (ln_col = 10) THEN
+          fdata_tbl(gn_target_cnt).vendor_site_code1    := SUBSTR(lv_line, 1, ln_length);
+        ELSIF  (ln_col = 11) THEN
+          fdata_tbl(gn_target_cnt).vendor_site_code2    := SUBSTR(lv_line, 1, ln_length);
+        ELSIF  (ln_col = 12) THEN
+          fdata_tbl(gn_target_cnt).plan_item_flag       := SUBSTR(lv_line, 1, ln_length);
+        ELSIF  (ln_col = 1) THEN
+          fdata_tbl(gn_target_cnt).sourcing_rules_id    := SUBSTR(lv_line, 1, ln_length);
+        END IF;
+-- 2009/06/22 ADD END
 --
         -- strは今回取得した行を除く（カンマはのぞくため、ln_length + 2）
         IF (lb_col = TRUE) THEN
