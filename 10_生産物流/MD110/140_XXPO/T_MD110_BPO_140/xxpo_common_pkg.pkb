@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxpo_common_pkg
+create or replace PACKAGE BODY xxpo_common_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2007. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name           : xxpo_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_共通関数（補足資料）.xls
- * Version                : 1.0
+ * Version                : 1.2
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -14,6 +14,7 @@ AS
  *  -------------------- ---- ----- --------------------------------------------------
  *  inventory_posting     P    -     在庫数量API（Formsからのコール用）
  *  update_po             F    NUM   発注変更API（Formsからのコール用）
+ *  key_delrec_chk        F    NUM   仕入単価マスタ削除前チェック処理（Formsからのコール用）
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -21,6 +22,7 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/01/21   1.0   K.Aizawa         新規作成
  *  2008/04/08   1.1   K.Aizawa         発注変更APIを追加
+ *  2010/03/01   1.2   M.Miyagawa       仕入単価マスタ削除前チェック処理追加
  *
  *****************************************************************************************/
 --
@@ -70,7 +72,6 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
 --
-
   /**********************************************************************************
    * Function Name    : inventory_posting
    * Description      : 在庫数量API（Formsからのコール用）
@@ -359,5 +360,167 @@ AS
 --
   END update_po;
 --
+-- 2010-03-01 M.Miyagawa Add Start E_本稼動_01315対応
+  /**********************************************************************************
+   * Function Name    : key_delrec_chk
+   * Description      : 仕入単価マスタ削除前チェック処理（Formsコール用）
+   ***********************************************************************************/
+  FUNCTION key_delrec_chk
+ ( p_supply_to_id             IN VARCHAR2
+ , p_item_id                  IN NUMBER
+ , p_vendor_id                IN NUMBER
+ , p_factory_code             IN VARCHAR2
+ , p_futai_code               IN VARCHAR2
+ , p_start_date_active        IN VARCHAR2
+ , p_end_date_active          IN VARCHAR2
+ ) RETURN NUMBER
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'key_delrec_chk'; --プログラム名
+--
+    -- 変数宣言
+    lv_select                   VARCHAR2(32000) ;
+    lv_from                     VARCHAR2(32000) ;
+    lv_where                    VARCHAR2(32000) ;
+    lv_sql                      VARCHAR2(32000) ;     -- データ結合用ＳＱＬ
+    lv_unit_price_calc_code     VARCHAR2(1)     ;     -- 仕入単価導出日タイプ格納用
+--
+    -- ローカル・カーソル
+    TYPE        ref_cursor IS REF CURSOR ;
+    lc_refcur   ref_cursor ;
+    --レコード型変数
+    TYPE        refcur_rect IS RECORD ( rec_count NUMBER ) ;
+    refcur_rec  refcur_rect ;
+--
+  BEGIN
+--
+    -- ----------------------------------------------------
+    -- ＳＥＬＥＣＴ句生成
+    -- ----------------------------------------------------
+    lv_select := '  SELECT '
+              || 'COUNT(1)'
+              ;
+--
+    -- ----------------------------------------------------
+    -- ＦＲＯＭ句生成
+    -- ----------------------------------------------------
+    lv_from := ' FROM'
+            || ' po_headers_all       pha '
+            || ',po_lines_all         pla '
+            || ',xxcmn_item_mst_v     ximv '
+            ;
+-- 直送区分:支給に限る Start
+    IF p_supply_to_id IS NOT NULL THEN
+      lv_from := lv_from 
+            || ',xxcmn_vendor_sites_v xvsv '
+            || ',xxcmn_vendors_v      xvv '
+            ;
+    END IF;
+-- 直送区分:支給に限る End
+--
+-- 画面の品目IDを元に品目マスタ.仕入単価導出日タイプを取得
+    SELECT ximv.unit_price_calc_code
+    INTO   lv_unit_price_calc_code
+    FROM   xxcmn_item_mst_v    ximv
+    WHERE  ximv.item_id = p_item_id ;
+--
+-- 品目マスタ.仕入単価導出日タイプ＝製造日に限る Start
+    IF lv_unit_price_calc_code = '1' THEN
+      lv_from := lv_from 
+            || ',ic_lots_mst          ilm '
+            ;
+    END IF;
+-- 品目マスタ.仕入単価導出日タイプ＝製造日に限る End
+--
+    -- ----------------------------------------------------
+    -- ＷＨＥＲＥ句生成
+    -- ----------------------------------------------------
+    lv_where := ' WHERE '
+             || '     pha.po_header_id = pla.po_header_id '
+             || ' AND pla.item_id      = ximv.inventory_item_id '
+             || ' AND pha.attribute1   <> ''99'' '
+             || ' AND pla.cancel_flag  = ''N'' '
+             || ' AND ximv.item_id     = ' || p_item_id      -- 画面.OPM品目ID
+             || ' AND pha.vendor_id    = ' || p_vendor_id    -- 画面.取引先ID
+             || ' AND pla.attribute2   = ' || '''' || p_factory_code || ''''  -- 画面.工場コード
+             || ' AND pla.attribute3   = ' || '''' || p_futai_code   || ''''  -- 画面.付帯コード
+             ;
+-- 直送区分:支給に限る Start
+    IF p_supply_to_id IS NOT NULL THEN
+      lv_where := lv_where 
+             || ' AND pha.attribute6   = ''3'' '         -- 直送区分：支給 = 固定
+             || ' AND xvv.vendor_div   = ''11'' '        -- 仕入先区分：支給先 = 固定
+             || ' AND xvsv.vendor_id   = xvv.vendor_id '
+             || ' AND xvsv.vendor_site_code = pha.attribute7 '
+             ;
+    END IF;
+-- 直送区分:支給に限る End
+--
+-- 品目マスタ.仕入単価導出日タイプ＝製造日に限る Start
+    IF lv_unit_price_calc_code = '1' THEN
+      lv_where := lv_where
+             || ' AND ilm.item_id      = ximv.item_id '
+             || ' AND ilm.lot_no       = pla.attribute1 '
+             || ' AND ('
+             || '        ( ximv.unit_price_calc_code = ''1'' ) ' -- 仕入単価導出日タイプ＝製造日
+             || '        AND
+                        ( ( FND_DATE.STRING_TO_DATE( '''|| p_start_date_active ||''' , ''YYYY/MM/DD'' ) <= FND_DATE.STRING_TO_DATE( ilm.attribute1 , ''YYYY/MM/DD'' ))    
+                          AND ( FND_DATE.STRING_TO_DATE( '''|| p_end_date_active ||''' , ''YYYY/MM/DD'' )   >= FND_DATE.STRING_TO_DATE( ilm.attribute1 , ''YYYY/MM/DD'' )) 
+                        )
+                      ) '
+             ;
+    END IF;
+-- 品目マスタ.仕入単価導出日タイプ＝製造日に限る End
+--
+-- 品目マスタ.仕入単価導出日タイプ＝納入日に限る Start
+    IF lv_unit_price_calc_code = '2' THEN
+      lv_where := lv_where
+             || ' AND ('
+             || '        ( ximv.unit_price_calc_code = ''2'' ) ' -- 仕入単価導出日タイプ＝納入日
+             || '        AND
+                        ( ( FND_DATE.STRING_TO_DATE( '''|| p_start_date_active ||''', ''YYYY/MM/DD'' ) <= FND_DATE.STRING_TO_DATE( pha.attribute4 , ''YYYY/MM/DD'' ))            
+                          AND ( FND_DATE.STRING_TO_DATE( '''|| p_end_date_active ||''' , ''YYYY/MM/DD'' )   >= FND_DATE.STRING_TO_DATE( pha.attribute4 , ''YYYY/MM/DD'' )) 
+                        )  
+                      ) '
+             ;
+    END IF;
+-- 品目マスタ.仕入単価導出日タイプ＝納入日に限る End
+--
+    lv_where := lv_where
+           || ' AND  rownum = 1 '
+           ; 
+--
+    -- ====================================================
+    -- ＳＱＬ生成
+    -- ====================================================
+    lv_sql := lv_select || lv_from || lv_where  ;
+--
+    -- ====================================================
+    -- データ抽出
+    -- ====================================================
+    -- カーソルオープン
+    OPEN lc_refcur FOR lv_sql ;
+    -- フェッチ
+    FETCH lc_refcur INTO refcur_rec ;
+    -- カーソルクローズ
+    CLOSE lc_refcur ;
+--
+    RETURN refcur_rec.rec_count;
+--
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+    RETURN 2;
+--
+--###################################  固定部 END   #########################################
+--
+  END key_delrec_chk;
+-- 2010-03-01 M.Miyagawa Add End
 END xxpo_common_pkg;
-/

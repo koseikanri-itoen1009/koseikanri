@@ -6,7 +6,7 @@ AS
  * Package Name           : xxpo_common_pkg(SPEC)
  * Description            : 共通関数(SPEC)
  * MD.070(CMD.050)        : なし
- * Version                : 1.0
+ * Version                : 1.2
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -14,6 +14,7 @@ AS
  *  -------------------- ---- ----- --------------------------------------------------
  *  inventory_posting     P    -     在庫数量API（Formsからのコール用）
  *  update_po             F    NUM   発注変更API（Formsからのコール用）
+ *  key_delrec_chk        F    NUM   仕入単価マスタ削除前チェック処理（Formsからのコール用）
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -21,6 +22,7 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/01/21   1.0   K.Aizawa         新規作成
  *  2008/04/08   1.1   K.Aizawa         発注変更APIを追加
+ *  2010/03/01   1.2   M.Miyagawa       仕入単価マスタ削除前チェック処理追加
  *
  *****************************************************************************************/
 --  
@@ -112,6 +114,18 @@ AS
   , p_module_name           IN  VARCHAR2 DEFAULT 'xxpo_common_pkg' -- 呼出元モジュール名（ログ出力用）
   , p_package_name          IN  VARCHAR2 DEFAULT 'po_update'       -- 呼出元パッケージ名（ログ出力用
   ) RETURN NUMBER;
+--
+-- 2010-03-01 M.Miyagawa Add Start E_本稼動_01315対応
+  FUNCTION key_delrec_chk
+ ( p_supply_to_id             IN VARCHAR2
+ , p_item_id                  IN NUMBER
+ , p_vendor_id                IN NUMBER
+ , p_factory_code             IN VARCHAR2
+ , p_futai_code               IN VARCHAR2
+ , p_start_date_active        IN VARCHAR2
+ , p_end_date_active          IN VARCHAR2
+ ) RETURN NUMBER;
+-- 2010-03-01 M.Miyagawa Add End
 --
 END xxpo_common_pkg;
 /
