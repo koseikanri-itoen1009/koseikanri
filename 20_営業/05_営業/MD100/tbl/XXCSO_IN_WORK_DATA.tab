@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_in_work_data
  * Description     : 作業データテーブル
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -12,7 +12,8 @@
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
  *  2009/03/10    1.1  D.Abe         シーケンス番号を追加
- *  2009/03/10    1.2  K.Satomura    システムテスト障害対応（T1_1017,T1_1107)
+ *  2009/05/29    1.2  K.Satomura    システムテスト障害対応（T1_1017,T1_1107)
+ *  2009/06/04    1.3  K.Satomura    システムテスト障害対応（T1_1017,T1_1107再修正)
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_in_work_data
 (
@@ -68,7 +69,11 @@ CREATE TABLE xxcso.xxcso_in_work_data
   install2_processed_date         DATE,
   vdms_interface_flag             VARCHAR2(1),
   vdms_interface_date             DATE,
-  process_no_target_flag          VARCHAR2(1),
+  /* 2009.06.04 K.Satomura T1_1017,T1_1107再修正対応 START */
+  --process_no_target_flag          VARCHAR2(1),
+  install1_process_no_target_flg  VARCHAR2(1),
+  install2_process_no_target_flg  VARCHAR2(1),
+  /* 2009.06.04 K.Satomura T1_1017,T1_1107再修正対応 END */
   /* 2009.05.29 K.Satomura T1_1017,T1_1107対応 END */
   created_by                      NUMBER(15)        NOT NULL,
   creation_date                   DATE              NOT NULL,
@@ -139,7 +144,11 @@ COMMENT ON COLUMN xxcso.xxcso_in_work_data.install1_processed_date              
 COMMENT ON COLUMN xxcso.xxcso_in_work_data.install2_processed_date                IS '物件２処理済日';
 COMMENT ON COLUMN xxcso.xxcso_in_work_data.vdms_interface_flag                    IS '自販機S連携フラグ';
 COMMENT ON COLUMN xxcso.xxcso_in_work_data.vdms_interface_date                    IS '自販機S連携日';
-COMMENT ON COLUMN xxcso.xxcso_in_work_data.process_no_target_flag                 IS '作業依頼処理対象外フラグ';
+/* 2009.06.04 K.Satomura T1_1017,T1_1107再修正対応 START */
+--COMMENT ON COLUMN xxcso.xxcso_in_work_data.process_no_target_flag                 IS '作業依頼処理対象外フラグ';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.install1_process_no_target_flg         IS '物件１作業依頼処理対象外フラグ';
+COMMENT ON COLUMN xxcso.xxcso_in_work_data.install2_process_no_target_flg         IS '物件２作業依頼処理対象外フラグ';
+/* 2009.06.04 K.Satomura T1_1017,T1_1107再修正対応 END */
 /* 2009.05.29 K.Satomura T1_1017,T1_1107対応 END */
 COMMENT ON COLUMN xxcso.xxcso_in_work_data.created_by                             IS '作成者';
 COMMENT ON COLUMN xxcso.xxcso_in_work_data.creation_date                          IS '作成日';
