@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A04C(body)
  * Description      : 所属マスタIF出力（自販機管理）
  * MD.050           : 所属マスタIF出力（自販機管理） MD050_CMM_005_A04
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/05/15    1.4   Yutaka.Kuboshima 障害T1_1026の対応
  *  2009/05/21    1.5   Yutaka.Kuboshima 障害T1_1129の対応
  *  2009/06/05    1.6   Yutaka.Kuboshima 障害T1_1320の対応
+ *  2009/06/09    1.7   Yutaka.Kuboshima 障害T1_1320の対応
  *
  *****************************************************************************************/
 --
@@ -687,12 +688,17 @@ AS
       AND    (  ( xhdv.last_update_date BETWEEN id_last_update_date_from
                                             AND id_last_update_date_to  )
              OR ( xpty.last_update_date BETWEEN id_last_update_date_from 
-                                            AND id_last_update_date_to  ) 
+                                            AND id_last_update_date_to  )
 -- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
              OR (  hp.last_update_date  BETWEEN id_last_update_date_from
                                             AND id_last_update_date_to
                AND hp.duns_number_c = cv_cust_sts_stop ) )
 -- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
+-- 2009/06/09 Ver1.7 add start by Yutaka.Kuboshima
+      AND    xpty.start_date_active = (SELECT MAX(xpv.start_date_active)
+                                       FROM xxcmn_parties xpv
+                                       WHERE xpv.party_id = xpty.party_id)
+-- 2009/06/09 Ver1.7 add end by Yutaka.Kuboshima
       ORDER BY
              xhdv.dpt6_cd ASC
       ;
