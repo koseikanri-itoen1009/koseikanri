@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS006A04R (body)
  * Description      : 出荷依頼書
  * MD.050           : 出荷依頼書 MD050_COS_006_A04
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,8 @@ AS
  *                                       クイックコード取得時のパフォーマンス対応
  *  2013/03/26    1.7   T.Ishiwata       【E_本稼動_10343対応】
  *                                        パラメータ「出力区分」追加、文言、タイトル変更
+ *  2013/05/16    1.8   T.Ishiwata       【E_本稼動_10683対応】
+ *                                        ヒント句の見直し
  *
  *
  *****************************************************************************************/
@@ -642,6 +644,9 @@ AS
       SELECT
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
        /*+ INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N10)
+-- 2013/05/16 Ver.1.8 Add T.Ishiwata Start
+           NO_INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+-- 2013/05/16 Ver.1.8 Add T.Ishiwata End
           USE_NL(ooha oola oos otta ottt hla xla hca xca hcsua hcasa hps hp hl msib mucc msi)
        */
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata End
