@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.0
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,7 +34,8 @@ AS
  *  2008/06/05    1.7   Kazuo Kumamoto   結合テスト障害対応(出荷の相手先取得方法を変更)
  *  2008/06/05    1.8   Kazuo Kumamoto   結合テスト障害対応(出荷の受払区分アドオンマスタ抽出条件変更)
  *  2008/06/09    1.9   Kazuo Kumamoto   結合テスト障害対応(生産の日付条件変更)
- *  2008/06/09    2.0   Kazuo Kumamoto   結合テスト障害対応(出荷の受払区分アドオンマスタ抽出条件追加)
+ *  2008/06/09    1.10  Kazuo Kumamoto   結合テスト障害対応(出荷の受払区分アドオンマスタ抽出条件追加)
+ *  2008/06/23    1.11  Kazuo Kumamoto   結合テスト障害対応(単位の出力内容変更)
  *
  *****************************************************************************************/
 --
@@ -1311,15 +1312,21 @@ AS
        ,DECODE(ximv.lot_ctl
               ,gn_lotctl_yes,SUBSTRB(ilm.attribute2,1,6)
               ,NULL)                                          symbol              --固有記号
-       ,CASE slip.territory
-          WHEN gv_trtry_po THEN ximv.item_um                                        --発注：単位
-          WHEN gv_trtry_mv THEN ximv.item_um                                        --移動：単位
-          WHEN gv_trtry_sh THEN ximv.conv_unit                                      --出荷：入出庫換算単位
-          WHEN gv_trtry_rt THEN ximv.conv_unit                                      --倉替返品：入出庫換算単位
-          WHEN gv_trtry_mf THEN ximv.item_um                                        --生産：単位
-          WHEN gv_trtry_ad THEN ximv.item_um                                        --在庫調整：単位
-          ELSE NULL
-        END                                                   unit                --単位
+--mod start 2.1
+--       ,CASE slip.territory
+--          WHEN gv_trtry_po THEN ximv.item_um                                        --発注：単位
+--          WHEN gv_trtry_mv THEN ximv.item_um                                        --移動：単位
+--          WHEN gv_trtry_sh THEN ximv.conv_unit                                      --出荷：入出庫換算単位
+--          WHEN gv_trtry_rt THEN ximv.conv_unit                                      --倉替返品：入出庫換算単位
+--          WHEN gv_trtry_mf THEN ximv.item_um                                        --生産：単位
+--          WHEN gv_trtry_ad THEN ximv.item_um                                        --在庫調整：単位
+--          ELSE NULL
+--        END                                                   unit                --単位
+       ,DECODE(civ_unit_ctl
+              ,gv_unitctl_qty ,ximv.item_um
+              ,gv_unitctl_case,ximv.conv_unit
+              ,NULL)                                          unit                --単位
+--mod end 2.1
        ,ximv.num_of_cases                                     num_of_cases        --ケース入り数
        ,NVL(slip.in_qty,0)                                    in_qty              --入庫数
 --mod start 1.5
