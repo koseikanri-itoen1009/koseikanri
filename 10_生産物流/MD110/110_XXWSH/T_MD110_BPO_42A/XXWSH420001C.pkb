@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -37,6 +37,9 @@ AS
  *  return_process               返品情報登録処理
  *  ins_mov_lot_details          A18移動ロット詳細(アドオン)登録
  *  ins_transaction_interface    A19受入取引オープンインタフェーステーブル登録処理
+-- Ver1.18 M.Hokkanji Start
+ *  upd_mov_lot_details          A21移動ロット詳細(アドオン)更新
+-- Ver1.18 M.Hokkanji End
  *  submain                      メイン処理プロシージャ
  *  main                         コンカレント実行ファイル登録プロシージャ
  *
@@ -62,6 +65,7 @@ AS
  *  2009/04/21    1.15  SCS    伊藤 ひとみ 本番#1356(再対応) 出荷先_指示IDと管轄拠点も最新に洗替する
  *  2009/10/09    1.16  SCS    伊藤 ひとみ 本番#1655 中止客申請フラグを見ない
  *  2009/11/05    1.17  SCS    伊藤 ひとみ 本番#1648 顧客フラグ対応
+ *  2010/03/03    1.18  SCS    北寒寺 正夫 本番稼働障害#1612 、#1703
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -172,6 +176,12 @@ AS
 -- 2008/09/01 Add
   gv_msg_42a_025         CONSTANT VARCHAR2(15)
                          := 'APP-XXWSH-13181';  -- 未来日エラーメッセージ
+-- Ver1.18 M.Hokkanji Start
+  gv_msg_42a_026         CONSTANT VARCHAR2(15)
+                         := 'APP-XXWSH-11561';  -- 搬送明細ID取得エラー
+  gv_msg_42a_027         CONSTANT VARCHAR2(15)
+                         := 'APP-XXWSH-11562';  -- 移動ロット詳細ロックエラー
+-- Ver1.18 M.Hokkanji End
 --
   --トークン(固定処理)
   gv_tkn_status          CONSTANT VARCHAR2(15) := 'STATUS';
@@ -975,6 +985,11 @@ AS
       NUMBER;                                           -- プログラム・アプリケーションID
   gn_conc_program_id
       NUMBER;                                           -- コンカレント・プログラムID
+-- Ver1.18 M.Hokkanji Start
+  gn_upd_mov_lot_cnt
+      NUMBER;                                           -- 対象の移動ロット詳細IDの件数
+  gn_upd_mov_lot_dtl_id   ld_lot_id_type;               -- 移動ロット詳細更新用移動ロット詳細ID
+-- Ver1.18 M.Hokkanji End
 --
   /***********************************************************************************
    * Procedure Name   : input_param_check
@@ -3656,6 +3671,17 @@ AS
     AND    wdd.batch_id = ln_batch_id
     AND    wdd.delivery_detail_id = wda.delivery_detail_id
     AND    ROWNUM = 1;
+-- Ver1.18 M.Hokkanji Start
+    IF (ot_del_rows_tbl(1) IS NULL ) THEN
+      --メッセージを出力し処理を強制終了する
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_wsh
+                                           ,gv_msg_42a_026
+                                           ,gv_tkn_request_no
+                                           ,gt_gen_request_no
+      );
+      RAISE global_api_expt;
+    END IF;
+-- Ver1.18 M.Hokkanji END
 --
 --
   EXCEPTION
@@ -5542,8 +5568,21 @@ AS
     -- *** ローカル変数 ***
 --
     -- *** ローカル・カーソル ***
---
+-- Ver1.18 M.Hokkanji Start
+    CURSOR mov_lot_cur IS
+      SELECT xmld.mov_lot_dtl_id
+        FROM xxwsh_order_lines_all xola
+            ,xxinv_mov_lot_details xmld
+       WHERE xola.order_header_id = gt_gen_order_header_id
+         AND NVL(xola.delete_flag,gv_no) = gv_no
+         AND xmld.mov_line_id = xola.order_line_id
+         AND xmld.document_type_code IN (gv_document_type_10,gv_document_type_30)
+         FOR UPDATE OF xmld.mov_lot_dtl_id NOWAIT;
+-- Ver1.18 M.Hokkanji End
     -- *** ローカル・レコード ***
+-- Ver1.18 M.Hokkanji End
+    ln_upd_mov_lot_dtl_id   ld_lot_id_type;   -- 移動ロット詳細更新用移動ロット詳細ID
+-- Ver1.18 M.Hokkanji Start
 --
   BEGIN
 --
@@ -5578,6 +5617,30 @@ AS
            program_id              = gn_conc_program_id,  -- コンカレント・プログラムID
            program_update_date     = SYSDATE              -- プログラム更新日
       WHERE  order_line_id     = gt_order_line_id(i);
+-- Ver1.18 M.Hokkanji Start
+    BEGIN
+      OPEN  mov_lot_cur;
+      -- バルクフェッチ
+      FETCH mov_lot_cur BULK COLLECT INTO ln_upd_mov_lot_dtl_id ;
+--
+      -- カーソルクローズ
+      CLOSE mov_lot_cur;
+      FOR i  IN 1..ln_upd_mov_lot_dtl_id.COUNT LOOP
+        gn_upd_mov_lot_cnt := gn_upd_mov_lot_cnt + 1;
+        -- 纏めて更新するために変数にデータを格納
+        gn_upd_mov_lot_dtl_id(gn_upd_mov_lot_cnt) := ln_upd_mov_lot_dtl_id(i);
+      END LOOP;
+    EXCEPTION
+      WHEN lock_error_expt THEN -- ロックエラー
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_wsh,
+                                              gv_msg_42a_027,
+                                              gv_tkn_request_no,
+                                              gt_gen_request_no
+        );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+-- Ver1.18 M.Hokkanji End
   EXCEPTION
 --
 --#################################  固定例外処理部 START   #######################################
@@ -5962,6 +6025,9 @@ AS
         program_application_id,
         program_id,
         program_update_date
+-- Ver1.18 M.Hokkanji Start
+       ,actual_confirm_class
+-- Ver1.18 M.Hokkanji End
       )VALUES(
         gt_mov_lot_dtl_id(i),           -- ロット詳細ID
         gt_mov_line_id(i),              -- 明細ID
@@ -5983,6 +6049,9 @@ AS
         gn_prog_appl_id,                -- コンカレント・プログラム・アプリケーションID
         gn_conc_program_id,             -- コンカレント・プログラムID
         SYSDATE                         -- プログラム更新日
+-- Ver1.18 M.Hokkanji Start
+       ,gv_yes                          -- 実績計上済区分(Y)
+-- Ver1.18 M.Hokkanji End
       );
 --
   EXCEPTION
@@ -6194,6 +6263,80 @@ AS
 --#####################################  固定部 END   #############################################
 --
   END ins_transaction_interface;
+-- Ver1.18 M.Hokkanji Start
+--
+  /***********************************************************************************
+   * Procedure Name   : upd_mov_lot_details
+   * Description      : A21移動ロット詳細(アドオン)更新
+   ***********************************************************************************/
+  PROCEDURE upd_mov_lot_details(
+    ov_errbuf               OUT NOCOPY VARCHAR2,         -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT NOCOPY VARCHAR2,         -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT NOCOPY VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_mov_lot_details'; -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--################################  固定ステータス初期化部 START   ################################
+--
+    ov_retcode := gv_status_normal;
+--
+--#####################################  固定部 END   #############################################
+--
+    FORALL i IN 1 ..  gn_upd_mov_lot_cnt
+    UPDATE xxinv_mov_lot_details
+         SET actual_confirm_class = gv_yes
+            ,last_updated_by         = gn_user_id         -- 最終更新者
+            ,last_update_date        = SYSDATE            -- 最終更新日
+            ,last_update_login       = gn_login_id        -- 最終更新ログイン
+            ,request_id              = gn_conc_request_id -- 要求ID
+            ,program_application_id  = gn_prog_appl_id    -- コンカレント・プログラム・アプリケーションID
+            ,program_id              = gn_conc_program_id -- コンカレント・プログラムID
+            ,program_update_date     = SYSDATE             -- プログラム更新日
+       WHERE mov_lot_dtl_id = gn_upd_mov_lot_dtl_id(i);
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END upd_mov_lot_details;
+-- Ver1.18 M.Hokkanji End
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -6257,6 +6400,10 @@ AS
     gn_header_if_count   := 0;                          -- 受入取引オープンインタフェースヘッダ件数
     gn_tran_if_count     := 0;                          -- 受入取引オープンインタフェース明細件数
     gn_tran_lot_if_count := 0;                          -- 受入取引オープンインタフェースロット件数
+-- Ver1.18 M.Hokkanji Start
+    gn_upd_mov_lot_cnt   := 0;                          -- 対象の移動ロット詳細IDの更新対象件数
+    gn_upd_mov_lot_dtl_id.DELETE;                       -- 移動ロット詳細更新用受注ヘッダIDの初期化
+-- Ver1.18 M.Hokkanji End
     -- WHOカラム情報取得
     gn_user_id           := FND_GLOBAL.USER_ID;         -- ログインしているユーザーのID取得
     gn_login_id          := FND_GLOBAL.LOGIN_ID;        -- 最終更新ログイン
@@ -6523,6 +6670,18 @@ AS
           RAISE check_sub_main_expt;
         END IF;
       END IF;
+-- Ver1.18 M.Hokkanji Start
+     -- ==================================================
+     -- A21移動ロット詳細(アドオン)更新
+     -- ==================================================
+      upd_mov_lot_details(lv_errbuf,
+                          lv_retcode,
+                          lv_errmsg
+      );
+      IF (lv_retcode <> gv_status_normal) THEN
+        RAISE check_sub_main_expt;
+      END IF;
+-- Ver1.18 M.Hokkanji End
       COMMIT;
       IF (gn_cancell_cnt > 0 ) THEN
         -- =====================================
