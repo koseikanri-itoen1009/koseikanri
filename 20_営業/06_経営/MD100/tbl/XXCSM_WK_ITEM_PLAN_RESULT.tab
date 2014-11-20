@@ -14,7 +14,7 @@ CREATE TABLE xxcsm.xxcsm_wk_item_plan_result (
     ,last_updated_by                NUMBER(15)
     ,last_update_date               DATE
     ,last_update_login              NUMBER(15)
- PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 2M))
+)PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 2M)
 /
 COMMENT ON TABLE  xxcsm.xxcsm_item_plan_result                                         IS '商品計画用販売実績ワークテーブル'
 /
