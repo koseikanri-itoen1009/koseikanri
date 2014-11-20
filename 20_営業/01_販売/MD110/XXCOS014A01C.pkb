@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *  2009/04/13    1.7   T.kitajima       [T1_0264] 帳票様式チェーン店コード追加対応
  *  2009/04/27    1.8   K.Kiriu          [T1_0112] 単位項目内容不正対応
  *  2009/05/15    1.9   M.Sano           [T1_0983] チェーン店指定時の納品拠点取得修正
+ *  2009/05/21    1.10  M.Sano           [T1_0967] 取消済の受注明細を出力しない
+ *                                       [T1_1088] 受注明細タイプ「30_値引」の出力時の項目不正対応
  *
  *****************************************************************************************/
 --
@@ -2644,7 +2646,10 @@ AS
              END                                                                ball_shipping_qty             --出荷数量（ボール）
             ,NULL                                                               pallet_shipping_qty           --出荷数量（パレット）
             ,CASE
-               WHEN ottt_l.description        = ct_msg_line_type30 THEN
+--******************************************* 2009/05/21 Ver.1.10 M.Sano ADD START *****************************************
+--               WHEN ottt_l.description        = ct_msg_line_type30 THEN
+               WHEN ottt_l.description        = i_msg_rec.line_type30 THEN
+--******************************************* 2009/05/21 Ver.1.10 M.Sano ADD  END  *****************************************
                  TO_CHAR( 0 )
                ELSE
                  TO_CHAR( oola.ordered_quantity )
@@ -2657,14 +2662,20 @@ AS
             ,NULL                                                               fold_container_indv_qty       --オリコン（バラ）個口数
             ,NULL                                                               order_unit_price              --原単価（発注）
             ,CASE
-               WHEN ottt_l.description        = ct_msg_line_type30 THEN
+--******************************************* 2009/05/21 Ver.1.10 M.Sano ADD START *****************************************
+--               WHEN ottt_l.description        = ct_msg_line_type30 THEN
+               WHEN ottt_l.description        = i_msg_rec.line_type30 THEN
+--******************************************* 2009/05/21 Ver.1.10 M.Sano ADD  END  *****************************************
                  TO_CHAR( 0 )
                ELSE
                  TO_CHAR( oola.unit_selling_price )
              END                                                                shipping_unit_price           --原単価（出荷）
             ,NULL                                                               order_cost_amt                --原価金額（発注）
             ,CASE
-               WHEN ottt_l.description        = ct_msg_line_type30 THEN
+--******************************************* 2009/05/21 Ver.1.10 M.Sano ADD START *****************************************
+--               WHEN ottt_l.description        = ct_msg_line_type30 THEN
+               WHEN ottt_l.description        = i_msg_rec.line_type30 THEN
+--******************************************* 2009/05/21 Ver.1.10 M.Sano ADD  END  *****************************************
                  TO_CHAR( TO_NUMBER( oola.unit_selling_price )
                         * TO_NUMBER( oola.ordered_quantity )
                         * -1 )
@@ -2994,6 +3005,9 @@ AS
        AND   oola.order_quantity_uom        = muom.uom_code                                                   --受注単位
        AND   muom.language                  = USERENV( 'LANG' )                                               --言語(単位マスタ)
 /* 2009/04/27 Ver1.8 Add End   */
+--******************************************* 2009/05/21 Ver.1.10 M.Sano ADD START *****************************************
+       AND   oola.flow_status_code         != cv_cancel                                                       --ステータス
+--******************************************* 2009/05/21 Ver.1.10 M.Sano ADD  END  *****************************************
        ORDER BY ivoh.cust_po_number                                                                           --受注ヘッダ（顧客発注）
                ,oola.line_number                                                                              --受注明細  （明細番号）
        FOR UPDATE OF ooha_lock.header_id NOWAIT                                                               --ロック
