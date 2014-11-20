@@ -7,7 +7,7 @@ AS
  * Description      : ó•¥‚»‚Ì‘¼ÀÑƒŠƒXƒg
  * MD.050/070       : ŒŸYØˆ—’ •[Issue1.0 (T_MD050_BPO_770)
  *                    ŒŸYØˆ—’ •[Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2008/12/22    1.21  A.Shiina         –{”ÔáŠQ719‘Î‰
  *  2008/03/06    1.22  H.Marushita      –{”ÔáŠQ1274‘Î‰ ˆÉ“¡‰€İŒÉ‚Ì‚İğŒ’Ç‰Á
  *  2009/05/29    1.23  Marushita        –{”ÔáŠQ1511‘Î‰
+ *  2009/11/09    1.24  Marushita        –{”ÔáŠQ1685‘Î‰
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -5845,7 +5846,10 @@ AS
       AND    iaj.doc_id              = trn.doc_id
       AND    iaj.doc_line            = trn.doc_line
       AND    ijm.journal_id          = iaj.journal_id
-      AND    xnpt.entry_number       = ijm.attribute1
+-- 2009/11/09 MOD START
+--      AND    xnpt.entry_number       = ijm.attribute1
+      AND    xnpt.txns_id            = ijm.attribute1
+-- 2009/11/09 MOD END
       AND    ilm.item_id             = trn.item_id
       AND    ilm.lot_id              = trn.lot_id
       AND    iimb.item_id            = ilm.item_id
