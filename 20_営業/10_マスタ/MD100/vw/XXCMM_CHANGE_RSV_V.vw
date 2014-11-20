@@ -9,6 +9,9 @@ SELECT      xsibh.item_hst_id,              --品目変更履歴ID
             xsibh.apply_flag,               --適用有無
             xsibh.item_status,              --品目ステータス
             itm.item_status_mean,           --摘要（品目ステータス）
+-- 2009/04/28 add start by Yutaka.Kuboshima
+            xoiv.item_status now_item_status, --現品目ステータス
+-- 2009/04/28 add end by Yutaka.Kuboshima
             xsibh.policy_group,             --群コード（政策群コード）
             xsibh.fixed_price,              --定価
             xsibh.discrete_cost,            --営業原価
@@ -56,7 +59,8 @@ AND         xoiv.item_id             =  cmp.item_id(+)
 AND         cmp.calendar_code        =  ccc.calendar_code(+)
 AND         cmp.period_code          =  ccc.period_code(+)
 ORDER BY    xsibh.item_code,
-            xsibh.apply_date DESC
+            xsibh.apply_date DESC,
+            xsibh.last_update_date DESC
 /
 COMMENT ON TABLE APPS.XXCMM_CHANGE_RSV_V IS '変更予約画面ビュー'
 /
@@ -75,6 +79,8 @@ COMMENT ON COLUMN APPS.XXCMM_CHANGE_RSV_V.APPLY_DATE IS '適用日（適用開始日）'
 COMMENT ON COLUMN APPS.XXCMM_CHANGE_RSV_V.APPLY_FLAG IS '適用有無'
 /
 COMMENT ON COLUMN APPS.XXCMM_CHANGE_RSV_V.ITEM_STATUS IS '品目ステータス'
+/
+COMMENT ON COLUMN APPS.XXCMM_CHANGE_RSV_V.NOW_ITEM_STATUS IS '現在の品目ステータス'
 /
 COMMENT ON COLUMN APPS.XXCMM_CHANGE_RSV_V.ITEM_STATUS_MEAN IS '摘要（品目ステータス）'
 /
