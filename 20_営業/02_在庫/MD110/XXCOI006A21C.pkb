@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A21C(body)
  * Description      : 棚卸結果作成
  * MD.050           : HHT棚卸結果データ取込 <MD050_COI_A21>
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/12/01    1.9   H.Sasaki         [E_本稼動_00245]データソート順の変更
  *  2010/03/23    1.10  Y.Goto           [E_本稼動_01943]拠点の有効チェックを追加
  *  2010/05/12    1.11  N.Abe            [E_本稼動_02076]棚卸しデータ取込順の採番方法修正
+ *  2011/04/27    1.12  N.Horigome       [E_本稼動_06884]一時表取込エラー時のメッセージ出力追加
  *
  *****************************************************************************************/
 --
@@ -1293,9 +1294,15 @@ AS
     cv_xxcoi1_msg_10290 CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10290';   --BLOBデータ変換エラー
     cv_xxcoi1_msg_00020 CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-00020';   --空ファイルエラー
     cv_xxcoi1_msg_00028 CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-00028';   --ファイル名出力
+-- == 2011/04/25 V1.12 Added START ===============================================================
+    cv_xxcoi1_msg_10430 CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10437';   --HHT棚卸結果データ取込エラーメッセージ
+-- == 2011/04/25 V1.12 Added END   ===============================================================
 --
     cv_tkn_file_id      CONSTANT VARCHAR2(30)  := 'FILE_ID';            --トークン名(FILE_ID)
     cv_tkn_file_name    CONSTANT VARCHAR2(39)  := 'FILE_NAME';          --トークン名(FILE_NAME)
+-- == 2011/04/25 V1.12 Added START ===============================================================
+    cv_tkn_row_num      CONSTANT VARCHAR2(10)  := 'ROW_NUM';            --トークン名(ROW_NUM)
+-- == 2011/04/25 V1.12 Added END   ===============================================================
 --
     cv_comma            CONSTANT VARCHAR2(1)   := ',';                  --カンマ
     cn_line_num         CONSTANT NUMBER        := 2;                    --行数
@@ -1328,6 +1335,9 @@ AS
     ln_loop_cnt             NUMBER          DEFAULT 0;      --LOOPカウンタ
     ln_length               NUMBER;                         --カンマの位置
     lb_file_data            BLOB;                           --ファイルデータ
+-- == 2011/04/25 V1.12 Added START ===============================================================
+    ln_row_num              NUMBER          DEFAULT 0;      --取込行数
+-- == 2011/04/25 V1.12 Added END   ===============================================================
 --
     -- *** ローカル・カーソル ***
 --
@@ -1407,6 +1417,10 @@ AS
       ln_loop_cnt := ln_loop_cnt + 1;
       --1行毎のデータを格納
       lv_line := l_file_data_tab(ln_index);
+-- == 2011/04/25 V1.12 Added START ===============================================================
+      --取込行数を格納
+      ln_row_num := ln_index;
+-- == 2011/04/25 V1.12 Added END   ===============================================================
       --変数を初期化
       lb_col := TRUE;
       ln_col := 0;
@@ -1612,6 +1626,15 @@ AS
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+-- == 2011/04/25 V1.12 Added START ===============================================================
+     lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcoi_short_name
+                , iv_name         => cv_xxcoi1_msg_10430
+                , iv_token_name1  => cv_tkn_row_num
+                , iv_token_value1 => ln_row_num
+                );
+      ov_errmsg  := lv_errmsg;
+-- == 2011/04/25 V1.12 Added END   ===============================================================
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
