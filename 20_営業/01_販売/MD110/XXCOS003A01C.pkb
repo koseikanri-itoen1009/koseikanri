@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A01C(body)
  * Description      : HHT向け納品予定データ作成
  * MD.050           : HHT向け納品予定データ作成 MD050_COS_003_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/07/08   1.4    K.Kiriu          [0000063]情報区分の課題対応
  *                                       [0000064]受注ヘッダDFF項目漏れ対応
  *  2009/08/06   1.4    M.Sano           [0000426]『HHT向け納品予定データ作成』PTの考慮
+ *  2009/09/01   1.5    M.Sano           [0001066]『HHT向け納品予定データ作成』PTの考慮
  *
  *****************************************************************************************/
 --
@@ -200,10 +201,21 @@ AS
   IS
 /* 2009/08/06 Ver1.4 Add Start */
 --    SELECT ooha.order_number               order_number               --受注ヘッダテーブル．受注番号
-    SELECT /*+ leading(ooha)
-               use_nl(xieh)
-               index(ooha xxcos_oe_order_headers_all_n12)
-               index(xiel xxcos_edi_lines_n01) */
+/* 2009/09/01 Ver1.5 Mod Start */
+--    SELECT /*+ leading(ooha)
+--               use_nl(xieh)
+--               index(ooha xxcos_oe_order_headers_all_n12)
+--               index(xiel xxcos_edi_lines_n01) */
+      SELECT /*+ leading(oosa)
+                 use_nl(ooha)
+                 use_nl(xieh)
+                 use_nl(xiel)
+                 use_nl(msiv)
+                 index(ooha xxcos_oe_order_headers_all_n12)
+                 index(oola oe_order_lines_n1)
+                 index(xiel xxcos_edi_lines_n01)
+              */
+/* 2009/09/01 Ver1.5 Mod End   */
            ooha.order_number               order_number               --受注ヘッダテーブル．受注番号
 /* 2009/08/06 Ver1.4 Add End   */
          , ooha.request_date               request_date               --受注ヘッダテーブル．要求日
