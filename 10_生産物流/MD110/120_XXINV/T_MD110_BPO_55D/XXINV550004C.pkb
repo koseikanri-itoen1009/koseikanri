@@ -8,13 +8,14 @@ AS
  * Description      : 棚卸スナップショット作成
  * MD.050           : 在庫(帳票)               T_MD050_BPO_550
  * MD.070           : 棚卸スナップショット作成 T_MD070_BPO_55D
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
  *  Name                 Description
  * -------------------- ------------------------------------------------------------
  *  create_snapshot      棚卸スナップショット作成ファンクション
+ *  add_del_info         削除対象配列セットプロシージャ
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -23,6 +24,7 @@ AS
  *  2008/01/10    1.0   R.Matusita       新規作成
  *  2008/05/07    1.1   S.Nakamura       内部変更要求#47,#62
  *  2008/05/20    1.2   K.Kumamoto       結合テスト障害(User-Defined Exception)対応
+ *  2008/06/23    1.3   K.Kumamoto       システムテスト障害#260(受払残高リストが終了しない)対応
  *
  *****************************************************************************************/
 --  
@@ -55,6 +57,14 @@ AS
   TYPE  lot_ctl_type     IS TABLE OF  ic_item_mst_b.lot_ctl%TYPE    INDEX BY BINARY_INTEGER;  -- OPM品目マスタ  ロット管理区分
   TYPE  loct_onhand_type IS TABLE OF  ic_loct_inv.loct_onhand%TYPE  INDEX BY BINARY_INTEGER;  -- OPM手持数量  手持数量
 --
+--add start 1.3
+  TYPE  rec_del_info IS RECORD(
+    whse_code  xxinv_stc_inventory_month_stck.whse_code%TYPE
+   ,item_id    xxinv_stc_inventory_month_stck.item_id%TYPE
+   ,invent_ym  xxinv_stc_inventory_month_stck.invent_ym%TYPE
+  );
+  TYPE tbl_del_info IS TABLE OF rec_del_info INDEX BY BINARY_INTEGER;
+--add end 1.3
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -79,7 +89,13 @@ AS
   pre_loct_onhand_tbl    loct_onhand_type;           -- OPM手持数量  手持数量
 --
   i                  NUMBER;                     -- ループカウンター
+--add start 1.3
+  n                  NUMBER;
+--add end 1.3
 --
+--add start 1.3
+  del_info           tbl_del_info;               -- 削除情報
+--add end 1.3
   gn_ret_nomal       CONSTANT NUMBER :=  0;      -- 正常
   gn_ret_error       CONSTANT NUMBER :=  1;      -- 初期処理エラー,日付チェックエラー
   gn_ret_lock_error  CONSTANT NUMBER :=  2;      -- ロックエラー
@@ -106,6 +122,47 @@ AS
 --
 --################################  固定部 END   ##################################
 --
+--add start 1.3
+  PROCEDURE add_del_info(
+    iv_whse_code  IN VARCHAR2
+   ,in_item_id    IN VARCHAR2
+   ,iv_invent_ym  IN VARCHAR2
+  )
+  IS
+    n      NUMBER;
+    lb_add BOOLEAN;
+  BEGIN
+    n := del_info.first;
+--
+    --配列に1件以上存在する場合
+    IF del_info.EXISTS(n) THEN
+      WHILE n IS NOT NULL LOOP
+        IF (del_info(n).whse_code = iv_whse_code AND
+            del_info(n).item_id   = in_item_id   AND
+            del_info(n).invent_ym = iv_invent_ym) THEN
+          lb_add := FALSE;
+          EXIT;
+        END IF;
+        n := del_info.next(n);
+      END LOOP;
+      --配列の中に一致する情報が存在しない場合
+      lb_add := TRUE;
+      n := del_info.last + 1; --添え字=最終行+1
+--
+    --配列に1件も存在しない場合
+    ELSE
+      lb_add := TRUE;
+      n := 1; --添え字=1
+    END IF;
+--
+    IF (lb_add) THEN
+      del_info(n).whse_code := iv_whse_code;
+      del_info(n).item_id   := in_item_id;
+      del_info(n).invent_ym := iv_invent_ym;
+    END IF;
+--
+  END add_del_info;
+--add end 1.3
    /**********************************************************************************
    * Function Name    : create_snapshot
    * Description      : 棚卸スナップショット作成関数
@@ -170,6 +227,10 @@ AS
 --
     lv_sysdate_ym   VARCHAR2(6);           -- 現在日付
 --
+--add start 1.3
+    TYPE refcursor IS REF CURSOR;
+    cur_del refcursor;
+--add end 1.3
     -- D-2. 手持数量情報抽出カーソル
     CURSOR current_cargo_cur IS
     SELECT iiim.whse_code whse_code,               -- OPM手持数量  倉庫コード (※D-6と違う)
@@ -346,6 +407,9 @@ AS
     pre_lot_ctl_tbl.delete;                -- OPM品目マスタ  ロット管理区分
     pre_loct_onhand_tbl.delete;            -- OPM手持数量  手持数量
 --add end 2008/05/12 #47対応
+--add start 1.3
+    del_info.delete;                       -- 削除情報
+--add end 1.3
 --
     lv_sysdate_ym := TO_CHAR(SYSDATE,'YYYYMM');
 --
@@ -452,6 +516,13 @@ AS
           curr_lot_ctl_tbl(i)     := lr_curr_cargo_rec.lot_ctl;     -- OPM品目マスタ  ロット管理区分
           curr_loct_onhand_tbl(i) := lr_curr_cargo_rec.loct_onhand; -- OPM手持数量  手持数量
 --
+--add start 1.3
+          add_del_info(
+            lr_curr_cargo_rec.whse_code
+           ,lr_curr_cargo_rec.item_id
+           ,iv_invent_ym
+          );
+--add end 1.3
           ln_d3_itp_trans_qty(i):=0;
           ln_d3_itc_trans_qty(i):=0;
           ln_d4_quantity(i):=0;
@@ -717,6 +788,13 @@ AS
           pre_lot_ctl_tbl(i)     := lr_pre_cargo_rec.lot_ctl;      -- OPM品目マスタ  ロット管理区分
           pre_loct_onhand_tbl(i)  := lr_pre_cargo_rec.loct_onhand; -- OPM手持数量  手持数量
 --
+--add start 1.3
+          add_del_info(
+            lr_pre_cargo_rec.whse_code
+           ,lr_pre_cargo_rec.item_id
+           ,lv_pre_invent_ym
+          );
+--add end 1.3
           ln_d7_quantity(i):=0;
           ln_d8_quantity(i):=0;
 --
@@ -909,30 +987,50 @@ AS
     END;
     -- 前月分終わり
 --
-    -- D-9. 棚卸月末在庫テーブルロック処理
-    -- テーブルロック関数呼び出し
-    IF NOT (xxcmn_common_pkg.get_tbl_lock('XXINV','XXINV_STC_INVENTORY_MONTH_STCK')) THEN
-      -- リターン・コードにFALSEが返された場合はエラー
-      RAISE global_api_expt;
-    END IF;
+--del start 1.3
+--    -- D-9. 棚卸月末在庫テーブルロック処理
+--    -- テーブルロック関数呼び出し
+--    IF NOT (xxcmn_common_pkg.get_tbl_lock('XXINV','XXINV_STC_INVENTORY_MONTH_STCK')) THEN
+--      -- リターン・コードにFALSEが返された場合はエラー
+--      RAISE global_api_expt;
+--    END IF;
+--del end 1.3
 --
     BEGIN
       -- D-10. 棚卸月末在庫情報出力（削除）
 --
-      -- D-2を実行
-      FORALL i IN 1 .. curr_whse_code_tbl.COUNT
-        DELETE FROM xxinv_stc_inventory_month_stck
-        WHERE whse_code = curr_whse_code_tbl(i) -- OPM手持数量  倉庫コード
-        AND   item_id   = curr_item_id_tbl(i)   -- 品目ID
-        AND   invent_ym = iv_invent_ym;         --  起動パラメータの対象年月
+--mod start 1.3
+--      -- D-2を実行
+--      FORALL i IN 1 .. curr_whse_code_tbl.COUNT
+--        DELETE FROM xxinv_stc_inventory_month_stck
+--        WHERE whse_code = curr_whse_code_tbl(i) -- OPM手持数量  倉庫コード
+--        AND   item_id   = curr_item_id_tbl(i)   -- 品目ID
+--        AND   invent_ym = iv_invent_ym;         --  起動パラメータの対象年月
+----
+--      -- D-6を実行
+--      FORALL i IN 1 .. pre_whse_code_tbl.COUNT
+--        DELETE FROM xxinv_stc_inventory_month_stck
+--        WHERE whse_code = pre_whse_code_tbl(i) -- OPM手持数量  倉庫コード
+--        AND   item_id   = pre_item_id_tbl(i)   -- 品目ID
+--        AND   invent_ym = lv_pre_invent_ym;    -- 起動パラメータの対象年月の前年
 --
-      -- D-6を実行
-      FORALL i IN 1 .. pre_whse_code_tbl.COUNT
-        DELETE FROM xxinv_stc_inventory_month_stck
-        WHERE whse_code = pre_whse_code_tbl(i) -- OPM手持数量  倉庫コード
-        AND   item_id   = pre_item_id_tbl(i)   -- 品目ID
-        AND   invent_ym = lv_pre_invent_ym;    -- 起動パラメータの対象年月の前年
+      FOR i IN 1..del_info.COUNT LOOP
+        OPEN cur_del FOR
+          SELECT ROWID 
+          FROM xxinv_stc_inventory_month_stck
+          WHERE whse_code = del_info(i).whse_code
+          AND   item_id = del_info(i).item_id
+          AND   invent_ym = del_info(i).invent_ym
+          FOR UPDATE NOWAIT
+          ;
 --
+        DELETE FROM xxinv_stc_inventory_month_stck
+        WHERE whse_code = del_info(i).whse_code
+        AND   item_id = del_info(i).item_id
+        AND   invent_ym = del_info(i).invent_ym
+        ;
+      END LOOP;
+--mod end 1.3
       -- 棚卸月末在庫IDの取得
       FOR i IN 1..curr_whse_code_tbl.COUNT LOOP
         SELECT xxinv_stc_invt_most_s1.NEXTVAL      -- シーケンス
