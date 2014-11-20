@@ -7,7 +7,7 @@ AS
  * Description      : 請求ヘッダデータ作成
  * MD.050           : MD050_CFR_003_A02_請求ヘッダデータ作成
  * MD.070           : MD050_CFR_003_A02_請求ヘッダデータ作成
- * Version          : 1.07
+ * Version          : 1.08
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/08/03    1.05 SCS 廣瀬 真佐人  障害0000913対応 パフォーマンス改善
  *  2009/09/29    1.06 SCS 廣瀬 真佐人  共通課題IE535対応 請求書問題
  *  2009/12/11    1.07 SCS 安川 智博    障害「E_本稼動_00424」暫定対応
+ *  2009/12/28    1.08 SCS 安川 智博    障害「E_本稼動_00606」対応
  *
  *****************************************************************************************/
 --
@@ -916,14 +917,16 @@ AS
             AND    hzsa.org_id = gn_org_id                            -- 組織ID
             AND    hzsu.org_id = gn_org_id                            -- 組織ID
             AND    hzsu.attribute8 = '1'                              -- 請求書発行サイクル(第一営業日)
-            AND EXISTS (
-              SELECT 'X'
-              FROM   hz_cust_site_uses_all   shsu
-              WHERE  shsu.bill_to_site_use_id = hzsu.site_use_id
-              AND    shsu.site_use_code = 'SHIP_TO'                   -- 使用目的コード(出荷先)
-              AND    shsu.org_id = gn_org_id
-              AND    ROWNUM = 1
-              )
+-- Modify 2009.12.28 Ver1.08 start
+--            AND EXISTS (
+--              SELECT 'X'
+--              FROM   hz_cust_site_uses_all   shsu
+--              WHERE  shsu.bill_to_site_use_id = hzsu.site_use_id
+--              AND    shsu.site_use_code = 'SHIP_TO'                   -- 使用目的コード(出荷先)
+--              AND    shsu.org_id = gn_org_id
+--              AND    ROWNUM = 1
+--              )
+-- Modify 2009.12.28 Ver1.08 end
             AND NOT EXISTS (
               SELECT 'X'
               FROM   xxcfr_inv_target_cust_list xxcl
@@ -1032,14 +1035,16 @@ AS
             AND    hzsa.org_id = gn_org_id                           -- 組織ID
             AND    hzsu.org_id = gn_org_id                           -- 組織ID
             AND    hzsu.attribute8 = '2'                             -- 請求書発行サイクル(第二営業日)
-            AND EXISTS (
-              SELECT 'X'
-              FROM   hz_cust_site_uses_all   shsu
-              WHERE  shsu.bill_to_site_use_id = hzsu.site_use_id
-              AND    shsu.site_use_code = 'SHIP_TO'                    -- 使用目的コード(出荷先)
-              AND    shsu.org_id = gn_org_id
-              AND    ROWNUM = 1
-              )
+-- Modify 2009.12.28 Ver1.08 start
+--            AND EXISTS (
+--              SELECT 'X'
+--              FROM   hz_cust_site_uses_all   shsu
+--              WHERE  shsu.bill_to_site_use_id = hzsu.site_use_id
+--              AND    shsu.site_use_code = 'SHIP_TO'                    -- 使用目的コード(出荷先)
+--              AND    shsu.org_id = gn_org_id
+--              AND    ROWNUM = 1
+--              )
+-- Modify 2009.12.28 Ver1.08 end
             AND NOT EXISTS (
               SELECT 'X'
               FROM   xxcfr_inv_target_cust_list xxcl
@@ -1252,14 +1257,16 @@ AS
             AND    hzsu.attribute8 IN('1','2')                       -- 請求書発行サイクル
 -- Modify 2009.07.13 Ver1.02 end
             AND    hzca.account_number = NVL(iv_bill_acct_code, hzca.account_number)
-            AND EXISTS (
-              SELECT 'X'
-              FROM   hz_cust_site_uses_all   shsu
-              WHERE  shsu.bill_to_site_use_id = hzsu.site_use_id
-              AND    shsu.site_use_code = 'SHIP_TO'                    -- 使用目的コード(出荷先)
-              AND    shsu.org_id = gn_org_id
-              AND    ROWNUM = 1
-              )
+-- Modify 2009.12.28 Ver1.08 start
+--            AND EXISTS (
+--              SELECT 'X'
+--              FROM   hz_cust_site_uses_all   shsu
+--              WHERE  shsu.bill_to_site_use_id = hzsu.site_use_id
+--              AND    shsu.site_use_code = 'SHIP_TO'                    -- 使用目的コード(出荷先)
+--              AND    shsu.org_id = gn_org_id
+--              AND    ROWNUM = 1
+--              )
+-- Modify 2009.12.28 Ver1.08 end
             AND NOT EXISTS (
               SELECT 'X'
               FROM   xxcfr_inv_target_cust_list xxcl
@@ -1672,42 +1679,43 @@ AS
     gt_tax_amount_sum    := 0;
     gt_amount_includ_tax := 0;
 --
+-- Modify 2009.12.28 Ver1.08 start
     --==============================================================
     --対象データ件数取得処理
     --==============================================================
-    BEGIN
-      SELECT COUNT(rcta.customer_trx_id)    cnt
-      INTO   ln_target_cnt
-      FROM   ra_customer_trx_all        rcta
-           , ra_customer_trx_lines_all  rcla
-      WHERE  rcta.trx_date <= id_cutoff_date                                  -- 締日
-      AND    rcta.attribute7 IN (cv_inv_hold_status_o, cv_inv_hold_status_r)  -- 請求書保留ステータス
-      AND    rcta.bill_to_customer_id = iv_cust_acct_id                       -- 請求先顧客ID
-      AND    rcta.org_id          = gn_org_id                                 -- 組織ID
-      AND    rcta.set_of_books_id = gn_set_book_id                            -- 会計帳簿ID
-      AND    rcta.customer_trx_id = rcla.customer_trx_id
-      ;
-    EXCEPTION
-      -- *** OTHERS例外ハンドラ ***
-      WHEN OTHERS THEN
-        lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
-                               iv_loopup_type_prefix => cv_msg_kbn_cfr,
-                               iv_keyword            => cv_dict_cfr_00302009);    -- 対象取引データ件数
-        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
-                               iv_application  => cv_msg_kbn_cfr,
-                               iv_name         => cv_msg_cfr_00015,  
-                               iv_token_name1  => cv_tkn_data,  
-                               iv_token_value1 => lt_look_dict_word),
-                             1,
-                             5000);
-        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
-        RAISE global_process_expt;
-    END;
+--    BEGIN
+--      SELECT COUNT(rcta.customer_trx_id)    cnt
+--      INTO   ln_target_cnt
+--      FROM   ra_customer_trx_all        rcta
+--           , ra_customer_trx_lines_all  rcla
+--      WHERE  rcta.trx_date <= id_cutoff_date                                  -- 締日
+--      AND    rcta.attribute7 IN (cv_inv_hold_status_o, cv_inv_hold_status_r)  -- 請求書保留ステータス
+--      AND    rcta.bill_to_customer_id = iv_cust_acct_id                       -- 請求先顧客ID
+--      AND    rcta.org_id          = gn_org_id                                 -- 組織ID
+--      AND    rcta.set_of_books_id = gn_set_book_id                            -- 会計帳簿ID
+--      AND    rcta.customer_trx_id = rcla.customer_trx_id
+--      ;
+--    EXCEPTION
+--      -- *** OTHERS例外ハンドラ ***
+--      WHEN OTHERS THEN
+--        lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
+--                               iv_loopup_type_prefix => cv_msg_kbn_cfr,
+--                               iv_keyword            => cv_dict_cfr_00302009);    -- 対象取引データ件数
+--        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+--                               iv_application  => cv_msg_kbn_cfr,
+--                               iv_name         => cv_msg_cfr_00015,  
+--                               iv_token_name1  => cv_tkn_data,  
+--                               iv_token_value1 => lt_look_dict_word),
+--                             1,
+--                             5000);
+--        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+--        RAISE global_process_expt;
+--    END;
 --
-    -- 対象取引データ件数をセット
-    ov_target_trx_cnt := ln_target_cnt;
+--    -- 対象取引データ件数をセット
+--    ov_target_trx_cnt := ln_target_cnt;
 --
-    IF (ln_target_cnt > 0) THEN
+--    IF (ln_target_cnt > 0) THEN
       --==============================================================
       --請求金額取得処理
       --==============================================================
@@ -1717,9 +1725,11 @@ AS
              , SUM( DECODE( rcla.line_type, cv_line_type_tax , rcla.extended_amount
                                           , 0))   tax_amount_sum            -- 税額合計
              , SUM( rcla.extended_amount)         amount_includ_tax         -- 税込請求金額合計
+             , COUNT('X')                         cnt                       -- レコード件数
         INTO   gt_amount_no_tax
              , gt_tax_amount_sum
              , gt_amount_includ_tax
+             , ln_target_cnt
         FROM   ra_customer_trx_all        rcta
              , ra_customer_trx_lines_all  rcla
         WHERE  rcta.trx_date <= id_cutoff_date                                  -- 締日
@@ -1729,6 +1739,8 @@ AS
         AND    rcta.set_of_books_id = gn_set_book_id                            -- 会計帳簿ID
         AND    rcta.customer_trx_id = rcla.customer_trx_id
         ;
+        -- 対象取引データ件数をセット
+        ov_target_trx_cnt := ln_target_cnt;
       EXCEPTION
         -- *** OTHERS例外ハンドラ ***
         WHEN OTHERS THEN
@@ -1746,7 +1758,8 @@ AS
           RAISE global_process_expt;
       END;
 --
-    END IF;
+--    END IF;
+-- Modify 2009.12.28 Ver1.08 end
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -2032,6 +2045,110 @@ AS
       AND    ROWNUM = 1
       ;
     EXCEPTION
+-- Modify 2009.12.28 Ver1.08 start
+      -- *** NO_DATA_FOUND例外ハンドラ ***
+      WHEN NO_DATA_FOUND THEN
+        SELECT xxca.tax_div                             tax_type,               -- 消費税区分
+               NULL                                     tax_gap_trx_id,         -- 税差額取引ID
+               0                                        tax_gap_amount,         -- 税差額
+               hzlo_bill.postal_code                    postal_code,            -- 送付先郵便番号
+               hzlo_bill.state || hzlo_bill.city        send_address1,          -- 送付先住所1
+               hzlo_bill.address1                       send_address2,          -- 送付先住所2
+               hzlo_bill.address2                       send_address3,          -- 送付先住所3
+               xxca.torihikisaki_code                   vender_code,            -- 仕入先コード
+               xxca.receiv_base_code                    receipt_location_code,  -- 入金拠点コード
+               xxca.bill_base_code                      bill_location_code,     -- 請求拠点コード
+               xxcfr_common_pkg.get_cust_account_name(
+                 xxca.bill_base_code,
+                 cv_get_acct_name_f)                    bill_location_name,     -- 請求拠点名
+               xxcfr_common_pkg.get_base_target_tel_num(
+                 iv_cust_acct_code)                     agent_tel_num,          -- 担当電話番号
+               hzca.account_number                      credit_cust_code,       -- 与信先顧客コード
+               xxcfr_common_pkg.get_cust_account_name(
+                 hzca.account_number,
+                 cv_get_acct_name_f)                    credit_cust_name,       -- 与信先顧客名
+               iv_cust_acct_code                        receipt_cust_code,      -- 入金先顧客コード
+               iv_cust_acct_name                        receipt_cust_name,      -- 入金先顧客名
+               fnlv.lookup_code                         payment_cust_code,      -- 親請求先顧客コード
+               fnlv.meaning                             payment_cust_name,      -- 親請求先顧客名
+               xxcfr_common_pkg.get_cust_account_name(
+                 iv_cust_acct_code,
+                 cv_get_acct_name_k)                    bill_cust_kana_name,    -- 請求先顧客カナ名
+               xxca.store_code                          bill_shop_code,         -- 請求先店舗コード
+               xxca.cust_store_name                     bill_shop_name,         -- 請求先店名
+               hsua_bill.attribute5                     credit_receiv_code2,    -- 売掛コード2（事業所）
+               NULL                                     credit_receiv_name2,    -- 売掛コード2（事業所）名称
+               hsua_bill.attribute6                     credit_receiv_code3,    -- 売掛コード3（その他）
+               NULL                                     credit_receiv_name3,    -- 売掛コード3（その他）名称
+               hsua_bill.attribute7                     invoice_output_form,    -- 請求書出力形式
+               hsua_bill.tax_rounding_rule              bill_tax_round_rule,    -- 税金－端数処理
+               hsua_bill.payment_term_id                bill_payment_term_id,   -- 支払条件1
+               hsua_bill.attribute2                     bill_payment_term2,     -- 支払条件2
+               hsua_bill.attribute3                     bill_payment_term3      -- 支払条件3
+        INTO   gt_tax_type,               -- 消費税区分
+               gt_tax_gap_trx_id,         -- 税差額取引ID
+               gt_tax_gap_amount,         -- 税差額
+               gt_postal_code,            -- 送付先郵便番号
+               gt_send_address1,          -- 送付先住所1
+               gt_send_address2,          -- 送付先住所2
+               gt_send_address3,          -- 送付先住所3
+               gt_vender_code,            -- 仕入先コード
+               gt_receipt_location_code,  -- 入金拠点コード
+               gt_bill_location_code,     -- 請求拠点コード
+               gt_bill_location_name,     -- 請求拠点名
+               gt_agent_tel_num,          -- 担当電話番号
+               gt_credit_cust_code,       -- 与信先顧客コード
+               gt_credit_cust_name,       -- 与信先顧客名
+               gt_receipt_cust_code,      -- 入金先顧客コード
+               gt_receipt_cust_name,      -- 入金先顧客名
+               gt_payment_cust_code,      -- 親請求先顧客コード
+               gt_payment_cust_name,      -- 親請求先顧客名
+               gt_bill_cust_kana_name,    -- 請求先顧客カナ名
+               gt_bill_shop_code,         -- 請求先店舗コード
+               gt_bill_shop_name,         -- 請求先店名
+               gt_credit_receiv_code2,    -- 売掛コード2（事業所）
+               gt_credit_receiv_name2,    -- 売掛コード2（事業所）名称
+               gt_credit_receiv_code3,    -- 売掛コード3（その他）
+               gt_credit_receiv_name3,    -- 売掛コード3（その他）名称
+               gt_invoice_output_form,    -- 請求書出力形式
+               gt_tax_round_rule          -- 税金－端数処理
+              ,gt_bill_payment_term_id    -- 支払条件1
+              ,gt_bill_payment_term2      -- 支払条件2
+              ,gt_bill_payment_term3      -- 支払条件3
+        FROM  xxcmm_cust_accounts       xxca,       -- 顧客追加情報
+              hz_cust_accounts          hzca_bill,  -- 顧客マスタ
+              hz_cust_acct_sites        hasa_bill,  -- 顧客所在地
+              hz_cust_site_uses         hsua_bill,  -- 顧客使用目的
+              hz_party_sites            hzps_bill,  -- 顧客パーティサイト
+              hz_locations              hzlo_bill,  -- 顧客事業所
+              hz_parties                hzpa,       -- パーティ
+              hz_relationships          hzrl,       -- パーティ関連
+              hz_cust_accounts          hzca,       -- (与信先)顧客マスタ
+              fnd_lookup_values         fnlv        -- クイックコード
+        WHERE xxca.customer_id = iv_cust_acct_id
+        AND   hzca_bill.cust_account_id = xxca.customer_id
+        AND   hzpa.party_id = hzca_bill.party_id
+        AND   hzpa.party_id = hzrl.object_id(+)
+        AND   hzrl.status(+) = 'A'
+        AND   hzrl.relationship_type(+) = gv_party_ref_type
+        AND   hzrl.relationship_code(+) = gv_party_rev_code
+        AND   gd_process_date BETWEEN TRUNC( NVL( hzrl.start_date(+), gd_process_date ) )
+                                  AND TRUNC( NVL( hzrl.end_date(+),   gd_process_date ) )
+        AND   hzrl.subject_id = hzca.party_id(+)
+        AND   hasa_bill.cust_account_id = hzca_bill.cust_account_id
+        AND   hsua_bill.cust_acct_site_id = hasa_bill.cust_acct_site_id
+        AND   hsua_bill.site_use_code = 'BILL_TO'
+        AND   hsua_bill.attribute4 = fnlv.lookup_code(+)     -- 売掛コード１
+        AND   fnlv.lookup_type(+)  = cv_look_type_ar_cd
+        AND   fnlv.language(+)     = USERENV( 'LANG' )
+        AND   fnlv.enabled_flag(+) = 'Y'
+        AND   gd_process_date BETWEEN  TRUNC( NVL( fnlv.start_date_active(+), gd_process_date ) )
+                                 AND  TRUNC( NVL( fnlv.end_date_active(+),   gd_process_date ) )
+        AND   hzps_bill.party_site_id = hasa_bill.party_site_id
+        AND   hzlo_bill.location_id = hzps_bill.location_id
+        AND   ROWNUM = 1
+        ;
+-- Modify 2009.12.28 Ver1.08 end
       -- *** OTHERS例外ハンドラ ***
       WHEN OTHERS THEN
         lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
