@@ -7,7 +7,7 @@ AS
  * Description      : 発注単価洗替処理
  * MD.050           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD050_BPO_870
  * MD.070           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD070_BPO_870
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2008/12/19    1.10  H.Marushita      本番障害#794対応
  *  2008/12/25    1.11  T.Yoshimoto      発注EBS標準ステータス:未承認対応
  *  2009/02/16    1.12  A.Shiina         本番#1135対応
+ *  2009/03/09    1.13  A.Shiina         本番#1135再対応
  *
  *****************************************************************************************/
 --
@@ -688,6 +689,9 @@ AS
       ||     ' AND pla.attribute14              = ' || ''''|| cv_no || ''''    -- 金額確定フラグ
       ||     ' AND pla.po_header_id             = plla.po_header_id'           -- 発注ヘッダID
       ||     ' AND pla.po_line_id               = plla.po_line_id'             -- 発注明細ID
+-- 2009/03/09 v1.13 ADD START
+      ||     ' AND pla.cancel_flag              = ' || ''''|| cv_no || ''''    -- 取消フラグ
+-- 2009/03/09 v1.13 ADD END
       ||     ' AND pla.item_id                  = ximv.inventory_item_id'      -- 品目ID
 -- 2009/02/16 v1.12 ADD START
       ||     ' AND ximv.item_id                 = xicv.item_id'
@@ -697,6 +701,10 @@ AS
       ||     ' AND xxcmn_common_pkg.get_category_desc(ximv.item_no,'
       ||     ''''|| gv_cat_set_goods_class || '''' || ') = ' || '''' || iv_goods_type_name || ''''
       ||     ' AND ximv.unit_price_calc_code      = ' || '''' || iv_date_type || ''''
+-- 2009/03/09 v1.13 ADD START
+      ||     ' ORDER BY pha.segment1'
+      ||     '         ,pla.line_num'
+-- 2009/03/09 v1.13 ADD END
       ||     ' FOR UPDATE OF pla.po_line_id,plla.line_location_id NOWAIT';
 --
 --
