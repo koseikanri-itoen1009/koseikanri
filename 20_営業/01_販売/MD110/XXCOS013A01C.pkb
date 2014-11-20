@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.6
+ * Version          : 1.7
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -35,6 +35,7 @@ AS
  *                                       T1_0056、T1_0057、T1_0144対応
  *  2009/04/08    1.5   K.KIN            T1_0407
  *  2009/04/09    1.6   K.KIN            T1_0423
+ *  2009/04/09    1.7   K.KIN            T1_0436
  *
  *****************************************************************************************/
 --
@@ -2020,6 +2021,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         gt_ar_interface_tbl( ln_ar_idx ).unit_selling_price
                                                         := ln_amount;
                                                         -- 収益行のみ：販売単価=本体金額
+        IF ( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
+          --内税時、販売単価は本体＋税金
+          gt_ar_interface_tbl( ln_ar_idx ).unit_selling_price := ln_amount + ln_tax;
+        END IF;
         gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_sales_norm_tbl2( ln_trx_idx ).tax_code;
                                                         -- 税金コード(税区分)
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute_category
@@ -3416,6 +3421,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         gt_ar_interface_tbl( ln_ar_idx ).unit_selling_price
                                                         := ln_amount;
                                                         -- 収益行のみ：販売単価=本体金額
+        IF ( gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
+          --内税時、販売単価は本体＋税金
+          gt_ar_interface_tbl( ln_ar_idx ).unit_selling_price := ln_amount + ln_tax;
+        END IF;
         gt_ar_interface_tbl( ln_ar_idx ).tax_code       := gt_sales_bulk_tbl2( ln_trx_idx ).tax_code;
                                                         -- 税金コード(税区分)
         gt_ar_interface_tbl( ln_ar_idx ).header_attribute_category
