@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A01C (body)
  * Description      : 店舗別掛率作成
  * MD.050           : 店舗別掛率作成 MD050_COS_004_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/03/19    1.6   T.kitajima       [T1_0093] INV月次在庫受払い表情報取得修正
  *  2009/07/17    1.7   T.Tominaga       [0000429] PTの考慮、ロック処理の条件修正
  *  2009/08/03    1.7   N.Maeda          [0000429] レビュー指摘対応
+ *  2009/12/16    1.8   N.Maeda          [E_本稼動_00486] 今回データ削除条件修正
  *
  *****************************************************************************************/
 --
@@ -217,6 +218,9 @@ AS
   cv_tkn_cnt_data1              CONSTANT  VARCHAR2(10)  := 'COUNT1';  --カウント1
   cv_tkn_cnt_data2              CONSTANT  VARCHAR2(10)  := 'COUNT2';  --カウント2
   cv_tkn_cnt_data3              CONSTANT  VARCHAR2(10)  := 'COUNT3';  --カウント3
+-- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
+  cv_tkn_cnt_data4              CONSTANT  VARCHAR2(10)  := 'COUNT4';  --カウント4
+-- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
   cv_tkn_profile                CONSTANT  VARCHAR2(100) := 'PROFILE'; --プロファイル
   cv_tkn_table                  CONSTANT  VARCHAR2(100) := 'TABLE';   --テーブル
   cv_tkn_table_name             CONSTANT  VARCHAR2(100) := 'TABLE_NAME';
@@ -299,6 +303,9 @@ AS
       delivery_base_code        xxcmm_cust_accounts.delivery_base_code%TYPE,
       --店舗別用消化計算ヘッダ.店舗別用消化計算ヘッダID
       shop_digestion_hdr_id     xxcos_shop_digestion_hdrs.shop_digestion_hdr_id%TYPE
+-- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
+      ,sales_result_creation_flag xxcos_shop_digestion_hdrs.sales_result_creation_flag%TYPE
+-- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
   );
 --
   --品目情報テーブル
@@ -337,6 +344,9 @@ AS
   gn_uncalc_cnt3                NUMBER;                               -- 未計算区分３件数
   gn_line_count                 NUMBER;                               -- 明細カウント
   gn_header_count               NUMBER;                               -- ヘッダカウント
+-- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
+  gn_creation_count             NUMBER;                               -- 販売実績連携済件数
+-- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
   --
   gn_org_id                     NUMBER;                               -- 営業単位
   --日付関連
@@ -881,6 +891,9 @@ AS
              xca.business_low_type business_low_type,                 --顧客アドオンマスタ.業態小分類
              xca.delivery_base_code delivery_base_code,               --顧客アドオンマスタ.納品拠点コード
              xsh.shop_digestion_hdr_id                                --店舗別用消化計算ヘッダ.店舗別用消化計算ヘッダID
+-- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
+             ,xsh.sales_result_creation_flag   sales_result_creation_flag   -- 販売実績連携フラグ
+-- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
         FROM hz_cust_accounts          hca,                           --顧客マスタ
              xxcmm_cust_accounts       xca,                           --顧客アドオンマスタ
              xxcos_shop_digestion_hdrs xsh                            --店舗別用消化計算ヘッダテーブル
@@ -965,8 +978,10 @@ AS
          AND xsh.digestion_due_date(+)         = gd_last_month_date
          --顧客マスタ.顧客ID = 店舗別用消化計算ヘッダ.顧客ID(+)
          AND hca.cust_account_id               = xsh.cust_account_id(+)
-         --店舗別用消化計算ヘッダ.販売実績作成フラグ(+) = 'N'
-         AND xsh.sales_result_creation_flag(+) = ct_make_flag_no
+-- ************* 2009/12/16 1.8 N.Maeda DEL START ************* --
+--         --店舗別用消化計算ヘッダ.販売実績作成フラグ(+) = 'N'
+--         AND xsh.sales_result_creation_flag(+) = ct_make_flag_no
+-- ************* 2009/12/16 1.8 N.Maeda DEL  END  ************* --
          --NVL(顧客アドオンマスタ.中止決済日,前月終了年月日) BETWEEN 前月開始日 AND 前月終了年月日
          AND NVL( xca.stop_approval_date, gd_last_month_date ) BETWEEN gd_begi_month_date AND gd_last_month_date
          --顧客マスタ.顧客区分 = 10:顧客(2009/02/10 1.2)
@@ -1150,32 +1165,38 @@ AS
           RAISE global_data_lock_expt;
       END;
   --
-      --==================================
-      -- 1.ヘッダ部削除
-      --==================================
-      BEGIN
-        DELETE
-          FROM xxcos_shop_digestion_hdrs xsdh
-         WHERE xsdh.customer_number            = gt_tab_shop_del_hdrs(i).customer_number
-           AND xsdh.digestion_due_date         = gd_last_month_date
-        ;
-      EXCEPTION
-        WHEN OTHERS THEN
-          lv_str_table_name       := xxccp_common_pkg.get_msg(
-                                       iv_application        => ct_xxcos_appl_short_name,
-                                       iv_name               => ct_msg_get_shop_hdr_name
-                                     );
-          RAISE global_data_del_expt;
-      END;
+-- ************* 2009/12/16 1.8 N.Maeda MOD START ************* --
+--      --==================================
+--      -- 1.ヘッダ部削除
+--      --==================================
+--      BEGIN
+--        DELETE
+--          FROM xxcos_shop_digestion_hdrs xsdh
+--         WHERE xsdh.customer_number            = gt_tab_shop_del_hdrs(i).customer_number
+--           AND xsdh.digestion_due_date         = gd_last_month_date
+--        ;
+--      EXCEPTION
+--        WHEN OTHERS THEN
+--          lv_str_table_name       := xxccp_common_pkg.get_msg(
+--                                       iv_application        => ct_xxcos_appl_short_name,
+--                                       iv_name               => ct_msg_get_shop_hdr_name
+--                                     );
+--          RAISE global_data_del_expt;
+--      END;
   --
       --==================================
-      -- 2.明細部削除
+      -- 1.明細部削除
       --==================================
       BEGIN
         DELETE
           FROM xxcos_shop_digestion_lns xsds
          WHERE xsds.customer_number            = gt_tab_shop_del_hdrs(i).customer_number
            AND xsds.digestion_due_date         = gd_last_month_date
+           AND EXISTS ( SELECT 'Y'
+                        FROM   xxcos_shop_digestion_hdrs xsdh
+                        WHERE  xsdh.shop_digestion_hdr_id      = xsds.shop_digestion_hdr_id
+                        AND  xsdh.sales_result_creation_flag   = ct_make_flag_no            -- 販売実績未作成
+                      )
         ;
       EXCEPTION
         WHEN OTHERS THEN
@@ -1185,6 +1206,28 @@ AS
                                      );
           RAISE global_data_del_expt;
       END;
+--
+      --==================================
+      -- 2.ヘッダ部削除
+      --==================================
+      BEGIN
+        DELETE
+          FROM xxcos_shop_digestion_hdrs xsdh
+         WHERE xsdh.customer_number            = gt_tab_shop_del_hdrs(i).customer_number
+           AND xsdh.digestion_due_date         = gd_last_month_date
+           AND xsdh.sales_result_creation_flag = ct_make_flag_no            -- 販売実績未作成
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_str_table_name       := xxccp_common_pkg.get_msg(
+                                       iv_application        => ct_xxcos_appl_short_name,
+                                       iv_name               => ct_msg_get_shop_hdr_name
+                                     );
+          RAISE global_data_del_expt;
+      END;
+--
+-- ************* 2009/12/16 1.8 N.Maeda MOD  END  ************* --
+--
     END LOOP lock_loop;
 --
   EXCEPTION
@@ -2360,6 +2403,9 @@ AS
     ln_index        := 1;
     gv_base_code    := iv_base_code;
     gv_cust_code    := iv_customer_number;
+-- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
+    gn_creation_count := 0;
+-- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -2421,90 +2467,100 @@ AS
     -- ===============================
     <<gt_tab_cust_data_loop>>
     FOR i IN 1..gt_tab_cust_data.COUNT LOOP
-      -- ===============================
-      -- A-5.ヘッダ単位初期化処理
-      -- ===============================
-      init_header(
-         gt_tab_cust_data(i).party_id          -- 顧客パーティID
-        ,gt_tab_cust_data(i).account_number    -- 顧客コード
-        ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
-        ,lv_ar_uncalculate_type                -- AR未計算区分
-        ,lv_inv_uncalculate_type               -- INV未計算区分
-        ,ln_sales_amount                       -- 店舗別売上金額
-        ,ln_check_amount                       -- チェック用店舗別売上金額
-        ,lt_performance_by_code                -- 営業担当員コード
-        ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode                            -- リターン・コード             --# 固定 #
-        ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF ( lv_retcode != cv_status_normal ) THEN
-        RAISE global_common_expt;
-      END IF;
---
-      -- ===============================
-      -- A-6.AR取引情報取得処理
-      -- ===============================
-      get_ar_data(
-         gt_tab_cust_data(i).cust_account_id   -- 顧客ID
-        ,gt_tab_cust_data(i).account_number    -- 顧客コード
-        ,lv_ar_uncalculate_type                -- AR未計算区分
-        ,ln_sales_amount                       -- 店舗別売上金額
-        ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode                            -- リターン・コード             --# 固定 #
-        ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF ( lv_retcode != cv_status_normal ) THEN
-        RAISE global_common_expt;
-      ELSE
-        IF ( lv_ar_uncalculate_type != cv_uncalculate_type_nof ) THEN
-          gn_ar_cnt := gn_ar_cnt +1;
+-- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
+      -- 販売実績未連携時のみ処理実行
+      IF ( gt_tab_cust_data(i).sales_result_creation_flag != ct_make_flag_yes )
+      OR ( gt_tab_cust_data(i).sales_result_creation_flag IS NULL ) THEN
+-- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
+        -- ===============================
+        -- A-5.ヘッダ単位初期化処理
+        -- ===============================
+        init_header(
+           gt_tab_cust_data(i).party_id          -- 顧客パーティID
+          ,gt_tab_cust_data(i).account_number    -- 顧客コード
+          ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
+          ,lv_ar_uncalculate_type                -- AR未計算区分
+          ,lv_inv_uncalculate_type               -- INV未計算区分
+          ,ln_sales_amount                       -- 店舗別売上金額
+          ,ln_check_amount                       -- チェック用店舗別売上金額
+          ,lt_performance_by_code                -- 営業担当員コード
+          ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode                            -- リターン・コード             --# 固定 #
+          ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF ( lv_retcode != cv_status_normal ) THEN
+          RAISE global_common_expt;
         END IF;
-      END IF;
 --
-      -- ===============================
-      -- A-8.INV月次在庫受払表情報取得処理
-      -- ===============================
-      get_inv_data(
-         gt_tab_cust_data(i)                   -- 顧客情報
-        ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
-        ,lv_inv_uncalculate_type               -- INV未計算区分
-        ,ln_check_amount                       -- チェック用店舗別売上金額
-        ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode                            -- リターン・コード             --# 固定 #
-        ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF ( lv_retcode != cv_status_normal ) THEN
-        RAISE global_common_expt;
-      ELSE
-        IF ( lv_inv_uncalculate_type != cv_uncalculate_type_nof ) THEN
-          gn_inv_cnt := gn_inv_cnt + 1;
+        -- ===============================
+        -- A-6.AR取引情報取得処理
+        -- ===============================
+        get_ar_data(
+           gt_tab_cust_data(i).cust_account_id   -- 顧客ID
+          ,gt_tab_cust_data(i).account_number    -- 顧客コード
+          ,lv_ar_uncalculate_type                -- AR未計算区分
+          ,ln_sales_amount                       -- 店舗別売上金額
+          ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode                            -- リターン・コード             --# 固定 #
+          ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF ( lv_retcode != cv_status_normal ) THEN
+          RAISE global_common_expt;
+        ELSE
+          IF ( lv_ar_uncalculate_type != cv_uncalculate_type_nof ) THEN
+            gn_ar_cnt := gn_ar_cnt +1;
+          END IF;
         END IF;
-      END IF;
 --
-      -- ===============================
-      -- A-12.店舗別用消化計算ヘッダ登録処理
-      -- ===============================
-      set_header(
-         gt_tab_cust_data(i)                   -- 顧客情報
-        ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
-        ,lv_ar_uncalculate_type                -- AR未計算区分
-        ,lv_inv_uncalculate_type               -- INV未計算区分
-        ,ln_sales_amount                       -- 店舗別売上金額
-        ,ln_check_amount                       -- チェック用店舗別売上金額
-        ,lt_performance_by_code                -- 営業担当員コード
-        ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode                            -- リターン・コード             --# 固定 #
-        ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF ( lv_retcode != cv_status_normal ) THEN
-        RAISE global_common_expt;
-      END IF;
+        -- ===============================
+        -- A-8.INV月次在庫受払表情報取得処理
+        -- ===============================
+        get_inv_data(
+           gt_tab_cust_data(i)                   -- 顧客情報
+          ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
+          ,lv_inv_uncalculate_type               -- INV未計算区分
+          ,ln_check_amount                       -- チェック用店舗別売上金額
+          ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode                            -- リターン・コード             --# 固定 #
+          ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF ( lv_retcode != cv_status_normal ) THEN
+          RAISE global_common_expt;
+        ELSE
+          IF ( lv_inv_uncalculate_type != cv_uncalculate_type_nof ) THEN
+            gn_inv_cnt := gn_inv_cnt + 1;
+          END IF;
+        END IF;
 --
-      --削除用ヘッダID保管
-      gt_tab_shop_del_hdrs(ln_index).shop_digestion_hdr_id := gt_tab_cust_data(i).shop_digestion_hdr_id;
-      gt_tab_shop_del_hdrs(ln_index).customer_number       := gt_tab_cust_data(i).account_number;
-      --
-      ln_index                                             := ln_index + 1;
+        -- ===============================
+        -- A-12.店舗別用消化計算ヘッダ登録処理
+        -- ===============================
+        set_header(
+           gt_tab_cust_data(i)                   -- 顧客情報
+          ,lt_shop_digestion_hdr_id              -- 店舗別用消化計算ヘッダID
+          ,lv_ar_uncalculate_type                -- AR未計算区分
+          ,lv_inv_uncalculate_type               -- INV未計算区分
+          ,ln_sales_amount                       -- 店舗別売上金額
+          ,ln_check_amount                       -- チェック用店舗別売上金額
+          ,lt_performance_by_code                -- 営業担当員コード
+          ,lv_errbuf                             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode                            -- リターン・コード             --# 固定 #
+          ,lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF ( lv_retcode != cv_status_normal ) THEN
+          RAISE global_common_expt;
+        END IF;
+--
+        --削除用ヘッダID保管
+        gt_tab_shop_del_hdrs(ln_index).shop_digestion_hdr_id := gt_tab_cust_data(i).shop_digestion_hdr_id;
+        gt_tab_shop_del_hdrs(ln_index).customer_number       := gt_tab_cust_data(i).account_number;
+        --
+        ln_index                                             := ln_index + 1;
+-- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
+      ELSIF ( gt_tab_cust_data(i).sales_result_creation_flag = ct_make_flag_yes ) THEN
+        gn_creation_count := gn_creation_count + 1;
+      END IF;
+-- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
     END LOOP gt_tab_cust_data_loop;
 --
     -- ===============================
@@ -2675,6 +2731,9 @@ AS
       gn_ar_cnt      := 0;
       gn_inv_cnt     := 0;
       gn_normal_cnt  := 0;
+-- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
+      gn_creation_count := 0;
+-- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
     END IF;
     --空行挿入
     FND_FILE.PUT_LINE(
@@ -2691,6 +2750,10 @@ AS
                     ,iv_token_value2 => TO_CHAR(gn_ar_cnt)
                     ,iv_token_name3  => cv_tkn_cnt_data3
                     ,iv_token_value3 => TO_CHAR(gn_inv_cnt)
+-- ************* 2009/12/16 1.8 N.Maeda ADD START ************* --
+                    ,iv_token_name4  => cv_tkn_cnt_data4
+                    ,iv_token_value4  => TO_CHAR(gn_creation_count)
+-- ************* 2009/12/16 1.8 N.Maeda ADD  END  ************* --
                    );
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
