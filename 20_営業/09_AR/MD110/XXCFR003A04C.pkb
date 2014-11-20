@@ -7,7 +7,7 @@ AS
  * Description      : EDI請求書データ作成
  * MD.050           : MD050_CFR_003_A04_EDI請求書データ作成
  * MD.070           : MD050_CFR_003_A04_EDI請求書データ作成
- * Version          : 2.2
+ * Version          : 2.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,7 +50,6 @@ AS
  *  2009/11/16    1.9   SCS 廣瀬 真佐人   AR共通課題IE678対応
  *  2009/12/13    2.0   SCS 松尾 泰生    [障害本稼動_00350] 消費税区分を判断した請求金額の対応
  *  2009/12/24    2.1   SCS 廣瀬 真佐人  [障害本稼動_00606] 期間中の顧客階層変更対応
- *  2010/01/05    2.2   SCS 廣瀬 真佐人  [障害本稼動_01120] 伝票金額の集計単位変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -878,13 +877,6 @@ AS
     lv_b_slip_num   VARCHAR2(300);   -- 伝票番号
     lv_b_inv_id     VARCHAR2(300);   -- 一括請求書ID
     lv_b_vend_cd    VARCHAR2(300);    -- 取引先コード
--- Modify 2010.01.05 Ver2.2 Start
-    lv_b_ship_shop_code   VARCHAR2(300);  -- 店コード
-    lv_b_acceptance_date  VARCHAR2(300);  -- 検収日
-    lv_b_slip_type        VARCHAR2(300);  -- 伝票区分
-    lv_b_classify_type    VARCHAR2(300);  -- 分類コード
-    lv_b_sold_return_type VARCHAR2(300);  -- 売上返品区分
--- Modify 2010.01.05 Ver2.2 End
 --
     -- 更新開始位置
     ln_slip_point   NUMBER;         -- 更新開始位置（伝票）
@@ -1118,17 +1110,6 @@ AS
               ,xil.slip_num                                   -- 伝票番号
               ,xil.note_line_id                               -- 行No
 -- Modify 2009.06.05 Ver1.5 End
--- Modify 2010.01.05 Ver2.2 Start
-              ,SUBSTRB(xil.slip_type         -- 末尾○○文字
-                     , -1 * gt_edi_item_tab(41).edi_length
-               )
-            || SUBSTRB(xil.slip_type         -- 末尾○○文字以外
-                     , 1
-                     , LENGTHB( gt_edi_item_tab(41).edi_length - gt_edi_item_tab(41).edi_length )
-               )                                              -- 伝票区分
-              ,xil.classify_type                              -- 分類コード
-              ,xil.sold_return_type                           -- 売上返品区分
--- Modify 2010.01.05 Ver2.2 End
       ;
 --
     TYPE get_edi_data_tbl1 IS TABLE OF get_edi_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
@@ -1281,15 +1262,6 @@ AS
           lv_b_slip_num := lt_get_edi_data_tbl1(i).slip_num;
           lv_b_inv_id   := lt_get_edi_data_tbl1(i).invoice_id;
           lv_b_vend_cd  := lt_get_edi_data_tbl1(i).vender_code;
--- Modify 2010.01.05 Ver2.2 Start
-          lv_b_ship_shop_code    := lt_get_edi_data_tbl1(i).ship_shop_code;    -- 店コード
-          lv_b_acceptance_date   := NVL(lt_get_edi_data_tbl1(i).acceptance_date
-                                       ,lt_get_edi_data_tbl1(i).delivery_date
-                                    );                                         -- NVL(検収日,納品日／返品日)
-          lv_b_slip_type         := lt_get_edi_data_tbl1(i).slip_type;         -- 伝票区分 
-          lv_b_classify_type     := lt_get_edi_data_tbl1(i).classify_type;     -- 分類コード 
-          lv_b_sold_return_type  := lt_get_edi_data_tbl1(i).sold_return_type;  -- 売上返品区分 
--- Modify 2010.01.05 Ver2.2 End
         -- 最終レコードの処理である場合
         ELSIF (i = ln_target_cnt + 1) THEN
           -- ダミーコードをブレイク変数に設定
@@ -1302,31 +1274,7 @@ AS
 --
         -- 前行伝票番号が現在行伝票番号でない場合、
         -- 伝票単位の集計処理を前行伝票番号レコードに対して行う
--- Modify 2010.01.05 Ver2.2 Start  最終レコードは伝票番号でブレーク
---        IF (lv_b_slip_num <> lt_get_edi_data_tbl1(i).slip_num) THEN
-        IF ( ( lv_b_slip_num             <> lt_get_edi_data_tbl1(i).slip_num         )  -- 伝票番号
-          OR ( lv_b_acceptance_date      <> NVL(lt_get_edi_data_tbl1(i).acceptance_date
-                                               ,lt_get_edi_data_tbl1(i).delivery_date
-                                            )
-             )                                                                          -- NVL(検収日,納品日／返品日)
-          OR ( ( ( lv_b_ship_shop_code   IS     NULL ) AND ( lt_get_edi_data_tbl1(i).ship_shop_code   IS NOT NULL ) )
-            OR ( ( lv_b_ship_shop_code   IS NOT NULL ) AND ( lt_get_edi_data_tbl1(i).ship_shop_code   IS     NULL ) )
-            OR ( ( lv_b_ship_shop_code   <> lt_get_edi_data_tbl1(i).ship_shop_code                                ) )
-             )                                                                          -- 店コード
-          OR ( ( ( lv_b_slip_type        IS     NULL ) AND ( lt_get_edi_data_tbl1(i).slip_type        IS NOT NULL ) )
-            OR ( ( lv_b_slip_type        IS NOT NULL ) AND ( lt_get_edi_data_tbl1(i).slip_type        IS     NULL ) )
-            OR ( ( lv_b_slip_type        <> lt_get_edi_data_tbl1(i).slip_type                                     ) )
-             )                                                                          -- 伝票区分
-          OR ( ( ( lv_b_classify_type    IS     NULL ) AND ( lt_get_edi_data_tbl1(i).classify_type    IS NOT NULL ) )
-            OR ( ( lv_b_classify_type    IS NOT NULL ) AND ( lt_get_edi_data_tbl1(i).classify_type    IS     NULL ) )
-            OR ( ( lv_b_classify_type    <> lt_get_edi_data_tbl1(i).classify_type                                 ) )
-             )                                                                          -- 分類コード
-          OR ( ( ( lv_b_sold_return_type IS     NULL ) AND ( lt_get_edi_data_tbl1(i).sold_return_type IS NOT NULL ) )
-            OR ( ( lv_b_sold_return_type IS NOT NULL ) AND ( lt_get_edi_data_tbl1(i).sold_return_type IS     NULL ) )
-            OR ( ( lv_b_sold_return_type <> lt_get_edi_data_tbl1(i).sold_return_type                              ) )
-             )                                                                          -- 売上返品区分
-        ) THEN
--- Modify 2010.01.05 Ver2.2 End
+        IF (lv_b_slip_num <> lt_get_edi_data_tbl1(i).slip_num) THEN
           <<slip_loop>>
           FOR j IN ln_slip_point..(ln_data_cnt - 1) LOOP
             -- 請求金額符号の設定
@@ -1353,15 +1301,6 @@ AS
 -- Modify 2009.06.08 Ver1.5 End
           -- ブレイク変数更新
           lv_b_slip_num := lt_get_edi_data_tbl1(i).slip_num;
--- Modify 2010.01.05 Ver2.2 Start
-          lv_b_ship_shop_code   := lt_get_edi_data_tbl1(i).ship_shop_code;    -- 店コード
-          lv_b_acceptance_date  := NVL(lt_get_edi_data_tbl1(i).acceptance_date
-                                      ,lt_get_edi_data_tbl1(i).delivery_date
-                                   );                                         -- NVL(検収日,納品日／返品日)
-          lv_b_slip_type        := lt_get_edi_data_tbl1(i).slip_type;         -- 伝票区分 
-          lv_b_classify_type    := lt_get_edi_data_tbl1(i).classify_type;     -- 分類コード 
-          lv_b_sold_return_type := lt_get_edi_data_tbl1(i).sold_return_type;  -- 売上返品区分
--- Modify 2010.01.05 Ver2.2 End
           -- 伝票枚数更新
           ln_slip_num := ln_slip_num + 1;
           -- 更新開始位置更新
