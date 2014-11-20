@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.54
+ * Version          : 1.55
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -152,6 +152,7 @@ AS
  *  2009/04/08    1.52 SCS    伊藤ひとみ 本番障害対応#1232 運送業者、出庫日、入庫日がNULLの場合の考慮ができていないため修正。配送Noが指示を同じかチェックを追加
  *  2009/04/27    1.53 SCS    伊藤ひとみ 本番障害対応#1435 指示と報告比較チェックで、運賃区分OFFの場合は、運送業者の比較は行わない
  *  2009/05/26    1.54 SCS    伊藤ひとみ 本番障害対応#1495 在庫クローズチェックを在庫クローズ年月の月末で行うよう修正
+ *  2009/05/28    1.55 SCS    伊藤ひとみ 本番障害対応#1398 配送先名取得条件にステータスを追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -7976,6 +7977,10 @@ AS
             INTO   ln_cnt
             FROM   xxcmn_party_sites2_v xpsv
             WHERE  xpsv.party_site_number = gr_interface_info_rec(i).party_site_code --パーティサイト情報VIEW2.パーティサイトID
+-- 2009/05/28 H.Itou Add Start 本番障害#1398
+            AND    xpsv.party_site_status     = gv_view_status  -- 有効な出荷先
+            AND    xpsv.cust_acct_site_status = gv_view_status  -- 有効な出荷先
+-- 2009/05/28 H.Itou Add End
             AND    xpsv.start_date_active <= gr_interface_info_rec(i).shipped_date   --適用開始日<=出荷日
             AND    xpsv.end_date_active   >= gr_interface_info_rec(i).shipped_date   --適用終了日>=出荷日
             ;
