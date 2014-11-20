@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.14
+ * Version                : 11.5.10.2.15
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2010/02/16   11.5.10.2.12   障害「E_本稼動_01408」対応
  *  2010/11/22   11.5.10.2.13   障害「E_本稼動_05407」対応
  *  2010/12/24   11.5.10.2.14   障害「E_本稼動_02004」対応
+ *  2011/11/29   11.5.10.2.15   障害「E_本稼動_07768」対応
  *
  *****************************************************************************************/
 --
@@ -195,6 +196,10 @@ AS
 -- ver 11.5.10.2.12 Modify Start
     cn_if_line_attribute_length CONSTANT NUMBER := '30'; -- INTERFACE_LINE_ATTRIBUTE列桁数
 -- ver 11.5.10.2.12 Modify End
+--
+-- ver 11.5.10.2.15 Add Start
+    cn_percent_char        CONSTANT VARCHAR(1) := '%'; --%記号
+-- ver 11.5.10.2.15 Add End
 --
     -- *** ローカル・カーソル ***
     -- 処理対象データ取得カーソル
@@ -702,15 +707,27 @@ AS
           ,ra_customer_trx_all rcta
           ,ar_receivable_applications_all araa
           ,ar_cash_receipts_v acrv
+-- ver 11.5.10.2.15 Add Start
+          ,xx03_receivable_slips xrs_orig
+-- ver 11.5.10.2.15 Add ENd
       WHERE xrs.receivable_id = in_receivable_id
-      AND   rcta.trx_number = xrs.orig_invoice_num
+-- ver 11.5.10.2.15 Mod Start
+--      AND   rcta.trx_number = xrs.orig_invoice_num
+      AND   rcta.trx_number LIKE xrs.orig_invoice_num || cn_percent_char
+-- ver 11.5.10.2.15 Mod End
       AND   rcta.org_id = FND_PROFILE.VALUE('ORG_ID')
       AND   rcta.set_of_books_id = FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')
       AND   araa.applied_customer_trx_id = rcta.customer_trx_id
       AND   araa.set_of_books_id = rcta.set_of_books_id
       AND   araa.org_id = rcta.org_id
       AND   araa.display = 'Y'
-      AND   acrv.cash_receipt_id = araa.cash_receipt_id;
+-- ver 11.5.10.2.15 Mod Start
+--      AND   acrv.cash_receipt_id = araa.cash_receipt_id;
+      AND   acrv.cash_receipt_id   = araa.cash_receipt_id
+      AND   xrs_orig.receivable_num = xrs.orig_invoice_num
+      AND   rcta.cust_trx_type_id  = xrs_orig.trans_type_id
+      ;
+-- ver 11.5.10.2.15 Mod End
 --
     --勘定科目チェックカーソル
     CURSOR xx03_account_chk_cur
