@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -106,6 +106,7 @@ AS
  *  2008/10/13    1.21 Oracle 福田 直樹  統合テスト障害#314対応(予定実績警告チェックで取込報告と比較するトランザクションは実績・指示の順で比較する)
  *  2008/10/18    1.22 Oracle 福田 直樹  変更一覧#168(課題一覧#62)(受注の指示無し実績登録時、出荷依頼画面に合わせ出荷予定日・着荷予定日にNULLをセット)
  *  2008/10/27    1.23 Oracle 福田 直樹  課題T_S_619(1)対応(常に無条件で全データについて引当可能チェックをしている)
+ *  2008/10/30    1.24 Oracle 福田 直樹  統合指摘#390対応(顧客発注番号の9桁以内チェック・数字チェックを追加)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -264,10 +265,10 @@ AS
   gv_msg_93a_153                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13153';
   -- 実績計上／訂正不可エラーメッセージ
   gv_msg_93a_154                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13154';
-  -- 2008/08/13 内部変更#177対応 Start ----------------------------------------
-  -- 出荷日と着荷日の日付逆転エラーメッセージ
-  gv_msg_93a_155                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13155';
-  -- 2008/08/13 内部変更#177対応 End ------------------------------------------
+  -- 出荷日と着荷日の日付逆転エラーメッセージ                                 -- 2008/08/13 内部変更#177 Add
+  gv_msg_93a_155                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13155';  -- 2008/08/13 内部変更#177 Add
+  -- 顧客発注番号エラーメッセージ                                             -- 2008/10/30 統合指摘#390 Add
+  gv_msg_93a_156                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13156';  -- 2008/10/30 統合指摘#390 Add
   -- 重量容積小口個数更新関数エラーメッセージ
   gv_msg_93a_308                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13308';
   -- ＰＧでのコンカレント呼び出しエラー
@@ -4473,8 +4474,10 @@ AS
     lt_shipped_date         xxwsh_shipping_headers_if.shipped_date%TYPE;         --IF_H.出荷日
     lt_arrival_date         xxwsh_shipping_headers_if.arrival_date%TYPE;         --IF_H.着荷日
     lt_freight_charge_class xxwsh_shipping_headers_if.filler14%TYPE;             --IF_H.運賃区分
+    lt_cust_po_number       xxwsh_shipping_headers_if.cust_po_number%TYPE;       --IF_H.顧客発注番号  2008/10/30 結合指摘#390 Add
+--
     lv_msg_buff             VARCHAR2(5000);
-    lv_dterr_flg            VARCHAR2(1) := '0';
+    lv_dterr_flg            VARCHAR2(1);
     lv_date_msg             VARCHAR2(15);
     lv_error_flg            VARCHAR2(1);                          --エラーflag
     ln_err_flg              NUMBER := 0;
@@ -4526,6 +4529,7 @@ AS
       lt_freight_charge_class := NVL(gr_interface_info_rec(i).freight_charge_class,gv_include_exclude_0);  --IF_H.運賃区分
       lv_error_flg            := gr_interface_info_rec(i).err_flg;               -- エラーフラグ
       lt_order_source_ref     := gr_interface_info_rec(i).order_source_ref;      --受注ソース参照(依頼/移動No)
+      lt_cust_po_number       := gr_interface_info_rec(i).cust_po_number;        --IF_H.顧客発注番号  2008/10/30 統合指摘#390 Add
 --
       IF (lv_error_flg = '0') THEN
 --
@@ -4997,7 +5001,7 @@ AS
                     OR
                     ((gr_interface_info_rec(i).use_by_date IS NOT NULL)
                     AND (ilm.attribute3 = TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD'))))
-            AND    ilm.attribute2 = NVL(gr_interface_info_rec(i).original_character,ilm.attribute2) -- 固有記号   
+            AND    ilm.attribute2 = NVL(gr_interface_info_rec(i).original_character,ilm.attribute2) -- 固有記号
             AND    ilm.lot_no     = NVL(gr_interface_info_rec(i).lot_no,ilm.lot_no)                 -- ロットNo
             AND    ximv.inactive_ind      <> gn_view_disable             -- 無効フラグ
             AND    ximv.obsolete_class    <> gv_view_disable             -- 廃止区分
@@ -5187,7 +5191,62 @@ AS
       END IF;
       -- 2008/08/13 内部変更#177対応 End --------------------------------------------------
 --
+      -- 2008/10/30 結合指摘#390対応 Start ------------------------------------------------
+      -- 顧客発注番号の数字チェック
+      IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
+        IF (lt_cust_po_number IS NOT NULL) THEN
+          lv_dterr_flg := gv_date_chk_0;   -- フラグ初期化
+--
+          BEGIN
+            SELECT  TO_NUMBER(REPLACE(lt_cust_po_number, '.', '*'))  -- 数字チェック
+            INTO    lt_cust_po_number
+            FROM    DUAL;
+          EXCEPTION
+            WHEN OTHERS THEN
+              lv_dterr_flg := gv_date_chk_1;   -- フラグON
+          END;
+--
+          IF (LENGTHB(lt_cust_po_number) > 9) THEN    -- 桁数チェック(9桁以内ならOK)
+            lv_dterr_flg := gv_date_chk_1;     -- フラグON
+          END IF;
+--
+          IF (lv_dterr_flg = gv_date_chk_1) THEN
+            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                           gv_msg_kbn         -- 'XXWSH'
+                          ,gv_msg_93a_156     -- 顧客発注番号エラーメッセージ
+                          ,gv_param1_token
+                          ,gr_interface_info_rec(i).delivery_no           --IF_H.配送No
+                          ,gv_param2_token
+                          ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
+                          ,gv_param3_token
+                          ,gr_interface_info_rec(i).cust_po_number        --IF_H.顧客発注番号
+                                                             )
+                                                             ,1
+                                                             ,5000);
+--
+            --配送NO-EOSデータ種別単位にエラーflagセット
+            set_deliveryno_unit_errflg(
+              lt_delivery_no,         -- 配送No
+              gr_interface_info_rec(i).eos_data_type,  -- EOSデータ種別
+              gv_err_class,           -- エラー種別：エラー
+              lv_msg_buff,            -- エラー・メッセージ(出力用)
+              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+              lv_retcode,             -- リターン・コード             --# 固定 #
+              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+--
+            -- エラーフラグ
+            ln_err_flg := 1;
+            -- 処理ステータス：警告
+            ov_retcode := gv_status_warn;
+--
+          END IF;
+--
+        END IF;
+--
+      END IF;
+      -- 2008/10/30 結合指摘#390対応 End --------------------------------------------------
 --
       IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
@@ -5195,7 +5254,7 @@ AS
         IF (lt_freight_charge_class = gv_include_exclude_1) THEN
 --
           IF (i >= 2) THEN
-
+--
             --IF_H.配送Noの同一チェック
             IF (lt_delivery_no = gr_interface_info_rec(i-1).delivery_no) THEN
 --
