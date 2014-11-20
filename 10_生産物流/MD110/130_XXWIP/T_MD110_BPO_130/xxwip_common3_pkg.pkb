@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common3_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -27,7 +27,8 @@ AS
  *  2008/04/18   1.0   M.Nomura         新規作成
  *  2008/07/02   1.1   M.Nomura         メッセージ出力不具合
  *  2008/07/17   1.2   M.Nomura         変更要求#96、#98対応・内部課題32対応
- *  2008/10/01   1.3    Y.Kawano        内部変更#220,T_S_500対応
+ *  2008/10/01   1.3   Y.Kawano         内部変更#220,T_S_500対応
+ *  2008/11/27   1.4   D.Nihei          本番障害#173対応
  *
  *****************************************************************************************/
 --
@@ -1073,8 +1074,16 @@ AS
     INTO    ln_num_of_cases
           , lv_conv_unit
           , ln_num_of_deliver
-    FROM    xxcmn_item_mst_v ximv
-    WHERE   ximv.item_no = in_item_cd;
+--2008/11/27 D.Nihei Mod Start 廃止の品目も抽出できるように修正
+--    FROM    xxcmn_item_mst_v ximv
+--    WHERE   ximv.item_no = in_item_cd;
+    FROM    xxcmn_item_mst2_v ximv
+    WHERE   ximv.item_no      = in_item_cd
+    AND     ximv.inactive_ind <> '1'
+    AND     TRUNC(SYSDATE)    BETWEEN ximv.start_date_active
+                              AND     ximv.end_date_active
+    ;
+--2008/11/27 D.Nihei Mod End
 --
     -- **************************************************
     -- 出荷入数が設定されている場合
