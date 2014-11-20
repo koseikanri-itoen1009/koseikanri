@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI009A04R(body)
  * Description      : 入出庫ジャーナルチェックリスト
  * MD.050           : 入出庫ジャーナルチェックリスト MD050_COI_009_A04
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/07/02    1.5   H.Sasaki         [0000275]パフォーマンス改善
  *  2009/07/10    1.6   H.Sasaki         [0000459]入出庫逆転データの出力条件を変更
  *  2009/09/08    1.7   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
+ *  2009/12/15    1.8   H.Sasaki         [E_本稼動_00256]起動パラメータの年月日From-Toを設定
  *
  *****************************************************************************************/
 --
@@ -122,6 +123,11 @@ AS
   cv_msg_xxcoi10311  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10311';   -- パラメータ出力区分名取得エラー
   cv_msg_xxcoi10312  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10312';   -- パラメータ伝票区分名取得エラー
   cv_msg_xxcoi10313  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10313';   -- パラメータ正負データ区分名取得エラー
+-- == 2009/12/15 V1.8 Added START ===============================================================
+  cv_msg_xxcoi10164  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10164';   -- パラメータ日付（From）値メッセージ
+  cv_msg_xxcoi10165  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10165';   -- パラメータ日付（To）値メッセージ
+  cv_msg_xxcoi10337  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10337';   -- 日付パラメータ整合性エラーメッセージ
+-- == 2009/12/15 V1.8 Added END   ===============================================================
 --
   -- トークン名
   cv_token_pro                CONSTANT VARCHAR2(30) := 'PRO_TOK';
@@ -132,6 +138,10 @@ AS
   cv_token_base_code          CONSTANT VARCHAR2(30) := 'P_BASE_CODE';
   cv_token_reverse_kbn        CONSTANT VARCHAR2(30) := 'P_REVERSE_KBN';
   cv_token_location_code      CONSTANT VARCHAR2(20) := 'LOCATION_CODE';
+-- == 2009/12/15 V1.8 Added START ===============================================================
+  cv_tkn_msg_10164            CONSTANT VARCHAR2(30) :=  'P_DATE_FROM';
+  cv_tkn_msg_10165            CONSTANT VARCHAR2(30) :=  'P_DATE_TO';
+-- == 2009/12/15 V1.8 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -141,6 +151,9 @@ AS
       output_kbn        VARCHAR2(1)       -- 01 : 出力区分      (必須)
      ,invoice_kbn       VARCHAR2(2)       -- 02 : 伝票区分      (任意)
      ,target_date       VARCHAR2(20)      -- 03 : 年月日        (必須)
+-- == 2009/12/15 V1.8 Added START ===============================================================
+     ,target_date_to    VARCHAR2(20)      -- 年月日（至）
+-- == 2009/12/15 V1.8 Added END   ===============================================================
      ,out_base_code     VARCHAR2(4)       -- 04 : 拠点          (任意)
      ,reverse_kbn       VARCHAR2(1)       -- 05 : 正負データ出力区分 (必須)
      ,output_dpt        VARCHAR2(1)       -- 06 : 帳票出力場所  (必須)
@@ -196,6 +209,9 @@ AS
     , quantity                   xxcoi_hht_inv_transactions.quantity%TYPE             -- 本数
     , total_quantity             xxcoi_hht_inv_transactions.total_quantity%TYPE       -- 総数
     , invoice_no                 xxcoi_hht_inv_transactions.invoice_no%TYPE           -- 伝票No
+-- == 2009/12/15 V1.8 Added START ===============================================================
+    , invoice_date               xxcoi_hht_inv_transactions.invoice_date%TYPE         -- 伝票日付
+-- == 2009/12/15 V1.8 Added END   ===============================================================
   );
 -- == 2009/06/19 V1.4 Modified END   ===============================================================
 --
@@ -888,7 +904,10 @@ AS
 --        gt_hht_info_tab( gn_hht_info_loop_cnt ).interface_id
         gt_hht_info_tab( gn_hht_info_loop_cnt ).transaction_id                      -- インターフェースID
 -- == 2009/05/15 V1.2 Modified END   ===============================================================
-       ,SUBSTR(gr_param.target_date,1,10)                                           -- 1.対象期間
+-- == 2009/12/15 V1.8 Modified START ===============================================================
+--       ,SUBSTR(gr_param.target_date,1,10)                                           -- 1.対象期間
+       ,TO_CHAR(gt_hht_info_tab( gn_hht_info_loop_cnt ).invoice_date, 'YYYY/MM/DD') -- 1.対象期間
+-- == 2009/12/15 V1.8 Modified END   ===============================================================
        ,gv_output_kbn_name                                                          -- 2.出力区分
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_base_code                   -- 3.拠点コード
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_base_name                   -- 4.拠点名
@@ -1063,6 +1082,84 @@ AS
 --      AND  flv.language                             =  USERENV( 'LANG' )
 --   ORDER BY xhit.interface_id
 --      ;
+-- == 2009/12/15 V1.8 Modified START ===============================================================
+--      SELECT  xhit.transaction_id             transaction_id              -- HHT入出庫一時表ID
+--             ,xhit.interface_id               interface_id                -- インターフェースID
+--             ,xhit.outside_base_code          out_base_code               -- 出庫拠点コード
+--             ,SUBSTRB(hca.account_name,1,8)   out_base_name               -- 出庫拠点名
+--             ,xhit.outside_code               outside_code                -- 出庫側コード
+--             ,xhit.outside_cust_code          outside_cust_code           -- 出庫側顧客コード
+--             ,xhit.outside_subinv_code        outside_subinv_code         -- 出庫側保管場所コード
+--             ,flv.attribute11                 invoice_type                -- 伝票区分
+--             ,flv.meaning                     invoice_name                -- 伝票区分名
+--             ,xhit.inside_code                inside_code                 -- 入庫側コード
+--             ,xhit.inside_cust_code           inside_cust_code            -- 入庫側顧客コード
+--             ,xhit.inside_subinv_code         inside_subinv_code          -- 入庫側保管場所コード
+--             ,xhit.item_code                  item_code                   -- 品目コード
+--             ,ximb.item_short_name            item_short_name             -- 略称
+--             ,xhit.case_quantity              case_quantity               -- ケース数
+--             ,xhit.case_in_quantity           case_in_quantity            -- ケース入数
+--             ,xhit.quantity                   quantity                    -- 本数
+--             ,xhit.total_quantity             total_quantity              -- 総数
+--             ,xhit.invoice_no                 invoice_no                  -- 伝票№
+--      FROM    xxcoi_hht_inv_transactions      xhit                        -- HHT入出庫一時表
+--             ,hz_cust_accounts                hca                         -- 顧客マスタ
+--             ,mtl_system_items_b              msib                        -- 品目マスタ
+--             ,ic_item_mst_b                   iimb                        -- OPM品目マスタ
+--             ,xxcmn_item_mst_b                ximb                        -- OPM品目アドオンマスタ
+--             ,fnd_lookup_values               flv                         -- クイックコードマスタ
+--      WHERE   xhit.output_flag                          =   gr_param.output_kbn
+---- == 2009/07/02 V1.5 Modified START ===============================================================
+----      AND     TO_CHAR(xhit.invoice_date, 'YYYY/MM/DD')  =   SUBSTR(gr_param.target_date, 1, 10)
+--      AND     xhit.invoice_date                         =   TO_DATE(SUBSTR(gr_param.target_date, 1, 10), 'YYYY/MM/DD')
+---- == 2009/07/02 V1.5 Modified END   ===============================================================
+--      AND     xhit.outside_base_code                    =   gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
+---- == 2009/07/10 V1.6 Modified START ===============================================================
+----      AND     ((    (gr_param.reverse_kbn   =   cv_1)
+----                AND (xhit.total_quantity    <   0)
+----               )
+----               OR
+----               (    (gr_param.reverse_kbn   = cv_0)
+----                AND (xhit.total_quantity    > 0)
+----               )
+----              )
+--      AND     ((gr_param.reverse_kbn  =  cv_0)
+--               OR
+--               (    (gr_param.reverse_kbn   = cv_1)
+--                AND (xhit.total_quantity    > 0)
+--               )
+--               OR
+--               (    (gr_param.reverse_kbn   = cv_2)
+--                AND (xhit.total_quantity    < 0)
+--               )
+--              )
+---- == 2009/07/10 V1.6 Modified END   ===============================================================
+--      AND     hca.account_number                        =   xhit.outside_base_code
+--      AND     hca.customer_class_code                   =   cv_1
+--      AND     msib.segment1                             =   xhit.item_code
+--      AND     msib.organization_id                      =   gn_organization_id
+--      AND     msib.segment1                             =   iimb.item_no
+--      AND     iimb.item_id                              =   ximb.item_id(+)
+---- == 2009/09/08 V1.7 Added START ===============================================================
+--      AND     ((   (ximb.item_id IS NOT NULL)
+--               AND (TO_DATE(SUBSTR(gr_param.target_date, 1, 10), 'YYYY/MM/DD') BETWEEN ximb.start_date_active
+--                                                                               AND     NVL(ximb.end_date_active, TO_DATE(SUBSTR(gr_param.target_date, 1, 10), 'YYYY/MM/DD'))
+--                   )
+--               )
+--               OR
+--               (ximb.item_id IS NULL)
+--              )
+---- == 2009/09/08 V1.7 Added END   ===============================================================
+--      AND     xhit.record_type                          =   flv.attribute1
+--      AND     xhit.invoice_type                         =   flv.attribute2
+--      AND     NVL(xhit.department_flag, cv_99)          =   flv.attribute3
+--      AND     flv.lookup_type                           =   cv_invoice_type
+--      AND     flv.language                              =   USERENV('LANG')
+--      AND     flv.enabled_flag                          =   cv_yes
+--      AND     flv.attribute11                           =   NVL(gr_param.invoice_kbn, flv.attribute11)
+--      ORDER BY xhit.interface_id;
+---- == 2009/06/19 V1.4 Modified END   ===============================================================
+--
       SELECT  xhit.transaction_id             transaction_id              -- HHT入出庫一時表ID
              ,xhit.interface_id               interface_id                -- インターフェースID
              ,xhit.outside_base_code          out_base_code               -- 出庫拠点コード
@@ -1082,6 +1179,7 @@ AS
              ,xhit.quantity                   quantity                    -- 本数
              ,xhit.total_quantity             total_quantity              -- 総数
              ,xhit.invoice_no                 invoice_no                  -- 伝票№
+             ,xhit.invoice_date               invoice_date                -- 伝票日付
       FROM    xxcoi_hht_inv_transactions      xhit                        -- HHT入出庫一時表
              ,hz_cust_accounts                hca                         -- 顧客マスタ
              ,mtl_system_items_b              msib                        -- 品目マスタ
@@ -1089,20 +1187,9 @@ AS
              ,xxcmn_item_mst_b                ximb                        -- OPM品目アドオンマスタ
              ,fnd_lookup_values               flv                         -- クイックコードマスタ
       WHERE   xhit.output_flag                          =   gr_param.output_kbn
--- == 2009/07/02 V1.5 Modified START ===============================================================
---      AND     TO_CHAR(xhit.invoice_date, 'YYYY/MM/DD')  =   SUBSTR(gr_param.target_date, 1, 10)
-      AND     xhit.invoice_date                         =   TO_DATE(SUBSTR(gr_param.target_date, 1, 10), 'YYYY/MM/DD')
--- == 2009/07/02 V1.5 Modified END   ===============================================================
+      AND     xhit.invoice_date               BETWEEN       TO_DATE(SUBSTRB(gr_param.target_date, 1, 10), 'YYYY/MM/DD')
+                                              AND           TO_DATE(SUBSTRB(gr_param.target_date_to, 1, 10), 'YYYY/MM/DD')
       AND     xhit.outside_base_code                    =   gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
--- == 2009/07/10 V1.6 Modified START ===============================================================
---      AND     ((    (gr_param.reverse_kbn   =   cv_1)
---                AND (xhit.total_quantity    <   0)
---               )
---               OR
---               (    (gr_param.reverse_kbn   = cv_0)
---                AND (xhit.total_quantity    > 0)
---               )
---              )
       AND     ((gr_param.reverse_kbn  =  cv_0)
                OR
                (    (gr_param.reverse_kbn   = cv_1)
@@ -1113,23 +1200,20 @@ AS
                 AND (xhit.total_quantity    < 0)
                )
               )
--- == 2009/07/10 V1.6 Modified END   ===============================================================
       AND     hca.account_number                        =   xhit.outside_base_code
       AND     hca.customer_class_code                   =   cv_1
       AND     msib.segment1                             =   xhit.item_code
       AND     msib.organization_id                      =   gn_organization_id
       AND     msib.segment1                             =   iimb.item_no
       AND     iimb.item_id                              =   ximb.item_id(+)
--- == 2009/09/08 V1.7 Added START ===============================================================
       AND     ((   (ximb.item_id IS NOT NULL)
-               AND (TO_DATE(SUBSTR(gr_param.target_date, 1, 10), 'YYYY/MM/DD') BETWEEN ximb.start_date_active
-                                                                               AND     NVL(ximb.end_date_active, TO_DATE(SUBSTR(gr_param.target_date, 1, 10), 'YYYY/MM/DD'))
+               AND (xhit.invoice_date BETWEEN ximb.start_date_active
+                                      AND     NVL(ximb.end_date_active, xhit.invoice_date)
                    )
                )
                OR
                (ximb.item_id IS NULL)
               )
--- == 2009/09/08 V1.7 Added END   ===============================================================
       AND     xhit.record_type                          =   flv.attribute1
       AND     xhit.invoice_type                         =   flv.attribute2
       AND     NVL(xhit.department_flag, cv_99)          =   flv.attribute3
@@ -1138,8 +1222,7 @@ AS
       AND     flv.enabled_flag                          =   cv_yes
       AND     flv.attribute11                           =   NVL(gr_param.invoice_kbn, flv.attribute11)
       ORDER BY xhit.interface_id;
--- == 2009/06/19 V1.4 Modified END   ===============================================================
---
+-- == 2009/12/15 V1.8 Modified END   ===============================================================
     -- ローカル・レコード
 --
   BEGIN
@@ -1568,17 +1651,50 @@ AS
     , buff   => gv_out_msg
     );
 --
+-- == 2009/12/15 V1.8 Modified START ===============================================================
     -- パラメータ.年月日
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  =>  cv_app_name
+--                    ,iv_name         =>  cv_msg_xxcoi10067
+--                    ,iv_token_name1  =>  cv_token_date
+--                    ,iv_token_value1 =>  SUBSTR(gr_param.target_date,1,10)
+--                  );
+--    fnd_file.put_line(
+--      which  => FND_FILE.LOG
+--    , buff   => gv_out_msg
+--    );
+    -- パラメータ.年月日（FROM）
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  =>  cv_app_name
-                    ,iv_name         =>  cv_msg_xxcoi10067
-                    ,iv_token_name1  =>  cv_token_date
+                    ,iv_name         =>  cv_msg_xxcoi10164
+                    ,iv_token_name1  =>  cv_tkn_msg_10164
                     ,iv_token_value1 =>  SUBSTR(gr_param.target_date,1,10)
                   );
     fnd_file.put_line(
       which  => FND_FILE.LOG
     , buff   => gv_out_msg
     );
+    -- パラメータ.年月日（TO）
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  =>  cv_app_name
+                    ,iv_name         =>  cv_msg_xxcoi10165
+                    ,iv_token_name1  =>  cv_tkn_msg_10165
+                    ,iv_token_value1 =>  SUBSTR(gr_param.target_date_to,1,10)
+                  );
+    fnd_file.put_line(
+      which  => FND_FILE.LOG
+    , buff   => gv_out_msg
+    );
+    -- 年月日FROM-TOの大小チェック
+    IF (TO_DATE(SUBSTRB(gr_param.target_date, 1, 10), 'YYYY/MM/DD') > TO_DATE(SUBSTRB(gr_param.target_date_to, 1, 10), 'YYYY/MM/DD')) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  =>  cv_app_name
+                    ,iv_name         =>  cv_msg_xxcoi10337
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- == 2009/12/15 V1.8 Modified END   ===============================================================
 --
     -- パラメータ.拠点
     gv_out_msg := xxccp_common_pkg.get_msg(
@@ -1654,6 +1770,9 @@ AS
     iv_output_kbn        IN  VARCHAR2,         --   1.出力区分
     iv_invoice_kbn       IN  VARCHAR2,         --   2.伝票区分
     iv_target_date       IN  VARCHAR2,         --   3.年月日
+-- == 2009/12/15 V1.8 Added START ===============================================================
+    iv_target_date_to    IN  VARCHAR2,         --   年月日（至）
+-- == 2009/12/15 V1.8 Added END   ===============================================================
     iv_out_base_code     IN  VARCHAR2,         --   4.拠点
     iv_reverse_kbn       IN  VARCHAR2,         --   5.正負データ出力区分
     iv_output_dpt        IN  VARCHAR2,         --   6.帳票出力場所
@@ -1720,6 +1839,9 @@ AS
     gr_param.out_base_code     := iv_out_base_code;      -- 04 : 拠点        (任意)
     gr_param.reverse_kbn       := iv_reverse_kbn;        -- 05 : 正負データ出力区分 (必須)
     gr_param.output_dpt        := iv_output_dpt;         -- 06 : 出力場所    (必須)
+-- == 2009/12/15 V1.8 Added START ===============================================================
+    gr_param.target_date_to    := iv_target_date_to;     -- 年月日（至）
+-- == 2009/12/15 V1.8 Added END   ===============================================================
 --
     -- =====================================================
     -- 初期処理(A-1)
@@ -1904,6 +2026,9 @@ AS
     iv_output_kbn        IN  VARCHAR2,      --   1.取引タイプ
     iv_invoice_kbn       IN  VARCHAR2,      --   2.伝票区分
     iv_target_date       IN  VARCHAR2,      --   3.年月日
+-- == 2009/12/15 V1.8 Added START ===============================================================
+    iv_target_date_to    IN  VARCHAR2,      --   年月日（至）
+-- == 2009/12/15 V1.8 Added END   ===============================================================
     iv_out_base_code     IN  VARCHAR2,      --   4.出庫拠点
     iv_reverse_kbn       IN  VARCHAR2,      --   5.正負データ出力区分
     iv_output_dpt        IN  VARCHAR2)      --   6.帳票出力場所
@@ -1959,7 +2084,10 @@ AS
     submain(
        iv_output_kbn        --   1.出力区分
       ,iv_invoice_kbn       --   2.伝票区分
-      ,iv_target_date       --   3.日
+      ,iv_target_date       --   3.年月日
+-- == 2009/12/15 V1.8 Added START ===============================================================
+      ,iv_target_date_to    --   年月日（至）
+-- == 2009/12/15 V1.8 Added END   ===============================================================
       ,iv_out_base_code     --   4.出庫拠点
       ,iv_reverse_kbn       --   5.正負データ出力区分
       ,iv_output_dpt        --   6.帳票出力場所
