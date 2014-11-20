@@ -29,17 +29,17 @@
    <attributeSet docName="ApplyUserLayout" prompt="申請者"/>
    <attributeSet docName="InstallAccountHdrRN" text="設置先"/>
    <attributeSet docName="InstallAccountNumber" prompt="顧客コード"/>
-   <attributeSet docName="InstallPartyName" prompt="顧客名"/>
-   <attributeSet docName="InstallPartyNamePhonetic" prompt="顧客名（カナ）"/>
-   <attributeSet docName="InstallName" prompt="設置先名"/>
+   <attributeSet docName="InstallPartyName" prompt="顧客名(全角)"/>
+   <attributeSet docName="InstallPartyNamePhonetic" prompt="顧客名カナ(半角)"/>
+   <attributeSet docName="InstallName" prompt="設置先名(全角)"/>
    <attributeSet docName="InstallPostalCodeLayout" prompt="郵便番号"/>
    <attributeSet docName="InstallPostalCodeFirst" shortDesc="郵便番号の先頭3桁"/>
    <attributeSet docName="InstallPostalCodeSecond" shortDesc="郵便番号の先頭4桁目以降"/>
-   <attributeSet docName="InstallState" prompt="都道府県"/>
-   <attributeSet docName="InstallCity" prompt="市・区"/>
-   <attributeSet docName="InstallAddress1" prompt="住所1"/>
-   <attributeSet docName="InstallAddress2" prompt="住所2"/>
-   <attributeSet docName="InstallAddressLine" prompt="電話番号"/>
+   <attributeSet docName="InstallState" prompt="都道府県(全角)"/>
+   <attributeSet docName="InstallCity" prompt="市・区(全角)"/>
+   <attributeSet docName="InstallAddress1" prompt="住所1(全角)"/>
+   <attributeSet docName="InstallAddress2" prompt="住所2(全角)"/>
+   <attributeSet docName="InstallAddressLine" prompt="電話番号(00-0000-0000)"/>
    <attributeSet docName="BizCondTypeLayout" prompt="業態（小分類）"/>
    <attributeSet docName="BusinessConditionType" shortDesc="業態（小分類）"/>
    <attributeSet docName="BusinessTypeLayout" prompt="業種"/>
@@ -55,17 +55,17 @@
    <attributeSet docName="ContractHdrRN" text="契約先"/>
    <attributeSet docName="SameInstallAccountFlag" prompt="設置先と同じ"/>
    <attributeSet docName="ContractNumber" prompt="契約先コード"/>
-   <attributeSet docName="ContractName" prompt="契約先名"/>
-   <attributeSet docName="ContractNameKana" prompt="契約先名カナ"/>
+   <attributeSet docName="ContractName" prompt="契約先名(全角)"/>
+   <attributeSet docName="ContractNameKana" prompt="契約先名カナ(半角)"/>
    <attributeSet docName="ContractPostalCodeLayout" prompt="郵便番号"/>
    <attributeSet docName="ContractPostalCodeFirst" shortDesc="郵便番号の先頭3桁"/>
    <attributeSet docName="ContractPostalCodeSecond" shortDesc="郵便番号の先頭4桁目以降"/>
-   <attributeSet docName="ContractState" prompt="都道府県"/>
-   <attributeSet docName="ContractCity" prompt="市・区"/>
-   <attributeSet docName="ContractAddress1" prompt="住所1"/>
-   <attributeSet docName="ContractAddress2" prompt="住所2"/>
-   <attributeSet docName="ContractAddressLine" prompt="電話番号"/>
-   <attributeSet docName="DelegateName" prompt="代表者"/>
+   <attributeSet docName="ContractState" prompt="都道府県(全角)"/>
+   <attributeSet docName="ContractCity" prompt="市・区(全角)"/>
+   <attributeSet docName="ContractAddress1" prompt="住所1(全角)"/>
+   <attributeSet docName="ContractAddress2" prompt="住所2(全角)"/>
+   <attributeSet docName="ContractAddressLine" prompt="電話番号(00-0000-0000)"/>
+   <attributeSet docName="DelegateName" prompt="代表者(全角)"/>
    <attributeSet docName="VdInfoHdrRN" text="VD情報"/>
    <attributeSet docName="VdInfo1Layout" prompt="新／旧"/>
    <attributeSet docName="NewoldType" shortDesc="新／旧区分"/>
@@ -155,8 +155,8 @@
    <attributeSet docName="Bm1InfoHdrRN" text="BM1"/>
    <attributeSet docName="Bm1SendType" prompt="送付先"/>
    <attributeSet docName="Bm1VendorNumber" prompt="送付先コード"/>
-   <attributeSet docName="Bm1VendorName" prompt="送付先名"/>
-   <attributeSet docName="Bm1VendorNamePhonetic" prompt="送付先名（カナ）"/>
+   <attributeSet docName="Bm1VendorName" prompt="送付先名(全角)"/>
+   <attributeSet docName="Bm1VendorNamePhonetic" prompt="送付先名カナ(半角)"/>
    <attributeSet docName="Bm1TransferTypeLayout" prompt="振込手数料負担"/>
    <attributeSet docName="Bm1TransferCommissionType" shortDesc="振込手数料負担"/>
    <attributeSet docName="Bm1PaymentTypeLayout" prompt="支払方法・明細書"/>
@@ -166,24 +166,24 @@
    <attributeSet docName="Bm1PostalCodeFirst" shortDesc="郵便番号の先頭3桁"/>
    <attributeSet docName="Bm1PostalCodeSep" prompt="－"/>
    <attributeSet docName="Bm1PostalCodeSecond" shortDesc="郵便番号の先頭4桁目以降"/>
-   <attributeSet docName="Bm1State" prompt="都道府県"/>
-   <attributeSet docName="Bm1City" prompt="市・区"/>
-   <attributeSet docName="Bm1Address1" prompt="住所1"/>
-   <attributeSet docName="Bm1Address2" prompt="住所2"/>
-   <attributeSet docName="Bm1AddressLine" prompt="電話番号"/>
+   <attributeSet docName="Bm1State" prompt="都道府県(全角)"/>
+   <attributeSet docName="Bm1City" prompt="市・区(全角)"/>
+   <attributeSet docName="Bm1Address1" prompt="住所1(全角)"/>
+   <attributeSet docName="Bm1Address2" prompt="住所2(全角)"/>
+   <attributeSet docName="Bm1AddressLine" prompt="電話番号(00-0000-0000)"/>
    <attributeSet docName="Bm2InfoHdrRN" text="BM2"/>
    <attributeSet docName="Bm2VendorNumber" prompt="送付先コード"/>
-   <attributeSet docName="Bm2VendorName" prompt="送付先名"/>
-   <attributeSet docName="Bm2VendorNamePhonetic" prompt="送付先名（カナ）"/>
+   <attributeSet docName="Bm2VendorName" prompt="送付先名(全角)"/>
+   <attributeSet docName="Bm2VendorNamePhonetic" prompt="送付先名カナ(半角)"/>
    <attributeSet docName="Bm2PostalCodeLayout" prompt="郵便番号"/>
    <attributeSet docName="Bm2PostalCodeFirst" shortDesc="郵便番号の先頭3桁"/>
    <attributeSet docName="Bm2PostalCodeSep" prompt="－"/>
    <attributeSet docName="Bm2PostalCodeSecond" shortDesc="郵便番号の先頭4桁目以降"/>
-   <attributeSet docName="Bm2State" prompt="都道府県"/>
-   <attributeSet docName="Bm2City" prompt="市・区"/>
-   <attributeSet docName="Bm2Address1" prompt="住所1"/>
-   <attributeSet docName="Bm2Address2" prompt="住所2"/>
-   <attributeSet docName="Bm2AddressLine" prompt="電話番号"/>
+   <attributeSet docName="Bm2State" prompt="都道府県(全角)"/>
+   <attributeSet docName="Bm2City" prompt="市・区(全角)"/>
+   <attributeSet docName="Bm2Address1" prompt="住所1(全角)"/>
+   <attributeSet docName="Bm2Address2" prompt="住所2(全角)"/>
+   <attributeSet docName="Bm2AddressLine" prompt="電話番号(00-0000-0000)"/>
    <attributeSet docName="Bm2TransferTypeLayout" prompt="振込手数料負担"/>
    <attributeSet docName="Bm2TransferCommissionType" shortDesc="振込手数料負担"/>
    <attributeSet docName="Bm2PaymentTypeLayout" prompt="支払方法・明細書"/>
@@ -191,17 +191,17 @@
    <attributeSet docName="Bm2InquiryBaseLayout" prompt="問合せ担当拠点"/>
    <attributeSet docName="Bm3InfoHdrRN" text="BM3"/>
    <attributeSet docName="Bm3VendorNumber" prompt="送付先コード"/>
-   <attributeSet docName="Bm3VendorName" prompt="送付先名"/>
-   <attributeSet docName="Bm3VendorNamePhonetic" prompt="送付先名（カナ）"/>
+   <attributeSet docName="Bm3VendorName" prompt="送付先名(全角)"/>
+   <attributeSet docName="Bm3VendorNamePhonetic" prompt="送付先名カナ(半角)"/>
    <attributeSet docName="Bm3PostalCodeLayout" prompt="郵便番号"/>
    <attributeSet docName="Bm3PostalCodeFirst" shortDesc="郵便番号の先頭3桁"/>
    <attributeSet docName="Bm3PostalCodeSep" prompt="－"/>
    <attributeSet docName="Bm3PostalCodeSecond" shortDesc="郵便番号の先頭4桁目以降"/>
-   <attributeSet docName="Bm3State" prompt="都道府県"/>
-   <attributeSet docName="Bm3City" prompt="市・区"/>
-   <attributeSet docName="Bm3Address1" prompt="住所1"/>
-   <attributeSet docName="Bm3Address2" prompt="住所2"/>
-   <attributeSet docName="Bm3AddressLine" prompt="電話番号"/>
+   <attributeSet docName="Bm3State" prompt="都道府県(全角)"/>
+   <attributeSet docName="Bm3City" prompt="市・区(全角)"/>
+   <attributeSet docName="Bm3Address1" prompt="住所1(全角)"/>
+   <attributeSet docName="Bm3Address2" prompt="住所2(全角)"/>
+   <attributeSet docName="Bm3AddressLine" prompt="電話番号(00-0000-0000)"/>
    <attributeSet docName="Bm3TransferTypeLayout" prompt="振込手数料負担"/>
    <attributeSet docName="Bm3TransferCommissionType" shortDesc="振込手数料負担"/>
    <attributeSet docName="Bm3PaymentTypeLayout" prompt="支払方法・明細書"/>
@@ -228,8 +228,8 @@
    <attributeSet docName="SalesGrossMarginRateLayout" prompt="売上粗利率"/>
    <attributeSet docName="SalesGrossMarginRateLabel" prompt="％"/>
    <attributeSet docName="YearGrossMarginAmt" prompt="年間粗利金額"/>
-   <attributeSet docName="BmRateLayout" prompt="BM率"/>
-   <attributeSet docName="BmRate" shortDesc="BM率"/>
+   <attributeSet docName="BmRateLayout" prompt="支払ＢＭ率"/>
+   <attributeSet docName="BmRate" shortDesc="支払ＢＭ率"/>
    <attributeSet docName="BmRateLabel" prompt="％"/>
    <attributeSet docName="VdSalesCharge" prompt="VD販売手数料"/>
    <attributeSet docName="InstallSupportAmtYear" prompt="設置協賛金／年"/>
