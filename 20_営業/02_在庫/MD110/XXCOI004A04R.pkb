@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI004A04R(body)
  * Description      : VD機内在庫表
  * MD.050           : MD050_COI_004_A04
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ------------------------ --------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *                                         ・SVF共通関数呼出前コミット処理追加
  *  2009/05/19    1.2   T.Nakamura       [T1_0980]ワークテーブルデータ登録項目に出力期間を追加
  *                                       [T1_0991]VD機内在庫表のH/Cに出力する値を変更
+ *  2009/06/26    1.3   H.Wada           [0000257]顧客抽出SQLの変更
  *
  *****************************************************************************************/
 --
@@ -126,6 +127,10 @@ AS
   cv_tkn_lookup_type          CONSTANT VARCHAR2(20) := 'LOOKUP_TYPE';            -- 参照タイプ
   cv_tkn_lookup_code          CONSTANT VARCHAR2(20) := 'LOOKUP_CODE';            -- 参照コード
 -- == 2009/05/19 V1.2 Added END   ==================================================================
+-- == 2009/06/26 V1.3 Added START ==================================================================
+  cv_staff_prm_yes      CONSTANT VARCHAR2(1)  := 'Y';                -- 入力パラメータ:営業員 有り
+  cv_staff_prm_no       CONSTANT VARCHAR2(1)  := 'N';                -- 入力パラメータ:営業員 無し
+-- == 2009/06/26 V1.3 Added END   ==================================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -162,6 +167,9 @@ AS
 -- == 2009/05/19 V1.2 Added START ==================================================================
   gv_output_period_meaning    VARCHAR2(4);                           -- 出力期間内容
 -- == 2009/05/19 V1.2 Added END   ==================================================================
+-- == 2009/06/26 V1.3 Added START ==================================================================
+  gv_staff_prm_flg            VARCHAR2(1);                           -- 営業員入力有無フラグ
+-- == 2009/06/26 V1.3 Added END   ==================================================================
 --
   gt_vd_inv_wk_tab   vd_inv_wk_ttype;   -- VD機内在庫表ワークテーブル格納用
 --
@@ -1644,6 +1652,22 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- == 2009/06/26 V1.3 Added START ==================================================================
+    IF (    (gv_sales_staff_1 IS NULL)
+        AND (gv_sales_staff_2 IS NULL)
+        AND (gv_sales_staff_3 IS NULL)
+        AND (gv_sales_staff_4 IS NULL)
+        AND (gv_sales_staff_5 IS NULL)
+        AND (gv_sales_staff_6 IS NULL)
+       )
+    THEN
+      -- 営業員が指定されていない場合
+      gv_staff_prm_flg := cv_staff_prm_no;
+    ELSE
+      -- 営業員が指定されている場合
+      gv_staff_prm_flg := cv_staff_prm_yes;
+    END IF;
+-- == 2009/06/26 V1.3 Added END   ==================================================================
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1701,6 +1725,9 @@ AS
     ln_rack_cnt        NUMBER;         -- ラック数カウンター
     lv_is_next_rec_flg VARCHAR2(1);    -- 次レコード存在フラグ(無し:N、有り:Y)
     lv_zero_message    VARCHAR2(1000); -- 0件メッセージ
+-- == 2009/06/26 V1.3 Added START ==================================================================
+    lv_skip_flg        VARCHAR2(1);                              -- 対象顧客スキップフラグ
+-- == 2009/06/26 V1.3 Added END   ==================================================================
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1710,12 +1737,14 @@ AS
       lv_output_base     VARCHAR2    --  1.出力拠点
      ,lv_output_period   VARCHAR2    --  2.出力期間
      ,lv_output_target   VARCHAR2    --  3.出力対象
-     ,lv_sales_staff_1   VARCHAR2    --  4.営業員1
-     ,lv_sales_staff_2   VARCHAR2    --  5.営業員2
-     ,lv_sales_staff_3   VARCHAR2    --  6.営業員3
-     ,lv_sales_staff_4   VARCHAR2    --  7.営業員4
-     ,lv_sales_staff_5   VARCHAR2    --  8.営業員5
-     ,lv_sales_staff_6   VARCHAR2    --  9.営業員6
+-- == 2009/06/26 V1.3 Delete START ==================================================================
+--     ,lv_sales_staff_1   VARCHAR2    --  4.営業員1
+--     ,lv_sales_staff_2   VARCHAR2    --  5.営業員2
+--     ,lv_sales_staff_3   VARCHAR2    --  6.営業員3
+--     ,lv_sales_staff_4   VARCHAR2    --  7.営業員4
+--     ,lv_sales_staff_5   VARCHAR2    --  8.営業員5
+--     ,lv_sales_staff_6   VARCHAR2    --  9.営業員6
+-- == 2009/06/26 V1.3 Delete END   ==================================================================
      ,lv_customer_1      VARCHAR2    -- 10.顧客1
      ,lv_customer_2      VARCHAR2    -- 11.顧客2
      ,lv_customer_3      VARCHAR2    -- 12.顧客3
@@ -1738,41 +1767,52 @@ AS
           ,hca1.account_name                 AS customer_name                      --  5.顧客名
           ,punv.un_number                    AS model_code                         --  6.機種コード
           ,TO_NUMBER(punv.attribute8)        AS sele_quantity                      --  7.セレ数
-          ,xmvc1.rack_quantity               AS rack_quantity                      --  8.ラック数
-          ,jrre.source_number                AS charge_business_member_code        --  9.担当営業員コード
-          ,jrre.source_name                  AS charge_business_member_name        -- 10.担当営業員名
-    FROM   xxcoi_mst_vd_column                  xmvc1                         --  1.VDコラムマスタ
-          ,hz_cust_accounts                     hca1                          --  2.顧客アカウント
+-- == 2009/06/26 V1.3 Modified START ==================================================================
+--          ,xmvc1.rack_quantity               AS rack_quantity                      --  8.ラック数
+--          ,jrre.source_number                AS charge_business_member_code        --  9.担当営業員コード
+--          ,jrre.source_name                  AS charge_business_member_name        -- 10.担当営業員名
+          ,NULL                              AS rack_quantity                      --  8.ラック数
+          ,NULL                              AS charge_business_member_code        --  9.担当営業員コード
+          ,NULL                              AS charge_business_member_name        -- 10.担当営業員名
+--    FROM   xxcoi_mst_vd_column                  xmvc1                         --  1.VDコラムマスタ
+--          ,hz_cust_accounts                     hca1                          --  2.顧客アカウント
+    FROM   hz_cust_accounts                     hca1                          --  顧客アカウント
+-- == 2009/06/26 V1.3 Modified END   ==================================================================
           ,xxcmm_cust_accounts                  xca1                          --  3.顧客追加情報
           ,hz_parties                           hp1                           --  4.パーティマスタ
           ,hz_cust_accounts                     hca2                          --  5.顧客アカウント(拠点)
           ,hz_parties                           hp2                           --  6.パーティマスタ(拠点)
           ,csi_item_instances                   cii                           --  7.物件マスタ
           ,po_un_numbers_vl                     punv                          --  8.機種マスタ
-          ,hz_organization_profiles             hop                           --  9.組織プロファイルマスタ
-          ,ego_resource_agv                     era                           -- 10.リソースビュー
-          ,jtf_rs_resource_extns                jrre                          -- 11.リソース
-          ,(SELECT DISTINCT hca3.cust_account_id   AS cust_account_id
-            FROM   hz_cust_accounts      hca3  --  顧客アカウント
-            WHERE  EXISTS (
-              SELECT 'X'
-              FROM   xxcoi_mst_vd_column    xmvc2
-              WHERE  hca3.cust_account_id = xmvc2.customer_id 
-              AND    (lv_output_target = cv_1
-                   OR lv_output_target = cv_0
-                   AND NOT EXISTS (
-                     SELECT 'X'
-                     FROM   xxcoi_mst_vd_column  xmvc3   -- VDコラムマスタ
-                     WHERE  xmvc3.vd_column_mst_id    = xmvc2.vd_column_mst_id
-                     AND    xmvc3.customer_id         = xmvc2.customer_id  
-                     AND    NVL(xmvc3.item_id, -1)    = NVL(xmvc3.last_month_item_id, -1)
-                     AND    xmvc3.inventory_quantity  = xmvc3.last_month_inventory_quantity
-                     AND    NVL(xmvc3.price, -1)      = NVL(xmvc3.last_month_price, -1)
-                     AND    NVL(xmvc3.hot_cold, cv_0) = NVL(xmvc3.last_month_hot_cold, cv_0)))))  sub_quary -- 12.サブクエリー
-    WHERE  sub_quary.cust_account_id            = xmvc1.customer_id
-    AND    xmvc1.column_no                      = 1
-    AND    xmvc1.customer_id                    = hca1.cust_account_id
-    AND    hp1.party_id                         = hca1.party_id
+-- == 2009/06/26 V1.3 Delete START ==================================================================
+--          ,hz_organization_profiles             hop                           --  9.組織プロファイルマスタ
+--          ,ego_resource_agv                     era                           -- 10.リソースビュー
+--          ,jtf_rs_resource_extns                jrre                          -- 11.リソース
+--          ,(SELECT DISTINCT hca3.cust_account_id   AS cust_account_id
+--            FROM   hz_cust_accounts      hca3  --  顧客アカウント
+--            WHERE  EXISTS (
+--              SELECT 'X'
+--              FROM   xxcoi_mst_vd_column    xmvc2
+--              WHERE  hca3.cust_account_id = xmvc2.customer_id 
+--              AND    (lv_output_target = cv_1
+--                   OR lv_output_target = cv_0
+--                   AND NOT EXISTS (
+--                     SELECT 'X'
+--                     FROM   xxcoi_mst_vd_column  xmvc3   -- VDコラムマスタ
+--                     WHERE  xmvc3.vd_column_mst_id    = xmvc2.vd_column_mst_id
+--                     AND    xmvc3.customer_id         = xmvc2.customer_id  
+--                     AND    NVL(xmvc3.item_id, -1)    = NVL(xmvc3.last_month_item_id, -1)
+--                     AND    xmvc3.inventory_quantity  = xmvc3.last_month_inventory_quantity
+--                     AND    NVL(xmvc3.price, -1)      = NVL(xmvc3.last_month_price, -1)
+--                     AND    NVL(xmvc3.hot_cold, cv_0) = NVL(xmvc3.last_month_hot_cold, cv_0)))))  sub_quary -- 12.サブクエリー
+-- == 2009/06/26 V1.3 Delete END   ==================================================================
+-- == 2009/06/26 V1.3 Modified START ==================================================================
+--    WHERE  sub_quary.cust_account_id            = xmvc1.customer_id
+--    AND    xmvc1.column_no                      = 1
+--    AND    xmvc1.customer_id                    = hca1.cust_account_id
+--    AND    hp1.party_id                         = hca1.party_id
+    WHERE  hp1.party_id                         = hca1.party_id
+-- == 2009/06/26 V1.3 Modified END   ==================================================================
     AND    hca1.cust_account_id                 = xca1.customer_id
     AND    hp1.duns_number_c                    IN (30, 40, 50, 80)
     AND    hp2.party_id                         = hca2.party_id
@@ -1785,20 +1825,73 @@ AS
            OR(lv_output_period = cv_1 AND hca2.account_number = xca1.past_sale_base_code))
     AND    lv_output_base                       = hca2.account_number
     AND    hp1.party_id                         = hca1.party_id
-    AND    hca1.party_id                        = hop.party_id
-    AND    hop.organization_profile_id          = era.organization_profile_id(+)
-    AND    TRUNC(hop.effective_start_date) <= TRUNC(xxccp_common_pkg2.get_process_date)
-    AND    TRUNC(NVL(hop.effective_end_date, xxccp_common_pkg2.get_process_date)) >= TRUNC(xxccp_common_pkg2.get_process_date)
-    AND    TRUNC(NVL(era.resource_s_date, xxccp_common_pkg2.get_process_date)) <= TRUNC(xxccp_common_pkg2.get_process_date)
-    AND    TRUNC(NVL(era.resource_e_date, xxccp_common_pkg2.get_process_date)) >= TRUNC(xxccp_common_pkg2.get_process_date)
-    AND    era.resource_no                      = jrre.source_number(+)
-    AND    ((  lv_sales_staff_1 IS NULL
-           AND lv_sales_staff_2 IS NULL
-           AND lv_sales_staff_3 IS NULL
-           AND lv_sales_staff_4 IS NULL
-           AND lv_sales_staff_5 IS NULL
-           AND lv_sales_staff_6 IS NULL
-           AND lv_customer_1    IS NULL
+-- == 2009/06/26 V1.3 Delete START ==================================================================
+--    AND    hca1.party_id                        = hop.party_id
+--    AND    hop.organization_profile_id          = era.organization_profile_id(+)
+--    AND    TRUNC(hop.effective_start_date) <= TRUNC(xxccp_common_pkg2.get_process_date)
+--    AND    TRUNC(NVL(hop.effective_end_date, xxccp_common_pkg2.get_process_date)) >= TRUNC(xxccp_common_pkg2.get_process_date)
+--    AND    TRUNC(NVL(era.resource_s_date, xxccp_common_pkg2.get_process_date)) <= TRUNC(xxccp_common_pkg2.get_process_date)
+--    AND    TRUNC(NVL(era.resource_e_date, xxccp_common_pkg2.get_process_date)) >= TRUNC(xxccp_common_pkg2.get_process_date)
+--    AND    era.resource_no                      = jrre.source_number(+)
+-- == 2009/06/26 V1.3 Delete END   ==================================================================
+-- == 2009/06/26 V1.3 Added START ==================================================================
+    AND ((lv_output_target = cv_1)
+         OR 
+         (    lv_output_target = cv_0
+          AND EXISTS (SELECT  1
+                      FROM    (SELECT   xmvc2.customer_id
+                               FROM     xxcoi_mst_vd_column xmvc2
+                               WHERE    (         (xmvc2.inventory_quantity   !=  xmvc2.last_month_inventory_quantity)
+                                         OR       (NVL(xmvc2.item_id, -1)     !=  NVL(xmvc2.last_month_item_id, -1))
+                                         OR       (NVL(xmvc2.price, -1)       !=  NVL(xmvc2.last_month_price, -1))
+                                         OR       (NVL(xmvc2.hot_cold, cv_0)  !=  NVL(xmvc2.last_month_hot_cold, cv_0))
+                                        )
+                               AND      ROWNUM = 1
+                              )         sub_query
+                      WHERE   sub_query.customer_id = hca1.cust_account_id
+              )
+         )
+        )
+-- == 2009/06/26 V1.3 Added END   ==================================================================
+-- == 2009/06/26 V1.3 Modified START ==================================================================
+--    AND    ((  lv_sales_staff_1 IS NULL
+--           AND lv_sales_staff_2 IS NULL
+--           AND lv_sales_staff_3 IS NULL
+--           AND lv_sales_staff_4 IS NULL
+--           AND lv_sales_staff_5 IS NULL
+--           AND lv_sales_staff_6 IS NULL
+--           AND lv_customer_1    IS NULL
+--           AND lv_customer_2    IS NULL
+--           AND lv_customer_3    IS NULL
+--           AND lv_customer_4    IS NULL
+--           AND lv_customer_5    IS NULL
+--           AND lv_customer_6    IS NULL
+--           AND lv_customer_7    IS NULL
+--           AND lv_customer_8    IS NULL
+--           AND lv_customer_9    IS NULL
+--           AND lv_customer_10   IS NULL
+--           AND lv_customer_11   IS NULL
+--           AND lv_customer_12   IS NULL)
+--           OR
+--           (  NVL(lv_sales_staff_1, '#') = jrre.source_number
+--           OR NVL(lv_sales_staff_2, '#') = jrre.source_number
+--           OR NVL(lv_sales_staff_3, '#') = jrre.source_number
+--           OR NVL(lv_sales_staff_4, '#') = jrre.source_number
+--           OR NVL(lv_sales_staff_5, '#') = jrre.source_number
+--           OR NVL(lv_sales_staff_6, '#') = jrre.source_number
+--           OR NVL(lv_customer_1,    '#') = hca1.account_number
+--           OR NVL(lv_customer_2,    '#') = hca1.account_number
+--           OR NVL(lv_customer_3,    '#') = hca1.account_number
+--           OR NVL(lv_customer_4,    '#') = hca1.account_number
+--           OR NVL(lv_customer_5,    '#') = hca1.account_number
+--           OR NVL(lv_customer_6,    '#') = hca1.account_number
+--           OR NVL(lv_customer_7,    '#') = hca1.account_number
+--           OR NVL(lv_customer_8,    '#') = hca1.account_number
+--           OR NVL(lv_customer_9,    '#') = hca1.account_number
+--           OR NVL(lv_customer_10,   '#') = hca1.account_number
+--           OR NVL(lv_customer_11,   '#') = hca1.account_number
+--           OR NVL(lv_customer_12,   '#') = hca1.account_number))
+    AND    ((  lv_customer_1    IS NULL
            AND lv_customer_2    IS NULL
            AND lv_customer_3    IS NULL
            AND lv_customer_4    IS NULL
@@ -1811,13 +1904,7 @@ AS
            AND lv_customer_11   IS NULL
            AND lv_customer_12   IS NULL)
            OR
-           (  NVL(lv_sales_staff_1, '#') = jrre.source_number
-           OR NVL(lv_sales_staff_2, '#') = jrre.source_number
-           OR NVL(lv_sales_staff_3, '#') = jrre.source_number
-           OR NVL(lv_sales_staff_4, '#') = jrre.source_number
-           OR NVL(lv_sales_staff_5, '#') = jrre.source_number
-           OR NVL(lv_sales_staff_6, '#') = jrre.source_number
-           OR NVL(lv_customer_1,    '#') = hca1.account_number
+           (  NVL(lv_customer_1,    '#') = hca1.account_number
            OR NVL(lv_customer_2,    '#') = hca1.account_number
            OR NVL(lv_customer_3,    '#') = hca1.account_number
            OR NVL(lv_customer_4,    '#') = hca1.account_number
@@ -1829,6 +1916,7 @@ AS
            OR NVL(lv_customer_10,   '#') = hca1.account_number
            OR NVL(lv_customer_11,   '#') = hca1.account_number
            OR NVL(lv_customer_12,   '#') = hca1.account_number))
+-- == 2009/06/26 V1.3 Modified END   ==================================================================
     ORDER BY customer_code;
 --
     -- コラム情報抽出カーソル
@@ -1865,10 +1953,30 @@ AS
                                END
     ORDER BY xmvc.column_no;
 --
+-- == 2009/06/26 V1.3 Added START ==================================================================
+    -- ===============================
+    -- ローカル・タイプ・レコード
+    -- ===============================
+    TYPE get_customer_info_type IS RECORD(
+      customer_id                 hz_cust_accounts.cust_account_id%TYPE
+     ,base_code                   xxcmm_cust_accounts.sale_base_code%TYPE
+     ,base_name                   hz_cust_accounts.account_name%TYPE
+     ,customer_code               hz_cust_accounts.account_number%TYPE
+     ,customer_name               hz_cust_accounts.account_name%TYPE
+     ,model_code                  po_un_numbers_vl.un_number%TYPE
+     ,sele_quantity               NUMBER
+     ,rack_quantity               xxcoi_mst_vd_column.rack_quantity%TYPE
+     ,charge_business_member_code jtf_rs_resource_extns.source_number%TYPE
+     ,charge_business_member_name jtf_rs_resource_extns.source_name%TYPE
+    );
+-- == 2009/06/26 V1.3 Added END   ==================================================================
     -- ===============================
     -- ローカル・レコード
     -- ===============================
-    get_customer_info_rec   get_customer_info_cur%ROWTYPE;   -- 顧客情報抽出レコード
+-- == 2009/06/26 V1.3 Modified START ==================================================================
+--    get_customer_info_rec   get_customer_info_cur%ROWTYPE;   -- 顧客情報抽出レコード
+    get_customer_info_rec   get_customer_info_type;   -- 顧客情報抽出レコード
+-- == 2009/06/26 V1.3 Modified END   ==================================================================
     get_column_info_rec     get_column_info_cur%ROWTYPE;     -- コラム情報抽出レコード
 --
   BEGIN
@@ -1889,6 +1997,9 @@ AS
     ln_rack_cnt         := 0;    -- ラック数カウンター
     gt_vd_inv_wk_tab.DELETE;
     lv_zero_message     := NULL; -- 0件メッセージ
+-- == 2009/06/26 V1.3 Added START ==================================================================
+    lv_skip_flg         := cv_staff_prm_no;
+-- == 2009/06/26 V1.3 Added END   ==================================================================
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -1924,12 +2035,14 @@ AS
            gv_output_base
           ,gv_output_period
           ,gv_output_target
-          ,gv_sales_staff_1
-          ,gv_sales_staff_2
-          ,gv_sales_staff_3
-          ,gv_sales_staff_4
-          ,gv_sales_staff_5
-          ,gv_sales_staff_6
+-- == 2009/06/26 V1.3 Delete START ==================================================================
+--          ,gv_sales_staff_1
+--          ,gv_sales_staff_2
+--          ,gv_sales_staff_3
+--          ,gv_sales_staff_4
+--          ,gv_sales_staff_5
+--          ,gv_sales_staff_6
+-- == 2009/06/26 V1.3 Delete END   ==================================================================
           ,gv_customer_1
           ,gv_customer_2
           ,gv_customer_3
@@ -1947,133 +2060,207 @@ AS
     LOOP
       FETCH get_customer_info_cur INTO get_customer_info_rec;
       EXIT WHEN get_customer_info_cur%NOTFOUND;
+-- == 2009/06/26 V1.3 Added START ==================================================================
+      -- ラック数の取得
+      BEGIN
+        SELECT xmvc.rack_quantity AS rack_quantity   -- ラック数
+        INTO   get_customer_info_rec.rack_quantity
+        FROM   xxcoi_mst_vd_column xmvc              -- VDコラムマスタ
+        WHERE  xmvc.customer_id = get_customer_info_rec.customer_id
+        AND    xmvc.column_no   = 1;
 --
-      -- 顧客ループカウンターのカウントアップ
-      ln_cust_loop_cnt := ln_cust_loop_cnt + 1;
-      -- 次レコード存在フラグの初期化
-      lv_is_next_rec_flg  := 'N';
+        -- 担当営業員の取得
+        BEGIN
+          SELECT jrre.source_number       AS charge_business_member_code   --  担当営業員コード
+                ,jrre.source_name         AS charge_business_member_name   --  担当営業員名
+          INTO   get_customer_info_rec.charge_business_member_code
+                ,get_customer_info_rec.charge_business_member_name
+          FROM   hz_cust_accounts         hca                              --  顧客アカウント
+                ,hz_parties               hp                               --  パーティマスタ
+                ,hz_organization_profiles hop                              --  組織プロファイルマスタ
+                ,ego_resource_agv         era                              --  リソースビュー
+                ,jtf_rs_resource_extns    jrre                             --  リソース
+          WHERE  hca.cust_account_id         = get_customer_info_rec.customer_id
+          AND    hp.party_id                 = hca.party_id
+          AND    hca.party_id                = hop.party_id
+          AND    hop.organization_profile_id = era.organization_profile_id
+          AND    TRUNC(hop.effective_start_date) <= TRUNC(xxccp_common_pkg2.get_process_date)
+          AND    TRUNC(NVL(hop.effective_end_date, xxccp_common_pkg2.get_process_date)) >= TRUNC(xxccp_common_pkg2.get_process_date)
+          AND    TRUNC(NVL(era.resource_s_date, xxccp_common_pkg2.get_process_date)) <= TRUNC(xxccp_common_pkg2.get_process_date)
+          AND    TRUNC(NVL(era.resource_e_date, xxccp_common_pkg2.get_process_date)) >= TRUNC(xxccp_common_pkg2.get_process_date)
+          AND    era.resource_no                      = jrre.source_number
+          AND    ((  gv_sales_staff_1 IS NULL
+                 AND gv_sales_staff_2 IS NULL
+                 AND gv_sales_staff_3 IS NULL
+                 AND gv_sales_staff_4 IS NULL
+                 AND gv_sales_staff_5 IS NULL
+                 AND gv_sales_staff_6 IS NULL)
+                 OR
+                 (  NVL(gv_sales_staff_1, '#') = jrre.source_number
+                 OR NVL(gv_sales_staff_2, '#') = jrre.source_number
+                 OR NVL(gv_sales_staff_3, '#') = jrre.source_number
+                 OR NVL(gv_sales_staff_4, '#') = jrre.source_number
+                 OR NVL(gv_sales_staff_5, '#') = jrre.source_number
+                 OR NVL(gv_sales_staff_6, '#') = jrre.source_number));
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            -- 入力パラメータ:営業員が指定されている場合
+            IF (gv_staff_prm_flg = cv_staff_prm_yes) THEN
+              -- この顧客をスキップして次の顧客を取得します
+              lv_skip_flg := cv_staff_prm_yes;
+            -- 入力パラメータ:営業員が指定されていない場合
+            ELSE
+              -- この顧客の担当営業員にNULLを設定して後続の処理を実行します
+              get_customer_info_rec.charge_business_member_code := NULL;
+              get_customer_info_rec.charge_business_member_name := NULL;
+              lv_skip_flg := cv_staff_prm_no;
+            END IF;
+          WHEN TOO_MANY_ROWS THEN
+            RAISE global_process_expt;
+        END;
 --
-      -- カラムの初期化
-      FOR ln_test_cnt IN 1 .. 345 LOOP
-        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(ln_test_cnt) := NULL;
-      END LOOP;
+      EXCEPTION
+        -- ラック数取得エラーの場合(VDコラムマスタに存在しない場合)
+        WHEN NO_DATA_FOUND THEN
+          -- この顧客をスキップして次の顧客を取得します
+          lv_skip_flg := cv_staff_prm_yes;
+        WHEN TOO_MANY_ROWS THEN
+          RAISE global_process_expt;
+      END;
 --
-      -- シーケンス番号取得
-      SELECT xxcoi.xxcoi_rep_vd_inventory_s01.NEXTVAL
-      INTO   ln_vd_inv_wk_id
-      FROM   dual;
+      -- 顧客スキップフラグが'N'の場合
+      IF (lv_skip_flg = cv_staff_prm_no) THEN
+-- == 2009/06/26 V1.3 Added END   ==================================================================
 --
-      -- ヘッダー情報とWHOカラム情報をテーブル変数に格納
-      gt_vd_inv_wk_tab(ln_cust_loop_cnt)(1) := ln_vd_inv_wk_id;                         -- ベンダ機内在庫表ワークID
-      gt_vd_inv_wk_tab(ln_cust_loop_cnt)(2) := get_customer_info_rec.base_code;         -- 拠点コード
-      gt_vd_inv_wk_tab(ln_cust_loop_cnt)(3) := get_customer_info_rec.base_name;         -- 拠点名
-      gt_vd_inv_wk_tab(ln_cust_loop_cnt)(4) := get_customer_info_rec.customer_code;     -- 顧客コード
-      gt_vd_inv_wk_tab(ln_cust_loop_cnt)(5) := get_customer_info_rec.customer_name;     -- 顧客名
-      gt_vd_inv_wk_tab(ln_cust_loop_cnt)(6) := get_customer_info_rec.model_code;        -- 機種コード
-      gt_vd_inv_wk_tab(ln_cust_loop_cnt)(7) := get_customer_info_rec.sele_quantity;     -- セレ数
-      gt_vd_inv_wk_tab(ln_cust_loop_cnt)(8) := get_customer_info_rec.charge_business_member_code; -- 営業担当者コード
-      gt_vd_inv_wk_tab(ln_cust_loop_cnt)(9) := get_customer_info_rec.charge_business_member_name; -- 営業担当者名
-      -- ===============================
-      -- カウンター初期化(A-4)
-      -- ===============================
-      ln_column_cnt := 1;   -- コラム列数カウンター
-      ln_rack_cnt   := 0;   -- ラック数カウンター
-      -- ===============================
-      -- コラム情報取得(A-5)
-      -- ===============================
-      OPEN get_column_info_cur(
-             gv_output_period
-            ,get_customer_info_rec.customer_id);
---
-      <<get_column_info_loop>>
-      LOOP
-        FETCH get_column_info_cur INTO get_column_info_rec;
-        EXIT WHEN get_column_info_cur%NOTFOUND;
---
-        -- 次レコード存在フラグが'Y'の場合
-        IF (lv_is_next_rec_flg = 'Y') THEN
-          -- 顧客ループカウンターのカウントアップ
-          ln_cust_loop_cnt := ln_cust_loop_cnt + 1;
---
-          -- カラムの初期化
-          FOR ln_test_cnt IN 1 .. 345 LOOP
-            gt_vd_inv_wk_tab(ln_cust_loop_cnt)(ln_test_cnt) := NULL;
-          END LOOP;
-          -- シーケンス番号取得
-          SELECT xxcoi.xxcoi_rep_vd_inventory_s01.NEXTVAL
-          INTO   ln_vd_inv_wk_id
-          FROM   dual;
---
-          -- ヘッダー情報とWHOカラム情報をテーブル変数に格納
-          -- ベンダ機内在庫表ワークID
-          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(1) := ln_vd_inv_wk_id;
-          -- 拠点コード
-          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(2) := get_customer_info_rec.base_code;
-          -- 拠点名
-          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(3) := get_customer_info_rec.base_name;
-          -- 顧客コード
-          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(4) := get_customer_info_rec.customer_code;
-          -- 顧客名
-          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(5) := get_customer_info_rec.customer_name;
-          -- 機種コード
-          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(6) := get_customer_info_rec.model_code;
-          -- セレ数
-          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(7) := get_customer_info_rec.sele_quantity;
-          -- 営業担当者コード
-          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(8) := get_customer_info_rec.charge_business_member_code;
-          -- 営業担当者名
-          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(9) := get_customer_info_rec.charge_business_member_name;
-          -- ===============================
-          -- カウンター初期化(A-4)
-          -- ===============================
-          ln_column_cnt := 1;   -- コラム列数カウンター
-          -- 次レコード存在フラグを初期値に再設定
-          lv_is_next_rec_flg := 'N';
-        END IF;
---
-        -- ====================================
-        -- PL/SQL表ワークテーブル変数設定(A-6)
-        -- ====================================
-        -- 取得したデータをPL/SQL表ワークテーブル変数にセット
-        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(9   + ln_column_cnt) := get_column_info_rec.column_no;     -- コラム№
-        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(65  + ln_column_cnt) := get_column_info_rec.item_code;     -- 品目コード
-        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(121 + ln_column_cnt) := get_column_info_rec.item_name;     -- 品目名
-        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(177 + ln_column_cnt) := get_column_info_rec.price;         -- 単価
-        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(233 + ln_column_cnt) := get_column_info_rec.hot_cold;      -- HOT/COLD
-        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(289 + ln_column_cnt) := get_column_info_rec.inventory_qnt; -- 基準在庫
---
-        -- コラム列数カウンターをカウントアップ
-        ln_column_cnt := ln_column_cnt + 1;
-        -- ラック数カウンターにコラム列数カウンター÷8の余りを設定
-        ln_rack_cnt := MOD(ln_column_cnt, 8);
-        -- ラック数カウンター＞取得したラック数の場合
-        IF (ln_rack_cnt > get_customer_info_rec.rack_quantity) THEN
-          -- コラム列数カウンター＜９の場合
-          IF (ln_column_cnt < 9) THEN
-            ln_column_cnt := 9;
-          -- ９＜コラム列数カウンター＜１７の場合
-          ELSIF ((9 < ln_column_cnt) AND (ln_column_cnt < 17)) THEN
-            ln_column_cnt := 17;
-          -- １７＜コラム列数カウンター＜２５の場合
-          ELSIF ((17 < ln_column_cnt) AND (ln_column_cnt < 25)) THEN
-            ln_column_cnt := 25;
-          -- ２５＜コラム列数カウンター＜３３の場合
-          ELSIF ((25 < ln_column_cnt) AND (ln_column_cnt < 33)) THEN
-            ln_column_cnt := 33;
-          -- ３３＜コラム列数カウンター＜４１の場合
-          ELSIF ((33 < ln_column_cnt) AND (ln_column_cnt < 41)) THEN
-            ln_column_cnt := 41;
-          -- ４１＜コラム列数カウンター＜４９の場合
-          ELSIF ((41 < ln_column_cnt) AND (ln_column_cnt < 49)) THEN
-            ln_column_cnt := 49;
-          -- ４９＜コラム列数カウンター＜５７の場合
-          ELSIF (49 < ln_column_cnt) THEN
-            -- 次レコード存在フラグを設定
-            lv_is_next_rec_flg := 'Y';
+        -- 顧客ループカウンターのカウントアップ
+        ln_cust_loop_cnt := ln_cust_loop_cnt + 1;
+        -- 次レコード存在フラグの初期化
+        lv_is_next_rec_flg  := 'N';
+  --
+        -- カラムの初期化
+        FOR ln_test_cnt IN 1 .. 345 LOOP
+          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(ln_test_cnt) := NULL;
+        END LOOP;
+  --
+        -- シーケンス番号取得
+        SELECT xxcoi.xxcoi_rep_vd_inventory_s01.NEXTVAL
+        INTO   ln_vd_inv_wk_id
+        FROM   dual;
+  --
+        -- ヘッダー情報とWHOカラム情報をテーブル変数に格納
+        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(1) := ln_vd_inv_wk_id;                         -- ベンダ機内在庫表ワークID
+        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(2) := get_customer_info_rec.base_code;         -- 拠点コード
+        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(3) := get_customer_info_rec.base_name;         -- 拠点名
+        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(4) := get_customer_info_rec.customer_code;     -- 顧客コード
+        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(5) := get_customer_info_rec.customer_name;     -- 顧客名
+        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(6) := get_customer_info_rec.model_code;        -- 機種コード
+        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(7) := get_customer_info_rec.sele_quantity;     -- セレ数
+        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(8) := get_customer_info_rec.charge_business_member_code; -- 営業担当者コード
+        gt_vd_inv_wk_tab(ln_cust_loop_cnt)(9) := get_customer_info_rec.charge_business_member_name; -- 営業担当者名
+        -- ===============================
+        -- カウンター初期化(A-4)
+        -- ===============================
+        ln_column_cnt := 1;   -- コラム列数カウンター
+        ln_rack_cnt   := 0;   -- ラック数カウンター
+        -- ===============================
+        -- コラム情報取得(A-5)
+        -- ===============================
+        OPEN get_column_info_cur(
+               gv_output_period
+              ,get_customer_info_rec.customer_id);
+  --
+        <<get_column_info_loop>>
+        LOOP
+          FETCH get_column_info_cur INTO get_column_info_rec;
+          EXIT WHEN get_column_info_cur%NOTFOUND;
+  --
+          -- 次レコード存在フラグが'Y'の場合
+          IF (lv_is_next_rec_flg = 'Y') THEN
+            -- 顧客ループカウンターのカウントアップ
+            ln_cust_loop_cnt := ln_cust_loop_cnt + 1;
+  --
+            -- カラムの初期化
+            FOR ln_test_cnt IN 1 .. 345 LOOP
+              gt_vd_inv_wk_tab(ln_cust_loop_cnt)(ln_test_cnt) := NULL;
+            END LOOP;
+            -- シーケンス番号取得
+            SELECT xxcoi.xxcoi_rep_vd_inventory_s01.NEXTVAL
+            INTO   ln_vd_inv_wk_id
+            FROM   dual;
+  --
+            -- ヘッダー情報とWHOカラム情報をテーブル変数に格納
+            -- ベンダ機内在庫表ワークID
+            gt_vd_inv_wk_tab(ln_cust_loop_cnt)(1) := ln_vd_inv_wk_id;
+            -- 拠点コード
+            gt_vd_inv_wk_tab(ln_cust_loop_cnt)(2) := get_customer_info_rec.base_code;
+            -- 拠点名
+            gt_vd_inv_wk_tab(ln_cust_loop_cnt)(3) := get_customer_info_rec.base_name;
+            -- 顧客コード
+            gt_vd_inv_wk_tab(ln_cust_loop_cnt)(4) := get_customer_info_rec.customer_code;
+            -- 顧客名
+            gt_vd_inv_wk_tab(ln_cust_loop_cnt)(5) := get_customer_info_rec.customer_name;
+            -- 機種コード
+            gt_vd_inv_wk_tab(ln_cust_loop_cnt)(6) := get_customer_info_rec.model_code;
+            -- セレ数
+            gt_vd_inv_wk_tab(ln_cust_loop_cnt)(7) := get_customer_info_rec.sele_quantity;
+            -- 営業担当者コード
+            gt_vd_inv_wk_tab(ln_cust_loop_cnt)(8) := get_customer_info_rec.charge_business_member_code;
+            -- 営業担当者名
+            gt_vd_inv_wk_tab(ln_cust_loop_cnt)(9) := get_customer_info_rec.charge_business_member_name;
+            -- ===============================
+            -- カウンター初期化(A-4)
+            -- ===============================
+            ln_column_cnt := 1;   -- コラム列数カウンター
+            -- 次レコード存在フラグを初期値に再設定
+            lv_is_next_rec_flg := 'N';
           END IF;
-        END IF;
-      END LOOP get_column_info_loop;
-      CLOSE get_column_info_cur;
+  --
+          -- ====================================
+          -- PL/SQL表ワークテーブル変数設定(A-6)
+          -- ====================================
+          -- 取得したデータをPL/SQL表ワークテーブル変数にセット
+          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(9   + ln_column_cnt) := get_column_info_rec.column_no;     -- コラム№
+          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(65  + ln_column_cnt) := get_column_info_rec.item_code;     -- 品目コード
+          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(121 + ln_column_cnt) := get_column_info_rec.item_name;     -- 品目名
+          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(177 + ln_column_cnt) := get_column_info_rec.price;         -- 単価
+          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(233 + ln_column_cnt) := get_column_info_rec.hot_cold;      -- HOT/COLD
+          gt_vd_inv_wk_tab(ln_cust_loop_cnt)(289 + ln_column_cnt) := get_column_info_rec.inventory_qnt; -- 基準在庫
+  --
+          -- コラム列数カウンターをカウントアップ
+          ln_column_cnt := ln_column_cnt + 1;
+          -- ラック数カウンターにコラム列数カウンター÷8の余りを設定
+          ln_rack_cnt := MOD(ln_column_cnt, 8);
+          -- ラック数カウンター＞取得したラック数の場合
+          IF (ln_rack_cnt > get_customer_info_rec.rack_quantity) THEN
+            -- コラム列数カウンター＜９の場合
+            IF (ln_column_cnt < 9) THEN
+              ln_column_cnt := 9;
+            -- ９＜コラム列数カウンター＜１７の場合
+            ELSIF ((9 < ln_column_cnt) AND (ln_column_cnt < 17)) THEN
+              ln_column_cnt := 17;
+            -- １７＜コラム列数カウンター＜２５の場合
+            ELSIF ((17 < ln_column_cnt) AND (ln_column_cnt < 25)) THEN
+              ln_column_cnt := 25;
+            -- ２５＜コラム列数カウンター＜３３の場合
+            ELSIF ((25 < ln_column_cnt) AND (ln_column_cnt < 33)) THEN
+              ln_column_cnt := 33;
+            -- ３３＜コラム列数カウンター＜４１の場合
+            ELSIF ((33 < ln_column_cnt) AND (ln_column_cnt < 41)) THEN
+              ln_column_cnt := 41;
+            -- ４１＜コラム列数カウンター＜４９の場合
+            ELSIF ((41 < ln_column_cnt) AND (ln_column_cnt < 49)) THEN
+              ln_column_cnt := 49;
+            -- ４９＜コラム列数カウンター＜５７の場合
+            ELSIF (49 < ln_column_cnt) THEN
+              -- 次レコード存在フラグを設定
+              lv_is_next_rec_flg := 'Y';
+            END IF;
+          END IF;
+        END LOOP get_column_info_loop;
+        CLOSE get_column_info_cur;
+-- == 2009/06/26 V1.3 Added START ==================================================================
+      END IF; -- 顧客スキップ終了位置
+-- == 2009/06/26 V1.3 Added END   ==================================================================
     END LOOP get_customer_info_loop;
     CLOSE get_customer_info_cur;
 --
