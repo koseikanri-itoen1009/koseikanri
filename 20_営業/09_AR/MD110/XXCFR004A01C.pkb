@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/10/24    1.00 SCS 中村 博      初回作成
  *  2009/02/24    1.1  SCS T.KANEDA     [障害COK_016] 顧客コード読替不具合対応
+ *  2009/04/10    1.2  SCS S.KAYAHARA   T1_0129対応
  *
  *****************************************************************************************/
 --
@@ -118,6 +119,9 @@ AS
   cv_tkn_file        CONSTANT VARCHAR2(15) := 'FILE_NAME';        -- ファイル名
   cv_tkn_path        CONSTANT VARCHAR2(15) := 'FILE_PATH';        -- ファイルパス
   cv_tkn_table       CONSTANT VARCHAR2(15) := 'TABLE';            -- テーブル名
+-- Modify 2009.04.10 Ver1.2 Start
+  cv_tkn_chcd        CONSTANT VARCHAR2(15) := 'CH_TEN_CODE';      -- チェーン店コード
+-- Modify 2009.04.10 Ver1.2 End
   cv_tkn_tencd       CONSTANT VARCHAR2(15) := 'TEN_CODE';         -- 店コード
   cv_tkn_tennm       CONSTANT VARCHAR2(15) := 'TEN_NAME';         -- 店舗名称
   cv_tkn_col_num     CONSTANT VARCHAR2(15) := 'COL_NUM';          -- 項目Ｎｏ
@@ -1173,10 +1177,25 @@ AS
 -- Modify 2009.02.24 Ver1.1 Start
 --          AND xca.store_code             = gt_pn_shop_code(ln_loop_cnt) -- 店舗コード
           AND xca.store_code             = RTRIM(gt_pn_shop_code(ln_loop_cnt)) -- 店舗コード
--- Modify 2009.02.24 Ver1.1 End
+-- Modify 2009.04.10 Ver1.2 Start
+          AND xca.chain_store_code       = RTRIM(gt_pn_chain_shop_code(ln_loop_cnt)) -- チェーン店コード
+-- Modify 2009.04.10 ver1.2 End
+-- Modify 2009.02.24 Ver1.1 End	
         ;
+      fnd_file.put_line(
+       which  => FND_FILE.log
+      ,buff   => RTRIM(gt_pn_shop_code(ln_loop_cnt))
+    );
+      fnd_file.put_line(
+       which  => FND_FILE.log
+      ,buff   => RTRIM(gt_pn_chain_shop_code(ln_loop_cnt))
+    );
       EXCEPTION
         WHEN OTHERS THEN
+          fnd_file.put_line(
+       which  => FND_FILE.log
+      ,buff   => SQLERRM
+    );
           gt_pn_ebs_cust_account_number(ln_loop_cnt) := cv_error_string;
           ln_error_cnt := ln_error_cnt + 1;
       END;
@@ -1487,12 +1506,19 @@ AS
     CURSOR payment_note_err_cur
     IS
       SELECT distinct
+-- Modify 2009.04.10 Ver1.2 Start
+             xpn.chain_shop_code    chain_shop_code,
+-- Modify 2009.04.10 Ver1.2 End
              xpn.shop_code          shop_code,
              xpn.shop_name          shop_name
       FROM xxcfr_payment_notes  xpn
       WHERE xpn.request_id                     = cn_request_id  -- コンカレント・プログラムの要求ID
         AND xpn.ebs_cust_account_number        = cv_error_string
-      ORDER BY xpn.shop_code
+-- Modify 2009.04.10 Ver1.2 Start
+--      ORDER BY xpn.shop_code
+      ORDER BY xpn.chain_shop_code
+              ,xpn.shop_code
+-- Modify 2009.04.10 Ver1.2 End
     ;
 --
     TYPE g_payment_note_err_ttype IS TABLE OF payment_note_err_cur%ROWTYPE INDEX BY PLS_INTEGER;
@@ -1530,6 +1556,11 @@ AS
 --
         lv_errmsg := SUBSTRB( xxccp_common_pkg.get_msg(cv_msg_kbn_cfr     -- 'XXCFR'
                                                       ,cv_msg_004a01_015
+-- Modify 2009.04.10 Ver1.2 Start
+                                                      ,cv_tkn_chcd -- トークン'CH_TEN_CODE'
+                                                      ,lt_payment_note_err_data(ln_loop_cnt).chain_shop_code
+                                                        -- チェーン店コード
+-- Modify 2009.04.10 Ver1.2 End                                                      
                                                       ,cv_tkn_tencd -- トークン'TEN_CODE'
                                                       ,lt_payment_note_err_data(ln_loop_cnt).shop_code
                                                         -- 店コード
