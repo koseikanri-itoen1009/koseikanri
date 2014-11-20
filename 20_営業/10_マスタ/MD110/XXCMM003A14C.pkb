@@ -8,7 +8,7 @@ AS
  *                    保持する必要があります。
  *                    当機能を日次で稼動させ、最新の最終訪問日を自動更新します。
  * MD.050           : 最終訪問日更新 MD050_CMM_003_A14
- * Version          : Issue3.4
+ * Version          : Issue3.5
  *
  * Program List
  * -------------------- -----------------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/08/27    1.4   Yutaka.Kuboshima 障害0001193の対応 担当営業員の取得条件を修正
  *                                       (アサイメント番号 -> 従業員番号)
  *  2009/11/09    1.5   Shigeto.Niki     障害E_T4_00135の対応 エラー終了 -> 警告終了に修正
+ *  2010/09/22    1.6   Shigeto.Niki     障害E_本稼動_02021の対応 店舗営業用顧客コード追加
  *
  *****************************************************************************************/
 --
@@ -573,6 +574,9 @@ AS
       child_dept_shop_code,         -- 百貨店伝区コード
       parnt_dept_shop_code,         -- 百貨店伝区コード【親レコード用】
       past_customer_status,         -- 前月顧客ステータス
+-- 2010/09/22 Ver1.6 障害：E_本稼動_02021 add start by Shigeto.Niki
+      store_cust_code,              -- 店舗営業用顧客コード
+-- 2010/09/22 Ver1.6 障害：E_本稼動_02021 add end by Shigeto.Niki
       created_by,                   -- 作成者
       creation_date,                -- 作成日
       last_updated_by,              -- 最終更新者
@@ -666,6 +670,9 @@ AS
       NULL,                         -- 百貨店伝区コード
       NULL,                         -- 百貨店伝区コード【親レコード用】
       NULL,                         -- 前月顧客ステータス
+-- 2010/09/22 Ver1.6 障害：E_本稼動_02021 add start by Shigeto.Niki
+      NULL,                         -- 店舗営業用顧客コード
+-- 2010/09/22 Ver1.6 障害：E_本稼動_02021 add end by Shigeto.Niki
       cn_created_by,                -- 作成者
       cd_creation_date,             -- 作成日
       cn_last_updated_by,           -- 最終更新者

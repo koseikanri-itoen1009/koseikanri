@@ -15,7 +15,8 @@
  *  2009/09/11    1.3  Y.Kuboshima   【0001350】請求書印刷単位、請求書用コード、統括請求書用コードの追加
  *  2009/10/07    1.4  Y.Kuboshima   【0001521】入金値引率の桁数を変更
  *                                              NUMBER(3,2) -> NUMBER(3,1)
- *  2010/05/18    1.5  Y.Kuboshima   【E_本稼動_02021】項目：緯度のコメントの変更
+ *  2010/09/22    1.5  S.Niki        【E_本稼動_02021】項目：店舗営業用顧客コードの追加
+ *                                                     店舗営業区分対応の取消
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_cust_accounts
@@ -108,6 +109,9 @@ CREATE TABLE xxcmm.xxcmm_cust_accounts
     invoice_code                VARCHAR2(9),
     enclose_invoice_code        VARCHAR2(9),
 -- 2009/09/11 Ver1.3 add end by Y.Kuboshima
+-- 2010/09/16 Ver1.5 add start by S.Niki
+    store_cust_code             VARCHAR2(9),
+-- 2010/09/16 Ver1.5 add end by S.Niki
     created_by                  NUMBER(15,0)    NOT NULL,
     creation_date               DATE            NOT NULL,
     last_updated_by             NUMBER(15,0)    NOT NULL,
@@ -252,10 +256,7 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.intro_business_person       IS '紹介
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.edi_chain_code              IS 'チェーン店コード(EDI)【親レコード用】'
 /
--- 2010/05/18 Ver1.5 mod start by Y.Kuboshima
---COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.latitude                    IS '緯度'
-COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.latitude                    IS '店舗営業区分'
--- 2010/05/18 Ver1.5 mod end by Y.Kuboshima
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.latitude                    IS '緯度'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.longitude                   IS '経度'
 /
@@ -295,6 +296,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.invoice_code                IS '請求
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.enclose_invoice_code        IS '統括請求書用コード'
 /
 -- 2009/09/11 Ver1.3 add end by Y.Kuboshima
+-- 2010/09/16 Ver1.5 add start by S.Niki
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.store_cust_code             IS '店舗営業用顧客コード'
+/
+-- 2010/09/16 Ver1.5 add end by S.Niki
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.created_by                  IS '作成者'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.creation_date               IS '作成日'

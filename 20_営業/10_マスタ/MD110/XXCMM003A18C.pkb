@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2010/01/08    1.12  Yutaka.Kuboshima 障害E_本稼動_00934の対応
  *  2010/02/25    1.13  Yutaka.Kuboshima 障害E_本稼動_01660の対応
  *  2010/04/06    1.14  Yutaka.Kuboshima 障害E_本稼動_01965の対応
+ *  2010/09/22    1.15  Shigeto.Niki     障害E_本稼動_02021の対応
  *
  *****************************************************************************************/
 --
@@ -612,6 +613,10 @@ AS
               xca.invoice_code                               invoice_code,                --請求書用コード
               xca.enclose_invoice_code                       enclose_invoice_code         --統括請求書用コード
 -- 2009/09/30 Ver1.7 障害0001350 add end by Yutaka.Kuboshima
+--
+-- 2010/09/22 Ver1.15 障害E_本稼動_02021 add start by Shigeto.Niki
+             ,xca.store_cust_code                            store_cust_code              --店舗営業用顧客コード
+-- 2010/09/22 Ver1.15 障害E_本稼動_02021 add end by Shigeto.Niki
 --
 -- 2009/12/02 Ver1.10 障害E_本稼動_00262 add start by Yutaka.Kuboshima
              ,hcas.cust_acct_site_id                         cust_acct_site_id            --顧客所在地ID
@@ -1402,6 +1407,9 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.invoice_code, 1, 9) || cv_dqu;                 --請求書用コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.enclose_invoice_code, 1, 9) || cv_dqu;         --統括請求書用コード
 -- 2009/09/30 Ver1.7 障害0001350 add end by Yutaka.Kuboshima
+-- 2010/09/22 Ver1.15 障害E_本稼動_02021 add start by Shigeto.Niki
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.store_cust_code, 1, 9);                                  --店舗営業用顧客コード
+-- 2010/09/22 Ver1.15 障害E_本稼動_02021 add end by Shigeto.Niki
       lv_output_str := lv_output_str || cv_comma || lv_coordinated_date;                                                           --連携日時
 --
       --文字列出力

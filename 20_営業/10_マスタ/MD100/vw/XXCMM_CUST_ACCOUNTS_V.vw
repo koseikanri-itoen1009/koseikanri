@@ -1,4 +1,7 @@
-CREATE OR REPLACE FORCE VIEW APPS.XXCMM_CUST_ACCOUNTS_V (customer_id,party_id,customer_code,customer_status,cust_update_flag,business_low_type,industry_div,selling_transfer_div,torihiki_form,delivery_form,wholesale_ctrl_code,ship_storage_code,start_tran_date,final_tran_date,past_final_tran_date,final_call_date,stop_approval_date,stop_approval_reason,vist_untarget_date,vist_target_div,party_representative_name,party_emp_name,sale_base_code,past_sale_base_code,rsv_sale_base_act_date,rsv_sale_base_code,delivery_base_code,sales_head_base_code,chain_store_code,store_code,cust_store_name,torihikisaki_code,sales_chain_code,delivery_chain_code,policy_chain_code,intro_chain_code1,intro_chain_code2,tax_div,rate,receiv_discount_rate,conclusion_day1,conclusion_day2,conclusion_day3,contractor_supplier_code,bm_pay_supplier_code1,bm_pay_supplier_code2,delivery_order,edi_district_code,edi_district_name,edi_district_kana,center_edi_div,tsukagatazaiko_div,establishment_location,open_close_div,operation_div,change_amount,vendor_machine_number,established_site_name,cnvs_date,cnvs_base_code,cnvs_business_person,new_point_div,new_point,intro_base_code,intro_business_person,edi_chain_code,latitude,longitude,management_base_code,edi_item_code_div,edi_forward_number,handwritten_slip_div,deli_center_code,deli_center_name,dept_hht_div,bill_base_code,receiv_base_code,child_dept_shop_code,parnt_dept_shop_code,past_customer_status,card_company_div,card_company,invoice_printing_unit,invoice_code,enclose_invoice_code,created_by,creation_date,last_updated_by,last_update_date,last_update_date_hp,last_update_date_hca,last_update_login,request_id,program_application_id,program_id,program_update_date) AS
+-- 2010/09/22 è·äQE_ñ{â“ìÆ_02021 mod start by Shigeto.Niki
+--CREATE OR REPLACE FORCE VIEW APPS.XXCMM_CUST_ACCOUNTS_V (customer_id,party_id,customer_code,customer_status,cust_update_flag,business_low_type,industry_div,selling_transfer_div,torihiki_form,delivery_form,wholesale_ctrl_code,ship_storage_code,start_tran_date,final_tran_date,past_final_tran_date,final_call_date,stop_approval_date,stop_approval_reason,vist_untarget_date,vist_target_div,party_representative_name,party_emp_name,sale_base_code,past_sale_base_code,rsv_sale_base_act_date,rsv_sale_base_code,delivery_base_code,sales_head_base_code,chain_store_code,store_code,cust_store_name,torihikisaki_code,sales_chain_code,delivery_chain_code,policy_chain_code,intro_chain_code1,intro_chain_code2,tax_div,rate,receiv_discount_rate,conclusion_day1,conclusion_day2,conclusion_day3,contractor_supplier_code,bm_pay_supplier_code1,bm_pay_supplier_code2,delivery_order,edi_district_code,edi_district_name,edi_district_kana,center_edi_div,tsukagatazaiko_div,establishment_location,open_close_div,operation_div,change_amount,vendor_machine_number,established_site_name,cnvs_date,cnvs_base_code,cnvs_business_person,new_point_div,new_point,intro_base_code,intro_business_person,edi_chain_code,latitude,longitude,management_base_code,edi_item_code_div,edi_forward_number,handwritten_slip_div,deli_center_code,deli_center_name,dept_hht_div,bill_base_code,receiv_base_code,child_dept_shop_code,parnt_dept_shop_code,past_customer_status,card_company_div,card_company,invoice_printing_unit,invoice_code,enclose_invoice_code,created_by,creation_date,last_updated_by,last_update_date,last_update_date_hp,last_update_date_hca,last_update_login,request_id,program_application_id,program_id,program_update_date) AS
+CREATE OR REPLACE FORCE VIEW APPS.XXCMM_CUST_ACCOUNTS_V (customer_id,party_id,customer_code,customer_status,cust_update_flag,business_low_type,industry_div,selling_transfer_div,torihiki_form,delivery_form,wholesale_ctrl_code,ship_storage_code,start_tran_date,final_tran_date,past_final_tran_date,final_call_date,stop_approval_date,stop_approval_reason,vist_untarget_date,vist_target_div,party_representative_name,party_emp_name,sale_base_code,past_sale_base_code,rsv_sale_base_act_date,rsv_sale_base_code,delivery_base_code,sales_head_base_code,chain_store_code,store_code,cust_store_name,torihikisaki_code,sales_chain_code,delivery_chain_code,policy_chain_code,intro_chain_code1,intro_chain_code2,tax_div,rate,receiv_discount_rate,conclusion_day1,conclusion_day2,conclusion_day3,contractor_supplier_code,bm_pay_supplier_code1,bm_pay_supplier_code2,delivery_order,edi_district_code,edi_district_name,edi_district_kana,center_edi_div,tsukagatazaiko_div,establishment_location,open_close_div,operation_div,change_amount,vendor_machine_number,established_site_name,cnvs_date,cnvs_base_code,cnvs_business_person,new_point_div,new_point,intro_base_code,intro_business_person,edi_chain_code,latitude,longitude,management_base_code,edi_item_code_div,edi_forward_number,handwritten_slip_div,deli_center_code,deli_center_name,dept_hht_div,bill_base_code,receiv_base_code,child_dept_shop_code,parnt_dept_shop_code,past_customer_status,card_company_div,card_company,invoice_printing_unit,invoice_code,enclose_invoice_code,store_cust_code,created_by,creation_date,last_updated_by,last_update_date,last_update_date_hp,last_update_date_hca,last_update_login,request_id,program_application_id,program_id,program_update_date) AS
+-- 2010/09/22 è·äQE_ñ{â“ìÆ_02021 mod end by Shigeto.Niki
 SELECT xca.customer_id customer_id,
        hp.party_id party_id,
        xca.customer_code customer_code,
@@ -86,6 +89,9 @@ SELECT xca.customer_id customer_id,
        xca.invoice_code,
        xca.enclose_invoice_code,
 -- 2009/09/15 è·äQ0001350 add end by Yutaka.Kuboshima
+-- 2010/09/22 è·äQE_ñ{â“ìÆ_02021 add start by Shigeto.Niki
+       xca.store_cust_code,
+-- 2010/09/22 è·äQE_ñ{â“ìÆ_02021 add end by Shigeto.Niki
        xca.created_by created_by,
        xca.creation_date creation_date,
        xca.last_updated_by last_updated_by,
@@ -237,10 +243,7 @@ COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.intro_business_person IS 'è–âÓâcã∆à
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.edi_chain_code IS 'É`ÉFÅ[ÉììXÉRÅ[Éh(EDI)ÅyêeÉåÉRÅ[ÉhópÅz'
 /
--- 2010/05/18 mod start by Y.Kuboshima
---COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.latitude IS 'à‹ìx'
-COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.latitude IS 'ìXï‹âcã∆ãÊï™'
--- 2010/05/18 mod end by Y.Kuboshima
+COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.latitude IS 'à‹ìx'
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.longitude IS 'åoìx'
 /
@@ -278,6 +281,10 @@ COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.invoice_code IS 'êøãÅèëópÉRÅ[Éh'
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.enclose_invoice_code IS 'ìùäáêøãÅèëópÉRÅ[Éh'
 /
+-- 2010/09/22 è·äQE_ñ{â“ìÆ_02021 add start by Shigeto.Niki
+COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.store_cust_code IS 'ìXï‹âcã∆ópå⁄ãqÉRÅ[Éh'
+/
+-- 2010/09/22 è·äQE_ñ{â“ìÆ_02021 add end by Shigeto.Niki
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.created_by IS 'çÏê¨é“'
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.creation_date IS 'çÏê¨ì˙'
