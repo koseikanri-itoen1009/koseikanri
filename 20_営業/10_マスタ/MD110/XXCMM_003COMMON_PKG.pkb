@@ -312,3 +312,4 @@ AS
     RETURN cv_error;
   END cust_site_check;
 END xxcmm_003common_pkg;
+/

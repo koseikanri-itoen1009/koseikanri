@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY XXCMM003A14C
+CREATE OR REPLACE PACKAGE BODY xxcmm003a14c
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -1599,5 +1599,5 @@ AS
 --
 --###########################  �Œ蕔 END   #######################################################
 --
-END XXCMM003A14C;
+END xxcmm003a14c;
 /

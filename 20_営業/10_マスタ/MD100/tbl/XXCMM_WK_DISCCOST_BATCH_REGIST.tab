@@ -1,4 +1,4 @@
-CREATE TABLE XXCMM.XXCMM_WK_DISCCOST_BATCH_REGIST
+CREATE TABLE xxcmm.xxcmm_wk_disccost_batch_regist
 (
     FILE_ID                        NUMBER NOT NULL,
     FILE_SEQ                       NUMBER NOT NULL,
@@ -17,21 +17,38 @@ CREATE TABLE XXCMM.XXCMM_WK_DISCCOST_BATCH_REGIST
     PROGRAM_ID                     NUMBER(15,0),
     PROGRAM_UPDATE_DATE            DATE
 )
-TABLESPACE xxdata2
 /
-COMMENT ON TABLE XXCMM.XXCMM_WK_DISCCOST_BATCH_REGIST IS '営業原価一括改定ワーク'
+COMMENT ON TABLE xxcmm.xxcmm_wk_disccost_batch_regist IS '営業原価一括改定ワーク'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_DISCCOST_BATCH_REGIST.FILE_ID IS 'FILE_ID'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.file_id IS 'FILE_ID'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_DISCCOST_BATCH_REGIST.FILE_SEQ IS 'FILE_SEQ'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.file_seq IS 'FILE_SEQ'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_DISCCOST_BATCH_REGIST.ITEM_ID IS '品目ID'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.item_id IS '品目ID'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_DISCCOST_BATCH_REGIST.ITEM_NO IS '品目コード'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.item_no IS '品目コード'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_DISCCOST_BATCH_REGIST.APPLY_DATE IS '適用日'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.apply_date IS '適用日'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_DISCCOST_BATCH_REGIST.DISCRETE_COST IS '営業原価'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.discrete_cost IS '営業原価'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_DISCCOST_BATCH_REGIST.UPDATE_DIV IS '更新区分'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.update_div IS '更新区分'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.created_by IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.creation_date IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.last_updated_by IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.last_update_date IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.last_update_login IS '最終更新ﾛｸﾞｲﾝ'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.request_id IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.program_application_id IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.program_id IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_disccost_batch_regist.program_update_date IS 'ﾌﾟﾛｸﾞﾗﾑ更新日'
 /

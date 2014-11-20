@@ -10,7 +10,7 @@ CREATE TABLE xxcmm.xxcmm_wk_people_resp (
   end_date                  DATE,
   CONSTRAINT xxcmm_wk_people_resp_pk PRIMARY KEY (employee_number, responsibility_id)
   USING INDEX TABLESPACE xxidx2
-  ) TABLESPACE xxdata2
+  )
 /
 COMMENT ON TABLE  xxcmm.xxcmm_wk_people_resp                      IS 'é©ìÆêEê”äÑìñÉèÅ[ÉN'
 /

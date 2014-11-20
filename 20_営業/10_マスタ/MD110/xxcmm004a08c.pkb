@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY APPS.XXCMM004A08C
+CREATE OR REPLACE PACKAGE BODY xxcmm004a08c
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -2348,5 +2348,5 @@ AS
       ROLLBACK;
   END main;
 --
-END XXCMM004A08C;
+END xxcmm004a08c;
 /

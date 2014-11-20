@@ -1,6 +1,4 @@
-DROP TABLE XXCMM.XXCMM_WK_CUST_BATCH_REGIST
-/
-CREATE TABLE XXCMM.XXCMM_WK_CUST_BATCH_REGIST
+CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
 (
   FILE_ID                 NUMBER        NOT NULL,
   CUSTOMER_CODE           VARCHAR2(9)   NOT NULL,
@@ -44,89 +42,90 @@ CREATE TABLE XXCMM.XXCMM_WK_CUST_BATCH_REGIST
   PROGRAM_ID              NUMBER(15,0),
   PROGRAM_UPDATE_DATE     DATE,
   CONSTRAINT XXCMM_WK_CUST_BATCH_REGIST_PK PRIMARY KEY (FILE_ID, CUSTOMER_CODE)
+  USING INDEX TABLESPACE xxidx2
 )
 /
-COMMENT ON TABLE XXCMM.XXCMM_WK_CUST_BATCH_REGIST IS '顧客一括更新登録ワーク'
+COMMENT ON TABLE xxcmm.xxcmm_wk_cust_batch_regist IS '顧客一括更新登録ワーク'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.FILE_ID IS 'ファイルID'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.file_id IS 'ファイルID'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.CUSTOMER_CODE IS '顧客コード'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.customer_code IS '顧客コード'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.CUSTOMER_CLASS_CODE IS '顧客区分'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.customer_class_code IS '顧客区分'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.CUSTOMER_NAME IS '顧客名称'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.customer_name IS '顧客名称'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.CUSTOMER_NAME_KANA IS '顧客名称カナ'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.customer_name_kana IS '顧客名称カナ'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.CUSTOMER_NAME_RYAKU IS '略称'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.customer_name_ryaku IS '略称'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.CUSTOMER_STATUS IS '顧客ステータス'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.customer_status IS '顧客ステータス'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.APPROVAL_REASON IS '中止決済理由'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.approval_reason IS '中止決済理由'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.APPROVAL_DATE IS '中止決済日'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.approval_date IS '中止決済日'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.CREDIT_LIMIT IS '与信限度額'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.credit_limit IS '与信限度額'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.DECIDE_DIV IS '判定区分'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.decide_div IS '判定区分'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.AR_INVOICE_CODE IS '売掛コード１（請求書）'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.ar_invoice_code IS '売掛コード１（請求書）'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.AR_LOCATION_CODE IS '売掛コード２（事業所）'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.ar_location_code IS '売掛コード２（事業所）'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.AR_OTHERS_CODE IS '売掛コード３（その他）'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.ar_others_code IS '売掛コード３（その他）'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.INVOICE_CLASS IS '請求書発行区分'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.invoice_class IS '請求書発行区分'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.INVOICE_CYCLE IS '請求書発行サイクル'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.invoice_cycle IS '請求書発行サイクル'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.INVOICE_FORM IS '請求書出力形式'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.invoice_form IS '請求書出力形式'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.PAYMENT_TERM_ID IS '支払条件'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.payment_term_id IS '支払条件'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.PAYMENT_TERM_SECOND IS '第2支払条件'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.payment_term_second IS '第2支払条件'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.PAYMENT_TERM_THIRD IS '第3支払条件'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.payment_term_third IS '第3支払条件'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.SALES_CHAIN_CODE IS 'チェーン店コード（販売先）'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.sales_chain_code IS 'チェーン店コード（販売先）'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.DELIVERY_CHAIN_CODE IS 'チェーン店コード（納品先）'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.delivery_chain_code IS 'チェーン店コード（納品先）'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.POLICY_CHAIN_CODE IS 'チェーン店コード（営業政策用）'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.policy_chain_code IS 'チェーン店コード（営業政策用）'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.CHAIN_STORE_CODE IS 'チェーン店コード（ＥＤＩ）'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.chain_store_code IS 'チェーン店コード（ＥＤＩ）'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.STORE_CODE IS '店舗コード'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.store_code IS '店舗コード'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.BUSINESS_LOW_TYPE IS '業態（小分類）'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.business_low_type IS '業態（小分類）'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.POSTAL_CODE IS '郵便番号'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.postal_code IS '郵便番号'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.STATE IS '都道府県'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.state IS '都道府県'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.CITY IS '市・区'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.city IS '市・区'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.ADDRESS1 IS '住所1'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.address1 IS '住所1'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.ADDRESS2 IS '住所2'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.address2 IS '住所2'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.ADDRESS3 IS '地区コード'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.address3 IS '地区コード'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.CREATED_BY IS '作成者'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.created_by IS '作成者'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.CREATION_DATE IS '作成日'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.creation_date IS '作成日'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.LAST_UPDATED_BY IS '最終更新者'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.last_updated_by IS '最終更新者'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.LAST_UPDATE_DATE IS '最終更新日'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.last_update_date IS '最終更新日'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.LAST_UPDATE_LOGIN IS '最終更新ﾛｸﾞｲﾝ'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.last_update_login IS '最終更新ﾛｸﾞｲﾝ'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.REQUEST_ID IS '要求ID'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.request_id IS '要求ID'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.PROGRAM_APPLICATION_ID IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.program_application_id IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.PROGRAM_ID IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.program_id IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID'
 /
-COMMENT ON COLUMN XXCMM.XXCMM_WK_CUST_BATCH_REGIST.PROGRAM_UPDATE_DATE IS 'ﾌﾟﾛｸﾞﾗﾑ更新日'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.program_update_date IS 'ﾌﾟﾛｸﾞﾗﾑ更新日'
 /

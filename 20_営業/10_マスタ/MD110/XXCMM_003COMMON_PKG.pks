@@ -46,3 +46,4 @@ AS
   FUNCTION cust_site_check(iv_cust_site  IN VARCHAR2)   -- ŒÚ‹qŠİ’n•¶š—ñ
     RETURN VARCHAR2;
 END xxcmm_003common_pkg;
+/

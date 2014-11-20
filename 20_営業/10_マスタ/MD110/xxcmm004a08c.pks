@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE APPS.XXCMM004A08C
+CREATE OR REPLACE PACKAGE xxcmm004a08c
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -30,5 +30,5 @@ AS
    ,iv_file_id        IN       VARCHAR2                                        -- ファイルID
    ,iv_format         IN       VARCHAR2                                        -- フォーマットパターン
   );
-END XXCMM004A08C;
+END xxcmm004a08c;
 /
