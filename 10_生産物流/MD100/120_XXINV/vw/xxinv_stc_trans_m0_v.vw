@@ -1795,7 +1795,9 @@ AS
   AND    itc_in_ad_e_x9.doc_line                = iaj_in_ad_e_x9.doc_line
   AND    ijm_in_ad_e_x9.attribute1              = xnpt_in_ad_e_x9.entry_number
 -- 2008/12/24 #809 Y.Yamamoto add start
-  AND    ijm_in_ad_e_x9.attribute4              = 'Y'
+-- 2008/12/29 #809 Y.Yamamoto delete start
+--  AND    ijm_in_ad_e_x9.attribute4              = 'Y'
+-- 2008/12/29 #809 Y.Yamamoto delete end
 -- 2008/12/24 #809 Y.Yamamoto add end
   UNION ALL
 -- 2008/12/3 Y.Kawano delete start
@@ -1923,7 +1925,9 @@ AS
   AND    mil_in_ad_e_xx.organization_id         = iwm_in_ad_e_xx.mtl_organization_id
   AND    iaj_in_ad_e_xx.journal_id              = ijm_in_ad_e_xx.journal_id
 -- 2008/12/24 #809 Y.Yamamoto add start
-  AND    ijm_in_ad_e_xx.attribute4              = 'Y'
+-- 2008/12/29 #809 Y.Yamamoto delete start
+--  AND    ijm_in_ad_e_xx.attribute4              = 'Y'
+-- 2008/12/29 #809 Y.Yamamoto delete end
 -- 2008/12/24 #809 Y.Yamamoto add end
   AND    itc_in_ad_e_xx.doc_type                = iaj_in_ad_e_xx.trans_type
   AND    itc_in_ad_e_xx.doc_id                  = iaj_in_ad_e_xx.doc_id
@@ -3097,7 +3101,9 @@ AS
   AND    itc_out_ad_e_x2.doc_line                = iaj_out_ad_e_x2.doc_line
   AND    TO_NUMBER( ijm_out_ad_e_x2.attribute1 ) = xrart_out_ad_e_x2.txns_id
 -- 2008/12/24 #809 Y.Yamamoto add start
-  AND    ijm_out_ad_e_x2.attribute4             IS NULL
+-- 2008/12/29 #809 Y.Yamamoto delete start
+--  AND    ijm_out_ad_e_x2.attribute4             IS NULL
+-- 2008/12/29 #809 Y.Yamamoto delete end
 -- 2008/12/24 #809 Y.Yamamoto add end
   AND    xrart_out_ad_e_x2.vendor_id             = xv_out_ad_e_x2.vendor_id     -- édì¸êÊID
   AND    pv_out_ad_e_x2.vendor_id                = xv_out_ad_e_x2.vendor_id
@@ -3237,7 +3243,9 @@ AS
   AND    itc_out_ad_e_xx.location                = mil_out_ad_e_xx.segment1
   AND    iaj_out_ad_e_xx.journal_id              = ijm_out_ad_e_xx.journal_id
 -- 2008/12/24 #809 Y.Yamamoto add start
-  AND    ijm_out_ad_e_xx.attribute4             IS NULL
+-- 2008/12/29 #809 Y.Yamamoto delete start
+--  AND    ijm_out_ad_e_xx.attribute4             IS NULL
+-- 2008/12/29 #809 Y.Yamamoto delete end
 -- 2008/12/24 #809 Y.Yamamoto add end
   AND    itc_out_ad_e_xx.doc_type                = iaj_out_ad_e_xx.trans_type
   AND    itc_out_ad_e_xx.doc_id                  = iaj_out_ad_e_xx.doc_id
