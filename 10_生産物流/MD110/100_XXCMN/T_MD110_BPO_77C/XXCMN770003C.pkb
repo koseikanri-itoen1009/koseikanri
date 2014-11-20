@@ -7,7 +7,7 @@ AS
  * Description      : éÛï•écçÇï\ÅiáUÅj
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD050_BPO_770)
  *                  : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2009/01/13    1.17  N.Yoshida        ñ{î‘è·äQ997ëŒâû
  *  2009/03/05    1.18  H.Marushita      ñ{î‘è·äQ1274ëŒâû
  *  2009/05/29    1.19  Marushita        ñ{î‘è·äQ1511ëŒâû
+ *  2009/08/12    1.20  Marushita        ñ{î‘è·äQ1608ëŒâû
  *
  *****************************************************************************************/
 --
@@ -1226,7 +1227,9 @@ AS
       AND    gic2.category_set_id    = cn_item_class_id
       AND    gic2.category_id        = mcb2.category_id
       AND    mcb2.segment1           = ir_param.art_division
-      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL START
+--      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL END
       AND    gic3.item_id            = itp.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
@@ -1242,29 +1245,57 @@ AS
       AND    itp.doc_type            = xrpm.doc_type
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
-      AND    xrpm.dealings_div       = cv_dealing_309
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd2
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd2.batch_id   = gmd.batch_id
-                      AND    gmd2.line_no    = gmd.line_no
-                      AND    gmd2.line_type  = -1
-                      AND    gic.item_id     = gmd2.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_origin))
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd3
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd3.batch_id   = gmd.batch_id
-                      AND    gmd3.line_no    = gmd.line_no
-                      AND    gmd3.line_type  = 1
-                      AND    gic.item_id     = gmd3.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD START
+      AND    xrpm.dealings_div IN('306','309')
+      AND ((xrpm.routing_class    <> '70') OR 
+           ((xrpm.routing_class     = '70')
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd2
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd2.batch_id   = gmd.batch_id
+                            AND    gmd2.line_no    = gmd.line_no
+                            AND    gmd2.line_type  = -1
+                            AND    gic.item_id     = gmd2.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_origin))
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd3
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd3.batch_id   = gmd.batch_id
+                            AND    gmd3.line_no    = gmd.line_no
+                            AND    gmd3.line_type  = 1
+                            AND    gic.item_id     = gmd3.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_ahead))
+            ))
+--      AND    xrpm.dealings_div       = cv_dealing_309
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd2
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd2.batch_id   = gmd.batch_id
+--                      AND    gmd2.line_no    = gmd.line_no
+--                      AND    gmd2.line_type  = -1
+--                      AND    gic.item_id     = gmd2.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_origin))
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd3
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd3.batch_id   = gmd.batch_id
+--                      AND    gmd3.line_no    = gmd.line_no
+--                     AND    gmd3.line_type  = 1
+--                      AND    gic.item_id     = gmd3.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD END
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
@@ -1973,7 +2004,9 @@ AS
       AND    gic2.category_set_id    = cn_item_class_id
       AND    gic2.category_id        = mcb2.category_id
       AND    mcb2.segment1           = ir_param.art_division
-      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL START
+--      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL END
       AND    gic3.item_id            = itp.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
@@ -1989,29 +2022,57 @@ AS
       AND    itp.doc_type            = xrpm.doc_type
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
-      AND    xrpm.dealings_div       = cv_dealing_309
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd2
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd2.batch_id   = gmd.batch_id
-                      AND    gmd2.line_no    = gmd.line_no
-                      AND    gmd2.line_type  = -1
-                      AND    gic.item_id     = gmd2.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_origin))
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd3
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd3.batch_id   = gmd.batch_id
-                      AND    gmd3.line_no    = gmd.line_no
-                      AND    gmd3.line_type  = 1
-                      AND    gic.item_id     = gmd3.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD START
+      AND    xrpm.dealings_div IN('306','309')
+      AND ((xrpm.routing_class    <> '70') OR 
+           ((xrpm.routing_class     = '70')
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd2
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd2.batch_id   = gmd.batch_id
+                            AND    gmd2.line_no    = gmd.line_no
+                            AND    gmd2.line_type  = -1
+                            AND    gic.item_id     = gmd2.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_origin))
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd3
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd3.batch_id   = gmd.batch_id
+                            AND    gmd3.line_no    = gmd.line_no
+                            AND    gmd3.line_type  = 1
+                            AND    gic.item_id     = gmd3.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_ahead))
+            ))
+--      AND    xrpm.dealings_div       = cv_dealing_309
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd2
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd2.batch_id   = gmd.batch_id
+--                      AND    gmd2.line_no    = gmd.line_no
+--                      AND    gmd2.line_type  = -1
+--                      AND    gic.item_id     = gmd2.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_origin))
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd3
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd3.batch_id   = gmd.batch_id
+--                      AND    gmd3.line_no    = gmd.line_no
+--                      AND    gmd3.line_type  = 1
+--                      AND    gic.item_id     = gmd3.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD END
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.attribute1          = '0'
       UNION ALL
@@ -2729,7 +2790,9 @@ AS
       AND    gic2.category_set_id    = cn_item_class_id
       AND    gic2.category_id        = mcb2.category_id
       AND    mcb2.segment1           = ir_param.art_division
-      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL START
+--      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL END
       AND    gic3.item_id            = itp.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
@@ -2745,29 +2808,57 @@ AS
       AND    itp.doc_type            = xrpm.doc_type
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
-      AND    xrpm.dealings_div       = cv_dealing_309
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd2
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd2.batch_id   = gmd.batch_id
-                      AND    gmd2.line_no    = gmd.line_no
-                      AND    gmd2.line_type  = -1
-                      AND    gic.item_id     = gmd2.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_origin))
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd3
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd3.batch_id   = gmd.batch_id
-                      AND    gmd3.line_no    = gmd.line_no
-                      AND    gmd3.line_type  = 1
-                      AND    gic.item_id     = gmd3.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD START
+      AND    xrpm.dealings_div IN('306','309')
+      AND ((xrpm.routing_class    <> '70') OR 
+           ((xrpm.routing_class     = '70')
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd2
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd2.batch_id   = gmd.batch_id
+                            AND    gmd2.line_no    = gmd.line_no
+                            AND    gmd2.line_type  = -1
+                            AND    gic.item_id     = gmd2.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_origin))
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd3
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd3.batch_id   = gmd.batch_id
+                            AND    gmd3.line_no    = gmd.line_no
+                            AND    gmd3.line_type  = 1
+                            AND    gic.item_id     = gmd3.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_ahead))
+            ))
+--      AND    xrpm.dealings_div       = cv_dealing_309
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd2
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd2.batch_id   = gmd.batch_id
+--                      AND    gmd2.line_no    = gmd.line_no
+--                      AND    gmd2.line_type  = -1
+--                      AND    gic.item_id     = gmd2.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_origin))
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd3
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd3.batch_id   = gmd.batch_id
+--                      AND    gmd3.line_no    = gmd.line_no
+--                      AND    gmd3.line_type  = 1
+--                      AND    gic.item_id     = gmd3.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD START
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
@@ -3485,7 +3576,9 @@ AS
       AND    gic2.category_set_id    = cn_item_class_id
       AND    gic2.category_id        = mcb2.category_id
       AND    mcb2.segment1           = ir_param.art_division
-      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL START
+--      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL END
       AND    gic3.item_id            = itp.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
@@ -3501,29 +3594,57 @@ AS
       AND    itp.doc_type            = xrpm.doc_type
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
-      AND    xrpm.dealings_div       = cv_dealing_309
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd2
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd2.batch_id   = gmd.batch_id
-                      AND    gmd2.line_no    = gmd.line_no
-                      AND    gmd2.line_type  = -1
-                      AND    gic.item_id     = gmd2.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_origin))
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd3
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd3.batch_id   = gmd.batch_id
-                      AND    gmd3.line_no    = gmd.line_no
-                      AND    gmd3.line_type  = 1
-                      AND    gic.item_id     = gmd3.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD START
+      AND    xrpm.dealings_div IN('306','309')
+      AND ((xrpm.routing_class    <> '70') OR 
+           ((xrpm.routing_class     = '70')
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd2
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd2.batch_id   = gmd.batch_id
+                            AND    gmd2.line_no    = gmd.line_no
+                            AND    gmd2.line_type  = -1
+                            AND    gic.item_id     = gmd2.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_origin))
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd3
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd3.batch_id   = gmd.batch_id
+                            AND    gmd3.line_no    = gmd.line_no
+                            AND    gmd3.line_type  = 1
+                            AND    gic.item_id     = gmd3.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_ahead))
+            ))
+--      AND    xrpm.dealings_div       = cv_dealing_309
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd2
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd2.batch_id   = gmd.batch_id
+--                      AND    gmd2.line_no    = gmd.line_no
+--                      AND    gmd2.line_type  = -1
+--                      AND    gic.item_id     = gmd2.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_origin))
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd3
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd3.batch_id   = gmd.batch_id
+--                      AND    gmd3.line_no    = gmd.line_no
+--                      AND    gmd3.line_type  = 1
+--                      AND    gic.item_id     = gmd3.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD END
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
       AND    iwm.attribute1          = '0'
@@ -4238,7 +4359,9 @@ AS
       AND    gic2.category_set_id    = cn_item_class_id
       AND    gic2.category_id        = mcb2.category_id
       AND    mcb2.segment1           = ir_param.art_division
-      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL START
+--      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL END
       AND    gic3.item_id            = itp.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
@@ -4254,29 +4377,57 @@ AS
       AND    itp.doc_type            = xrpm.doc_type
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
-      AND    xrpm.dealings_div       = cv_dealing_309
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd2
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd2.batch_id   = gmd.batch_id
-                      AND    gmd2.line_no    = gmd.line_no
-                      AND    gmd2.line_type  = -1
-                      AND    gic.item_id     = gmd2.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_origin))
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd3
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd3.batch_id   = gmd.batch_id
-                      AND    gmd3.line_no    = gmd.line_no
-                      AND    gmd3.line_type  = 1
-                      AND    gic.item_id     = gmd3.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD START
+      AND    xrpm.dealings_div IN('306','309')
+      AND ((xrpm.routing_class    <> '70') OR 
+           ((xrpm.routing_class     = '70')
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd2
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd2.batch_id   = gmd.batch_id
+                            AND    gmd2.line_no    = gmd.line_no
+                            AND    gmd2.line_type  = -1
+                            AND    gic.item_id     = gmd2.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_origin))
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd3
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd3.batch_id   = gmd.batch_id
+                            AND    gmd3.line_no    = gmd.line_no
+                            AND    gmd3.line_type  = 1
+                            AND    gic.item_id     = gmd3.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_ahead))
+            ))
+--      AND    xrpm.dealings_div       = cv_dealing_309
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd2
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd2.batch_id   = gmd.batch_id
+--                      AND    gmd2.line_no    = gmd.line_no
+--                      AND    gmd2.line_type  = -1
+--                      AND    gic.item_id     = gmd2.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_origin))
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd3
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd3.batch_id   = gmd.batch_id
+--                      AND    gmd3.line_no    = gmd.line_no
+--                      AND    gmd3.line_type  = 1
+--                      AND    gic.item_id     = gmd3.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD END
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
@@ -4985,7 +5136,9 @@ AS
       AND    gic2.category_set_id    = cn_item_class_id
       AND    gic2.category_id        = mcb2.category_id
       AND    mcb2.segment1           = ir_param.art_division
-      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL START
+--      AND    mcb2.segment1           IN ('1','4')
+-- 2009/08/12 DEL END
       AND    gic3.item_id            = itp.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
@@ -5001,29 +5154,57 @@ AS
       AND    itp.doc_type            = xrpm.doc_type
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_03       IS NOT NULL
-      AND    xrpm.dealings_div       = cv_dealing_309
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd2
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd2.batch_id   = gmd.batch_id
-                      AND    gmd2.line_no    = gmd.line_no
-                      AND    gmd2.line_type  = -1
-                      AND    gic.item_id     = gmd2.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_origin))
-      AND    (EXISTS (SELECT 1
-                      FROM   gme_material_details gmd3
-                            ,gmi_item_categories  gic
-                            ,mtl_categories_b     mcb
-                      WHERE  gmd3.batch_id   = gmd.batch_id
-                      AND    gmd3.line_no    = gmd.line_no
-                      AND    gmd3.line_type  = 1
-                      AND    gic.item_id     = gmd3.item_id
-                      AND    gic.category_set_id = cn_item_class_id
-                      AND    gic.category_id = mcb.category_id
-                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD START
+      AND    xrpm.dealings_div IN('306','309')
+      AND ((xrpm.routing_class    <> '70') OR 
+           ((xrpm.routing_class     = '70')
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd2
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd2.batch_id   = gmd.batch_id
+                            AND    gmd2.line_no    = gmd.line_no
+                            AND    gmd2.line_type  = -1
+                            AND    gic.item_id     = gmd2.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_origin))
+            AND    (EXISTS (SELECT 1
+                            FROM   gme_material_details gmd3
+                                  ,gmi_item_categories  gic
+                                  ,mtl_categories_b     mcb
+                            WHERE  gmd3.batch_id   = gmd.batch_id
+                            AND    gmd3.line_no    = gmd.line_no
+                            AND    gmd3.line_type  = 1
+                            AND    gic.item_id     = gmd3.item_id
+                            AND    gic.category_set_id = cn_item_class_id
+                            AND    gic.category_id = mcb.category_id
+                            AND    mcb.segment1    = xrpm.item_div_ahead))
+            ))
+--      AND    xrpm.dealings_div       = cv_dealing_309
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd2
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd2.batch_id   = gmd.batch_id
+--                      AND    gmd2.line_no    = gmd.line_no
+--                      AND    gmd2.line_type  = -1
+--                      AND    gic.item_id     = gmd2.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_origin))
+--      AND    (EXISTS (SELECT 1
+--                      FROM   gme_material_details gmd3
+--                            ,gmi_item_categories  gic
+--                            ,mtl_categories_b     mcb
+--                      WHERE  gmd3.batch_id   = gmd.batch_id
+--                      AND    gmd3.line_no    = gmd.line_no
+--                      AND    gmd3.line_type  = 1
+--                      AND    gic.item_id     = gmd3.item_id
+--                      AND    gic.category_set_id = cn_item_class_id
+--                      AND    gic.category_id = mcb.category_id
+--                      AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/08/12 MOD END
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.attribute1          = '0'
       UNION ALL
