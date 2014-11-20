@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_cust_accounts_n16
+ON xxcmm_cust_accounts
+(rsv_sale_base_code,rsv_sale_base_act_date)
+TABLESPACE xxidx2
+/
