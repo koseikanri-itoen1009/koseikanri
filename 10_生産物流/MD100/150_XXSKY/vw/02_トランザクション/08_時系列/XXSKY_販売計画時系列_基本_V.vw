@@ -82,10 +82,13 @@ SELECT
         --=====================
         -- 年間
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.sum_year_qty / ITEM.num_of_cases ), 0 )      sum_year_cs_qty     --年間合計ケース数
-       ,NVL( CEIL( SMFC.sum_year_qty / ITEM.num_of_cases ), 0 )      sum_year_cs_qty     --年間合計ケース数
+--       ,NVL( CEIL( SMFC.sum_year_qty / ITEM.num_of_cases ), 0 )      sum_year_cs_qty     --年間合計ケース数
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.sum_year_qty / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      sum_year_cs_qty     --年間合計ケース数
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.sum_year_qty , 0 )                                  sum_year_qty        --年間合計バラ数
        ,NVL( SMFC.sum_year_amt , 0 )                                  sum_year_amt        --年間合計金額
         --掛率  ＜パーセント単位(少数点第３位以下四捨五入)で表示＞
@@ -97,10 +100,13 @@ SELECT
         --=====================
         --５月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_5th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_5th       --販売計画ケース数_５月
-       ,NVL( CEIL( SMFC.fc_qty_5th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_5th       --販売計画ケース数_５月
+--       ,NVL( CEIL( SMFC.fc_qty_5th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_5th       --販売計画ケース数_５月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_5th   / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_5th       --販売計画ケース数_５月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_5th   , 0 )                                  fc_qty_5th          --販売計画バラ数_５月
        ,NVL( SMFC.fc_amt_5th   , 0 )                                  fc_amt_5th          --販売計画金額_５月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_5th , 0 ) <> 0 THEN  --ゼロ割り対策
@@ -110,10 +116,13 @@ SELECT
         --=====================
         --６月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_6th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_6th       --販売計画ケース数_６月
-       ,NVL( CEIL( SMFC.fc_qty_6th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_6th       --販売計画ケース数_６月
+--       ,NVL( CEIL( SMFC.fc_qty_6th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_6th       --販売計画ケース数_６月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_6th   / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_6th       --販売計画ケース数_６月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_6th   , 0 )                                  fc_qty_6th          --販売計画バラ数_６月
        ,NVL( SMFC.fc_amt_6th   , 0 )                                  fc_amt_6th          --販売計画金額_６月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_6th , 0 ) <> 0 THEN  --ゼロ割り対策
@@ -123,10 +132,13 @@ SELECT
         --=====================
         --７月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_7th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_7th       --販売計画ケース数_７月
-       ,NVL( CEIL( SMFC.fc_qty_7th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_7th       --販売計画ケース数_７月
+--       ,NVL( CEIL( SMFC.fc_qty_7th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_7th       --販売計画ケース数_７月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_7th   / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_7th       --販売計画ケース数_７月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_7th   , 0 )                                  fc_qty_7th          --販売計画バラ数_７月
        ,NVL( SMFC.fc_amt_7th   , 0 )                                  fc_amt_7th          --販売計画金額_７月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_7th , 0 ) <> 0 THEN  --ゼロ割り対策
@@ -136,10 +148,13 @@ SELECT
         --=====================
         --８月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_8th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_8th       --販売計画ケース数_８月
-       ,NVL( CEIL( SMFC.fc_qty_8th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_8th       --販売計画ケース数_８月
+--       ,NVL( CEIL( SMFC.fc_qty_8th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_8th       --販売計画ケース数_８月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_8th   / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_8th       --販売計画ケース数_８月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_8th   , 0 )                                  fc_qty_8th          --販売計画バラ数_８月
        ,NVL( SMFC.fc_amt_8th   , 0 )                                  fc_amt_8th          --販売計画金額_８月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_8th , 0 ) <> 0 THEN  --ゼロ割り対策
@@ -149,10 +164,13 @@ SELECT
         --=====================
         --９月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_9th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_9th       --販売計画ケース数_９月
-       ,NVL( CEIL( SMFC.fc_qty_9th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_9th       --販売計画ケース数_９月
+--       ,NVL( CEIL( SMFC.fc_qty_9th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_9th       --販売計画ケース数_９月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_9th   / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_9th       --販売計画ケース数_９月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_9th   , 0 )                                  fc_qty_9th          --販売計画バラ数_９月
        ,NVL( SMFC.fc_amt_9th   , 0 )                                  fc_amt_9th          --販売計画金額_９月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_9th , 0 ) <> 0 THEN  --ゼロ割り対策
@@ -162,10 +180,13 @@ SELECT
         --=====================
         --１０月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_10th  / ITEM.num_of_cases ), 0 )      fc_cs_qty_10th      --販売計画ケース数_１０月
-       ,NVL( CEIL( SMFC.fc_qty_10th  / ITEM.num_of_cases ), 0 )      fc_cs_qty_10th      --販売計画ケース数_１０月
+--       ,NVL( CEIL( SMFC.fc_qty_10th  / ITEM.num_of_cases ), 0 )      fc_cs_qty_10th      --販売計画ケース数_１０月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_10th  / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_10th      --販売計画ケース数_１０月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_10th  , 0 )                                  fc_qty_10th         --販売計画バラ数_１０月
        ,NVL( SMFC.fc_amt_10th  , 0 )                                  fc_amt_10th         --販売計画金額_１０月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_10th, 0 ) <> 0 THEN  --ゼロ割り対策
@@ -175,10 +196,13 @@ SELECT
         --=====================
         --１１月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_11th  / ITEM.num_of_cases ), 0 )      fc_cs_qty_11th      --販売計画ケース数_１１月
-       ,NVL( CEIL( SMFC.fc_qty_11th  / ITEM.num_of_cases ), 0 )      fc_cs_qty_11th      --販売計画ケース数_１１月
+--       ,NVL( CEIL( SMFC.fc_qty_11th  / ITEM.num_of_cases ), 0 )      fc_cs_qty_11th      --販売計画ケース数_１１月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_11th  / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_11th      --販売計画ケース数_１１月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_11th  , 0 )                                  fc_qty_11th         --販売計画バラ数_１１月
        ,NVL( SMFC.fc_amt_11th  , 0 )                                  fc_amt_11th         --販売計画金額_１１月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_11th, 0 ) <> 0 THEN  --ゼロ割り対策
@@ -188,10 +212,13 @@ SELECT
         --=====================
         --１２月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_12th  / ITEM.num_of_cases ), 0 )      fc_cs_qty_12th      --販売計画ケース数_１２月
-       ,NVL( CEIL( SMFC.fc_qty_12th  / ITEM.num_of_cases ), 0 )      fc_cs_qty_12th      --販売計画ケース数_１２月
+--       ,NVL( CEIL( SMFC.fc_qty_12th  / ITEM.num_of_cases ), 0 )      fc_cs_qty_12th      --販売計画ケース数_１２月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_12th  / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_12th      --販売計画ケース数_１２月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_12th  , 0 )                                  fc_qty_12th         --販売計画バラ数_１２月
        ,NVL( SMFC.fc_amt_12th  , 0 )                                  fc_amt_12th         --販売計画金額_１２月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_12th, 0 ) <> 0 THEN  --ゼロ割り対策
@@ -201,10 +228,13 @@ SELECT
         --=====================
         --１月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_1th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_1th       --販売計画ケース数_１月
-       ,NVL( CEIL( SMFC.fc_qty_1th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_1th       --販売計画ケース数_１月
+--       ,NVL( CEIL( SMFC.fc_qty_1th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_1th       --販売計画ケース数_１月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_1th   / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_1th       --販売計画ケース数_１月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_1th   , 0 )                                  fc_qty_1th          --販売計画バラ数_１月
        ,NVL( SMFC.fc_amt_1th   , 0 )                                  fc_amt_1th          --販売計画金額_１月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_1th , 0 ) <> 0 THEN  --ゼロ割り対策
@@ -214,10 +244,13 @@ SELECT
         --=====================
         --２月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_2th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_2th       --販売計画ケース数_２月
-       ,NVL( CEIL( SMFC.fc_qty_2th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_2th       --販売計画ケース数_２月
+--       ,NVL( CEIL( SMFC.fc_qty_2th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_2th       --販売計画ケース数_２月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_2th   / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_2th       --販売計画ケース数_２月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_2th   , 0 )                                  fc_qty_2th          --販売計画バラ数_２月
        ,NVL( SMFC.fc_amt_2th   , 0 )                                  fc_amt_2th          --販売計画金額_２月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_2th , 0 ) <> 0 THEN  --ゼロ割り対策
@@ -227,10 +260,13 @@ SELECT
         --=====================
         --３月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_3th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_3th       --販売計画ケース数_３月
-       ,NVL( CEIL( SMFC.fc_qty_3th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_3th       --販売計画ケース数_３月
+--       ,NVL( CEIL( SMFC.fc_qty_3th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_3th       --販売計画ケース数_３月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_3th   / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_3th       --販売計画ケース数_３月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_3th   , 0 )                                  fc_qty_3th          --販売計画バラ数_３月
        ,NVL( SMFC.fc_amt_3th   , 0 )                                  fc_amt_3th          --販売計画金額_３月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_3th , 0 ) <> 0 THEN  --ゼロ割り対策
@@ -240,10 +276,13 @@ SELECT
         --=====================
         --４月
         --=====================
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 START
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 START
 --       ,NVL( TRUNC( SMFC.fc_qty_4th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_4th       --販売計画ケース数_４月
-       ,NVL( CEIL( SMFC.fc_qty_4th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_4th       --販売計画ケース数_４月
+--       ,NVL( CEIL( SMFC.fc_qty_4th   / ITEM.num_of_cases ), 0 )      fc_cs_qty_4th       --販売計画ケース数_４月
 -- MOD DATE:2011/02/01 AUTHOR:OUKOU CONTENT:E_本稼動_02856 END
+       ,NVL( CEIL( SMFC.fc_qty_4th   / DECODE(NVL(ITEMB.attribute11,0),0,null,ITEMB.attribute11) ), 0 )      fc_cs_qty_4th       --販売計画ケース数_４月
+-- MOD DATE:2011/03/02 AUTHOR:HORIGOME CONTENT:E_本稼動_02856 END
        ,NVL( SMFC.fc_qty_4th   , 0 )                                  fc_qty_4th          --販売計画バラ数_４月
        ,NVL( SMFC.fc_amt_4th   , 0 )                                  fc_amt_4th          --販売計画金額_４月
        ,CASE WHEN NVL( TO_NUMBER( ITEMB.attribute5 ) * SMFC.fc_qty_4th , 0 ) <> 0 THEN  --ゼロ割り対策
