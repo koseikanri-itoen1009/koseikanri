@@ -49,7 +49,7 @@ SELECT
   ,xoha.shipping_instructions                          AS    shipping_instructions    -- 摘要
   ,xoha.cust_po_number                                 AS    cust_po_number      -- 受注No
   ,xic4v.item_class_code                               AS    item_class_code     -- 品目区分
-  ,xola.shipping_item_code                             AS    shipping_item_code  -- コード(品目)
+  ,xola.request_item_code                             AS    shipping_item_code  -- コード(品目)
   ,xim2v.item_short_name                               AS    item_short_name     -- 商品名
   ,CASE 
     WHEN ( xola.reserved_quantity IS NULL ) THEN 
@@ -94,7 +94,7 @@ WHERE     xoha.req_status               =            '04' -- 出荷実績計上済
       AND xoha.order_header_id          =            xola.order_header_id
       AND xola.delete_flag              =            'N'
       AND xola.order_line_id            =            xmld.mov_line_id(+)
-      AND xola.shipping_inventory_item_id =          xim2v.inventory_item_id
+      AND xola.request_item_id =          xim2v.inventory_item_id
       AND xim2v.item_id                 =            xic4v.item_id
       AND xmld.lot_id                   =            ilm.lot_id(+)
       AND xmld.item_id                  =            ilm.item_id(+)
@@ -131,7 +131,7 @@ SELECT
   ,xoha.shipping_instructions                          AS    shipping_instructions    -- 摘要
   ,xoha.cust_po_number                                 AS    cust_po_number      -- 受注No
   ,xic4v.item_class_code                               AS    item_class_code     -- 品目区分
-  ,xola.shipping_item_code                             AS    shipping_item_code  -- コード(品目)
+  ,xola.request_item_code                             AS    shipping_item_code  -- コード(品目)
   ,xim2v.item_short_name                               AS    item_short_name     -- 商品名
   ,CASE
    -- 引当されている場合
@@ -215,7 +215,7 @@ WHERE     xoha.req_status               =            '03' -- 出荷実績計上済
       AND xoha.order_header_id          =            xola.order_header_id
       AND xola.delete_flag              =            'N'
       AND xola.order_line_id            =            xmld.mov_line_id(+)
-      AND xola.shipping_inventory_item_id =          xim2v.inventory_item_id
+      AND xola.request_item_id =          xim2v.inventory_item_id
       AND xim2v.item_id                 =            xic4v.item_id
       AND xmld.lot_id                   =            ilm.lot_id(+)
       AND xmld.item_id                  =            ilm.item_id(+)
@@ -253,7 +253,7 @@ SELECT
   ,xoha.shipping_instructions                          AS    shipping_instructions-- 摘要
   ,NULL                                                AS    cust_po_number      -- 受注No
   ,xic4v.item_class_code                               AS    item_class_code     -- 品目区分
-  ,xola.shipping_item_code                             AS    shipping_item_code  -- コード(品目)
+  ,xola.request_item_code                             AS    shipping_item_code  -- コード(品目)
   ,xim2v.item_short_name                               AS    item_short_name     -- 商品名
   ,NULL                                                AS    case_quantity       -- ケース数量
   ,xmld.lot_no                                         AS    lot_no              -- ロットNo
@@ -301,7 +301,7 @@ WHERE     xoha.req_status               =            '08'
       AND xoha.order_header_id          =            xola.order_header_id
       AND xola.delete_flag              =            'N'
       AND xola.order_line_id            =            xmld.mov_line_id(+)
-      AND xola.shipping_inventory_item_id =          xim2v.inventory_item_id
+      AND xola.request_item_id =          xim2v.inventory_item_id
       AND xim2v.item_id                 =            xic4v.item_id
       AND xmld.lot_id                   =            ilm.lot_id(+)
       AND xmld.item_id                  =            ilm.item_id(+)
@@ -338,7 +338,7 @@ SELECT
   ,xoha.shipping_instructions                          AS    shipping_instructions-- 摘要
   ,NULL                                                AS    cust_po_number      -- 受注No
   ,xic4v.item_class_code                               AS    item_class_code     -- 品目区分
-  ,xola.shipping_item_code                             AS    shipping_item_code  -- コード(品目)
+  ,xola.request_item_code                             AS    shipping_item_code  -- コード(品目)
   ,xim2v.item_short_name                               AS    item_short_name     -- 商品名
   ,NULL                                                AS    case_quantity       -- ケース数量
   ,xmld.lot_no                                         AS    lot_no              -- ロットNo
@@ -407,7 +407,7 @@ WHERE     xoha.req_status               =            '07' -- 出荷実績計上済
       AND xoha.order_header_id          =            xola.order_header_id
       AND xola.delete_flag              =            'N'
       AND xola.order_line_id            =            xmld.mov_line_id(+)
-      AND xola.shipping_inventory_item_id =          xim2v.inventory_item_id
+      AND xola.request_item_id =          xim2v.inventory_item_id
       AND xim2v.item_id                 =            xic4v.item_id
       AND xmld.lot_id                   =            ilm.lot_id(+)
       AND xmld.item_id                  =            ilm.item_id(+)
