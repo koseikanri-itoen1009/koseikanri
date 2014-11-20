@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI002A01R(body)
  * Description      : 倉替伝票
  * MD.050           : 倉替伝票 MD050_COI_002_A01
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/12    1.0   K.Nakamura       新規作成
  *  2009/05/13    1.1   H.Sasaki         [T1_0774]伝票番号の桁数を修正
+ *  2009/07/30    1.2   N.Abe            [0000638]数量の取得項目修正
  *
  *****************************************************************************************/
 --
@@ -139,7 +140,10 @@ AS
   TYPE gr_mmt_info_rec IS RECORD(
       transaction_date           mtl_material_transactions.transaction_date%TYPE     -- 伝票日付
     , transaction_set_id         VARCHAR2(15)                                        -- 伝票No
-    , transaction_quantity       mtl_material_transactions.transaction_quantity%TYPE -- 取引数量
+-- == 2009/07/30 V1.2 Modified START ===============================================================
+--    , transaction_quantity       mtl_material_transactions.transaction_quantity%TYPE -- 取引数量
+    , transaction_quantity       mtl_material_transactions.primary_quantity%TYPE     -- 基準単位数量
+-- == 2009/07/30 V1.2 Modified END   ===============================================================
     , kyoten_from_code           hz_cust_accounts.account_number%TYPE                -- 出庫元拠点コード
     , kyoten_to_code             VARCHAR2(240)                                       -- 入庫先拠点コード
     , kyoten_from_name           hz_cust_accounts.account_name%TYPE                  -- 出庫元拠点名称
@@ -782,7 +786,10 @@ AS
       SELECT
              mmt.transaction_date                       AS transaction_date                 -- 伝票日付
            , mmt.attribute1                             AS transaction_set_id               -- 伝票No(拠点間倉替)
-           , ( SUM( mmt.transaction_quantity ) * (-1) ) AS transaction_quantity             -- 取引数量
+-- == 2009/07/30 V1.2 Modified START ===============================================================
+--           , ( SUM( mmt.transaction_quantity ) * (-1) ) AS transaction_quantity             -- 取引数量
+           , ( SUM( mmt.primary_quantity ) * (-1) )     AS transaction_quantity             -- 基準単位数量
+-- == 2009/07/30 V1.2 Modified END   ===============================================================
            , hca1.account_number                        AS kyoten_from_code                 -- 出庫元拠点コード
            , hca2.account_number                        AS kyoten_to_code                   -- 入庫先拠点コード(拠点間倉替)
            , SUBSTRB( hca1.account_name, 1, 8 )         AS kyoten_from_name                 -- 出庫元拠点名称(略称)
@@ -845,7 +852,10 @@ AS
            , TO_CHAR(gn_slip_number_mask + mmt.transaction_set_id)
                                                         AS transaction_set_id               -- 伝票No(工場倉替・工場返品)
 -- == 2009/05/13 V1.1 Modified END   ===============================================================
-           , ( SUM( mmt.transaction_quantity ) * (-1) ) AS transaction_quantity             -- 取引数量
+-- == 2009/07/30 V1.2 Modified START ===============================================================
+--           , ( SUM( mmt.transaction_quantity ) * (-1) ) AS transaction_quantity             -- 取引数量
+           , ( SUM( mmt.primary_quantity ) * (-1) )     AS transaction_quantity             -- 基準単位数量
+-- == 2009/07/30 V1.2 Modified END   ===============================================================
            , hca.account_number                         AS kyoten_from_code                 -- 出庫元拠点コード
            , mmt.attribute2                             AS kyoten_to_code                   -- 入庫先拠点コード(工場倉替・工場返品)
            , SUBSTRB( hca.account_name, 1, 8 )          AS kyoten_from_name                 -- 出庫元拠点名称(略称)

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI002A02C(body)
  * Description      : 倉替／返品情報の抽出
  * MD.050           : 倉替／返品情報の抽出 MD050_COI_002_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/05/13    1.1   H.Sasaki         [T1_0774]伝票番号の桁数を修正
  *  2009/05/26    1.2   T.Nakamura       [T1_1215]計上日付（着日）に登録する取引日の時分秒を切捨
  *  2009/07/02    1.3   H.Sasaki         [0000272]パフォーマンス改善
+ *  2009/07/30    1.4   N.Abe            [0000638]数量の取得項目修正
  *
  *****************************************************************************************/
 --
@@ -131,7 +132,10 @@ AS
     , mmt_transaction_date              mtl_material_transactions.transaction_date%TYPE     -- 取引日
     , mmt_attribute2                    mtl_material_transactions.attribute2%TYPE           -- 出荷倉庫コード
     , mmt_attribute3                    mtl_material_transactions.attribute3%TYPE           -- 子コード
-    , mmt_transaction_quantity          mtl_material_transactions.transaction_quantity%TYPE -- 取引数量
+-- == 2009/07/30 V1.4 Modified START ===============================================================
+--    , mmt_transaction_quantity          mtl_material_transactions.transaction_quantity%TYPE -- 取引数量
+    , mmt_transaction_quantity          mtl_material_transactions.primary_quantity%TYPE     -- 基準単位数量
+-- == 2009/07/30 V1.4 Modified END   ===============================================================
     , mtt_attribute1                    mtl_transaction_types.attribute1%TYPE               -- 工場倉替返品種別
     , mtt_attribute2                    mtl_transaction_types.attribute2%TYPE               -- 生産物流伝票種類
     , msi_attribute7                    mtl_secondary_inventories.attribute7%TYPE           -- 入力拠点コード
@@ -595,7 +599,10 @@ AS
            , mmt.transaction_date      AS mmt_transaction_date                          -- 取引日
            , mmt.attribute2            AS mmt_attribute2                                -- 出荷倉庫コード
            , mmt.attribute3            AS mmt_attribute3                                -- 子コード
-           , mmt.transaction_quantity  AS mmt_transaction_quantity                      -- 取引数量
+-- == 2009/07/30 V1.4 Modified START ===============================================================
+--           , mmt.transaction_quantity  AS mmt_transaction_quantity                      -- 取引数量
+           , mmt.primary_quantity      AS mmt_transaction_quantity                      -- 基準単位数量
+-- == 2009/07/30 V1.4 Modified END   ===============================================================
            , mtt.attribute1            AS mtt_attribute1                                -- 工場倉替返品種別
            , mtt.attribute2            AS mtt_attribute2                                -- 生産物流伝票種類
            , msi.attribute7            AS msi_attribute7                                -- 入力拠点コード
