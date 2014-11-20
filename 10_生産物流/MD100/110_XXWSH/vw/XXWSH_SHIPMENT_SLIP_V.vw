@@ -34,6 +34,9 @@ CREATE OR REPLACE VIEW xxwsh_shipment_slip_v
 --add start 2008/07/15
  ,payment_condition
 --add end 2008/07/15
+--add start 2009/01/28
+ ,lot_id
+--add end   2009/01/28
   )
 AS
 SELECT
@@ -52,7 +55,7 @@ SELECT
   ,xoha.shipping_instructions                          AS    shipping_instructions    -- 摘要
   ,xoha.cust_po_number                                 AS    cust_po_number      -- 受注No
   ,xic4v.item_class_code                               AS    item_class_code     -- 品目区分
-  ,xola.request_item_code                             AS    shipping_item_code  -- コード(品目)
+  ,xola.request_item_code                              AS    shipping_item_code  -- コード(品目)
   ,xim2v.item_short_name                               AS    item_short_name     -- 商品名
 -- 2008/10/17 MOD START
 --  ,CASE 
@@ -100,6 +103,9 @@ SELECT
 --add start 2008/07/15
   ,NULL
 --add end 2008/07/15
+--add start 2009/01/28
+  ,ilm.lot_id
+--add end   2009/01/28
 FROM   xxwsh_order_headers_all          xoha         -- 受注ヘッダアドオン
       ,xxwsh_order_lines_all            xola         -- 受注明細アドオン
       ,xxcmn_item_locations2_v          xil2v        -- OPM保管場所情報VIEW2  
@@ -121,7 +127,7 @@ WHERE     xoha.req_status               =            '04' -- 出荷実績計上済
       AND xoha.order_header_id          =            xola.order_header_id
       AND xola.delete_flag              =            'N'
       AND xola.order_line_id            =            xmld.mov_line_id(+)
-      AND xola.request_item_id =          xim2v.inventory_item_id
+      AND xola.request_item_id          =            xim2v.inventory_item_id
       AND xim2v.item_id                 =            xic4v.item_id
       AND xmld.lot_id                   =            ilm.lot_id(+)
       AND xmld.item_id                  =            ilm.item_id(+)
@@ -158,7 +164,7 @@ SELECT
   ,xoha.shipping_instructions                          AS    shipping_instructions    -- 摘要
   ,xoha.cust_po_number                                 AS    cust_po_number      -- 受注No
   ,xic4v.item_class_code                               AS    item_class_code     -- 品目区分
-  ,xola.request_item_code                             AS    shipping_item_code  -- コード(品目)
+  ,xola.request_item_code                              AS    shipping_item_code  -- コード(品目)
   ,xim2v.item_short_name                               AS    item_short_name     -- 商品名
   ,CASE
    -- 引当されている場合
@@ -224,6 +230,9 @@ SELECT
 --add start 2008/07/15
   ,NULL                                                AS    payment_condition
 --add end 2008/07/15
+--add start 2009/01/28
+  ,ilm.lot_id
+--add end   2009/01/28
 FROM   xxwsh_order_headers_all          xoha         -- 受注ヘッダアドオン
       ,xxwsh_order_lines_all            xola         -- 受注明細アドオン
       ,xxcmn_item_locations2_v          xil2v        -- OPM保管場所情報VIEW2  
@@ -245,7 +254,7 @@ WHERE     xoha.req_status               =            '03' -- 出荷実績計上済
       AND xoha.order_header_id          =            xola.order_header_id
       AND xola.delete_flag              =            'N'
       AND xola.order_line_id            =            xmld.mov_line_id(+)
-      AND xola.request_item_id =          xim2v.inventory_item_id
+      AND xola.request_item_id          =            xim2v.inventory_item_id
       AND xim2v.item_id                 =            xic4v.item_id
       AND xmld.lot_id                   =            ilm.lot_id(+)
       AND xmld.item_id                  =            ilm.item_id(+)
@@ -283,7 +292,7 @@ SELECT
   ,xoha.shipping_instructions                          AS    shipping_instructions-- 摘要
   ,NULL                                                AS    cust_po_number      -- 受注No
   ,xic4v.item_class_code                               AS    item_class_code     -- 品目区分
-  ,xola.request_item_code                             AS    shipping_item_code  -- コード(品目)
+  ,xola.request_item_code                              AS    shipping_item_code  -- コード(品目)
   ,xim2v.item_short_name                               AS    item_short_name     -- 商品名
   ,NULL                                                AS    case_quantity       -- ケース数量
   ,xmld.lot_no                                         AS    lot_no              -- ロットNo
@@ -312,6 +321,9 @@ SELECT
 --add start 2008/07/15
   ,xxcmn_common_pkg.get_term_of_payment(xoha.vendor_id,NULL) AS payment_condition
 --add end 2008/07/15
+--add start 2009/01/28
+  ,ilm.lot_id
+--add end   2009/01/28
 FROM   
        xxwsh_order_headers_all          xoha         -- 受注ヘッダアドオン
       ,xxwsh_order_lines_all            xola         -- 受注明細アドオン
@@ -334,7 +346,7 @@ WHERE     xoha.req_status               =            '08'
       AND xoha.order_header_id          =            xola.order_header_id
       AND xola.delete_flag              =            'N'
       AND xola.order_line_id            =            xmld.mov_line_id(+)
-      AND xola.request_item_id =          xim2v.inventory_item_id
+      AND xola.request_item_id          =            xim2v.inventory_item_id
       AND xim2v.item_id                 =            xic4v.item_id
       AND xmld.lot_id                   =            ilm.lot_id(+)
       AND xmld.item_id                  =            ilm.item_id(+)
@@ -371,7 +383,7 @@ SELECT
   ,xoha.shipping_instructions                          AS    shipping_instructions-- 摘要
   ,NULL                                                AS    cust_po_number      -- 受注No
   ,xic4v.item_class_code                               AS    item_class_code     -- 品目区分
-  ,xola.request_item_code                             AS    shipping_item_code  -- コード(品目)
+  ,xola.request_item_code                              AS    shipping_item_code  -- コード(品目)
   ,xim2v.item_short_name                               AS    item_short_name     -- 商品名
   ,NULL                                                AS    case_quantity       -- ケース数量
   ,xmld.lot_no                                         AS    lot_no              -- ロットNo
@@ -420,6 +432,9 @@ SELECT
 --add start 2008/07/15
   ,xxcmn_common_pkg.get_term_of_payment(xoha.vendor_id,NULL) AS payment_condition
 --add end 2008/07/15
+--add start 2009/01/28
+  ,ilm.lot_id
+--add end   2009/01/28
 FROM   
       xxwsh_order_headers_all           xoha         -- 受注ヘッダアドオン
       ,xxwsh_order_lines_all            xola         -- 受注明細アドオン
@@ -443,7 +458,7 @@ WHERE     xoha.req_status               =            '07' -- 出荷実績計上済
       AND xoha.order_header_id          =            xola.order_header_id
       AND xola.delete_flag              =            'N'
       AND xola.order_line_id            =            xmld.mov_line_id(+)
-      AND xola.request_item_id =          xim2v.inventory_item_id
+      AND xola.request_item_id          =            xim2v.inventory_item_id
       AND xim2v.item_id                 =            xic4v.item_id
       AND xmld.lot_id                   =            ilm.lot_id(+)
       AND xmld.item_id                  =            ilm.item_id(+)
@@ -528,4 +543,6 @@ COMMENT ON COLUMN xxwsh_shipment_slip_v.xvs2v_end_date_active IS '仕入先サイト適
 COMMENT ON COLUMN xxwsh_shipment_slip_v.xv2v_start_date_active IS '仕入先適用開始日'
 /
 COMMENT ON COLUMN xxwsh_shipment_slip_v.xv2v_end_date_active IS '仕入先適用終了日'
+/
+COMMENT ON COLUMN xxwsh_shipment_slip_v.lot_id IS 'OPMロットID'
 /
