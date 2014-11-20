@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A08C(body)
  * Description      : 電子帳簿自販機販売手数料の情報系システム連携
  * MD.050           : 電子帳簿自販機販売手数料の情報系システム連携 <MD050_CFO_019_A08>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/09/24    1.0   T.Osawa          新規作成
  *  2012/11/28    1.1   T.Osawa          管理テーブル更新対応、手動実行時（ＧＬ未連携対応）
+ *  2012/12/18    1.2   T.Ishiwata       性能改善対応
  *
  *****************************************************************************************/
 --
@@ -1923,7 +1924,13 @@ AS
     -- 自販機販売手数料（定期実行）
     CURSOR get_bm_balance_fixed_cur
     IS
-      SELECT    cv_data_type_bm_balance           AS  data_type                           --データタイプ
+--2012/12/18 Ver.1.2 Mod Start
+--      SELECT    cv_data_type_bm_balance           AS  data_type                           --データタイプ
+      SELECT  /*+ LEADING(xbb) 
+                  USE_NL(hca1 hp1 xca hca2 hp2 pva)
+               */
+                cv_data_type_bm_balance           AS  data_type                           --データタイプ
+--2012/12/18 Ver.1.2 Mod End
               , xbb.bm_balance_id                 AS  bm_balance_id                       --販手残高ID
               , xbb.base_code                     AS  base_code                           --拠点コード
               , hp2.party_name                    AS  base_name                           --拠点名
@@ -1990,7 +1997,13 @@ AS
       AND       xbb.bm_balance_id                 >=        gt_id_from + 1
       AND       xbb.bm_balance_id                 <=        gt_id_to
       UNION ALL
-      SELECT    cv_data_type_coop                 AS  data_type                           --データタイプ
+--2012/12/18 Ver.1.2 Mod Start
+--      SELECT    cv_data_type_coop                 AS  data_type                           --データタイプ
+      SELECT /*+ LEADING(xbbwc) 
+                 USE_NL(xbb hca1 hp1 xca hca2 hp2 pva)
+              */
+--2012/12/18 Ver.1.2 Mod End
+                cv_data_type_coop                 AS  data_type                           --データタイプ
               , xbb.bm_balance_id                 AS  bm_balance_id                       --販手残高ID
               , xbb.base_code                     AS  base_code                           --拠点コード
               , hp2.party_name                    AS  base_name                           --拠点名

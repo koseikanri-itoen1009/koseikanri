@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
  * Package Name     : XXCFO019A02C(body)
  * Description      : “dq’ •ëd–ó‚Ìî•ñŒnƒVƒXƒeƒ€˜AŒg
  * MD.050           : MD050_CFO_019_A02_“dq’ •ëd–ó‚Ìî•ñŒnƒVƒXƒeƒ€˜AŒg
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
  *  2012-10-03    1.1   K.Onotsuka      Œ‹‡ƒeƒXƒgáŠQ‘Î‰[áŠQNo16:€–ÚŒ…ƒ`ƒFƒbƒN–ß‚è’lŠi”[•Ï”‚ÌŒ…”•ÏX]
  *                                                        [áŠQNo19A20:ŠÇ—ƒe[ƒuƒ‹“o˜^ğŒC³]
  *                                                        [áŠQNo22:’Šo€–Úu‘YŠÇ—ƒL[İŒÉŠÇ—ƒL[’lv‚Ì•ÒW“à—e•ÏX]
+ *  2012-12-18    1.2   T.Ishiwata      «”\‰ü‘P‘Î‰
  *
  *****************************************************************************************/
 --
@@ -390,7 +391,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
         AND  gjh.je_header_id BETWEEN it_gl_je_header_id_from
                                         AND it_gl_je_header_id_to
       UNION ALL
-      SELECT gjh.je_header_id                    AS je_header_id           -- d–óƒwƒbƒ_[‚h‚c
+--2012/12/18 Ver.1.2 Mod Start
+--      SELECT gjh.je_header_id                    AS je_header_id           -- d–óƒwƒbƒ_[‚h‚c
+      SELECT /*+ LEADING(xgjwc gjh) */
+             gjh.je_header_id                    AS je_header_id           -- d–óƒwƒbƒ_[‚h‚c
+--2012/12/18 Ver.1.2 Mod End
             ,gjh.period_name                     AS period_name            -- ‰ïŒvŠúŠÔ
             ,TO_CHAR(gjh.default_effective_date
                      ,cv_date_format_ymd)        AS default_effective_date -- —LŒø“ú
@@ -3274,7 +3279,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
 --
       --“–“úì¬‚³‚ê‚½d–óƒwƒbƒ_ID‚ÌÅ‘å’l‚ğæ“¾
       BEGIN
-        SELECT NVL(MAX(gjh.je_header_id),ln_ctl_max_gl_je_header_id)
+--2012/12/18 Ver.1.2 Mod Start
+--        SELECT NVL(MAX(gjh.je_header_id),ln_ctl_max_gl_je_header_id)
+        SELECT /*+ INDEX(gjh GL_JE_HEADERS_U1) */
+               NVL(MAX(gjh.je_header_id),ln_ctl_max_gl_je_header_id)
+--2012/12/18 Ver.1.2 Mod End
           INTO ln_hd_max_gl_je_header_id
           FROM gl_je_headers gjh
          WHERE gjh.je_header_id > ln_ctl_max_gl_je_header_id

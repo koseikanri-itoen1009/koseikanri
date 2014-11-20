@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
  * Package Name     : XXCFO019A06C(body)
  * Description      : 電子帳簿AR取引の情報系システム連携
  * MD.050           : MD050_CFO_019_A06_電子帳簿AR取引の情報系システム連携
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
  *                                      結合テスト障害対応[障害No35:メインカーソルの日付項目の取得元変更]
  *                                      結合テスト障害対応[障害No36:取引明細のLINE行とTAX行の結合条件変更]
  *  2012-11-28    1.2   T.Osawa         0件時警告終了対応
+ *  2012-12-18    1.3   T.Ishiwata      性能改善対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2345,10 +2346,16 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
                                 ,it_ar_adj_id_from    IN xxcfo_ar_adj_control.adjustment_id%TYPE
                                 ,it_ar_adj_id_to      IN xxcfo_ar_adj_control.adjustment_id%TYPE)
     IS
-      SELECT /*+ LEADING(rct)
+--2012/12/18 Ver.1.3 Mod Start
+--      SELECT /*+ LEADING(rct)
+--               USE_NL(rct rctl rctl2 rctg_h hcab hcas hpb hps tax gdct ttype)
+--               INDEX(rct RA_CUSTOMER_TRX_U1)
+--             */
+      SELECT /*+ LEADING(xawc rct)
                USE_NL(rct rctl rctl2 rctg_h hcab hcas hpb hps tax gdct ttype)
                INDEX(rct RA_CUSTOMER_TRX_U1)
              */
+--2012/12/18 Ver.1.3 Mod End
              DECODE(ttype.type, cv_trx_type_inv, lt_type_trx, lt_type_cm) AS type   -- タイプ
             ,rct.doc_sequence_value                      AS doc_sequence_value      -- 補助簿文書番号
 --2012/10/18 MOD Start
@@ -2455,11 +2462,18 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
 --2012/10/18 MOD End
       --タイプが「売上請求書」、「クレメモ」の取引未連携情報と、タイプが「クレメモ消込」の取引未連携情報をUNION
       UNION ALL
-      SELECT /*+ LEADING(rct araa)
+--2012/12/18 Ver.1.3 Mod Start
+--      SELECT /*+ LEADING(rct araa)
+--                 USE_NL(rct araa rctl2 rctg_h hcab hcas hcab2 hpb hps hpb2 gdct)
+--                 INDEX(rct RA_CUSTOMER_TRX_U1)
+--                 INDEX(araa AR_RECEIVABLE_APPLICATIONS_N2)
+--             */
+      SELECT /*+ LEADING(xawc rct araa)
                  USE_NL(rct araa rctl2 rctg_h hcab hcas hcab2 hpb hps hpb2 gdct)
                  INDEX(rct RA_CUSTOMER_TRX_U1)
                  INDEX(araa AR_RECEIVABLE_APPLICATIONS_N2)
              */
+--2012/12/18 Ver.1.3 Mod End
              lt_type_cm_apply                            AS type                    -- タイプ(クレメモ消込)
             ,rct.doc_sequence_value                      AS doc_sequence_value      -- 補助簿文書番号
 --2012/10/18 MOD Start
@@ -2553,7 +2567,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
 --2012/10/18 MOD End
       --タイプが「クレメモ消込」の取引未連携情報と、タイプが「修正」の取引未連携情報をUNION
       UNION ALL
-      SELECT 
+--2012/12/18 Ver.1.3 Mod Start
+--      SELECT 
+      SELECT /*+ LEADING(xawc) */
+--2012/12/18 Ver.1.3 Mod End
              lt_type_adj                                 AS type                    -- タイプ(修正)
             ,aj.doc_sequence_value                       AS doc_sequence_value      -- 補助簿文書番号
 --2012/10/18 MOD Start
@@ -2650,10 +2667,16 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
                     AND    xawc.trx_id = aj.adjustment_id) --修正ID
       --タイプが「修正」の取引未連携情報と、タイプが「売上請求書」、「クレメモ」の取引をUNION
       UNION ALL
+--2012/12/18 Ver.1.3 Mod Start
+--      SELECT /*+ LEADING(rct)
+--                 USE_NL(rct rctl rctl2 rctg_h hcab hpb hcas hps aps tax ttype)
+--                 INDEX(rct RA_CUSTOMER_TRX_N5)
+--              */
       SELECT /*+ LEADING(rct)
                  USE_NL(rct rctl rctl2 rctg_h hcab hpb hcas hps aps tax ttype)
-                 INDEX(rct RA_CUSTOMER_TRX_N5)
+                 INDEX(rct RA_CUSTOMER_TRX_U1)
               */
+--2012/12/18 Ver.1.3 Mod End
              DECODE(ttype.type, cv_trx_type_inv, lt_type_trx, lt_type_cm) AS type   -- タイプ
             ,rct.doc_sequence_value                      AS doc_sequence_value      -- 補助簿文書番号
 --2012/10/18 MOD Start
@@ -2753,7 +2776,13 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
       AND   rct.customer_trx_id        <= it_ar_header_id_to   --A-3.AR取引ヘッダID(To)
       --タイプが「売上請求書」、「クレメモ」の取引情報と、タイプが「クレメモ消込」の取引をUNION
       UNION ALL
-      SELECT /*+ USE_NL(araa) INDEX(araa AR_RECEIVABLE_APPLICATIONS_N5)*/
+--2012/12/18 Ver.1.3 Mod Start
+--      SELECT /*+ USE_NL(araa) INDEX(araa AR_RECEIVABLE_APPLICATIONS_N5)*/
+      SELECT /*+ LEADING(rct)
+                 USE_NL(araa)
+                 INDEX(araa AR_RECEIVABLE_APPLICATIONS_N2)
+             */
+--2012/12/18 Ver.1.3 Mod End
              lt_type_cm_apply                            AS type                    -- タイプ(クレメモ消込)
             ,rct.doc_sequence_value                      AS doc_sequence_value      -- 補助簿文書番号
 --2012/10/18 MOD Start
@@ -2841,7 +2870,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
       AND   rct.customer_trx_id          <= it_ar_header_id_to   --A-3.AR取引ヘッダID(To)
       --タイプが「クレメモ消込」の取引情報と、タイプが「修正」の取引をUNION
       UNION ALL
-      SELECT 
+--2012/12/18 Ver.1.3 Mod Start
+--      SELECT 
+      SELECT /*+ LEADING(aj)*/
+--2012/12/18 Ver.1.3 Mod End
              lt_type_adj                                 AS type                    -- タイプ(修正)
             ,aj.doc_sequence_value                       AS doc_sequence_value      -- 補助簿文書番号
 --2012/10/18 MOD Start
@@ -3762,7 +3794,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
 --
       --当日作成された取引ヘッダIDの最大値を取得
       BEGIN
-        SELECT NVL(MAX(rcta.customer_trx_id),ln_ctl_max_ar_trx_header_id)
+--2012/12/18 Ver.1.3 Mod Start
+--        SELECT NVL(MAX(rcta.customer_trx_id),ln_ctl_max_ar_trx_header_id)
+        SELECT /*+ INDEX(rcta RA_CUSTOMER_TRX_U1) */
+               NVL(MAX(rcta.customer_trx_id),ln_ctl_max_ar_trx_header_id)
+--2012/12/18 Ver.1.3 Mod End
           INTO ln_hd_max_ar_trx_header_id
           FROM ra_customer_trx_all rcta
          WHERE rcta.customer_trx_id > ln_ctl_max_ar_trx_header_id
@@ -3860,7 +3896,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
 --
       --定期実行された日時より前の修正IDの最大値を取得
       BEGIN
-        SELECT NVL(MAX(aaa.adjustment_id),ln_ctl_max_adj_id)
+--2012/12/18 Ver.1.3 Mod Start
+--        SELECT NVL(MAX(aaa.adjustment_id),ln_ctl_max_adj_id)
+        SELECT /*+ INDEX(aaa AR_ADJUSTMENTS_U1) */
+                NVL(MAX(aaa.adjustment_id),ln_ctl_max_adj_id)
+--2012/12/18 Ver.1.3 Mod End
           INTO ln_hd_max_adj_id
           FROM ar_adjustments_all aaa
          WHERE aaa.adjustment_id > ln_ctl_max_adj_id
