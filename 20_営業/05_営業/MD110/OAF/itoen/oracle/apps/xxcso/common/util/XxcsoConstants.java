@@ -202,6 +202,7 @@
 * 2009-03-05 1.1  SCS柳平直人  [CT1-034]メッセージ追加（APP-XXCSO1-00555）
 * 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]メッセージ追加（APP-XXCSO1-00558）
 *                                             メッセージ追加（APP-XXCSO1-00559）
+* 2009-04-27 1.3  SCS柳平直人  [ST障害T1_0708]文字列チェック処理統一修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -353,6 +354,9 @@ public class XxcsoConstants
   public static final String APP_XXCSO1_00558    = "APP-XXCSO1-00558";
   public static final String APP_XXCSO1_00559    = "APP-XXCSO1-00559";
 // 2009-04-08 [ST障害T1_0364] Add End
+// 2009-04-27 [ST障害T1_0708] Add Start
+  public static final String APP_XXCSO1_00565    = "APP-XXCSO1-00565";
+// 2009-04-27 [ST障害T1_0708] Add End
 
   /*****************************************************************************
    * トークン名
