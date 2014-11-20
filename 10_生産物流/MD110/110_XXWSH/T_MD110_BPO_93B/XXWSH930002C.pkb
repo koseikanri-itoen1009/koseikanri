@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.47
+ * Version          : 1.48
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  mov_results_quantity_set            出荷依頼実績数量の設定 プロシージャ
  *  get_freight_charge_type             運賃形態取得 プロシージャ
  *  carriers_schedule_inup              配車配送計画アドオン作成 プロシージャ
+ *  get_dummy_lot                       ダミーロット取得 プロシージャ
  *  chk_param                           パラメータチェック プロシージャ (A-0)
  *  get_profile                         プロファイル値取得 プロシージャ (A-1)
  *  purge_processing                    パージ処理 プロシージャ (A-2)
@@ -33,6 +34,7 @@ AS
  *  err_chk_delivno_ordersrcref         エラーチェック_配送No受注ソース参照単位 プロシージャ(A-5-2)
  *  err_chk_line                        エラーチェック_明細単位 プロシージャ (A-5-3)
  *  appropriate_check                   妥当チェック プロシージャ (A-6)
+ *  dummy_lot_check                     実績0データを作成するためのダミーロットがあるかチェック(A-6-1)
  *  mov_table_outpout                   移動依頼/指示アドオン出力 プロシージャ (A-7)
  *  mov_req_instr_head_ins              移動依頼/指示ヘッダアドオン(外部倉庫編集)プロシージャ(A-7-1)
  *  mov_req_instr_head_upd              移動依頼/指示ヘッダアドオン(実績計上編集)プロシージャ(A-7-2)
@@ -146,6 +148,8 @@ AS
  *  2009/03/13    1.45 Oracle 北寒寺正夫 本番障害対応#1068 重量容積小口個数更新関数でのエラーメッセージに92Eのメッセージを使用していたため修正
  *  2009/03/27    1.46 SCS    伊藤ひとみ 本番障害対応#1342 ロットマスタの固有記号がNULLの場合の考慮ができていないため修正
  *  2009/03/30    1.47 SCS    飯田 甫    本番障害対応#1346 顧客マスタの顧客区分対応(拠点、又は配送先のみ抽出)
+ *  2009/03/31    1.48 SCS    伊藤ひとみ 本番障害対応#1105,1164 指示にあって実績にない品目は、引当なしで依頼数0の場合、削除。依頼数0でない場合は実績0データ作成
+ *                                       本番障害対応#1085,1159 実績0作成時で、実績報告済み品目かチェックする時に、IF依頼No単位の品目のみでチェックするように修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -315,6 +319,8 @@ AS
   -- 重量容積小口個数更新関数エラーメッセージ
 --  gv_msg_93a_308                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13308';
   gv_msg_93a_159                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13159';  -- 2009/3/13 本番障害#1068 ADD 92Eのメッセージを使用していたため新規に採番
+  -- 実績0ロット取得エラーメッセージ
+  gv_msg_93a_160                 CONSTANT VARCHAR2(15) := 'APP-XXWSH-13160';  -- 2009/03/31 本番障害#1105,1164 ADD
   -- ＰＧでのコンカレント呼び出しエラー
   gv_msg_93a_102                 CONSTANT VARCHAR2(15) := 'APP-XXCMN-10135';
   -- ＰＧでのコンカレント待機エラー
@@ -1705,10 +1711,10 @@ AS
           AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
           AND     xcav.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用開始日 <= 出荷日
           AND     xcav.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用終了日 >= 出荷日
--- 2009/03/30 H.Iida ADD START 本番障害#1346対応
+-- 2009/03/30 H.Iida Add Start 本番障害#1346対応
           -- 顧客区分'1', '10'のみ抽出
           AND     xcav.customer_class_code IN ('1', '10')
--- 2009/03/30 H.Iida ADD END
+-- 2009/03/30 H.Iida Add End
           AND     ROWNUM          = 1;
 --
 -- 2009/02/09 本番障害#1165 DEL START
@@ -1754,10 +1760,10 @@ AS
           AND     xcav.account_status = gv_view_status   -- 顧客ステータス = '有効'
           AND     xcav.start_date_active <= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用開始日 <= 出荷日
           AND     xcav.end_date_active   >= TRUNC(gr_interface_info_rec(in_idx).shipped_date)  -- 適用終了日 >= 出荷日
--- 2009/03/30 H.Iida ADD START 本番障害#1346対応
+-- 2009/03/30 H.Iida Add Start 本番障害#1346対応
           -- 顧客区分'1', '10'のみ抽出
           AND     xcav.customer_class_code IN ('1', '10')
--- 2009/03/30 H.Iida ADD END
+-- 2009/03/30 H.Iida Add End
           AND     ROWNUM          = 1;
 --
           gr_interface_info_rec(in_idx).customer_id     := lt_customer_id;
@@ -2902,6 +2908,240 @@ AS
 --
   END ord_results_quantity_set;
 --
+-- 2009/03/31 ADD START 本番障害#1105,1164
+--
+  /**********************************************************************************
+   * Procedure Name   : get_dummy_lot
+   * Description      : ダミーロット取得
+   ***********************************************************************************/
+  PROCEDURE get_dummy_lot(
+    it_item_id              IN xxcmn_item_mst_v.item_id%TYPE,                 -- IN. OPM品目ID
+    it_prod_class_code      IN xxcmn_item_categories5_v.prod_class_code%TYPE, -- IN. 商品区分
+    it_item_class_code      IN xxcmn_item_categories5_v.item_class_code%TYPE, -- IN. 品目区分
+    it_lot_ctl              IN xxcmn_item_mst_v.lot_ctl%TYPE,                 -- IN. ロット管理区分
+    it_document_type_code   IN xxinv_mov_lot_details.document_type_code%TYPE, -- IN. 文書タイプ
+    ot_lot_id               OUT NOCOPY ic_lots_mst.lot_id%TYPE,               -- OUT.ロットID
+    ot_lot_no               OUT NOCOPY ic_lots_mst.lot_no%TYPE,               -- OUT.ロットNo
+    ov_errbuf               OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT NOCOPY VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_dummy_lot'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+    -- ==================================================
+    -- ダミーロット取得 出荷
+    -- ==================================================
+    CURSOR cur_dummy_lot_ship
+    IS
+      SELECT ilm.lot_id          lot_id                  -- ロットID
+            ,ilm.lot_no          lot_no                  -- ロットNo
+      FROM   ic_lots_mst         ilm                     -- OPMロットマスタ
+            ,xxcmn_lot_status_v  xlsv                    -- ロットステータスVIEW
+      WHERE  ilm.attribute23        = xlsv.lot_status    -- ロットステータス
+      AND    ilm.item_id            = it_item_id         -- 品目ID
+      AND    xlsv.prod_class_code   = it_prod_class_code -- 商品区分
+      AND    xlsv.ship_req_rel      = gv_yesno_y         -- 出荷依頼(実績) 有効なロットステータス
+      AND    ilm.lot_id            <> 0                  -- デフォルトロットでない
+      ORDER BY (CASE 
+                  WHEN (it_item_class_code = gv_item_kbn_cd_5) THEN ilm.attribute1  -- 製品の場合、    製造日
+                  ELSE                                              ilm.lot_no      -- 製品以外の場合、ロットNo
+                END)
+              ,(CASE 
+                  WHEN (it_item_class_code = gv_item_kbn_cd_5) THEN ilm.attribute3  -- 製品の場合、    賞味期限
+                  ELSE                                              '1'             -- 製品以外の場合、なし
+                END)
+              ,(CASE 
+                  WHEN (it_item_class_code = gv_item_kbn_cd_5) THEN ilm.attribute2  -- 製品の場合、    固有記号
+                  ELSE                                              '1'             -- 製品以外の場合、なし
+                END)
+    ;
+--
+    -- ==================================================
+    -- ダミーロット取得 支給
+        -- ==================================================
+    CURSOR cur_dummy_lot_pay
+    IS
+      SELECT ilm.lot_id          lot_id                  -- ロットID
+            ,ilm.lot_no          lot_no                  -- ロットNo
+      FROM   ic_lots_mst         ilm                     -- OPMロットマスタ
+            ,xxcmn_lot_status_v  xlsv                    -- ロットステータスVIEW
+      WHERE  ilm.attribute23        = xlsv.lot_status    -- ロットステータス
+      AND    ilm.item_id            = it_item_id         -- 品目ID
+      AND    xlsv.prod_class_code   = it_prod_class_code -- 商品区分
+      AND    xlsv.pay_provision_rel = gv_yesno_y         -- 有償支給(実績) 有効なロットステータス
+      AND    ilm.lot_id            <> 0                  -- デフォルトロットでない
+      ORDER BY (CASE 
+                  WHEN (it_item_class_code = gv_item_kbn_cd_5) THEN ilm.attribute1  -- 製品の場合、    製造日
+                  ELSE                                              ilm.lot_no      -- 製品以外の場合、ロットNo
+                END)
+              ,(CASE 
+                  WHEN (it_item_class_code = gv_item_kbn_cd_5) THEN ilm.attribute3  -- 製品の場合、    賞味期限
+                  ELSE                                              '1'             -- 製品以外の場合、なし
+                END)
+              ,(CASE 
+                  WHEN (it_item_class_code = gv_item_kbn_cd_5) THEN ilm.attribute2  -- 製品の場合、    固有記号
+                  ELSE                                              '1'             -- 製品以外の場合、なし
+                END)
+    ;
+--
+    -- ==================================================
+    -- ダミーロット取得 移動
+    -- ==================================================
+    CURSOR cur_dummy_lot_move
+    IS
+      SELECT ilm.lot_id          lot_id                   -- ロットID
+            ,ilm.lot_no          lot_no                   -- ロットNo
+      FROM   ic_lots_mst         ilm                      -- OPMロットマスタ
+            ,xxcmn_lot_status_v  xlsv                     -- ロットステータスVIEW
+      WHERE  ilm.attribute23         = xlsv.lot_status    -- ロットステータス
+      AND    ilm.item_id             = it_item_id         -- 品目ID
+      AND    xlsv.prod_class_code    = it_prod_class_code -- 商品区分
+      AND    xlsv.move_inst_rel      = gv_yesno_y         -- 移動依頼(実績) 有効なロットステータス
+      AND    ilm.lot_id             <> 0                  -- デフォルトロットでない
+      ORDER BY (CASE 
+                  WHEN (it_item_class_code = gv_item_kbn_cd_5) THEN ilm.attribute1  -- 製品の場合、    製造日
+                  ELSE                                              ilm.lot_no      -- 製品以外の場合、ロットNo
+                END)
+              ,(CASE 
+                  WHEN (it_item_class_code = gv_item_kbn_cd_5) THEN ilm.attribute3  -- 製品の場合、    賞味期限
+                  ELSE                                              '1'             -- 製品以外の場合、なし
+                END)
+              ,(CASE 
+                  WHEN (it_item_class_code = gv_item_kbn_cd_5) THEN ilm.attribute2  -- 製品の場合、    固有記号
+                  ELSE                                              '1'             -- 製品以外の場合、なし
+                END)
+    ;
+--
+    -- *** ローカル・レコード ***
+    lr_dummy_lot                  cur_dummy_lot_move%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ロット管理品かつ出荷の場合
+    IF ((it_lot_ctl             = gv_lotkr_kbn_cd_1)
+    AND (it_document_type_code  = gv_document_type_10)) THEN
+--
+      -- 1件目を取得(製品の場合、    製造日・賞味期限・固有記号の小さいもの
+      --             製品以外の場合、ロットNoの小さいもの)
+      OPEN  cur_dummy_lot_ship;
+      FETCH cur_dummy_lot_ship INTO lr_dummy_lot;
+      CLOSE cur_dummy_lot_ship;
+--
+    -- ロット管理品かつ支給の場合
+    ELSIF ((it_lot_ctl            = gv_lotkr_kbn_cd_1)
+    AND    (it_document_type_code = gv_document_type_30)) THEN
+--
+      -- 1件目を取得(製品の場合、    製造日・賞味期限・固有記号の小さいもの
+      --             製品以外の場合、ロットNoの小さいもの)
+      OPEN  cur_dummy_lot_pay;
+      FETCH cur_dummy_lot_pay INTO lr_dummy_lot;
+      CLOSE cur_dummy_lot_pay;
+--
+    -- ロット管理品かつ移動の場合
+    ELSIF ((it_lot_ctl            = gv_lotkr_kbn_cd_1)
+    AND    (it_document_type_code = gv_document_type_20)) THEN
+--
+      -- 1件目を取得(製品の場合、    製造日・賞味期限・固有記号の小さいもの
+      --             製品以外の場合、ロットNoの小さいもの)
+      OPEN  cur_dummy_lot_move;
+      FETCH cur_dummy_lot_move INTO lr_dummy_lot;
+      CLOSE cur_dummy_lot_move;
+--
+    -- ロット管理外品の場合
+    ELSIF (it_lot_ctl = gv_lotkr_kbn_cd_0) THEN
+--
+      -- デフォルトロットを設定
+      lr_dummy_lot.lot_id := 0;
+--
+    END IF;
+--
+    ot_lot_id := lr_dummy_lot.lot_id;
+    ot_lot_no := lr_dummy_lot.lot_no;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      IF (cur_dummy_lot_ship%ISOPEN) THEN
+        CLOSE cur_dummy_lot_ship;
+      END IF;
+--
+      IF (cur_dummy_lot_pay%ISOPEN) THEN
+        CLOSE cur_dummy_lot_pay;
+      END IF;
+--
+      IF (cur_dummy_lot_move%ISOPEN) THEN
+        CLOSE cur_dummy_lot_move;
+      END IF;
+--
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      IF (cur_dummy_lot_ship%ISOPEN) THEN
+        CLOSE cur_dummy_lot_ship;
+      END IF;
+--
+      IF (cur_dummy_lot_pay%ISOPEN) THEN
+        CLOSE cur_dummy_lot_pay;
+      END IF;
+--
+      IF (cur_dummy_lot_move%ISOPEN) THEN
+        CLOSE cur_dummy_lot_move;
+      END IF;
+--
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF (cur_dummy_lot_ship%ISOPEN) THEN
+        CLOSE cur_dummy_lot_ship;
+      END IF;
+--
+      IF (cur_dummy_lot_pay%ISOPEN) THEN
+        CLOSE cur_dummy_lot_pay;
+      END IF;
+--
+      IF (cur_dummy_lot_move%ISOPEN) THEN
+        CLOSE cur_dummy_lot_move;
+      END IF;
+--
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_dummy_lot;
+-- 2009/03/31 ADD END
 -- TE080_930指摘#32対応 Add Start --------------------------------------------------
   /**********************************************************************************
    * F Name   :order_zero_updt
@@ -2937,6 +3177,10 @@ AS
     lb_item_cd_found_flg    BOOLEAN;
     ln_mov_lot_seq          NUMBER;   --移動ロット詳細(アドオン).ロット詳細IDseq
     lt_document_type_code      xxinv_mov_lot_details.document_type_code%TYPE;        --文書タイプ
+-- 2009/03/31 ADD START 本番障害#1105,1164
+    lt_lot_id                  xxinv_mov_lot_details.lot_id%TYPE;                -- ロットID
+    lt_lot_no                  xxinv_mov_lot_details.lot_no%TYPE;                -- ロットNO
+-- 2009/03/31 ADD END
 --
     -- *** ローカル・カーソル ***
     CURSOR order_data_get_cur
@@ -2947,10 +3191,19 @@ AS
       SELECT   xola.order_line_id               -- 受注明細アドオンID
               ,xola.shipping_item_code          -- 出荷品目
               ,xola.shipping_inventory_item_id  -- 出荷品目ID               -- 2008/12/26 本番障害#688 Add
-      FROM    xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
-            , xxwsh_order_lines_all     xola    -- 受注明細(アドオン)
+              ,ximv.item_id                     -- OPM品目ID                    -- 2009/03/31 本番障害#1105,1164 Add
+              ,NVL(xola.quantity, 0)            -- 指示数量                     -- 2009/03/31 本番障害#1105,1164 Add
+              ,ximv.lot_ctl                     -- ロット管理区分               -- 2009/03/31 本番障害#1105,1164 Add
+              ,xicv.item_class_code             -- 品目区分                     -- 2009/03/31 本番障害#1105,1164 Add
+              ,xicv.prod_class_code             -- 商品区分                     -- 2009/03/31 本番障害#1105,1164 Add
+      FROM    xxwsh_order_headers_all      xoha    -- 受注ヘッダ(アドオン)
+            , xxwsh_order_lines_all        xola    -- 受注明細(アドオン)
+            , xxcmn_item_mst_v             ximv    -- OPM品目情報VIEW              -- 2009/03/31 本番障害#1105,1164 Add
+            , xxcmn_item_categories5_v     xicv    -- OPM品目カテゴリ割当情報VIEW  -- 2009/03/31 本番障害#1105,1164 Add
       WHERE   xoha.request_no           = in_order_source_ref
       AND     xoha.order_header_id      = xola.order_header_id
+      AND     xola.shipping_inventory_item_id = ximv.inventory_item_id             -- 2009/03/31 本番障害#1105,1164 Add
+      AND     ximv.item_id                    = xicv.item_id                       -- 2009/03/31 本番障害#1105,1164 Add
       AND     xoha.latest_external_flag = gv_yesno_y
       AND     ((xola.delete_flag        = gv_yesno_n) OR (xola.delete_flag IS NULL))
       ORDER BY xola.shipping_item_code
@@ -2961,6 +3214,9 @@ AS
         in_order_source_ref    xxwsh_shipping_headers_if.order_source_ref%TYPE -- 受注ソース参照
        ,in_item_code           xxinv_mov_lot_details.item_code%TYPE            -- 品目
        ,in_document_type       xxinv_mov_lot_details.document_type_code%TYPE   -- 文書タイプ
+-- 2009/03/31 ADD START 本番障害#1105,1164
+       ,it_record_type         xxinv_mov_lot_details.record_type_code%TYPE     -- レコードタイプ
+-- 2009/03/31 ADD END
       )
     IS
         SELECT  xmld.mov_lot_dtl_id               -- ロット詳細ID
@@ -2981,7 +3237,10 @@ AS
         AND     ((xola.delete_flag        = gv_yesno_n) OR (xola.delete_flag IS NULL))
         AND     xola.order_line_id        = xmld.mov_line_id
         AND     xmld.document_type_code   = in_document_type      -- 文書タイプ
-        AND     xmld.record_type_code     = gv_record_type_10     -- レコードタイプ=指示
+-- 2009/03/31 ADD START 本番障害#1105,1164
+--        AND     xmld.record_type_code     = gv_record_type_10     -- レコードタイプ=指示
+        AND     xmld.record_type_code     = it_record_type        -- レコードタイプ
+-- 2009/03/31 ADD END
         AND     xmld.item_code            = in_item_code          -- 品目
         ORDER BY xmld.mov_lot_dtl_id
         ;
@@ -2992,6 +3251,11 @@ AS
         order_line_id         xxwsh_order_lines_all.order_line_id%TYPE           -- 受注明細アドオンID
        ,shipping_item_code    xxwsh_order_lines_all.shipping_item_code%TYPE      -- 出荷品目
        ,shipping_inventory_item_id  xxwsh_order_lines_all.shipping_inventory_item_id%TYPE -- 出荷品目ID  -- 2008/12/26 本番障害#688 Add
+       ,item_id                     xxcmn_item_mst_v.item_id%TYPE                           -- OPM品目ID      -- 2009/03/31 本番障害#1105,1164 Add
+       ,quantity                    xxwsh_order_lines_all.quantity%TYPE                     -- 指示数量       -- 2009/03/31 本番障害#1105,1164 Add
+       ,lot_ctl                     xxcmn_item_mst_v.lot_ctl%TYPE                           -- ロット管理区分 -- 2009/03/31 本番障害#1105,1164 Add
+       ,item_class_code             xxcmn_item_categories5_v.item_class_code%TYPE           -- 品目区分       -- 2009/03/31 本番障害#1105,1164 Add
+       ,prod_class_code             xxcmn_item_categories5_v.prod_class_code%TYPE           -- 商品区分       -- 2009/03/31 本番障害#1105,1164 Add
       );
 --
     TYPE tab_data IS TABLE OF rec_data INDEX BY BINARY_INTEGER ;
@@ -3015,6 +3279,9 @@ AS
 --
     lr_lot_tab_data               lot_tab_data;
 --
+-- 2009/03/31 ADD START 本番障害#1105,1164
+    lr_act_lot_tab_data           lot_tab_data; -- 実績ロットレコード
+-- 2009/03/31 ADD END
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -3096,6 +3363,9 @@ AS
             gr_interface_info_rec(in_idx).order_source_ref   -- 受注ソース参照
            ,lr_tab_data(i).shipping_item_code                -- 品目
            ,lt_document_type_code                            -- 文書タイプ
+-- 2009/03/31 ADD START 本番障害#1105,1164
+           ,gv_record_type_10                                -- レコードタイプ=10:指示
+-- 2009/03/31 ADD END
           );
 --
         --フェッチ
@@ -3105,7 +3375,11 @@ AS
         CLOSE lot_data_get_cur;
 --
         -- 2008/12/26 本番障害対応#688 Add Start -----------------------------------------
-        IF (lr_lot_tab_data.count = 0) THEN  -- 指示ロットがない場合(引当のない指示品目の場合)
+-- 2009/03/31 MOD START 本番障害#1105,1164 削除条件を指示ロットなしかつ、指示数量0の場合に変更
+--        IF (lr_lot_tab_data.count = 0) THEN  -- 指示ロットがない場合(引当のない指示品目の場合)
+        IF ((lr_lot_tab_data.COUNT = 0)                        -- 指示ロットがない場合(引当のない指示品目の場合)
+        AND (lr_tab_data(i).quantity = 0)) THEN                -- 指示数量が0の場合
+-- 2009/03/31 MOD END
 --
           UPDATE
             xxwsh_order_lines_all    xola    -- 受注明細(アドオン)
@@ -3121,39 +3395,72 @@ AS
           WHERE xola.order_line_id = lr_tab_data(i).order_line_id      -- 受注明細アドオンID
           ;
            -- 2008/12/26 本番障害対応#688 Add End --------------------------------------------
+-- 2009/03/31 ADD START 本番障害#1105,1164 指示ロットなしかつ、指示数量0でない場合は、実績数0で更新
+        ELSIF ((lr_lot_tab_data.COUNT = 0)                         -- 指示ロットがない場合(引当のない指示品目の場合)
+        AND    (lr_tab_data(i).quantity <> 0)) THEN                -- 指示数量が0でない場合
 --
-        ELSE  -- 指示ロットがある場合(引当のある指示品目の場合)     -- 2008/12/26 本番障害対応#688 Add
---
-          -- 2008/12/26 本番障害対応#688 Add Start --------------------------------------------
           -- **************************************************
-          -- *** 受注明細(アドオン)の0更新を行う
+          -- 実績ロットの登録があるか確認
           -- **************************************************
-          UPDATE
-            xxwsh_order_lines_all    xola    -- 受注明細(アドオン)
-          SET
-             xola.shipped_quantity        = 0                          -- 出庫実績数量
-            ,xola.last_updated_by         = gt_user_id                 -- 最終更新者
-            ,xola.last_update_date        = gt_sysdate                 -- 最終更新日
-            ,xola.last_update_login       = gt_login_id                -- 最終更新ログイン
-            ,xola.request_id              = gt_conc_request_id         -- 要求ID
-            ,xola.program_application_id  = gt_prog_appl_id            -- アプリケーションID
-            ,xola.program_id              = gt_conc_program_id         -- プログラムID
-            ,xola.program_update_date     = gt_sysdate                 -- プログラム更新日
-          WHERE xola.order_line_id = lr_tab_data(i).order_line_id      -- 受注明細アドオンID
-          AND   ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL))
-          ;
-          -- 2008/12/26 本番障害対応#688 Add End --------------------------------------------
+          -- カーソルオープン
+            OPEN lot_data_get_cur
+            (
+              gr_interface_info_rec(in_idx).order_source_ref   -- 受注ソース参照
+             ,lr_tab_data(i).shipping_item_code                -- 品目
+             ,lt_document_type_code                            -- 文書タイプ
+             ,gv_record_type_20                                -- レコードタイプ=出庫実績
+            );
 --
-          <<lot_data_get_loop>>
-          FOR k IN 1 .. lr_lot_tab_data.count LOOP
+          --フェッチ
+          FETCH lot_data_get_cur BULK COLLECT INTO lr_act_lot_tab_data;
 --
-            -- ロット詳細ID取得
-            SELECT xxinv_mov_lot_s1.nextval
-            INTO   ln_mov_lot_seq
-            FROM   dual
+          --クローズ
+          CLOSE lot_data_get_cur;
+--
+          -- 実績ロットがない場合、ダミーロットで実績0を作成
+          IF (lr_act_lot_tab_data.COUNT = 0) THEN
+--
+            -- **************************************************
+            -- *** 受注明細(アドオン)の0更新を行う
+            -- **************************************************
+            UPDATE
+              xxwsh_order_lines_all    xola    -- 受注明細(アドオン)
+            SET
+               xola.shipped_quantity        = 0                          -- 出庫実績数量
+              ,xola.last_updated_by         = gt_user_id                 -- 最終更新者
+              ,xola.last_update_date        = gt_sysdate                 -- 最終更新日
+              ,xola.last_update_login       = gt_login_id                -- 最終更新ログイン
+              ,xola.request_id              = gt_conc_request_id         -- 要求ID
+              ,xola.program_application_id  = gt_prog_appl_id            -- アプリケーションID
+              ,xola.program_id              = gt_conc_program_id         -- プログラムID
+              ,xola.program_update_date     = gt_sysdate                 -- プログラム更新日
+            WHERE xola.order_line_id = lr_tab_data(i).order_line_id      -- 受注明細アドオンID
+            AND   ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL))
             ;
 --
+            -- **************************************************
+            -- ダミーロットを取得
+            -- **************************************************
+            get_dummy_lot
+              (
+                lr_tab_data(i).item_id         -- IN. OPM品目ID
+               ,lr_tab_data(i).prod_class_code -- IN. 商品区分
+               ,lr_tab_data(i).item_class_code -- IN. 品目区分
+               ,lr_tab_data(i).lot_ctl         -- IN. ロット管理区分
+               ,lt_document_type_code          -- IN. 文書タイプ
+               ,lt_lot_id                      -- OUT.ロットID
+               ,lt_lot_no                      -- OUT.ロットNo
+               ,lv_errbuf                      -- エラー・メッセージ           --# 固定 #
+               ,lv_retcode                     -- リターン・コード             --# 固定 #
+               ,lv_errmsg                      -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+--
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_api_expt;
+            END IF;
+            -- **************************************************
             -- 移動ロット詳細(アドオン)登録を行う
+            -- **************************************************
             INSERT INTO xxinv_mov_lot_details                   -- 移動ロット詳細(アドオン)
               (mov_lot_dtl_id                                   -- ロット詳細ID
               ,mov_line_id                                      -- 明細ID
@@ -3176,14 +3483,14 @@ AS
               ,program_update_date                              -- プログラム更新日
               )
             VALUES
-             ( ln_mov_lot_seq                                   -- ロット詳細ID
-              ,lr_lot_tab_data(k).mov_line_id                   -- 明細ID
-              ,lr_lot_tab_data(k).document_type_code            -- 文書タイプ
+             ( xxinv_mov_lot_s1.NEXTVAL                         -- ロット詳細ID
+              ,lr_tab_data(i).order_line_id                     -- 明細ID
+              ,lt_document_type_code                            -- 文書タイプ
               ,gv_record_type_20                                -- レコードタイプ=出庫実績
-              ,lr_lot_tab_data(k).item_id                       -- OPM品目ID
-              ,lr_lot_tab_data(k).item_code                     -- 品目
-              ,lr_lot_tab_data(k).lot_id                        -- ロットID
-              ,lr_lot_tab_data(k).lot_no                        -- ロットNO
+              ,lr_tab_data(i).item_id                           -- OPM品目ID
+              ,lr_tab_data(i).shipping_item_code                -- 品目
+              ,lt_lot_id                                        -- ロットID
+              ,lt_lot_no                                        -- ロットNO
               ,NULL                                             -- 実績日
               ,0                                                -- 実績数量
               ,gt_user_id                                       -- 作成者
@@ -3196,8 +3503,111 @@ AS
               ,gt_conc_program_id                               -- コンカレント・プログラムID
               ,gt_sysdate                                       -- プログラム更新日
              );
+           END IF;
+-- 2009/03/31 ADD END
 --
-          END LOOP lot_data_get_loop;
+        ELSE  -- 指示ロットがある場合(引当のある指示品目の場合)     -- 2008/12/26 本番障害対応#688 Add
+--
+-- 2009/03/31 ADD START 本番障害#1105,1164
+          -- **************************************************
+          -- 実績ロットの登録があるか確認
+          -- **************************************************
+          -- カーソルオープン
+          OPEN lot_data_get_cur
+          (
+            gr_interface_info_rec(in_idx).order_source_ref   -- 受注ソース参照
+           ,lr_tab_data(i).shipping_item_code                -- 品目
+           ,lt_document_type_code                            -- 文書タイプ
+           ,gv_record_type_20                                -- レコードタイプ=出庫実績
+          );
+--
+          --フェッチ
+          FETCH lot_data_get_cur BULK COLLECT INTO lr_act_lot_tab_data;
+--
+          --クローズ
+          CLOSE lot_data_get_cur;
+--
+          -- 実績ロットがない場合、ダミーロットで実績0を作成
+          IF (lr_act_lot_tab_data.COUNT = 0) THEN
+-- 2009/03/31 ADD END
+--
+            -- 2008/12/26 本番障害対応#688 Add Start --------------------------------------------
+            -- **************************************************
+            -- *** 受注明細(アドオン)の0更新を行う
+            -- **************************************************
+            UPDATE
+              xxwsh_order_lines_all    xola    -- 受注明細(アドオン)
+            SET
+               xola.shipped_quantity        = 0                          -- 出庫実績数量
+              ,xola.last_updated_by         = gt_user_id                 -- 最終更新者
+              ,xola.last_update_date        = gt_sysdate                 -- 最終更新日
+              ,xola.last_update_login       = gt_login_id                -- 最終更新ログイン
+              ,xola.request_id              = gt_conc_request_id         -- 要求ID
+              ,xola.program_application_id  = gt_prog_appl_id            -- アプリケーションID
+              ,xola.program_id              = gt_conc_program_id         -- プログラムID
+              ,xola.program_update_date     = gt_sysdate                 -- プログラム更新日
+            WHERE xola.order_line_id = lr_tab_data(i).order_line_id      -- 受注明細アドオンID
+            AND   ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL))
+            ;
+            -- 2008/12/26 本番障害対応#688 Add End --------------------------------------------
+--
+            <<lot_data_get_loop>>
+            FOR k IN 1 .. lr_lot_tab_data.count LOOP
+--
+              -- ロット詳細ID取得
+              SELECT xxinv_mov_lot_s1.nextval
+              INTO   ln_mov_lot_seq
+              FROM   dual
+              ;
+--
+              -- 移動ロット詳細(アドオン)登録を行う
+              INSERT INTO xxinv_mov_lot_details                   -- 移動ロット詳細(アドオン)
+                (mov_lot_dtl_id                                   -- ロット詳細ID
+                ,mov_line_id                                      -- 明細ID
+                ,document_type_code                               -- 文書タイプ
+                ,record_type_code                                 -- レコードタイプ
+                ,item_id                                          -- opm品目ID
+                ,item_code                                        -- 品目
+                ,lot_id                                           -- ロットID
+                ,lot_no                                           -- ロットNO
+                ,actual_date                                      -- 実績日
+                ,actual_quantity                                  -- 実績数量
+                ,created_by                                       -- 作成者
+                ,creation_date                                    -- 作成日
+                ,last_updated_by                                  -- 最終更新者
+                ,last_update_date                                 -- 最終更新日
+                ,last_update_login                                -- 最終更新ログイン
+                ,request_id                                       -- 要求ID
+                ,program_application_id                           -- アプリケーションID
+                ,program_id                                       -- コンカレント・プログラムID
+                ,program_update_date                              -- プログラム更新日
+                )
+              VALUES
+               ( ln_mov_lot_seq                                   -- ロット詳細ID
+                ,lr_lot_tab_data(k).mov_line_id                   -- 明細ID
+                ,lr_lot_tab_data(k).document_type_code            -- 文書タイプ
+                ,gv_record_type_20                                -- レコードタイプ=出庫実績
+                ,lr_lot_tab_data(k).item_id                       -- OPM品目ID
+                ,lr_lot_tab_data(k).item_code                     -- 品目
+                ,lr_lot_tab_data(k).lot_id                        -- ロットID
+                ,lr_lot_tab_data(k).lot_no                        -- ロットNO
+                ,NULL                                             -- 実績日
+                ,0                                                -- 実績数量
+                ,gt_user_id                                       -- 作成者
+                ,gt_sysdate                                       -- 作成日
+                ,gt_user_id                                       -- 最終更新者
+                ,gt_sysdate                                       -- 最終更新日
+                ,gt_login_id                                      -- 最終更新ログイン
+                ,gt_conc_request_id                               -- 要求ID
+                ,gt_prog_appl_id                                  -- アプリケーションID
+                ,gt_conc_program_id                               -- コンカレント・プログラムID
+                ,gt_sysdate                                       -- プログラム更新日
+               );
+--
+            END LOOP lot_data_get_loop;
+-- 2009/03/31 ADD START 本番障害#1105,1164
+          END IF;
+-- 2009/03/31 ADD END
 --
         END IF;   -- 2008/12/26 本番障害対応#688 Add
 --
@@ -3215,15 +3625,42 @@ AS
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
+-- 2009/03/31 ADD START 本番障害#1105,1164
+      IF (order_data_get_cur%ISOPEN) THEN
+        CLOSE order_data_get_cur;
+      END IF;
+--
+      IF (lot_data_get_cur%ISOPEN) THEN
+        CLOSE lot_data_get_cur;
+      END IF;
+-- 2009/03/31 ADD END
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
+-- 2009/03/31 ADD START 本番障害#1105,1164
+      IF (order_data_get_cur%ISOPEN) THEN
+        CLOSE order_data_get_cur;
+      END IF;
+--
+      IF (lot_data_get_cur%ISOPEN) THEN
+        CLOSE lot_data_get_cur;
+      END IF;
+-- 2009/03/31 ADD END
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+-- 2009/03/31 ADD START 本番障害#1105,1164
+      IF (order_data_get_cur%ISOPEN) THEN
+        CLOSE order_data_get_cur;
+      END IF;
+--
+      IF (lot_data_get_cur%ISOPEN) THEN
+        CLOSE lot_data_get_cur;
+      END IF;
+-- 2009/03/31 ADD END
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
@@ -3275,6 +3712,9 @@ AS
     lt_lot_no                  xxinv_mov_lot_details.lot_no%TYPE;                -- ロットNO
     lt_quantity                xxinv_mov_req_instr_lines.shipped_quantity%TYPE;  -- 出庫・入庫実績数量
     -- 2008/12/26 本番障害#688 Add End -------------------------------------
+-- 2009/03/31 ADD START 本番障害#1105,1164
+    lt_act_mov_lot_dtl_id      xxinv_mov_lot_details.mov_lot_dtl_id%TYPE;        -- 移動ロット詳細ID(実績)
+-- 2009/03/31 ADD END
 --
     -- *** ローカル・カーソル ***
     CURSOR order_data_get_cur
@@ -3285,10 +3725,18 @@ AS
       SELECT   xmrql.mov_line_id                -- 移動明細ID
               ,xmrql.item_code                  -- 品目
               ,xmrql.item_id                    -- 品目ID            -- 2008/12/26 本番障害#688 Add
+              ,NVL(xmrql.instruct_qty, 0)       -- 指示数量                     -- 2009/03/31 本番障害#1105,1164 Add
+              ,ximv.lot_ctl                     -- ロット管理区分               -- 2009/03/31 本番障害#1105,1164 Add
+              ,xicv.item_class_code             -- 品目区分                     -- 2009/03/31 本番障害#1105,1164 Add
+              ,xicv.prod_class_code             -- 商品区分                     -- 2009/03/31 本番障害#1105,1164 Add
       FROM    xxinv_mov_req_instr_headers xmrif    -- 移動依頼/指示ヘッダ(アドオン)
             , xxinv_mov_req_instr_lines   xmrql    -- 移動依頼/指示明細(アドオン)
+            , xxcmn_item_mst_v             ximv    -- OPM品目情報VIEW              -- 2009/03/31 本番障害#1105,1164 Add
+            , xxcmn_item_categories5_v     xicv    -- OPM品目カテゴリ割当情報VIEW  -- 2009/03/31 本番障害#1105,1164 Add
       WHERE   xmrif.mov_num          = in_order_source_ref  -- 依頼No=受注ソース参照
       AND     xmrif.mov_hdr_id       = xmrql.mov_hdr_id     -- 移動ヘッダアドオンID=移動ヘッダアドオンID
+      AND     xmrql.item_id          = ximv.item_id                                -- 2009/03/31 本番障害#1105,1164 Add
+      AND     ximv.item_id           = xicv.item_id                                -- 2009/03/31 本番障害#1105,1164 Add
       AND     xmrif.status          <> gv_mov_status_99     -- ステータス<>取消
       AND     ((xmrql.delete_flg     = gv_yesno_n)          -- 削除フラグ=未削除
        OR      (xmrql.delete_flg IS NULL))
@@ -3302,6 +3750,9 @@ AS
       (
         in_order_source_ref    xxwsh_shipping_headers_if.order_source_ref%TYPE -- 受注ソース参照
        ,in_item_code           xxinv_mov_lot_details.item_code%TYPE            -- 品目
+-- 2009/03/31 ADD START 本番障害#1105
+       ,it_record_type         xxinv_mov_lot_details.record_type_code%TYPE     -- レコードタイプ
+-- 2009/03/31 ADD END
       )
     IS
         SELECT  xmld.mov_lot_dtl_id               -- ロット詳細ID
@@ -3324,7 +3775,10 @@ AS
          OR      (xmrql.delete_flg IS NULL))
         AND     xmrql.mov_line_id         = xmld.mov_line_id
         AND     xmld.document_type_code   = gv_document_type_20   -- 文書タイプ=移動
-        AND     xmld.record_type_code     = gv_record_type_10     -- レコードタイプ=指示
+-- 2009/03/31 ADD START 本番障害#1105
+--        AND     xmld.record_type_code     = gv_record_type_10     -- レコードタイプ=指示
+        AND     xmld.record_type_code     = it_record_type        -- レコードタイプ
+-- 2009/03/31 ADD END
         AND     xmld.item_code            = in_item_code          -- 品目
         ORDER BY xmld.mov_lot_dtl_id
         ;
@@ -3335,6 +3789,10 @@ AS
         mov_line_id     xxinv_mov_req_instr_lines.mov_line_id%TYPE        -- 移動明細ID
        ,item_code       xxinv_mov_req_instr_lines.item_code%TYPE          -- 品目
        ,item_id         xxinv_mov_req_instr_lines.item_id%TYPE            -- 品目ID    -- 2008/12/26 本番障害#688 Add
+       ,instruct_qty    xxinv_mov_req_instr_lines.instruct_qty%TYPE       -- 指示数量       -- 2009/03/31 本番障害#1105,1164 Add
+       ,lot_ctl         xxcmn_item_mst_v.lot_ctl%TYPE                     -- ロット管理区分 -- 2009/03/31 本番障害#1105,1164 Add
+       ,item_class_code xxcmn_item_categories5_v.item_class_code%TYPE     -- 品目区分       -- 2009/03/31 本番障害#1105,1164 Add
+       ,prod_class_code xxcmn_item_categories5_v.prod_class_code%TYPE     -- 商品区分       -- 2009/03/31 本番障害#1105,1164 Add
       );
 --
     TYPE tab_data IS TABLE OF rec_data INDEX BY BINARY_INTEGER ;
@@ -3358,6 +3816,9 @@ AS
 --
     lr_lot_tab_data               lot_tab_data;
 --
+-- 2009/03/31 ADD START 本番障害#1105
+    lr_act_lot_tab_data           lot_tab_data; -- 実績ロットレコード
+-- 2009/03/31 ADD END
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -3438,6 +3899,9 @@ AS
           (
             gr_interface_info_rec(in_idx).order_source_ref   -- 受注ソース参照
            ,lr_tab_data(i).item_code                         -- 品目
+-- 2009/03/31 ADD START 本番障害#1105
+           ,gv_record_type_10                                -- レコードタイプ=10:指示
+-- 2009/03/31 ADD END
           );
 --
         --フェッチ
@@ -3447,8 +3911,12 @@ AS
         CLOSE lot_data_get_cur;
 --
         -- 2008/12/26 本番障害対応#688 Add Start ------------------------------------------------------------------------------
-        -- 指示ロットがない場合(引当のない指示品目の場合)
-        IF (lr_lot_tab_data.count = 0) THEN
+-- 2009/03/31 本番障害#1105 MOD START 削除条件を指示ロットなしかつ、指示数量0の場合に変更
+--        -- 指示ロットがない場合(引当のない指示品目の場合)
+--        IF (lr_lot_tab_data.count = 0) THEN
+        IF ((lr_lot_tab_data.COUNT = 0)                        -- 指示ロットがない場合(引当のない指示品目の場合)
+        AND (lr_tab_data(i).instruct_qty = 0)) THEN            -- 指示数量が0の場合
+-- 2009/03/31 本番障害#1105 MOD END
 --
           -- 出庫ロットがあるか調べる
           SELECT COUNT(xmld.mov_lot_dtl_id)           -- ロット詳細ID
@@ -3607,60 +4075,92 @@ AS
 --
           END IF;
           -- 2008/12/26 本番障害対応#688 Add End ----------------------------------------------------------------------------
+-- 2009/03/31 ADD START 本番障害#1105,1164 指示ロットなしかつ、指示数量0でない場合は、実績数0で更新
+        ELSIF ((lr_lot_tab_data.COUNT = 0)                         -- 指示ロットがない場合(引当のない指示品目の場合)
+        AND    (lr_tab_data(i).instruct_qty <> 0)) THEN            -- 指示数量が0でない場合
 --
-        ELSE  -- 指示ロットがある場合    -- 2008/12/26 本番障害対応#688 Add
---
-          -- 2008/12/26 本番障害対応#688 Add Start -----------------------------------------------------
           -- **************************************************
-          -- *** 移動依頼/指示明細(アドオン)更新の0更新を行う
+          -- 実績ロットの登録があるか確認
           -- **************************************************
-          -- EOSデータ種別 = 移動出庫確定報告の場合
-          IF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_220) THEN
-            UPDATE
-              xxinv_mov_req_instr_lines    xmrl     -- 移動依頼/指示明細(アドオン)
-            SET
-               xmrl.shipped_quantity        = 0                               -- 出庫実績数量
-              ,xmrl.last_updated_by         = gt_user_id                      -- 最終更新者
-              ,xmrl.last_update_date        = gt_sysdate                      -- 最終更新日
-              ,xmrl.last_update_login       = gt_login_id                     -- 最終更新ログイン
-              ,xmrl.request_id              = gt_conc_request_id              -- 要求ID
-              ,xmrl.program_application_id  = gt_prog_appl_id                 -- アプリケーションID
-              ,xmrl.program_id              = gt_conc_program_id              -- プログラムID
-              ,xmrl.program_update_date     = gt_sysdate                      -- プログラム更新日
-            WHERE
-                xmrl.mov_line_id   = lr_tab_data(i).mov_line_id               -- 移動明細ID
-            AND ((xmrl.delete_flg = gv_yesno_n) OR (xmrl.delete_flg IS NULL)); -- 削除フラグ=未削除
+          -- カーソルオープン
+          OPEN lot_data_get_cur
+            (
+              gr_interface_info_rec(in_idx).order_source_ref   -- 受注ソース参照
+             ,lr_tab_data(i).item_code                         -- 品目
+             ,lt_record_type                                   -- レコードタイプ(出庫実績か入庫実績)
+            );
 --
-          -- EOSデータ種別 = 移動入庫確定報告の場合
-          ELSIF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_230) THEN
-            UPDATE
-              xxinv_mov_req_instr_lines    xmrl     -- 移動依頼/指示明細(アドオン)
-            SET
-               xmrl.ship_to_quantity        = 0                               -- 入庫実績数量
-              ,xmrl.last_updated_by         = gt_user_id                      -- 最終更新者
-              ,xmrl.last_update_date        = gt_sysdate                      -- 最終更新日
-              ,xmrl.last_update_login       = gt_login_id                     -- 最終更新ログイン
-              ,xmrl.request_id              = gt_conc_request_id              -- 要求ID
-              ,xmrl.program_application_id  = gt_prog_appl_id                 -- アプリケーションID
-              ,xmrl.program_id              = gt_conc_program_id              -- プログラムID
-              ,xmrl.program_update_date     = gt_sysdate                      -- プログラム更新日
-            WHERE
-                xmrl.mov_line_id   = lr_tab_data(i).mov_line_id               -- 移動明細ID
-            AND ((xmrl.delete_flg = gv_yesno_n) OR (xmrl.delete_flg IS NULL)); -- 削除フラグ=未削除
-          END IF;
+          --フェッチ
+          FETCH lot_data_get_cur BULK COLLECT INTO lr_act_lot_tab_data;
 --
-          -- 2008/12/26 本番障害対応#688 Add End -----------------------------------------------------
+          --クローズ
+          CLOSE lot_data_get_cur;
 --
-          <<lot_data_get_loop>>
-          FOR k IN 1 .. lr_lot_tab_data.count LOOP
+          -- 実績ロットがない場合、ダミーロットで実績0を作成
+          IF (lr_act_lot_tab_data.COUNT = 0) THEN
 --
-            -- ロット詳細ID取得
-            SELECT xxinv_mov_lot_s1.nextval
-            INTO   ln_mov_lot_seq
-            FROM   dual
-            ;
+            -- **************************************************
+            -- *** 移動依頼/指示明細(アドオン)更新の0更新を行う
+            -- **************************************************
+            -- EOSデータ種別 = 移動出庫確定報告の場合
+            IF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_220) THEN
+              UPDATE
+                xxinv_mov_req_instr_lines    xmrl     -- 移動依頼/指示明細(アドオン)
+              SET
+                 xmrl.shipped_quantity        = 0                               -- 出庫実績数量
+                ,xmrl.last_updated_by         = gt_user_id                      -- 最終更新者
+                ,xmrl.last_update_date        = gt_sysdate                      -- 最終更新日
+                ,xmrl.last_update_login       = gt_login_id                     -- 最終更新ログイン
+                ,xmrl.request_id              = gt_conc_request_id              -- 要求ID
+                ,xmrl.program_application_id  = gt_prog_appl_id                 -- アプリケーションID
+                ,xmrl.program_id              = gt_conc_program_id              -- プログラムID
+                ,xmrl.program_update_date     = gt_sysdate                      -- プログラム更新日
+              WHERE
+                  xmrl.mov_line_id   = lr_tab_data(i).mov_line_id               -- 移動明細ID
+              AND ((xmrl.delete_flg = gv_yesno_n) OR (xmrl.delete_flg IS NULL)); -- 削除フラグ=未削除
+  --
+            -- EOSデータ種別 = 移動入庫確定報告の場合
+            ELSIF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_230) THEN
+              UPDATE
+                xxinv_mov_req_instr_lines    xmrl     -- 移動依頼/指示明細(アドオン)
+              SET
+                 xmrl.ship_to_quantity        = 0                               -- 入庫実績数量
+                ,xmrl.last_updated_by         = gt_user_id                      -- 最終更新者
+                ,xmrl.last_update_date        = gt_sysdate                      -- 最終更新日
+                ,xmrl.last_update_login       = gt_login_id                     -- 最終更新ログイン
+                ,xmrl.request_id              = gt_conc_request_id              -- 要求ID
+                ,xmrl.program_application_id  = gt_prog_appl_id                 -- アプリケーションID
+                ,xmrl.program_id              = gt_conc_program_id              -- プログラムID
+                ,xmrl.program_update_date     = gt_sysdate                      -- プログラム更新日
+              WHERE
+                  xmrl.mov_line_id   = lr_tab_data(i).mov_line_id               -- 移動明細ID
+              AND ((xmrl.delete_flg = gv_yesno_n) OR (xmrl.delete_flg IS NULL)); -- 削除フラグ=未削除
+            END IF;
 --
+            -- **************************************************
+            -- ダミーロットを取得
+            -- **************************************************
+            get_dummy_lot
+              (
+                lr_tab_data(i).item_id         -- IN. OPM品目ID
+               ,lr_tab_data(i).prod_class_code -- IN. 商品区分
+               ,lr_tab_data(i).item_class_code -- IN. 品目区分
+               ,lr_tab_data(i).lot_ctl         -- IN. ロット管理区分
+               ,gv_document_type_20            -- IN. 文書タイプ=移動
+               ,lt_lot_id                      -- OUT.ロットID
+               ,lt_lot_no                      -- OUT.ロットNo
+               ,lv_errbuf                      -- エラー・メッセージ           --# 固定 #
+               ,lv_retcode                     -- リターン・コード             --# 固定 #
+               ,lv_errmsg                      -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+--
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_api_expt;
+            END IF;
+--
+            -- **************************************************
             -- 移動ロット詳細(アドオン)登録を行う
+            -- **************************************************
             INSERT INTO xxinv_mov_lot_details                   -- 移動ロット詳細(アドオン)
               (mov_lot_dtl_id                                   -- ロット詳細ID
               ,mov_line_id                                      -- 明細ID
@@ -3683,14 +4183,14 @@ AS
               ,program_update_date                              -- プログラム更新日
               )
             VALUES
-             ( ln_mov_lot_seq                                   -- ロット詳細ID
-              ,lr_lot_tab_data(k).mov_line_id                   -- 明細ID
-              ,lr_lot_tab_data(k).document_type_code            -- 文書タイプ
+             ( xxinv_mov_lot_s1.NEXTVAL                         -- ロット詳細ID
+              ,lr_tab_data(i).mov_line_id                       -- 明細ID
+              ,gv_document_type_20                              -- 文書タイプ=移動
               ,lt_record_type                                   -- レコードタイプ
-              ,lr_lot_tab_data(k).item_id                       -- OPM品目id
-              ,lr_lot_tab_data(k).item_code                     -- 品目
-              ,lr_lot_tab_data(k).lot_id                        -- ロットID
-              ,lr_lot_tab_data(k).lot_no                        -- ロットno
+              ,lr_tab_data(i).item_id                           -- OPM品目ID
+              ,lr_tab_data(i).item_code                         -- 品目
+              ,lt_lot_id                                        -- ロットID
+              ,lt_lot_no                                        -- ロットNO
               ,NULL                                             -- 実績日
               ,0                                                -- 実績数量
               ,gt_user_id                                       -- 作成者
@@ -3704,7 +4204,130 @@ AS
               ,gt_sysdate                                       -- プログラム更新日
              );
 --
-          END LOOP lot_data_get_loop;
+          END IF;
+-- 2009/03/31 ADD END
+--
+        ELSE  -- 指示ロットがある場合    -- 2008/12/26 本番障害対応#688 Add
+-- 2009/03/31 ADD START 本番障害#1105,1164
+          -- **************************************************
+          -- 実績ロットの登録があるか確認
+          -- **************************************************
+          -- カーソルオープン
+          OPEN lot_data_get_cur
+            (
+              gr_interface_info_rec(in_idx).order_source_ref   -- 受注ソース参照
+             ,lr_tab_data(i).item_code                         -- 品目
+             ,lt_record_type                                   -- レコードタイプ
+            );
+--
+          --フェッチ
+          FETCH lot_data_get_cur BULK COLLECT INTO lr_act_lot_tab_data;
+--
+          --クローズ
+          CLOSE lot_data_get_cur;
+--
+          -- 実績ロットがない場合、指示ロットで実績0を作成
+          IF (lr_act_lot_tab_data.COUNT = 0) THEN
+-- 2009/03/31 ADD END
+--
+            -- 2008/12/26 本番障害対応#688 Add Start -----------------------------------------------------
+            -- **************************************************
+            -- *** 移動依頼/指示明細(アドオン)更新の0更新を行う
+            -- **************************************************
+            -- EOSデータ種別 = 移動出庫確定報告の場合
+            IF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_220) THEN
+              UPDATE
+                xxinv_mov_req_instr_lines    xmrl     -- 移動依頼/指示明細(アドオン)
+              SET
+                 xmrl.shipped_quantity        = 0                               -- 出庫実績数量
+                ,xmrl.last_updated_by         = gt_user_id                      -- 最終更新者
+                ,xmrl.last_update_date        = gt_sysdate                      -- 最終更新日
+                ,xmrl.last_update_login       = gt_login_id                     -- 最終更新ログイン
+                ,xmrl.request_id              = gt_conc_request_id              -- 要求ID
+                ,xmrl.program_application_id  = gt_prog_appl_id                 -- アプリケーションID
+                ,xmrl.program_id              = gt_conc_program_id              -- プログラムID
+                ,xmrl.program_update_date     = gt_sysdate                      -- プログラム更新日
+              WHERE
+                  xmrl.mov_line_id   = lr_tab_data(i).mov_line_id               -- 移動明細ID
+              AND ((xmrl.delete_flg = gv_yesno_n) OR (xmrl.delete_flg IS NULL)); -- 削除フラグ=未削除
+--
+            -- EOSデータ種別 = 移動入庫確定報告の場合
+            ELSIF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_230) THEN
+              UPDATE
+                xxinv_mov_req_instr_lines    xmrl     -- 移動依頼/指示明細(アドオン)
+              SET
+                 xmrl.ship_to_quantity        = 0                               -- 入庫実績数量
+                ,xmrl.last_updated_by         = gt_user_id                      -- 最終更新者
+                ,xmrl.last_update_date        = gt_sysdate                      -- 最終更新日
+                ,xmrl.last_update_login       = gt_login_id                     -- 最終更新ログイン
+                ,xmrl.request_id              = gt_conc_request_id              -- 要求ID
+                ,xmrl.program_application_id  = gt_prog_appl_id                 -- アプリケーションID
+                ,xmrl.program_id              = gt_conc_program_id              -- プログラムID
+                ,xmrl.program_update_date     = gt_sysdate                      -- プログラム更新日
+              WHERE
+                  xmrl.mov_line_id   = lr_tab_data(i).mov_line_id               -- 移動明細ID
+              AND ((xmrl.delete_flg = gv_yesno_n) OR (xmrl.delete_flg IS NULL)); -- 削除フラグ=未削除
+            END IF;
+--
+            -- 2008/12/26 本番障害対応#688 Add End -----------------------------------------------------
+--
+            <<lot_data_get_loop>>
+            FOR k IN 1 .. lr_lot_tab_data.count LOOP
+--
+              -- ロット詳細ID取得
+              SELECT xxinv_mov_lot_s1.nextval
+              INTO   ln_mov_lot_seq
+              FROM   dual
+              ;
+--
+              -- 移動ロット詳細(アドオン)登録を行う
+              INSERT INTO xxinv_mov_lot_details                   -- 移動ロット詳細(アドオン)
+                (mov_lot_dtl_id                                   -- ロット詳細ID
+                ,mov_line_id                                      -- 明細ID
+                ,document_type_code                               -- 文書タイプ
+                ,record_type_code                                 -- レコードタイプ
+                ,item_id                                          -- opm品目ID
+                ,item_code                                        -- 品目
+                ,lot_id                                           -- ロットID
+                ,lot_no                                           -- ロットNO
+                ,actual_date                                      -- 実績日
+                ,actual_quantity                                  -- 実績数量
+                ,created_by                                       -- 作成者
+                ,creation_date                                    -- 作成日
+                ,last_updated_by                                  -- 最終更新者
+                ,last_update_date                                 -- 最終更新日
+                ,last_update_login                                -- 最終更新ログイン
+                ,request_id                                       -- 要求ID
+                ,program_application_id                           -- アプリケーションID
+                ,program_id                                       -- コンカレント・プログラムID
+                ,program_update_date                              -- プログラム更新日
+                )
+              VALUES
+               ( ln_mov_lot_seq                                   -- ロット詳細ID
+                ,lr_lot_tab_data(k).mov_line_id                   -- 明細ID
+                ,lr_lot_tab_data(k).document_type_code            -- 文書タイプ
+                ,lt_record_type                                   -- レコードタイプ
+                ,lr_lot_tab_data(k).item_id                       -- OPM品目id
+                ,lr_lot_tab_data(k).item_code                     -- 品目
+                ,lr_lot_tab_data(k).lot_id                        -- ロットID
+                ,lr_lot_tab_data(k).lot_no                        -- ロットno
+                ,NULL                                             -- 実績日
+                ,0                                                -- 実績数量
+                ,gt_user_id                                       -- 作成者
+                ,gt_sysdate                                       -- 作成日
+                ,gt_user_id                                       -- 最終更新者
+                ,gt_sysdate                                       -- 最終更新日
+                ,gt_login_id                                      -- 最終更新ログイン
+                ,gt_conc_request_id                               -- 要求ID
+                ,gt_prog_appl_id                                  -- アプリケーションID
+                ,gt_conc_program_id                               -- コンカレント・プログラムID
+                ,gt_sysdate                                       -- プログラム更新日
+               );
+--
+            END LOOP lot_data_get_loop;
+-- 2009/03/31 ADD START 本番障害#1105,1164
+          END IF;
+-- 2009/03/31 ADD END
 --
         END IF;  -- 2008/12/26 本番障害対応#688 Add
 --
@@ -3722,15 +4345,42 @@ AS
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
+-- 2009/03/31 ADD START 本番障害#1105,1164
+      IF (order_data_get_cur%ISOPEN) THEN
+        CLOSE order_data_get_cur;
+      END IF;
+--
+      IF (lot_data_get_cur%ISOPEN) THEN
+        CLOSE lot_data_get_cur;
+      END IF;
+-- 2009/03/31 ADD END
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
+-- 2009/03/31 ADD START 本番障害#1105,1164
+      IF (order_data_get_cur%ISOPEN) THEN
+        CLOSE order_data_get_cur;
+      END IF;
+--
+      IF (lot_data_get_cur%ISOPEN) THEN
+        CLOSE lot_data_get_cur;
+      END IF;
+-- 2009/03/31 ADD END
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+-- 2009/03/31 ADD START 本番障害#1105,1164
+      IF (order_data_get_cur%ISOPEN) THEN
+        CLOSE order_data_get_cur;
+      END IF;
+--
+      IF (lot_data_get_cur%ISOPEN) THEN
+        CLOSE lot_data_get_cur;
+      END IF;
+-- 2009/03/31 ADD END
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
@@ -10612,6 +11262,313 @@ AS
 --
   END appropriate_check;
 --
+-- 2009/03/31 ADD START 本番障害#1105,1164
+  /**********************************************************************************
+   * Procedure Name   : dummy_lot_check(A-6-1)
+   * Description      : 指示があって実績がIFにない品目で、引当なしかつ指示数0でない場合
+   *                    実績0データを作成するためのダミーロットがあるかチェック
+   ***********************************************************************************/
+  PROCEDURE dummy_lot_check(
+    ov_errbuf               OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT NOCOPY VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'dummy_lot_check'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lt_document_type_code  xxinv_mov_lot_details.document_type_code%TYPE;  -- 文書タイプ
+    lt_lot_id              ic_lots_mst.lot_id%TYPE;                        -- ロットID
+    lt_lot_no              ic_lots_mst.lot_no%TYPE;                        -- ロットNo
+    lv_msg_buff            VARCHAR2(5000);                                 -- エラー・メッセージ
+    ln_cnt                 NUMBER;                                         -- カウント
+--
+    -- *** ローカル・カーソル ***
+    -- ==================================================
+    -- 指示数あり、引当なしの受注データ
+    -- ==================================================
+    CURSOR order_data_get_cur
+      (
+        it_order_source_ref    xxwsh_shipping_headers_if.order_source_ref%TYPE -- 受注ソース参照
+      )
+    IS
+      SELECT ximv.item_no                 item_no         -- 品目No
+           , ximv.item_id                 opm_item_id     -- 品目ID
+           , ximv.lot_ctl                 lot_ctl         -- ロット管理区分
+           , xicv.item_class_code         item_class_code -- 品目区分
+           , xicv.prod_class_code         prod_class_code -- 商品区分
+      FROM   xxwsh_order_headers_all      xoha            -- 受注ヘッダ(アドオン)
+           , xxwsh_order_lines_all        xola            -- 受注明細(アドオン)
+           , xxcmn_item_mst_v             ximv            -- OPM品目情報VIEW
+           , xxcmn_item_categories5_v     xicv            -- OPM品目カテゴリ割当情報VIEW
+      WHERE  xoha.order_header_id            = xola.order_header_id
+      AND    xola.shipping_inventory_item_id = ximv.inventory_item_id
+      AND    ximv.item_id                    = xicv.item_id
+      AND    xoha.request_no                 = it_order_source_ref  -- 受注ソース参照
+      AND    NVL(xola.reserved_quantity, 0)  = 0                    -- 引当数がない
+      AND    NVL(xola.quantity, 0)          <> 0                    -- 指示数がある
+      AND    xoha.latest_external_flag       = gv_yesno_y
+      AND  ((xola.delete_flag                = gv_yesno_n)
+       OR   (xola.delete_flag               IS NULL))
+    ;
+--
+    -- ==================================================
+    -- 指示数あり、引当なしの移動データ
+    -- ==================================================
+    CURSOR move_data_get_cur
+      (
+        it_order_source_ref    xxwsh_shipping_headers_if.order_source_ref%TYPE -- 受注ソース参照
+      )
+    IS
+      SELECT ximv.item_no                 item_no         -- 品目No
+           , ximv.item_id                 opm_item_id     -- 品目ID
+           , ximv.lot_ctl                 lot_ctl         -- ロット管理区分
+           , xicv.item_class_code         item_class_code -- 品目区分
+           , xicv.prod_class_code         prod_class_code -- 商品区分
+      FROM   xxinv_mov_req_instr_headers  xmrih           -- 移動ヘッダ
+           , xxinv_mov_req_instr_lines    xmril           -- 移動明細
+           , xxcmn_item_mst_v             ximv            -- OPM品目情報VIEW
+           , xxcmn_item_categories5_v     xicv            -- OPM品目カテゴリ割当情報VIEW
+      WHERE  xmrih.mov_hdr_id                = xmril.mov_hdr_id
+      AND    xmril.item_id                   = ximv.item_id
+      AND    xmril.item_id                   = xicv.item_id
+      AND    xmrih.mov_num                   = it_order_source_ref -- 受注ソース参照
+      AND    NVL(xmril.reserved_quantity, 0) = 0                   -- 引当数がない
+      AND    NVL(xmril.instruct_qty, 0)     <> 0                   -- 指示数がある
+      AND    xmrih.status                   <> gv_mov_status_99    -- ステータス<>取消
+      AND  ((xmril.delete_flg                = gv_yesno_n)         -- 削除フラグ=未削除
+       OR   (xmril.delete_flg               IS NULL))
+      AND  ((xmrih.no_instr_actual_class     = gv_yesno_n)         -- 指示なし実績区分=指示あり
+       OR   (xmrih.no_instr_actual_class    IS NULL))
+    ;
+--
+    -- *** ローカル・レコード ***
+    TYPE rec_data IS RECORD
+      (
+        item_no                     xxcmn_item_mst_v.item_no%TYPE                           -- 品目コード
+       ,item_id                     xxcmn_item_mst_v.item_id%TYPE                           -- OPM品目ID
+       ,lot_ctl                     xxcmn_item_mst_v.lot_ctl%TYPE                           -- ロット管理区分
+       ,item_class_code             xxcmn_item_categories5_v.item_class_code%TYPE           -- 品目区分
+       ,prod_class_code             xxcmn_item_categories5_v.prod_class_code%TYPE           -- 商品区分
+      );
+--
+    TYPE tab_data IS TABLE OF rec_data INDEX BY BINARY_INTEGER ;
+--
+    lr_tab_data               tab_data;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    <<if_loop>>
+    FOR if_loop_cnt IN 1..gr_interface_info_rec.COUNT LOOP
+--
+      -- 受注ソース参照がブレイクした時
+      IF ((gr_interface_info_rec.LAST = if_loop_cnt)
+      OR  (gr_interface_info_rec(if_loop_cnt).order_source_ref <> gr_interface_info_rec(if_loop_cnt + 1).order_source_ref)) THEN
+--
+        -- **************************************************
+        -- 指示ありかつ、引当なしの受注・移動データ取得
+        -- **************************************************
+        -- EOSデータ種別 = 拠点出荷確定報告 又は 庭先出荷確定報告の場合
+        IF ((gr_interface_info_rec(if_loop_cnt).eos_data_type = gv_eos_data_cd_210)
+        OR  (gr_interface_info_rec(if_loop_cnt).eos_data_type = gv_eos_data_cd_215)) THEN
+--
+          lt_document_type_code := gv_document_type_10; -- 文書タイプ=出荷依頼
+--
+          -- 受注を検索
+          OPEN order_data_get_cur
+            (
+              gr_interface_info_rec(if_loop_cnt).order_source_ref   -- 受注ソース参照
+            );
+          FETCH order_data_get_cur BULK COLLECT INTO lr_tab_data;
+          CLOSE order_data_get_cur;
+--
+        -- EOSデータ種別 = 200 有償出荷報告
+        ELSIF (gr_interface_info_rec(if_loop_cnt).eos_data_type = gv_eos_data_cd_200) THEN
+--
+          lt_document_type_code := gv_document_type_30; -- 文書タイプ=支給指示
+--
+          -- 受注を検索
+          OPEN order_data_get_cur
+            (
+              gr_interface_info_rec(if_loop_cnt).order_source_ref   -- 受注ソース参照
+            );
+          FETCH order_data_get_cur BULK COLLECT INTO lr_tab_data;
+          CLOSE order_data_get_cur;
+--
+        -- 移動の場合
+        ELSE
+--
+         lt_document_type_code := gv_document_type_20; -- 文書タイプ=移動
+--
+          -- 移動を検索
+          OPEN move_data_get_cur
+            (
+              gr_interface_info_rec(if_loop_cnt).order_source_ref   -- 受注ソース参照
+            );
+          FETCH move_data_get_cur BULK COLLECT INTO lr_tab_data;
+          CLOSE move_data_get_cur;
+        END IF;
+--
+        -- 指示数あり、引当なしの指示データをLOOPし、IFにない品目があれば、ダミーロットチェックを行う。
+        <<check_loop>>
+        FOR check_loop_cnt IN 1 .. lr_tab_data.COUNT LOOP
+--
+          -- **************************************************
+          -- IFにデータがあるかチェック
+          -- **************************************************
+          SELECT COUNT(1)                   cnt
+          INTO   ln_cnt
+          FROM   xxwsh_shipping_headers_if  xshi            -- 出荷依頼IFヘッダ
+               , xxwsh_shipping_lines_if    xsli            -- 出荷依頼IF明細
+          WHERE  xshi.header_id           = xsli.header_id
+          AND    xshi.order_source_ref    = gr_interface_info_rec(if_loop_cnt).order_source_ref
+          AND    xsli.orderd_item_code    = lr_tab_data(check_loop_cnt).item_no
+          ;
+--
+          -- IFにデータがない場合、実績0で移動ロットを作成するので、ダミーロットがあるかチェック
+          IF (ln_cnt = 0) THEN
+            -- **************************************************
+            -- ダミーロットを取得
+            -- **************************************************
+            get_dummy_lot
+              (
+                lr_tab_data(check_loop_cnt).item_id         -- IN. OPM品目ID
+               ,lr_tab_data(check_loop_cnt).prod_class_code -- IN. 商品区分
+               ,lr_tab_data(check_loop_cnt).item_class_code -- IN. 品目区分
+               ,lr_tab_data(check_loop_cnt).lot_ctl         -- IN. ロット管理区分
+               ,lt_document_type_code                       -- IN. 文書タイプ
+               ,lt_lot_id                                   -- OUT.ロットID
+               ,lt_lot_no                                   -- OUT.ロットNo
+               ,lv_errbuf                                   -- エラー・メッセージ           --# 固定 #
+               ,lv_retcode                                  -- リターン・コード             --# 固定 #
+               ,lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+--
+            -- **************************************************
+            -- ダミーロットを取得できなかった場合、ロット保留
+            -- **************************************************
+            IF (lt_lot_id IS NULL) THEN
+--
+              --********** debug_log ********** START ***
+              debug_log(FND_FILE.LOG,'実績0ロット取得エラー');
+              --********** debug_log ********** END   ***
+--
+              -- 実績0ロット取得エラーメッセージ取得
+              lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                             gv_msg_kbn          -- 'XXWSH'
+                            ,gv_msg_93a_160  -- 実績0ロット取得エラー
+                            ,gv_param1_token
+                            ,gr_interface_info_rec(if_loop_cnt).delivery_no      --配送No
+                            ,gv_param2_token
+                            ,gr_interface_info_rec(if_loop_cnt).order_source_ref --受注ソース参照
+                            ,gv_param3_token
+                            ,lr_tab_data(check_loop_cnt).item_no                 --品目コード(IFにない品目コード)
+                            )
+                            ,1
+                            ,5000);
+--
+              -- 配送No/移動No-EOSデータ種別単位で妥当チェックエラーflagをセット
+              set_header_unit_reserveflg(
+                if_loop_cnt,          -- データindex
+                gv_flg_on,            -- ヘッダーデータ・エラーフラグ（明細単位エラー:0、ヘッダー単位エラー:1）
+                gv_msg_93a_160,       -- メッセージid（実績0ロット取得エラー）
+                gr_interface_info_rec(if_loop_cnt).delivery_no,      --配送No
+                gr_interface_info_rec(if_loop_cnt).order_source_ref, --受注ソース参照
+                gr_interface_info_rec(if_loop_cnt).eos_data_type,
+                gv_reserved_class,    -- エラー種別：保留
+                lv_msg_buff,          -- エラー・メッセージ(出力用)
+                lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+                lv_retcode,           -- リターン・コード             --# 固定 #
+                lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+--
+              -- 処理ステータス：警告
+              ov_retcode := gv_status_warn;
+--
+            END IF;
+--
+          END IF;
+--
+        END LOOP check_loop;
+--
+      END IF;
+--
+    END LOOP if_loop;
+--
+    --==============================================================
+    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      IF (order_data_get_cur%ISOPEN) THEN
+        CLOSE order_data_get_cur;
+      END IF;
+--
+      IF (move_data_get_cur%ISOPEN) THEN
+        CLOSE move_data_get_cur;
+      END IF;
+--
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+--
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      IF (order_data_get_cur%ISOPEN) THEN
+        CLOSE order_data_get_cur;
+      END IF;
+--
+      IF (move_data_get_cur%ISOPEN) THEN
+        CLOSE move_data_get_cur;
+      END IF;
+--
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF (order_data_get_cur%ISOPEN) THEN
+        CLOSE order_data_get_cur;
+      END IF;
+--
+      IF (move_data_get_cur%ISOPEN) THEN
+        CLOSE move_data_get_cur;
+      END IF;
+--
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END dummy_lot_check;
+-- 2009/03/31 ADD END
  /**********************************************************************************
   * Procedure Name   : order_headers_ins
   * Description      : 受注ヘッダアドオン(外部倉庫編集) プロシージャ(A-8-2)
@@ -10769,11 +11726,21 @@ AS
     -- 依頼No
     gr_order_h_rec.request_no               := gr_interface_info_rec(in_index).order_source_ref;
     -- ステータス
-    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200)  OR
-        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210)  OR
+-- 2009/03/31 MOD START 本番障害#1105,1164
+--    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200)  OR
+--        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210)  OR
+--        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
+    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210)  OR
         (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
+-- 2009/03/31 MOD END
     THEN
-      gr_order_h_rec.req_status             := gv_req_status_04;
+      gr_order_h_rec.req_status         := gv_req_status_04;
+--
+-- 2009/03/31 ADD START 本番障害#1105,1164
+    -- 有償支給のステータスは08
+    ELSIF (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200) THEN
+      gr_order_h_rec.req_status         := gv_req_status_08;
+-- 2009/03/31 ADD END
     END IF;
     -- 配送No
     gr_order_h_rec.delivery_no              := gr_interface_info_rec(in_index).delivery_no;
@@ -11335,11 +12302,21 @@ AS
     -- 配送no
     gr_order_h_rec.delivery_no          := gr_interface_info_rec(in_index).delivery_no;
     -- ステータス
-    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200)  OR
-        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210)  OR
+-- 2009/03/31 MOD START 本番障害#1105,1164
+--    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200)  OR
+--        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210)  OR
+--        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
+    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210)  OR
         (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
+-- 2009/03/31 MOD END
     THEN
       gr_order_h_rec.req_status         := gv_req_status_04;
+--
+-- 2009/03/31 ADD START 本番障害#1105,1164
+    -- 有償支給のステータスは08
+    ELSIF (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200) THEN
+      gr_order_h_rec.req_status         := gv_req_status_08;
+-- 2009/03/31 ADD END
     END IF;
     -- パレット回収枚数
     gr_order_h_rec.collected_pallet_qty := gr_interface_info_rec(in_index).collected_pallet_qty;
@@ -11914,11 +12891,21 @@ AS
     gr_order_h_rec.cust_po_number              := lr_order_h_rec_ins.cust_po_number;
     gr_order_h_rec.price_list_id               := lr_order_h_rec_ins.price_list_id;
     gr_order_h_rec.request_no                  := lr_order_h_rec_ins.request_no;
-    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200)  OR
-        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210)  OR
+-- 2009/03/31 MOD START 本番障害#1105,1164
+--    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200)  OR
+--        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210)  OR
+--        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
+    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210)  OR
         (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
+-- 2009/03/31 MOD END
     THEN
-      gr_order_h_rec.req_status                  := gv_req_status_04;
+      gr_order_h_rec.req_status         := gv_req_status_04;
+--
+-- 2009/03/31 ADD START 本番障害#1105,1164
+    -- 有償支給のステータスは08
+    ELSIF (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200) THEN
+      gr_order_h_rec.req_status         := gv_req_status_08;
+-- 2009/03/31 ADD END
     END IF;
     --gr_order_h_rec.delivery_no                 := lr_order_h_rec_ins.delivery_no;            -- 2008/12/07 本番障害#470 Del
     gr_order_h_rec.delivery_no                 := gr_interface_info_rec(in_index).delivery_no; -- 2008/12/07 本番障害#470 Add
@@ -15345,10 +16332,10 @@ AS
         AND     xoha.latest_external_flag = gv_yesno_y
         AND     xca.party_status          = gv_view_status
         AND     xca.account_status        = gv_view_status
--- 2009/03/30 H.Iida ADD START 本番障害#1346対応
+-- 2009/03/30 H.Iida Add Start 本番障害#1346対応
         -- 顧客区分'1', '10'のみ抽出
         AND     xca.customer_class_code IN ('1', '10')
--- 2009/03/30 H.Iida ADD END
+-- 2009/03/30 H.Iida Add End
         AND     ROWNUM = 1                                           -- 混載単位<->集約No単位での重複を排除
         ;
 --
@@ -16517,6 +17504,7 @@ debug_log(FND_FILE.LOG,'　　　出荷依頼実績数量の設定 プロシージャ：mov_results_q
     -- ヘッダ単位の処理
     -- 前回の配送Noと前回の受注ソース参照と前回のEOSデータ種別が異なる場合(ヘッダブレイク)且つ 初回1件目以外の場合
     --------------------------------------------------------------------------
+--
     IF (in_idx = gn_target_cnt) THEN
         lb_break_flg := TRUE;
 --
@@ -16597,6 +17585,10 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目実績0更新:mov_zero_updt'
       gb_mov_cnt_a7_flg        := FALSE; -- 移動(A-7) 件数表示で計上か訂正か判断するのためのフラグ
       lb_break_flg             := FALSE;
       gb_mov_cnt_a7_flg        := FALSE; -- 移動(A-7) 件数表示で計上か訂正か判断するのためのフラグ
+-- 2009/03/31 ADD START 本番障害#1085,1159 実績登録品目のチェックは依頼Noごとに行うので、ブレイクした時に、登録品目を削除する。
+      gn_zero_updt_idx := 0;
+      gt_mov_item_code.DELETE;      -- 品目
+-- 2009/03/31 ADD END
 --
     END IF;
 --
@@ -17363,6 +18355,10 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
       lb_break_flg         := FALSE;
       gb_ord_cnt_a8_flg    := FALSE;      -- 受注(A-8) 件数表示で計上か訂正か判断するのためのフラグ
       gb_shipping_result_if_flg := FALSE; -- 2008/09/22 TE080_400指摘#76 Add
+-- 2009/03/31 ADD START 本番障害#1085,1159 実績登録品目のチェックは依頼Noごとに行うので、ブレイクした時に、登録品目を削除する。
+      gn_zero_updt_idx := 0;
+      gt_shipping_item_code.DELETE;      -- 品目
+-- 2009/03/31 ADD END
 --
     END IF;
 --
@@ -18984,6 +19980,24 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
       RAISE global_process_expt;
     END IF;
 --
+-- 2009/03/31 ADD START 本番障害#1105,1164
+    -- ===============================
+    -- ダミーロットチェック プロシージャ (A-6-1)
+    -- ===============================
+    dummy_lot_check(
+      lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+      lv_retcode,             -- リターン・コード             --# 固定 #
+      lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    IF (lv_retcode = gv_status_warn) THEN
+      lv_warn_flg := gv_status_warn;
+    END IF;
+--
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+-- 2009/03/31 ADD END
     -----------------------------------------------------------------
     -- 外部倉庫入出庫実績情報抽出データ出荷依頼/指示データ1件毎の処理
     -----------------------------------------------------------------
