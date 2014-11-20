@@ -1,1 +1,1 @@
-CREATE INDEX xxcos.xxcos_sales_exp_lines_n03 ON xxcos.xxcos_sales_exp_lines ( sales_exp_header_id, inv_interface_flag, delivery_pattern_class ) TABLESPACE xxidx2;
+CREATE INDEX xxcos.xxcos_sales_exp_lines_n03 ON xxcos.xxcos_sales_exp_lines ( inv_interface_flag, delivery_pattern_class ) TABLESPACE xxidx2;
