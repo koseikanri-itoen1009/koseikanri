@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A02R (body)
  * Description      : ピックリスト（出荷先・販売先・製品別）
  * MD.050           : ピックリスト（出荷先・販売先・製品別） MD050_COS_012_A02
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/07/10    1.7   M.Sano           [0000063]情報区分によるデータ作成対象の制御
  *  2009/07/22    1.8   M.Sano           [T1_1437]データパージ不具合対応
  *  2009/08/11    1.9   M.Sano           [0000008]ピッキングリスト性能懸念対応
+ *  2009/08/20    1.10  N.Sano           [0000889]特売区分対応
  *
  *****************************************************************************************/
 --
@@ -108,6 +109,10 @@ AS
   global_nodata_expt        EXCEPTION;
   global_get_profile_expt   EXCEPTION;
   global_lookup_code_expt   EXCEPTION;
+/* 2009/08/20 Ver1.10 Add Start */
+  global_get_bargain_expt   EXCEPTION;
+  global_get_fixture_expt   EXCEPTION;
+/* 2009/08/20 Ver1.10 Add End   */
   --*** 処理対象データロック例外 ***
   global_data_lock_expt     EXCEPTION;
 --
@@ -167,6 +172,12 @@ AS
                                      := 'APP-XXCOS1-12654';           --帳票ワークテーブル
   ct_msg_bargain_cls_tblnm  CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-12655';           --定番特売区分クイックコードマスタ
+/* 2009/08/20 Ver1.10 Add Start */
+  ct_msg_get_fixture_err    CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-00186';           --定番情報取得エラー
+  ct_msg_get_bargain_err    CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-00187';           --特売情報取得エラー
+/* 2009/08/20 Ver1.10 Add End   */
   --トークン
   cv_tkn_table              CONSTANT VARCHAR2(100) := 'TABLE';                  --テーブル
   cv_tkn_date_from          CONSTANT VARCHAR2(100) := 'DATE_FROM';              --日付（From)
@@ -304,6 +315,10 @@ AS
   cv_time_min               CONSTANT VARCHAR2(8)  := '00:00:00';
   cv_time_max               CONSTANT VARCHAR2(8)  := '23:59:59';
 /* 2009/08/11 Ver1.9 Add End   */
+/* 2009/08/20 Ver1.10 Add Start */
+  cv_bargain_class_fixture  CONSTANT VARCHAR2(1)   := 'Y';            --定番特売区分：定番
+  cv_bargain_class_bargain  CONSTANT VARCHAR2(1)   := 'N';            --定番特売区分：特売
+/* 2009/08/20 Ver1.10 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -341,6 +356,16 @@ AS
   --特定マスタのクイックコード生成用
   gt_qcc_sale_class                   fnd_lookup_values.lookup_code%TYPE;
                                                                       -- 売上区分用
+/* 2009/08/20 Ver1.10 Mod Start */
+  gt_fixture_code                     fnd_lookup_values.lookup_code%TYPE;
+                                                                      -- 定番特売区分コード：定番
+  gt_fixture_name                     fnd_lookup_values.lookup_code%TYPE;
+                                                                      -- 定番特売区分名称  ：定番
+  gt_bargain_code                     fnd_lookup_values.lookup_code%TYPE;
+                                                                      -- 定番特売区分コード：特売
+  gt_bargain_name                     fnd_lookup_values.lookup_code%TYPE;
+                                                                      -- 定番特売区分名称  ：特売
+/* 2009/08/20 Ver1.10 Mod End   */
 --
   -- ===============================
   -- ユーザー定義関数
@@ -692,7 +717,78 @@ AS
       RAISE global_date_reversal_expt;
     END IF;
 --
+/* 2009/08/20 Ver1.10 Mod Start */
+    --==================================
+    -- 7.定番特売区分「定番」取得
+    --==================================
+--
+    BEGIN
+      SELECT
+        flv.lookup_code                 fixture_code                --定番特売区分：定番のコード値
+       ,flv.meaning                     fixture_name                --定番特売区分：定番の名称
+      INTO
+        gt_fixture_code
+       ,gt_fixture_name
+      FROM
+        fnd_lookup_values               flv
+      WHERE
+          flv.lookup_type               = ct_qct_bargain_class
+      AND flv.attribute1                = cv_bargain_class_fixture  --取得対象 = 定番
+      AND gd_process_date               >= flv.start_date_active
+      AND gd_process_date               <= NVL( flv.end_date_active, gd_max_date )
+      AND flv.language                  = ct_lang
+      AND flv.enabled_flag              = ct_enabled_flag_yes
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE global_get_fixture_expt;
+    END;
+--
+    --==================================
+    -- 8.定番特売区分「特売」取得
+    --==================================
+--
+    BEGIN
+      SELECT
+        flv.lookup_code                 bargain_code                --定番特売区分：特売のコード値
+       ,flv.meaning                     bargain_name                --定番特売区分：特売の名称
+      INTO
+        gt_bargain_code
+       ,gt_bargain_name
+      FROM
+        fnd_lookup_values               flv
+      WHERE
+          flv.lookup_type               = ct_qct_bargain_class
+      AND flv.attribute1                = cv_bargain_class_bargain  --取得対象 = 特売
+      AND gd_process_date               >= flv.start_date_active
+      AND gd_process_date               <= NVL( flv.end_date_active, gd_max_date )
+      AND flv.language                  = ct_lang
+      AND flv.enabled_flag              = ct_enabled_flag_yes
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE global_get_bargain_expt;
+    END;
+/* 2009/08/20 Ver1.10 Mod End   */
   EXCEPTION
+/* 2009/08/20 Ver1.10 Mod Start */
+    -- *** 定番情報取得例外ハンドラ ***
+    WHEN global_get_fixture_expt THEN
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_get_fixture_err
+                                 );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 特売情報取得例外ハンドラ ***
+    WHEN global_get_bargain_expt THEN
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_get_bargain_err
+                                 );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+/* 2009/08/20 Ver1.10 Mod End   */
     -- *** 業務日付取得例外ハンドラ ***
     WHEN global_proc_date_err_expt THEN
       ov_errmsg               := xxccp_common_pkg.get_msg(
@@ -1291,7 +1387,15 @@ AS
             xca1.store_code                   store_code,                     --店舗コード
             xca1.cust_store_name              cust_store_name,                --店舗名
             ooha.cust_po_number               slip_no,                        --伝票NO
-            scm.sale_class_name               bargain_class_name,             --定番特売区分名称
+/* 2009/08/20 Ver1.10 Mod Start */
+--            scm.sale_class_name               bargain_class_name,             --定番特売区分名称
+            CASE
+              WHEN xeh.ar_sale_class = gt_fixture_code THEN
+                gt_fixture_name
+              ELSE
+                gt_bargain_name
+            END CASE,                                                         --定番特売区分名称
+/* 2009/08/20 Ver1.10 Mod Start */
             TRIM( SUBSTRB( xca1.delivery_order, 1, 7 ) )
                                               delivery_order1,                --配送順（月、水、金）
             TRIM( NVL( SUBSTRB( xca1.delivery_order, 8, 7 ), SUBSTRB( xca1.delivery_order, 1, 7 ) ) )
@@ -1337,37 +1441,42 @@ AS
                   flv.lookup_type             = ct_qct_sale_class_default
 /* 2009/08/11 Ver1.9 Mod End   */
               AND flv.lookup_code             LIKE ct_qcc_sale_class_default
-              AND flv.language                = USERENV( 'LANG' )
-              AND flv.enabled_flag            = ct_enabled_flag_yes
-            ) scdm,                                                           --売上区分初期値マスタ
-            (
-              SELECT
-                flv.meaning                   sale_class,                     --売上区分
-                flv.description               sale_class_name,                --売上区分名
-                flv.start_date_active         start_date_active,              --有効開始日
-                NVL( flv.end_date_active, gd_max_date )
-                                              end_date_active                 --有効終了日
-              FROM
-/* 2009/08/11 Ver1.9 Del Start */
---                fnd_application               fa,                             --アプリケーションマスタ
---                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
-/* 2009/08/11 Ver1.9 Del End   */
-                fnd_lookup_values             flv                             --クイックコードマスタ
-              WHERE
-/* 2009/08/11 Ver1.9 Mod Start */
---                fa.application_id             = flt.application_id
---              AND flt.lookup_type             = flv.lookup_type
---              AND fa.application_short_name   = ct_xxcos_appl_short_name
---              AND flt.lookup_type             = ct_qct_sale_class
-                  flv.lookup_type             = ct_qct_sale_class
-/* 2009/08/11 Ver1.9 Mod End   */
-              AND flv.lookup_code             LIKE ct_qcc_sale_class || cv_multi
 /* 2009/08/11 Ver1.9 Mod Start */
 --              AND flv.language                = USERENV( 'LANG' )
               AND flv.language                = ct_lang
 /* 2009/08/11 Ver1.9 Mod End   */
               AND flv.enabled_flag            = ct_enabled_flag_yes
-            ) scm                                                             --売上区分マスタ
+            ) scdm                                                            --売上区分初期値マスタ
+/* 2009/08/20 Ver1.10 Del Start */
+--            (
+--              SELECT
+--                flv.meaning                   sale_class,                     --売上区分
+--                flv.description               sale_class_name,                --売上区分名
+--                flv.start_date_active         start_date_active,              --有効開始日
+--                NVL( flv.end_date_active, gd_max_date )
+--                                              end_date_active                 --有効終了日
+--              FROM
+--/* 2009/08/11 Ver1.9 Del Start */
+----                fnd_application               fa,                             --アプリケーションマスタ
+----                fnd_lookup_types              flt,                            --クイックコードタイプマスタ
+--/* 2009/08/11 Ver1.9 Del End   */
+--                fnd_lookup_values             flv                             --クイックコードマスタ
+--              WHERE
+--/* 2009/08/11 Ver1.9 Mod Start */
+----                fa.application_id             = flt.application_id
+----              AND flt.lookup_type             = flv.lookup_type
+----              AND fa.application_short_name   = ct_xxcos_appl_short_name
+----              AND flt.lookup_type             = ct_qct_sale_class
+--                  flv.lookup_type             = ct_qct_sale_class
+--/* 2009/08/11 Ver1.9 Mod End   */
+--              AND flv.lookup_code             LIKE ct_qcc_sale_class || cv_multi
+--/* 2009/08/11 Ver1.9 Mod Start */
+----              AND flv.language                = USERENV( 'LANG' )
+--              AND flv.language                = ct_lang
+--/* 2009/08/11 Ver1.9 Mod End   */
+--              AND flv.enabled_flag            = ct_enabled_flag_yes
+--            ) scm                                                             --売上区分マスタ
+/* 2009/08/20 Ver1.10 Del End */
           WHERE
             ooha.header_id                    = oola.header_id
           AND ooha.order_source_id            = oos.order_source_id
@@ -1597,41 +1706,45 @@ AS
                           AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
                           AND     look_val.enabled_flag = ct_enabled_flag_yes
                           AND     look_val.lookup_type =  ct_qct_edi_item_err_type ))
-          AND EXISTS(
-                SELECT
-                  cv_exists_flag_yes          exists_flag
-                FROM
-/* 2009/08/11 Ver1.9 Del Start */
---                  fnd_application             fa,                             --アプリケーションマスタ
---                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
-/* 2009/08/11 Ver1.9 Del End   */
-                  fnd_lookup_values           flv                             --クイックコードマスタ
-                WHERE
-/* 2009/08/11 Ver1.9 Mod Start */
---                  fa.application_id           = flt.application_id
---                AND flt.lookup_type           = flv.lookup_type
---                AND fa.application_short_name = ct_xxcos_appl_short_name
---                AND flt.lookup_type           = ct_qct_sale_class
-                    flv.lookup_type           = ct_qct_sale_class
-/* 2009/08/11 Ver1.9 Mod End   */
-                AND flv.lookup_code           LIKE gt_qcc_sale_class
-                AND flv.meaning               = NVL( oola.attribute5, scdm.sale_class_default )
-                AND TRUNC( ooha.ordered_date )
-                                              >= flv.start_date_active
-                AND TRUNC( ooha.ordered_date )
-                                              <= NVL( flv.end_date_active, gd_max_date )
-/* 2009/08/11 Ver1.9 Mod Start */
---                AND flv.language              = USERENV( 'LANG' )
-                AND flv.language              = ct_lang
-/* 2009/08/11 Ver1.9 Mod End   */
-                AND flv.enabled_flag          = ct_enabled_flag_yes
-/* 2009/08/11 Ver1.9 Del Start */
---                AND ROWNUM                    = 1
-/* 2009/08/11 Ver1.9 Del End   */
-              )
-          AND scm.sale_class                  = NVL( oola.attribute5, scdm.sale_class_default )
-          AND TRUNC( ooha.ordered_date )      >= scm.start_date_active
-          AND TRUNC( ooha.ordered_date )      <= scm.end_date_active
+/* 2009/08/20 Ver1.10 Mod Start */
+--          AND EXISTS(
+--                SELECT
+--                  cv_exists_flag_yes          exists_flag
+--                FROM
+--/* 2009/08/11 Ver1.9 Del Start */
+----                  fnd_application             fa,                             --アプリケーションマスタ
+----                  fnd_lookup_types            flt,                            --クイックコードタイプマスタ
+--/* 2009/08/11 Ver1.9 Del End   */
+--                  fnd_lookup_values           flv                             --クイックコードマスタ
+--                WHERE
+--/* 2009/08/11 Ver1.9 Mod Start */
+----                  fa.application_id           = flt.application_id
+----                AND flt.lookup_type           = flv.lookup_type
+----                AND fa.application_short_name = ct_xxcos_appl_short_name
+----                AND flt.lookup_type           = ct_qct_sale_class
+--                    flv.lookup_type           = ct_qct_sale_class
+--/* 2009/08/11 Ver1.9 Mod End   */
+--                AND flv.lookup_code           LIKE gt_qcc_sale_class
+--                AND flv.meaning               = NVL( oola.attribute5, scdm.sale_class_default )
+--                AND TRUNC( ooha.ordered_date )
+--                                              >= flv.start_date_active
+--                AND TRUNC( ooha.ordered_date )
+--                                              <= NVL( flv.end_date_active, gd_max_date )
+--/* 2009/08/11 Ver1.9 Mod Start */
+----                AND flv.language              = USERENV( 'LANG' )
+--                AND flv.language              = ct_lang
+--/* 2009/08/11 Ver1.9 Mod End   */
+--                AND flv.enabled_flag          = ct_enabled_flag_yes
+--/* 2009/08/11 Ver1.9 Del Start */
+----                AND ROWNUM                    = 1
+--/* 2009/08/11 Ver1.9 Del End   */
+--              )
+--          AND scm.sale_class                  = NVL( oola.attribute5, scdm.sale_class_default )
+--          AND TRUNC( ooha.ordered_date )      >= scm.start_date_active
+--          AND TRUNC( ooha.ordered_date )      <= scm.end_date_active
+          AND (   ( cv_bargain_class_all = gv_bargain_class )
+               OR ( xeh.ar_sale_class    = gv_bargain_class )   )
+/* 2009/08/20 Ver1.10 Mod End   */
 -- 2009/07/10 Ver1.7 Add Start *
           AND (   ooha.global_attribute3 IS NULL
                OR ooha.global_attribute3 IN ( cv_info_class_01, cv_info_class_02 ) )
