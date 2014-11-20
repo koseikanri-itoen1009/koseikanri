@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,8 @@ AS
  *                                                       件数カウント単位の同期対応
  *  2010/03/09    1.16  S.Karikomi       [E_本稼働_01637]売単価、売価金額修正
  *  2010/03/11    1.17  S.Karikomi       [E_本稼働_01848]納品日変更対応
+ *  2010/03/18    1.18  S.Karikomi       [E_本稼働_01903]売単価、売価金額取得先修正
+ *                                                       対象件数0件時のステータス変更対応
  *
  *****************************************************************************************/
 --
@@ -1046,8 +1048,22 @@ AS
           ,xel.order_cost_amt                   order_cost_amt                 -- EDI明細情報.原価金額(発注)
           ,xel.shipping_cost_amt                shipping_cost_amt              -- EDI明細情報.原価金額(出荷)
           ,xel.stockout_cost_amt                stockout_cost_amt              -- EDI明細情報.原価金額(欠品)
-          ,xel.selling_price                    selling_price                  -- EDI明細情報.売単価
-          ,xel.order_price_amt                  order_price_amt                -- EDI明細情報.売価金額(発注)
+/* 2010/03/18 Ver1.18 Mod Start */
+--          ,xel.selling_price                    selling_price                  -- EDI明細情報.売単価
+          ,CASE
+             WHEN ( ooha.order_source_id = gt_order_source_online ) THEN
+               TO_NUMBER ( oola.attribute10 )
+             ELSE
+               xel.selling_price
+           END                                  selling_price
+--          ,xel.order_price_amt                  order_price_amt                -- EDI明細情報.売価金額(発注)
+          ,CASE
+             WHEN ( ooha.order_source_id = gt_order_source_online ) THEN
+               TO_NUMBER ( oola.attribute10 * oola.ordered_quantity )
+             ELSE
+               xel.order_price_amt
+           END                                  order_price_amt
+/* 2010/03/18 Ver1.18 Mod  End  */
           ,xel.shipping_price_amt               shipping_price_amt             -- EDI明細情報.売価金額(出荷)
           ,xel.stockout_price_amt               stockout_price_amt             -- EDI明細情報.売価金額(欠品)
           ,xel.a_column_department              a_column_department            -- EDI明細情報.Ａ欄(百貨店)
@@ -5489,6 +5505,13 @@ AS
       );
     END IF;
 /* 2009/02/24 Ver1.2 Mod  End  */
+/* 2010/03/18 Ver1.18 Add Start */
+    --対象件数が0件でリターンコードが正常の場合、終了ステータスを「警告」とする
+    IF ( gn_target_cnt = cn_0 ) 
+         AND ( lv_retcode = cv_status_normal ) THEN
+      lv_retcode := cv_status_warn;
+    END IF;
+/* 2010/03/18 Ver1.18 Add  End  */
     --対象件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
