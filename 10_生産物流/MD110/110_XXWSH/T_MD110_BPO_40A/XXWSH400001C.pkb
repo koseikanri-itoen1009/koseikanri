@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  pro_load_eff_chk           P 積載効率チェック                   (A-10)
  *  pro_headers_create         P 受注ヘッダアドオンレコード生成     (A-11)
  *  pro_ship_order             P 出荷依頼登録処理                   (A-12)
+ *  pro_no_item_category_chk   P 品目カテゴリ設定チェック           (A-13)
  *  submain                    P メイン処理プロシージャ
  *  main                       P コンカレント実行ファイル登録プロシージャ
  *
@@ -59,6 +60,7 @@ AS
  *  2009/01/08    1.18  SCS    伊藤ひとみ  本番障害#894対応
  *  2009/01/30    1.19  SCS    伊藤ひとみ  本番障害#994対応
  *  2009/06/25    1.20  SCS    伊藤ひとみ  本番障害#1436対応
+ *  2009/07/08    1.21  SCS    伊藤ひとみ  本番障害#1525対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -342,6 +344,9 @@ AS
                 xxwsh_order_headers_all.program_id%TYPE INDEX BY BINARY_INTEGER;
   TYPE h_program_update_date         IS TABLE OF
                 xxwsh_order_headers_all.program_update_date%TYPE INDEX BY BINARY_INTEGER;
+-- 2009/07/08 H.Itou Add Start 本番障害#1525
+  TYPE ref_cursor                    IS REF CURSOR ; -- カーソル型
+-- 2009/07/08 H.Itou Add End
 --
 --#######################  固定グローバル変数宣言部 START   #######################
 --
@@ -388,6 +393,10 @@ AS
                                                           -- 受注タイプ取得エラーメッセージ
   gv_err_cik         CONSTANT VARCHAR2(20) := 'APP-XXCMN-10121';
                                                           -- クイックコード取得エラーメッセージ
+-- 2009/07/08 H.Itou Add Start 本番障害#1525
+  gv_err_item        CONSTANT VARCHAR2(20) := 'APP-XXWSH-10026';
+                                                          -- 品目カテゴリ割当未設定エラーメッセージ
+-- 2009/07/08 H.Itou Add End
 --
   gv_tkn_msg_org     CONSTANT VARCHAR2(20) := 'XXCMN:マスタ組織';
   gv_tkn_msg_tran    CONSTANT VARCHAR2(25) := 'XXWSH:出庫形態_引取計画';
@@ -401,6 +410,9 @@ AS
   gv_tkn_order_type  CONSTANT VARCHAR2(10) := 'ORDER_TYPE';
   gv_tkn_lookup_type CONSTANT VARCHAR2(15) := 'LOOKUP_TYPE';
   gv_tkn_meaning     CONSTANT VARCHAR2(10) := 'MEANING';
+-- 2009/07/08 H.Itou Add Start 本番障害#1525
+  gv_tkn_item_no     CONSTANT VARCHAR2(10) := 'ITEM_NO';
+-- 2009/07/08 H.Itou Add End
   -- エラーメッセージリスト項目
   gv_tkn_msg_hfn     CONSTANT VARCHAR2(1)  := '-';
   gv_tkn_msg_err     CONSTANT VARCHAR2(6)  := 'エラー';
@@ -3868,6 +3880,163 @@ AS
 --
   END pro_ship_order;
 --
+-- 2009/07/08 H.Itou Add Start 本番障害#1525
+  /**********************************************************************************
+   * Procedure Name   : pro_no_item_category_chk
+   * Description      : 品目カテゴリ設定チェック (A-13)
+   ***********************************************************************************/
+  PROCEDURE pro_no_item_category_chk
+    (
+      ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ           --# 固定 #
+     ,ov_retcode    OUT VARCHAR2     -- リターン・コード             --# 固定 #
+     ,ov_errmsg     OUT VARCHAR2     -- ユーザー・エラー・メッセージ --# 固定 #
+    )
+  IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'pro_no_item_category_chk'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+   -- *** レコード型宣言 ***
+    TYPE rec_item_data IS RECORD(
+      item_code       xxcmn_item_mst_v.item_no                %TYPE -- 品目コード
+     ,item_class_code xxcmn_item_categories5_v.item_class_code%TYPE -- 品目区分
+     ,prod_class_code xxcmn_item_categories5_v.prod_class_code%TYPE -- 商品区分
+    );
+--
+   -- *** 配列型宣言 ***
+   TYPE tab_item_data IS TABLE OF rec_item_data INDEX BY BINARY_INTEGER ;
+--
+    -- *** ローカル変数 ***
+    lv_sql    VARCHAR2(30000);
+--
+    lr_item_data tab_item_data;
+--
+    -- *** カーソル宣言 ***
+    cur_item_data  ref_cursor ;    -- カーソル
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ==========================
+    -- SQL文生成
+    -- ==========================
+    lv_sql := '
+      SELECT ximv.item_no               item_code                -- 品目コード
+            ,xicv.item_class_code       item_class_code          -- 品目区分
+            ,xicv.prod_class_code       prod_class_code          -- 商品区分
+      FROM   mrp_forecast_designators   mfds                     -- フォーキャスト名
+            ,mrp_forecast_dates         mfd                      -- フォーキャスト日付
+            ,xxcmn_item_mst_v           ximv                     -- OPM品目情報VIEW
+            ,xxcmn_item_categories5_v   xicv                     -- OPM品目カテゴリ割当情報VIEW
+      WHERE  mfds.forecast_designator = mfd.forecast_designator  -- フォーキャスト名
+      AND    mfds.organization_id     = mfd.organization_id      -- 組織ID
+      AND    mfd.inventory_item_id    = ximv.inventory_item_id   -- 品目
+      AND    ximv.item_id             = xicv.item_id(+)          -- 品目
+      AND    mfds.attribute1          = ''' || gv_h_plan || '''  -- 引取計画 01
+      AND    TO_CHAR(mfd.forecast_date,''YYYYMM'') = :yyyymm     -- 入力Ｐ[対象年月]
+      ';
+--
+    IF (gr_param.base IS NOT NULL) THEN -- 入力Ｐ[管轄拠点]に入力ありの場合、条件に追加
+      lv_sql := lv_sql || '
+      AND    mfds.attribute3          = :base                    -- 入力Ｐ[管轄拠点]
+      ';
+--
+    ELSE
+      lv_sql := lv_sql || '
+      AND    :base                   IS NULL                     -- 入力Ｐ[管轄拠点]の条件なし
+      ';
+    END IF;
+--
+    lv_sql := lv_sql || '
+      GROUP BY
+            ximv.item_no
+           ,xicv.item_class_code
+           ,xicv.prod_class_code
+     ';
+--
+    FND_FILE.PUT_LINE(FND_FILE.LOG, '*** (A-13) SQL ***');
+    FND_FILE.PUT_LINE(FND_FILE.LOG, lv_sql);
+    -- ======================================
+    -- カーソルOPEN
+    -- ======================================
+    OPEN  cur_item_data FOR lv_sql
+    USING gr_param.yyyymm
+         ,gr_param.base
+    ;
+--
+    -- ======================================
+    -- カーソルFETCH
+    -- ======================================
+    FETCH cur_item_data BULK COLLECT INTO lr_item_data;
+--
+    -- ======================================
+    -- カーソルCLOSE
+    -- ======================================
+    CLOSE cur_item_data;
+--
+    -- ======================================
+    -- 対象品目データLOOP(全件チェックを行う)
+    -- ======================================
+    <<item_loop>>
+    FOR ln_loop_cnt IN 1..lr_item_data.COUNT LOOP
+      -- 商品区分か品目区分が設定されていない場合、エラー
+      IF ( ( lr_item_data(ln_loop_cnt).item_class_code IS NULL )
+        OR ( lr_item_data(ln_loop_cnt).prod_class_code IS NULL ) ) THEN
+        -- メッセージ取得
+        lv_errmsg := xxcmn_common_pkg.get_msg(
+                       gv_application
+                      ,gv_err_item
+                      ,gv_tkn_item_no
+                      ,lr_item_data(ln_loop_cnt).item_code -- 品目コード
+                     );
+--
+        -- メッセージ出力
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);
+--
+        -- エラー終了
+        ov_retcode := gv_status_error;
+        ov_errbuf  := '商品区分か品目区分が設定されていない品目があります。出力の表示を参照して下さい。';
+      END IF;
+    END LOOP item_loop;
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END pro_no_item_category_chk;
+-- 2009/07/08 H.itou Add End
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -3931,6 +4100,20 @@ AS
     -- 共通エラーメッセージ 終了ST初期化
     gv_err_sts       := gv_status_normal;
 --
+-- 2009/07/08 H.Itou Add Start 本番障害#1525
+    -- =====================================================
+    --  品目カテゴリ設定チェック (A-13)
+    -- =====================================================
+    pro_no_item_category_chk
+      (
+        ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+       ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
+       ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+-- 2009/07/08 H.Itou Add End
     -- =====================================================
     --  関連データ取得 (A-1)
     -- =====================================================
