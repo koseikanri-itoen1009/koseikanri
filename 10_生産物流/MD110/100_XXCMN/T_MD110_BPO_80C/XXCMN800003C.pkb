@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 従業員インタフェース T_MD070_BPO_80C
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2008/05/19    1.1   Oracle 山根 一浩 変更要求No54対応
  *  2008/05/27    1.2   Oracle 丸下 博宣 内部変更要求No122対応
  *  2008/07/07    1.3   Oracle 山根 一浩 I_S_192対応,内部変更要求No43対応
+ *  2008/10/06    1.4   Oracle 椎名 昭圭 統合障害#304対応
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -4282,6 +4283,8 @@ AS
              hla.attribute12,                        -- 担当職責８
              hla.attribute13,                        -- 担当職責９
              hla.attribute14                         -- 担当職責１０
+-- 2008/10/06 v1.4 UPDATE START
+/*
       FROM   per_all_people_f ppf,                   -- 従業員マスタ
              per_all_assignments_f paf,              -- 従業員割当マスタ
              hr_locations_all hla                    -- 事業所マスタ
@@ -4291,6 +4294,10 @@ AS
       AND    hla.location_id     = paf.location_id
       AND    paf.effective_start_date <= SYSDATE
       AND    paf.effective_end_date >= SYSDATE;
+*/
+      FROM   hr_locations_all hla                    -- 事業所マスタ
+      WHERE  hla.location_code   = ir_masters_rec.base_code;
+-- 2008/10/06 v1.4 UPDATE END
 --
     -- *** ローカル・レコード ***
 --
