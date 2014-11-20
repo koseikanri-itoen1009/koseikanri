@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2009/12/09    1.18  K.Nakamura       [本稼動_00171] 伝票計の計算を伝票単位へ変更
  *  2010/01/05    1.19  N.Maeda          [E_本稼動_00862] ＪＡＮコード取得設定内容修正
  *  2010/01/06    1.20  N.Maeda          [E_本稼動_00552] 取引先名称のスペース削除
+ *  2010/02/19    1.21  S.Karikomi       [E_本稼動_01440] 端数処理対応
  *
  *****************************************************************************************/
 --
@@ -2933,12 +2934,21 @@ AS
 --               WHEN ottt_l.description        = ct_msg_line_type30 THEN
                WHEN ottt_l.description        = i_msg_rec.line_type30 THEN
 --******************************************* 2009/05/21 Ver.1.10 M.Sano ADD  END  *****************************************
-                 TO_CHAR( TO_NUMBER( oola.unit_selling_price )
-                        * TO_NUMBER( oola.ordered_quantity )
-                        * -1 )
+--******************************************* 2010/02/18 Ver.1.21 S.Karikomi MOD START *************************************
+--                 TO_CHAR( TO_NUMBER( oola.unit_selling_price )
+--                        * TO_NUMBER( oola.ordered_quantity )
+--                        * -1 )
+                 TO_CHAR( TRUNC( TO_NUMBER( oola.unit_selling_price )
+                               * TO_NUMBER( oola.ordered_quantity )
+                               * -1 ) )
+--******************************************* 2010/02/18 Ver.1.21 S.Karikomi MOD  END  *************************************
                ELSE
-                 TO_CHAR( TO_NUMBER( oola.unit_selling_price )
-                        * TO_NUMBER( oola.ordered_quantity ) )
+--******************************************* 2010/02/18 Ver.1.21 S.Karikomi MOD START *************************************
+--                 TO_CHAR( TO_NUMBER( oola.unit_selling_price )
+--                        * TO_NUMBER( oola.ordered_quantity ) )
+                TO_CHAR( TRUNC ( TO_NUMBER( oola.unit_selling_price )
+                               * TO_NUMBER( oola.ordered_quantity ) ) )
+--******************************************* 2010/02/18 Ver.1.21 S.Karikomi MOD  END  *************************************
              END                                                                shipping_cost_amt             --原価金額（出荷）
             ,NULL                                                               stockout_cost_amt             --原価金額（欠品）
             ,NULL                                                               selling_price                 --売単価
