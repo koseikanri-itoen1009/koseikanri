@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : 帳合問屋に関する請求書と見積書を突き合わせ、品目別に請求書と見積書の内容を表示
  * MD.050           : 問屋販売条件支払チェック表 MD050_COK_021_A06
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2010/01/27    1.9   K.Kiriu          [E_本稼動_01176] 口座種別追加に伴う口座種別名取得元クイックコード変更
  *  2010/04/23    1.10  K.Yamaguchi      [E_本稼動_02088] NET掛け率・CSマージン額で請求単位（ボール）を考慮
  *  2012/03/12    1.11  K.Nakamura       [E_本稼動_08318] レイアウト改修対応
+ *  2012/07/12    1.12  S.Niki           [E_本稼動_09806] 単位別にNET価格と営業原価の比較方法を変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -637,6 +638,9 @@ AS
     lv_error_rate            VARCHAR2(2)    DEFAULT NULL;              -- 異常率
     lv_chilled_flag          VARCHAR2(1)    DEFAULT NULL;              -- チルド品判定フラグ
 -- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
+-- 2012/07/12 Ver.1.12 [E_本稼動_09806] SCSK S.Niki ADD START
+    ln_trading_cost          NUMBER         DEFAULT NULL;              -- 営業原価(比較用)
+-- 2012/07/12 Ver.1.12 [E_本稼動_09806] SCSK S.Niki ADD END
 --
   BEGIN
     -- ===============================================
@@ -673,9 +677,30 @@ AS
       IF ( gv_estimated_type = cv_quote_div_no ) THEN
         lv_stamp := g_lookup_stamp_tab( cv_index_1 ).meaning;
       -- 営業原価＞NET価格の場合の表示
-      ELSIF ( gv_estimated_type IS NOT NULL )
-        AND ( g_target_tab( in_i ).trading_cost > gn_net_selling_price ) THEN
-        lv_stamp := g_lookup_stamp_tab( cv_index_2 ).meaning;
+-- 2012/07/12 Ver.1.12 [E_本稼動_09806] SCSK S.Niki MOD START
+--      ELSIF ( gv_estimated_type IS NOT NULL )
+--        AND ( g_target_tab( in_i ).trading_cost > gn_net_selling_price ) THEN
+--        lv_stamp := g_lookup_stamp_tab( cv_index_2 ).meaning;
+      ELSIF ( gv_estimated_type IS NOT NULL ) THEN
+        -- 単位：本の場合、営業原価
+        IF ( g_target_tab( in_i ).demand_unit_type = cv_unit_type_unit ) THEN
+          ln_trading_cost := g_target_tab( in_i ).trading_cost;
+        -- 単位：ケースの場合、営業原価 * ケース入数
+        ELSIF ( g_target_tab( in_i ).demand_unit_type = cv_unit_type_cs ) THEN
+          ln_trading_cost := g_target_tab( in_i ).trading_cost
+                           * NVL( g_target_tab( in_i ).cs_count, 0 );
+        -- 単位：ボールの場合、営業原価 * ボール入数
+        ELSIF ( g_target_tab( in_i ).demand_unit_type = cv_unit_type_bl ) THEN
+          ln_trading_cost := g_target_tab( in_i ).trading_cost
+                           * NVL( g_target_tab( in_i ).bl_count, 0 );
+        END IF;
+        -- ===============================================
+        -- 営業原価(比較用)＞NET価格の場合、印を表示
+        -- ===============================================
+        IF ( ln_trading_cost > gn_net_selling_price ) THEN
+          lv_stamp := g_lookup_stamp_tab( cv_index_2 ).meaning;
+        END IF;
+-- 2012/07/12 Ver.1.12 [E_本稼動_09806] SCSK S.Niki MOD END
       END IF;
 -- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
       -- ===============================================
