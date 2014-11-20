@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -45,9 +45,10 @@ AS
  *  2008/10/16    1.10 Oracle H.Itou     T_S_625,統合テスト指摘369
  *  2008/10/24    1.11 Oracle H.Itou     T_TE080_BPO_600指摘26
  *  2008/10/30    1.12 Oracle H.Itou     統合テスト指摘526
- *  2008/11/19    1.13 Oracle H.Itou     統合テスト指摘666
- *  2008/11/29    1.14 Oracle MIYATA     ロック対応 NO WAIT　を削除してWAITにする
- *  2008/12/02    1.15 Oracle H.Itou     本番障害#220対応
+ *  2008/11/19    1.13 SCS    H.Itou     統合テスト指摘666
+ *  2008/11/29    1.14 SCS    MIYATA     ロック対応 NO WAIT　を削除してWAITにする
+ *  2008/12/02    1.15 SCS    H.Itou     本番障害#220対応
+ *  2008/12/07    1.16 SCS    D.Sugahara 本番障害#524暫定対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2647,7 +2648,36 @@ debug_log(FND_FILE.LOG,'混載配送区分:'||lv_mixed_ship_method);
 -- Ver1.7 M.Hokkanji START
         IF (lv_retcode <> gv_status_normal) THEN
 --        IF (lv_retcode = gv_status_error) THEN
-          lv_errmsg := lv_errbuf;
+-- Ver1.16 2008/12/07 START
+--          lv_errmsg := lv_errbuf;
+        BEGIN
+          lv_errmsg  :=  to_char(rec_cnt.sum_weight) -- 1.合計重量
+                          || gv_msg_comma ||
+                          NULL                -- 2.合計容積
+                          || gv_msg_comma ||
+                          gv_cdkbn_storage    -- 3.コード区分１
+                          || gv_msg_comma ||
+                          rec_cnt.deliver_from  -- 4.入出庫場所コード１
+                          || gv_msg_comma ||
+                          gv_cdkbn_ship_to      -- 5.コード区分２
+                          || gv_msg_comma ||
+                          rec_cnt.deliver_to    -- 6.入出庫場所コード２
+                          || gv_msg_comma ||
+                          rec_cnt.max_shipping_method_code -- 7.出荷方法
+                          || gv_msg_comma ||
+                          gv_prod_class       -- 8.商品区分
+                          || gv_msg_comma ||
+                          cv_allocation       -- 9.自動配車対象区分
+                          || gv_msg_comma ||
+                          TO_CHAR(rec_cnt.schedule_ship_date, 'YYYY/MM/DD'); -- 10.基準日
+          lv_errmsg := lv_errmsg|| '(重量,容積,コード区分1,コード1,コード区分2,コード2';
+          lv_errmsg := lv_errmsg|| ',配送区分,商品区分,自動配車対象区分,基準日'; -- msg
+          lv_errmsg := lv_errmsg||lv_errbuf ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := lv_errbuf ;
+        END;
+-- Ver1.16 2008/12/07 END
 -- Ver1.7 M.Hokkanji End
 --
 debug_log(FND_FILE.LOG,'関数エラー');
@@ -2708,8 +2738,38 @@ debug_log(FND_FILE.LOG,'エラーメッセージ:'||lv_errmsg);
         -- 共通関数がエラーの場合
 -- Ver1.7 M.Hokkanji START
         IF (lv_retcode <> gv_status_normal) THEN
-          lv_errmsg := lv_errbuf;
+-- Ver1.16 2008/12/07 START
+--          lv_errmsg := lv_errbuf;
 --        IF (lv_retcode = gv_status_error) THEN
+--          lv_errmsg := lv_errbuf;
+        BEGIN
+          lv_errmsg  :=  NULL -- 1.合計重量
+                          || gv_msg_comma ||
+                          rec_cnt.sum_capacity                -- 2.合計容積
+                          || gv_msg_comma ||
+                          gv_cdkbn_storage    -- 3.コード区分１
+                          || gv_msg_comma ||
+                          rec_cnt.deliver_from  -- 4.入出庫場所コード１
+                          || gv_msg_comma ||
+                          gv_cdkbn_ship_to      -- 5.コード区分２
+                          || gv_msg_comma ||
+                          rec_cnt.deliver_to    -- 6.入出庫場所コード２
+                          || gv_msg_comma ||
+                          rec_cnt.max_shipping_method_code -- 7.出荷方法
+                          || gv_msg_comma ||
+                          gv_prod_class       -- 8.商品区分
+                          || gv_msg_comma ||
+                          cv_allocation       -- 9.自動配車対象区分
+                          || gv_msg_comma ||
+                          TO_CHAR(rec_cnt.schedule_ship_date, 'YYYY/MM/DD'); -- 10.基準日
+          lv_errmsg := lv_errmsg|| '(重量,容積,コード区分1,コード1,コード区分2,コード2';
+          lv_errmsg := lv_errmsg|| ',配送区分,商品区分,自動配車対象区分,基準日'; -- msg
+          lv_errmsg := lv_errmsg||lv_errbuf ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := lv_errbuf ;
+        END;
+-- Ver1.16 2008/12/07 End
 -- Ver1.7 M.Hokkanji End
           RAISE global_api_expt;
         END IF;
@@ -3315,7 +3375,38 @@ debug_log(FND_FILE.LOG,'B7_1.11 積載効率オーバーチェック(移動指示のみ)');
 -- Ver1.7 M.Hokkanji START
               IF (lv_retcode <> gv_status_normal) THEN
 --              IF (lv_retcode = gv_status_error) THEN
-                lv_errmsg := lv_errbuf;
+-- Ver1.16 2008/12/07 START
+--          lv_errmsg := lv_errbuf;
+--        IF (lv_retcode = gv_status_error) THEN
+--          lv_errmsg := lv_errbuf;
+        BEGIN
+          lv_errmsg  :=  it_group_sum_add_tab(ln_loop_cnt_1).sum_weight -- 1.合計重量
+                          || gv_msg_comma ||
+                          NULL                -- 2.合計容積
+                          || gv_msg_comma ||
+                          gv_cdkbn_storage    -- 3.コード区分１
+                          || gv_msg_comma ||
+                          it_group_sum_add_tab(ln_loop_cnt_1).ship_from  -- 4.入出庫場所コード１
+                          || gv_msg_comma ||
+                          lv_cdkbn_2      -- 5.コード区分２
+                          || gv_msg_comma ||
+                          it_group_sum_add_tab(ln_loop_cnt_1).ship_to    -- 6.入出庫場所コード２
+                          || gv_msg_comma ||
+                          it_group_sum_add_tab(ln_loop_cnt_1).max_shipping_method -- 7.出荷方法
+                          || gv_msg_comma ||
+                          gv_prod_class       -- 8.商品区分
+                          || gv_msg_comma ||
+                          cv_object       -- 9.自動配車対象区分
+                          || gv_msg_comma ||
+                          TO_CHAR(it_group_sum_add_tab(ln_loop_cnt_1).ship_date, 'YYYY/MM/DD'); -- 10.基準日
+          lv_errmsg := lv_errmsg|| '(重量,容積,コード区分1,コード1,コード区分2,コード2';
+          lv_errmsg := lv_errmsg|| ',配送区分,商品区分,自動配車対象区分,基準日'; -- msg
+          lv_errmsg := lv_errbuf ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := lv_errbuf ;
+        END;
+-- Ver1.16 2008/12/07 End
 -- Ver1.7 M.Hokkanji End
 debug_log(FND_FILE.LOG,'B7_1.111　移動積載効率オーバーチェック関数エラー(重量)');
                 RAISE global_api_expt;
@@ -3393,7 +3484,31 @@ debug_log(FND_FILE.LOG,'B7_1.13.0 積載容積合計:'||it_group_sum_add_tab(ln_loop_c
 -- Ver1.7 M.Hokkanji START
               IF (lv_retcode <> gv_status_normal) THEN
 --              IF (lv_retcode = gv_status_error) THEN
-                lv_errmsg := lv_errbuf;
+-- Ver1.16 2008/12/07 START
+--          lv_errmsg := lv_errbuf;
+          lv_errmsg  :=  NULL -- 1.合計重量
+                          || gv_msg_comma ||
+                          it_group_sum_add_tab(ln_loop_cnt_1).sum_capacity                -- 2.合計容積
+                          || gv_msg_comma ||
+                          gv_cdkbn_storage    -- 3.コード区分１
+                          || gv_msg_comma ||
+                          it_group_sum_add_tab(ln_loop_cnt_1).ship_from  -- 4.入出庫場所コード１
+                          || gv_msg_comma ||
+                          lv_cdkbn_2      -- 5.コード区分２
+                          || gv_msg_comma ||
+                          it_group_sum_add_tab(ln_loop_cnt_1).ship_to    -- 6.入出庫場所コード２
+                          || gv_msg_comma ||
+                          it_group_sum_add_tab(ln_loop_cnt_1).max_shipping_method -- 7.出荷方法
+                          || gv_msg_comma ||
+                          gv_prod_class       -- 8.商品区分
+                          || gv_msg_comma ||
+                          cv_object       -- 9.自動配車対象区分
+                          || gv_msg_comma ||
+                          TO_CHAR( it_group_sum_add_tab(ln_loop_cnt_1).ship_date, 'YYYY/MM/DD'); -- 10.基準日
+          lv_errmsg := lv_errmsg|| '(重量,容積,コード区分1,コード1,コード区分2,コード2';
+          lv_errmsg := lv_errmsg|| ',配送区分,商品区分,自動配車対象区分,基準日'; -- msg
+          lv_errmsg := lv_errmsg||lv_errbuf ;
+-- Ver1.16 2008/12/07 End          
 -- Ver1.7 M.Hokkanji End
 debug_log(FND_FILE.LOG,'B7_1.131　移動積載効率オーバーチェック関数エラー(容積)');
                 RAISE global_api_expt;
@@ -9040,7 +9155,37 @@ debug_log(FND_FILE.LOG,'B-15_g2 混載配送区分:' || lv_mixed_ship_method);
 -- Ver1.7 M.Hokkanji START
         IF (lv_retcode <> gv_status_normal) THEN
 --        IF (lv_retcode = gv_status_error) THEN
-          lv_errmsg := lv_errbuf;
+-- Ver1.16 2008/12/07 START
+--          lv_errmsg := lv_errbuf;
+--          lv_errmsg := lv_errbuf;
+        BEGIN
+          lv_errmsg  :=   NVL(lt_sum_weight,0) -- 1.合計重量
+                          || gv_msg_comma ||
+                          NULL                -- 2.合計容積
+                          || gv_msg_comma ||
+                          gv_cdkbn_storage    -- 3.コード区分１
+                          || gv_msg_comma ||
+                          lt_sort_deliver_from  -- 4.入出庫場所コード１
+                          || gv_msg_comma ||
+                          lv_code_kbn      -- 5.コード区分２
+                          || gv_msg_comma ||
+                          lt_sort_deliver_to    -- 6.入出庫場所コード２
+                          || gv_msg_comma ||
+                          cur_rec.fixed_shipping_method_code -- 7.出荷方法
+                          || gv_msg_comma ||
+                          lt_prod_class       -- 8.商品区分
+                          || gv_msg_comma ||
+                          NULL       -- 9.自動配車対象区分
+                          || gv_msg_comma ||
+                          TO_CHAR(lt_schedule_ship_date, 'YYYY/MM/DD'); -- 10.基準日
+          lv_errmsg := lv_errmsg|| '(重量,容積,コード区分1,コード1,コード区分2,コード2';
+          lv_errmsg := lv_errmsg|| ',配送区分,商品区分,自動配車対象区分,基準日'; -- msg
+          lv_errmsg := lv_errmsg||lv_errbuf ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := lv_errbuf ;
+        END;
+-- Ver1.16 2008/12/07 End
 -- Ver1.7 M.Hokkanji END
 --
 debug_log(FND_FILE.LOG,'B-15_g3【重量積載効率取得エラー】');
