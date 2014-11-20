@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A03C(body)
  * Description      : VDコラムマスタHHT連携
  * MD.050           : VDコラムマスタHHT連携 MD050_COI_010_A03
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2010/12/28    1.4   H.Sekine         [E_本稼動_05846]基準在庫数がNULLの場合、満タン数に'0'をセットするように変更
  *  2011/05/12    1.5   H.Sasaki         [E_本稼動_07319]一顧客の重複情報を排除
  *  2011/10/03    1.6   Y.Horikawa       [E_本稼動_08440]HHT2次開発（販売予測情報連携）
+ *  2012/01/17    1.7   Y.Horikawa       [E_本稼動_08919]HHT2次開発（販売予測情報連携）追加対応：次回補充の出力制御対応
  *
  *****************************************************************************************/
 --
@@ -1120,6 +1121,9 @@ AS
     cv_supply_instruction           CONSTANT VARCHAR2(30) := 'SUPPLY INSTRUCTION';
     cn_default_supply_inst_pct      CONSTANT NUMBER       := 0;
     cv_lookup_type_supply_inst      CONSTANT VARCHAR2(30) := 'XXCOI1_SUPPLY_INSTRUCTION';
+-- 2012/01/17 V1.7 Add Start =======================================================================
+    cv_flag_value_output            CONSTANT VARCHAR2(1) := 'Y';
+-- 2012/01/17 V1.7 Add End   =======================================================================
 --
     -- *** ローカル変数 ***
     lv_msg                          VARCHAR2(2000);
@@ -1136,6 +1140,9 @@ AS
     lv_next_supply                  VARCHAR2(10);
     lv_sales_forecast_fix_val       fnd_lookup_values.attribute5%TYPE;
     lv_supply_instruction           fnd_lookup_values.attribute1%TYPE;
+-- 2012/01/17 V1.7 Add Start =======================================================================
+    lv_next_supply_output_flag      fnd_lookup_values.attribute6%TYPE;
+-- 2012/01/17 V1.7 Add End   =======================================================================
 --
     -- *** ローカル・カーソル ***
     CURSOR get_workday_cur (
@@ -1337,8 +1344,14 @@ AS
       -- 補充指示出力内容取得
       SELECT flv.attribute1 attribute1,    -- 補充指示
              flv.attribute5 attribute5     -- 販売予測数固定文字
+-- 2012/01/17 V1.7 Add Start =======================================================================
+            ,flv.attribute6 attribute6     -- 次回補充出力フラグ
+-- 2012/01/17 V1.7 Add End   =======================================================================
       INTO  lv_supply_instruction,
             lv_sales_forecast_fix_val
+-- 2012/01/17 V1.7 Add Start =======================================================================
+           ,lv_next_supply_output_flag     -- 次回補充出力制御フラグ
+-- 2012/01/17 V1.7 Add End   =======================================================================
       FROM  fnd_lookup_values flv
       WHERE flv.lookup_type = cv_lookup_type_supply_inst
       AND   flv.language = USERENV('LANG')
@@ -1374,7 +1387,14 @@ AS
 --
     ov_sales_forecast_qty := NVL(lv_sales_forecast_fix_val, TO_CHAR(ln_sales_forecast_qty));
     ov_supply_instruction := lv_supply_instruction;
-    ov_next_supply := lv_next_supply;
+-- 2012/01/17 V1.7 Mod Start =======================================================================
+--    ov_next_supply := lv_next_supply;
+    IF (lv_next_supply_output_flag = cv_flag_value_output) THEN
+      ov_next_supply := lv_next_supply;
+    ELSE
+      ov_next_supply := NULL;
+    END IF;
+-- 2012/01/17 V1.7 Mod End   =======================================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
