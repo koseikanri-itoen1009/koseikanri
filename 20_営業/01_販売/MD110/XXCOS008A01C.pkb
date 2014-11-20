@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *                                                (A-5)売上対象区分は、子コードがあればチェックせず、なければチェックするよう変更
  *  2009/11/24    1.16  N.Maeda          [E_本稼動_00014] 出荷指示の改行コード対応
  *  2009/11/25    1.17  K.Atsushiba      [E_本稼動_00034]リーフの出荷依頼が明細毎に作成されないように修正
+ *  2009/12/01    1.18  K.Atsushiba      [E_本稼動_00206]無限ループ対応
  *
  *****************************************************************************************/
 --
@@ -4668,75 +4669,149 @@ AS
                 --
                 <<pallet_check_loop>>
                 WHILE (ln_loop_flag = 1 ) LOOP
-                  -- チェック本数設定(本数/パレット + 前回チェック数量)
-                  ln_check_qty := gt_order_sort_wk_tbl(lv_index).qty_palette + ln_save_check_qty;
-                  -- 今回チェックで積み増す本数
-                  ln_now_check_qty := gt_order_sort_wk_tbl(lv_index).qty_palette;
-                  --
-                  -- ==============================================
-                  -- 合計重量・合計容積・合計パレット重量を取得
-                  -- ==============================================
-                  xxwsh_common910_pkg.calc_total_value(
-                     iv_item_no            => gt_order_sort_wk_tbl(lv_index).item_code           -- 品目コード
-                    ,in_quantity           => ln_check_qty                                       -- 数量
-                    ,ov_retcode            => lv_retcode                                         -- リターンコード
-                    ,ov_errmsg_code        => lv_errbuf                                          -- エラーメッセージコード
-                    ,ov_errmsg             => lv_errmsg                                          -- エラーメッセージ
-                    ,on_sum_weight         => ln_sum_weight                                      -- 合計重量
-                    ,on_sum_capacity       => ln_sum_capacity                                    -- 合計容積
-                    ,on_sum_pallet_weight  => gt_order_sort_wk_tbl(lv_index).sum_pallet_weight   -- 合計パレット重量
-                    ,id_standard_date      => gt_order_sort_wk_tbl(lv_index).schedule_ship_date  -- 基準日(適用日基準日)
-                  );
-                  --
-                  -- リターンコードチェック
-                  IF ( lv_retcode = cv_status_normal ) THEN
-                    -- 正常の場合
-                    IF ( lv_small_amount_class <> cv_small_amount_class ) THEN
-                      -- 小口区分が小口以外の場合、合計重量に合計パレット重量を加算
-                      ln_sum_weight := ln_sum_weight + gt_order_sort_wk_tbl(lv_index).sum_pallet_weight;
-                    END IF;
-                    --
-                    IF ( ln_consolidation_flag = 1 ) THEN
-                       ln_sum_weight := ln_sum_weight + ln_save_weight;
-                    END IF;
+/* 2009/12/01 Ver1.18 Add Start */
+                  IF ( ln_total_palette > 0 ) THEN
+/* 2009/12/01 Ver1.18 Add END */
+                    -- チェック本数設定(本数/パレット + 前回チェック数量)
+                    ln_check_qty := gt_order_sort_wk_tbl(lv_index).qty_palette + ln_save_check_qty;
+                    -- 今回チェックで積み増す本数
+                    ln_now_check_qty := gt_order_sort_wk_tbl(lv_index).qty_palette;
                     --
                     -- ==============================================
-                    -- 積載効率算出
+                    -- 合計重量・合計容積・合計パレット重量を取得
                     -- ==============================================
-                    xxwsh_common910_pkg.calc_load_efficiency(
-                       in_sum_weight                 =>  ln_sum_weight                                       -- 1.合計重量
-                      ,in_sum_capacity               =>  NULL                                                -- 2.合計容積
-                      ,iv_code_class1                =>  cv_warehouse_code                                   -- 3.コード区分１
-                      ,iv_entering_despatching_code1 =>  gt_order_sort_wk_tbl(lv_index).ship_to_subinv             -- 4.入出庫場所コード１
-                      ,iv_code_class2                =>  cv_delivery_code                     -- 5.コード区分２
-                      ,iv_entering_despatching_code2 =>  gt_order_sort_wk_tbl(lv_index).province                               -- 6.入出庫場所コード２
-                      ,iv_ship_method                =>  lv_max_ship_methods                                 -- 7.出荷方法
-                      ,iv_prod_class                 =>  gt_order_sort_wk_tbl(lv_index).prod_class_code      -- 8.商品区分
-                      ,iv_auto_process_type          =>  NULL                                  -- 9.自動配車対象区分
-                      ,id_standard_date              =>  gt_order_sort_wk_tbl(lv_index).schedule_ship_date   -- 10.基準日(適用日基準日)
-                      ,ov_retcode                    =>  lv_retcode                                          -- 11.リターンコード
-                      ,ov_errmsg_code                =>  lv_errbuf                                           -- 12.エラーメッセージコード
-                      ,ov_errmsg                     =>  lv_errmsg                                           -- 13.エラーメッセージ
-                      ,ov_loading_over_class         =>  lv_loading_over_class                               -- 14.積載オーバー区分
-                      ,ov_ship_methods               =>  lv_ship_methods                                     -- 15.出荷方法
-                      ,on_load_efficiency_weight     =>  ln_load_efficiency_weight                           -- 16.重量積載効率
-                      ,on_load_efficiency_capacity   =>  ln_load_efficiency_capacity                         -- 17.容積積載効率
-                      ,ov_mixed_ship_method          =>  lv_mixed_ship_method                                -- 18.混載配送区分
+                    xxwsh_common910_pkg.calc_total_value(
+                       iv_item_no            => gt_order_sort_wk_tbl(lv_index).item_code           -- 品目コード
+                      ,in_quantity           => ln_check_qty                                       -- 数量
+                      ,ov_retcode            => lv_retcode                                         -- リターンコード
+                      ,ov_errmsg_code        => lv_errbuf                                          -- エラーメッセージコード
+                      ,ov_errmsg             => lv_errmsg                                          -- エラーメッセージ
+                      ,on_sum_weight         => ln_sum_weight                                      -- 合計重量
+                      ,on_sum_capacity       => ln_sum_capacity                                    -- 合計容積
+                      ,on_sum_pallet_weight  => gt_order_sort_wk_tbl(lv_index).sum_pallet_weight   -- 合計パレット重量
+                      ,id_standard_date      => gt_order_sort_wk_tbl(lv_index).schedule_ship_date  -- 基準日(適用日基準日)
                     );
+                    --
                     -- リターンコードチェック
                     IF ( lv_retcode = cv_status_normal ) THEN
                       -- 正常の場合
-                      IF ( ln_load_efficiency_weight <= 100 ) THEN
-                        -- 積載効率が100%以下の場合
-                        ln_save_check_qty := ln_check_qty;
-                        ln_total_palette := ln_total_palette - 1;
-                        --
-                        ln_check_palette := ln_check_palette + 1;
-                      ELSE
-                        -- 積載効率が100%より大きい場合
-                        ln_palette_over_flag := cn_efficiency_over;
+                      IF ( lv_small_amount_class <> cv_small_amount_class ) THEN
+                        -- 小口区分が小口以外の場合、合計重量に合計パレット重量を加算
+                        ln_sum_weight := ln_sum_weight + gt_order_sort_wk_tbl(lv_index).sum_pallet_weight;
                       END IF;
                       --
+                      IF ( ln_consolidation_flag = 1 ) THEN
+                         ln_sum_weight := ln_sum_weight + ln_save_weight;
+                      END IF;
+                      --
+                      -- ==============================================
+                      -- 積載効率算出
+                      -- ==============================================
+                      xxwsh_common910_pkg.calc_load_efficiency(
+                         in_sum_weight                 =>  ln_sum_weight                                       -- 1.合計重量
+                        ,in_sum_capacity               =>  NULL                                                -- 2.合計容積
+                        ,iv_code_class1                =>  cv_warehouse_code                                   -- 3.コード区分１
+                        ,iv_entering_despatching_code1 =>  gt_order_sort_wk_tbl(lv_index).ship_to_subinv             -- 4.入出庫場所コード１
+                        ,iv_code_class2                =>  cv_delivery_code                     -- 5.コード区分２
+                        ,iv_entering_despatching_code2 =>  gt_order_sort_wk_tbl(lv_index).province                               -- 6.入出庫場所コード２
+                        ,iv_ship_method                =>  lv_max_ship_methods                                 -- 7.出荷方法
+                        ,iv_prod_class                 =>  gt_order_sort_wk_tbl(lv_index).prod_class_code      -- 8.商品区分
+                        ,iv_auto_process_type          =>  NULL                                  -- 9.自動配車対象区分
+                        ,id_standard_date              =>  gt_order_sort_wk_tbl(lv_index).schedule_ship_date   -- 10.基準日(適用日基準日)
+                        ,ov_retcode                    =>  lv_retcode                                          -- 11.リターンコード
+                        ,ov_errmsg_code                =>  lv_errbuf                                           -- 12.エラーメッセージコード
+                        ,ov_errmsg                     =>  lv_errmsg                                           -- 13.エラーメッセージ
+                        ,ov_loading_over_class         =>  lv_loading_over_class                               -- 14.積載オーバー区分
+                        ,ov_ship_methods               =>  lv_ship_methods                                     -- 15.出荷方法
+                        ,on_load_efficiency_weight     =>  ln_load_efficiency_weight                           -- 16.重量積載効率
+                        ,on_load_efficiency_capacity   =>  ln_load_efficiency_capacity                         -- 17.容積積載効率
+                        ,ov_mixed_ship_method          =>  lv_mixed_ship_method                                -- 18.混載配送区分
+                      );
+                      -- リターンコードチェック
+                      IF ( lv_retcode = cv_status_normal ) THEN
+                        -- 正常の場合
+                        IF ( ln_load_efficiency_weight <= 100 ) THEN
+                          -- 積載効率が100%以下の場合
+                          ln_save_check_qty := ln_check_qty;
+                          ln_total_palette := ln_total_palette - 1;
+                          --
+                          ln_check_palette := ln_check_palette + 1;
+                        ELSE
+                          -- 積載効率が100%より大きい場合
+                          ln_palette_over_flag := cn_efficiency_over;
+                        END IF;
+                        --
+/* 2009/12/01 Ver1.18 Add Start */
+                      ELSE
+                        -- 積載効率算出エラーの場合
+                        ov_retcode := cv_status_warn;
+                        -- メッセージ作成
+                        lv_output_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_xxcos_short_name             -- アプリケーション短縮名
+                          ,iv_name         => cv_calc_load_efficiency_err     -- メッセージ
+                          ,iv_token_name1  => cv_tkn_item_div_name            -- 商品区分コード
+                          ,iv_token_value1 => gt_order_sort_wk_tbl(lv_index).prod_class_code
+                          ,iv_token_name2  => cv_tkn_sum_weight               -- 合計重量
+                          ,iv_token_value2 => ln_sum_weight
+                          ,iv_token_name3  => cv_tkn_sum_capacity             -- 合計容積
+                          ,iv_token_value3 => ''
+                          ,iv_token_name4  => cv_tkn_whse_locat               -- 出荷元保管場所
+                          ,iv_token_value4 => gt_order_sort_wk_tbl(lv_index).ship_to_subinv
+                          ,iv_token_name5  => cv_tkn_delivery_code            -- 配送先コード
+                          ,iv_token_value5 => gt_order_sort_wk_tbl(lv_index).province
+                          ,iv_token_name6  => cv_tkn_ship_method              -- 最大配送区分
+                          ,iv_token_value6 => lv_max_ship_methods
+                          ,iv_token_name7  => cv_tkn_schedule_ship_date       -- 出荷予定日
+                          ,iv_token_value7 => TO_CHAR(gt_order_sort_wk_tbl(lv_index).schedule_ship_date, cv_date_fmt_date_time)
+                          ,iv_token_name8  => cv_tkn_err_msg                  -- エラーメッセージ
+                          ,iv_token_value8 => lv_errmsg
+                        );
+                        -- メッセージ出力
+                        fnd_file.put_line(
+                           which  => FND_FILE.OUTPUT
+                          ,buff   => lv_output_msg
+                        );
+                        -- 空行出力
+                        fnd_file.put_line(
+                           which  => FND_FILE.OUTPUT
+                          ,buff   => NULL
+                        );
+                        -- ループを抜ける
+                        EXIT;
+                      END IF;
+                    ELSE
+                      -- 合計重量・合計容積取得エラー
+                      ov_retcode := cv_status_warn;
+                      -- メッセージ作成
+                      lv_output_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
+                        ,iv_name         => cv_calc_total_value_err              -- メッセージ
+                        ,iv_token_name1  => cv_tkn_order_no             -- 受注番号
+                        ,iv_token_value1 => gt_order_sort_wk_tbl(lv_index).order_number
+                        ,iv_token_name2  => cv_tkn_item_code            -- 受注品目
+                        ,iv_token_value2 => gt_order_sort_wk_tbl(lv_index).item_code
+                        ,iv_token_name3  => cv_tkn_ordered_quantity     -- 受注数量
+                        ,iv_token_value3 => ln_check_qty
+                        ,iv_token_name4  => cv_tkn_schedule_ship_date   -- 出荷予定日
+                        ,iv_token_value4 => TO_CHAR(gt_order_sort_wk_tbl(lv_index).schedule_ship_date, cv_date_fmt_date_time)
+                        ,iv_token_name5  => cv_tkn_err_msg              -- エラーメッセージ
+                        ,iv_token_value5 => lv_errmsg
+                      );
+                      -- メッセージ出力
+                      fnd_file.put_line(
+                         which  => FND_FILE.OUTPUT
+                        ,buff   => lv_output_msg
+                      );
+                      -- 空行出力
+                      fnd_file.put_line(
+                         which  => FND_FILE.OUTPUT
+                        ,buff   => NULL
+                      );
+                      -- ループを抜ける
+                      EXIT;
+                    END IF;
+                  END IF;
+/* 2009/12/01 Ver1.18 Add END */
                       IF ( ln_total_palette = 0 OR  ln_palette_over_flag = cn_efficiency_over ) THEN
                         IF ( ln_total_step > 0 ) THEN
                           -- ==============================================
@@ -5125,74 +5200,76 @@ AS
                           ln_loop_flag := 0;
                         END IF;
                       END IF;
-                    ELSE
-                      -- 積載効率算出エラーの場合
-                      ov_retcode := cv_status_warn;
-                      -- メッセージ作成
-                      lv_output_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_xxcos_short_name             -- アプリケーション短縮名
-                        ,iv_name         => cv_calc_load_efficiency_err     -- メッセージ
-                        ,iv_token_name1  => cv_tkn_item_div_name            -- 商品区分コード
-                        ,iv_token_value1 => gt_order_sort_wk_tbl(lv_index).prod_class_code
-                        ,iv_token_name2  => cv_tkn_sum_weight               -- 合計重量
-                        ,iv_token_value2 => ln_sum_weight
-                        ,iv_token_name3  => cv_tkn_sum_capacity             -- 合計容積
-                        ,iv_token_value3 => ''
-                        ,iv_token_name4  => cv_tkn_whse_locat               -- 出荷元保管場所
-                        ,iv_token_value4 => gt_order_sort_wk_tbl(lv_index).ship_to_subinv
-                        ,iv_token_name5  => cv_tkn_delivery_code            -- 配送先コード
-                        ,iv_token_value5 => gt_order_sort_wk_tbl(lv_index).province
-                        ,iv_token_name6  => cv_tkn_ship_method              -- 最大配送区分
-                        ,iv_token_value6 => lv_max_ship_methods
-                        ,iv_token_name7  => cv_tkn_schedule_ship_date       -- 出荷予定日
-                        ,iv_token_value7 => TO_CHAR(gt_order_sort_wk_tbl(lv_index).schedule_ship_date, cv_date_fmt_date_time)
-                        ,iv_token_name8  => cv_tkn_err_msg                  -- エラーメッセージ
-                        ,iv_token_value8 => lv_errmsg
-                      );
-                      -- メッセージ出力
-                      fnd_file.put_line(
-                         which  => FND_FILE.OUTPUT
-                        ,buff   => lv_output_msg
-                      );
-                      -- 空行出力
-                      fnd_file.put_line(
-                         which  => FND_FILE.OUTPUT
-                        ,buff   => NULL
-                      );
-                      -- ループを抜ける
-                      EXIT;
-                    END IF;
-                  ELSE
-                    -- 合計重量・合計容積取得エラー
-                    ov_retcode := cv_status_warn;
-                    -- メッセージ作成
-                    lv_output_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
-                      ,iv_name         => cv_calc_total_value_err              -- メッセージ
-                      ,iv_token_name1  => cv_tkn_order_no             -- 受注番号
-                      ,iv_token_value1 => gt_order_sort_wk_tbl(lv_index).order_number
-                      ,iv_token_name2  => cv_tkn_item_code            -- 受注品目
-                      ,iv_token_value2 => gt_order_sort_wk_tbl(lv_index).item_code
-                      ,iv_token_name3  => cv_tkn_ordered_quantity     -- 受注数量
-                      ,iv_token_value3 => ln_check_qty
-                      ,iv_token_name4  => cv_tkn_schedule_ship_date   -- 出荷予定日
-                      ,iv_token_value4 => TO_CHAR(gt_order_sort_wk_tbl(lv_index).schedule_ship_date, cv_date_fmt_date_time)
-                      ,iv_token_name5  => cv_tkn_err_msg              -- エラーメッセージ
-                      ,iv_token_value5 => lv_errmsg
-                    );
-                    -- メッセージ出力
-                    fnd_file.put_line(
-                       which  => FND_FILE.OUTPUT
-                      ,buff   => lv_output_msg
-                    );
-                    -- 空行出力
-                    fnd_file.put_line(
-                       which  => FND_FILE.OUTPUT
-                      ,buff   => NULL
-                    );
-                    -- ループを抜ける
-                    EXIT;
-                  END IF;
+/* 2009/12/01 Ver1.18 DEL START */
+--                    ELSE
+--                      -- 積載効率算出エラーの場合
+--                      ov_retcode := cv_status_warn;
+--                      -- メッセージ作成
+--                      lv_output_msg := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_xxcos_short_name             -- アプリケーション短縮名
+--                        ,iv_name         => cv_calc_load_efficiency_err     -- メッセージ
+--                        ,iv_token_name1  => cv_tkn_item_div_name            -- 商品区分コード
+--                        ,iv_token_value1 => gt_order_sort_wk_tbl(lv_index).prod_class_code
+--                        ,iv_token_name2  => cv_tkn_sum_weight               -- 合計重量
+--                        ,iv_token_value2 => ln_sum_weight
+--                        ,iv_token_name3  => cv_tkn_sum_capacity             -- 合計容積
+--                        ,iv_token_value3 => ''
+--                        ,iv_token_name4  => cv_tkn_whse_locat               -- 出荷元保管場所
+--                        ,iv_token_value4 => gt_order_sort_wk_tbl(lv_index).ship_to_subinv
+--                        ,iv_token_name5  => cv_tkn_delivery_code            -- 配送先コード
+--                        ,iv_token_value5 => gt_order_sort_wk_tbl(lv_index).province
+--                        ,iv_token_name6  => cv_tkn_ship_method              -- 最大配送区分
+--                        ,iv_token_value6 => lv_max_ship_methods
+--                        ,iv_token_name7  => cv_tkn_schedule_ship_date       -- 出荷予定日
+--                        ,iv_token_value7 => TO_CHAR(gt_order_sort_wk_tbl(lv_index).schedule_ship_date, cv_date_fmt_date_time)
+--                        ,iv_token_name8  => cv_tkn_err_msg                  -- エラーメッセージ
+--                        ,iv_token_value8 => lv_errmsg
+--                      );
+--                      -- メッセージ出力
+--                      fnd_file.put_line(
+--                         which  => FND_FILE.OUTPUT
+--                        ,buff   => lv_output_msg
+--                      );
+--                      -- 空行出力
+--                      fnd_file.put_line(
+--                         which  => FND_FILE.OUTPUT
+--                        ,buff   => NULL
+--                      );
+--                      -- ループを抜ける
+--                      EXIT;
+--                    END IF;
+--                  ELSE
+--                    -- 合計重量・合計容積取得エラー
+--                    ov_retcode := cv_status_warn;
+--                    -- メッセージ作成
+--                    lv_output_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
+--                      ,iv_name         => cv_calc_total_value_err              -- メッセージ
+--                      ,iv_token_name1  => cv_tkn_order_no             -- 受注番号
+--                      ,iv_token_value1 => gt_order_sort_wk_tbl(lv_index).order_number
+--                      ,iv_token_name2  => cv_tkn_item_code            -- 受注品目
+--                      ,iv_token_value2 => gt_order_sort_wk_tbl(lv_index).item_code
+--                      ,iv_token_name3  => cv_tkn_ordered_quantity     -- 受注数量
+--                      ,iv_token_value3 => ln_check_qty
+--                      ,iv_token_name4  => cv_tkn_schedule_ship_date   -- 出荷予定日
+--                      ,iv_token_value4 => TO_CHAR(gt_order_sort_wk_tbl(lv_index).schedule_ship_date, cv_date_fmt_date_time)
+--                      ,iv_token_name5  => cv_tkn_err_msg              -- エラーメッセージ
+--                      ,iv_token_value5 => lv_errmsg
+--                    );
+--                    -- メッセージ出力
+--                    fnd_file.put_line(
+--                       which  => FND_FILE.OUTPUT
+--                      ,buff   => lv_output_msg
+--                    );
+--                    -- 空行出力
+--                    fnd_file.put_line(
+--                       which  => FND_FILE.OUTPUT
+--                      ,buff   => NULL
+--                    );
+--                    -- ループを抜ける
+--                    EXIT;
+--                  END IF;
+/* 2009/12/01 Ver1.18 DEL END */
                 END LOOP pallet_check_loop;  -- パレット単位の積み上げチェック
               END IF;
             END IF;
