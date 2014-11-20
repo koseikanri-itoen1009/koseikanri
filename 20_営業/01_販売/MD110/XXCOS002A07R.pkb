@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A07R(body)
  * Description      : ベンダー売上・入金照合表
  * MD.050           : MD050_COS_002_A07_ベンダー売上・入金照合表
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/10/12    1.0   K.Nakamura       新規作成
  *  2013/02/20    1.1   K.Nakamura       E_本稼動_09040 T4障害対応
+ *  2013/03/18    1.2   K.Nakamura       E_本稼動_09040 T4障害対応
  *
  *****************************************************************************************/
 --
@@ -501,7 +502,10 @@ AS
              , xseh1.delivery_date                  AS delivery_date          -- 日付
              , SUM(xsel1.standard_qty)              AS standard_qty           -- 本数
              , TO_NUMBER(xseh1.dlv_invoice_number)  AS current_counter        -- 今回カウンタ
-             , SUM(xsel1.pure_amount)               AS pure_amount            -- 売上（成績者）
+-- 2013/03/18 Ver1.2 Mod Start
+--             , SUM(xsel1.pure_amount)               AS pure_amount            -- 売上（成績者）
+             , SUM(xsel1.sale_amount)               AS pure_amount            -- 売上（成績者）
+-- 2013/03/18 Ver1.2 Mod End
              , TO_NUMBER(xseh1.change_out_time_100) AS change_out_time_100    -- 釣銭切れ時間（分）100円
              , TO_NUMBER(xseh1.change_out_time_10)  AS change_out_time_10     -- 釣銭切れ時間（分）10円
              , cn_created_by                        AS created_by             -- 作成者
@@ -617,7 +621,10 @@ AS
              , xseh1.delivery_date                  AS delivery_date          -- 日付
              , SUM(xsel1.standard_qty)              AS standard_qty           -- 本数
              , TO_NUMBER(xseh1.dlv_invoice_number)  AS current_counter        -- 今回カウンタ
-             , SUM(xsel1.pure_amount)               AS pure_amount            -- 売上（成績者）
+-- 2013/03/18 Ver1.2 Mod Start
+--             , SUM(xsel1.pure_amount)               AS pure_amount            -- 売上（成績者）
+             , SUM(xsel1.sale_amount)               AS pure_amount            -- 売上（成績者）
+-- 2013/03/18 Ver1.2 Mod End
              , TO_NUMBER(xseh1.change_out_time_100) AS change_out_time_100    -- 釣銭切れ時間（分）100円
              , TO_NUMBER(xseh1.change_out_time_10)  AS change_out_time_10     -- 釣銭切れ時間（分）10円
              , cn_created_by                        AS created_by             -- 作成者
@@ -734,7 +741,10 @@ AS
              , xseh1.delivery_date                  AS delivery_date          -- 日付
              , SUM(xsel1.standard_qty)              AS standard_qty           -- 本数
              , TO_NUMBER(xseh1.dlv_invoice_number)  AS current_counter        -- 今回カウンタ
-             , SUM(xsel1.pure_amount)               AS pure_amount            -- 売上（成績者）
+-- 2013/03/18 Ver1.2 Mod Start
+--             , SUM(xsel1.pure_amount)               AS pure_amount            -- 売上（成績者）
+             , SUM(xsel1.sale_amount)               AS pure_amount            -- 売上（成績者）
+-- 2013/03/18 Ver1.2 Mod End
              , TO_NUMBER(xseh1.change_out_time_100) AS change_out_time_100    -- 釣銭切れ時間（分）100円
              , TO_NUMBER(xseh1.change_out_time_10)  AS change_out_time_10     -- 釣銭切れ時間（分）10円
              , cn_created_by                        AS created_by             -- 作成者
@@ -984,6 +994,10 @@ AS
    ***********************************************************************************/
   PROCEDURE upd_get_payment_data(
     iv_base_code                IN  VARCHAR2, -- 拠点コード
+-- 2013/03/18 Ver1.2 Add Start
+    iv_dlv_by_code              IN  VARCHAR2, -- 営業員コード
+    iv_cust_code                IN  VARCHAR2, -- 顧客コード
+-- 2013/03/18 Ver1.2 Add End
     ov_errbuf                   OUT VARCHAR2, -- エラー・メッセージ           --# 固定 #
     ov_retcode                  OUT VARCHAR2, -- リターン・コード             --# 固定 #
     ov_errmsg                   OUT VARCHAR2) -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1009,7 +1023,7 @@ AS
     lt_dlv_by_code            xxcos_rep_vd_sales_pay_chk.dlv_by_code%TYPE DEFAULT NULL; -- 納品者コード
 -- 2013/02/20 Ver1.1 Add End
     -- *** ローカルカーソル ***
-    -- 入金情報取得カーソル
+    -- 入金情報取得カーソル（拠点のみ指定されている場合（営業員、顧客 指定なし））
     CURSOR get_payment_cur
     IS
 -- 2013/02/20 Ver1.1 Mod Start
@@ -1055,6 +1069,59 @@ AS
            , gjh.default_effective_date
 -- 2013/02/20 Ver1.1 Add End
     ;
+-- 2013/03/18 Ver1.2 Add Start
+    -- 入金情報取得カーソル（拠点のみの指定以外）
+    CURSOR get_payment_cur2
+    IS
+      SELECT /*+ LEADING(gcc gjl gjh hca hp hop hopeb efdfce fa)
+                 USE_NL(gcc gjl gjh hca hp hop hopeb efdfce fa)
+              */
+             TO_CHAR(TO_DATE(SUBSTRB(gjh.period_name, 1, 7), cv_format_yyyymm1), cv_format_yyyymm3) AS year_months    -- 年月
+           , gcc.segment2                                                                           AS segment2       -- 部門
+           , gjl.jgzz_recon_ref                                                                     AS jgzz_recon_ref -- 消込参照（顧客）
+           , gjh.default_effective_date                                                             AS default_effective_date -- GL記帳日
+           , SUM(NVL(gjl.accounted_dr,0) - NVL(gjl.accounted_cr,0))                                 AS payment_amount -- 入金実査
+      FROM   gl_je_headers              gjh
+           , gl_je_lines                gjl
+           , gl_code_combinations       gcc
+           , hz_cust_accounts           hca
+           , hz_parties                 hp
+           , hz_organization_profiles   hop
+           , hz_org_profiles_ext_b      hopeb
+           , ego_fnd_dsc_flx_ctx_ext    efdfce
+           , fnd_application            fa
+      WHERE  gjh.je_header_id                                            = gjl.je_header_id
+      AND    gjl.code_combination_id                                     = gcc.code_combination_id
+      AND    gcc.segment2                                                = iv_base_code
+      AND    gcc.segment3                                                = gv_account_code_pay
+      AND    gjl.jgzz_recon_ref                                          = NVL( iv_cust_code, gjl.jgzz_recon_ref )
+      AND    gjl.status                                                  = cv_status_p
+      AND    gjh.actual_flag                                             = cv_result_flag
+      AND    gjh.je_source                                               = cv_je_source_gl
+      AND    gjh.set_of_books_id                                         = gn_set_of_books_id
+      AND    TO_DATE(SUBSTRB(gjh.period_name, 1, 7), cv_format_yyyymm1) >= gd_from_date
+      AND    TO_DATE(SUBSTRB(gjh.period_name, 1, 7), cv_format_yyyymm1) <= gd_to_date
+      AND    gjl.jgzz_recon_ref                                          = hca.account_number
+      AND    hca.customer_class_code                                     = cv_customer_class_code_10
+      AND    hca.party_id                                                = hp.party_id
+      AND    hp.party_id                                                 = hop.party_id
+      AND    hop.effective_end_date IS NULL
+      AND    hop.organization_profile_id                                 = hopeb.organization_profile_id
+      AND    hopeb.attr_group_id                                         = efdfce.attr_group_id
+      AND    hopeb.c_ext_attr1                                           = NVL( iv_dlv_by_code, hopeb.c_ext_attr1 )
+      AND    efdfce.descriptive_flexfield_name                           = cv_desc_flexfield_name
+      AND    efdfce.descriptive_flex_context_code                        = cv_desc_flex_context_code
+      AND    efdfce.application_id                                       = fa.application_id
+      AND    fa.application_short_name                                   = cv_application_short_name2
+      AND    NVL( hopeb.d_ext_attr1, gjh.default_effective_date )       <= gjh.default_effective_date
+      AND    NVL( hopeb.d_ext_attr2, gjh.default_effective_date )       >= gjh.default_effective_date
+      GROUP BY
+             gjh.period_name
+           , gcc.segment2
+           , gjl.jgzz_recon_ref
+           , gjh.default_effective_date
+    ;
+-- 2013/03/18 Ver1.2 Add End
     --
     get_payment_rec           get_payment_cur%ROWTYPE;
 --
@@ -1075,21 +1142,25 @@ AS
 --    g_amount_tab.DELETE;
 -- 2013/02/20 Ver1.1 Del End
     --
-    --==============================================================
-    -- 入金情報処理処理
-    --==============================================================
-    -- カーソルオープン
-    OPEN get_payment_cur;
-    --
-    <<payment_loop>>
-    LOOP
-    FETCH get_payment_cur INTO get_payment_rec;
+-- 2013/03/18 Ver1.2 Add Start
+    -- 拠点のみ指定されている場合
+    IF  ( ( iv_dlv_by_code IS NULL ) AND ( iv_cust_code IS NULL ) ) THEN
+-- 2013/03/18 Ver1.2 Add End
+      --==============================================================
+      -- 入金情報処理処理
+      --==============================================================
+      -- カーソルオープン
+      OPEN get_payment_cur;
       --
-      -- 対象データ無しはループを抜ける
-      EXIT WHEN get_payment_cur%NOTFOUND;
-      --
-      -- ログ用件数
-      gn_cnt                      := gn_cnt + 1;
+      <<payment_loop>>
+      LOOP
+      FETCH get_payment_cur INTO get_payment_rec;
+        --
+        -- 対象データ無しはループを抜ける
+        EXIT WHEN get_payment_cur%NOTFOUND;
+        --
+        -- ログ用件数
+        gn_cnt                      := gn_cnt + 1;
 -- 2013/02/20 Ver1.1 Mod Start
 --      g_year_months_tab(gn_cnt)   := get_payment_rec.year_months;
 --      g_base_code_tab(gn_cnt)     := get_payment_rec.segment2;
@@ -1127,31 +1198,11 @@ AS
 --        RAISE global_process_expt;
 --    END;
 --
-      -- 初期化
-      lt_dlv_by_code := NULL;
-      --
-      --==============================================================
-      -- 登録・更新確認
-      --==============================================================
-      BEGIN
-        SELECT MAX(xrvspc.dlv_by_code)    AS dlv_by_code
-        INTO   lt_dlv_by_code
-        FROM   xxcos_rep_vd_sales_pay_chk xrvspc
-        WHERE  xrvspc.year_months   = get_payment_rec.year_months
-        AND    xrvspc.base_code     = get_payment_rec.segment2
-        AND    xrvspc.customer_code = get_payment_rec.jgzz_recon_ref
-        AND    xrvspc.delivery_date = TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2)
-        AND    xrvspc.request_id    = cn_request_id
-        ;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          lt_dlv_by_code := NULL;
-      END;
---
-      -- 対象無しは登録
-      IF ( lt_dlv_by_code IS NULL ) THEN
+        -- 初期化
+        lt_dlv_by_code := NULL;
+        --
         --==============================================================
-        -- 登録対象確認（帳票ワークテーブルに対象の顧客が存在するか）
+        -- 登録・更新確認
         --==============================================================
         BEGIN
           SELECT MAX(xrvspc.dlv_by_code)    AS dlv_by_code
@@ -1160,126 +1211,273 @@ AS
           WHERE  xrvspc.year_months   = get_payment_rec.year_months
           AND    xrvspc.base_code     = get_payment_rec.segment2
           AND    xrvspc.customer_code = get_payment_rec.jgzz_recon_ref
+          AND    xrvspc.delivery_date = TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2)
           AND    xrvspc.request_id    = cn_request_id
           ;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             lt_dlv_by_code := NULL;
         END;
-        --
-        -- 存在しない場合、顧客から担当営業員を取得して登録
+--
+        -- 対象無しは登録
         IF ( lt_dlv_by_code IS NULL ) THEN
           --==============================================================
-          -- 帳票ワークテーブル登録処理（入金情報）顧客なし
+          -- 登録対象確認（帳票ワークテーブルに対象の顧客が存在するか）
           --==============================================================
           BEGIN
-            INSERT INTO xxcos_rep_vd_sales_pay_chk(
-                year_months            -- 年月
-              , base_code              -- 拠点コード
-              , base_name              -- 拠点名
-              , employee_code          -- 担当営業員コード
-              , employee_name          -- 担当営業員名
-              , dlv_by_code            -- 納品者コード
-              , dlv_by_code_disp       -- 納品者コード（表示用）
-              , dlv_by_name            -- 納品者名
-              , dlv_by_name_disp       -- 納品者名（表示用）
-              , customer_code          -- 顧客コード
-              , customer_name          -- 顧客名
-              , pre_counter            -- 前回カウンタ
-              , delivery_date          -- 日付
-              , standard_qty           -- 本数
-              , current_counter        -- 今回カウンタ
-              , error                  -- 誤差
-              , sales_amount           -- 売上（成績者）
-              , payment_amount         -- 入金（成績者）
-              , overs_and_shorts       -- 過不足（売上ー入金）
-              , change_balance         -- 釣銭（残高）
-              , change_pay             -- 釣銭（支払）
-              , change_return          -- 釣銭（戻し）
-              , change                 -- 釣銭
-              , change_out_time_100    -- 釣銭切れ時間（分）100円
-              , change_out_time_10     -- 釣銭切れ時間（分）10円
-              , created_by             -- 作成者
-              , creation_date          -- 作成日
-              , last_updated_by        -- 最終更新者
-              , last_update_date       -- 最終更新日
-              , last_update_login      -- 最終更新ログイン
-              , request_id             -- 要求ID
-              , program_application_id -- プログラムアプリケーションID
-              , program_id             -- プログラムID
-              , program_update_date    -- プログラム更新日
-            )
-            SELECT /*+ LEADING(hca1 hp1 hop hopeb efdfce fa papf)
-                       USE_NL(hca1 hp1 hop hopeb efdfce fa papf)
-                    */
-                   get_payment_rec.year_months                                          AS year_months            -- 年月
-                 , get_payment_rec.segment2                                             AS base_code              -- 拠点コード
-                 , ( SELECT hp2.party_name   AS party_name
-                     FROM   hz_cust_accounts hca2
-                          , hz_parties       hp2
-                     WHERE  hca2.party_id            = hp2.party_id
-                     AND    hca2.customer_class_code = cv_customer_class_code_1
-                     AND    hca2.account_number      = get_payment_rec.segment2 )       AS base_name              -- 拠点名
-                 , hopeb.c_ext_attr1                                                    AS employee_code          -- 担当営業員コード
-                 , papf.full_name                                                       AS employee_name          -- 担当営業員名
-                 , NULL                                                                 AS dlv_by_code            -- 納品者コード
-                 , NULL                                                                 AS dlv_by_code_disp       -- 納品者コード（表示用）
-                 , NULL                                                                 AS dlv_by_name            -- 納品者名
-                 , NULL                                                                 AS dlv_by_name_disp       -- 納品者名（表示用）
-                 , get_payment_rec.jgzz_recon_ref                                       AS customer_code          -- 顧客コード
-                 , hp1.party_name                                                       AS customer_name          -- 顧客名
-                 , NULL                                                                 AS pre_counter            -- 前回カウンタ
-                 , TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2) AS delivery_date          -- 日付
-                 , NULL                                                                 AS standard_qty           -- 本数
-                 , NULL                                                                 AS current_counter        -- 今回カウンタ
-                 , NULL                                                                 AS error                  -- 誤差
-                 , NULL                                                                 AS sales_amount           -- 売上（成績者）
-                 , NULL                                                                 AS payment_amount         -- 入金（成績者）
-                 , get_payment_rec.payment_amount                                       AS overs_and_shorts       -- 過不足（売上ー入金）
-                 , NULL                                                                 AS change_balance         -- 釣銭（残高）
-                 , NULL                                                                 AS change_pay             -- 釣銭（支払）
-                 , NULL                                                                 AS change_return          -- 釣銭（戻し）
-                 , NULL                                                                 AS change                 -- 釣銭
-                 , NULL                                                                 AS change_out_time_100    -- 釣銭切れ時間（分）100円
-                 , NULL                                                                 AS change_out_time_10     -- 釣銭切れ時間（分）10円
-                 , cn_created_by                                                        AS created_by             -- 作成者
-                 , cd_creation_date                                                     AS creation_date          -- 作成日
-                 , cn_last_updated_by                                                   AS last_updated_by        -- 最終更新者
-                 , cd_last_update_date                                                  AS last_update_date       -- 最終更新日
-                 , cn_last_update_login                                                 AS last_update_login      -- 最終更新ログイン
-                 , cn_request_id                                                        AS request_id             -- 要求ID
-                 , cn_program_application_id                                            AS program_application_id -- プログラムアプリケーションID
-                 , cn_program_id                                                        AS program_id             -- プログラムID
-                 , cd_program_update_date                                               AS program_update_date    -- プログラム更新日
-            FROM   per_all_people_f            papf
-                 , hz_cust_accounts            hca1
-                 , hz_parties                  hp1
-                 , hz_organization_profiles    hop
-                 , hz_org_profiles_ext_b       hopeb
-                 , ego_fnd_dsc_flx_ctx_ext     efdfce
-                 , fnd_application             fa
-            WHERE  hca1.account_number                                               = get_payment_rec.jgzz_recon_ref
-            AND    hca1.customer_class_code                                          = cv_customer_class_code_10
-            AND    hca1.party_id                                                     = hp1.party_id
-            AND    hp1.party_id                                                      = hop.party_id
-            AND    hop.effective_end_date IS NULL
-            AND    hop.organization_profile_id                                       = hopeb.organization_profile_id
-            AND    hopeb.attr_group_id                                               = efdfce.attr_group_id
-            AND    efdfce.descriptive_flexfield_name                                 = cv_desc_flexfield_name
-            AND    efdfce.descriptive_flex_context_code                              = cv_desc_flex_context_code
-            AND    efdfce.application_id                                             = fa.application_id
-            AND    fa.application_short_name                                         = cv_application_short_name2
-            AND    NVL( hopeb.d_ext_attr1, get_payment_rec.default_effective_date ) <= get_payment_rec.default_effective_date
-            AND    NVL( hopeb.d_ext_attr2, get_payment_rec.default_effective_date ) >= get_payment_rec.default_effective_date
-            AND    hopeb.c_ext_attr1                                                 = papf.employee_number
-            AND    papf.effective_start_date                                        <= get_payment_rec.default_effective_date
-            AND    papf.effective_end_date                                          >= get_payment_rec.default_effective_date
+            SELECT MAX(xrvspc.dlv_by_code)    AS dlv_by_code
+            INTO   lt_dlv_by_code
+            FROM   xxcos_rep_vd_sales_pay_chk xrvspc
+            WHERE  xrvspc.year_months   = get_payment_rec.year_months
+            AND    xrvspc.base_code     = get_payment_rec.segment2
+            AND    xrvspc.customer_code = get_payment_rec.jgzz_recon_ref
+            AND    xrvspc.request_id    = cn_request_id
+            ;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              lt_dlv_by_code := NULL;
+          END;
+          --
+          -- 存在しない場合、顧客から担当営業員を取得して登録
+          IF ( lt_dlv_by_code IS NULL ) THEN
+            --==============================================================
+            -- 帳票ワークテーブル登録処理（入金情報）顧客なし
+            --==============================================================
+            BEGIN
+              INSERT INTO xxcos_rep_vd_sales_pay_chk(
+                  year_months            -- 年月
+                , base_code              -- 拠点コード
+                , base_name              -- 拠点名
+                , employee_code          -- 担当営業員コード
+                , employee_name          -- 担当営業員名
+                , dlv_by_code            -- 納品者コード
+                , dlv_by_code_disp       -- 納品者コード（表示用）
+                , dlv_by_name            -- 納品者名
+                , dlv_by_name_disp       -- 納品者名（表示用）
+                , customer_code          -- 顧客コード
+                , customer_name          -- 顧客名
+                , pre_counter            -- 前回カウンタ
+                , delivery_date          -- 日付
+                , standard_qty           -- 本数
+                , current_counter        -- 今回カウンタ
+                , error                  -- 誤差
+                , sales_amount           -- 売上（成績者）
+                , payment_amount         -- 入金（成績者）
+                , overs_and_shorts       -- 過不足（売上ー入金）
+                , change_balance         -- 釣銭（残高）
+                , change_pay             -- 釣銭（支払）
+                , change_return          -- 釣銭（戻し）
+                , change                 -- 釣銭
+                , change_out_time_100    -- 釣銭切れ時間（分）100円
+                , change_out_time_10     -- 釣銭切れ時間（分）10円
+                , created_by             -- 作成者
+                , creation_date          -- 作成日
+                , last_updated_by        -- 最終更新者
+                , last_update_date       -- 最終更新日
+                , last_update_login      -- 最終更新ログイン
+                , request_id             -- 要求ID
+                , program_application_id -- プログラムアプリケーションID
+                , program_id             -- プログラムID
+                , program_update_date    -- プログラム更新日
+              )
+              SELECT /*+ LEADING(hca1 hp1 hop hopeb efdfce fa papf)
+                         USE_NL(hca1 hp1 hop hopeb efdfce fa papf)
+                      */
+                     get_payment_rec.year_months                                          AS year_months            -- 年月
+                   , get_payment_rec.segment2                                             AS base_code              -- 拠点コード
+                   , ( SELECT hp2.party_name   AS party_name
+                       FROM   hz_cust_accounts hca2
+                            , hz_parties       hp2
+                       WHERE  hca2.party_id            = hp2.party_id
+                       AND    hca2.customer_class_code = cv_customer_class_code_1
+                       AND    hca2.account_number      = get_payment_rec.segment2 )       AS base_name              -- 拠点名
+                   , hopeb.c_ext_attr1                                                    AS employee_code          -- 担当営業員コード
+                   , papf.full_name                                                       AS employee_name          -- 担当営業員名
+                   , NULL                                                                 AS dlv_by_code            -- 納品者コード
+                   , NULL                                                                 AS dlv_by_code_disp       -- 納品者コード（表示用）
+                   , NULL                                                                 AS dlv_by_name            -- 納品者名
+                   , NULL                                                                 AS dlv_by_name_disp       -- 納品者名（表示用）
+                   , get_payment_rec.jgzz_recon_ref                                       AS customer_code          -- 顧客コード
+                   , hp1.party_name                                                       AS customer_name          -- 顧客名
+                   , NULL                                                                 AS pre_counter            -- 前回カウンタ
+                   , TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2) AS delivery_date          -- 日付
+                   , NULL                                                                 AS standard_qty           -- 本数
+                   , NULL                                                                 AS current_counter        -- 今回カウンタ
+                   , NULL                                                                 AS error                  -- 誤差
+                   , NULL                                                                 AS sales_amount           -- 売上（成績者）
+                   , NULL                                                                 AS payment_amount         -- 入金（成績者）
+                   , get_payment_rec.payment_amount                                       AS overs_and_shorts       -- 過不足（売上ー入金）
+                   , NULL                                                                 AS change_balance         -- 釣銭（残高）
+                   , NULL                                                                 AS change_pay             -- 釣銭（支払）
+                   , NULL                                                                 AS change_return          -- 釣銭（戻し）
+                   , NULL                                                                 AS change                 -- 釣銭
+                   , NULL                                                                 AS change_out_time_100    -- 釣銭切れ時間（分）100円
+                   , NULL                                                                 AS change_out_time_10     -- 釣銭切れ時間（分）10円
+                   , cn_created_by                                                        AS created_by             -- 作成者
+                   , cd_creation_date                                                     AS creation_date          -- 作成日
+                   , cn_last_updated_by                                                   AS last_updated_by        -- 最終更新者
+                   , cd_last_update_date                                                  AS last_update_date       -- 最終更新日
+                   , cn_last_update_login                                                 AS last_update_login      -- 最終更新ログイン
+                   , cn_request_id                                                        AS request_id             -- 要求ID
+                   , cn_program_application_id                                            AS program_application_id -- プログラムアプリケーションID
+                   , cn_program_id                                                        AS program_id             -- プログラムID
+                   , cd_program_update_date                                               AS program_update_date    -- プログラム更新日
+              FROM   per_all_people_f            papf
+                   , hz_cust_accounts            hca1
+                   , hz_parties                  hp1
+                   , hz_organization_profiles    hop
+                   , hz_org_profiles_ext_b       hopeb
+                   , ego_fnd_dsc_flx_ctx_ext     efdfce
+                   , fnd_application             fa
+              WHERE  hca1.account_number                                               = get_payment_rec.jgzz_recon_ref
+              AND    hca1.customer_class_code                                          = cv_customer_class_code_10
+              AND    hca1.party_id                                                     = hp1.party_id
+              AND    hp1.party_id                                                      = hop.party_id
+              AND    hop.effective_end_date IS NULL
+              AND    hop.organization_profile_id                                       = hopeb.organization_profile_id
+              AND    hopeb.attr_group_id                                               = efdfce.attr_group_id
+              AND    efdfce.descriptive_flexfield_name                                 = cv_desc_flexfield_name
+              AND    efdfce.descriptive_flex_context_code                              = cv_desc_flex_context_code
+              AND    efdfce.application_id                                             = fa.application_id
+              AND    fa.application_short_name                                         = cv_application_short_name2
+              AND    NVL( hopeb.d_ext_attr1, get_payment_rec.default_effective_date ) <= get_payment_rec.default_effective_date
+              AND    NVL( hopeb.d_ext_attr2, get_payment_rec.default_effective_date ) >= get_payment_rec.default_effective_date
+              AND    hopeb.c_ext_attr1                                                 = papf.employee_number
+              AND    papf.effective_start_date                                        <= get_payment_rec.default_effective_date
+              AND    papf.effective_end_date                                          >= get_payment_rec.default_effective_date
+              ;
+            EXCEPTION
+              WHEN OTHERS THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_application     -- アプリケーション短縮名
+                               , iv_name         => cv_msg_xxcos_00010 -- メッセージコード
+                               , iv_token_name1  => cv_tkn_table_name  -- トークンコード1
+                               , iv_token_value1 => gv_msg_xxcos_14502 -- トークン値1
+                               , iv_token_name2  => cv_tkn_key_data    -- トークンコード2
+                               , iv_token_value2 => SQLERRM            -- トークン値2
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE global_process_expt;
+            END;
+            --
+          -- 存在する場合、帳票ワークテーブルを元に登録
+          ELSIF ( lt_dlv_by_code IS NOT NULL ) THEN
+            --==============================================================
+            -- 帳票ワークテーブル登録処理（入金情報）顧客あり
+            --==============================================================
+            BEGIN
+              INSERT INTO xxcos_rep_vd_sales_pay_chk(
+                  year_months            -- 年月
+                , base_code              -- 拠点コード
+                , base_name              -- 拠点名
+                , employee_code          -- 担当営業員コード
+                , employee_name          -- 担当営業員名
+                , dlv_by_code            -- 納品者コード
+                , dlv_by_code_disp       -- 納品者コード（表示用）
+                , dlv_by_name            -- 納品者名
+                , dlv_by_name_disp       -- 納品者名（表示用）
+                , customer_code          -- 顧客コード
+                , customer_name          -- 顧客名
+                , pre_counter            -- 前回カウンタ
+                , delivery_date          -- 日付
+                , standard_qty           -- 本数
+                , current_counter        -- 今回カウンタ
+                , error                  -- 誤差
+                , sales_amount           -- 売上（成績者）
+                , payment_amount         -- 入金（成績者）
+                , overs_and_shorts       -- 過不足（売上ー入金）
+                , change_balance         -- 釣銭（残高）
+                , change_pay             -- 釣銭（支払）
+                , change_return          -- 釣銭（戻し）
+                , change                 -- 釣銭
+                , change_out_time_100    -- 釣銭切れ時間（分）100円
+                , change_out_time_10     -- 釣銭切れ時間（分）10円
+                , created_by             -- 作成者
+                , creation_date          -- 作成日
+                , last_updated_by        -- 最終更新者
+                , last_update_date       -- 最終更新日
+                , last_update_login      -- 最終更新ログイン
+                , request_id             -- 要求ID
+                , program_application_id -- プログラムアプリケーションID
+                , program_id             -- プログラムID
+                , program_update_date    -- プログラム更新日
+              )
+              SELECT xrvspc.year_months                                                   AS year_months            -- 年月
+                   , xrvspc.base_code                                                     AS base_code              -- 拠点コード
+                   , xrvspc.base_name                                                     AS base_name              -- 拠点名
+                   , xrvspc.employee_code                                                 AS employee_code          -- 担当営業員コード
+                   , xrvspc.employee_name                                                 AS employee_name          -- 担当営業員名
+                   , xrvspc.dlv_by_code                                                   AS dlv_by_code            -- 納品者コード
+                   , xrvspc.dlv_by_code_disp                                              AS dlv_by_code_disp       -- 納品者コード（表示用）
+                   , xrvspc.dlv_by_name                                                   AS dlv_by_name            -- 納品者名
+                   , xrvspc.dlv_by_name_disp                                              AS dlv_by_name_disp       -- 納品者名（表示用）
+                   , xrvspc.customer_code                                                 AS customer_code          -- 顧客コード
+                   , xrvspc.customer_name                                                 AS customer_name          -- 顧客名
+                   , NULL                                                                 AS pre_counter            -- 前回カウンタ
+                   , TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2) AS delivery_date          -- 日付
+                   , NULL                                                                 AS standard_qty           -- 本数
+                   , NULL                                                                 AS current_counter        -- 今回カウンタ
+                   , NULL                                                                 AS error                  -- 誤差
+                   , NULL                                                                 AS sales_amount           -- 売上（成績者）
+                   , NULL                                                                 AS payment_amount         -- 入金（成績者）
+                   , get_payment_rec.payment_amount                                       AS overs_and_shorts       -- 過不足（売上ー入金）
+                   , NULL                                                                 AS change_balance         -- 釣銭（残高）
+                   , NULL                                                                 AS change_pay             -- 釣銭（支払）
+                   , NULL                                                                 AS change_return          -- 釣銭（戻し）
+                   , NULL                                                                 AS change                 -- 釣銭
+                   , NULL                                                                 AS change_out_time_100    -- 釣銭切れ時間（分）100円
+                   , NULL                                                                 AS change_out_time_10     -- 釣銭切れ時間（分）10円
+                   , cn_created_by                                                        AS created_by             -- 作成者
+                   , cd_creation_date                                                     AS creation_date          -- 作成日
+                   , cn_last_updated_by                                                   AS last_updated_by        -- 最終更新者
+                   , cd_last_update_date                                                  AS last_update_date       -- 最終更新日
+                   , cn_last_update_login                                                 AS last_update_login      -- 最終更新ログイン
+                   , cn_request_id                                                        AS request_id             -- 要求ID
+                   , cn_program_application_id                                            AS program_application_id -- プログラムアプリケーションID
+                   , cn_program_id                                                        AS program_id             -- プログラムID
+                   , cd_program_update_date                                               AS program_update_date    -- プログラム更新日
+              FROM   xxcos_rep_vd_sales_pay_chk xrvspc
+              WHERE  xrvspc.year_months   = get_payment_rec.year_months
+              AND    xrvspc.base_code     = get_payment_rec.segment2
+              AND    xrvspc.customer_code = get_payment_rec.jgzz_recon_ref
+              AND    xrvspc.dlv_by_code   = lt_dlv_by_code
+              AND    xrvspc.request_id    = cn_request_id
+              AND    ROWNUM               = 1
+              ;
+            EXCEPTION
+              WHEN OTHERS THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_application     -- アプリケーション短縮名
+                               , iv_name         => cv_msg_xxcos_00010 -- メッセージコード
+                               , iv_token_name1  => cv_tkn_table_name  -- トークンコード1
+                               , iv_token_value1 => gv_msg_xxcos_14502 -- トークン値1
+                               , iv_token_name2  => cv_tkn_key_data    -- トークンコード2
+                               , iv_token_value2 => SQLERRM            -- トークン値2
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE global_process_expt;
+            END;
+          END IF;
+        -- 対象ありは更新
+        ELSIF ( lt_dlv_by_code IS NOT NULL ) THEN
+          --==============================================================
+          -- 帳票ワークテーブル登録・更新処理（入金情報）
+          --==============================================================
+          BEGIN
+            UPDATE xxcos_rep_vd_sales_pay_chk xrvspc
+            SET    xrvspc.overs_and_shorts = get_payment_rec.payment_amount -- 過不足（売上ー入金）
+            WHERE  xrvspc.year_months      = get_payment_rec.year_months
+            AND    xrvspc.base_code        = get_payment_rec.segment2
+            AND    xrvspc.customer_code    = get_payment_rec.jgzz_recon_ref
+            AND    xrvspc.delivery_date    = TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2)
+            AND    xrvspc.dlv_by_code      = lt_dlv_by_code
+            AND    xrvspc.request_id       = cn_request_id
             ;
           EXCEPTION
             WHEN OTHERS THEN
               lv_errmsg := xxccp_common_pkg.get_msg(
                                iv_application  => cv_application     -- アプリケーション短縮名
-                             , iv_name         => cv_msg_xxcos_00010 -- メッセージコード
+                             , iv_name         => cv_msg_xxcos_00011 -- メッセージコード
                              , iv_token_name1  => cv_tkn_table_name  -- トークンコード1
                              , iv_token_value1 => gv_msg_xxcos_14502 -- トークン値1
                              , iv_token_name2  => cv_tkn_key_data    -- トークンコード2
@@ -1289,95 +1487,312 @@ AS
               RAISE global_process_expt;
           END;
           --
-        -- 存在する場合、帳票ワークテーブルを元に登録
-        ELSIF ( lt_dlv_by_code IS NOT NULL ) THEN
+        END IF;
+        --
+      END LOOP payment_loop;
+      --
+      -- カーソルクローズ
+      CLOSE get_payment_cur;
+      --
+-- 2013/02/20 Ver1.1 Mod End
+-- 2013/03/18 Ver1.2 Add Start
+    -- 拠点のみ指定以外の場合
+    ELSE
+      --==============================================================
+      -- 入金情報処理処理
+      --==============================================================
+      -- カーソルオープン
+      OPEN get_payment_cur2;
+      --
+      <<payment_loop>>
+      LOOP
+      FETCH get_payment_cur2 INTO get_payment_rec;
+        --
+        -- 対象データ無しはループを抜ける
+        EXIT WHEN get_payment_cur2%NOTFOUND;
+        --
+        -- ログ用件数
+        gn_cnt                      := gn_cnt + 1;
+        -- 初期化
+        lt_dlv_by_code := NULL;
+        --
+        --==============================================================
+        -- 登録・更新確認
+        --==============================================================
+        BEGIN
+          SELECT MAX(xrvspc.dlv_by_code)    AS dlv_by_code
+          INTO   lt_dlv_by_code
+          FROM   xxcos_rep_vd_sales_pay_chk xrvspc
+          WHERE  xrvspc.year_months   = get_payment_rec.year_months
+          AND    xrvspc.base_code     = get_payment_rec.segment2
+          AND    xrvspc.customer_code = get_payment_rec.jgzz_recon_ref
+          AND    xrvspc.delivery_date = TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2)
+          AND    xrvspc.request_id    = cn_request_id
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            lt_dlv_by_code := NULL;
+        END;
+--
+        -- 対象無しは登録
+        IF ( lt_dlv_by_code IS NULL ) THEN
           --==============================================================
-          -- 帳票ワークテーブル登録処理（入金情報）顧客あり
+          -- 登録対象確認（帳票ワークテーブルに対象の顧客が存在するか）
           --==============================================================
           BEGIN
-            INSERT INTO xxcos_rep_vd_sales_pay_chk(
-                year_months            -- 年月
-              , base_code              -- 拠点コード
-              , base_name              -- 拠点名
-              , employee_code          -- 担当営業員コード
-              , employee_name          -- 担当営業員名
-              , dlv_by_code            -- 納品者コード
-              , dlv_by_code_disp       -- 納品者コード（表示用）
-              , dlv_by_name            -- 納品者名
-              , dlv_by_name_disp       -- 納品者名（表示用）
-              , customer_code          -- 顧客コード
-              , customer_name          -- 顧客名
-              , pre_counter            -- 前回カウンタ
-              , delivery_date          -- 日付
-              , standard_qty           -- 本数
-              , current_counter        -- 今回カウンタ
-              , error                  -- 誤差
-              , sales_amount           -- 売上（成績者）
-              , payment_amount         -- 入金（成績者）
-              , overs_and_shorts       -- 過不足（売上ー入金）
-              , change_balance         -- 釣銭（残高）
-              , change_pay             -- 釣銭（支払）
-              , change_return          -- 釣銭（戻し）
-              , change                 -- 釣銭
-              , change_out_time_100    -- 釣銭切れ時間（分）100円
-              , change_out_time_10     -- 釣銭切れ時間（分）10円
-              , created_by             -- 作成者
-              , creation_date          -- 作成日
-              , last_updated_by        -- 最終更新者
-              , last_update_date       -- 最終更新日
-              , last_update_login      -- 最終更新ログイン
-              , request_id             -- 要求ID
-              , program_application_id -- プログラムアプリケーションID
-              , program_id             -- プログラムID
-              , program_update_date    -- プログラム更新日
-            )
-            SELECT xrvspc.year_months                                                   AS year_months            -- 年月
-                 , xrvspc.base_code                                                     AS base_code              -- 拠点コード
-                 , xrvspc.base_name                                                     AS base_name              -- 拠点名
-                 , xrvspc.employee_code                                                 AS employee_code          -- 担当営業員コード
-                 , xrvspc.employee_name                                                 AS employee_name          -- 担当営業員名
-                 , xrvspc.dlv_by_code                                                   AS dlv_by_code            -- 納品者コード
-                 , xrvspc.dlv_by_code_disp                                              AS dlv_by_code_disp       -- 納品者コード（表示用）
-                 , xrvspc.dlv_by_name                                                   AS dlv_by_name            -- 納品者名
-                 , xrvspc.dlv_by_name_disp                                              AS dlv_by_name_disp       -- 納品者名（表示用）
-                 , xrvspc.customer_code                                                 AS customer_code          -- 顧客コード
-                 , xrvspc.customer_name                                                 AS customer_name          -- 顧客名
-                 , NULL                                                                 AS pre_counter            -- 前回カウンタ
-                 , TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2) AS delivery_date          -- 日付
-                 , NULL                                                                 AS standard_qty           -- 本数
-                 , NULL                                                                 AS current_counter        -- 今回カウンタ
-                 , NULL                                                                 AS error                  -- 誤差
-                 , NULL                                                                 AS sales_amount           -- 売上（成績者）
-                 , NULL                                                                 AS payment_amount         -- 入金（成績者）
-                 , get_payment_rec.payment_amount                                       AS overs_and_shorts       -- 過不足（売上ー入金）
-                 , NULL                                                                 AS change_balance         -- 釣銭（残高）
-                 , NULL                                                                 AS change_pay             -- 釣銭（支払）
-                 , NULL                                                                 AS change_return          -- 釣銭（戻し）
-                 , NULL                                                                 AS change                 -- 釣銭
-                 , NULL                                                                 AS change_out_time_100    -- 釣銭切れ時間（分）100円
-                 , NULL                                                                 AS change_out_time_10     -- 釣銭切れ時間（分）10円
-                 , cn_created_by                                                        AS created_by             -- 作成者
-                 , cd_creation_date                                                     AS creation_date          -- 作成日
-                 , cn_last_updated_by                                                   AS last_updated_by        -- 最終更新者
-                 , cd_last_update_date                                                  AS last_update_date       -- 最終更新日
-                 , cn_last_update_login                                                 AS last_update_login      -- 最終更新ログイン
-                 , cn_request_id                                                        AS request_id             -- 要求ID
-                 , cn_program_application_id                                            AS program_application_id -- プログラムアプリケーションID
-                 , cn_program_id                                                        AS program_id             -- プログラムID
-                 , cd_program_update_date                                               AS program_update_date    -- プログラム更新日
+            SELECT MAX(xrvspc.dlv_by_code)    AS dlv_by_code
+            INTO   lt_dlv_by_code
             FROM   xxcos_rep_vd_sales_pay_chk xrvspc
             WHERE  xrvspc.year_months   = get_payment_rec.year_months
             AND    xrvspc.base_code     = get_payment_rec.segment2
             AND    xrvspc.customer_code = get_payment_rec.jgzz_recon_ref
-            AND    xrvspc.dlv_by_code   = lt_dlv_by_code
             AND    xrvspc.request_id    = cn_request_id
-            AND    ROWNUM               = 1
+            ;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              lt_dlv_by_code := NULL;
+          END;
+          --
+          -- 存在しない場合、顧客から担当営業員を取得して登録
+          IF ( lt_dlv_by_code IS NULL ) THEN
+            --==============================================================
+            -- 帳票ワークテーブル登録処理（入金情報）顧客なし
+            --==============================================================
+            BEGIN
+              INSERT INTO xxcos_rep_vd_sales_pay_chk(
+                  year_months            -- 年月
+                , base_code              -- 拠点コード
+                , base_name              -- 拠点名
+                , employee_code          -- 担当営業員コード
+                , employee_name          -- 担当営業員名
+                , dlv_by_code            -- 納品者コード
+                , dlv_by_code_disp       -- 納品者コード（表示用）
+                , dlv_by_name            -- 納品者名
+                , dlv_by_name_disp       -- 納品者名（表示用）
+                , customer_code          -- 顧客コード
+                , customer_name          -- 顧客名
+                , pre_counter            -- 前回カウンタ
+                , delivery_date          -- 日付
+                , standard_qty           -- 本数
+                , current_counter        -- 今回カウンタ
+                , error                  -- 誤差
+                , sales_amount           -- 売上（成績者）
+                , payment_amount         -- 入金（成績者）
+                , overs_and_shorts       -- 過不足（売上ー入金）
+                , change_balance         -- 釣銭（残高）
+                , change_pay             -- 釣銭（支払）
+                , change_return          -- 釣銭（戻し）
+                , change                 -- 釣銭
+                , change_out_time_100    -- 釣銭切れ時間（分）100円
+                , change_out_time_10     -- 釣銭切れ時間（分）10円
+                , created_by             -- 作成者
+                , creation_date          -- 作成日
+                , last_updated_by        -- 最終更新者
+                , last_update_date       -- 最終更新日
+                , last_update_login      -- 最終更新ログイン
+                , request_id             -- 要求ID
+                , program_application_id -- プログラムアプリケーションID
+                , program_id             -- プログラムID
+                , program_update_date    -- プログラム更新日
+              )
+              SELECT /*+ LEADING(hca1 hp1 hop hopeb efdfce fa papf)
+                         USE_NL(hca1 hp1 hop hopeb efdfce fa papf)
+                      */
+                     get_payment_rec.year_months                                          AS year_months            -- 年月
+                   , get_payment_rec.segment2                                             AS base_code              -- 拠点コード
+                   , ( SELECT hp2.party_name   AS party_name
+                       FROM   hz_cust_accounts hca2
+                            , hz_parties       hp2
+                       WHERE  hca2.party_id            = hp2.party_id
+                       AND    hca2.customer_class_code = cv_customer_class_code_1
+                       AND    hca2.account_number      = get_payment_rec.segment2 )       AS base_name              -- 拠点名
+                   , hopeb.c_ext_attr1                                                    AS employee_code          -- 担当営業員コード
+                   , papf.full_name                                                       AS employee_name          -- 担当営業員名
+                   , NULL                                                                 AS dlv_by_code            -- 納品者コード
+                   , NULL                                                                 AS dlv_by_code_disp       -- 納品者コード（表示用）
+                   , NULL                                                                 AS dlv_by_name            -- 納品者名
+                   , NULL                                                                 AS dlv_by_name_disp       -- 納品者名（表示用）
+                   , get_payment_rec.jgzz_recon_ref                                       AS customer_code          -- 顧客コード
+                   , hp1.party_name                                                       AS customer_name          -- 顧客名
+                   , NULL                                                                 AS pre_counter            -- 前回カウンタ
+                   , TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2) AS delivery_date          -- 日付
+                   , NULL                                                                 AS standard_qty           -- 本数
+                   , NULL                                                                 AS current_counter        -- 今回カウンタ
+                   , NULL                                                                 AS error                  -- 誤差
+                   , NULL                                                                 AS sales_amount           -- 売上（成績者）
+                   , NULL                                                                 AS payment_amount         -- 入金（成績者）
+                   , get_payment_rec.payment_amount                                       AS overs_and_shorts       -- 過不足（売上ー入金）
+                   , NULL                                                                 AS change_balance         -- 釣銭（残高）
+                   , NULL                                                                 AS change_pay             -- 釣銭（支払）
+                   , NULL                                                                 AS change_return          -- 釣銭（戻し）
+                   , NULL                                                                 AS change                 -- 釣銭
+                   , NULL                                                                 AS change_out_time_100    -- 釣銭切れ時間（分）100円
+                   , NULL                                                                 AS change_out_time_10     -- 釣銭切れ時間（分）10円
+                   , cn_created_by                                                        AS created_by             -- 作成者
+                   , cd_creation_date                                                     AS creation_date          -- 作成日
+                   , cn_last_updated_by                                                   AS last_updated_by        -- 最終更新者
+                   , cd_last_update_date                                                  AS last_update_date       -- 最終更新日
+                   , cn_last_update_login                                                 AS last_update_login      -- 最終更新ログイン
+                   , cn_request_id                                                        AS request_id             -- 要求ID
+                   , cn_program_application_id                                            AS program_application_id -- プログラムアプリケーションID
+                   , cn_program_id                                                        AS program_id             -- プログラムID
+                   , cd_program_update_date                                               AS program_update_date    -- プログラム更新日
+              FROM   per_all_people_f            papf
+                   , hz_cust_accounts            hca1
+                   , hz_parties                  hp1
+                   , hz_organization_profiles    hop
+                   , hz_org_profiles_ext_b       hopeb
+                   , ego_fnd_dsc_flx_ctx_ext     efdfce
+                   , fnd_application             fa
+              WHERE  hca1.account_number                                               = get_payment_rec.jgzz_recon_ref
+              AND    hca1.customer_class_code                                          = cv_customer_class_code_10
+              AND    hca1.party_id                                                     = hp1.party_id
+              AND    hp1.party_id                                                      = hop.party_id
+              AND    hop.effective_end_date IS NULL
+              AND    hop.organization_profile_id                                       = hopeb.organization_profile_id
+              AND    hopeb.attr_group_id                                               = efdfce.attr_group_id
+              AND    efdfce.descriptive_flexfield_name                                 = cv_desc_flexfield_name
+              AND    efdfce.descriptive_flex_context_code                              = cv_desc_flex_context_code
+              AND    efdfce.application_id                                             = fa.application_id
+              AND    fa.application_short_name                                         = cv_application_short_name2
+              AND    NVL( hopeb.d_ext_attr1, get_payment_rec.default_effective_date ) <= get_payment_rec.default_effective_date
+              AND    NVL( hopeb.d_ext_attr2, get_payment_rec.default_effective_date ) >= get_payment_rec.default_effective_date
+              AND    hopeb.c_ext_attr1                                                 = papf.employee_number
+              AND    papf.effective_start_date                                        <= get_payment_rec.default_effective_date
+              AND    papf.effective_end_date                                          >= get_payment_rec.default_effective_date
+              ;
+            EXCEPTION
+              WHEN OTHERS THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_application     -- アプリケーション短縮名
+                               , iv_name         => cv_msg_xxcos_00010 -- メッセージコード
+                               , iv_token_name1  => cv_tkn_table_name  -- トークンコード1
+                               , iv_token_value1 => gv_msg_xxcos_14502 -- トークン値1
+                               , iv_token_name2  => cv_tkn_key_data    -- トークンコード2
+                               , iv_token_value2 => SQLERRM            -- トークン値2
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE global_process_expt;
+            END;
+            --
+          -- 存在する場合、帳票ワークテーブルを元に登録
+          ELSIF ( lt_dlv_by_code IS NOT NULL ) THEN
+            --==============================================================
+            -- 帳票ワークテーブル登録処理（入金情報）顧客あり
+            --==============================================================
+            BEGIN
+              INSERT INTO xxcos_rep_vd_sales_pay_chk(
+                  year_months            -- 年月
+                , base_code              -- 拠点コード
+                , base_name              -- 拠点名
+                , employee_code          -- 担当営業員コード
+                , employee_name          -- 担当営業員名
+                , dlv_by_code            -- 納品者コード
+                , dlv_by_code_disp       -- 納品者コード（表示用）
+                , dlv_by_name            -- 納品者名
+                , dlv_by_name_disp       -- 納品者名（表示用）
+                , customer_code          -- 顧客コード
+                , customer_name          -- 顧客名
+                , pre_counter            -- 前回カウンタ
+                , delivery_date          -- 日付
+                , standard_qty           -- 本数
+                , current_counter        -- 今回カウンタ
+                , error                  -- 誤差
+                , sales_amount           -- 売上（成績者）
+                , payment_amount         -- 入金（成績者）
+                , overs_and_shorts       -- 過不足（売上ー入金）
+                , change_balance         -- 釣銭（残高）
+                , change_pay             -- 釣銭（支払）
+                , change_return          -- 釣銭（戻し）
+                , change                 -- 釣銭
+                , change_out_time_100    -- 釣銭切れ時間（分）100円
+                , change_out_time_10     -- 釣銭切れ時間（分）10円
+                , created_by             -- 作成者
+                , creation_date          -- 作成日
+                , last_updated_by        -- 最終更新者
+                , last_update_date       -- 最終更新日
+                , last_update_login      -- 最終更新ログイン
+                , request_id             -- 要求ID
+                , program_application_id -- プログラムアプリケーションID
+                , program_id             -- プログラムID
+                , program_update_date    -- プログラム更新日
+              )
+              SELECT xrvspc.year_months                                                   AS year_months            -- 年月
+                   , xrvspc.base_code                                                     AS base_code              -- 拠点コード
+                   , xrvspc.base_name                                                     AS base_name              -- 拠点名
+                   , xrvspc.employee_code                                                 AS employee_code          -- 担当営業員コード
+                   , xrvspc.employee_name                                                 AS employee_name          -- 担当営業員名
+                   , xrvspc.dlv_by_code                                                   AS dlv_by_code            -- 納品者コード
+                   , xrvspc.dlv_by_code_disp                                              AS dlv_by_code_disp       -- 納品者コード（表示用）
+                   , xrvspc.dlv_by_name                                                   AS dlv_by_name            -- 納品者名
+                   , xrvspc.dlv_by_name_disp                                              AS dlv_by_name_disp       -- 納品者名（表示用）
+                   , xrvspc.customer_code                                                 AS customer_code          -- 顧客コード
+                   , xrvspc.customer_name                                                 AS customer_name          -- 顧客名
+                   , NULL                                                                 AS pre_counter            -- 前回カウンタ
+                   , TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2) AS delivery_date          -- 日付
+                   , NULL                                                                 AS standard_qty           -- 本数
+                   , NULL                                                                 AS current_counter        -- 今回カウンタ
+                   , NULL                                                                 AS error                  -- 誤差
+                   , NULL                                                                 AS sales_amount           -- 売上（成績者）
+                   , NULL                                                                 AS payment_amount         -- 入金（成績者）
+                   , get_payment_rec.payment_amount                                       AS overs_and_shorts       -- 過不足（売上ー入金）
+                   , NULL                                                                 AS change_balance         -- 釣銭（残高）
+                   , NULL                                                                 AS change_pay             -- 釣銭（支払）
+                   , NULL                                                                 AS change_return          -- 釣銭（戻し）
+                   , NULL                                                                 AS change                 -- 釣銭
+                   , NULL                                                                 AS change_out_time_100    -- 釣銭切れ時間（分）100円
+                   , NULL                                                                 AS change_out_time_10     -- 釣銭切れ時間（分）10円
+                   , cn_created_by                                                        AS created_by             -- 作成者
+                   , cd_creation_date                                                     AS creation_date          -- 作成日
+                   , cn_last_updated_by                                                   AS last_updated_by        -- 最終更新者
+                   , cd_last_update_date                                                  AS last_update_date       -- 最終更新日
+                   , cn_last_update_login                                                 AS last_update_login      -- 最終更新ログイン
+                   , cn_request_id                                                        AS request_id             -- 要求ID
+                   , cn_program_application_id                                            AS program_application_id -- プログラムアプリケーションID
+                   , cn_program_id                                                        AS program_id             -- プログラムID
+                   , cd_program_update_date                                               AS program_update_date    -- プログラム更新日
+              FROM   xxcos_rep_vd_sales_pay_chk xrvspc
+              WHERE  xrvspc.year_months   = get_payment_rec.year_months
+              AND    xrvspc.base_code     = get_payment_rec.segment2
+              AND    xrvspc.customer_code = get_payment_rec.jgzz_recon_ref
+              AND    xrvspc.dlv_by_code   = lt_dlv_by_code
+              AND    xrvspc.request_id    = cn_request_id
+              AND    ROWNUM               = 1
+              ;
+            EXCEPTION
+              WHEN OTHERS THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_application     -- アプリケーション短縮名
+                               , iv_name         => cv_msg_xxcos_00010 -- メッセージコード
+                               , iv_token_name1  => cv_tkn_table_name  -- トークンコード1
+                               , iv_token_value1 => gv_msg_xxcos_14502 -- トークン値1
+                               , iv_token_name2  => cv_tkn_key_data    -- トークンコード2
+                               , iv_token_value2 => SQLERRM            -- トークン値2
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE global_process_expt;
+            END;
+          END IF;
+        -- 対象ありは更新
+        ELSIF ( lt_dlv_by_code IS NOT NULL ) THEN
+          --==============================================================
+          -- 帳票ワークテーブル登録・更新処理（入金情報）
+          --==============================================================
+          BEGIN
+            UPDATE xxcos_rep_vd_sales_pay_chk xrvspc
+            SET    xrvspc.overs_and_shorts = get_payment_rec.payment_amount -- 過不足（売上ー入金）
+            WHERE  xrvspc.year_months      = get_payment_rec.year_months
+            AND    xrvspc.base_code        = get_payment_rec.segment2
+            AND    xrvspc.customer_code    = get_payment_rec.jgzz_recon_ref
+            AND    xrvspc.delivery_date    = TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2)
+            AND    xrvspc.dlv_by_code      = lt_dlv_by_code
+            AND    xrvspc.request_id       = cn_request_id
             ;
           EXCEPTION
             WHEN OTHERS THEN
               lv_errmsg := xxccp_common_pkg.get_msg(
                                iv_application  => cv_application     -- アプリケーション短縮名
-                             , iv_name         => cv_msg_xxcos_00010 -- メッセージコード
+                             , iv_name         => cv_msg_xxcos_00011 -- メッセージコード
                              , iv_token_name1  => cv_tkn_table_name  -- トークンコード1
                              , iv_token_value1 => gv_msg_xxcos_14502 -- トークン値1
                              , iv_token_name2  => cv_tkn_key_data    -- トークンコード2
@@ -1386,44 +1801,19 @@ AS
               lv_errbuf := lv_errmsg;
               RAISE global_process_expt;
           END;
+          --
         END IF;
-      -- 対象ありは更新
-      ELSIF ( lt_dlv_by_code IS NOT NULL ) THEN
-        --==============================================================
-        -- 帳票ワークテーブル登録・更新処理（入金情報）
-        --==============================================================
-        BEGIN
-          UPDATE xxcos_rep_vd_sales_pay_chk xrvspc
-          SET    xrvspc.overs_and_shorts = get_payment_rec.payment_amount -- 過不足（売上ー入金）
-          WHERE  xrvspc.year_months      = get_payment_rec.year_months
-          AND    xrvspc.base_code        = get_payment_rec.segment2
-          AND    xrvspc.customer_code    = get_payment_rec.jgzz_recon_ref
-          AND    xrvspc.delivery_date    = TO_CHAR(get_payment_rec.default_effective_date, cv_format_yyyymmdd2)
-          AND    xrvspc.dlv_by_code      = lt_dlv_by_code
-          AND    xrvspc.request_id       = cn_request_id
-          ;
-        EXCEPTION
-          WHEN OTHERS THEN
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_application     -- アプリケーション短縮名
-                           , iv_name         => cv_msg_xxcos_00011 -- メッセージコード
-                           , iv_token_name1  => cv_tkn_table_name  -- トークンコード1
-                           , iv_token_value1 => gv_msg_xxcos_14502 -- トークン値1
-                           , iv_token_name2  => cv_tkn_key_data    -- トークンコード2
-                           , iv_token_value2 => SQLERRM            -- トークン値2
-                         );
-            lv_errbuf := lv_errmsg;
-            RAISE global_process_expt;
-        END;
         --
-      END IF;
+      END LOOP payment_loop;
       --
-    END LOOP payment_loop;
-    --
-    -- カーソルクローズ
-    CLOSE get_payment_cur;
-    --
--- 2013/02/20 Ver1.1 Mod End
+      -- カーソルクローズ
+      CLOSE get_payment_cur2;
+      --
+    END IF;
+--
+    -- 登録件数確認
+    gn_ins_cnt := gn_ins_cnt + gn_cnt;
+-- 2013/03/18 Ver1.2 Add End
 --
     -- 処理終了時刻をログへ出力
     FND_FILE.PUT_LINE(
@@ -1462,6 +1852,10 @@ AS
       ov_retcode := cv_status_error;
       IF ( get_payment_cur%ISOPEN ) THEN
         CLOSE get_payment_cur;
+-- 2013/03/18 Ver1.2 Add Start
+      ELSIF ( get_payment_cur2%ISOPEN ) THEN
+        CLOSE get_payment_cur2;
+-- 2013/03/18 Ver1.2 Add End
       END IF;
 --
 --#####################################  固定部 END   ##########################################
@@ -2051,10 +2445,13 @@ AS
       WHERE  xrvspc.request_id          = cn_request_id
       GROUP BY
              xrvspc.customer_code
--- 2013/02/20 Ver1.1 Mod Start
---      HAVING ( ( SUM(xrvspc.overs_and_shorts) = 0 ) OR ( SUM(xrvspc.error) = 0 ) )
-      HAVING ( ( SUM(xrvspc.overs_and_shorts) = 0 ) OR ( SUM(NVL(xrvspc.error,0)) = 0 ) )
--- 2013/02/20 Ver1.1 Mod End
+-- 2013/03/18 Ver1.2 Mod Start
+---- 2013/02/20 Ver1.1 Mod Start
+----      HAVING ( ( SUM(xrvspc.overs_and_shorts) = 0 ) OR ( SUM(xrvspc.error) = 0 ) )
+--      HAVING ( ( SUM(xrvspc.overs_and_shorts) = 0 ) OR ( SUM(NVL(xrvspc.error,0)) = 0 ) )
+---- 2013/02/20 Ver1.1 Mod End
+      HAVING ( ( SUM(xrvspc.overs_and_shorts) = 0 ) AND ( SUM(NVL(xrvspc.error,0)) = 0 ) )
+-- 2013/03/18 Ver1.2 Mod End
     ;
     -- 入金過不足削除対象取得カーソル
     CURSOR get_rep_xrvspc_2_cur
@@ -2986,22 +3383,43 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2013/03/18 Ver1.2 Mod Start
+--    -- 1件以上帳票ワークテーブルに登録した場合
+--    IF ( gn_ins_cnt > 0 ) THEN
+--      --
+--      -- ===============================
+--      -- 入金情報取得処理(A-4)、帳票ワークテーブル登録・更新処理（入金情報）(A-5)
+--      -- ===============================
+--      upd_get_payment_data(
+--          iv_base_code                -- 拠点コード
+--        , lv_errbuf                   -- エラー・メッセージ           --# 固定 #
+--        , lv_retcode                  -- リターン・コード             --# 固定 #
+--        , lv_errmsg                   -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      --
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+    -- ===============================
+    -- 入金情報取得処理(A-4)、帳票ワークテーブル登録・更新処理（入金情報）(A-5)
+    -- ===============================
+    upd_get_payment_data(
+        iv_base_code                -- 拠点コード
+      , iv_dlv_by_code              -- 営業員コード
+      , iv_cust_code                -- 顧客コード
+      , lv_errbuf                   -- エラー・メッセージ           --# 固定 #
+      , lv_retcode                  -- リターン・コード             --# 固定 #
+      , lv_errmsg                   -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+    --
     -- 1件以上帳票ワークテーブルに登録した場合
     IF ( gn_ins_cnt > 0 ) THEN
       --
-      -- ===============================
-      -- 入金情報取得処理(A-4)、帳票ワークテーブル登録・更新処理（入金情報）(A-5)
-      -- ===============================
-      upd_get_payment_data(
-          iv_base_code                -- 拠点コード
-        , lv_errbuf                   -- エラー・メッセージ           --# 固定 #
-        , lv_retcode                  -- リターン・コード             --# 固定 #
-        , lv_errmsg                   -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      --
-      IF ( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
+-- 2013/03/18 Ver1.2 Mod End
 --
       -- ===============================
       -- 釣銭（残高）情報取得処理(A-6)、帳票ワークテーブル更新処理（釣銭（残高）情報）(A-7)
