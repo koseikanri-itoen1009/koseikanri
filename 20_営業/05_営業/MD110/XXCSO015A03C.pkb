@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2010-01-13    1.24  K.Hosoi          E_本稼動_00443対応
  *  2010-01-19    1.25  K.Hosoi          E_本稼動_00818,01177対応
  *  2010-01-26    1.26  K.Hosoi          E_本稼動_00533,00319対応
+ *  2010-03-01    1.27  K.Hosoi          E_本稼動_01761対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3242,7 +3243,9 @@ AS
     cv_kbn2                  CONSTANT VARCHAR2(1)   := '2'; 
     cv_lease_type_own        CONSTANT VARCHAR2(1)   := '1';                 -- 自社リース
     cv_unit_of_measure       CONSTANT VARCHAR2(10)  := '台';                -- 単位み
-    cv_approved              CONSTANT VARCHAR2(10)  := 'APPROVED';          -- 承認済み
+    /*2010.03.01 K.Hosoi E_本稼動_01761対応 START*/
+    --cv_approved              CONSTANT VARCHAR2(10)  := 'APPROVED';          -- 承認済み
+    /*2010.03.01 K.Hosoi E_本稼動_01761対応 END*/
     cv_cust_mst_info         CONSTANT VARCHAR2(100) := '顧客マスタ情報';    -- 抽出内容
     cv_po_un_numbers_info    CONSTANT VARCHAR2(100) := '国連番号マスタ(機種コードマスタ)情報';    -- 抽出内容
     cv_mfg_fctory_maker_nm   CONSTANT VARCHAR2(100) := '参照タイプのメーカー名';
@@ -3378,8 +3381,11 @@ AS
       INTO     lv_lease_type
       FROM     xxcso_requisition_lines_v   prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers      prh                              -- 発注依頼ヘッダビュー
-      WHERE    prh.segment1               = io_inst_base_data_rec.po_req_number
-        AND    prh.authorization_status   = cv_approved
+      /*2010.03.01 K.Hosoi E_本稼動_01761対応 START*/
+      --WHERE    prh.segment1               = io_inst_base_data_rec.po_req_number
+      --  AND    prh.authorization_status   = cv_approved
+      WHERE    prh.segment1               = TO_CHAR(io_inst_base_data_rec.po_req_number)
+      /*2010.03.01 K.Hosoi E_本稼動_01761対応 END*/
         AND    prlv.requisition_header_id = prh.requisition_header_id
         AND    prlv.line_num              = io_inst_base_data_rec.line_num
         AND    (ld_date BETWEEN(NVL(prlv.lookup_start_date, ld_date)) AND
