@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_sp_decision_headers
  * Description     : ＳＰ専決ヘッダテーブル
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ *  2012/04/02    1.2  S.Niki        E_本稼動_09220対応(PT対応)
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_sp_decision_headers
 (
@@ -60,6 +61,9 @@ CREATE TABLE xxcso.xxcso_sp_decision_headers
   operating_profit                NUMBER(9,2),
   operating_profit_rate           NUMBER(9,2),
   break_even_point                NUMBER(9,2),
+  /* 2012/04/02 S.Niki E_本稼動_09220対応 ADD START */
+  wf_key                          VARCHAR2(240),
+  /* 2012/04/02 S.Niki E_本稼動_09220対応 ADD END */
   created_by                      NUMBER(15)        NOT NULL,
   creation_date                   DATE              NOT NULL,
   last_updated_by                 NUMBER(15)        NOT NULL,
@@ -123,6 +127,9 @@ COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.total_cost                    
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.operating_profit                       IS '営業利益';
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.operating_profit_rate                  IS '営業利益率';
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.break_even_point                       IS '損益分岐点';
+/* 2012/04/02 S.Niki E_本稼動_09220対応 ADD START */
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.wf_key                                 IS 'ワークフローキー';
+/* 2012/04/02 S.Niki E_本稼動_09220対応 ADD END */
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.created_by                             IS '作成者';
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.creation_date                          IS '作成日';
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.last_updated_by                        IS '最終更新者';

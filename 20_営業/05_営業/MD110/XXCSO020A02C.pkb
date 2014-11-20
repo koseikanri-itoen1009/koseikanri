@@ -8,7 +8,7 @@ AS
  *                    回送先にワークフロー通知を送付します。
  * MD.050           : MD050_CSO_020_A02_通知・承認ワークフロー機能
  *
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *  2009-06-29    1.2   Kazuo.Satomura   統合テスト障害対応(0000209)
  *  2009-10-21    1.3   Daisuke.Abe      E_T4_00050対応
+ *  2012-04-20    1.4   Shigeto.Niki     E_本稼動_09220対応(PT対応)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -96,12 +97,18 @@ AS
   cv_sales_appl_short_name CONSTANT VARCHAR2(5)   := 'XXCSO';         -- 営業用アプリケーション短縮名
   cv_com_appl_short_name   CONSTANT VARCHAR2(5)   := 'XXCCP';         -- 共通用アプリケーション短縮名
   --
+  /* 2012/04/20 S.Niki Ver1.4 ADD START */
+  cv_date_fmt              CONSTANT VARCHAR2(20)  := 'YYYYMMDDHH24MISS';  -- 連携日付書式
+  /* 2012/04/20 S.Niki Ver1.4 ADD END */
   -- メッセージコード
   cv_tkn_number_01 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00011';  -- 業務処理日付取得エラー
   cv_tkn_number_02 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00382';  -- 入力パラメータ必須エラー
   cv_tkn_number_03 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00323';  -- データ取得エラー
   cv_tkn_number_04 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00324';  -- データ抽出時例外エラー
   cv_tkn_number_05 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00340';  -- ワークフローAPIエラー
+  /* 2012/04/20 S.Niki Ver1.4 ADD START */
+  cv_tkn_number_07 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00337';  -- データ更新エラー
+  /* 2012/04/20 S.Niki Ver1.4 ADD END */
   --
   -- トークンコード
   cv_tkn_item     CONSTANT VARCHAR2(20) := 'ITEM';
@@ -109,10 +116,20 @@ AS
   cv_tkn_key      CONSTANT VARCHAR2(20) := 'KEY';
   cv_tkn_err_msg  CONSTANT VARCHAR2(20) := 'ERR_MSG';
   cv_tkn_func_nm  CONSTANT VARCHAR2(20) := 'FUNC_NAME';
+  /* 2012/04/20 S.Niki Ver1.4 ADD START */
+  cv_tkn_action   CONSTANT VARCHAR2(20) := 'ACTION';
+  cv_tkn_err_msg2 CONSTANT VARCHAR2(20) := 'ERROR_MESSAGE';
+  --
+  -- トークン用定数
+  cv_tkn_val_sp_header        CONSTANT VARCHAR2(100) := 'ＳＰ専決ヘッダテーブル';
+  /* 2012/04/20 S.Niki Ver1.4 ADD END */
   --
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
+  /* 2012/04/20 S.Niki Ver1.4 ADD START */
+  gv_sysdate      VARCHAR2(20);
+  /* 2012/04/20 S.Niki Ver1.4 ADD END */
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -163,12 +180,16 @@ AS
     cv_nm_dest_employee_number  CONSTANT VARCHAR2(30) := '回送先従業員番号';
     /* 2009.10.21 D.Abe E_T4_00050対応 START */
     cv_nm_wf_notifications      CONSTANT VARCHAR2(30) := '通知クローズ処理';
+    
     /* 2009.10.21 D.Abe E_T4_00050対応 END */
     --
     -- *** ローカル変数 ***
     /* 2009.10.21 D.Abe E_T4_00050対応 START */
     lt_login_user_name fnd_user.user_name%TYPE;    -- ログインユーザー名
     /* 2009.10.21 D.Abe E_T4_00050対応 END */
+    /* 2012/04/20 S.Niki Ver1.4 ADD START */
+    lv_wf_key                xxcso_sp_decision_headers.wf_key%TYPE;                 -- WFキー
+    /* 2012/04/20 S.Niki Ver1.4 ADD END */
     --
     -- *** ローカル例外 ***
     input_parameter_expt  EXCEPTION;
@@ -249,6 +270,12 @@ AS
       --
       RAISE global_api_expt;
     END IF;
+    /* 2012/04/20 S.Niki Ver1.4 ADD START */
+    -- ========================================
+    -- アイテムキー採番用のシステム日付取得
+    -- ========================================
+    gv_sysdate := TO_CHAR( SYSDATE, cv_date_fmt );
+    /* 2012/04/20 S.Niki Ver1.4 ADD END */
     /* 2009.10.21 D.Abe E_T4_00050対応 START */
     --
     -- ============================
@@ -269,22 +296,62 @@ AS
     -- ============================
     -- 既存ワークフロー通知クローズ処理
     -- ============================
+    /* 2012/04/20 S.Niki Ver1.4 ADD START */
     BEGIN
-      UPDATE wf_notifications wn
-      SET    status   = ct_wf_status_c,
-             end_date = SYSDATE,
-             responder = lt_login_user_name
-      WHERE  EXISTS(SELECT 1
-                    FROM   wf_item_attribute_values  wiav
-                          ,wf_item_activity_statuses wias
-                    WHERE  wiav.item_type     = wias.item_type
-                    AND    wiav.item_key      = wias.item_key
-                    AND    wiav.item_type     = ct_item_type
-                    AND    wiav.name          = ct_item_name
-                    AND    wiav.number_value  = it_sp_decision_header_id
-                    AND    wn.notification_id = wias.notification_id)
-      AND    wn.status = ct_wf_status_o
+      -- ==========================
+      -- WFキー取得
+      -- ==========================
+      SELECT xsdh.wf_key                 wf_key                -- WFキー
+      INTO   lv_wf_key
+      FROM   xxcso_sp_decision_headers xsdh  -- SP専決ヘッダ
+      WHERE  xsdh.sp_decision_header_id = it_sp_decision_header_id
       ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        NULL;
+    END;
+    /* 2012/04/20 S.Niki Ver1.4 ADD END */
+    BEGIN
+      /* 2012/04/20 S.Niki Ver1.4 ADD START */
+      -- WFキーが取得できた場合
+      IF ( lv_wf_key IS NOT NULL ) THEN
+        UPDATE wf_notifications wn                            -- WF通知
+        SET    status    = ct_wf_status_c,                    -- 通知ステータス「CLOSED」
+               end_date  = SYSDATE,
+               responder = lt_login_user_name
+        WHERE  EXISTS( SELECT 1
+                       FROM   wf_item_attribute_values  wiav  -- WFアイテムデータ
+                             ,wf_item_activity_statuses wias  -- WFアイテムステータス
+                       WHERE  wiav.item_type     = wias.item_type
+                       AND    wiav.item_key      = wias.item_key
+                       AND    wiav.item_key      LIKE lv_wf_key
+                       AND    wiav.item_type     = ct_item_type
+                       AND    wiav.name          = ct_item_name
+                       AND    wiav.number_value  = it_sp_decision_header_id
+                       AND    wn.notification_id = wias.notification_id )
+        AND    wn.status = ct_wf_status_o                     -- 通知ステータス「OPEN」
+        ;
+      ELSE
+        -- WFキーが取得できなかった場合
+      /* 2012/04/20 S.Niki Ver1.4 ADD END */
+        UPDATE wf_notifications wn
+        SET    status   = ct_wf_status_c,
+               end_date = SYSDATE,
+               responder = lt_login_user_name
+        WHERE  EXISTS(SELECT 1
+                      FROM   wf_item_attribute_values  wiav
+                            ,wf_item_activity_statuses wias
+                      WHERE  wiav.item_type     = wias.item_type
+                      AND    wiav.item_key      = wias.item_key
+                      AND    wiav.item_type     = ct_item_type
+                      AND    wiav.name          = ct_item_name
+                      AND    wiav.number_value  = it_sp_decision_header_id
+                      AND    wn.notification_id = wias.notification_id)
+        AND    wn.status = ct_wf_status_o
+        ;
+      /* 2012/04/20 S.Niki Ver1.4 ADD START */
+      END IF;
+      /* 2012/04/20 S.Niki Ver1.4 ADD END */
       --
     EXCEPTION
       WHEN OTHERS THEN
@@ -658,6 +725,9 @@ AS
     cv_wf_setitemattrnumber     CONSTANT VARCHAR2(30) := 'setitemattrnumber';
     cv_wf_setitemattrtext       CONSTANT VARCHAR2(30) := 'setitemattrtext';
     cv_wf_startprocess          CONSTANT VARCHAR2(30) := 'startprocess';
+    /* 2012/04/20 S.Niki Ver1.4 ADD START */
+    cv_under_bar                CONSTANT VARCHAR2(2)  := '_';
+    /* 2012/04/20 S.Niki Ver1.4 ADD END */
     --
     -- ワークフロー属性名
     cv_wf_aname_sp_dec_head_id  CONSTANT VARCHAR2(30) := 'XXCSO_SP_DECISION_HEADER_ID';
@@ -671,10 +741,16 @@ AS
     -- *** ローカル変数 ***
     -- ワークフローAPI例外
     lv_itemkey                  VARCHAR2(100);
+    /* 2012/04/20 S.Niki Ver1.4 ADD START */
+    lv_conv_itemkey             VARCHAR2(100);  -- SP専決ヘッダに保持するアイテムキー
+    /* 2012/04/20 S.Niki Ver1.4 ADD END */
     lv_token_value              VARCHAR2(60);
     --
     -- *** ローカル例外 ***
     wf_api_others_expt          EXCEPTION;
+    /* 2012/04/20 S.Niki Ver1.4 ADD START */
+    update_wf_key_expt          EXCEPTION;
+    /* 2012/04/20 S.Niki Ver1.4 ADD END */
     --
     PRAGMA EXCEPTION_INIT( wf_api_others_expt, -20002 );
     --
@@ -687,13 +763,24 @@ AS
     --###########################  固定部 END   ############################
     --
     lv_itemkey := cv_sales_appl_short_name
-                    || TO_CHAR( SYSDATE, 'YYYYMMDDHH24MISS' )
+                    /* 2012/04/20 S.Niki Ver1.4 MOD START */
+--                    || TO_CHAR( SYSDATE, 'YYYYMMDDHH24MISS' )
+                    || gv_sysdate                 -- システム日付(YYYYMMDDHH24MISS)
+                    /* 2012/04/20 S.Niki Ver1.4 MOD END */
                     /* 2009.06.29 K.Satomura 統合テスト障害対応(0000209) START */
                     --|| LPAD( TO_CHAR( in_seq_num ), 2, '0' );
                     || LPAD( TO_CHAR( in_seq_num ), 2, '0' )
                     || TO_CHAR(it_sp_decision_header_id)
                     ;
                     /* 2009.06.29 K.Satomura 統合テスト障害対応(0000209) END */
+    /* 2012/04/20 S.Niki Ver1.4 ADD START */
+    lv_conv_itemkey := cv_sales_appl_short_name                -- 'XXCSO'
+                         || gv_sysdate                         -- システム日付(YYYYMMDDHH24MISS)
+                         || cv_under_bar                       -- アンダーバー
+                         || cv_under_bar                       -- アンダーバー
+                         || TO_CHAR(it_sp_decision_header_id)  -- SP専決ヘッダID
+                         ;
+    /* 2012/04/20 S.Niki Ver1.4 ADD END */
     --
     -- ==========================
     -- ワークフロープロセス生成
@@ -762,7 +849,32 @@ AS
         itemtype => cv_wf_itemtype
       , itemkey  => lv_itemkey
     );
-    --
+    /* 2012/04/20 S.Niki Ver1.4 ADD START */
+    BEGIN
+      -- ==========================
+      -- SP専決ヘッダのWFキー更新
+      -- ==========================
+      UPDATE xxcso_sp_decision_headers xsdh                -- SP専決ヘッダ
+      SET    xsdh.wf_key                = lv_conv_itemkey
+      WHERE  xsdh.sp_decision_header_id = it_sp_decision_header_id
+      ;
+      --
+    EXCEPTION
+      --
+      WHEN OTHERS THEN
+        -- *** その他例外ハンドラ ***
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_07          -- メッセージコード
+                       , iv_token_name1  => cv_tkn_action             -- トークンコード1
+                       , iv_token_value1 => cv_tkn_val_sp_header      -- トークン値1
+                       , iv_token_name2  => cv_tkn_err_msg2           -- トークンコード2
+                       , iv_token_value2 => SQLERRM                   -- トークン値2
+                    );
+        RAISE update_wf_key_expt;
+        --
+    END;
+    /* 2012/04/20 S.Niki Ver1.4 ADD END */
   EXCEPTION
     --
     WHEN wf_api_others_expt THEN
@@ -777,6 +889,12 @@ AS
                   );
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
       ov_retcode := cv_status_error;
+/* 2012/04/20 S.Niki Ver1.4 ADD START */
+    WHEN update_wf_key_expt THEN
+      -- *** ワークフローキー更新例外ハンドラ ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+/* 2012/04/20 S.Niki Ver1.4 ADD END */
       --
     --#################################  固定例外処理部 START   ####################################
     --
