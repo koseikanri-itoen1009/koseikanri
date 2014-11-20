@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.26
+ * Version          : 1.27
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -65,6 +65,7 @@ AS
  *  2009/11/05    1.26  K.Kiriu          [E_T4_00103]AR取引番号採番単位変更対応
  *                                       [E_最終移行リハ_00519]大手AR取引番号の採番形態変更対応
  *                                       [I_E_00648]顧客階層不具合対応
+ *  2010/03/08    1.27  K.Atsushiba      [E_本稼動_01400]値引の仕訳、対象データなしのステイタス対応
  *
  *****************************************************************************************/
 --
@@ -278,6 +279,9 @@ AS
   cv_cust_class_cust        CONSTANT  VARCHAR2(2)  := '10';              -- 顧客区分(顧客)
   cv_cust_class_ue          CONSTANT  VARCHAR2(2)  := '12';              -- 顧客区分(上様)
 /* 2009/07/27 Ver1.21 Add End   */
+/* 2010/03/08 Ver1.27 Add Start   */
+  cv_status_enable          CONSTANT VARCHAR2(1)   := 'A';               -- ステイタス：A（有効）
+/* 2010/03/08 Ver1.27 Add End   */
 --
   -- クイックコードタイプ
   cv_qct_card_cls           CONSTANT  VARCHAR2(50) := 'XXCOS1_CARD_SALE_CLASS';         -- カード売区分特定マスタ
@@ -509,6 +513,11 @@ AS
   TYPE g_sel_trx_ttype   IS TABLE OF gr_sel_trx_type INDEX BY VARCHAR2( 200 );
   gt_sel_trx_type_tbl                g_sel_trx_ttype;                               -- 取引タイプ
 --
+/* 2010/03/08 Ver1.27 Add Start   */
+  TYPE g_discount_item_ttype   IS TABLE OF VARCHAR2(9) INDEX BY VARCHAR2( 9 );
+  gt_discount_item_tbl            g_discount_item_ttype;                               -- 値引品目
+/* 2010/03/08 Ver1.27 Add End   */
+--
   -- ===============================
   -- ユーザー定義グローバルレコード
   -- ===============================
@@ -532,7 +541,9 @@ AS
   gv_prod_msg                         VARCHAR2(20);                                 -- 文字列:製品売上高
   gv_disc_msg                         VARCHAR2(20);                                 -- 文字列:売上値引
   gv_item_tax                         VARCHAR2(30);                                 -- 品目明細摘要(TAX)
-  gv_dis_item_cd                      VARCHAR2(30);                                 -- 売上値引品目コード
+/* 2010/03/08 Ver1.27 Del Start   */
+--  gv_dis_item_cd                      VARCHAR2(30);                                 -- 売上値引品目コード
+/* 2010/03/08 Ver1.27 Del End   */
 /* 2009/07/30 Ver1.21 Add Start */
   gv_goods_prod_cls                   VARCHAR2(30);                                 -- 商品製品区分カテゴリセット名
   gt_category_id                      mtl_categories_b.category_id%TYPE;            -- カテゴリID
@@ -691,6 +702,10 @@ AS
             ,xseaw.sales_exp_header_id --販売実績ヘッダID
             ,xseaw.card_sale_class     --カード売り区分
             ,xseaw.goods_prod_cls      --品目区分
+/* 2010/03/08 Ver1.27 Add Start   */
+            ,xseaw.item_code           --品目コード
+            ,xseaw.red_black_flag      --赤黒フラグ
+/* 2010/03/08 Ver1.27 Add End   */
 /* 2009/11/05 Ver1.26 Mod End   */
     ;
 /* 2009/10/02 Ver1.24 Add End   */
@@ -751,6 +766,10 @@ AS
             ,xseaw.card_sale_class     --カード売り区分
             ,xseaw.sales_exp_header_id --販売実績ヘッダID
             ,xseaw.goods_prod_cls      --品目区分(製品・商品)
+/* 2010/03/08 Ver1.27 Add Start   */
+            ,xseaw.item_code           --品目コード
+            ,xseaw.red_black_flag      --赤黒フラグ
+/* 2010/03/08 Ver1.27 Add End   */
     ;
 /* 2009/11/05 Ver1.26 Add End   */
   -- 仕訳パターンカーソル
@@ -865,6 +884,21 @@ AS
     -- *** ローカル例外 ***
 --
     -- *** ローカル・カーソル ***
+/* 2010/03/08 Ver1.27 Add Start   */
+  -- 値引品目取得カーソル
+  CURSOR discount_item_cur
+  IS
+    SELECT  flv.lookup_code     item_code
+    FROM    fnd_lookup_values  flv
+    WHERE   flv.lookup_type      = ct_dis_item_cd
+    AND     flv.language         = ct_lang
+    AND     flv.enabled_flag     = cv_enabled_yes
+    AND     gd_process_date BETWEEN   NVL( flv.start_date_active, gd_process_date )
+                            AND       NVL( flv.end_date_active,   gd_process_date );
+  --
+  discount_item_rec           discount_item_cur%ROWTYPE;
+
+/* 2010/03/08 Ver1.27 Add End   */
 --
     -- *** ローカル・レコード ***
 --
@@ -1132,23 +1166,25 @@ AS
     --==================================
     -- XXCOS:売上値引品目
     --==================================
-    gv_dis_item_cd := FND_PROFILE.VALUE( ct_dis_item_cd );
+/* 2010/03/08 Ver1.27 Del Start   */
+--    gv_dis_item_cd := FND_PROFILE.VALUE( ct_dis_item_cd );
 --
-    -- プロファイルが取得できない場合はエラー
-    IF ( gv_dis_item_cd IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg(
-         iv_application => cv_xxcos_short_nm                           -- アプリケーション短縮名
-        ,iv_name        => cv_dis_item_cd                              -- メッセージID
-      );
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_xxcos_short_nm
-                     , iv_name         => cv_pro_msg
-                     , iv_token_name1  => cv_tkn_pro
-                     , iv_token_value1 => lv_profile_name
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+--    -- プロファイルが取得できない場合はエラー
+--    IF ( gv_dis_item_cd IS NULL ) THEN
+--      lv_profile_name := xxccp_common_pkg.get_msg(
+--         iv_application => cv_xxcos_short_nm                           -- アプリケーション短縮名
+--        ,iv_name        => cv_dis_item_cd                              -- メッセージID
+--      );
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_xxcos_short_nm
+--                     , iv_name         => cv_pro_msg
+--                     , iv_token_name1  => cv_tkn_pro
+--                     , iv_token_value1 => lv_profile_name
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+/* 2010/03/08 Ver1.27 Del End   */
 /* 2009/07/30 Ver1.21 Add Start */
     -- ===============================
     -- XXCOS：商品製品区分カテゴリセット名
@@ -1607,6 +1643,41 @@ AS
 --
 /* 2009/10/02 Ver1.24 Add End   */
 --
+/* 2010/03/08 Ver1.27 Add Start   */
+    --=====================================
+    -- 値引品目の取得
+    --=====================================
+    BEGIN
+      OPEN  discount_item_cur;
+      --
+      <<discount_item_loop>>
+      LOOP
+        FETCH discount_item_cur INTO discount_item_rec;
+        EXIT WHEN discount_item_cur%NOTFOUND;
+        --
+        gt_discount_item_tbl(discount_item_rec.item_code) := discount_item_rec.item_code;
+        --
+      END LOOP discount_item_loop;
+      --
+      CLOSE discount_item_cur;
+    EXCEPTION
+      WHEN OTHERS THEN
+        IF ( discount_item_cur%ISOPEN ) THEN
+          CLOSE discount_item_cur;
+        END IF;
+        --
+        -- エラーメッセージ作成
+        lv_errmsg    := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_xxcos_short_nm
+                         , iv_name         => cv_dis_item_cd
+                         , iv_token_name1  => cv_tkn_lookup_type
+                         , iv_token_value1 => ct_dis_item_cd
+                       );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+/* 2010/03/08 Ver1.27 Add End   */
+--
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -1824,6 +1895,10 @@ AS
                      ,hz_cust_site_uses_all    scsua
                WHERE  rcrm.customer_id        = xsehv.bill_account_id
                AND    rcrm.primary_flag       = cv_y_flag
+/* 2010/03/08 Ver1.27 Add Start   */
+               AND    scsua.status            = cv_status_enable         --顧客使用目的.ステータス = 'A'(有効)
+               AND    scsua.primary_flag      = cv_y_flag                --顧客使用目的.主フラグ   = 'Y'(オン)
+/* 2010/03/08 Ver1.27 Add Start   */
                AND    rcrm.site_use_id        = scsua.site_use_id
                AND    gd_process_date         BETWEEN NVL( rcrm.start_date, gd_process_date )
                                                   AND NVL( rcrm.end_date, gd_process_date )
@@ -1977,6 +2052,14 @@ AS
                         AND    bill_hsua_1.site_use_code       = cv_site_code                   -- サイトコード:BILL_TO
                         AND    bill_hzad_1.customer_id         = hcab.cust_account_id
                         AND    ship_hsua_1.bill_to_site_use_id = bill_hsua_1.site_use_id
+/* 2010/03/08 Ver1.27 Add Start   */
+                        AND    ship_hsua_1.status              = cv_status_enable         --顧客使用目的.ステータス = 'A'(有効)
+                        AND    bill_hsua_1.status              = cv_status_enable         --顧客使用目的.ステータス = 'A'(有効)
+                        AND    ship_hasa_1.status              = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+                        AND    bill_hasa_1.status              = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+                        AND    bill_hsua_1.primary_flag        = cv_y_flag                --顧客使用目的.主フラグ   = 'Y'(オン)
+                        AND    ship_hsua_1.primary_flag        = cv_y_flag                --顧客使用目的.主フラグ   = 'Y'(オン)
+/* 2010/03/08 Ver1.27 Add Start   */
                         AND    NOT EXISTS (
                                  SELECT /*+ USE_NL(cash_hcar_1) */
                                        'X'
@@ -2107,6 +2190,15 @@ AS
                         AND    cash_hasa_2.cust_account_id     = hcac.cust_account_id
                         AND    cash_hzad_2.customer_id         = hcac.cust_account_id
                         AND    ship_hsua_2.bill_to_site_use_id = bill_hsua_2.site_use_id
+/* 2010/03/08 Ver1.27 Add Start   */
+                        AND    ship_hsua_2.status              = cv_status_enable         --顧客使用目的.ステータス = 'A'(有効)
+                        AND    bill_hsua_2.status              = cv_status_enable         --顧客使用目的.ステータス = 'A'(有効)
+                        AND    cash_hasa_2.status              = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+                        AND    bill_hasa_2.status              = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+                        AND    ship_hasa_2.status              = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+                        AND    bill_hsua_2.primary_flag        = cv_y_flag                --顧客使用目的.主フラグ   = 'Y'(オン)
+                        AND    ship_hsua_2.primary_flag        = cv_y_flag                --顧客使用目的.主フラグ   = 'Y'(オン)
+/* 2010/03/08 Ver1.27 Add Start   */
                         AND    ROWNUM                          = 1
                       )
                UNION ALL
@@ -2222,6 +2314,15 @@ AS
                         AND    cash_hasa_3.cust_account_id     = hcac.cust_account_id
                         AND    cash_hzad_3.customer_id         = hcac.cust_account_id
                         AND    ship_hsua_3.bill_to_site_use_id = bill_hsua_3.site_use_id
+/* 2010/03/08 Ver1.27 Add Start   */
+                        AND    ship_hsua_3.status              = cv_status_enable         --顧客使用目的.ステータス = 'A'(有効)
+                        AND    bill_hsua_3.status              = cv_status_enable         --顧客使用目的.ステータス = 'A'(有効)
+                        AND    cash_hasa_3.status              = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+                        AND    bill_hasa_3.status              = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+                        AND    ship_hasa_3.status              = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+                        AND    bill_hsua_3.primary_flag        = cv_y_flag                --顧客使用目的.主フラグ   = 'Y'(オン)
+                        AND    ship_hsua_3.primary_flag        = cv_y_flag                --顧客使用目的.主フラグ   = 'Y'(オン)
+/* 2010/03/08 Ver1.27 Add Start   */
                         AND    ROWNUM                          = 1
                       )
                AND    NOT EXISTS (
@@ -2337,6 +2438,14 @@ AS
                         AND    bill_hsua_4.cust_acct_site_id   = bill_hasa_4.cust_acct_site_id
                         AND    bill_hsua_4.site_use_code       = cv_site_code                   -- サイトコード:BILL_TO
                         AND    ship_hsua_4.bill_to_site_use_id = bill_hsua_4.site_use_id
+/* 2010/03/08 Ver1.27 Add Start   */
+                        AND    ship_hsua_4.status              = cv_status_enable         --顧客使用目的.ステータス = 'A'(有効)
+                        AND    bill_hsua_4.status              = cv_status_enable         --顧客使用目的.ステータス = 'A'(有効)
+                        AND    bill_hasa_4.status              = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+                        AND    ship_hasa_4.status              = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+                        AND    bill_hsua_4.primary_flag        = cv_y_flag                --顧客使用目的.主フラグ   = 'Y'(オン)
+                        AND    ship_hsua_4.primary_flag        = cv_y_flag                --顧客使用目的.主フラグ   = 'Y'(オン)
+/* 2010/03/08 Ver1.27 Add Start   */
                         AND    ROWNUM                          = 1
                       )
 /* 2009/11/05 Ver1.26 Mod Start */
@@ -2452,6 +2561,12 @@ AS
                                                 = gt_cash_sale_cls
            AND NVL( xsel.cash_and_card, 0 )    <> 0 )
           )
+/* 2010/03/08 Ver1.27 Add Start   */
+      AND hcsc.status                           = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+      AND hcsb.status                           = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+      AND hcss.status                           = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+      AND hcub.primary_flag                     = cv_y_flag                --顧客使用目的.主フラグ   = 'Y'(オン)
+/* 2010/03/08 Ver1.27 Add Start   */
 /* 2009/08/28 Ver1.23 Del Start */
 --      AND avta.tax_code                         = xsehv.tax_code
 /* 2009/07/27 Ver1.21 Mod End   */
@@ -2589,6 +2704,12 @@ AS
 /* 2009/08/20 Ver1.22 Add Start */
         --ブレーク用変数(支払条件)初期化
         lv_break_flag := cv_n_flag;
+/* 2010/03/08 Ver1.27 Add Start   */
+        -- 品目が値引品目の場合、製品商品区分をNULLにする
+        IF ( gt_discount_item_tbl.EXISTS(gt_sales_exp_tbl2(sale_idx).item_code) = TRUE ) THEN
+          gt_sales_exp_tbl2(sale_idx).goods_prod_cls := NULL;
+        END IF;
+/* 2010/03/08 Ver1.27 Add End   */
         --ヘッダ単位の処理の為のブレーク処理
         IF ( lt_break_header_id IS NULL )
           OR
@@ -2764,6 +2885,11 @@ AS
                             , hz_cust_accounts          hca    -- 顧客マスタ
                             , ra_cust_receipt_methods   rcrm   -- 顧客支払方法
                        WHERE  hcasa.cust_account_id     = xca.customer_id
+/* 2010/03/08 Ver1.27 Add Start   */
+                         AND  hcsua.status            = cv_status_enable         --顧客使用目的.ステータス = 'A'(有効)
+                         AND  hcasa.status            = cv_status_enable         --顧客所在地.ステータス   = 'A'(有効)
+                         AND  hcsua.primary_flag      = cv_y_flag                --顧客使用目的.主フラグ   = 'Y'(オン)
+/* 2010/03/08 Ver1.27 Add Start   */
                          AND  hcasa.org_id              = gv_mo_org_id
                          AND  hcasa.cust_acct_site_id   = hcsua.cust_acct_site_id
                          AND  hcsua.site_use_code       = cv_site_code
@@ -9105,7 +9231,10 @@ AS
 --
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
-    ELSIF (  lv_retcode = cv_status_warn ) THEN
+/* 2010/03/08 Ver1.27 Mod Start   */
+    ELSIF (  gn_target_cnt = 0 ) THEN
+--    ELSIF (  lv_retcode = cv_status_warn ) THEN
+/* 2010/03/08 Ver1.27 Mod End   */
 /* 2009/10/02 Ver1.24 Add Start */
       --エラーの退避
       lv_errbuf_bk  := lv_errbuf;
@@ -9493,7 +9622,10 @@ AS
     WHEN global_no_data_expt THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_warn;
+/* 2010/03/08 Ver1.27 Mod Start   */
+      ov_retcode := cv_status_normal;
+--      ov_retcode := cv_status_warn;
+/* 2010/03/08 Ver1.27 Mod End   */
     -- *** データ取得例外 ***
     WHEN global_select_data_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -9637,7 +9769,10 @@ AS
     );
 --
     --エラー出力
-    IF (lv_retcode = cv_status_error OR lv_retcode = cv_status_warn) THEN
+/* 2010/03/08 Ver1.27 Mod Start   */
+    IF (lv_retcode = cv_status_error OR lv_retcode = cv_status_warn OR gn_target_cnt = 0 ) THEN
+--    IF (lv_retcode = cv_status_error OR lv_retcode = cv_status_warn) THEN
+/* 2010/03/08 Ver1.27 Mod End   */
       FND_FILE.PUT_LINE(
          which  => FND_FILE.OUTPUT
         ,buff   => lv_errmsg                --ユーザー・エラーメッセージ
