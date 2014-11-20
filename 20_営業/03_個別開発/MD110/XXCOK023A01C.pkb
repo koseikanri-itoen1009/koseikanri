@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK023A01C(body)
  * Description      : 運送費予算算出
  * MD.050           : 運送費予算算出 MD050_COK_023_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/12/19    1.2   A.Yano           例外処理部修正
  *  2008/12/22    1.3   A.Yano           メッセージ出力、ログ出力修正
  *  2009/03/25    1.4   A.Yano           [障害T1_0064] オープン年度を取得する条件追加
+ *  2009/05/12    1.5   A.Yano           [障害T1_0772] 設定単価エラーメッセージに品目コード追加
  *
  *****************************************************************************************/
 --
@@ -665,6 +666,9 @@ AS
     ,it_base_code            IN  xxcsm_item_plan_headers.location_cd%TYPE           -- 拠点コード
     ,it_product_class        IN  xxcmn_item_mst_b.product_class%TYPE                -- 商品分類
     ,it_base_major_division  IN  xxcmn_parties.base_major_division%TYPE             -- 拠点大分類
+--【2009/05/12 A.Yano Ver.1.5 追加START】------------------------------------------------------
+    ,it_item_code            IN  xxcsm_item_plan_lines.item_no%TYPE                 -- 商品コード
+--【2009/05/12 A.Yano Ver.1.5 追加END  】------------------------------------------------------
     ,ot_set_unit_price       OUT xxwip_drink_trans_deli_chrgs.setting_amount%TYPE   -- 設定単価
   )
   IS
@@ -708,6 +712,10 @@ AS
                       ,iv_token_value2 => it_base_major_division
                       ,iv_token_name3  => cv_location_code_token
                       ,iv_token_value3 => it_base_code
+--【2009/05/12 A.Yano Ver.1.5 追加START】------------------------------------------------------
+                      ,iv_token_name4  => cv_item_code_token
+                      ,iv_token_value4 => it_item_code
+--【2009/05/12 A.Yano Ver.1.5 追加END  】------------------------------------------------------
                     );
       lb_retcode := xxcok_common_pkg.put_message_f(
                        in_which    =>   FND_FILE.OUTPUT
@@ -728,6 +736,10 @@ AS
                       ,iv_token_value2 => it_base_major_division
                       ,iv_token_name3  => cv_location_code_token
                       ,iv_token_value3 => it_base_code
+--【2009/05/12 A.Yano Ver.1.5 追加START】------------------------------------------------------
+                      ,iv_token_name4  => cv_item_code_token
+                      ,iv_token_value4 => it_item_code
+--【2009/05/12 A.Yano Ver.1.5 追加END  】------------------------------------------------------
                     );
       lb_retcode := xxcok_common_pkg.put_message_f(
                        in_which    =>   FND_FILE.OUTPUT
@@ -968,6 +980,9 @@ AS
           ,it_base_code                 =>   l_item_plan_rec.base_code     -- 拠点コード
           ,it_product_class             =>   lt_product_class              -- 商品分類
           ,it_base_major_division       =>   lt_base_major_division        -- 拠点大分類
+--【2009/05/12 A.Yano Ver.1.5 追加START】------------------------------------------------------
+          ,it_item_code                 =>   l_item_plan_rec.item_code     -- 商品コード
+--【2009/05/12 A.Yano Ver.1.5 追加END  】------------------------------------------------------
           ,ot_set_unit_price            =>   lt_set_unit_price             -- 設定単価
         );
         IF( lv_retcode = cv_status_error ) THEN
