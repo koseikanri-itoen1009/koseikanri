@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.11
+ * Version          : 2.12
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2009/09/25    2.10  N.Maeda          [0001351]レビュー指摘対応
  *  2009/09/28    2.10  N.Maeda          [0001351]レビュー指摘対応
  *  2009/09/28    2.11  N.Maeda          [0001299]販売実績ヘッダ更新時エラー時出力内容修正
+ *  2009/11/24    2.12  N.Maeda          [E_本番_XXXX] 販売実績対象データ取得条件「検収日」⇒「納品日」へ修正
  *
  *****************************************************************************************/
 --
@@ -344,7 +345,10 @@ AS
     WHERE  xseh.sales_exp_header_id     = xsel.sales_exp_header_id             -- ヘッダID
     AND    xseh.dlv_invoice_number      = xsel.dlv_invoice_number              -- 納品伝票番号
     AND    xseh.dwh_interface_flag      = cv_flag_no                           -- インタフェースフラグ
-    AND    xseh.inspect_date           <= gd_business_date                     -- 納品日
+-- ************* 2009/11/24 2.12 N.Maeda MOD START ************* --
+--    AND    xseh.inspect_date           <= gd_business_date                     -- 納品日
+    AND    xseh.delivery_date          <= gd_business_date                     -- 納品日
+-- ************* 2009/11/24 2.12 N.Maeda MOD  END  ************* --
     AND    xsel.item_code              <> gt_var_elec_amount                   -- 品目コード
     AND    xchv.ship_account_number     = xseh.ship_to_customer_code           -- 出荷先顧客コード
     AND    xchv.ship_account_id         = hca.cust_account_id                  -- 出荷先顧客ID
@@ -417,7 +421,10 @@ AS
     WHERE  xseh.sales_exp_header_id     = xsel.sales_exp_header_id             -- ヘッダID
     AND    xseh.dlv_invoice_number      = xsel.dlv_invoice_number              -- 納品伝票番号
     AND    xseh.dwh_interface_flag      = cv_flag_no                           -- インタフェースフラグ
-    AND    xseh.inspect_date           <= gd_business_date                     -- 納品日
+-- ************* 2009/11/24 2.12 N.Maeda MOD START ************* --
+--    AND    xseh.inspect_date           <= gd_business_date                     -- 納品日
+    AND    xseh.delivery_date           <= gd_business_date                     -- 納品日
+-- ************* 2009/11/24 2.12 N.Maeda MOD  END  ************* --
     AND    xsel.item_code              <> gt_var_elec_amount                   -- 品目コード
     AND    hca.account_number           = xseh.ship_to_customer_code           -- 顧客コード
     AND    hca.party_id                 =  hpt.party_id
