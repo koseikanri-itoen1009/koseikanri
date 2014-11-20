@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,8 @@ AS
  *  2011/03/07    1.9   Naoki.Horigome   障害E_本稼動_05329の対応
  *  2011/05/16    1.10  Shigeto.Niki     障害E_本稼動_07429の対応
  *  2011/10/18    1.11  Yasuhiro.Horikawa 障害E_本稼動_08440の対応
+ *  2013/07/25    1.12  Shigeto.Niki     障害E_本稼動_10904の対応(消費税増税対応)
+ *  2013/09/18    1.12  Shigeto.Niki     障害E_本稼動_10904の再対応(消費税増税対応)
  *
  *****************************************************************************************/
 --
@@ -848,7 +850,10 @@ AS
       SELECT /*+ FIRST_ROWS */
              hca.account_number                                          account_number,              --顧客コード
              hp.party_name                                               party_name,                  --顧客名称
-             flvctc.lookup_code                                          tax_div,                     --消費税区分
+-- Ver1.12 mod start
+--             flvctc.lookup_code                                          tax_div,                     --消費税区分
+             flvctc.attribute1                                           tax_div,                     --消費税区分
+-- Ver1.12 mod end
              DECODE( xca.business_low_type, cv_vd_24, cv_on_sts, cv_vd_25, cv_on_sts, cv_vd_26, cv_tw_sts, cv_null_sts, cv_date_null, cv_zr_sts )  vd_contract_form, --ベンダ契約形態
              DECODE( rt.name, cv_pay_tm, cv_on_sts, cv_null_sts, cv_date_null, cv_th_sts )           mode_div,           --態様区分
              xca.final_tran_date                                         final_tran_date,             --最終取引日
@@ -892,11 +897,21 @@ AS
              AND     flvs.lookup_type  = cv_gyotai_syo
              AND     flvs.enabled_flag = cv_enabled_flag) flvgs,    --クイックコード_参照コード(業態(小分類))
 --
-             (SELECT flvc.lookup_code    lookup_code,
+-- Ver1.12 mod start
+--             (SELECT flvc.lookup_code    lookup_code,
+             (SELECT flvc.attribute1     attribute1,  -- 消費税区分
+-- Ver1.12 mod end
                      flvc.attribute3     attribute3
              FROM    fnd_lookup_values flvc
              WHERE   flvc.language     = cv_language_ja
              AND     flvc.lookup_type  = cv_hht_syohi
+-- Ver1.12 add start
+-- Ver1.12 mod start
+--             AND     gd_process_date BETWEEN flvc.start_date_active
+             AND     (gd_process_date + 1) BETWEEN flvc.start_date_active
+-- Ver1.12 mod end
+                                     AND NVL(flvc.end_date_active, TO_DATE(cv_eff_last_date, cv_fnd_date))
+-- Ver1.12 add end
              AND     flvc.enabled_flag = cv_enabled_flag) flvctc,   --クイックコード_参照コード(HHT消費税区分)
 --
              -- 組織プロファイル拡張マスタの結合を削除
