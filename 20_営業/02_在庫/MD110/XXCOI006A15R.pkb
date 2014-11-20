@@ -8,18 +8,18 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
  *  Name                 Description
  * -------------------- ------------------------------------------------------------
- *  final_svf              SVF起動         (A-4)
- *                         ﾜｰｸﾃｰﾌﾞﾙﾃﾞｰﾀ削除(A-5)
- *  get_daily_data         日次データ取得  (A-3)
- *  get_month_data         月次データ取得  (A-3)
- *  init                   初期処理        (A-1)
- *                         ﾊﾟﾗﾒｰﾀﾁｪｯｸ      (A-2)
+ *  final_svf              SVF起動                  (A-4)
+ *                         ﾜｰｸﾃｰﾌﾞﾙﾃﾞｰﾀ削除         (A-5)
+ *  get_daily_data         日次データ取得           (A-3)
+ *  get_month_data         月次データ取得           (A-3)
+ *  init                   初期処理                 (A-1)
+ *                         パラメータチェック       (A-2)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -37,6 +37,7 @@ AS
  *  2009/08/19    1.7   N.Abe            [0001090]出力桁数の修正
  *  2009/09/11    1.8   N.Abe            [0001293]管轄拠点からの取得方法修正
  *                                       [0001266]OPM品目アドオンの取得方法修正
+ *  2009/09/15    1.9   H.Sasaki         [0001346]PT対応
  *
  *****************************************************************************************/
 --
@@ -569,9 +570,15 @@ AS
                ,DECODE(iv_output_kbn,cv_out_kbn1
                ,daily_rec.msi_warehouse_code
                ,daily_rec.msi_left_base_code)                             -- 倉庫/預け先コード
-               ,DECODE(iv_output_kbn,cv_out_kbn1
-               ,daily_rec.msi_warehouse_name
-               ,daily_rec.hca_left_base_name)                             -- 倉庫/預け先名称
+-- == 2009/08/19 V1.7 Modified START ===============================================================
+--               ,DECODE(iv_output_kbn,cv_out_kbn1
+--               ,daily_rec.msi_warehouse_name
+--               ,daily_rec.hca_left_base_name)
+               ,SUBSTRB(DECODE(iv_output_kbn, cv_out_kbn1, daily_rec.msi_warehouse_name
+                                                         , daily_rec.hca_left_base_name
+                        ), 1, 50
+                )                                                         -- 倉庫/預け先名称
+-- == 2009/08/19 V1.7 Modified END   ===============================================================
                ,daily_rec.iib_gun_code                                    -- 群コード
                ,daily_rec.iib_item_no                                     -- 商品コード
                ,daily_rec.imb_item_short_name                             -- 商品名称
@@ -744,9 +751,15 @@ AS
                ,SUBSTR(gv_inventory_date,7,2)     -- 日
                ,iv_base_code                      -- 拠点コード
                ,gv_base_short_name                -- 拠点名称
-               ,DECODE(iv_output_kbn,cv_out_kbn1
-               ,iv_warehouse
-               ,iv_left_base)                     -- 倉庫/預け先コード
+-- == 2009/08/19 V1.7 Modified START ===============================================================
+--               ,DECODE(iv_output_kbn,cv_out_kbn1
+--               ,iv_warehouse
+--               ,iv_left_base)                     -- 倉庫/預け先コード
+               ,SUBSTRB(DECODE(iv_output_kbn, cv_out_kbn1, iv_warehouse
+                                                         , iv_left_base
+                        ), 1, 50
+                )                                 -- 倉庫/預け先コード
+-- == 2009/08/19 V1.7 Modified END   ===============================================================
                ,gv_warehouse                      -- 倉庫/預け先名称
                ,lv_message                        -- メッセージ
                ,SYSDATE                           -- 最終更新日
@@ -823,6 +836,13 @@ AS
     -- *** ローカル変数 ***
     lv_message                VARCHAR2(500) := NULL;    -- メッセージ
     ln_check_num              NUMBER        := 0;       -- 受払残高票ID
+-- == 2009/08/10 V1.6 Modified START ===============================================================
+--      lv_sql_str      VARCHAR2(4000);
+      lv_sql_str              VARCHAR2(4500);
+-- == 2009/08/10 V1.6 Modified END   ===============================================================
+-- == 2009/09/15 V1.9 Added START ===============================================================
+    ln_cnt                    NUMBER;                   -- カウンタ
+-- == 2009/09/15 V1.9 Added END   ===============================================================
 --
     -- *** ローカル・カーソル(A-2-2) ***
 -- == 2009/06/19 V1.3 DELETE START ===============================================================
@@ -1011,11 +1031,29 @@ AS
       );
       month_rec       rec_type;
       --
--- == 2009/08/10 V1.6 Modified START ===============================================================
---      lv_sql_str      VARCHAR2(4000);
-      lv_sql_str      VARCHAR2(4500);
--- == 2009/08/10 V1.6 Modified END   ===============================================================
 -- == 2009/06/19 V1.3 Added END   ===============================================================
+-- == 2009/09/15 V1.9 Added START ===============================================================
+    -- 拠点情報取得
+    CURSOR  acct_num_cur
+    IS
+      SELECT  hca.account_number                  account_number  -- 拠点コード
+             ,SUBSTRB(hca.account_name, 1, 8)     account_name    -- 拠点名称
+      FROM    hz_cust_accounts      hca                           -- 顧客マスタ
+             ,xxcmm_cust_accounts   xca                           -- 顧客追加情報
+      WHERE   hca.cust_account_id       =   xca.customer_id
+      AND     hca.customer_class_code   =   '1'
+      AND     hca.status                =   'A'
+      AND     xca.management_base_code  =   NVL(iv_base_code, gv_user_base);
+    --
+    acct_num_rec    acct_num_cur%ROWTYPE;
+    --
+    TYPE acct_data_rtype IS RECORD(
+      account_number    hz_cust_accounts.account_number%TYPE
+     ,account_name      hz_cust_accounts.account_name%TYPE
+    );
+    TYPE acct_data_ttype IS TABLE OF acct_data_rtype INDEX BY BINARY_INTEGER ;
+    acct_data_tab                    acct_data_ttype;
+-- == 2009/09/15 V1.9 Added END   ===============================================================
 --
   BEGIN
 --
@@ -1030,548 +1068,827 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
--- == 2009/06/19 V1.3 Modified START ===============================================================
---  OPEN month_cur;
-  --
-  lv_sql_str  :=  NULL;
-  -- SQL設定
-  lv_sql_str  :=    'SELECT '
--- == 2009/08/06 V1.5 Added START ===============================================================
-                ||  '/*+ leading(biv msi irm) */'
--- == 2009/08/06 V1.5 Added START ===============================================================
-                ||  'irm.practice_month  irm_practice_month '
-                ||  ',irm.practice_date  irm_practice_date '
-                ||  ',irm.base_code  irm_base_code '
-                ||  ',biv.base_short_name  biv_base_short_name '
-                ||  ',SUBSTR(msi.secondary_inventory_name, 6, 2)  msi_warehouse_code '
--- == 2009/08/10 V1.6 Modified START ===============================================================
---                ||  ',msi.attribute4  msi_left_base_code '
-                ||  ',DECODE(msi.attribute13, ' || '''' || cv_subinv_7 || ''''
-                ||  ', msi.secondary_inventory_name, msi.attribute4)  msi_left_base_code '
--- == 2009/08/10 V1.6 Modified END   ===============================================================
-                ||  ',msi.description  msi_warehouse_name '
--- == 2009/08/10 V1.6 Modified START ===============================================================
---                ||  ',hca.account_name  hca_left_base_name '
-                ||  ',DECODE(msi.attribute13, ' || '''' || cv_subinv_7 || ''''
-                ||  ', msi.description, hca.account_name)  hca_left_base_name '
--- == 2009/08/10 V1.6 Modified END   ===============================================================
-                ||  ',SUBSTR((CASE '
-                ||  'WHEN TRUNC(TO_DATE(iib.attribute3,' || '''' || 'YYYY/MM/DD' || '''' || ')) > TRUNC(TO_DATE(' 
-                ||  '''' || TO_CHAR(gd_target_date, 'YYYY/MM/DD') || '''' || ',' || '''' || 'YYYY/MM/DD' || '''' || ')) '
-                ||  'THEN iib.attribute1 '
-                ||  'ELSE iib.attribute2 '
-                ||  'END),1,3)  iib_gun_code '
-                ||  ',iib.item_no  iib_item_no '
-                ||  ',imb.item_short_name  imb_item_short_name '
-                ||  ',irm.operation_cost  irm_operation_cost '
-                ||  ',irm.standard_cost  irm_standard_cost '
-                ||  ',irm.sales_shipped  irm_sales_shipped '
-                ||  ',irm.sales_shipped_b  irm_sales_shipped_b '
-                ||  ',irm.return_goods  irm_return_goods '
-                ||  ',irm.return_goods_b  irm_return_goods_b '
-                ||  ',irm.warehouse_ship  irm_warehouse_ship '
-                ||  ',irm.truck_ship  irm_truck_ship '
-                ||  ',irm.others_ship  irm_others_ship '
-                ||  ',irm.warehouse_stock  irm_warehouse_stock '
-                ||  ',irm.truck_stock  irm_truck_stock '
-                ||  ',irm.others_stock  irm_others_stock '
-                ||  ',irm.change_stock  irm_change_stock '
-                ||  ',irm.change_ship  irm_change_ship '
-                ||  ',irm.goods_transfer_old  irm_goods_transfer_old '
-                ||  ',irm.goods_transfer_new  irm_goods_transfer_new '
-                ||  ',irm.sample_quantity  irm_sample_quantity '
-                ||  ',irm.sample_quantity_b  irm_sample_quantity_b '
-                ||  ',irm.customer_sample_ship  irm_customer_sample_ship '
-                ||  ',irm.customer_sample_ship_b  irm_customer_sample_ship_b '
-                ||  ',irm.customer_support_ss  irm_customer_support_ss '
-                ||  ',irm.customer_support_ss_b  irm_customer_support_ss_b '
-                ||  ',irm.ccm_sample_ship  irm_ccm_sample_ship '
-                ||  ',irm.ccm_sample_ship_b  irm_ccm_sample_ship_b '
-                ||  ',irm.vd_supplement_stock  irm_vd_supplement_stock '
-                ||  ',irm.vd_supplement_ship  irm_vd_supplement_ship '
-                ||  ',irm.inventory_change_in  irm_inventory_change_in '
-                ||  ',irm.inventory_change_out  irm_inventory_change_out '
-                ||  ',irm.factory_return  irm_factory_return '
-                ||  ',irm.factory_return_b  irm_factory_return_b '
-                ||  ',irm.factory_change  irm_factory_change '
-                ||  ',irm.factory_change_b  irm_factory_change_b '
-                ||  ',irm.removed_goods  irm_removed_goods '
-                ||  ',irm.removed_goods_b  irm_removed_goods_b '
-                ||  ',irm.factory_stock  irm_factory_stock '
-                ||  ',irm.factory_stock_b  irm_factory_stock_b '
-                ||  ',irm.wear_decrease  irm_wear_decrease '
-                ||  ',irm.wear_increase  irm_wear_increase '
-                ||  ',irm.selfbase_ship  irm_selfbase_ship '
-                ||  ',irm.selfbase_stock  irm_selfbase_stock '
-                ||  ',irm.inv_result  irm_inv_result '
-                ||  ',irm.inv_result_bad  irm_inv_result_bad '
-                ||  ',irm.inv_wear  irm_inv_wear '
-                ||  ',irm.month_begin_quantity  irm_month_begin_quantity ';
-  --
-  -- FROM句
-  lv_sql_str  :=    lv_sql_str
-                ||  'FROM '
-                ||  'xxcoi_inv_reception_monthly  irm '
-                ||  ',mtl_secondary_inventories  msi '
-                ||  ',hz_cust_accounts  hca '
-                ||  ',mtl_system_items_b  sib '
-                ||  ',xxcmn_item_mst_b  imb '
-                ||  ',ic_item_mst_b  iib '
--- == 2009/08/06 V1.5 Modified START ===============================================================
---                ||  ',xxcoi_base_info2_v  biv ';
-                ||  ',(SELECT  hca.account_number '
-                ||  '         ,SUBSTRB(hca.account_name,1,8)  base_short_name '
-                ||  '  FROM    hz_cust_accounts    hca '
-                ||  '         ,xxcmm_cust_accounts xca ';
--- == 2009/08/10 V1.6 Modified START ===============================================================
-  IF (iv_base_code IS NOT NULL) THEN
-    --パラメータ.拠点が設定されている場合
-    lv_sql_str  :=    lv_sql_str
---                ||  '  WHERE   xca.management_base_code  =   NVL(' || iv_base_code || ', ' || gv_user_base || ') '
-                ||  '  WHERE   xca.management_base_code  ='   || '''' || iv_base_code || ''' ';
-  ELSE
-    --パラメータ.拠点が設定されていない場合
-    lv_sql_str  :=    lv_sql_str
-                ||  '  WHERE   xca.management_base_code  ='   || '''' || gv_user_base || ''' ';
-  END IF;
-  lv_sql_str  :=    lv_sql_str
--- == 2009/08/10 V1.6 Modified END   ===============================================================
-                ||  '  AND     hca.status                ='   || '''' || 'A' || ''' '
-                ||  '  AND     hca.customer_class_code   ='   || '''' || '1' || ''' '
-                ||  '  AND     hca.cust_account_id       =   xca.customer_id '
-                ||  '  UNION '
-                ||  '  SELECT  hca.account_number '
-                ||  '         ,SUBSTRB(hca.account_name,1,8)  base_short_name '
-                ||  '  FROM    hz_cust_accounts    hca '
-                ||  '         ,xxcmm_cust_accounts xca ';
--- == 2009/08/10 V1.6 Modified START ===============================================================
-  IF (iv_base_code IS NOT NULL) THEN
-    --パラメータ.拠点が設定されている場合
-    lv_sql_str  :=    lv_sql_str
---                ||  '  WHERE   xca.management_base_code  =   NVL(' || iv_base_code || ', ' || gv_user_base || ') '
--- == 2009/09/05 V1.8 Modified START ===============================================================
---                ||  '  WHERE   xca.management_base_code  ='   || '''' || iv_base_code || ''' ';
-                ||  '  WHERE   xca.customer_code  ='   || '''' || iv_base_code || ''' ';
--- == 2009/09/05 V1.8 Modified END   ===============================================================
-  ELSE
-    --パラメータ.拠点が設定されていない場合
-    lv_sql_str  :=    lv_sql_str
--- == 2009/09/05 V1.8 Modified START ===============================================================
---                ||  '  WHERE   xca.management_base_code  ='   || '''' || gv_user_base || ''' ';
-                ||  '  WHERE   xca.customer_code  ='   || '''' || gv_user_base || ''' ';
--- == 2009/09/05 V1.8 Modified END   ===============================================================
-  END IF;
-  lv_sql_str  :=    lv_sql_str
--- == 2009/08/10 V1.6 Modified END   ===============================================================
-                ||  '  AND     hca.status                ='   || '''' || 'A' || ''' '
-                ||  '  AND     hca.customer_class_code   ='   || '''' || '1' || ''' '
-                ||  '  AND     hca.cust_account_id       =   xca.customer_id '
-                ||  ' )       biv ';
--- == 2009/08/06 V1.5 Modified END   ===============================================================
-  -- WHERE句
-  --
--- == 2009/08/06 V1.5 Deleted START ===============================================================
---  IF (iv_base_code IS NOT NULL) THEN
---    -- パラメータ.拠点が設定されている場合
---    lv_sql_str  :=    lv_sql_str
---                  ||  'WHERE biv.focus_base_code = ' || '''' || iv_base_code || '''' || ' ';
---  ELSE
---    -- パラメータ.拠点が設定されていない場合
---    lv_sql_str  :=    lv_sql_str
---                  ||  'WHERE biv.focus_base_code = ' || '''' || gv_user_base || '''' || ' ';
---  END IF;
--- == 2009/08/06 V1.5 Deleted END   ===============================================================
-  --
-  lv_sql_str  :=    lv_sql_str
--- == 2009/08/06 V1.5 Modified START ===============================================================
---                ||  'AND biv.base_code = irm.base_code '
---                ||  'AND irm.organization_id = msi.organization_id '
---                ||  'AND irm.subinventory_code = msi.secondary_inventory_name '
-                ||  'WHERE biv.account_number = msi.attribute7 '
-                ||  'AND   msi.organization_id = ' || gn_organization_id || ' '
-                ||  'AND   msi.attribute7 = irm.base_code '
-                ||  'AND   msi.organization_id = irm.organization_id '
-                ||  'AND   msi.secondary_inventory_name = irm.subinventory_code '
--- == 2009/08/06 V1.5 Modified END   ===============================================================
-                ||  'AND irm.inventory_item_id = sib.inventory_item_id '
-                ||  'AND sib.organization_id = irm.organization_id '
-                ||  'AND sib.segment1 = iib.item_no '
-                ||  'AND iib.item_id = imb.item_id '
--- == 2009/09/11 V1.8 Added START ===============================================================
-                ||  'AND TRUNC(TO_DATE(' 
-                ||  '''' || TO_CHAR(gd_target_date, 'YYYY/MM/DD') || '''' || ',' || '''' || 'YYYY/MM/DD' || '''' || ')) '
-                ||  'BETWEEN TRUNC(imb.start_date_active) AND TRUNC(imb.end_date_active) '
--- == 2009/09/11 V1.8 Added END   ===============================================================
-                ||  'AND msi.attribute4 = hca.account_number(+) '
-                ||  'AND msi.attribute7 = irm.base_code ';
-  --
-  IF (iv_inventory_kbn = cv_inv_kbn2) THEN
-    -- 月中の場合
-    lv_sql_str  :=    lv_sql_str
-                  ||  'AND irm.practice_date = TO_DATE(' || '''' || TO_CHAR(gd_inventory_date, 'YYYY/MM/DD') || '''' || ',' || '''' || 'YYYY/MM/DD' || '''' || ') '
-                  ||  'AND irm.inventory_kbn = ' || '''' || cv_inv_kbn4 || '''' || ' ';
-  ELSE
-    -- 月末の場合
-    lv_sql_str  :=    lv_sql_str
-                  ||  'AND irm.practice_month = ' || '''' || gv_inventory_month || '''' || ' '
-                  ||  'AND irm.inventory_kbn = ' || '''' || cv_inv_kbn5 || '''' || ' ';
-  END IF;
-  --
-  IF (iv_output_kbn = cv_out_kbn1)  THEN
-    -- 倉庫の場合
-    lv_sql_str  :=    lv_sql_str
-                  ||  'AND msi.attribute1 = ' || '''' || cv_subinv_1 || '''' || ' ';
-    IF (iv_warehouse IS NOT NULL) THEN
-      -- 倉庫が指定されている場合
-      lv_sql_str  :=    lv_sql_str
-                    ||  'AND SUBSTR(msi.secondary_inventory_name, 6, 2) = ' || '''' || iv_warehouse || '''' || ' ';
-    END IF;
-  ELSE
-    -- 預け先の場合
-    lv_sql_str  :=    lv_sql_str
-                  ||  'AND msi.attribute1  IN(' || '''' || cv_subinv_3 || '''' || ',' || '''' || cv_subinv_4 || '''' || ') ';
--- == 2009/08/10 V1.6 Deleted START ===============================================================
---                  ||  'AND msi.attribute13 <> ' || '''' || cv_subinv_7 || '''' || ' ';
--- == 2009/08/10 V1.6 Deleted END   ===============================================================
-    IF (iv_left_base  IS NOT NULL)  THEN
-      -- 預け先が指定されている場合
-      lv_sql_str  :=    lv_sql_str
--- == 2009/08/10 V1.6 Modified START ===============================================================
---                    ||  'AND msi.attribute4 = ' || '''' || iv_left_base || '''' || ' ';
-                    ||  'AND DECODE(msi.attribute13,  ' || '''' || cv_subinv_7 || ''''
-                    ||  ', msi.secondary_inventory_name, msi.attribute4) = ' || '''' || iv_left_base || '''' || ' ';
--- == 2009/08/10 V1.6 Modified END   ===============================================================
-    END IF;
-  END IF;
-  --
--- == 2009/08/06 V1.5 Deleted START ===============================================================
---  -- ORDER BY句の設定
+-- == 2009/09/15 V1.9 Modified START ===============================================================
+---- == 2009/06/19 V1.3 Modified START ===============================================================
+----  OPEN month_cur;
+--  --
+--  lv_sql_str  :=  NULL;
+--  -- SQL設定
+--  lv_sql_str  :=    'SELECT '
+---- == 2009/08/06 V1.5 Added START ===============================================================
+--                ||  '/*+ leading(biv msi irm) */'
+---- == 2009/08/06 V1.5 Added START ===============================================================
+--                ||  'irm.practice_month  irm_practice_month '
+--                ||  ',irm.practice_date  irm_practice_date '
+--                ||  ',irm.base_code  irm_base_code '
+--                ||  ',biv.base_short_name  biv_base_short_name '
+--                ||  ',SUBSTR(msi.secondary_inventory_name, 6, 2)  msi_warehouse_code '
+---- == 2009/08/10 V1.6 Modified START ===============================================================
+----                ||  ',msi.attribute4  msi_left_base_code '
+--                ||  ',DECODE(msi.attribute13, ' || '''' || cv_subinv_7 || ''''
+--                ||  ', msi.secondary_inventory_name, msi.attribute4)  msi_left_base_code '
+---- == 2009/08/10 V1.6 Modified END   ===============================================================
+--                ||  ',msi.description  msi_warehouse_name '
+---- == 2009/08/10 V1.6 Modified START ===============================================================
+----                ||  ',hca.account_name  hca_left_base_name '
+--                ||  ',DECODE(msi.attribute13, ' || '''' || cv_subinv_7 || ''''
+--                ||  ', msi.description, hca.account_name)  hca_left_base_name '
+---- == 2009/08/10 V1.6 Modified END   ===============================================================
+--                ||  ',SUBSTR((CASE '
+--                ||  'WHEN TRUNC(TO_DATE(iib.attribute3,' || '''' || 'YYYY/MM/DD' || '''' || ')) > TRUNC(TO_DATE(' 
+--                ||  '''' || TO_CHAR(gd_target_date, 'YYYY/MM/DD') || '''' || ',' || '''' || 'YYYY/MM/DD' || '''' || ')) '
+--                ||  'THEN iib.attribute1 '
+--                ||  'ELSE iib.attribute2 '
+--                ||  'END),1,3)  iib_gun_code '
+--                ||  ',iib.item_no  iib_item_no '
+--                ||  ',imb.item_short_name  imb_item_short_name '
+--                ||  ',irm.operation_cost  irm_operation_cost '
+--                ||  ',irm.standard_cost  irm_standard_cost '
+--                ||  ',irm.sales_shipped  irm_sales_shipped '
+--                ||  ',irm.sales_shipped_b  irm_sales_shipped_b '
+--                ||  ',irm.return_goods  irm_return_goods '
+--                ||  ',irm.return_goods_b  irm_return_goods_b '
+--                ||  ',irm.warehouse_ship  irm_warehouse_ship '
+--                ||  ',irm.truck_ship  irm_truck_ship '
+--                ||  ',irm.others_ship  irm_others_ship '
+--                ||  ',irm.warehouse_stock  irm_warehouse_stock '
+--                ||  ',irm.truck_stock  irm_truck_stock '
+--                ||  ',irm.others_stock  irm_others_stock '
+--                ||  ',irm.change_stock  irm_change_stock '
+--                ||  ',irm.change_ship  irm_change_ship '
+--                ||  ',irm.goods_transfer_old  irm_goods_transfer_old '
+--                ||  ',irm.goods_transfer_new  irm_goods_transfer_new '
+--                ||  ',irm.sample_quantity  irm_sample_quantity '
+--                ||  ',irm.sample_quantity_b  irm_sample_quantity_b '
+--                ||  ',irm.customer_sample_ship  irm_customer_sample_ship '
+--                ||  ',irm.customer_sample_ship_b  irm_customer_sample_ship_b '
+--                ||  ',irm.customer_support_ss  irm_customer_support_ss '
+--                ||  ',irm.customer_support_ss_b  irm_customer_support_ss_b '
+--                ||  ',irm.ccm_sample_ship  irm_ccm_sample_ship '
+--                ||  ',irm.ccm_sample_ship_b  irm_ccm_sample_ship_b '
+--                ||  ',irm.vd_supplement_stock  irm_vd_supplement_stock '
+--                ||  ',irm.vd_supplement_ship  irm_vd_supplement_ship '
+--                ||  ',irm.inventory_change_in  irm_inventory_change_in '
+--                ||  ',irm.inventory_change_out  irm_inventory_change_out '
+--                ||  ',irm.factory_return  irm_factory_return '
+--                ||  ',irm.factory_return_b  irm_factory_return_b '
+--                ||  ',irm.factory_change  irm_factory_change '
+--                ||  ',irm.factory_change_b  irm_factory_change_b '
+--                ||  ',irm.removed_goods  irm_removed_goods '
+--                ||  ',irm.removed_goods_b  irm_removed_goods_b '
+--                ||  ',irm.factory_stock  irm_factory_stock '
+--                ||  ',irm.factory_stock_b  irm_factory_stock_b '
+--                ||  ',irm.wear_decrease  irm_wear_decrease '
+--                ||  ',irm.wear_increase  irm_wear_increase '
+--                ||  ',irm.selfbase_ship  irm_selfbase_ship '
+--                ||  ',irm.selfbase_stock  irm_selfbase_stock '
+--                ||  ',irm.inv_result  irm_inv_result '
+--                ||  ',irm.inv_result_bad  irm_inv_result_bad '
+--                ||  ',irm.inv_wear  irm_inv_wear '
+--                ||  ',irm.month_begin_quantity  irm_month_begin_quantity ';
+--  --
+--  -- FROM句
 --  lv_sql_str  :=    lv_sql_str
---                ||  'ORDER BY '
---                ||  'irm_base_code ';
---  IF (iv_output_kbn = cv_out_kbn1) THEN
+--                ||  'FROM '
+--                ||  'xxcoi_inv_reception_monthly  irm '
+--                ||  ',mtl_secondary_inventories  msi '
+--                ||  ',hz_cust_accounts  hca '
+--                ||  ',mtl_system_items_b  sib '
+--                ||  ',xxcmn_item_mst_b  imb '
+--                ||  ',ic_item_mst_b  iib '
+---- == 2009/08/06 V1.5 Modified START ===============================================================
+----                ||  ',xxcoi_base_info2_v  biv ';
+--                ||  ',(SELECT  hca.account_number '
+--                ||  '         ,SUBSTRB(hca.account_name,1,8)  base_short_name '
+--                ||  '  FROM    hz_cust_accounts    hca '
+--                ||  '         ,xxcmm_cust_accounts xca ';
+---- == 2009/08/10 V1.6 Modified START ===============================================================
+--  IF (iv_base_code IS NOT NULL) THEN
+--    --パラメータ.拠点が設定されている場合
+--    lv_sql_str  :=    lv_sql_str
+----                ||  '  WHERE   xca.management_base_code  =   NVL(' || iv_base_code || ', ' || gv_user_base || ') '
+--                ||  '  WHERE   xca.management_base_code  ='   || '''' || iv_base_code || ''' ';
+--  ELSE
+--    --パラメータ.拠点が設定されていない場合
+--    lv_sql_str  :=    lv_sql_str
+--                ||  '  WHERE   xca.management_base_code  ='   || '''' || gv_user_base || ''' ';
+--  END IF;
+--  lv_sql_str  :=    lv_sql_str
+---- == 2009/08/10 V1.6 Modified END   ===============================================================
+--                ||  '  AND     hca.status                ='   || '''' || 'A' || ''' '
+--                ||  '  AND     hca.customer_class_code   ='   || '''' || '1' || ''' '
+--                ||  '  AND     hca.cust_account_id       =   xca.customer_id '
+--                ||  '  UNION '
+--                ||  '  SELECT  hca.account_number '
+--                ||  '         ,SUBSTRB(hca.account_name,1,8)  base_short_name '
+--                ||  '  FROM    hz_cust_accounts    hca '
+--                ||  '         ,xxcmm_cust_accounts xca ';
+---- == 2009/08/10 V1.6 Modified START ===============================================================
+--  IF (iv_base_code IS NOT NULL) THEN
+--    --パラメータ.拠点が設定されている場合
+--    lv_sql_str  :=    lv_sql_str
+----                ||  '  WHERE   xca.management_base_code  =   NVL(' || iv_base_code || ', ' || gv_user_base || ') '
+---- == 2009/09/05 V1.8 Modified START ===============================================================
+----                ||  '  WHERE   xca.management_base_code  ='   || '''' || iv_base_code || ''' ';
+--                ||  '  WHERE   xca.customer_code  ='   || '''' || iv_base_code || ''' ';
+---- == 2009/09/05 V1.8 Modified END   ===============================================================
+--  ELSE
+--    --パラメータ.拠点が設定されていない場合
+--    lv_sql_str  :=    lv_sql_str
+---- == 2009/09/05 V1.8 Modified START ===============================================================
+----                ||  '  WHERE   xca.management_base_code  ='   || '''' || gv_user_base || ''' ';
+--                ||  '  WHERE   xca.customer_code  ='   || '''' || gv_user_base || ''' ';
+---- == 2009/09/05 V1.8 Modified END   ===============================================================
+--  END IF;
+--  lv_sql_str  :=    lv_sql_str
+---- == 2009/08/10 V1.6 Modified END   ===============================================================
+--                ||  '  AND     hca.status                ='   || '''' || 'A' || ''' '
+--                ||  '  AND     hca.customer_class_code   ='   || '''' || '1' || ''' '
+--                ||  '  AND     hca.cust_account_id       =   xca.customer_id '
+--                ||  ' )       biv ';
+---- == 2009/08/06 V1.5 Modified END   ===============================================================
+--  -- WHERE句
+--  --
+---- == 2009/08/06 V1.5 Deleted START ===============================================================
+----  IF (iv_base_code IS NOT NULL) THEN
+----    -- パラメータ.拠点が設定されている場合
+----    lv_sql_str  :=    lv_sql_str
+----                  ||  'WHERE biv.focus_base_code = ' || '''' || iv_base_code || '''' || ' ';
+----  ELSE
+----    -- パラメータ.拠点が設定されていない場合
+----    lv_sql_str  :=    lv_sql_str
+----                  ||  'WHERE biv.focus_base_code = ' || '''' || gv_user_base || '''' || ' ';
+----  END IF;
+---- == 2009/08/06 V1.5 Deleted END   ===============================================================
+--  --
+--  lv_sql_str  :=    lv_sql_str
+---- == 2009/08/06 V1.5 Modified START ===============================================================
+----                ||  'AND biv.base_code = irm.base_code '
+----                ||  'AND irm.organization_id = msi.organization_id '
+----                ||  'AND irm.subinventory_code = msi.secondary_inventory_name '
+--                ||  'WHERE biv.account_number = msi.attribute7 '
+--                ||  'AND   msi.organization_id = ' || gn_organization_id || ' '
+--                ||  'AND   msi.attribute7 = irm.base_code '
+--                ||  'AND   msi.organization_id = irm.organization_id '
+--                ||  'AND   msi.secondary_inventory_name = irm.subinventory_code '
+---- == 2009/08/06 V1.5 Modified END   ===============================================================
+--                ||  'AND irm.inventory_item_id = sib.inventory_item_id '
+--                ||  'AND sib.organization_id = irm.organization_id '
+--                ||  'AND sib.segment1 = iib.item_no '
+--                ||  'AND iib.item_id = imb.item_id '
+---- == 2009/09/11 V1.8 Added START ===============================================================
+--                ||  'AND TRUNC(TO_DATE(' 
+--                ||  '''' || TO_CHAR(gd_target_date, 'YYYY/MM/DD') || '''' || ',' || '''' || 'YYYY/MM/DD' || '''' || ')) '
+--                ||  'BETWEEN TRUNC(imb.start_date_active) AND TRUNC(imb.end_date_active) '
+---- == 2009/09/11 V1.8 Added END   ===============================================================
+--                ||  'AND msi.attribute4 = hca.account_number(+) '
+--                ||  'AND msi.attribute7 = irm.base_code ';
+--  --
+--  IF (iv_inventory_kbn = cv_inv_kbn2) THEN
+--    -- 月中の場合
+--    lv_sql_str  :=    lv_sql_str
+--                  ||  'AND irm.practice_date = TO_DATE(' || '''' || TO_CHAR(gd_inventory_date, 'YYYY/MM/DD') || '''' || ',' || '''' || 'YYYY/MM/DD' || '''' || ') '
+--                  ||  'AND irm.inventory_kbn = ' || '''' || cv_inv_kbn4 || '''' || ' ';
+--  ELSE
+--    -- 月末の場合
+--    lv_sql_str  :=    lv_sql_str
+--                  ||  'AND irm.practice_month = ' || '''' || gv_inventory_month || '''' || ' '
+--                  ||  'AND irm.inventory_kbn = ' || '''' || cv_inv_kbn5 || '''' || ' ';
+--  END IF;
+--  --
+--  IF (iv_output_kbn = cv_out_kbn1)  THEN
 --    -- 倉庫の場合
 --    lv_sql_str  :=    lv_sql_str
---                  || ',msi_warehouse_code ';
+--                  ||  'AND msi.attribute1 = ' || '''' || cv_subinv_1 || '''' || ' ';
+--    IF (iv_warehouse IS NOT NULL) THEN
+--      -- 倉庫が指定されている場合
+--      lv_sql_str  :=    lv_sql_str
+--                    ||  'AND SUBSTR(msi.secondary_inventory_name, 6, 2) = ' || '''' || iv_warehouse || '''' || ' ';
+--    END IF;
 --  ELSE
 --    -- 預け先の場合
 --    lv_sql_str  :=    lv_sql_str
---                  || ',msi_left_base_code ';
+--                  ||  'AND msi.attribute1  IN(' || '''' || cv_subinv_3 || '''' || ',' || '''' || cv_subinv_4 || '''' || ') ';
+---- == 2009/08/10 V1.6 Deleted START ===============================================================
+----                  ||  'AND msi.attribute13 <> ' || '''' || cv_subinv_7 || '''' || ' ';
+---- == 2009/08/10 V1.6 Deleted END   ===============================================================
+--    IF (iv_left_base  IS NOT NULL)  THEN
+--      -- 預け先が指定されている場合
+--      lv_sql_str  :=    lv_sql_str
+---- == 2009/08/10 V1.6 Modified START ===============================================================
+----                    ||  'AND msi.attribute4 = ' || '''' || iv_left_base || '''' || ' ';
+--                    ||  'AND DECODE(msi.attribute13,  ' || '''' || cv_subinv_7 || ''''
+--                    ||  ', msi.secondary_inventory_name, msi.attribute4) = ' || '''' || iv_left_base || '''' || ' ';
+---- == 2009/08/10 V1.6 Modified END   ===============================================================
+--    END IF;
 --  END IF;
---  lv_sql_str  :=    lv_sql_str
---                ||  ',iib_gun_code '
---                ||  ',iib_item_no';
--- == 2009/08/06 V1.5 Deleted END   ===============================================================
-  --
-  -- カーソルOPEN
-  OPEN  month_cur FOR lv_sql_str;
--- == 2009/06/19 V1.3 Modified END   ===============================================================
-  LOOP
-    FETCH month_cur INTO month_rec;
-    EXIT WHEN month_cur%NOTFOUND;
-    -- 受払残高票IDをカウント
-    ln_check_num  := ln_check_num  + 1;
-    -- 対象件数をカウント
-    gn_target_cnt := gn_target_cnt + 1;
-    -- A-3.ワークテーブルデータ登録
-    INSERT INTO xxcoi_rep_warehouse_rcpt(
-                slit_id                           -- 受払残高情報ID
-               ,inventory_kbn                     -- 棚卸区分
-               ,output_kbn                        -- 出力区分
-               ,in_out_year                       -- 年
-               ,in_out_month                      -- 月
-               ,in_out_dat                        -- 日
-               ,base_code                         -- 拠点コード
-               ,base_name                         -- 拠点名称
-               ,warehouse_code                    -- 倉庫/預け先コード
-               ,warehouse_name                    -- 倉庫/預け先名称
-               ,gun_code                          -- 群コード
-               ,item_code                         -- 商品コード
-               ,item_name                         -- 商品名称
-               ,first_inventory_qty               -- 月首棚卸高(数量)
-               ,factory_in_qty                    -- 工場入庫(数量)
-               ,kuragae_in_qty                    -- 倉替入庫(数量)
-               ,car_in_qty                        -- 営業車より入庫(数量)
-               ,hurikae_in_qty                    -- 振替入庫(数量)
-               ,car_ship_qty                      -- 営業車へ出庫(数量)
-               ,sales_qty                         -- 売上出庫(数量)
-               ,support_qty                       -- 協賛見本(数量)
-               ,kuragae_ship_qty                  -- 倉替出庫(数量)
-               ,factory_return_qty                -- 工場返品(数量)
-               ,disposal_qty                      -- 廃却出庫(数量)
-               ,hurikae_ship_qty                  -- 振替出庫(数量)
-               ,tyoubo_stock_qty                  -- 帳簿在庫(数量)
-               ,inventory_qty                     -- 棚卸高(数量)
-               ,genmou_qty                        -- 棚卸減耗(数量)
-               ,first_inventory_money             -- 月首棚卸高(金額)
-               ,factory_in_money                  -- 工場入庫(金額)
-               ,kuragae_in_money                  -- 倉替入庫(金額)
-               ,car_in_money                      -- 営業車より入庫(金額)
-               ,hurikae_in_money                  -- 振替入庫(金額)
-               ,car_ship_money                    -- 営業車へ出庫(金額)
-               ,sales_money                       -- 売上出庫(金額)
-               ,support_money                     -- 協賛見本(金額)
-               ,kuragae_ship_money                -- 倉替出庫(金額)
-               ,factory_return_money              -- 工場返品(金額)
-               ,disposal_money                    -- 廃却出庫(金額)
-               ,hurikae_ship_money                -- 振替出庫(金額)
-               ,tyoubo_stock_money                -- 帳簿在庫(金額)
-               ,inventory_money                   -- 棚卸高(金額)
-               ,genmou_money                      -- 棚卸減耗(金額)
-               ,message                           -- メッセージ
-               ,last_update_date                  -- 最終更新日
-               ,last_updated_by                   -- 最終更新者
-               ,creation_date                     -- 作成日
-               ,created_by                        -- 作成者
-               ,last_update_login                 -- 最終更新ユーザ
-               ,request_id                        -- 要求ID
-               ,program_application_id            -- プログラムアプリケーションID
-               ,program_id                        -- プログラムID
-               ,program_update_date)              -- プログラム更新日
-        VALUES (ln_check_num                                              -- 受払残高情報ID
-               ,gv_inv_kbn                                                -- 棚卸区分
-               ,gv_out_kbn                                                -- 出力区分
-               ,DECODE(iv_inventory_kbn,cv_inv_kbn3
-               ,SUBSTR(month_rec.irm_practice_month,3,2)
-               ,SUBSTR(TO_CHAR(month_rec.irm_practice_date
-                              ,'YYYYMMDD'),3,2))                          -- 年
-               ,DECODE(iv_inventory_kbn,cv_inv_kbn3
-               ,SUBSTR(month_rec.irm_practice_month,5,2)
-               ,SUBSTR(TO_CHAR(month_rec.irm_practice_date
-                              ,'YYYYMMDD'),5,2))                          -- 月
-               ,DECODE(iv_inventory_kbn,cv_inv_kbn3
-               ,NULL
-               ,SUBSTR(TO_CHAR(month_rec.irm_practice_date
-                              ,'YYYYMMDD'),7,2))                          -- 日
-               ,month_rec.irm_base_code                                   -- 拠点コード
-               ,month_rec.biv_base_short_name                             -- 拠点名称
-               ,DECODE(iv_output_kbn,cv_out_kbn1
-               ,month_rec.msi_warehouse_code
-               ,month_rec.msi_left_base_code)                             -- 倉庫/預け先コード
--- == 2009/08/19 V1.7 Modified START ===============================================================
---               ,DECODE(iv_output_kbn,cv_out_kbn1
---               ,month_rec.msi_warehouse_name
---               ,month_rec.hca_left_base_name)                             -- 倉庫/預け先名称
-               ,SUBSTRB(DECODE(iv_output_kbn,cv_out_kbn1
-               ,month_rec.msi_warehouse_name
-               ,month_rec.hca_left_base_name), 1, 50)                     -- 倉庫/預け先名称
--- == 2009/08/19 V1.7 Modified END   ===============================================================
-               ,month_rec.iib_gun_code                                    -- 群コード
-               ,month_rec.iib_item_no                                     -- 商品コード
-               ,month_rec.imb_item_short_name                             -- 商品名称
-               ,month_rec.irm_month_begin_quantity                        -- 月首棚卸高(数量)
-               ,month_rec.irm_factory_stock                 -
-                month_rec.irm_factory_stock_b                             -- 工場入庫(数量)
-               ,month_rec.irm_change_stock                  +
-                month_rec.irm_selfbase_stock                +
-                month_rec.irm_others_stock                  +
-                month_rec.irm_vd_supplement_stock           +
-                month_rec.irm_inventory_change_in                         -- 倉替入庫(数量)
-               ,month_rec.irm_truck_stock                                 -- 営業車より入庫(数量)
-               ,month_rec.irm_goods_transfer_new                          -- 振替入庫(数量)
-               ,month_rec.irm_truck_ship                                  -- 営業車へ出庫(数量)
-               ,month_rec.irm_sales_shipped                 -
-                month_rec.irm_sales_shipped_b               -
-                month_rec.irm_return_goods                  +
-                month_rec.irm_return_goods_b                              -- 売上出庫(数量)
-               ,month_rec.irm_customer_sample_ship          -
-                month_rec.irm_customer_sample_ship_b        +
-                month_rec.irm_customer_support_ss           -
-                month_rec.irm_customer_support_ss_b         +
-                month_rec.irm_sample_quantity               -
-                month_rec.irm_sample_quantity_b             +
-                month_rec.irm_ccm_sample_ship               -
-                month_rec.irm_ccm_sample_ship_b                           -- 協賛見本(数量)
-               ,month_rec.irm_change_ship                   +
-                month_rec.irm_selfbase_ship                 +
-                month_rec.irm_others_ship                   +
-                month_rec.irm_vd_supplement_ship            +
-                month_rec.irm_inventory_change_out          +
-                month_rec.irm_factory_change                -
-                month_rec.irm_factory_change_b                            -- 倉替出庫(数量)
-               ,month_rec.irm_factory_return                -
-                month_rec.irm_factory_return_b                            -- 工場返品(数量)
-               ,month_rec.irm_removed_goods                 -
-                month_rec.irm_removed_goods_b                             -- 廃却出庫(数量)
-               ,month_rec.irm_goods_transfer_old                          -- 振替出庫(数量)
-               ,month_rec.irm_inv_result                    +
-                month_rec.irm_inv_result_bad                +
-                month_rec.irm_inv_wear                                    -- 帳簿在庫(数量)
-               ,month_rec.irm_inv_result                    +
-                month_rec.irm_inv_result_bad                              -- 棚卸高(数量)
-               ,month_rec.irm_inv_wear                                    -- 棚卸減耗(数量)
-               ,ROUND( month_rec.irm_month_begin_quantity
-                     * month_rec.irm_operation_cost)                      -- 月首棚卸高(金額)
-               ,ROUND((month_rec.irm_factory_stock          -
-                       month_rec.irm_factory_stock_b)
-                     * month_rec.irm_operation_cost)                      -- 工場入庫(金額)
-               ,ROUND((month_rec.irm_change_stock           +
-                       month_rec.irm_selfbase_stock         +
-                       month_rec.irm_others_stock           +
-                       month_rec.irm_vd_supplement_stock    +
-                       month_rec.irm_inventory_change_in)
-                     * month_rec.irm_operation_cost)                      -- 倉替入庫(金額)
-               ,ROUND( month_rec.irm_truck_stock
-                     * month_rec.irm_operation_cost)                      -- 営業車より入庫(金額)
-               ,ROUND( month_rec.irm_goods_transfer_new
-                     * month_rec.irm_operation_cost)                      -- 振替入庫(金額)
-               ,ROUND( month_rec.irm_truck_ship
-                     * month_rec.irm_operation_cost)                      -- 営業車へ出庫(金額)
-               ,ROUND((month_rec.irm_sales_shipped          -
-                       month_rec.irm_sales_shipped_b        -
-                       month_rec.irm_return_goods           +
-                       month_rec.irm_return_goods_b)
-                     * month_rec.irm_operation_cost)                      -- 売上出庫(金額)
-               ,ROUND((month_rec.irm_customer_sample_ship   -
-                       month_rec.irm_customer_sample_ship_b +
-                       month_rec.irm_customer_support_ss    -
-                       month_rec.irm_customer_support_ss_b  +
-                       month_rec.irm_sample_quantity        -
-                       month_rec.irm_sample_quantity_b      +
-                       month_rec.irm_ccm_sample_ship        -
-                       month_rec.irm_ccm_sample_ship_b)
-                     * month_rec.irm_operation_cost)                      -- 協賛見本(金額)
-               ,ROUND((month_rec.irm_change_ship            +
-                       month_rec.irm_selfbase_ship          +
-                       month_rec.irm_others_ship            +
-                       month_rec.irm_vd_supplement_ship     +
-                       month_rec.irm_inventory_change_out   +
-                       month_rec.irm_factory_change         -
-                       month_rec.irm_factory_change_b)
-                     * month_rec.irm_operation_cost)                      -- 倉替出庫(金額)
-               ,ROUND((month_rec.irm_factory_return         -
-                       month_rec.irm_factory_return_b)
-                     * month_rec.irm_operation_cost)                      -- 工場返品(金額)
-               ,ROUND((month_rec.irm_removed_goods          -
-                       month_rec.irm_removed_goods_b)
-                     * month_rec.irm_operation_cost)                      -- 廃却出庫(金額)
-               ,ROUND( month_rec.irm_goods_transfer_old
-                     * month_rec.irm_operation_cost)                      -- 振替出庫(金額)
-               ,ROUND((month_rec.irm_inv_result             +
-                       month_rec.irm_inv_result_bad         +
-                       month_rec.irm_inv_wear)
-                     * month_rec.irm_operation_cost)                      -- 帳簿在庫(金額)
-               ,ROUND((month_rec.irm_inv_result             +
-                       month_rec.irm_inv_result_bad)
-                     * month_rec.irm_operation_cost)                      -- 棚卸高(金額)
-               ,ROUND( month_rec.irm_inv_wear
-                     * month_rec.irm_operation_cost)                      -- 棚卸減耗(金額)
-               ,NULL                                                      -- メッセージ
-               ,SYSDATE                                                   -- 最終更新日
-               ,cn_last_updated_by                                        -- 最終更新者
-               ,SYSDATE                                                   -- 作成日
-               ,cn_created_by                                             -- 作成者
-               ,cn_last_update_login                                      -- 最終更新ユーザ
-               ,cn_request_id                                             -- 要求ID
-               ,cn_program_application_id                                 -- プログラムアプリケーションID
-               ,cn_program_id                                             -- プログラムID
-               ,SYSDATE);                                                 -- プログラム更新日
-  --
-  END LOOP;
-  CLOSE month_cur;
-  -- 結果0件の場合
-  IF (ln_check_num = 0) THEN
-    -- 結果0件メッセージ取得
-    lv_message := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_xxcoi_sn
-                      ,iv_name         => cv_msg_00008
-                     );
-    BEGIN
-      IF (iv_output_kbn = cv_out_kbn1 AND iv_warehouse IS NOT NULL) THEN
-        SELECT msi.description
-        INTO   gv_warehouse
-        FROM   mtl_secondary_inventories  msi     -- 保管場所マスタ(INV)
-        WHERE  msi.organization_id = gn_organization_id
-        AND    SUBSTR(msi.secondary_inventory_name,6,2) = iv_warehouse
-        AND    msi.attribute1 = cv_subinv_1
-        AND    msi.attribute7 = iv_base_code;
-      ELSIF (iv_output_kbn = cv_out_kbn2 AND iv_left_base IS NOT NULL) THEN
--- == 2009/08/10 V1.6 Modified START ===============================================================
---        SELECT hca.account_name
---        INTO   gv_warehouse
---        FROM   hz_cust_accounts     hca           -- 顧客マスタ
---        WHERE  hca.account_number = iv_left_base;
-        SELECT DECODE(msi.attribute13, cv_subinv_7, msi.description, hca.account_name)
-        INTO   gv_warehouse
-        FROM   mtl_secondary_inventories msi
-              ,hz_cust_accounts          hca
-        WHERE  msi.attribute4 = hca.account_number(+)
-        AND    DECODE(msi.attribute13, cv_subinv_7, msi.secondary_inventory_name
-                                                  , hca.account_number) = iv_left_base;
--- == 2009/08/10 V1.6 Modified END   ===============================================================
-      END IF;
-    EXCEPTION
-      WHEN OTHERS THEN
-        gv_warehouse := NULL;
-    END;
-    --
-    BEGIN
-      SELECT SUBSTRB(account_name,1,8)            -- 拠点略称
-      INTO   gv_base_short_name
-      FROM   xxcoi_user_base_info_v               -- 拠点ビュー
-      WHERE  account_number = iv_base_code
-      AND    ROWNUM = 1;
-    EXCEPTION
-      WHEN OTHERS THEN
-        gv_base_short_name := NULL;
-    END;
-    -- 結果0件メッセージ出力
-    INSERT INTO xxcoi_rep_warehouse_rcpt(
-                slit_id                           -- 受払残高情報ID
-               ,inventory_kbn                     -- 棚卸区分
-               ,output_kbn                        -- 出力区分
-               ,in_out_year                       -- 年
-               ,in_out_month                      -- 月
-               ,in_out_dat                        -- 日
-               ,base_code                         -- 拠点コード
-               ,base_name                         -- 拠点名称
-               ,warehouse_code                    -- 倉庫/預け先コード
-               ,warehouse_name                    -- 倉庫/預け先名称
-               ,message                           -- メッセージ
-               ,last_update_date                  -- 最終更新日
-               ,last_updated_by                   -- 最終更新者
-               ,creation_date                     -- 作成日
-               ,created_by                        -- 作成者
-               ,last_update_login                 -- 最終更新ユーザ
-               ,request_id                        -- 要求ID
-               ,program_application_id            -- プログラムアプリケーションID
-               ,program_id                        -- プログラムID
-               ,program_update_date)              -- プログラム更新日
-        VALUES (ln_check_num                      -- 受払残高情報ID
-               ,gv_inv_kbn                        -- 棚卸区分
-               ,gv_out_kbn                        -- 出力区分
-               ,DECODE(iv_inventory_kbn,cv_inv_kbn3
-               ,SUBSTR(gv_inventory_month,3,2)
-               ,SUBSTR(gv_inventory_date,3,2))    -- 年
-               ,DECODE(iv_inventory_kbn,cv_inv_kbn3
-               ,SUBSTR(gv_inventory_month,5,2)
-               ,SUBSTR(gv_inventory_date,5,2))    -- 月
-               ,DECODE(iv_inventory_kbn,cv_inv_kbn3
-               ,NULL
-               ,SUBSTR(gv_inventory_date,7,2))    -- 日
-               ,iv_base_code                      -- 拠点コード
-               ,gv_base_short_name                -- 拠点名称
-               ,DECODE(iv_output_kbn,cv_out_kbn1
-               ,iv_warehouse
-               ,iv_left_base)                     -- 倉庫/預け先コード
--- == 2009/08/19 V1.7 Modified START ===============================================================
---               ,gv_warehouse                      -- 倉庫/預け先名称
-               ,SUBSTRB(gv_warehouse, 1, 50)      -- 倉庫/預け先名称
--- == 2009/08/19 V1.7 Modified END   ===============================================================
-               ,lv_message                        -- メッセージ
-               ,SYSDATE                           -- 最終更新日
-               ,cn_last_updated_by                -- 最終更新者
-               ,SYSDATE                           -- 作成日
-               ,cn_created_by                     -- 作成者
-               ,cn_last_update_login              -- 最終更新ユーザ
-               ,cn_request_id                     -- 要求ID
-               ,cn_program_application_id         -- プログラムアプリケーションID
-               ,cn_program_id                     -- プログラムID
-               ,SYSDATE);                         -- プログラム更新日
-  END IF;
-  -- コミット
-  COMMIT;
+--  --
+---- == 2009/08/06 V1.5 Deleted START ===============================================================
+----  -- ORDER BY句の設定
+----  lv_sql_str  :=    lv_sql_str
+----                ||  'ORDER BY '
+----                ||  'irm_base_code ';
+----  IF (iv_output_kbn = cv_out_kbn1) THEN
+----    -- 倉庫の場合
+----    lv_sql_str  :=    lv_sql_str
+----                  || ',msi_warehouse_code ';
+----  ELSE
+----    -- 預け先の場合
+----    lv_sql_str  :=    lv_sql_str
+----                  || ',msi_left_base_code ';
+----  END IF;
+----  lv_sql_str  :=    lv_sql_str
+----                ||  ',iib_gun_code '
+----                ||  ',iib_item_no';
+---- == 2009/08/06 V1.5 Deleted END   ===============================================================
+--  --
+--  -- カーソルOPEN
+--  OPEN  month_cur FOR lv_sql_str;
+---- == 2009/06/19 V1.3 Modified END   ===============================================================
 --
+    -- ===================================
+    --  処理対象拠点取得
+    -- ===================================
+    ln_cnt  :=  0;
+    -- 管理元拠点の場合
+    <<set_base_loop>>
+    FOR acct_num_rec  IN  acct_num_cur LOOP
+      -- 対象拠点が管理元拠点の場合、管轄拠点全てを対象とする
+      ln_cnt  :=  ln_cnt + 1;
+      acct_data_tab(ln_cnt).account_number  :=  acct_num_rec.account_number;
+      acct_data_tab(ln_cnt).account_name    :=  acct_num_rec.account_name;
+    END LOOP set_base_loop;
+    --
+    IF (ln_cnt = 0) THEN
+      -- 管理元拠点以外の場合
+      ln_cnt  :=  1;
+      --
+      SELECT  hca.account_number
+             ,SUBSTRB(hca.account_name, 1, 8)
+      INTO    acct_data_tab(ln_cnt).account_number
+             ,acct_data_tab(ln_cnt).account_name
+      FROM    hz_cust_accounts    hca
+      WHERE   hca.account_number        =   NVL(iv_base_code, gv_user_base)
+      AND     hca.customer_class_code   =   '1'
+      AND     hca.status                =   'A';
+      --
+    END IF;
+    --
+    -- ===================================
+    --  帳票ワークテーブル作成
+    -- ===================================
+    <<get_data_loop>>
+    FOR ln_cnt IN  1 .. acct_data_tab.LAST LOOP
+      -- ===================================
+      --  SQL設定
+      -- ===================================
+      lv_sql_str  :=  NULL;
+      --
+      lv_sql_str  :=    'SELECT '
+                    ||  '/*+ leading(msi irm) */'
+                    ||  'irm.practice_month  irm_practice_month '
+                    ||  ',irm.practice_date  irm_practice_date '
+                    ||  ',irm.base_code  irm_base_code '
+                    ||  ',NULL '
+                    ||  ',SUBSTR(msi.secondary_inventory_name, 6, 2)  msi_warehouse_code '
+                    ||  ',DECODE(msi.attribute13, :bind_variables_1, msi.secondary_inventory_name '
+                    ||  ', msi.attribute4 '
+                    ||  ')  msi_left_base_code '
+                    ||  ',msi.description  msi_warehouse_name '
+                    ||  ',DECODE(msi.attribute13, :bind_variables_2, msi.description '
+                    ||  ', hca.account_name '
+                    ||  ')  hca_left_base_name '
+                    ||  ',SUBSTR((CASE WHEN (TO_DATE(iib.attribute3, :bind_variables_3)) > TRUNC(:bind_variables_4) '
+                    ||  'THEN iib.attribute1 '
+                    ||  'ELSE iib.attribute2 '
+                    ||  'END),1,3)  iib_gun_code '
+                    ||  ',iib.item_no  iib_item_no '
+                    ||  ',imb.item_short_name  imb_item_short_name '
+                    ||  ',irm.operation_cost  irm_operation_cost '
+                    ||  ',irm.standard_cost  irm_standard_cost '
+                    ||  ',irm.sales_shipped  irm_sales_shipped '
+                    ||  ',irm.sales_shipped_b  irm_sales_shipped_b '
+                    ||  ',irm.return_goods  irm_return_goods '
+                    ||  ',irm.return_goods_b  irm_return_goods_b '
+                    ||  ',irm.warehouse_ship  irm_warehouse_ship '
+                    ||  ',irm.truck_ship  irm_truck_ship '
+                    ||  ',irm.others_ship  irm_others_ship '
+                    ||  ',irm.warehouse_stock  irm_warehouse_stock '
+                    ||  ',irm.truck_stock  irm_truck_stock '
+                    ||  ',irm.others_stock  irm_others_stock '
+                    ||  ',irm.change_stock  irm_change_stock '
+                    ||  ',irm.change_ship  irm_change_ship '
+                    ||  ',irm.goods_transfer_old  irm_goods_transfer_old '
+                    ||  ',irm.goods_transfer_new  irm_goods_transfer_new '
+                    ||  ',irm.sample_quantity  irm_sample_quantity '
+                    ||  ',irm.sample_quantity_b  irm_sample_quantity_b '
+                    ||  ',irm.customer_sample_ship  irm_customer_sample_ship '
+                    ||  ',irm.customer_sample_ship_b  irm_customer_sample_ship_b '
+                    ||  ',irm.customer_support_ss  irm_customer_support_ss '
+                    ||  ',irm.customer_support_ss_b  irm_customer_support_ss_b '
+                    ||  ',irm.ccm_sample_ship  irm_ccm_sample_ship '
+                    ||  ',irm.ccm_sample_ship_b  irm_ccm_sample_ship_b '
+                    ||  ',irm.vd_supplement_stock  irm_vd_supplement_stock '
+                    ||  ',irm.vd_supplement_ship  irm_vd_supplement_ship '
+                    ||  ',irm.inventory_change_in  irm_inventory_change_in '
+                    ||  ',irm.inventory_change_out  irm_inventory_change_out '
+                    ||  ',irm.factory_return  irm_factory_return '
+                    ||  ',irm.factory_return_b  irm_factory_return_b '
+                    ||  ',irm.factory_change  irm_factory_change '
+                    ||  ',irm.factory_change_b  irm_factory_change_b '
+                    ||  ',irm.removed_goods  irm_removed_goods '
+                    ||  ',irm.removed_goods_b  irm_removed_goods_b '
+                    ||  ',irm.factory_stock  irm_factory_stock '
+                    ||  ',irm.factory_stock_b  irm_factory_stock_b '
+                    ||  ',irm.wear_decrease  irm_wear_decrease '
+                    ||  ',irm.wear_increase  irm_wear_increase '
+                    ||  ',irm.selfbase_ship  irm_selfbase_ship '
+                    ||  ',irm.selfbase_stock  irm_selfbase_stock '
+                    ||  ',irm.inv_result  irm_inv_result '
+                    ||  ',irm.inv_result_bad  irm_inv_result_bad '
+                    ||  ',irm.inv_wear  irm_inv_wear '
+                    ||  ',irm.month_begin_quantity  irm_month_begin_quantity '
+                    -- FROM句
+                    ||  'FROM '
+                    ||  'xxcoi_inv_reception_monthly  irm '
+                    ||  ',mtl_secondary_inventories  msi '
+                    ||  ',hz_cust_accounts  hca '
+                    ||  ',mtl_system_items_b  sib '
+                    ||  ',xxcmn_item_mst_b  imb '
+                    ||  ',ic_item_mst_b  iib '
+                    -- WHERE句
+                    ||  'WHERE msi.attribute7 = :bind_variables_5 '
+                    ||  'AND   msi.organization_id = :bind_variables_6 '
+                    ||  'AND   msi.attribute7 = irm.base_code '
+                    ||  'AND   msi.organization_id = irm.organization_id '
+                    ||  'AND   msi.secondary_inventory_name = irm.subinventory_code '
+                    ||  'AND   msi.attribute7 = irm.base_code '
+                    ||  'AND   irm.inventory_item_id = sib.inventory_item_id '
+                    ||  'AND   sib.organization_id = irm.organization_id '
+                    ||  'AND   sib.segment1 = iib.item_no '
+                    ||  'AND   iib.item_id = imb.item_id '
+                    ||  'AND   TRUNC(:bind_variables_7) BETWEEN TRUNC(imb.start_date_active) AND TRUNC(imb.end_date_active) '
+                    ||  'AND   msi.attribute4 = hca.account_number(+) ';
+      --
+      IF (iv_inventory_kbn = cv_inv_kbn2) THEN
+        -- 月中の場合
+        lv_sql_str  :=    lv_sql_str
+                      ||  'AND irm.practice_date = :bind_variables_8 '
+                      ||  'AND irm.inventory_kbn = :bind_variables_9 ';
+      ELSE
+        -- 月末の場合
+        lv_sql_str  :=    lv_sql_str
+                      ||  'AND irm.practice_month = :bind_variables_10 '
+                      ||  'AND irm.inventory_kbn = :bind_variables_11 ';
+      END IF;
+      --
+      IF (iv_output_kbn = cv_out_kbn1)  THEN
+        -- 倉庫の場合
+        lv_sql_str  :=    lv_sql_str
+                      ||  'AND msi.attribute1 = :bind_variables_12 ';
+        IF (iv_warehouse IS NOT NULL) THEN
+          -- 倉庫が指定されている場合
+          lv_sql_str  :=    lv_sql_str
+                        ||  'AND SUBSTR(msi.secondary_inventory_name, 6, 2) = :bind_variables_13 ';
+        END IF;
+      ELSE
+        -- 預け先の場合
+        lv_sql_str  :=    lv_sql_str
+                      ||  'AND msi.attribute1  IN(:bind_variables_14, :bind_variables_15) ';
+        IF (iv_left_base  IS NOT NULL)  THEN
+          -- 預け先が指定されている場合
+          lv_sql_str  :=    lv_sql_str
+                        ||  'AND DECODE(msi.attribute13, :bind_variables_16, msi.secondary_inventory_name '
+                        ||  ', msi.attribute4 '
+                        ||  ' ) = :bind_variables_17';
+        END IF;
+      END IF;
+      --
+      -- =============================
+      --  SQLオープン
+      -- =============================
+      IF  (iv_output_kbn = cv_out_kbn1) THEN
+        IF (iv_warehouse IS NOT NULL) THEN
+          IF (iv_inventory_kbn = cv_inv_kbn2) THEN
+            -- 出力区分：倉庫、倉庫の指定：あり、棚卸区分：月中
+            OPEN  month_cur FOR lv_sql_str USING IN   cv_subinv_7                             --  1.保管場所分類  7：自販機(消化)
+                                                     ,cv_subinv_7                             --  2.保管場所分類  7：自販機(消化)
+                                                     ,'YYYY/MM/DD'                            --  3.日付型
+                                                     ,gd_target_date                          --  4.パラメータ     ：棚卸日
+                                                     ,acct_data_tab(ln_cnt).account_number    --  5.対象拠点
+                                                     ,gn_organization_id                      --  6.在庫組織ID
+                                                     ,gd_target_date                          --  7.パラメータ     ：棚卸日
+                                                     ,gd_inventory_date                       --  8.パラメータ     ：棚卸日
+                                                     ,cv_inv_kbn4                             --  9.棚卸区分      1：月中
+                                                     ,cv_subinv_1                             -- 12.保管場所区分  1：倉庫
+                                                     ,iv_warehouse                            -- 13.パラメータ     ：倉庫
+            ;
+          ELSE
+            -- 出力区分：倉庫、倉庫の指定：あり、棚卸区分：月末
+            OPEN  month_cur FOR lv_sql_str USING IN   cv_subinv_7                             --  1.保管場所分類  7：自販機(消化)
+                                                     ,cv_subinv_7                             --  2.保管場所分類  7：自販機(消化)
+                                                     ,'YYYY/MM/DD'                            --  3.日付型
+                                                     ,gd_target_date                          --  4.パラメータ     ：棚卸月の月末日
+                                                     ,acct_data_tab(ln_cnt).account_number    --  5.対象拠点
+                                                     ,gn_organization_id                      --  6.在庫組織ID
+                                                     ,gd_target_date                          --  7.パラメータ     ：棚卸月の月末日
+                                                     ,gv_inventory_month                      -- 10.パラメータ     ：棚卸月
+                                                     ,cv_inv_kbn5                             -- 11.棚卸区分      2：月末
+                                                     ,cv_subinv_1                             -- 12.保管場所区分  1：倉庫
+                                                     ,iv_warehouse                            -- 13.パラメータ     ：倉庫
+            ;
+          END IF;
+        ELSE
+          IF (iv_inventory_kbn = cv_inv_kbn2) THEN
+            -- 出力区分：倉庫、倉庫の指定：なし、棚卸区分：月中
+            OPEN  month_cur FOR lv_sql_str USING IN   cv_subinv_7                             --  1.保管場所分類  7：自販機(消化)
+                                                     ,cv_subinv_7                             --  2.保管場所分類  7：自販機(消化)
+                                                     ,'YYYY/MM/DD'                            --  3.日付型
+                                                     ,gd_target_date                          --  4.パラメータ     ：棚卸日
+                                                     ,acct_data_tab(ln_cnt).account_number    --  5.対象拠点
+                                                     ,gn_organization_id                      --  6.在庫組織ID
+                                                     ,gd_target_date                          --  7.パラメータ     ：棚卸日
+                                                     ,gd_inventory_date                       --  8.パラメータ     ：棚卸日
+                                                     ,cv_inv_kbn4                             --  9.棚卸区分      1：月中
+                                                     ,cv_subinv_1                             -- 12.保管場所区分  1：倉庫
+            ;
+          ELSE
+            -- 出力区分：倉庫、倉庫の指定：なし、棚卸区分：月末
+            OPEN  month_cur FOR lv_sql_str USING IN   cv_subinv_7                             --  1.保管場所分類  7：自販機(消化)
+                                                     ,cv_subinv_7                             --  2.保管場所分類  7：自販機(消化)
+                                                     ,'YYYY/MM/DD'                            --  3.日付型
+                                                     ,gd_target_date                          --  4.パラメータ     ：棚卸月の月末日
+                                                     ,acct_data_tab(ln_cnt).account_number    --  5.対象拠点
+                                                     ,gn_organization_id                      --  6.在庫組織ID
+                                                     ,gd_target_date                          --  7.パラメータ     ：棚卸月の月末日
+                                                     ,gv_inventory_month                      -- 10.パラメータ     ：棚卸月
+                                                     ,cv_inv_kbn5                             -- 11.棚卸区分      2：月末
+                                                     ,cv_subinv_1                             -- 12.保管場所区分  1：倉庫
+            ;
+          END IF;
+        END IF;
+      ELSE
+        IF (iv_left_base  IS NOT NULL) THEN
+          -- 預け先の月中処理は行わない
+          -- 出力区分：預け先、預け先の指定：あり、棚卸区分：月末
+          OPEN  month_cur FOR lv_sql_str USING IN   cv_subinv_7                             --  1.保管場所分類  7：自販機(消化)
+                                                   ,cv_subinv_7                             --  2.保管場所分類  7：自販機(消化)
+                                                   ,'YYYY/MM/DD'                            --  3.日付型
+                                                   ,gd_target_date                          --  4.パラメータ     ：棚卸月の月末日
+                                                   ,acct_data_tab(ln_cnt).account_number    --  5.対象拠点
+                                                   ,gn_organization_id                      --  6.在庫組織ID
+                                                   ,gd_target_date                          --  7.パラメータ     ：棚卸月の月末日
+                                                   ,gv_inventory_month                      -- 10.パラメータ     ：棚卸月
+                                                   ,cv_inv_kbn5                             -- 11.棚卸区分      2：月末
+                                                   ,cv_subinv_3                             -- 14.保管場所区分  3：預け先
+                                                   ,cv_subinv_4                             -- 15.保管場所区分  4：専門店
+                                                   ,cv_subinv_7                             -- 16.保管場所分類  7：自販機(消化)
+                                                   ,iv_left_base                            -- 17.パラメータ     ：預け先
+          ;
+        ELSE
+          -- 出力区分：預け先、預け先の指定：なし、棚卸区分：月末
+          OPEN  month_cur FOR lv_sql_str USING IN   cv_subinv_7                             --  1.保管場所分類  7：自販機(消化)
+                                                   ,cv_subinv_7                             --  2.保管場所分類  7：自販機(消化)
+                                                   ,'YYYY/MM/DD'                            --  3.日付型
+                                                   ,gd_target_date                          --  4.パラメータ     ：棚卸月の月末日
+                                                   ,acct_data_tab(ln_cnt).account_number    --  5.対象拠点
+                                                   ,gn_organization_id                      --  6.在庫組織ID
+                                                   ,gd_target_date                          --  7.パラメータ     ：棚卸月の月末日
+                                                   ,gv_inventory_month                      -- 10.パラメータ     ：棚卸月
+                                                   ,cv_inv_kbn5                             -- 11.棚卸区分      2：月末
+                                                   ,cv_subinv_3                             -- 14.保管場所区分  3：預け先
+                                                   ,cv_subinv_4                             -- 15.保管場所区分  4：専門店
+          ;
+        END IF;
+      END IF;
+      --
+-- == 2009/09/15 V1.9 Modified END   ===============================================================
+      <<output_data_loop>>
+      LOOP
+        FETCH month_cur INTO month_rec;
+        EXIT WHEN month_cur%NOTFOUND;
+    --
+        -- 受払残高票IDをカウント
+        ln_check_num  := ln_check_num  + 1;
+        -- 対象件数をカウント
+        gn_target_cnt := gn_target_cnt + 1;
+        --
+        -- ===================================
+        --  ワークテーブルデータ登録(A-3)
+        -- ===================================
+        INSERT INTO xxcoi_rep_warehouse_rcpt(
+                    slit_id                           -- 受払残高情報ID
+                   ,inventory_kbn                     -- 棚卸区分
+                   ,output_kbn                        -- 出力区分
+                   ,in_out_year                       -- 年
+                   ,in_out_month                      -- 月
+                   ,in_out_dat                        -- 日
+                   ,base_code                         -- 拠点コード
+                   ,base_name                         -- 拠点名称
+                   ,warehouse_code                    -- 倉庫/預け先コード
+                   ,warehouse_name                    -- 倉庫/預け先名称
+                   ,gun_code                          -- 群コード
+                   ,item_code                         -- 商品コード
+                   ,item_name                         -- 商品名称
+                   ,first_inventory_qty               -- 月首棚卸高(数量)
+                   ,factory_in_qty                    -- 工場入庫(数量)
+                   ,kuragae_in_qty                    -- 倉替入庫(数量)
+                   ,car_in_qty                        -- 営業車より入庫(数量)
+                   ,hurikae_in_qty                    -- 振替入庫(数量)
+                   ,car_ship_qty                      -- 営業車へ出庫(数量)
+                   ,sales_qty                         -- 売上出庫(数量)
+                   ,support_qty                       -- 協賛見本(数量)
+                   ,kuragae_ship_qty                  -- 倉替出庫(数量)
+                   ,factory_return_qty                -- 工場返品(数量)
+                   ,disposal_qty                      -- 廃却出庫(数量)
+                   ,hurikae_ship_qty                  -- 振替出庫(数量)
+                   ,tyoubo_stock_qty                  -- 帳簿在庫(数量)
+                   ,inventory_qty                     -- 棚卸高(数量)
+                   ,genmou_qty                        -- 棚卸減耗(数量)
+                   ,first_inventory_money             -- 月首棚卸高(金額)
+                   ,factory_in_money                  -- 工場入庫(金額)
+                   ,kuragae_in_money                  -- 倉替入庫(金額)
+                   ,car_in_money                      -- 営業車より入庫(金額)
+                   ,hurikae_in_money                  -- 振替入庫(金額)
+                   ,car_ship_money                    -- 営業車へ出庫(金額)
+                   ,sales_money                       -- 売上出庫(金額)
+                   ,support_money                     -- 協賛見本(金額)
+                   ,kuragae_ship_money                -- 倉替出庫(金額)
+                   ,factory_return_money              -- 工場返品(金額)
+                   ,disposal_money                    -- 廃却出庫(金額)
+                   ,hurikae_ship_money                -- 振替出庫(金額)
+                   ,tyoubo_stock_money                -- 帳簿在庫(金額)
+                   ,inventory_money                   -- 棚卸高(金額)
+                   ,genmou_money                      -- 棚卸減耗(金額)
+                   ,message                           -- メッセージ
+                   ,last_update_date                  -- 最終更新日
+                   ,last_updated_by                   -- 最終更新者
+                   ,creation_date                     -- 作成日
+                   ,created_by                        -- 作成者
+                   ,last_update_login                 -- 最終更新ユーザ
+                   ,request_id                        -- 要求ID
+                   ,program_application_id            -- プログラムアプリケーションID
+                   ,program_id                        -- プログラムID
+                   ,program_update_date)              -- プログラム更新日
+            VALUES (ln_check_num                                              -- 受払残高情報ID
+                   ,gv_inv_kbn                                                -- 棚卸区分
+                   ,gv_out_kbn                                                -- 出力区分
+                   ,DECODE(iv_inventory_kbn,cv_inv_kbn3
+                   ,SUBSTR(month_rec.irm_practice_month,3,2)
+                   ,SUBSTR(TO_CHAR(month_rec.irm_practice_date
+                                  ,'YYYYMMDD'),3,2))                          -- 年
+                   ,DECODE(iv_inventory_kbn,cv_inv_kbn3
+                   ,SUBSTR(month_rec.irm_practice_month,5,2)
+                   ,SUBSTR(TO_CHAR(month_rec.irm_practice_date
+                                  ,'YYYYMMDD'),5,2))                          -- 月
+                   ,DECODE(iv_inventory_kbn,cv_inv_kbn3
+                   ,NULL
+                   ,SUBSTR(TO_CHAR(month_rec.irm_practice_date
+                                  ,'YYYYMMDD'),7,2))                          -- 日
+                   ,month_rec.irm_base_code                                   -- 拠点コード
+-- == 2009/09/15 V1.9 Modified START ===============================================================
+--                   ,month_rec.biv_base_short_name
+                   ,acct_data_tab(ln_cnt).account_name                        -- 拠点名称
+-- == 2009/09/15 V1.9 Modified END   ===============================================================
+                   ,DECODE(iv_output_kbn,cv_out_kbn1
+                   ,month_rec.msi_warehouse_code
+                   ,month_rec.msi_left_base_code)                             -- 倉庫/預け先コード
+    -- == 2009/08/19 V1.7 Modified START ===============================================================
+    --               ,DECODE(iv_output_kbn,cv_out_kbn1
+    --               ,month_rec.msi_warehouse_name
+    --               ,month_rec.hca_left_base_name)                             -- 倉庫/預け先名称
+                   ,SUBSTRB(DECODE(iv_output_kbn,cv_out_kbn1
+                   ,month_rec.msi_warehouse_name
+                   ,month_rec.hca_left_base_name), 1, 50)                     -- 倉庫/預け先名称
+    -- == 2009/08/19 V1.7 Modified END   ===============================================================
+                   ,month_rec.iib_gun_code                                    -- 群コード
+                   ,month_rec.iib_item_no                                     -- 商品コード
+                   ,month_rec.imb_item_short_name                             -- 商品名称
+                   ,month_rec.irm_month_begin_quantity                        -- 月首棚卸高(数量)
+                   ,month_rec.irm_factory_stock                 -
+                    month_rec.irm_factory_stock_b                             -- 工場入庫(数量)
+                   ,month_rec.irm_change_stock                  +
+                    month_rec.irm_selfbase_stock                +
+                    month_rec.irm_others_stock                  +
+                    month_rec.irm_vd_supplement_stock           +
+                    month_rec.irm_inventory_change_in                         -- 倉替入庫(数量)
+                   ,month_rec.irm_truck_stock                                 -- 営業車より入庫(数量)
+                   ,month_rec.irm_goods_transfer_new                          -- 振替入庫(数量)
+                   ,month_rec.irm_truck_ship                                  -- 営業車へ出庫(数量)
+                   ,month_rec.irm_sales_shipped                 -
+                    month_rec.irm_sales_shipped_b               -
+                    month_rec.irm_return_goods                  +
+                    month_rec.irm_return_goods_b                              -- 売上出庫(数量)
+                   ,month_rec.irm_customer_sample_ship          -
+                    month_rec.irm_customer_sample_ship_b        +
+                    month_rec.irm_customer_support_ss           -
+                    month_rec.irm_customer_support_ss_b         +
+                    month_rec.irm_sample_quantity               -
+                    month_rec.irm_sample_quantity_b             +
+                    month_rec.irm_ccm_sample_ship               -
+                    month_rec.irm_ccm_sample_ship_b                           -- 協賛見本(数量)
+                   ,month_rec.irm_change_ship                   +
+                    month_rec.irm_selfbase_ship                 +
+                    month_rec.irm_others_ship                   +
+                    month_rec.irm_vd_supplement_ship            +
+                    month_rec.irm_inventory_change_out          +
+                    month_rec.irm_factory_change                -
+                    month_rec.irm_factory_change_b                            -- 倉替出庫(数量)
+                   ,month_rec.irm_factory_return                -
+                    month_rec.irm_factory_return_b                            -- 工場返品(数量)
+                   ,month_rec.irm_removed_goods                 -
+                    month_rec.irm_removed_goods_b                             -- 廃却出庫(数量)
+                   ,month_rec.irm_goods_transfer_old                          -- 振替出庫(数量)
+                   ,month_rec.irm_inv_result                    +
+                    month_rec.irm_inv_result_bad                +
+                    month_rec.irm_inv_wear                                    -- 帳簿在庫(数量)
+                   ,month_rec.irm_inv_result                    +
+                    month_rec.irm_inv_result_bad                              -- 棚卸高(数量)
+                   ,month_rec.irm_inv_wear                                    -- 棚卸減耗(数量)
+                   ,ROUND( month_rec.irm_month_begin_quantity
+                         * month_rec.irm_operation_cost)                      -- 月首棚卸高(金額)
+                   ,ROUND((month_rec.irm_factory_stock          -
+                           month_rec.irm_factory_stock_b)
+                         * month_rec.irm_operation_cost)                      -- 工場入庫(金額)
+                   ,ROUND((month_rec.irm_change_stock           +
+                           month_rec.irm_selfbase_stock         +
+                           month_rec.irm_others_stock           +
+                           month_rec.irm_vd_supplement_stock    +
+                           month_rec.irm_inventory_change_in)
+                         * month_rec.irm_operation_cost)                      -- 倉替入庫(金額)
+                   ,ROUND( month_rec.irm_truck_stock
+                         * month_rec.irm_operation_cost)                      -- 営業車より入庫(金額)
+                   ,ROUND( month_rec.irm_goods_transfer_new
+                         * month_rec.irm_operation_cost)                      -- 振替入庫(金額)
+                   ,ROUND( month_rec.irm_truck_ship
+                         * month_rec.irm_operation_cost)                      -- 営業車へ出庫(金額)
+                   ,ROUND((month_rec.irm_sales_shipped          -
+                           month_rec.irm_sales_shipped_b        -
+                           month_rec.irm_return_goods           +
+                           month_rec.irm_return_goods_b)
+                         * month_rec.irm_operation_cost)                      -- 売上出庫(金額)
+                   ,ROUND((month_rec.irm_customer_sample_ship   -
+                           month_rec.irm_customer_sample_ship_b +
+                           month_rec.irm_customer_support_ss    -
+                           month_rec.irm_customer_support_ss_b  +
+                           month_rec.irm_sample_quantity        -
+                           month_rec.irm_sample_quantity_b      +
+                           month_rec.irm_ccm_sample_ship        -
+                           month_rec.irm_ccm_sample_ship_b)
+                         * month_rec.irm_operation_cost)                      -- 協賛見本(金額)
+                   ,ROUND((month_rec.irm_change_ship            +
+                           month_rec.irm_selfbase_ship          +
+                           month_rec.irm_others_ship            +
+                           month_rec.irm_vd_supplement_ship     +
+                           month_rec.irm_inventory_change_out   +
+                           month_rec.irm_factory_change         -
+                           month_rec.irm_factory_change_b)
+                         * month_rec.irm_operation_cost)                      -- 倉替出庫(金額)
+                   ,ROUND((month_rec.irm_factory_return         -
+                           month_rec.irm_factory_return_b)
+                         * month_rec.irm_operation_cost)                      -- 工場返品(金額)
+                   ,ROUND((month_rec.irm_removed_goods          -
+                           month_rec.irm_removed_goods_b)
+                         * month_rec.irm_operation_cost)                      -- 廃却出庫(金額)
+                   ,ROUND( month_rec.irm_goods_transfer_old
+                         * month_rec.irm_operation_cost)                      -- 振替出庫(金額)
+                   ,ROUND((month_rec.irm_inv_result             +
+                           month_rec.irm_inv_result_bad         +
+                           month_rec.irm_inv_wear)
+                         * month_rec.irm_operation_cost)                      -- 帳簿在庫(金額)
+                   ,ROUND((month_rec.irm_inv_result             +
+                           month_rec.irm_inv_result_bad)
+                         * month_rec.irm_operation_cost)                      -- 棚卸高(金額)
+                   ,ROUND( month_rec.irm_inv_wear
+                         * month_rec.irm_operation_cost)                      -- 棚卸減耗(金額)
+                   ,NULL                                                      -- メッセージ
+                   ,SYSDATE                                                   -- 最終更新日
+                   ,cn_last_updated_by                                        -- 最終更新者
+                   ,SYSDATE                                                   -- 作成日
+                   ,cn_created_by                                             -- 作成者
+                   ,cn_last_update_login                                      -- 最終更新ユーザ
+                   ,cn_request_id                                             -- 要求ID
+                   ,cn_program_application_id                                 -- プログラムアプリケーションID
+                   ,cn_program_id                                             -- プログラムID
+                   ,SYSDATE);                                                 -- プログラム更新日
+      --
+      END LOOP output_data_loop;
+-- == 2009/09/15 V1.9 Added START ===============================================================
+    END LOOP get_data_loop;
+-- == 2009/09/15 V1.9 Added END   ===============================================================
+    --
+    -- カーソルクローズ
+    CLOSE month_cur;
+    --
+    -- ===================================
+    --  結果0件の場合
+    -- ===================================
+    IF (ln_check_num = 0) THEN
+      -- ===================================
+      --  0件メッセージ取得
+      -- ===================================
+      lv_message := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcoi_sn
+                        ,iv_name         => cv_msg_00008
+                       );
+      BEGIN
+        IF (iv_output_kbn = cv_out_kbn1 AND iv_warehouse IS NOT NULL) THEN
+          SELECT msi.description
+          INTO   gv_warehouse
+          FROM   mtl_secondary_inventories  msi     -- 保管場所マスタ(INV)
+          WHERE  msi.organization_id = gn_organization_id
+          AND    SUBSTR(msi.secondary_inventory_name,6,2) = iv_warehouse
+          AND    msi.attribute1 = cv_subinv_1
+          AND    msi.attribute7 = iv_base_code;
+        ELSIF (iv_output_kbn = cv_out_kbn2 AND iv_left_base IS NOT NULL) THEN
+  -- == 2009/08/10 V1.6 Modified START ===============================================================
+  --        SELECT hca.account_name
+  --        INTO   gv_warehouse
+  --        FROM   hz_cust_accounts     hca           -- 顧客マスタ
+  --        WHERE  hca.account_number = iv_left_base;
+          SELECT DECODE(msi.attribute13, cv_subinv_7, msi.description, hca.account_name)
+          INTO   gv_warehouse
+          FROM   mtl_secondary_inventories msi
+                ,hz_cust_accounts          hca
+          WHERE  msi.attribute4 = hca.account_number(+)
+          AND    DECODE(msi.attribute13, cv_subinv_7, msi.secondary_inventory_name
+                                                    , hca.account_number) = iv_left_base;
+  -- == 2009/08/10 V1.6 Modified END   ===============================================================
+        END IF;
+      EXCEPTION
+        WHEN OTHERS THEN
+          gv_warehouse := NULL;
+      END;
+      --
+      BEGIN
+        SELECT SUBSTRB(account_name,1,8)            -- 拠点略称
+        INTO   gv_base_short_name
+        FROM   xxcoi_user_base_info_v               -- 拠点ビュー
+        WHERE  account_number = iv_base_code
+        AND    ROWNUM = 1;
+      EXCEPTION
+        WHEN OTHERS THEN
+          gv_base_short_name := NULL;
+      END;
+      -- ===================================
+      --  0件メッセージ出力
+      -- ===================================
+      INSERT INTO xxcoi_rep_warehouse_rcpt(
+                  slit_id                           -- 受払残高情報ID
+                 ,inventory_kbn                     -- 棚卸区分
+                 ,output_kbn                        -- 出力区分
+                 ,in_out_year                       -- 年
+                 ,in_out_month                      -- 月
+                 ,in_out_dat                        -- 日
+                 ,base_code                         -- 拠点コード
+                 ,base_name                         -- 拠点名称
+                 ,warehouse_code                    -- 倉庫/預け先コード
+                 ,warehouse_name                    -- 倉庫/預け先名称
+                 ,message                           -- メッセージ
+                 ,last_update_date                  -- 最終更新日
+                 ,last_updated_by                   -- 最終更新者
+                 ,creation_date                     -- 作成日
+                 ,created_by                        -- 作成者
+                 ,last_update_login                 -- 最終更新ユーザ
+                 ,request_id                        -- 要求ID
+                 ,program_application_id            -- プログラムアプリケーションID
+                 ,program_id                        -- プログラムID
+                 ,program_update_date)              -- プログラム更新日
+          VALUES (ln_check_num                      -- 受払残高情報ID
+                 ,gv_inv_kbn                        -- 棚卸区分
+                 ,gv_out_kbn                        -- 出力区分
+                 ,DECODE(iv_inventory_kbn,cv_inv_kbn3
+                 ,SUBSTR(gv_inventory_month,3,2)
+                 ,SUBSTR(gv_inventory_date,3,2))    -- 年
+                 ,DECODE(iv_inventory_kbn,cv_inv_kbn3
+                 ,SUBSTR(gv_inventory_month,5,2)
+                 ,SUBSTR(gv_inventory_date,5,2))    -- 月
+                 ,DECODE(iv_inventory_kbn,cv_inv_kbn3
+                 ,NULL
+                 ,SUBSTR(gv_inventory_date,7,2))    -- 日
+                 ,iv_base_code                      -- 拠点コード
+                 ,gv_base_short_name                -- 拠点名称
+                 ,DECODE(iv_output_kbn,cv_out_kbn1
+                 ,iv_warehouse
+                 ,iv_left_base)                     -- 倉庫/預け先コード
+  -- == 2009/08/19 V1.7 Modified START ===============================================================
+  --               ,gv_warehouse                      -- 倉庫/預け先名称
+                 ,SUBSTRB(gv_warehouse, 1, 50)      -- 倉庫/預け先名称
+  -- == 2009/08/19 V1.7 Modified END   ===============================================================
+                 ,lv_message                        -- メッセージ
+                 ,SYSDATE                           -- 最終更新日
+                 ,cn_last_updated_by                -- 最終更新者
+                 ,SYSDATE                           -- 作成日
+                 ,cn_created_by                     -- 作成者
+                 ,cn_last_update_login              -- 最終更新ユーザ
+                 ,cn_request_id                     -- 要求ID
+                 ,cn_program_application_id         -- プログラムアプリケーションID
+                 ,cn_program_id                     -- プログラムID
+                 ,SYSDATE);                         -- プログラム更新日
+    END IF;
+    -- コミット
+    COMMIT;
+    --
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
