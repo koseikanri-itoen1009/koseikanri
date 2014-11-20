@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2012/03/14    1.11  S.Niki           [E_本稼動_08315] 支払予定日として定義された日以外の場合にはエラーとする
  *                                       [E_本稼動_08316] 請求および支払金額の妥当性チェック追加
  *  2012/11/22    1.12  M.Nagai          [E_本稼動_09766] チェック追加：勘定科目転記可否、AP会計期間内、顧客マスタ関連
+ *  2013/04/03    1.13  S.Niki           [E_本稼動_10393] 支払予定日チェック変更
  *
  *****************************************************************************************/
 --
@@ -118,6 +119,9 @@ AS
   cv_err_msg_10505           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10505';   --問屋管理コード未設定エラーメッセージ
   cv_err_msg_10506           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10506';   --銀行口座情報設定エラーメッセージ
 -- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD START
+  cv_err_msg_00059           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00059';   --会計帳期間報取得エラーメッセージ
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD END
   cv_err_msg_00061           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00061';   --IF表ロック取得エラー
   cv_err_msg_00041           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00041';   --BLOBデータ変換エラー
   cv_err_msg_00039           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00039';   --空ファイルエラー
@@ -218,6 +222,11 @@ AS
   cv_flag_y                  CONSTANT VARCHAR2(1)   := 'Y';    --Y:有効
   cv_lang                    CONSTANT fnd_lookup_values.language%TYPE := USERENV( 'LANG' );  --言語
 -- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD START
+  ct_sqlap_appl_short_name   CONSTANT fnd_application.application_short_name%TYPE    := 'SQLAP'; --APアプリ短縮名
+  ct_closing_status_o        CONSTANT gl_period_statuses.closing_status%TYPE         := 'O';     --O:オープン
+  ct_adjust_flag_n           CONSTANT gl_period_statuses.adjustment_period_flag%TYPE := 'N';     --N:調整期間以外
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD END
   --数値
   cn_0                       CONSTANT NUMBER        := 0;      --数値:0
   cn_1                       CONSTANT NUMBER        := 1;      --数値:1
@@ -256,6 +265,10 @@ AS
   gt_aff7_preliminary1_dummy  gl_code_combinations.segment7%TYPE; -- 予備1ダミー値
   gt_aff8_preliminary2_dummy  gl_code_combinations.segment8%TYPE; -- 予備2ダミー値
 -- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD START
+  gt_perm_start_date          xxcok_tmp_wholesale_bill.expect_payment_date%TYPE;  -- AP未オープン期間許容範囲_開始日
+  gt_perm_end_date            xxcok_tmp_wholesale_bill.expect_payment_date%TYPE;  -- AP未オープン期間許容範囲_終了日
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD END
   -- =============================================================================
   -- グローバル例外
   -- =============================================================================
@@ -807,7 +820,9 @@ AS
     -- =======================
     cv_prg_name   CONSTANT VARCHAR2(10) := 'chk_data';     --プログラム名
 -- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
-    cv_sqlap_appl_short_name CONSTANT VARCHAR2(10)  := 'SQLAP';            --APアプリ短縮名
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki DEL START
+--    cv_sqlap_appl_short_name CONSTANT VARCHAR2(10)  := 'SQLAP';            --APアプリ短縮名
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki DEL END
 -- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
     -- =======================
     -- ローカル変数
@@ -2041,10 +2056,19 @@ AS
     lb_period_chk := xxcok_common_pkg.check_acctg_period_f(
                        in_set_of_books_id         => gn_set_of_bks_id                -- 会計帳簿ID
                      , id_proc_date               => ld_expect_payment_date2         -- 支払予定日
-                     , iv_application_short_name  => cv_sqlap_appl_short_name        -- アプリケーション短縮名
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki UPD START
+--                     , iv_application_short_name  => cv_sqlap_appl_short_name        -- アプリケーション短縮名
+                     , iv_application_short_name  => ct_sqlap_appl_short_name        -- アプリケーション短縮名
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki UPD END
                      );
-    -- オープン(戻り値がTRUE)以外の場合、エラー終了する。
-    IF ( lb_period_chk = FALSE ) THEN
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki UPD START
+--    -- オープン(戻り値がTRUE)以外の場合、エラー終了する。
+--    IF ( lb_period_chk = FALSE ) THEN
+    -- 未オープン(戻り値がFALSE)かつ、AP未オープン期間許容範囲外の場合、エラー終了する。
+    IF ( lb_period_chk = FALSE )
+      AND ( ( ld_expect_payment_date2 < gt_perm_start_date )
+      OR    ( ld_expect_payment_date2 > gt_perm_end_date   ) ) THEN
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki UPD END
       lv_msg  := xxccp_common_pkg.get_msg(
                       iv_application  => cv_xxcok_appl_name
                     , iv_name         => cv_err_msg_10504
@@ -2718,6 +2742,9 @@ AS
     -- =======================
     get_profile_expt EXCEPTION;   --カスタム･プロファイル取得エラー
     get_process_expt EXCEPTION;   --業務処理日付取得エラー
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD START
+    get_period_expt  EXCEPTION;   --会計帳期間報取得エラー
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD END
 --
   BEGIN
     ov_retcode := cv_status_normal;
@@ -2888,6 +2915,28 @@ AS
       END IF;
     END LOOP output_csv_column_loop;
 -- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD START
+    -- =============================================================================
+    -- 6.AP未オープン期間許容範囲の取得
+    -- =============================================================================
+    SELECT ADD_MONTHS( MAX( gps.start_date ) ,cn_1 )  AS perm_start_date
+         , ADD_MONTHS( MAX( gps.end_date   ) ,cn_1 )  AS perm_end_date
+    INTO   gt_perm_start_date        --AP未オープン期間許容範囲_開始日
+         , gt_perm_end_date          --AP未オープン期間許容範囲_終了日
+    FROM   gl_period_statuses  gps
+         , fnd_application     fa
+    WHERE  gps.application_id         = fa.application_id
+    AND    fa.application_short_name  = ct_sqlap_appl_short_name  --AP会計期間
+    AND    gps.set_of_books_id        = gn_set_of_bks_id
+    AND    gps.adjustment_period_flag = ct_adjust_flag_n          --調整フラグが'N'
+    AND    gps.closing_status         = ct_closing_status_o       --ステータスが'O'
+    ;
+    --
+    -- 会計期間情報が取得できない場合はエラー
+    IF ( gt_perm_start_date IS NULL ) OR ( gt_perm_end_date IS NULL ) THEN
+      RAISE get_period_expt;
+    END IF;
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD END
   EXCEPTION
     -- *** プロファイル取得エラー ***
     WHEN get_profile_expt THEN
@@ -2919,6 +2968,22 @@ AS
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_msg, 1, 5000 );
       ov_retcode := cv_status_error;
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD START
+    -- *** 会計帳期間報取得エラー ***
+    WHEN get_period_expt THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_err_msg_00059
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT   --出力区分
+                    , iv_message  => lv_msg            --メッセージ
+                    , in_new_line => 0                 --改行
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_msg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- Ver.1.13 [障害E_本稼動_10393] SCSK S.Niki ADD END
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
