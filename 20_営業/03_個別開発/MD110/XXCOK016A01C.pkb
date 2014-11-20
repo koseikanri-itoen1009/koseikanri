@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A01C(spec)
  * Description      : 組み戻し・残高取消・保留情報(CSVファイル)の取込処理
  * MD.050           : 残高更新Excelアップロード MD050_COK_016_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2010/01/20    1.3   K.Kiriu          [E_本稼動_01115]残高更新を拠点で処理可、１仕入先の複数処理を可能とできるよう変更
  *  2010/03/19    1.4   S.Moriyama       [E_本稼動_01897]組み戻し時に元伝票番号、連携日時のクリアを行うように変更
  *  2011/02/22    1.5   T.Ishiwata       [E_本稼動_05408]年次切替対応
+ *  2011/04/14    1.6   S.Niki           [E_本稼動_07143]前月担当拠点の管理元拠点ユーザーが処理できるよう変更
  *
  *****************************************************************************************/
 --
@@ -426,6 +427,9 @@ AS
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
             ,xxcmm_cust_accounts      xca -- 顧客追加情報
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD START
+            ,xxcmm_cust_accounts      xca2 -- 顧客追加情報【拠点】
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD END
       WHERE  xbb.supplier_code       = iv_vendor_code
       AND    xbb.expect_payment_date <= id_pay_date
       AND    xbb.resv_flag           IS NULL
@@ -433,7 +437,12 @@ AS
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD START
 --      AND    xbb.base_code           = gv_dept_bel_code
       AND    xbb.cust_code           = xca.customer_code
-      AND    xca.past_sale_base_code = gv_dept_bel_code
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD START
+--      AND    xca.past_sale_base_code = gv_dept_bel_code
+      AND    xca2.customer_code        = xca.past_sale_base_code  -- 拠点ＣＤ = 前月売上拠点
+      AND  ( xca.past_sale_base_code   = gv_dept_bel_code         -- 所属拠点 = 前月売上拠点
+      OR     xca2.management_base_code = gv_dept_bel_code )       -- 所属拠点 = 前月売上拠点の管理元拠点
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD END
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
       AND    xbb.cust_code           = iv_customer_code
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
@@ -451,10 +460,18 @@ AS
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
             ,xxcmm_cust_accounts      xca -- 顧客追加情報
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD START
+            ,xxcmm_cust_accounts      xca2 -- 顧客追加情報【拠点】
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD END
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCST.Ishiwata UPD START
 --      WHERE  xbb.base_code            = iv_base_code
       WHERE  xbb.cust_code            = xca.customer_code
-      AND    xca.past_sale_base_code  = iv_base_code
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD START
+--      AND    xca.past_sale_base_code = gv_dept_bel_code
+      AND    xca2.customer_code        = xca.past_sale_base_code  -- 拠点ＣＤ = 前月売上拠点
+      AND  ( xca.past_sale_base_code   = gv_dept_bel_code         -- 所属拠点 = 前月売上拠点
+      OR     xca2.management_base_code = gv_dept_bel_code )       -- 所属拠点 = 前月売上拠点の管理元拠点
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD END
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
       AND    xbb.cust_code            = iv_customer_code
 -- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
@@ -811,7 +828,15 @@ AS
         WHERE  EXISTS
                    ( SELECT 'X'
                      FROM   xxcmm_cust_accounts xca
-                     WHERE  xca.past_sale_base_code = gv_dept_bel_code
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD START
+                           ,xxcmm_cust_accounts xca2 -- 顧客追加情報【拠点】
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD END
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD START
+--                     WHERE  xca.past_sale_base_code = gv_dept_bel_code
+                     WHERE ( xca.past_sale_base_code   = gv_dept_bel_code         -- 所属拠点 = 前月売上拠点
+                       OR    xca2.management_base_code = gv_dept_bel_code )       -- 所属拠点 = 前月売上拠点の管理元拠点
+                       AND   xca2.customer_code        = xca.past_sale_base_code  -- 拠点ＣＤ = 前月売上拠点
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD END
                        AND  xca.customer_code        = xbb.cust_code
                    )
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
@@ -840,7 +865,15 @@ AS
         WHERE  EXISTS
                    ( SELECT 'X'
                      FROM   xxcmm_cust_accounts xca
-                     WHERE  xca.past_sale_base_code = gv_dept_bel_code
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD START
+                           ,xxcmm_cust_accounts xca2 -- 顧客追加情報【拠点】
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD END
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD START
+--                     WHERE  xca.past_sale_base_code = gv_dept_bel_code
+                     WHERE ( xca.past_sale_base_code   = gv_dept_bel_code         -- 所属拠点 = 前月売上拠点
+                       OR    xca2.management_base_code = gv_dept_bel_code )       -- 所属拠点 = 前月売上拠点の管理元拠点
+                       AND   xca2.customer_code        = xca.past_sale_base_code  -- 拠点ＣＤ = 前月売上拠点
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD END
                        AND  xca.customer_code        = xbb.cust_code
                    )
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
@@ -1019,11 +1052,20 @@ AS
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
             ,xxcmm_cust_accounts      xca -- 顧客追加情報
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD START
+            ,xxcmm_cust_accounts      xca2 -- 顧客追加情報【拠点】
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD END
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD START
 --      WHERE  xbb.base_code                                        = iv_base_code
 --      AND    xbb.cust_code                                        = iv_customer_code
       WHERE  xbb.cust_code                                        = iv_customer_code
-      AND    xca.past_sale_base_code                              = iv_base_code
+
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD START
+--      AND    xca.past_sale_base_code = gv_dept_bel_code
+      AND    xca2.customer_code        = xca.past_sale_base_code  -- 拠点ＣＤ = 前月売上拠点
+      AND  ( xca.past_sale_base_code   = gv_dept_bel_code         -- 所属拠点 = 前月売上拠点
+      OR     xca2.management_base_code = gv_dept_bel_code )       -- 所属拠点 = 前月売上拠点の管理元拠点
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD END
       AND    xbb.cust_code                                        = xca.customer_code
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
 -- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
@@ -2263,6 +2305,9 @@ AS
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
                 ,xxcmm_cust_accounts      xca -- 顧客追加情報
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD START
+                ,xxcmm_cust_accounts      xca2 -- 顧客追加情報【拠点】
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD END
           WHERE  xbb.supplier_code       = lv_vendor_code
           AND    xbb.expect_payment_date <= TRUNC( ld_pay_date )
           AND    xbb.resv_flag           IS NULL
@@ -2271,7 +2316,12 @@ AS
 --          AND    xbb.base_code           = gv_dept_bel_code
           AND    xbb.cust_code           = lv_customer_code
           AND    xbb.cust_code           = xca.customer_code
-          AND    xca.past_sale_base_code = gv_dept_bel_code
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD START
+--          AND    xca.past_sale_base_code = gv_dept_bel_code
+          AND    xca2.customer_code        = xca.past_sale_base_code  -- 拠点ＣＤ = 前月売上拠点
+          AND  ( xca.past_sale_base_code   = gv_dept_bel_code         -- 所属拠点 = 前月売上拠点
+          OR     xca2.management_base_code = gv_dept_bel_code )       -- 所属拠点 = 前月売上拠点の管理元拠点
+-- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD END
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
           GROUP BY xbb.supplier_code
                   ,xbb.cust_code;
