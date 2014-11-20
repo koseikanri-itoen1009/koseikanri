@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/05/29    1.4   K.Yamaguchi      [障害T1_1147対応]販手残高テーブル更新項目追加
  *  2009/07/02    1.5   K.Yamaguchi      [障害0000291対応]パフォーマンス障害対応
  *  2009/08/03    1.6   M.Hiruta         [障害0000843対応]振込元口座情報の取得条件の取得条件を修正
+ *  2009/12/16    1.7   S.Moriyama       [E_本稼動_xxxxx対応]振手相手負担時に振込額から振手を減額して出力するように修正
  *
  *****************************************************************************************/
 --
@@ -1165,15 +1166,24 @@ AS
       ln_fee        := ln_fee_no_tax * ( ln_bm_tax / 100 + 1 );
     END IF;
 --
-    -- 本振用FB作成明細情報.銀行手数料負担者が当方の場合、振込金額に銀行手数料を加算する
--- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
---    IF( gt_fb_line_tab( in_cnt ).bank_charge_bearer = cv_i AND ln_transfer_amount > 0 ) THEN
-    IF( i_fb_line_rec.bank_charge_bearer = cv_i AND ln_transfer_amount > 0 ) THEN
--- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
-      on_transfer_amount := ln_transfer_amount + ln_fee;
+-- 2009/12/16 Ver.1.7 [E_本稼動_xxxxx] SCS S.Moriyama UPD START
+--    -- 本振用FB作成明細情報.銀行手数料負担者が当方の場合、振込金額に銀行手数料を加算する
+---- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
+----    IF( gt_fb_line_tab( in_cnt ).bank_charge_bearer = cv_i AND ln_transfer_amount > 0 ) THEN
+--    IF( i_fb_line_rec.bank_charge_bearer = cv_i AND ln_transfer_amount > 0 ) THEN
+---- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
+--      on_transfer_amount := ln_transfer_amount + ln_fee;
+--    ELSE
+--      on_transfer_amount := ln_transfer_amount;
+--    END IF;
+--
+    -- 振込手数料負担が相手負担の場合は振込額より手数料を減額する
+    IF( i_fb_line_rec.bank_charge_bearer != cv_i AND ln_transfer_amount > 0 ) THEN
+      on_transfer_amount := ln_transfer_amount + ( ln_fee * -1 );
     ELSE
       on_transfer_amount := ln_transfer_amount;
     END IF;
+-- 2009/12/16 Ver.1.7 [E_本稼動_xxxxx] SCS S.Moriyama UPD END
 --
     -- 銀行手数料（振込手数料）をアウトパラメータに格納
     on_fee := ln_fee;
