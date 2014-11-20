@@ -7,7 +7,7 @@ AS
  * Description      : 月次伝票番号更新
  * MD.050           : 月次伝票番号更新       T_MD050_BPO_00A
  * MD.070           : 月次伝票番号更新       T_MD070_BPO_00A
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -21,6 +21,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/03/27    1.0   Oracle 飯田 甫   初回作成
  *  2009/07/07    1.1   SCS丸下          本番1564対応
+ *  2009/07/09    1.2   SCS丸下          API変更
  *
  *****************************************************************************************/
 --
@@ -74,7 +75,9 @@ AS
   gv_pkg_name            CONSTANT VARCHAR2(100) := 'xxcmn000001c';      -- パッケージ名
   gv_app_name            CONSTANT VARCHAR2(5)   := 'XXCMN';             -- アプリケーション短縮名
   gv_prof_option_name    CONSTANT VARCHAR2(16)  := 'XXCMN_SEQ_YYYYMM';  -- プロファイルオプション名
+/* 2009/07/09 DEL START
   gn_level_id            CONSTANT NUMBER        := 10001;               -- レベルID
+   2009/07/09 DEL END */
 --
   gv_yyyymm              CONSTANT VARCHAR2(6)   := 'YYYYMM';            -- 年月
 --
@@ -124,25 +127,35 @@ AS
     -- *** ローカル定数 ***
     cv_application_short_name      CONSTANT VARCHAR2(100) := 'XXCMN';
     cv_profile_option_name         CONSTANT VARCHAR2(100) := 'XXCMN_SEQ_YYYYMM';
+ /* 2009/07/09 DEL START
     cn_level_id                    CONSTANT NUMBER        := 10001;
+    2009/07/09 DEL END */
 -- 2009/07/07 ADD START
     cv_no_change_msg               CONSTANT VARCHAR2(100) := '採番変更不要:';
 -- 2009/07/07 ADD END
 --
     -- *** ローカル変数 ***
     -- プロファイル
+ /* 2009/07/09 DEL START
     ln_apprication_id              fnd_profile_option_values.application_id%TYPE;
     ln_profile_option_id           fnd_profile_option_values.profile_option_id%TYPE;
     ln_level_id                    fnd_profile_option_values.level_id%TYPE;
     ln_level_value                 fnd_profile_option_values.level_value%TYPE;
     ln_level_value_application_id  fnd_profile_option_values.level_value_application_id%TYPE;
     lv_profile_option_value        fnd_profile_option_values.profile_option_value%TYPE;
+   2009/07/09 DEL END */
     -- 採番関数
     lv_seq_no                      VARCHAR2(12);            -- 採番後の固定長12桁の番号
 --
+ /* 2009/07/09 DEL START
 -- 2009/07/07 ADD START
     lv_present_month fnd_profile_option_values.profile_option_value%TYPE;
 -- 2009/07/07 ADD END
+   2009/07/09 DEL END */
+-- 2009/07/09 ADD START
+    lv_profile_option_value        VARCHAR2(100);
+    lv_present_month               VARCHAR2(100);
+-- 2009/07/09 ADD END
 --
     -- ===============================
     -- ローカル・カーソル
@@ -177,7 +190,9 @@ AS
     gn_user_id  := FND_GLOBAL.USER_ID;              -- 最終更新ユーザID
     gn_login_id := FND_GLOBAL.LOGIN_ID;             -- 最終更新ログイン
 --
+
 -- 2009/07/07 ADD START
+ /* 2009/07/09 DEL START
     -- ================================
     -- プロファイル情報取得
     -- ================================
@@ -192,7 +207,11 @@ AS
     AND    fpov.application_id       = fa.application_id
     AND    fpov.level_id             = gn_level_id
     AND    fpo.profile_option_id     = fpov.profile_option_id;
+   2009/07/09 DEL END */
 --
+-- 2009/07/09 ADD END
+    lv_present_month := TO_CHAR(TO_DATE(FND_PROFILE.VALUE(gv_prof_option_name), gv_yyyymm),gv_yyyymm);
+-- 2009/07/09 ADD END
     IF(lv_present_month < TO_CHAR(gd_sysdate,gv_yyyymm)) THEN
 -- 2009/07/07 ADD END
   --
@@ -207,6 +226,7 @@ AS
       EXECUTE IMMEDIATE 'CREATE SEQUENCE xxcmn.xxcmn_slip_no_s1 MINVALUE 1 MAXVALUE 99999999 '
         || 'INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER NOCYCLE';
   --
+/* 2009/07/09 DEL START
       -- ================================
       -- 3.プロファイル値更新情報取得
       -- ================================
@@ -246,6 +266,16 @@ AS
        ,x_last_updated_by            => gn_user_id
        ,x_last_update_login          => gn_login_id
       );
+   2009/07/09 DEL END */
+-- 2009/07/09 ADD START
+      -- ================================
+      -- 4.プロファイル値更新
+      -- ================================
+      lv_profile_option_value := TO_CHAR(ADD_MONTHS(TO_DATE(lv_present_month, gv_yyyymm), 1), gv_yyyymm);
+      IF(FND_PROFILE.SAVE(gv_prof_option_name, lv_profile_option_value, 'SITE'))THEN
+        NULL;
+      END IF;
+-- 2009/07/09 ADD END
   --
       -- ================================
       -- 5.採番関数の実行(採番可能を確認)
