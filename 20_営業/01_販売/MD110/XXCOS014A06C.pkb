@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,8 @@ AS
  *  2009/07/07          N.Maeda          [0000065] 帳票コード別取得条件追加
  *  2009/07/22          N.Maeda          [0000644] 端数処理対応
  *  2009/07/23          N.Maeda          [T1_1359] レビュー指摘対応
+ *  2009/08/18    1.12  N.Maeda          [0000888] 特売区分取得値修正(EDI受注時)
+ *  2009/08/20          N.Maeda          [0000888] 抽出条件修正(EDI受注時)
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -2314,7 +2316,10 @@ AS
                     ,xeh.check_digit                                                    check_digit                   --チェックデジット
                     ,TO_CHAR(xeh.close_date, cv_date_fmt)                               close_date                    --月限
                     ,TO_CHAR(ooha.order_number)                                         order_no_ebs                  --受注Ｎｏ（ＥＢＳ）
-                    ,xlvv.attribute8                                                    ar_sale_class                 --特売区分
+-- ************************* 2009/08/18 1.12 N.Maeda MOD START ************************************* --
+                    ,xeh.ar_sale_class                                                  ar_sale_class                 --特売区分
+--                    ,xlvv.attribute8                                                    ar_sale_class                 --特売区分
+-- ************************* 2009/08/18 1.12 N.Maeda MOD  MOD  ************************************* --
                     ,xeh.delivery_classe                                                delivery_classe               --配送区分
                     ,xeh.opportunity_no                                                 opportunity_no                --便Ｎｏ
                     ,NVL(xeh.contact_to, cdm.phone_number)                              contact_to                    --連絡先
@@ -2910,6 +2915,9 @@ AS
 -- ********************* 2009/07/07 1.11 N.Maeda MOD START *********************** --
                             ,xeh.edi_delivery_schedule_flag                              edi_delivery_schedule_flag
 -- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
+-- ************************* 2009/08/18 1.12 N.Maeda MOD START ************************************* --
+                            ,xeh.ar_sale_class                                           ar_sale_class                 --特売区分
+-- ************************* 2009/08/18 1.12 N.Maeda MOD  MOD  ************************************* --
                       FROM   xxcos_edi_headers                                           xeh                           --EDIヘッダ情報テーブル
                             ,xxcmm_cust_accounts                                         xca                           --顧客マスタアドオン
                             ,hz_cust_accounts                                            hca                           --顧客マスタ
@@ -3220,6 +3228,9 @@ AS
 -- ********************* 2009/07/07 1.11 N.Maeda MOD START *********************** --
                             ,xeh.edi_delivery_schedule_flag                              edi_delivery_schedule_flag
 -- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
+-- ************************* 2009/08/18 1.12 N.Maeda MOD START ************************************* --
+                            ,xeh.ar_sale_class                                           ar_sale_class                 --特売区分
+-- ************************* 2009/08/18 1.12 N.Maeda MOD  MOD  ************************************* --
                       FROM   xxcos_edi_headers                                           xeh                           --EDIヘッダ情報テーブル
                       WHERE  xeh.data_type_code         = cv_data_type_edi_order                                              --データ種コード
                       AND (
@@ -3367,8 +3378,12 @@ AS
                 AND     NVL(xlvv.end_date_active,i_other_rec.process_date)
               AND  ( i_input_rec.bargain_class  = cv_bargain_class_all
                 OR   i_input_rec.bargain_class != cv_bargain_class_all
-                AND  i_input_rec.bargain_class  = xlvv.attribute8
-              )
+-- **************** 2009/08/20 1.12 N.Maeda MOD START ************************* --
+                AND  i_input_rec.bargain_class  = xeh.ar_sale_class
+                   )
+--                AND  i_input_rec.bargain_class  = xlvv.attribute8
+--              )
+-- **************** 2009/08/20 1.12 N.Maeda MOD START ************************* --
               AND   ooha.org_id                 = i_prf_rec.org_id                                                    --MO:営業単位
               AND   oola.org_id                 = ooha.org_id                                                         --MO:営業単位
               AND   xeh.delivery_base_code     = cdm.account_number(+)
