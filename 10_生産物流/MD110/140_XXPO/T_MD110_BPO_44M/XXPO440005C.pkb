@@ -27,6 +27,8 @@ AS
  *  2008/04/19    1.0   Yusuke Tabata   新規作成
  *  2008/05/20    1.1   Yusuke Tabata   内部変更要求Seq95(日付型パラメータ型変換)対応
  *  2008/06/03    1.2   Yohei  Takayama 結合テスト不具合#440_46対応
+ *  2008/06/04    1.3 Yasuhisa Yamamoto 結合テスト不具合ログ#440_54
+ *  2008/06/19    1.4   Kazuo Kumamoto  結合テストレビュー指摘事項#18対応
  *
  *****************************************************************************************/
 --
@@ -77,6 +79,9 @@ AS
   gc_sp_class_prov        CONSTANT VARCHAR2(1)  := '2' ;    -- 支給依頼
   -- 受注カテゴリ：出荷支給受払カテゴリ
   gc_sp_category_s        CONSTANT VARCHAR2(2)  := '05' ;   -- 有償出荷
+--add start 1.4
+  gc_sp_category_r        CONSTANT VARCHAR2(2)  := '06' ;   -- 有償返品
+--add end 1.4
   -- 受注ヘッダアドオン：最新フラグ（YesNo区分）
   gc_yn_div_y             CONSTANT VARCHAR2(1)  := 'Y' ;    -- YES
   gc_yn_div_n             CONSTANT VARCHAR2(1)  := 'N' ;    -- NO
@@ -439,7 +444,10 @@ AS
     || ' END                          AS price'         -- 金額
     -- 返品訂正判定フラグ
     || ',CASE'
-    || '   WHEN otta.attribute11 = ''' || gc_order_cat_o || '''' || ' THEN'
+--mod start 1.4
+--    || '   WHEN otta.attribute11 = ''' || gc_order_cat_o || '''' || ' THEN'
+    || '   WHEN otta.attribute11 = ''' || gc_sp_category_r || '''' || ' THEN'
+--mod end 1.4
     || '     '''  || gc_rtn_sign_y || ''''
     || '   ELSE'
     || '     '''  || gc_rtn_sign_n || ''''

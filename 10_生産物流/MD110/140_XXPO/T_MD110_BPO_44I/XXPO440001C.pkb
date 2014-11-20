@@ -7,7 +7,7 @@ AS
  * Description      : 有償出庫指示書
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_444)
  *                    有償支給帳票Issue1.0(T_MD070_BPO_44I)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -38,6 +38,10 @@ AS
  *                                       結合テスト不具合（機能ID：440、不具合ID：12）
  *                                       結合テスト不具合（機能ID：440、不具合ID：13）
  *  2008/05/21    1.3   Oracle田畑祐亮   結合テスト不具合（機能ID：440、不具合ID：19）
+ *  2008/06/19    1.4   Oracle熊本和郎   結合テスト不具合
+ *                                         1.レビュー指摘事項No.11：適用日管理を行う。
+ *                                         2.レビュー指摘事項No.13：取引先名、配送先名の
+ *                                           折り返しをコンカレント側で行う。
  *
  *****************************************************************************************/
 --
@@ -576,7 +580,24 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'vendor_name';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.vendor_name;
+--mod start 1.4.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.vendor_name;
+        IF (length(substrb(lr_ref.vendor_name,40,2)) = 1) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value := substrb(lr_ref.vendor_name,1,39) || substrb(lr_ref.vendor_name,40,2);
+        ELSE
+          gt_xml_data_table(gl_xml_idx).tag_value := substrb(lr_ref.vendor_name,1,40);
+        END IF;
+--mod end 1.4.2
+--add start 1.4.2
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'vendor_name2';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        IF (length(substrb(lr_ref.vendor_name,40,2)) = 1) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value := substrb(lr_ref.vendor_name,42,20);
+        ELSE
+          gt_xml_data_table(gl_xml_idx).tag_value := substrb(lr_ref.vendor_name,41,20);
+        END IF;
+--add end 1.4.2
         -- 配送先
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'deliver_to_code';
@@ -586,7 +607,24 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'deliver_to';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.deliver_to_name;
+--mod start 1.4.2
+--        gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.deliver_to_name;
+        IF (length(substrb(lr_ref.deliver_to_name,40,2)) = 1) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value := substrb(lr_ref.deliver_to_name,1,39) || substrb(lr_ref.deliver_to_name,40,2);
+        ELSE
+          gt_xml_data_table(gl_xml_idx).tag_value := substrb(lr_ref.deliver_to_name,1,40);
+        END IF;
+--mod end 1.4.2
+--add start 1.4.2
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'deliver_to2';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        IF (length(substrb(lr_ref.deliver_to_name,40,2)) = 1) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value := substrb(lr_ref.deliver_to_name,42,20);
+        ELSE
+          gt_xml_data_table(gl_xml_idx).tag_value := substrb(lr_ref.deliver_to_name,41,20);
+        END IF;
+--add end 1.4.2
         -- 住所1
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'deliver_to_address1';
@@ -1055,13 +1093,43 @@ AS
       ||' AND  otta.attribute1               = '''|| gc_sp_class_prov ||''''        -- 出荷支給区分
       ||' AND  xoha.latest_external_flag     = '''|| gc_yn_div_y      ||''''        -- 最新フラグ
       ||' AND  xoha.vendor_id                = xvv.vendor_id'                       -- 仕入先ID
+--add start 1.4.1
+      --適用日管理(仕入先情報view)
+      ||' AND FND_DATE.CANONICAL_TO_DATE('''||gr_param.shipped_date_from ||''')'-- パラメータ.出庫日From
+      ||'   BETWEEN xvv.start_date_active'                                          -- 適用開始日
+      ||'   AND NVL(xvv.end_date_active,'                                           -- 適用終了日
+      ||'     FND_DATE.CANONICAL_TO_DATE('''||gr_param.shipped_date_from ||''')'
+      ||'   )'
+--add end 1.4.1
       ||' AND  xoha.vendor_site_id           = xvsv.vendor_site_id'                 -- 仕入先サイトID
+--add start 1.4.1
+      --適用日管理(仕入先サイトview)
+      ||' AND FND_DATE.CANONICAL_TO_DATE('''||gr_param.shipped_date_from ||''')'-- パラメータ.出庫日From
+      ||'   BETWEEN xvsv.start_date_active'                                         -- 適用開始日
+      ||'   AND NVL(xvsv.end_date_active,'                                          -- 適用終了日
+      ||'     FND_DATE.CANONICAL_TO_DATE('''||gr_param.shipped_date_from ||''')'
+      ||'   )'
+--add end 1.4.1
 -- Ver1.1 Changed 2008/05/16
 --      ||' AND  xoha.deliver_to_id            = xilv.inventory_location_id'          -- 保管場所ID
 --      ||' AND  xoha.career_id                = xxcv.party_id'                       -- パーティID
       ||' AND  xoha.deliver_from_id          = xilv.inventory_location_id'          -- 保管場所ID
       ||' AND  xoha.career_id                = xxcv.party_id(+) '                       -- パーティID
 -- Ver1.1 Changed 2008/05/16
+--add start 1.4.1
+      --適用日管理(OPM保管場所情報view)
+      ||' AND FND_DATE.CANONICAL_TO_DATE('''||gr_param.shipped_date_from ||''')'-- パラメータ.出庫日From
+      ||'   BETWEEN xilv.date_from'                                                 -- 適用開始日
+      ||'   AND NVL(xilv.date_to,'                                                  -- 適用終了日
+      ||'     FND_DATE.CANONICAL_TO_DATE('''||gr_param.shipped_date_from ||''')'
+      ||'   )'
+      --適用日管理(運送業者情報view)
+      ||' AND FND_DATE.CANONICAL_TO_DATE('''||gr_param.shipped_date_from ||''')'-- パラメータ.出庫日From
+      ||'   BETWEEN xxcv.start_date_active(+)'                                         -- 適用開始日
+      ||'   AND NVL(xxcv.end_date_active(+),'                                          -- 適用終了日
+      ||'      FND_DATE.CANONICAL_TO_DATE('''||gr_param.shipped_date_from ||''')'
+      ||'   )'
+--add end 1.4.1
       ||' AND  xoha.request_no
                  = NVL('''|| gr_param.request_no||''',xoha.request_no)'             -- パラメータ依頼No
       ||' AND  xoha.instruction_dept
@@ -1083,6 +1151,14 @@ AS
       ||' AND  xola.delete_flag              = '''|| gc_yn_div_n ||''''            -- 削除フラグ
       ||' AND  xola.shipping_item_code       = ximv.item_no'                       -- OPM品目マスタ結合
       ||' AND  ximv.item_id                  = xicv.item_id'                       -- 品目ID
+--add start 1.4.1
+      --適用日管理(OPM品目情報View)
+      ||' AND FND_DATE.CANONICAL_TO_DATE('''||gr_param.shipped_date_from ||''')'-- パラメータ.出庫日From
+      ||'   BETWEEN ximv.start_date_active'                                         -- 適用開始日
+      ||'   AND NVL(ximv.end_date_active,'                                          -- 適用終了日
+      ||'     FND_DATE.CANONICAL_TO_DATE('''||gr_param.shipped_date_from ||''')'
+      ||'   )'
+--add end 1.4.1
       ||' AND  xicv.prod_class_code
                   = NVL('''|| gr_param.prod_class||''', xicv.prod_class_code )'    -- パラメータ条件．商品区分
       ||' AND  xicv.item_class_code
