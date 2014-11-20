@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/06/17    1.4   M.Hokkanji       システムテスト 不具合対応#153
  *  2008/06/19    1.5   M.Nomura         システムテスト 不具合対応#193
  *  2008/06/27    1.6   M.Nomura         システムテスト 不具合対応#303
+ *  2008/07/04    1.7   M.Nomura         システムテスト 不具合対応#193 2回目
  *
  *****************************************************************************************/
 --
@@ -1039,6 +1040,9 @@ AS
         AND   xoha.prod_class           = gc_prod_class_r         -- リーフ
         AND   xoha.instruction_dept     = gr_param.dept_code      -- 指示部署
         AND   xola.order_line_id        = imld.mov_line_id (+)    -- ロット詳細ID
+-- ##### 20080704 Ver.1.7 ST障害No193 2回目 START #####
+        AND   gc_doc_type_ship          = imld.document_type_code (+)   -- 文書タイプ
+-- ##### 20080704 Ver.1.7 ST障害No193 2回目 END   #####
         UNION ALL
         -- =========================================================================================
         -- 移動データＳＱＬ
@@ -1205,6 +1209,9 @@ AS
 -- M.Hokkanji Ver1.2 END
         AND   xmrih.instruction_post_code = gr_param.dept_code      -- 指示部署
         AND   xmril.mov_line_id           = imld.mov_line_id (+)    -- ロット詳細ID
+-- ##### 20080704 Ver.1.7 ST障害No193 2回目 START #####
+        AND   gc_doc_type_move            = imld.document_type_code (+) -- 文書タイプ
+-- ##### 20080704 Ver.1.7 ST障害No193 2回目 END   #####
         ) main
     ;
 --
