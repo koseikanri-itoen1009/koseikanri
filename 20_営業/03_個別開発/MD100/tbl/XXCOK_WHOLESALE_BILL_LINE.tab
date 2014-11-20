@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_WHOLESALE_BILL_LINE
  * Description : 問屋請求書明細テーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/07/09    1.1   K.Yamaguchi      [障害0000515]STORAGE句追加
+ *  2009/12/25    1.2   K.Nakamura       [E_本稼動_00608]請求単価、支払単価の桁数修正
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_WHOLESALE_BILL_LINE
@@ -21,7 +22,10 @@ CREATE TABLE XXCOK.XXCOK_WHOLESALE_BILL_LINE
    SALES_OUTLETS_CODE       VARCHAR2(9)  NOT NULL,
    ITEM_CODE                VARCHAR2(7),
    DEMAND_QTY               NUMBER       NOT NULL,
-   DEMAND_UNIT_PRICE        NUMBER(8,2)  NOT NULL,
+-- 2009/12/25 Ver.1.2 [E_本稼動_00608] SCS K.Nakamura MOD START
+--   DEMAND_UNIT_PRICE        NUMBER(8,2)  NOT NULL,
+   DEMAND_UNIT_PRICE        NUMBER       NOT NULL,
+-- 2009/12/25 Ver.1.2 [E_本稼動_00608] SCS K.Nakamura MOD END
    DEMAND_AMT               NUMBER,
    SELLING_MONTH            VARCHAR2(6)  NOT NULL,
    DEMAND_UNIT_TYPE         VARCHAR2(1)  NOT NULL,
@@ -29,7 +33,10 @@ CREATE TABLE XXCOK.XXCOK_WHOLESALE_BILL_LINE
    SUB_ACCT_CODE            VARCHAR2(5),
    PAYMENT_QTY              NUMBER       NOT NULL,
    PAYMENT_UNIT_TYPE        VARCHAR2(1)  NOT NULL,
-   PAYMENT_UNIT_PRICE       NUMBER(8,2)  NOT NULL,
+-- 2009/12/25 Ver.1.2 [E_本稼動_00608] SCS K.Nakamura MOD START
+--   PAYMENT_UNIT_PRICE       NUMBER(8,2)  NOT NULL,
+   PAYMENT_UNIT_PRICE       NUMBER       NOT NULL,
+-- 2009/12/25 Ver.1.2 [E_本稼動_00608] SCS K.Nakamura MOD END
    PAYMENT_AMT              NUMBER,
    STATUS                   VARCHAR2(1),
    REVISE_FLAG              VARCHAR2(1)  NOT NULL,

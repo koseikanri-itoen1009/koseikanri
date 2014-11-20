@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -38,7 +38,8 @@ AS
  *                                                                    請求金額の必須チェックを行うよう修正
  *                                                                    勘定科目支払時に支払数量が1以外の場合エラーとする
  *  2009/12/18    1.6   K.Yamaguchi      [E_本稼動_00539] 妥当性チェック追加
- *  2009/12/24    1.7   K.Nakamura       [E_本稼動_00554] 問屋請求書明細テーブル削除処理に条件追加
+ *  2009/12/24    1.7   K.Nakamura       [E_本稼動_00554] 問屋請求書テーブルデータチェック処理、明細データ削除処理に条件追加
+ *  2009/12/25    1.8   K.Nakamura       [E_本稼動_00608] 請求単価、支払単価チェック修正
  *
  *****************************************************************************************/
 --
@@ -94,6 +95,10 @@ AS
   cv_err_msg_10466           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10466';   --品目または勘定科目必須
   cv_err_msg_10467           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10467';   --勘定科目支払時、勘定科目・補助科目必須
 -- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD START
+  cv_err_msg_10470           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10470';   --勘定科目支払時、請求単価チェックエラー
+  cv_err_msg_10471           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10471';   --勘定科目支払時、請求単価チェックエラー
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD END
   cv_err_msg_00061           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00061';   --IF表ロック取得エラー
   cv_err_msg_00041           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00041';   --BLOBデータ変換エラー
   cv_err_msg_00039           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00039';   --空ファイルエラー
@@ -138,6 +143,10 @@ AS
   --フォーマット
   cv_date_format1            CONSTANT VARCHAR2(10)  := 'FXYYYYMMDD';   --支払予定日のフォーマット
   cv_date_format2            CONSTANT VARCHAR2(8)   := 'FXYYYYMM';     --売上対象年月のフォーマット
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD START
+  cv_number_format1          CONSTANT VARCHAR2(7)   := '9999999';      --勘定科目支払時の単価フォーマット
+  cv_number_format2          CONSTANT VARCHAR2(10)  := '9999999.99';   --勘定科目支払時以外の単価フォーマット
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD END
   --記号
   cv_msg_part                CONSTANT VARCHAR2(3)   := ' : ';   --コロン
   cv_msg_cont                CONSTANT VARCHAR2(3)   := '.';     --ピリオド
@@ -748,8 +757,12 @@ AS
     ld_expect_payment_date  DATE;                                      --支払予定日(日付型変換後)
     ld_selling_month        DATE;                                      --売上対象年月(日付型変換後)
     ln_chr_length           NUMBER         DEFAULT 0;                  --桁数チェック
-    ln_demand_unit_price    NUMBER(8,2);                               --請求単価(税抜)
-    ln_payment_unit_price   NUMBER(8,2);                               --支払単価(税抜)
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura MOD START
+--    ln_demand_unit_price    NUMBER(8,2);                               --請求単価(税抜)
+--    ln_payment_unit_price   NUMBER(8,2);                               --支払単価(税抜)
+    ln_demand_unit_price    xxcok_wholesale_bill_line.demand_unit_price%TYPE;                       --請求単価(税抜)
+    ln_payment_unit_price   xxcok_wholesale_bill_line.payment_unit_price%TYPE;                      --支払単価(税抜)
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura MOD END
     ln_count                NUMBER;                                    --COUNT
 -- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
     ln_demand_qty           NUMBER;
@@ -1152,23 +1165,50 @@ AS
     -- =============================================================================
     -- 3.③請求単価(税抜)の桁数チェック
     -- =============================================================================
-    BEGIN
-      ln_demand_unit_price := TO_NUMBER( iv_demand_unit_price );
-    EXCEPTION
-      WHEN VALUE_ERROR THEN
-        lv_msg := xxccp_common_pkg.get_msg(
-                    iv_application  => cv_xxcok_appl_name
-                  , iv_name         => cv_err_msg_10149
-                  , iv_token_name1  => cv_token_row_num
-                  , iv_token_value1 => TO_CHAR( in_loop_cnt )
-                  );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                        in_which    => FND_FILE.OUTPUT   --出力区分
-                      , iv_message  => lv_msg            --メッセージ
-                      , in_new_line => 0                 --改行
-                      );
-        ov_retcode := cv_status_continue;
-    END;
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD START
+    IF ( iv_acct_code IS NOT NULL ) AND ( iv_sub_acct_code IS NOT NULL ) THEN
+      BEGIN
+        ln_demand_unit_price := TO_NUMBER( iv_demand_unit_price , cv_number_format1 );
+      EXCEPTION
+        WHEN VALUE_ERROR THEN
+          lv_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_name
+                    , iv_name         => cv_err_msg_10470
+                    , iv_token_name1  => cv_token_row_num
+                    , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                    );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which    => FND_FILE.OUTPUT   --出力区分
+                        , iv_message  => lv_msg            --メッセージ
+                        , in_new_line => 0                 --改行
+                        );
+          ov_retcode := cv_status_continue;
+      END;
+    ELSE
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD END
+      BEGIN
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Yamaguchi REPAIR START
+--        ln_demand_unit_price := TO_NUMBER( iv_demand_unit_price );
+        ln_demand_unit_price := TO_NUMBER( iv_demand_unit_price, cv_number_format2 );
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Yamaguchi REPAIR END
+      EXCEPTION
+        WHEN VALUE_ERROR THEN
+          lv_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_name
+                    , iv_name         => cv_err_msg_10149
+                    , iv_token_name1  => cv_token_row_num
+                    , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                    );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which    => FND_FILE.OUTPUT   --出力区分
+                        , iv_message  => lv_msg            --メッセージ
+                        , in_new_line => 0                 --改行
+                        );
+          ov_retcode := cv_status_continue;
+      END;
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD START
+    END IF;
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD END
     -- =============================================================================
     -- 3.④請求金額(税抜)の桁数チェック
     -- =============================================================================
@@ -1235,23 +1275,50 @@ AS
     -- =============================================================================
     -- 3.⑦支払単価(税抜)の桁数チェック
     -- =============================================================================
-    BEGIN
-      ln_payment_unit_price := TO_NUMBER( iv_payment_unit_price );
-    EXCEPTION
-      WHEN VALUE_ERROR THEN
-        lv_msg := xxccp_common_pkg.get_msg(
-                    iv_application  => cv_xxcok_appl_name
-                  , iv_name         => cv_err_msg_10155
-                  , iv_token_name1  => cv_token_row_num
-                  , iv_token_value1 => TO_CHAR( in_loop_cnt )
-                  );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                        in_which    => FND_FILE.OUTPUT   --出力区分
-                      , iv_message  => lv_msg            --メッセージ
-                      , in_new_line => 0                 --改行
-                      );
-        ov_retcode := cv_status_continue;
-    END;
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD START
+    IF ( iv_acct_code IS NOT NULL ) AND ( iv_sub_acct_code IS NOT NULL ) THEN
+      BEGIN
+        ln_payment_unit_price := TO_NUMBER( iv_payment_unit_price , cv_number_format1 );
+      EXCEPTION
+        WHEN VALUE_ERROR THEN
+          lv_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_name
+                    , iv_name         => cv_err_msg_10471
+                    , iv_token_name1  => cv_token_row_num
+                    , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                    );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which    => FND_FILE.OUTPUT   --出力区分
+                        , iv_message  => lv_msg            --メッセージ
+                        , in_new_line => 0                 --改行
+                        );
+          ov_retcode := cv_status_continue;
+      END;
+    ELSE
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD END
+      BEGIN
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Yamaguchi REPAIR START
+--        ln_payment_unit_price := TO_NUMBER( iv_payment_unit_price );
+        ln_payment_unit_price := TO_NUMBER( iv_payment_unit_price, cv_number_format2 );
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Yamaguchi REPAIR END
+      EXCEPTION
+        WHEN VALUE_ERROR THEN
+          lv_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_name
+                    , iv_name         => cv_err_msg_10155
+                    , iv_token_name1  => cv_token_row_num
+                    , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                    );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which    => FND_FILE.OUTPUT   --出力区分
+                        , iv_message  => lv_msg            --メッセージ
+                        , in_new_line => 0                 --改行
+                        );
+          ov_retcode := cv_status_continue;
+      END;
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD START
+    END IF;
+-- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD END
     -- =============================================================================
     -- 3.⑧支払金額(税抜)の桁数チェック
     -- =============================================================================

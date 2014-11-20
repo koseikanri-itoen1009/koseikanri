@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : 帳合問屋に関する請求書と見積書を突き合わせ、品目別に請求書と見積書の内容を表示
  * MD.050           : 問屋販売条件支払チェック表 MD050_COK_021_A06
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *                                                        勘定科目支払時に以下の設定を実施
  *                                                        補助科目:05103は問屋マージン
  *                                                        補助科目:05132は拡売費、その他はその他科目へ設定
+ *  2009/12/24    1.8   S.Moriyama       [E_本稼動_00608] SQLチューニング
  *
  *****************************************************************************************/
   -- ===============================================
@@ -214,7 +215,10 @@ AS
          , xx03_sub_accounts_v            xsav                              -- 補助科目ビュー
          , po_vendors                     pv                                -- 仕入先マスタ
          , po_vendor_sites_all            pvsa                              -- 仕入先サイトマスタ
-         , xxcok_lookups_v                xlv                               -- クイックコードビュー
+-- 2009/12/24 Ver.1.8 [E_本稼動_00608] SCS S.Moriyama UPD START
+--         , xxcok_lookups_v                xlv                               -- クイックコードビュー
+         , fnd_lookup_values              xlv                               -- クイックコード
+-- 2009/12/24 Ver.1.8 [E_本稼動_00608] SCS S.Moriyama UPD END
          ,( SELECT msib.segment1                 AS item_code               -- 品目コード
                  , TO_NUMBER( iimb.attribute4 )  AS old_fixed_price         -- 旧定価
                  , TO_NUMBER( iimb.attribute5 )  AS new_fixed_price         -- 定価(新)
@@ -267,6 +271,9 @@ AS
     AND    xlv.lookup_type               = cv_lookup_type_tonya
     AND    gd_process_date               BETWEEN NVL( xlv.start_date_active, gd_process_date )
                                              AND NVL( xlv.end_date_active,   gd_process_date )
+-- 2009/12/24 Ver.1.8 [E_本稼動_00608] SCS S.Moriyama ADD START
+    AND    xlv.language                  = USERENV('LANG')
+-- 2009/12/24 Ver.1.8 [E_本稼動_00608] SCS S.Moriyama ADD END
     AND    xwbl.acct_code                = xav.flex_value(+)
     AND    xwbl.sub_acct_code            = xsav.flex_value(+)
     AND    xwbl.acct_code                = xsav.parent_flex_value_low(+)
@@ -339,8 +346,8 @@ AS
     -- 問屋販売条件支払チェック帳票ワークテーブルデータ削除
     -- ===============================================
     BEGIN
---      DELETE FROM xxcok_rep_wholesale_pay  xrwp
---      WHERE  xrwp.request_id = cn_request_id;
+      DELETE FROM xxcok_rep_wholesale_pay  xrwp
+      WHERE  xrwp.request_id = cn_request_id;
       -- ===============================================
       -- 成功件数取得
       -- ===============================================
