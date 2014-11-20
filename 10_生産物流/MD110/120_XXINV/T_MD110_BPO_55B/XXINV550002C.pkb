@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.38
+ * Version          : 1.40
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -67,7 +67,7 @@ AS
  *  2009/03/30    1.37  Akiyoshi Shiina  本番障害#1346対応
  *  2009/10/14    1.38 Masayuki Nomura   本番障害#1659対応
  *  2009/11/09    1.39 Yukiko Fukami     本番障害#1685対応
- *
+ *  2010/02/05    1.40 Mariko Miyagawa   E_本稼動_01498対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1436,8 +1436,12 @@ AS
         AND xrart.txns_type = gv_txns_type_rcv                                    --実績区分
         --保管場所マスタVIEW抽出条件
         AND pha.vendor_id = pv.vendor_id                                         --仕入先ID
-        AND xv.start_date_active <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-        AND xv.end_date_active >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2010/02/05 v1.40 M.Miyagawa MOD start
+--        AND xv.start_date_active <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--        AND xv.end_date_active >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+        AND xv.start_date_active <= xrart.txns_date
+        AND xv.end_date_active   >= xrart.txns_date
+-- 2010/02/05 v1.40 M.Miyagawa MOD end
         AND iimb.item_id = xrart.item_id                                          --品目ID
         AND ilm.lot_id = NVL(xrart.lot_id,0)                                             --ロットID
         AND mil.segment1 = xrart.location_code                                    --保管倉庫コード
@@ -1829,8 +1833,12 @@ AS
 --          AND xoha.result_deliver_to_id = xps.party_site_id(+)
           AND xoha.result_deliver_to_id = xps.party_site_id
 -- ***** 2009/10/14 1.38 #1659 E *****
-          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2010/02/05 v1.40 M.Miyagawa MOD start
+--          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= xoha.arrival_date
+          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= xoha.arrival_date
+-- 2010/02/05 v1.40 M.Miyagawa MOD end
 -- 2008/12/30 v1.32 N.Yoshida mod end
 -- ***** 2009/10/14 1.38 #1659 S *****
 --          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
@@ -1991,8 +1999,12 @@ AS
 --          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND xoha.vendor_site_id = xvsa.vendor_site_id
 -- ***** 2009/10/14 1.38 #1659 E *****
-          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2010/02/05 v1.40 M.Miyagawa MOD start
+--          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= xoha.arrival_date
+          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= xoha.arrival_date
+-- 2010/02/05 v1.40 M.Miyagawa MOD end
           AND xrpm.doc_type = 'OMSO'
           AND xrpm.shipment_provision_div = gv_spdiv_prov
           AND otta.attribute1 = xrpm.shipment_provision_div                   --出荷支給区分
@@ -2152,8 +2164,12 @@ AS
 --          AND xoha.result_deliver_to_id = xps.party_site_id(+)
           AND xoha.result_deliver_to_id = xps.party_site_id
 -- ***** 2009/10/14 1.38 #1659 E *****
-          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2010/02/05 v1.40 M.Miyagawa MOD start
+--          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= xoha.arrival_date
+          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= xoha.arrival_date
+-- 2010/02/05 v1.40 M.Miyagawa MOD end
 -- 2008/12/30 v1.32 N.Yoshida mod end
 -- ***** 2009/10/14 1.38 #1659 S *****
 --          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
@@ -2206,6 +2222,10 @@ AS
         WHERE sh_info.head_sales_branch = hca.account_number(+)                          --顧客番号
         AND hca.customer_class_code(+) = '1'                               --顧客区分(拠点)
         AND hca.party_id = xp.party_id(+)
+-- 2010/02/05 v1.40 M.Miyagawa ADD start
+        AND NVL(xp.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= sh_info.arrival_date
+        AND NVL(xp.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= sh_info.arrival_date
+-- 2010/02/05 v1.40 M.Miyagawa ADD end
         UNION ALL
         ------------------------------
         -- 4.倉替返品実績情報
@@ -2393,6 +2413,10 @@ AS
           AND hca.customer_class_code = '1'                                       --顧客区分(拠点)
           AND hp.party_id = hca.party_id
           AND hp.party_id = xp.party_id
+-- 2010/02/05 v1.40 M.Miyagawa ADD start
+          AND NVL(xp.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= xoha.arrival_date
+          AND NVL(xp.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= xoha.arrival_date
+-- 2010/02/05 v1.40 M.Miyagawa ADD end
         UNION ALL
         ------------------------------
         -- 5.生産実績情報
@@ -3438,8 +3462,12 @@ AS
         AND xrart.txns_type = gv_txns_type_rcv                                    --実績区分
         --保管場所マスタVIEW抽出条件
         AND pha.vendor_id = pv.vendor_id                                         --仕入先ID
-        AND xv.start_date_active <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-        AND xv.end_date_active >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2010/02/05 v1.40 M.Miyagawa MOD start
+--        AND xv.start_date_active <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--        AND xv.end_date_active >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+        AND xv.start_date_active <= xrart.txns_date
+        AND xv.end_date_active   >= xrart.txns_date
+-- 2010/02/05 v1.40 M.Miyagawa MOD end
         AND iimb.item_id = xrart.item_id                                          --品目ID
         AND ilm.lot_id = NVL(xrart.lot_id,0)                                        --ロットID
         AND mil.segment1 = xrart.location_code                                    --保管倉庫コード
@@ -3831,8 +3859,12 @@ AS
 --          AND xoha.result_deliver_to_id = xps.party_site_id(+)
           AND xoha.result_deliver_to_id = xps.party_site_id
 -- ***** 2009/10/14 1.38 #1659 E *****
-          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2010/02/05 v1.40 M.Miyagawa MOD start
+--          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= xoha.shipped_date
+          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= xoha.shipped_date
+-- 2010/02/05 v1.40 M.Miyagawa MOD end
 -- 2008/12/30 v1.32 N.Yoshida mod end
 -- ***** 2009/10/14 1.38 #1659 S *****
 --          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
@@ -3993,8 +4025,12 @@ AS
 --          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND xoha.vendor_site_id = xvsa.vendor_site_id
 -- ***** 2009/10/14 1.38 #1659 E *****
-          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2010/02/05 v1.40 M.Miyagawa MOD start
+--          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= xoha.shipped_date
+          AND NVL(xvsa.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= xoha.shipped_date
+-- 2010/02/05 v1.40 M.Miyagawa MOD end
           AND xrpm.doc_type = 'OMSO'
           AND xrpm.shipment_provision_div = gv_spdiv_prov
           AND otta.attribute1 = xrpm.shipment_provision_div                   --出荷支給区分
@@ -4154,8 +4190,12 @@ AS
 --          AND xoha.result_deliver_to_id = xps.party_site_id(+)
           AND xoha.result_deliver_to_id = xps.party_site_id
 -- ***** 2009/10/14 1.38 #1659 E *****
-          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
-          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+-- 2010/02/05 v1.40 M.Miyagawa MOD start
+--          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+--          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= TO_DATE(civ_ymd_from,gv_fmt_ymd)
+          AND NVL(xps.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= xoha.shipped_date
+          AND NVL(xps.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= xoha.shipped_date
+-- 2010/02/05 v1.40 M.Miyagawa MOD end
 -- 2008/12/30 v1.32 N.Yoshida mod end
 -- ***** 2009/10/14 1.38 #1659 S *****
 --          AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
@@ -4208,6 +4248,10 @@ AS
         WHERE sh_info.head_sales_branch = hca.account_number(+)                          --顧客番号
         AND hca.customer_class_code(+) = '1'                               --顧客区分(拠点)
         AND hca.party_id = xp.party_id(+)
+-- 2010/02/05 v1.40 M.Miyagawa ADD start
+        AND NVL(xp.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= sh_info.shipped_date
+        AND NVL(xp.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= sh_info.shipped_date
+-- 2010/02/05 v1.40 M.Miyagawa ADD end
         UNION ALL
         ------------------------------
         -- 4.倉替返品実績情報
@@ -4391,6 +4435,10 @@ AS
           AND hca.customer_class_code = '1'                                       --顧客区分(拠点)
           AND hp.party_id = hca.party_id
           AND hp.party_id = xp.party_id
+-- 2010/02/05 v1.40 M.Miyagawa ADD start
+          AND NVL(xp.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= xoha.shipped_date
+          AND NVL(xp.end_date_active,TO_DATE('9999/12/31',gv_fmt_ymd))   >= xoha.shipped_date
+-- 2010/02/05 v1.40 M.Miyagawa ADD end
         UNION ALL
         ------------------------------
         -- 5.生産実績情報
