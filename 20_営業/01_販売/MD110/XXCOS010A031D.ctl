@@ -6,7 +6,7 @@
 -- * MD.050        : MD050_COS_010_A03_納品確定データ取込_Issue2.0.doc
 -- *                 MD050_COS_010_A031_納品確定データ取込(SQL-LOADER)_補足資料Issue2.0.xls
 -- * MD.070        : なし
--- * Version       : 1.2
+-- * Version       : 1.3
 -- *
 -- * Target Table  : XXCOS_EDI_DELIVERY_WORK
 -- *
@@ -17,6 +17,7 @@
 -- *  2008/12/29    1.0     M.Yamaki         新規作成
 -- *  2009/02/16    1.1     M.Yamaki         [COS_087]シーケンスからスキーマを削除
 -- *  2009/02/19    1.2     M.Yamaki         [COS_105]オリコン（バラ）個口数の設定不具合対応
+-- *  2009/06/11    1.3     M.Sano           [T1_1353]前スペース削除対応
 -- *
 -- ***************************************************************************************
 LOAD DATA
@@ -33,7 +34,10 @@ APPEND INTO TABLE XXCOS_EDI_DELIVERY_WORK
     BASE_CODE                      POSITION(23:26)     CHAR(4)              NULLIF BASE_CODE = BLANKS,                                                                                                                                                         -- 拠点（部門）コード
     BASE_NAME                      POSITION(27:66)     CHAR(40)             NULLIF BASE_NAME = BLANKS,                                                                                                                                                         -- 拠点名（正式名）
     BASE_NAME_ALT                  POSITION(67:91)     CHAR(25)             NULLIF BASE_NAME_ALT = BLANKS,                                                                                                                                                     -- 拠点名（カナ）
-    EDI_CHAIN_CODE                 POSITION(92:95)     CHAR(4)              NULLIF EDI_CHAIN_CODE = BLANKS,                                                                                                                                                    -- ＥＤＩチェーン店コード
+-- 2009/06/11 M.Sano Ver.1.3 mod start
+--    EDI_CHAIN_CODE                 POSITION(92:95)     CHAR(4)              NULLIF EDI_CHAIN_CODE = BLANKS,                                                                                                                                                    -- ＥＤＩチェーン店コード
+    EDI_CHAIN_CODE                 POSITION(92:95)     CHAR(4)              "decode(:EDI_CHAIN_CODE, '', NULL, ltrim(:EDI_CHAIN_CODE))",                                                                                                                       -- ＥＤＩチェーン店コード
+-- 2009/06/11 M.Sano Ver.1.3 mod end
     EDI_CHAIN_NAME                 POSITION(96:135)    CHAR(40)             NULLIF EDI_CHAIN_NAME = BLANKS,                                                                                                                                                    -- ＥＤＩチェーン店名（漢字）
     EDI_CHAIN_NAME_ALT             POSITION(136:160)   CHAR(25)             NULLIF EDI_CHAIN_NAME_ALT = BLANKS,                                                                                                                                                -- ＥＤＩチェーン店名（カナ）
     CHAIN_CODE                     POSITION(161:164)   CHAR(4)              NULLIF CHAIN_CODE = BLANKS,                                                                                                                                                        -- チェーン店コード
@@ -47,7 +51,10 @@ APPEND INTO TABLE XXCOS_EDI_DELIVERY_WORK
     COMPANY_CODE                   POSITION(433:438)   CHAR(6)              NULLIF COMPANY_CODE = BLANKS,                                                                                                                                                      -- 社コード
     COMPANY_NAME                   POSITION(439:478)   CHAR(40)             NULLIF COMPANY_NAME = BLANKS,                                                                                                                                                      -- 社名（漢字）
     COMPANY_NAME_ALT               POSITION(479:498)   CHAR(20)             NULLIF COMPANY_NAME_ALT = BLANKS,                                                                                                                                                  -- 社名（カナ）
-    SHOP_CODE                      POSITION(499:508)   CHAR(10)             NULLIF SHOP_CODE = BLANKS,                                                                                                                                                         -- 店コード
+-- 2009/06/11 M.Sano Ver.1.3 mod start
+--    SHOP_CODE                      POSITION(499:508)   CHAR(10)             NULLIF SHOP_CODE = BLANKS,                                                                                                                                                         -- 店コード
+    SHOP_CODE                      POSITION(499:508)   CHAR(10)             "decode(:SHOP_CODE, '', NULL, ltrim(:SHOP_CODE))",                                                                                                                                 -- 店コード
+-- 2009/06/11 M.Sano Ver.1.3 mod end
     SHOP_NAME                      POSITION(509:548)   CHAR(40)             NULLIF SHOP_NAME = BLANKS,                                                                                                                                                         -- 店名（漢字）
     SHOP_NAME_ALT                  POSITION(549:568)   CHAR(20)             NULLIF SHOP_NAME_ALT = BLANKS,                                                                                                                                                     -- 店名（カナ）
     DELIVERY_CENTER_CODE           POSITION(569:576)   CHAR(8)              NULLIF DELIVERY_CENTER_CODE = BLANKS,                                                                                                                                              -- 納入センターコード
@@ -243,7 +250,10 @@ APPEND INTO TABLE XXCOS_EDI_DELIVERY_WORK
     STOCKOUT_REASON                POSITION(2536:2555) CHAR(20)             NULLIF STOCKOUT_REASON = BLANKS,                                                                                                                                                   -- 欠品理由
     PRODUCT_CODE_ITOUEN            POSITION(2556:2562) CHAR(7)              NULLIF PRODUCT_CODE_ITOUEN = BLANKS,                                                                                                                                               -- 商品コード（伊藤園）
     PRODUCT_CODE1                  POSITION(2563:2578) CHAR(16)             NULLIF PRODUCT_CODE1 = BLANKS,                                                                                                                                                     -- 商品コード１
-    PRODUCT_CODE2                  POSITION(2579:2594) CHAR(16)             NULLIF PRODUCT_CODE2 = BLANKS,                                                                                                                                                     -- 商品コード２
+-- 2009/06/11 M.Sano Ver.1.3 mod start
+--    PRODUCT_CODE2                  POSITION(2579:2594) CHAR(16)             NULLIF PRODUCT_CODE2 = BLANKS,                                                                                                                                                     -- 商品コード２
+    PRODUCT_CODE2                  POSITION(2579:2594) CHAR(16)             "decode(:PRODUCT_CODE2, '', NULL, ltrim(:PRODUCT_CODE2))",                                                                                                                         -- 商品コード２
+-- 2009/06/11 M.Sano Ver.1.3 mod end
     JAN_CODE                       POSITION(2595:2607) CHAR(13)             NULLIF JAN_CODE = BLANKS,                                                                                                                                                          -- ＪＡＮコード
     ITF_CODE                       POSITION(2608:2623) CHAR(16)             NULLIF ITF_CODE = BLANKS,                                                                                                                                                          -- ＩＴＦコード
     EXTENSION_ITF_CODE             POSITION(2624:2639) CHAR(16)             NULLIF EXTENSION_ITF_CODE = BLANKS,                                                                                                                                                -- 内箱ＩＴＦコード

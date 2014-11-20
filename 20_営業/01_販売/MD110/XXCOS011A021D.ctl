@@ -6,7 +6,7 @@
 --              EDI在庫情報ワークテーブルに格納する
 -- MD.050       :在庫情報データ取込（MD050_COS_011_A02）
 -- MD.070       :
--- Version      :1.2
+-- Version      :1.3
 --
 -- Target Table :xxcos_edi_inventory_work(EDI在庫情報ワークテーブル)
 --
@@ -17,6 +17,7 @@
 --  2008/12/26     1.0 K.Watanabe       新規作成
 --  2009/02/12     1.1 S.Nakamura       結合テスト不具合#70,#78
 --  2009/02/24     1.2 T.Nakamura       結合テスト不具合#131 IFファイル名の設定値を修正
+--  2009/06/11     1.3 M.Sano           [T1_1353]前スペース削除対応
 --
 -- **************************************************************************************
 LOAD DATA
@@ -36,7 +37,10 @@ APPEND INTO TABLE xxcos_edi_inventory_work
    BASE_CODE                      POSITION(23:26)     CHAR(4)   NULLIF  BASE_CODE                   = BLANKS,            --拠点（部門）コード
    BASE_NAME                      POSITION(27:66)     CHAR(40)  NULLIF  BASE_NAME                   = BLANKS,            --拠点名（正式名）
    BASE_NAME_ALT                  POSITION(67:91)     CHAR(25)  NULLIF  BASE_NAME_ALT               = BLANKS,            --拠点名（カナ）
-   EDI_CHAIN_CODE                 POSITION(92:95)     CHAR(4)   NULLIF  EDI_CHAIN_CODE              = BLANKS,            --ＥＤＩチェーン店コード
+-- 2009/06/11 M.Sano Ver.1.3 mod start
+--   EDI_CHAIN_CODE                 POSITION(92:95)     CHAR(4)   NULLIF  EDI_CHAIN_CODE              = BLANKS,            --ＥＤＩチェーン店コード
+   EDI_CHAIN_CODE                 POSITION(92:95)     CHAR(4)   "decode(:EDI_CHAIN_CODE, '', NULL, ltrim(:EDI_CHAIN_CODE))",  --ＥＤＩチェーン店コード
+-- 2009/06/11 M.Sano Ver.1.3 mod end
    EDI_CHAIN_NAME                 POSITION(96:135)    CHAR(40)  NULLIF  EDI_CHAIN_NAME              = BLANKS,            --ＥＤＩチェーン店名（漢字）
    EDI_CHAIN_NAME_ALT             POSITION(136:160)   CHAR(25)  NULLIF  EDI_CHAIN_NAME_ALT          = BLANKS,            --ＥＤＩチェーン店名（カナ）
    REPORT_CODE                    POSITION(161:164)   CHAR(4)   NULLIF  REPORT_CODE                 = BLANKS,            --帳票コード
@@ -46,7 +50,10 @@ APPEND INTO TABLE xxcos_edi_inventory_work
    CUSTOMER_NAME_ALT              POSITION(314:363)   CHAR(50)  NULLIF  CUSTOMER_NAME_ALT           = BLANKS,            --顧客名（カナ）
    COMPANY_CODE                   POSITION(364:369)   CHAR(6)   NULLIF  COMPANY_CODE                = BLANKS,            --社コード
    COMPANY_NAME_ALT               POSITION(370:389)   CHAR(20)  NULLIF  COMPANY_NAME_ALT            = BLANKS,            --社名（カナ）
-   SHOP_CODE                      POSITION(390:399)   CHAR(10)  NULLIF  SHOP_CODE                   = BLANKS,            --店コード
+-- 2009/06/11 M.Sano Ver.1.3 mod start
+--   SHOP_CODE                      POSITION(390:399)   CHAR(10)  NULLIF  SHOP_CODE                   = BLANKS,            --店コード
+   SHOP_CODE                      POSITION(390:399)   CHAR(10)  "decode(:SHOP_CODE, '', NULL, ltrim(:SHOP_CODE))",       --店コード
+-- 2009/06/11 M.Sano Ver.1.3 mod end
    SHOP_NAME_ALT                  POSITION(400:419)   CHAR(20)  NULLIF  SHOP_NAME_ALT               = BLANKS,            --店名（カナ）
    DELIVERY_CENTER_CODE           POSITION(420:427)   CHAR(8)   NULLIF  DELIVERY_CENTER_CODE        = BLANKS,            --納入センターコード
    DELIVERY_CENTER_NAME           POSITION(428:467)   CHAR(40)  NULLIF  DELIVERY_CENTER_NAME        = BLANKS,            --納入センター名（漢字）
@@ -81,7 +88,10 @@ APPEND INTO TABLE xxcos_edi_inventory_work
    CHECK_DIGIT                    POSITION(855:855)   CHAR(1)   NULLIF  CHECK_DIGIT                 = BLANKS,            --チェックデジット
    CHAIN_PECULIAR_AREA_HEADER     POSITION(856:1055)  CHAR(200) NULLIF  CHAIN_PECULIAR_AREA_HEADER  = BLANKS,            --チェーン店固有エリア（ヘッダ）
    PRODUCT_CODE_ITOUEN            POSITION(1056:1062) CHAR(7)   NULLIF  PRODUCT_CODE_ITOUEN         = BLANKS,            --商品コード（伊藤園）
-   PRODUCT_CODE_OTHER_PARTY       POSITION(1063:1078) CHAR(16)  NULLIF  PRODUCT_CODE_OTHER_PARTY    = BLANKS,            --商品コード（先方）
+-- 2009/06/11 M.Sano Ver.1.3 mod start
+--   PRODUCT_CODE_OTHER_PARTY       POSITION(1063:1078) CHAR(16)  NULLIF  PRODUCT_CODE_OTHER_PARTY    = BLANKS,            --商品コード（先方）
+   PRODUCT_CODE_OTHER_PARTY       POSITION(1063:1078) CHAR(16)  "decode(:PRODUCT_CODE_OTHER_PARTY, '', NULL, ltrim(:PRODUCT_CODE_OTHER_PARTY))",  --商品コード（先方）
+-- 2009/06/11 M.Sano Ver.1.3 mod end
    JAN_CODE                       POSITION(1079:1091) CHAR(13)  NULLIF  JAN_CODE                    = BLANKS,            --ＪＡＮコード
    ITF_CODE                       POSITION(1092:1107) CHAR(16)  NULLIF  ITF_CODE                    = BLANKS,            --ＩＴＦコード
    PRODUCT_NAME                   POSITION(1108:1167) CHAR(60)  NULLIF  PRODUCT_NAME                = BLANKS,            --商品名（漢字）
