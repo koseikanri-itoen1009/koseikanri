@@ -7,7 +7,7 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -33,7 +33,8 @@ AS
  *                                       [障害T1_0866] 本振（案内書あり）の場合の抽出条件を変更
  *  2009/05/25    1.4   M.Hiruta         [障害T1_1168] 支払案内書(明細)の発行日をシステム日付から業務処理日付へ変更
  *  2009/09/10    1.5   S.Moriyama       [障害0000060] 住所の桁数変更対応
- *  2009/10/14    1.6   S.Moriyama       [変更依頼I_E_573]仕入先名称、住所の設定内容変更対応
+ *  2009/10/14    1.6   S.Moriyama       [変更依頼I_E_573] 仕入先名称、住所の設定内容変更対応
+ *  2009/12/15    1.7   K.Nakamura       [障害E_本稼動_00477] 支払保留中のBM、また販売手数料が0円の場合は、出力しないよう修正
  *
  *****************************************************************************************/
   --==================================================
@@ -776,6 +777,9 @@ AS
           )
 -- 2009/05/11 Ver.1.3 [障害T1_0866] SCS K.Yamaguchi REPAIR END
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+      AND NVL( xbb.resv_flag, 'N' )    != 'Y'
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     GROUP BY xbb.supplier_code
            , pvsa.zip
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
@@ -816,6 +820,21 @@ AS
                 WHEN '20' THEN
                   flv1.container_type_name
                 END
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+    HAVING   SUM( CASE xcbs.calc_type
+                  WHEN '10' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '20' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '30' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '40' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '50' THEN
+                    xcbs.electric_amt_tax
+                  END 
+                ) <> 0
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     ;
     --==================================================
     -- 本振（案内無）
@@ -1053,6 +1072,9 @@ AS
 --      AND xbb.edi_interface_status     = '1'
       AND xbb.fb_interface_status      = '1'
 -- 2009/05/11 Ver.1.3 [障害T1_0866] SCS K.Yamaguchi REPAIR END
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+      AND NVL( xbb.resv_flag, 'N' )    != 'Y'
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     GROUP BY xbb.supplier_code
            , pvsa.zip
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
@@ -1093,6 +1115,21 @@ AS
                 WHEN '20' THEN
                   flv1.container_type_name
                 END
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+    HAVING   SUM( CASE xcbs.calc_type
+                  WHEN '10' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '20' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '30' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '40' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '50' THEN
+                    xcbs.electric_amt_tax
+                  END
+                ) <> 0
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     ;
     --==================================================
     -- AP支払
@@ -1313,6 +1350,9 @@ AS
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
       AND xbb.expect_payment_amt_tax   = 0
       AND xbb.payment_amt_tax          > 0
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+      AND NVL( xbb.resv_flag, 'N' )    != 'Y'
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     GROUP BY xbb.supplier_code
            , pvsa.zip
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama DEL START
@@ -1353,6 +1393,21 @@ AS
                 WHEN '20' THEN
                   flv1.container_type_name
                 END
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+    HAVING   SUM( CASE xcbs.calc_type
+                  WHEN '10' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '20' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '30' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '40' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '50' THEN
+                    xcbs.electric_amt_tax
+                  END
+                ) <> 0
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     ;
     --==================================================
     -- 現金支払
@@ -1571,6 +1626,9 @@ AS
       AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+      AND NVL( xbb.resv_flag, 'N' )    != 'Y'
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     GROUP BY xbb.supplier_code
            , pvsa.zip
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPS START
@@ -1611,6 +1669,21 @@ AS
                 WHEN '20' THEN
                   flv1.container_type_name
                 END
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+    HAVING   SUM( CASE xcbs.calc_type
+                  WHEN '10' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '20' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '30' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '40' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '50' THEN
+                    xcbs.electric_amt_tax
+                  END
+                ) <> 0
+-- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
     ;
   EXCEPTION
     -- *** 共通関数OTHERS例外 ***
