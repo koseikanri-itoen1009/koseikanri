@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,7 +40,7 @@ AS
  *  2008/06/19    1.5   M.Nomura         システムテスト 不具合対応#193
  *  2008/06/27    1.6   M.Nomura         システムテスト 不具合対応#303
  *  2008/07/04    1.7   M.Nomura         システムテスト 不具合対応#193 2回目
- *  2008/07/17    1.8   Oracle 山根 一浩 I_S_001,I_S_192,T_S_443,指摘240対応
+ *  2008/07/17    1.8   Oracle 山根 一浩 I_S_192,T_S_443,指摘240対応
  *  2008/07/22    1.9   N.Fukuda         I_S_001対応(予備1を引取/小口区分で使用する)
  *  2008/08/08    1.10  Oracle 山根 一浩 TE080_400指摘#83,課題#32
  *  2008/08/11    1.10  N.Fukuda         指示部署の抽出条件SQLの不具合対応
@@ -49,6 +49,7 @@ AS
  *  2008/08/29    1.11  N.Fukuda         TE080_600指摘#27(3)対応(一部明細取消のパターン)
  *  2008/08/29    1.11  N.Fukuda         TE080_600指摘#28対応
  *  2008/08/29    1.11  N.Fukuda         TE080_600指摘#29対応(TE080_400指摘#83の再修正)
+ *  2008/08/29    1.12  N.Fukuda         取消ヘッダに品目数量・ロット数量に0がセットされている
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2029,6 +2030,8 @@ AS
     -- ==================================================
     cv_prg_name   CONSTANT VARCHAR2(100) := 'prc_create_can_data' ; -- プログラム名
 --
+    lc_transfer_branch_no_h     CONSTANT VARCHAR2(100) := '10' ;    -- ヘッダ -- 2008/08/29 取消ヘッダに品目数量・ロット数量に0がセットされている Add
+--
 --#####################  固定ローカル変数宣言部 START   ########################
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
@@ -2147,12 +2150,30 @@ AS
       gt_item_code(gn_cre_idx)              := re_can_data.item_code ;
       gt_item_name(gn_cre_idx)              := re_can_data.item_name ;
       gt_item_uom_code(gn_cre_idx)          := re_can_data.item_uom_code ;
-      gt_item_quantity(gn_cre_idx)          := 0 ;
+--
+      --gt_item_quantity(gn_cre_idx)          := 0 ; -- 2008/08/29 取消ヘッダに品目数量・ロット数量に0がセットされている Del
+      -- 2008/08/29 取消ヘッダに品目数量・ロット数量に0がセットされている Add Start -----------------
+      IF (re_can_data.transfer_branch_no =lc_transfer_branch_no_h) THEN  -- 伝送用枝番が「ヘッダ」の場合
+        gt_item_quantity(gn_cre_idx)          := NULL ;
+      ELSE
+        gt_item_quantity(gn_cre_idx)          := 0 ;
+      END IF;
+      -- 2008/08/29 取消ヘッダに品目数量・ロット数量に0がセットされている Add End -------------------
+--
       gt_lot_no(gn_cre_idx)                 := re_can_data.lot_no ;
       gt_lot_date(gn_cre_idx)               := re_can_data.lot_date ;
       gt_lot_sign(gn_cre_idx)               := re_can_data.lot_sign ;
       gt_best_bfr_date(gn_cre_idx)          := re_can_data.best_bfr_date ;
-      gt_lot_quantity(gn_cre_idx)           := 0 ;
+--
+      --gt_lot_quantity(gn_cre_idx)           := 0 ;  -- 2008/08/29 取消ヘッダに品目数量・ロット数量に0がセットされている Del
+      -- 2008/08/29 取消ヘッダに品目数量・ロット数量に0がセットされている Add Start -----------------
+      IF (re_can_data.transfer_branch_no =lc_transfer_branch_no_h) THEN  -- 伝送用枝番が「ヘッダ」の場合
+        gt_lot_quantity(gn_cre_idx)           := NULL ;
+      ELSE
+        gt_lot_quantity(gn_cre_idx)           := 0 ;
+      END IF;
+      -- 2008/08/29 取消ヘッダに品目数量・ロット数量に0がセットされている Add End -------------------
+--
 -- M.Hokkanji Ver1.2 START
 --      gt_new_modify_del_class(gn_cre_idx)   := '2' ;
       gt_new_modify_del_class(gn_cre_idx)   := gc_data_class_del ;
