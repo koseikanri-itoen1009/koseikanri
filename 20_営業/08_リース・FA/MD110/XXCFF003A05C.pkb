@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A05C(body)
  * Description      : 支払計画作成
  * MD.050           : MD050_CFF_003_A05_支払計画作成.doc
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  * 2009/1/22      1.0   SCS礒崎祐次     ＦＩＮリース債務残が０にならない場合は
  *                                      支払利息の調整を行う
  * 2009/2/5       1.1   SCS礒崎祐次     [障害CFF_010] 支払回数算出不具合対応
+ * 2009/7/9       1.2   SCS萱原伸哉     [統合テスト障害00000417]中途解約日更新時の条件変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -456,6 +457,9 @@ AS
     cv_gn_lease_type1        CONSTANT VARCHAR2(1) := '1';  -- '原契約'
     cv_accounting_if_flag0   CONSTANT VARCHAR2(1) := '0';  -- '対象外'
     cv_accounting_if_flag1   CONSTANT VARCHAR2(1) := '1';  -- '未送信'
+-- 00000417 2009/07/06 ADD START
+    cv_accounting_if_flag2   CONSTANT VARCHAR2(1) := '2';  -- '送信済'
+-- 00000417 2009/07/06 ADD END    
     cn_last_payment_date     CONSTANT NUMBER(2)   :=  31;  -- '31日'
     cv_payment_type_0        CONSTANT VARCHAR2(1) := '0';  -- '月'
     cv_payment_type_1        CONSTANT VARCHAR2(1) := '1';  -- '年'
@@ -483,7 +487,7 @@ AS
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
-    CURSOR pay_data_cur
+    CURSOR pay_data_cur	
     IS
       SELECT payment_frequency
       FROM   xxcff_pay_planning xpp
@@ -668,7 +672,10 @@ AS
 --
       --会計IFフラグ
       IF ( ld_period_name < TO_CHAR(gd_process_date,'YYYY-MM')) THEN
-        ln_accounting_if_flag := cv_accounting_if_flag0;
+-- 00000417 2009/07/06  START
+--        ln_accounting_if_flag := cv_accounting_if_flag0;
+        ln_accounting_if_flag := cv_accounting_if_flag2;
+-- 00000417 2009/07/06  END
       ELSE
         ln_accounting_if_flag := cv_accounting_if_flag1;
       END IF;
@@ -923,7 +930,7 @@ AS
 --
     --*** ローカル定数 ***
     cv_accounting_if_flag0   CONSTANT VARCHAR2(1) := '0';  -- '対象外'    
-    cv_accounting_if_flag1   CONSTANT VARCHAR2(1) := '1';  -- '未送信'
+    cv_accounting_if_flag1   CONSTANT VARCHAR2(1) := '1';  -- '未送信'    
 --
     --*** ローカル変数 ***
     ln_payment_frequency     xxcff_contract_headers.payment_frequency%TYPE;  --支払回数
@@ -1003,6 +1010,9 @@ AS
          , xpp.program_id              = cn_program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
          , xpp.program_update_date     = cd_program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
     WHERE  xpp.contract_line_id        = in_contract_line_id
+-- 00000417 2009/07/09 ADD START
+      AND    xpp.payment_match_flag =  cv_const_0
+-- 00000417 2009/07/09 ADD END
     AND    xpp.payment_frequency      >= ln_payment_frequency;
 --  
   EXCEPTION

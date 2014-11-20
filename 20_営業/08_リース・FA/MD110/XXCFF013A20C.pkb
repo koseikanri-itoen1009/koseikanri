@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF013A20C(body)
  * Description      : FAアドオンIF
  * MD.050           : MD050_CFF_013_A20_FAアドオンIF
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,8 @@ AS
  *  2009/06/16    1.5   SCS中村祐基      [障害T1_1428]
  *                                       ①資産カテゴリCCID取得ロジックの
  *                                       パラメータ：資産勘定の値をNULL値固定に変更
+ *  2009/07/15    1.6   SCS萱原伸哉      [統合テスト障害0000417]
+ *                                       除・売却OIFの作成条件の変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -231,6 +233,16 @@ AS
   -- ***物件ステータス
   -- 移動
   cv_obj_move        CONSTANT VARCHAR2(3) := '105';
+-- 0000417 2009/07/10 ADD START --
+  -- 満了
+  cv_obj_manryo         CONSTANT VARCHAR2(3) := '107';
+  -- 中途解約(自己都合)
+  cv_obj_cancel_jiko    CONSTANT VARCHAR2(3) := '110';
+  -- 中途解約(保険対応)
+  cv_obj_cancel_hoken   CONSTANT VARCHAR2(3) := '111';
+  -- 中途解約(満了)
+  cv_obj_cancel_manryo  CONSTANT VARCHAR2(3) := '112';
+-- 0000417 2009/07/10 ADD END --
 --
   -- ***リース種類
   cv_lease_kind_fin  CONSTANT VARCHAR2(1) := '0';  -- Finリース
@@ -1449,13 +1461,20 @@ AS
            ,fa_additions_b            faadds        -- 資産詳細情報
            ,xxcff_pay_planning        pay_plan      -- リース支払計画
       WHERE
-            ctrct_hist.contract_status     IN ( cv_ctrt_manryo
-                                               ,cv_ctrt_cancel_jiko
-                                               ,cv_ctrt_cancel_hoken
-                                               ,cv_ctrt_cancel_manryo
-                                               )      -- 満了,
-                                                      -- 中途解約(自己都合),中途解約(保険対応),中途解約(満了)
-
+-- 0000417 2009/07/15 MOD START --
+--            ctrct_hist.contract_status     IN ( cv_ctrt_manryo
+--                                               ,cv_ctrt_cancel_jiko
+--                                               ,cv_ctrt_cancel_hoken
+--                                               ,cv_ctrt_cancel_manryo
+--                                               )      -- 満了,
+--                                                      -- 中途解約(自己都合),中途解約(保険対応),中途解約(満了)
+              obj_head.object_status     IN ( cv_obj_manryo
+                                                  ,cv_obj_cancel_jiko
+                                                  ,cv_obj_cancel_hoken
+                                                  ,cv_obj_cancel_manryo
+                                                  )      -- 満了,
+                                                         -- 中途解約(自己都合),中途解約(保険対応),中途解約(満了)
+-- 0000417 2009/07/15 MOD END --
         AND ctrct_hist.accounting_if_flag   = cv_if_yet                               -- 未送信
         AND ctrct_hist.lease_kind           IN (cv_lease_kind_fin,cv_lease_kind_lfin) -- Fin,旧Fin
         AND ctrct_hist.contract_header_id   = ctrct_head.contract_header_id
