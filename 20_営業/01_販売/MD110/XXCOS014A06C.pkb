@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2010/06/18    1.20  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
  *  2011/04/28    1.21  T.Ishiwata       [E_本稼動_07218] 事由取得の共通関数化対応
  *  2011/09/29    1.22  A.Shirakawa      [E_本稼動_07906] EDIの流通BMS対応
+ *  2012/01/06    1.23  K.Kiriu          [E_本稼動_08891] 顧客品目二重出力障害対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -119,6 +120,9 @@ AS
   -- ユーザー定義例外
   -- ===============================
   sale_class_expt         EXCEPTION;     --売上区分チェックエラー
+-- 2012/01/06 K.Kiriu Ver1.23 Add Start
+  global_item_conv_expt   EXCEPTION;     -- 顧客品目チェックエラー
+-- 2012/01/06 K.Kiriu Ver1.23 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -1566,6 +1570,13 @@ AS
     lb_error                           BOOLEAN;
     lb_mix_error_order                 BOOLEAN;
     lb_out_flag_error_order            BOOLEAN;
+-- 2012/01/06 K.Kiriu Ver1.23 Add Start
+    lt_product_code                    mtl_customer_items.customer_item_number%TYPE;  --顧客品目コード
+    lt_jan_code                        ic_item_mst_b.attribute21%TYPE;                --JANコード(共通関数用ダミー)
+    lt_case_jan_code                   xxcmm_system_items_b.case_jan_code%TYPE;       --ケースJANコード(共通関数用ダミー)
+    lv_err_flag                        VARCHAR2(1);                                   --共通関数戻り値(エラー内容判定用)
+    lt_ordered_item                    oe_order_lines_all.ordered_item%TYPE;          --受注明細品目コード
+-- 2012/01/06 K.Kiriu Ver1.23 Add End
   --伝票集計エリア
     l_data_tab                 xxcos_common2_pkg.g_layout_ttype;                  --出力データ情報
     TYPE l_mlt_tab IS TABLE OF xxcos_common2_pkg.g_layout_ttype INDEX BY BINARY_INTEGER;
@@ -3010,6 +3021,9 @@ AS
 -- 2011/04/28 T.Ishiwata Ver.1.21 ADD START
                     ,oola.line_id                                                       line_id                       -- 受注明細ID
 -- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
+-- 2012/01/06 K.Kiriu Ver1.23 Add Start
+                    ,NULL                                                               ordered_item                  -- 受注明細品目コード(手入力のみで使用)
+-- 2012/01/06 K.Kiriu Ver1.23 Add End
 -- ******************** 2010/03/24 1.17 M.Hirose MOD START ************************* --
 --              FROM   (SELECT xeh.medium_class                                            medium_class                  --媒体区分
 /* 2010/06/18 Ver1.20 Mod Start */
@@ -4113,7 +4127,10 @@ AS
 -- ******************** 2010/03/24 1.17 M.Hirose MOD START ************************* --
 --              SELECT TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
               SELECT /*+
-                          USE_NL( xciv xciv.mcix xciv.mci xlvv.flv xlvv2.flv xlvv_t.flv )
+-- 2012/01/06 K.Kiriu Ver1.23 Mod Start
+--                          USE_NL( xciv xciv.mcix xciv.mci xlvv.flv xlvv2.flv xlvv_t.flv )
+                          USE_NL( xlvv.flv xlvv2.flv xlvv_t.flv )
+-- 2012/01/06 K.Kiriu Ver1.23 Mod End
 -- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
 --                          USE_NL( ore )
 -- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
@@ -4399,7 +4416,10 @@ AS
                              opm.attribute21
                          END
                        WHEN i_chain_rec.edi_item_code_div = cv_edi_item_code_div01 THEN
-                         xciv.customer_item_number
+-- 2012/01/06 K.Kiriu Ver1.23 Mod Start
+--                         xciv.customer_item_number
+                         NULL
+-- 2012/01/06 K.Kiriu Ver1.23 Mod End
                      END                                                                product_code2                 --商品コード２
                     ,CASE
                        WHEN oola.order_quantity_uom = i_prf_rec.case_uom_code THEN
@@ -4679,6 +4699,9 @@ AS
 -- 2011/04/28 T.Ishiwata Ver.1.21 ADD START
                     ,oola.line_id                                                       line_id                       -- 受注明細ID
 -- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
+-- 2012/01/06 K.Kiriu Ver1.23 Add Start
+                    ,oola.ordered_item                                                  ordered_item                  -- 受注明細品目コード
+-- 2012/01/06 K.Kiriu Ver1.23 Add Start
                     --受注ヘッダ情報インラインビュー
               FROM (SELECT ooha.header_id                                               header_id
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
@@ -4768,7 +4791,9 @@ AS
 -- ************ 2009/08/27 N.Maeda 1.13 DEL START ***************** --
 --                  ,xxcos_head_prod_class_v                                              xhpc                          --本社商品区分ビュー
 -- ************ 2009/08/27 N.Maeda 1.13 DEL  END  ***************** --
-                  ,xxcos_customer_items_v                                               xciv                          --顧客品目ビュー
+-- 2012/01/06 K.Kiriu Ver1.23 Del Start
+--                  ,xxcos_customer_items_v                                               xciv                          --顧客品目ビュー
+-- 2012/01/06 K.Kiriu Ver1.23 Del End
                   ,xxcos_lookup_values_v                                                xlvv                          --売上区分マスタ
                   ,xxcos_lookup_values_v                                                xlvv2                         --税コードマスタ
                   ,ar_vat_tax_all_b                                                     avtab                         --税率マスタ
@@ -4923,11 +4948,13 @@ AS
 --              AND   xhpc.inventory_item_id(+)       = oola.inventory_item_id
 -- ************ 2009/08/27 N.Maeda 1.13 DEL  END  ***************** --
               --顧客品目ビュー抽出条件
-              AND   xciv.customer_id(+)             = i_chain_rec.customer_id
-              AND   xciv.inventory_item_id(+)       = oola.inventory_item_id
--- 2009/02/16 T.Nakamura Ver.1.3 add start
-              AND   xciv.order_uom (+)              = oola.order_quantity_uom
--- 2009/02/16 T.Nakamura Ver.1.3 add end
+-- 2012/01/06 K.Kiriu Ver1.23 Del Start
+--              AND   xciv.customer_id(+)             = i_chain_rec.customer_id
+--              AND   xciv.inventory_item_id(+)       = oola.inventory_item_id
+---- 2009/02/16 T.Nakamura Ver.1.3 add start
+--              AND   xciv.order_uom (+)              = oola.order_quantity_uom
+---- 2009/02/16 T.Nakamura Ver.1.3 add end
+-- 2012/01/06 K.Kiriu Ver1.23 Del End
               --売上区分マスタ抽出条件
               AND   xlvv.lookup_type(+)             = ct_qc_sale_class
               AND   xlvv.lookup_code(+)             = oola.attribute5
@@ -5587,6 +5614,9 @@ AS
 -- 2011/04/28 T.Ishiwata Ver.1.21 ADD START
        ,lt_line_id                                                                                            -- 受注明細ID
 -- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
+-- 2012/01/06 K.Kiriu Ver1.23 Add Start
+       ,lt_ordered_item                                                                                       -- 受注明細品目コード
+-- 2012/01/06 K.Kiriu Ver1.23 Add Start
       ;
 out_line(buff => '1');
       EXIT WHEN cur_data_record%NOTFOUND;
@@ -5597,6 +5627,10 @@ out_line(buff => '1');
       lt_code_data            := NULL;
       lt_stockout_cancel_flag := NULL;
 -- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
+-- 2012/01/06 K.Kiriu Ver1.23 Add Start
+      lt_product_code         := NULL;  --変換後顧客品目コード
+      lv_err_flag             := '0';   --共通関数戻り値
+-- 2012/01/06 K.Kiriu Ver1.23 Add End
 -- ********* 2009/10/06 1.14 N.Maeda ADD START ********* --
       -- EDIデータの場合
       IF ( lv_data_type = '1' ) THEN
@@ -5634,6 +5668,46 @@ out_line(buff => '1');
 --********* 2010/04/01 1.18 M.Hokkanji  MOD END    ********* --
       END IF;
 -- ********* 2009/10/06 1.14 N.Maeda ADD  END  ********* --
+-- 2012/01/06 K.Kiriu Ver1.23 Add Start
+      -- 手入力の場合
+      IF ( lv_data_type = '2' ) THEN
+        -- 顧客品目の場合
+        IF ( g_chain_rec.edi_item_code_div = cv_edi_item_code_div01 ) THEN
+          --共通関数より、顧客品目を取得する
+          --品目コード変換（EBS→EDI)
+          xxcos_common2_pkg.conv_edi_item_code(
+             iv_edi_chain_code   =>  g_input_rec.chain_code                  -- EDIチェーン店コード
+            ,iv_item_code        =>  lt_ordered_item                         -- 品目コード
+            ,iv_organization_id  =>  g_other_rec.organization_id             -- 在庫組織ID
+            ,iv_uom_code         =>  lt_order_quantity_uom                   -- 単位コード
+            ,ov_product_code2    =>  lt_product_code                         -- 商品コード２
+            ,ov_jan_code         =>  lt_jan_code                             -- JANコード
+            ,ov_case_jan_code    =>  lt_case_jan_code                        -- ケースJANコード
+            ,ov_err_flag         =>  lv_err_flag                             -- エラー種別
+            ,ov_errbuf           =>  lv_errbuf                               -- エラーメッセージ
+            ,ov_retcode          =>  lv_retcode                              -- リターンコード
+            ,ov_errmsg           =>  lv_errmsg                               -- ユーザー・エラー・メッセージ
+          );
+--
+          --共通関数でエラー
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_item_conv_expt;
+          END IF;
+--
+          --正常に取得
+          IF ( lv_err_flag = '0' ) THEN
+            l_data_tab('PRODUCT_CODE2') := lt_product_code;  --変換後顧客品目コード
+          --顧客品目データなし
+          ELSIF ( lv_err_flag = '1' ) THEN
+            l_data_tab('PRODUCT_CODE2') := NULL;             --NULL
+          --顧客品目が同一ランクで複数件登録あり
+          ELSIF ( lv_err_flag = '2' ) THEN
+            RAISE global_item_conv_expt;                     --エラー
+          END IF;
+--
+        END IF;
+      END IF;
+-- 2012/01/06 K.Kiriu Ver1.23 Add End
 --
       --==============================================================
       --売上区分混在チェック
@@ -6025,6 +6099,13 @@ out_line(buff => 'i:' || i);
       ov_errbuf  := SUBSTRB(cv_pkg_name||ct_msg_cont||cv_prg_name||ct_msg_part||lv_errbuf_all,1,5000);
 -- 2009/02/19 T.Nakamura Ver.1.6 mod end
       ov_retcode := cv_status_error;
+-- 2012/01/06 K.Kiriu Ver1.23 Add Start
+    -- *** 顧客品目チェックエラーハンドラ ***
+    WHEN global_item_conv_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||ct_msg_cont||cv_prg_name||ct_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+-- 2012/01/06 K.Kiriu Ver1.23 Add End
 --
 --#################################  固定例外処理部 START   ####################################
 --
