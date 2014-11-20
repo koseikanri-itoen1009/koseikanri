@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.19
+ * Version          : 1.17
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -17,13 +17,13 @@ AS
  *  init                        初期処理 (A-1)
  *  get_profile_info            プロファイル値取得 (A-2)
  *  open_csv_file               CSVファイルオープン (A-3)
- *  get_csv_data                CSVファイルに出力する関連情報取得 (A-6)
- *  create_csv_rec              什器マスタデータCSV出力 (A-7)
- *  close_csv_file              CSVファイルクローズ処理 (A-8)
+ *  get_csv_data                CSVファイルに出力する関連情報取得 (A-5)
+ *  create_csv_rec              什器マスタデータCSV出力 (A-6)
+ *  close_csv_file              CSVファイルクローズ処理 (A-7)
  *  submain                     メイン処理プロシージャ
  *                                物件データ抽出処理 (A-4)
  *  main                        コンカレント実行ファイル登録プロシージャ
- *                                  終了処理 (A-9)
+ *                                  終了処理 (A-8)
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -59,7 +59,6 @@ AS
  *  2010-03-17    1.16  K.Hosoi          E_本稼動_01881対応
  *  2010-04-21    1.17  T.Maruyama       E_本稼動_02391対応 INSTANCE_NUMBERはEBSで7桁以上となるため固定値をセット
  *  2010-05-19    1.18  T.Maruyama       E_本稼動_02787対応 先月末拠点CDの導出項目を売上拠点から前月売上拠点へ変更
- *  2011-10-14    1.19  T.Yoshimoto      E_本稼動_05929対応 書式・桁数チェックを追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -90,9 +89,8 @@ AS
   gn_target_cnt             NUMBER;                    -- 対象件数
   gn_normal_cnt             NUMBER;                    -- 正常件数
   gn_error_cnt              NUMBER;                    -- エラー件数
--- 2011/10/14 v1.19 T.Yoshimto Add Start E_本稼動_05929(コメントアウト解除)
-  gn_skip_cnt               NUMBER;                    -- スキップ件数
--- 2011/10/14 v1.19 T.Yoshimto Add End E_本稼動_05929
+--  gn_skip_cnt               NUMBER;                    -- スキップ件数
+--
   gv_company_cd             VARCHAR2(2000);            -- 会社コード(固定値001)
 --
 --################################  固定部 END   ##################################
@@ -147,9 +145,6 @@ AS
 /* 2009.04.08 K.Satomura T1_0365対応 START */
   cv_flag_yes            CONSTANT VARCHAR2(1)   := 'Y';
 /* 2009.04.08 K.Satomura T1_0365対応 END */
--- 2011/10/14 v1.19 T.Yoshimto Add Start E_本稼動_05929
-  cv_comma               CONSTANT VARCHAR2(2)   := '、';            -- カンマ
--- 2011/10/14 v1.19 T.Yoshimto Add End E_本稼動_05929
 --
   -- メッセージコード
   cv_tkn_number_01    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008';     -- コンカレント入力パラメータなし
@@ -180,10 +175,6 @@ AS
   /* 2009.11.27 K.Satomura E_本稼動_00118対応 START */
   cv_tkn_number_19    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00581';
   /* 2009.11.27 K.Satomura E_本稼動_00118対応 END */
--- 2011/10/14 v1.19 T.Yoshimto Add Start E_本稼動_05929
-  cv_tkn_number_20    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00616';     -- CSV出力エラー
--- 2011/10/14 v1.19 T.Yoshimto Add End E_本稼動_05929
---
   -- トークンコード
   cv_tkn_err_msg         CONSTANT VARCHAR2(20) := 'ERR_MSG';            -- SQLエラーメッセージ
   cv_tkn_err_msg2        CONSTANT VARCHAR2(20) := 'ERR_MESSAGE';        -- SQLエラーメッセージ2
@@ -209,8 +200,8 @@ AS
   cv_tkn_item            CONSTANT VARCHAR2(20) := 'ITEM';               -- 項目名
   cv_tkn_value           CONSTANT VARCHAR2(20) := 'BASE_VALUE';         -- 値
   /* 2009.05.25 M.Maruyama T1_1154対応 START */
-  cv_tkn_tsk_nm          CONSTANT VARCHAR2(20) := 'TASK_NAME';          -- 値
-  cv_tkn_vl              CONSTANT VARCHAR2(20) := 'VALUE';              -- 値
+  cv_tkn_tsk_nm          CONSTANT VARCHAR2(20) := 'TASK_NAME';         -- 値
+  cv_tkn_vl              CONSTANT VARCHAR2(20) := 'VALUE';         -- 値
   /* 2009.05.25 M.Maruyama T1_1154対応 END */
   /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
   cv_tkn_bukken          CONSTANT VARCHAR2(20) := 'BUKKEN';             -- 値
@@ -218,9 +209,7 @@ AS
   /* 2009.11.27 K.Satomura E_本稼動_00118対応 START */
   cv_tkn_param           CONSTANT VARCHAR2(20) := 'PARAM';
   /* 2009.11.27 K.Satomura E_本稼動_00118対応 END */
--- 2011/10/14 v1.19 T.Yoshimto Add Start E_本稼動_05929
-  cv_tkn_message         CONSTANT VARCHAR2(20) := 'message';            -- メッセージ
--- 2011/10/14 v1.19 T.Yoshimto Add End E_本稼動_05929
+
 --
   cb_true                CONSTANT BOOLEAN := TRUE;
   cb_false               CONSTANT BOOLEAN := FALSE;
@@ -271,59 +260,6 @@ AS
   cv_debug_msg_err4       CONSTANT VARCHAR2(200) := 'others例外';
   cv_debug_msg_err5       CONSTANT VARCHAR2(200) := 'no_data_expt';
   cv_debug_msg_err6       CONSTANT VARCHAR2(200) := 'global_process_expt';
---
--- 2011/10/14 v1.19 T.Yoshimto Add Start E_本稼動_05929
-  cv_kiban_ja                CONSTANT VARCHAR2(100) := '機番';                     --  機番(DFF2)
-  cv_count_no_ja             CONSTANT VARCHAR2(100) := 'カウンターNo';             --  カウンターNo
-  cv_chiku_cd_ja             CONSTANT VARCHAR2(100) := '地区コード';               --  地区コード
-  cv_sagyougaisya_cd_ja      CONSTANT VARCHAR2(100) := '作業会社コード';           --  作業会社コード
-  cv_jigyousyo_cd_ja         CONSTANT VARCHAR2(100) := '事業所コード';             --  事業所コード
-  cv_den_no_ja               CONSTANT VARCHAR2(100) := '最終作業伝票No';           --  最終作業伝票No
-  cv_job_kbn_ja              CONSTANT VARCHAR2(100) := '最終作業区分';             --  最終作業区分
-  cv_sintyoku_kbn_ja         CONSTANT VARCHAR2(100) := '最終作業進捗';             --  最終作業進捗
-  cv_yotei_dt_ja             CONSTANT VARCHAR2(100) := '最終作業完了予定日';       --  最終作業完了予定日
-  cv_kanryo_dt_ja            CONSTANT VARCHAR2(100) := '最終作業完了日';           --  最終作業完了日
-  cv_sagyo_level_ja          CONSTANT VARCHAR2(100) := '最終整備内容';             --  最終整備内容
-  cv_den_no2_ja              CONSTANT VARCHAR2(100) := '最終設置伝票No';           --  最終設置伝票No
-  cv_job_kbn2_ja             CONSTANT VARCHAR2(100) := '最終設置区分';             --  最終設置区分
-  cv_sintyoku_kbn2_ja        CONSTANT VARCHAR2(100) := '最終設置進捗';             --  最終設置進捗
-  cv_jotai_kbn1_ja           CONSTANT VARCHAR2(100) := '機器状態1';                --  機器状態1（稼動状態）
-  cv_jotai_kbn2_ja           CONSTANT VARCHAR2(100) := '機器状態2';                --  機器状態2（状態詳細）
-  cv_jotai_kbn3_ja           CONSTANT VARCHAR2(100) := '機器状態3';                --  機器状態3（廃棄情報）
-  cv_nyuko_dt_ja             CONSTANT VARCHAR2(100) := '入庫日';                   --  入庫日
-  cv_hikisakigaisya_cd_ja    CONSTANT VARCHAR2(100) := '引揚会社コード';           --  引揚会社コード
-  cv_hikisakijigyosyo_cd_ja  CONSTANT VARCHAR2(100) := '引揚事業所コード';         --  引揚事業所コード
-  cv_setti_tanto_ja          CONSTANT VARCHAR2(100) := '設置先担当者名';           --  設置先担当者名
-  cv_setti_tel1_ja           CONSTANT VARCHAR2(100) := '設置先TEL1';               --  設置先TEL1
-  cv_setti_tel2_ja           CONSTANT VARCHAR2(100) := '設置先TEL2';               --  設置先TEL2
-  cv_setti_tel3_ja           CONSTANT VARCHAR2(100) := '設置先TEL3';               --  設置先TEL3
-  cv_haikikessai_dt_ja       CONSTANT VARCHAR2(100) := '廃棄決裁日';               --  廃棄決裁日
-  cv_tenhai_tanto_ja         CONSTANT VARCHAR2(100) := '転売廃棄業者';             --  転売廃棄業者
-  cv_tenhai_den_no_ja        CONSTANT VARCHAR2(100) := '転売廃棄伝票No';           --  転売廃棄伝票No
-  cv_syoyu_cd_ja             CONSTANT VARCHAR2(100) := '所有者';                   --  所有者
-  cv_tenhai_flg_ja           CONSTANT VARCHAR2(100) := '転売廃棄状況フラグ';       --  転売廃棄状況フラグ
-  cv_kanryo_kbn_ja           CONSTANT VARCHAR2(100) := '転売完了区分';             --  転売完了区分
-  cv_sakujo_flg_ja           CONSTANT VARCHAR2(100) := '削除フラグ';               --  削除フラグ
-  cv_ven_kyaku_last_ja       CONSTANT VARCHAR2(100) := '最終顧客コード';           --  最終顧客コード
-  cv_ven_tasya_cd01_ja       CONSTANT VARCHAR2(100) := '他社コード1';              --  他社コード１
-  cv_ven_tasya_daisu01_ja    CONSTANT VARCHAR2(100) := '他社台数1';                --  他社台数１
-  cv_ven_tasya_cd02_ja       CONSTANT VARCHAR2(100) := '他社コード2';              --  他社コード２
-  cv_ven_tasya_daisu02_ja    CONSTANT VARCHAR2(100) := '他社台数2';                --  他社台数２
-  cv_ven_tasya_cd03_ja       CONSTANT VARCHAR2(100) := '他社コード3';              --  他社コード３
-  cv_ven_tasya_daisu03_ja    CONSTANT VARCHAR2(100) := '他社台数3';                --  他社台数３
-  cv_ven_tasya_cd04_ja       CONSTANT VARCHAR2(100) := '他社コード4';              --  他社コード４
-  cv_ven_tasya_daisu04_ja    CONSTANT VARCHAR2(100) := '他社台数4';                --  他社台数４
-  cv_ven_tasya_cd05_ja       CONSTANT VARCHAR2(100) := '他社コード5';              --  他社コード５
-  cv_ven_tasya_daisu05_ja    CONSTANT VARCHAR2(100) := '他社台数5';                --  他社台数５
-  cv_ven_haiki_flg_ja        CONSTANT VARCHAR2(100) := '廃棄フラグ';               --  廃棄フラグ
-  cv_ven_sisan_kbn_ja        CONSTANT VARCHAR2(100) := '資産区分';                 --  資産区分
-  cv_ven_kobai_ymd_ja        CONSTANT VARCHAR2(100) := '購買日付';                 --  購買日付
-  cv_ven_kobai_kg_ja         CONSTANT VARCHAR2(100) := '購買金額';                 --  購買金額
-  cv_safty_level_ja          CONSTANT VARCHAR2(100) := '安全設置基準';             --  安全設置基準
-  cv_lease_kbn_ja            CONSTANT VARCHAR2(100) := 'リース区分';               --  リース区分
-  cv_last_inst_cust_code_ja  CONSTANT VARCHAR2(100) := '先月末設置先顧客コード';   --  先月末設置先顧客コード                            
--- 2011/10/14 v1.19 T.Yoshimto Add End E_本稼動_05929
---
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -944,7 +880,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : get_csv_data
-   * Description      : CSVファイルに出力する関連情報取得 (A-6)
+   * Description      : CSVファイルに出力する関連情報取得 (A-5)
    ***********************************************************************************/
   PROCEDURE get_csv_data(
     io_get_rec      IN  OUT NOCOPY g_value_rtype,      -- 情報データ
@@ -1878,7 +1814,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : create_csv_rec
-   * Description      : CSVファイル出力 (A-7)
+   * Description      : CSVファイル出力 (A-6)
    ***********************************************************************************/
   PROCEDURE create_csv_rec(
     i_get_rec   IN g_value_rtype,                  -- 什器マスタデータ
@@ -2075,7 +2011,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : close_csv_file
-   * Description      : CSVファイルクローズ処理 (A-8)
+   * Description      : CSVファイルクローズ処理 (A-7)
    ***********************************************************************************/
   PROCEDURE close_csv_file(
      iv_file_dir       IN  VARCHAR2         -- CSVファイル出力先
@@ -2357,11 +2293,6 @@ AS
     cv_last_inst_cust_code  CONSTANT VARCHAR2(100)   := 'LAST_INST_CUST_CODE';
     cv_last_jotai_kbn       CONSTANT VARCHAR2(100)   := 'LAST_JOTAI_KBN';
     cv_last_year_month      CONSTANT VARCHAR2(100)   := 'LAST_YEAR_MONTH';
--- 2011/10/14 v1.19 T.Yoshimoto Add Start E_本稼動_05929
-    cv_yymmddhhmiss         CONSTANT VARCHAR2(100)   := 'YY/MM/DD HH24:MI:SS';
-    cv_yymmdd               CONSTANT VARCHAR2(100)   := 'YY/MM/DD';
--- 2011/10/14 v1.19 T.Yoshimoto Add End E_本稼動_05929
---
     /*20090709_hosoi_0000518 END*/
     -- *** ローカル変数 ***
     lv_sub_retcode         VARCHAR2(1);                -- サブメイン用リターン・コード
@@ -2384,10 +2315,6 @@ AS
     /* 2009.11.27 K.Satomura E_本稼動_00118対応 START */
     lv_warn_flag           VARCHAR2(1) := 'N';
     /* 2009.11.27 K.Satomura E_本稼動_00118対応 END */
--- 2011/10/14 v1.19 T.Yoshimoto Add Start E_本稼動_05929
-    lv_token_msg           VARCHAR2(1000);             -- 書式・桁数チェックエラー項目名格納用
-    lv_msg2                VARCHAR2(2000);             -- 書式・桁数チェックエラーMSG納用
--- 2011/10/14 v1.19 T.Yoshimoto Add End E_本稼動_05929
     -- *** ローカル・カーソル ***
     /*20090709_hosoi_0000518 START*/
 --    CURSOR xibv_data_cur
@@ -2992,9 +2919,6 @@ AS
     select_error_expt EXCEPTION;
     lv_process_expt   EXCEPTION;
     no_data_expt      EXCEPTION;
--- 2011/10/14 v1.19 T.Yoshimoto Add Start E_本稼動_05929
-    validation_expt   EXCEPTION;                                 -- 書式・桁数チェック例外
--- 2011/10/14 v1.19 T.Yoshimoto Add End E_本稼動_05929
 --
   BEGIN
 --
@@ -3008,9 +2932,7 @@ AS
     gn_target_cnt := 0;
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
--- 2011/10/14 v1.19 T.Yoshimto Add Start E_本稼動_05929(コメントアウト解除)
-    gn_skip_cnt   :=0;
--- 2011/10/14 v1.19 T.Yoshimto Add End E_本稼動_05929
+--    gn_skip_cnt   :=0;
 --
     -- ================================
     -- A-1.初期処理
@@ -3112,10 +3034,6 @@ AS
         -- データ初期化
         lv_sub_msg := NULL;
         lv_sub_buf := NULL;
--- 2011/10/14 v1.19 T.Yoshimoto Add Start E_本稼動_05929
-        lv_token_msg := NULL;
--- 2011/10/14 v1.19 T.Yoshimoto Add End E_本稼動_05929
---
         -- レコード変数初期化
         l_get_rec         := NULL;    -- 什器マスタデータ格納
         -- 処理対象件数格納
@@ -3194,19 +3112,11 @@ AS
         l_get_rec.last_jotai_kbn         := l_xibv_data_rec.last_jotai_kbn;         -- 先月末機器状態
         l_get_rec.last_year_month        := l_xibv_data_rec.last_year_month;        -- 先月末年月
 --
--- 2011/10/14 v1.19 T.Yoshimoto Add Start E_本稼動_05929
-        -- =================================================
-        -- A-5.書式・桁数チェック処理
-        -- =================================================
--- 2011/10/14 v1.19 T.Yoshimoto Add End E_本稼動_05929
         -- 日付書式チェック
         -- 初回設置日(DFF3)
         lb_check_date := xxcso_util_common_pkg.check_date(
                                       iv_date         => l_get_rec.first_install_date
--- 2011/10/14 v1.19 T.Yoshimoto Add Start E_本稼動_05929
---                                    ,iv_date_format  => 'YY/MM/DD HH24:MI:SS'
-                                    ,iv_date_format  => cv_yymmddhhmiss
--- 2011/10/14 v1.19 T.Yoshimoto Add End E_本稼動_05929
+                                    ,iv_date_format  => 'YY/MM/DD HH24:MI:SS'
         );
         --リターンステータスが「FALSE」の場合,例外処理を行う
         IF (lb_check_date = cb_false) THEN
@@ -3224,1404 +3134,150 @@ AS
           l_get_rec.first_install_date := NULL;
           /* 2009.11.27 K.Satomura E_本稼動_00118 END */
         END IF;
--- 2011/10/14 v1.19 T.Yoshimoto Del Start E_本稼動_05929
---        -- 入庫日
---        lb_check_date := xxcso_util_common_pkg.check_date(
---                                      iv_date         => l_get_rec.nyuko_dt
---                                     ,iv_date_format  => 'YY/MM/DD HH24:MI:SS'
---        );
---        --リターンステータスが「FALSE」の場合,例外処理を行う
---        IF (lb_check_date = cb_false) THEN
---          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
---          --lv_sub_msg := xxccp_common_pkg.get_msg(
---          --                       iv_application  => cv_app_name                   -- アプリケーション短縮名
---          --                      ,iv_name         => cv_tkn_number_15              -- メッセージコード
---          --                      ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
---          --                      ,iv_token_value1 => cv_nyuko_date_tkn             -- トークン値1項目名
---          --                      ,iv_token_name2  => cv_tkn_value                  -- トークンコード2
---          --                      ,iv_token_value2 => l_get_rec.nyuko_dt            -- トークン値2値
---          --);
---          --lv_sub_buf  := lv_sub_msg;
---          --RAISE select_error_expt;
---          l_get_rec.nyuko_dt := NULL;
---          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
---        END IF;
---        -- 先月末年月
---        lb_check_date := xxcso_util_common_pkg.check_date(
---                                      iv_date         => l_get_rec.last_year_month
---                                     ,iv_date_format  => 'YY/MM'
---        );
---        --リターンステータスが「FALSE」の場合,例外処理を行う
---        IF (lb_check_date = cb_false) THEN
---          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
---          --lv_sub_msg := xxccp_common_pkg.get_msg(
---          --                       iv_application  => cv_app_name                   -- アプリケーション短縮名
---          --                      ,iv_name         => cv_tkn_number_15              -- メッセージコード
---          --                      ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
---          --                      ,iv_token_value1 => cv_lst_yr_mnth_tkn            -- トークン値1項目名
---          --                      ,iv_token_name2  => cv_tkn_value                  -- トークンコード2
---          --                      ,iv_token_value2 => l_get_rec.last_year_month     -- トークン値2値
---          --);
---          --lv_sub_buf  := lv_sub_msg;
---          --RAISE select_error_expt;
---          l_get_rec.last_year_month := NULL;
---          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
---        END IF;
---        /* 2009.05.18 K.Satomura T1_1049対応 START */
---        -- 廃棄決裁日
---        lb_check_date := xxcso_util_common_pkg.check_date(
---                                      iv_date         => l_get_rec.haikikessai_dt
---                                     ,iv_date_format  => 'YYYY/MM/DD'
---        );
---        --リターンステータスが「FALSE」の場合,例外処理を行う
---        IF (lb_check_date = cb_false) THEN
---          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
---          --lv_sub_msg := xxccp_common_pkg.get_msg(
---          --                       iv_application  => cv_app_name              -- アプリケーション短縮名
---          --                      ,iv_name         => cv_tkn_number_15         -- メッセージコード
---          --                      ,iv_token_name1  => cv_tkn_item              -- トークンコード1
---          --                      /* 2009.07.21 K.Hosoi 0000475対応 START */
+        -- 入庫日
+        lb_check_date := xxcso_util_common_pkg.check_date(
+                                      iv_date         => l_get_rec.nyuko_dt
+                                     ,iv_date_format  => 'YY/MM/DD HH24:MI:SS'
+        );
+        --リターンステータスが「FALSE」の場合,例外処理を行う
+        IF (lb_check_date = cb_false) THEN
+          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
+          --lv_sub_msg := xxccp_common_pkg.get_msg(
+          --                       iv_application  => cv_app_name                   -- アプリケーション短縮名
+          --                      ,iv_name         => cv_tkn_number_15              -- メッセージコード
+          --                      ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+          --                      ,iv_token_value1 => cv_nyuko_date_tkn             -- トークン値1項目名
+          --                      ,iv_token_name2  => cv_tkn_value                  -- トークンコード2
+          --                      ,iv_token_value2 => l_get_rec.nyuko_dt            -- トークン値2値
+          --);
+          --lv_sub_buf  := lv_sub_msg;
+          --RAISE select_error_expt;
+          l_get_rec.nyuko_dt := NULL;
+          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
+        END IF;
+        -- 先月末年月
+        lb_check_date := xxcso_util_common_pkg.check_date(
+                                      iv_date         => l_get_rec.last_year_month
+                                     ,iv_date_format  => 'YY/MM'
+        );
+        --リターンステータスが「FALSE」の場合,例外処理を行う
+        IF (lb_check_date = cb_false) THEN
+          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
+          --lv_sub_msg := xxccp_common_pkg.get_msg(
+          --                       iv_application  => cv_app_name                   -- アプリケーション短縮名
+          --                      ,iv_name         => cv_tkn_number_15              -- メッセージコード
+          --                      ,iv_token_name1  => cv_tkn_item                   -- トークンコード1
+          --                      ,iv_token_value1 => cv_lst_yr_mnth_tkn            -- トークン値1項目名
+          --                      ,iv_token_name2  => cv_tkn_value                  -- トークンコード2
+          --                      ,iv_token_value2 => l_get_rec.last_year_month     -- トークン値2値
+          --);
+          --lv_sub_buf  := lv_sub_msg;
+          --RAISE select_error_expt;
+          l_get_rec.last_year_month := NULL;
+          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
+        END IF;
+        /* 2009.05.18 K.Satomura T1_1049対応 START */
+        -- 廃棄決裁日
+        lb_check_date := xxcso_util_common_pkg.check_date(
+                                      iv_date         => l_get_rec.haikikessai_dt
+                                     ,iv_date_format  => 'YYYY/MM/DD'
+        );
+        --リターンステータスが「FALSE」の場合,例外処理を行う
+        IF (lb_check_date = cb_false) THEN
+          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
+          --lv_sub_msg := xxccp_common_pkg.get_msg(
+          --                       iv_application  => cv_app_name              -- アプリケーション短縮名
+          --                      ,iv_name         => cv_tkn_number_15         -- メッセージコード
+          --                      ,iv_token_name1  => cv_tkn_item              -- トークンコード1
+          --                      /* 2009.07.21 K.Hosoi 0000475対応 START */
 --        --                        ,iv_token_value1 => cv_lst_yr_mnth_tkn       -- トークン値1項目名
---          --                      ,iv_token_value1 => cv_haikikessai_dt_tkn    -- トークン値1項目名
---          --                      /* 2009.07.21 K.Hosoi 0000475対応 END */
---          --                      ,iv_token_name2  => cv_tkn_value             -- トークンコード2
---          --                      ,iv_token_value2 => l_get_rec.haikikessai_dt -- トークン値2値
---          --);
---          --lv_sub_buf  := lv_sub_msg;
---          --RAISE select_error_expt;
---          l_get_rec.haikikessai_dt := NULL;
---          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
---        END IF;
---        /* 2009.07.21 K.Hosoi 0000475対応 START */
---        -- 購買日付
---        lb_check_date := xxcso_util_common_pkg.check_date(
---                                      iv_date         => l_get_rec.ven_kobai_ymd
---                                     ,iv_date_format  => 'YYYY/MM/DD'
---        );
---        --リターンステータスが「FALSE」の場合,例外処理を行う
---        IF (lb_check_date = cb_false) THEN
---          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
---          --lv_sub_msg := xxccp_common_pkg.get_msg(
---          --                       iv_application  => cv_app_name              -- アプリケーション短縮名
---          --                      ,iv_name         => cv_tkn_number_15         -- メッセージコード
---          --                      ,iv_token_name1  => cv_tkn_item              -- トークンコード1
---          --                      ,iv_token_value1 => cv_ven_kobai_ymd_tkn     -- トークン値1項目名
---          --                      ,iv_token_name2  => cv_tkn_value             -- トークンコード2
---          --                      ,iv_token_value2 => l_get_rec.ven_kobai_ymd -- トークン値2値
---          --);
---          --lv_sub_buf  := lv_sub_msg;
---          --RAISE select_error_expt;
---          l_get_rec.ven_kobai_ymd := NULL;
---          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
---        END IF;
---        /* 2009.07.21 K.Hosoi 0000475対応 END */
---        -- 最終作業完了予定日
---        lb_check_date := xxcso_util_common_pkg.check_date(
---                                      iv_date         => l_get_rec.yotei_dt
---                                     ,iv_date_format  => 'YYYY/MM/DD'
---        );
---        --リターンステータスが「FALSE」の場合,例外処理を行う
---        IF (lb_check_date = cb_false) THEN
---          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
---          --lv_sub_msg := xxccp_common_pkg.get_msg(
---          --                       iv_application  => cv_app_name        -- アプリケーション短縮名
---          --                      ,iv_name         => cv_tkn_number_15   -- メッセージコード
---          --                      ,iv_token_name1  => cv_tkn_item        -- トークンコード1
---          --                      /* 2009.07.21 K.Hosoi 0000475対応 START */
-----        --                        ,iv_token_value1 => cv_lst_yr_mnth_tkn -- トークン値1項目名
---          --                      ,iv_token_value1 => cv_yotei_dt_tkn -- トークン値1項目名
---          --                      /* 2009.07.21 K.Hosoi 0000475対応 END */
---          --                      ,iv_token_name2  => cv_tkn_value       -- トークンコード2
---          --                      ,iv_token_value2 => l_get_rec.yotei_dt -- トークン値2値
---          --);
---          --lv_sub_buf  := lv_sub_msg;
---          --RAISE select_error_expt;
---          l_get_rec.yotei_dt := NULL;
---          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
---        END IF;
---        --
---        -- 最終作業完了日
---        lb_check_date := xxcso_util_common_pkg.check_date(
---                                      iv_date         => l_get_rec.kanryo_dt
---                                     ,iv_date_format  => 'YYYY/MM/DD'
---        );
---        --リターンステータスが「FALSE」の場合,例外処理を行う
---        IF (lb_check_date = cb_false) THEN
---          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
---          --lv_sub_msg := xxccp_common_pkg.get_msg(
---          --                       iv_application  => cv_app_name         -- アプリケーション短縮名
---          --                      ,iv_name         => cv_tkn_number_15    -- メッセージコード
---          --                      ,iv_token_name1  => cv_tkn_item         -- トークンコード1
---          --                      /* 2009.07.21 K.Hosoi 0000475対応 START */
-----        --                        ,iv_token_value1 => cv_lst_yr_mnth_tkn  -- トークン値1項目名
---          --                      ,iv_token_value1 => cv_kanryo_dt_tkn    -- トークン値1項目名
---          --                      /* 2009.07.21 K.Hosoi 0000475対応 START */
---          --                      ,iv_token_name2  => cv_tkn_value        -- トークンコード2
---          --                      ,iv_token_value2 => l_get_rec.kanryo_dt -- トークン値2値
---          --);
---          --lv_sub_buf  := lv_sub_msg;
---          --RAISE select_error_expt;
---          l_get_rec.kanryo_dt := NULL;
---          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
---        END IF;
---        --
---        /* 2009.05.18 K.Satomura T1_1049対応 END */
---
--- 2011/10/14 v1.19 T.Yoshimoto Del End E_本稼動_05929
---
--- 2011/10/14 v1.19 T.Yoshimoto Add Start E_本稼動_05929
-        -- ==========================
-        -- == 機番
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.vendor_number
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.vendor_number) > 14 ) ) THEN
---
-          lb_check_date := cb_false;
---
+          --                      ,iv_token_value1 => cv_haikikessai_dt_tkn    -- トークン値1項目名
+          --                      /* 2009.07.21 K.Hosoi 0000475対応 END */
+          --                      ,iv_token_name2  => cv_tkn_value             -- トークンコード2
+          --                      ,iv_token_value2 => l_get_rec.haikikessai_dt -- トークン値2値
+          --);
+          --lv_sub_buf  := lv_sub_msg;
+          --RAISE select_error_expt;
+          l_get_rec.haikikessai_dt := NULL;
+          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
         END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_kiban_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == カウンターNo
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.count_no
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.count_no) > 6 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_count_no_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 地区コード
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.chiku_cd
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.chiku_cd) > 6 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_chiku_cd_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 作業会社コード
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.sagyougaisya_cd
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.sagyougaisya_cd) > 6 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_sagyougaisya_cd_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 事業所コード
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.jigyousyo_cd
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.jigyousyo_cd) > 4 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_jigyousyo_cd_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 最終作業伝票No
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.den_no
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.den_no) > 12 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_den_no_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 最終作業区分
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.job_kbn
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.job_kbn) > 2 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_job_kbn_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 最終作業進捗
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.sintyoku_kbn
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.sintyoku_kbn) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_sintyoku_kbn_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 最終作業完了予定日
-        -- ==========================
-        -- 書式チェック
+        /* 2009.07.21 K.Hosoi 0000475対応 START */
+        -- 購買日付
         lb_check_date := xxcso_util_common_pkg.check_date(
-                                        iv_date         => l_get_rec.yotei_dt
-                                       ,iv_date_format  => 'YYYY/MM/DD'
-                                       );
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_yotei_dt_ja;
---
+                                      iv_date         => l_get_rec.ven_kobai_ymd
+                                     ,iv_date_format  => 'YYYY/MM/DD'
+        );
+        --リターンステータスが「FALSE」の場合,例外処理を行う
+        IF (lb_check_date = cb_false) THEN
+          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
+          --lv_sub_msg := xxccp_common_pkg.get_msg(
+          --                       iv_application  => cv_app_name              -- アプリケーション短縮名
+          --                      ,iv_name         => cv_tkn_number_15         -- メッセージコード
+          --                      ,iv_token_name1  => cv_tkn_item              -- トークンコード1
+          --                      ,iv_token_value1 => cv_ven_kobai_ymd_tkn     -- トークン値1項目名
+          --                      ,iv_token_name2  => cv_tkn_value             -- トークンコード2
+          --                      ,iv_token_value2 => l_get_rec.ven_kobai_ymd -- トークン値2値
+          --);
+          --lv_sub_buf  := lv_sub_msg;
+          --RAISE select_error_expt;
+          l_get_rec.ven_kobai_ymd := NULL;
+          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
         END IF;
---
-        -- ==========================
-        -- == 最終作業完了日
-        -- ==========================
-        -- 書式チェック
+        /* 2009.07.21 K.Hosoi 0000475対応 END */
+        -- 最終作業完了予定日
         lb_check_date := xxcso_util_common_pkg.check_date(
-                                        iv_date         => l_get_rec.kanryo_dt
-                                       ,iv_date_format  => 'YYYY/MM/DD'
-                                       );
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_kanryo_dt_ja;
---
+                                      iv_date         => l_get_rec.yotei_dt
+                                     ,iv_date_format  => 'YYYY/MM/DD'
+        );
+        --リターンステータスが「FALSE」の場合,例外処理を行う
+        IF (lb_check_date = cb_false) THEN
+          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
+          --lv_sub_msg := xxccp_common_pkg.get_msg(
+          --                       iv_application  => cv_app_name        -- アプリケーション短縮名
+          --                      ,iv_name         => cv_tkn_number_15   -- メッセージコード
+          --                      ,iv_token_name1  => cv_tkn_item        -- トークンコード1
+          --                      /* 2009.07.21 K.Hosoi 0000475対応 START */
+--        --                        ,iv_token_value1 => cv_lst_yr_mnth_tkn -- トークン値1項目名
+          --                      ,iv_token_value1 => cv_yotei_dt_tkn -- トークン値1項目名
+          --                      /* 2009.07.21 K.Hosoi 0000475対応 END */
+          --                      ,iv_token_name2  => cv_tkn_value       -- トークンコード2
+          --                      ,iv_token_value2 => l_get_rec.yotei_dt -- トークン値2値
+          --);
+          --lv_sub_buf  := lv_sub_msg;
+          --RAISE select_error_expt;
+          l_get_rec.yotei_dt := NULL;
+          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
         END IF;
---
-        -- ==========================
-        -- == 最終整備内容
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.sagyo_level
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.sagyo_level) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_sagyo_level_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 最終設置伝票No
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.den_no2
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.den_no2) > 12 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_den_no2_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 最終設置区分
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.job_kbn2
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.job_kbn2) > 2 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_job_kbn2_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 最終設置進捗
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.sintyoku_kbn2
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.sintyoku_kbn2) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_sintyoku_kbn2_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 機器状態1
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.jotai_kbn1
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.jotai_kbn1) > 2 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_jotai_kbn1_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 機器状態2
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.jotai_kbn2
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.jotai_kbn2) > 2 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_jotai_kbn2_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 機器状態3
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.jotai_kbn3
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.jotai_kbn3) > 2 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_jotai_kbn3_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 入庫日
-        -- ==========================
-        -- 書式チェック
+        --
+        -- 最終作業完了日
         lb_check_date := xxcso_util_common_pkg.check_date(
-                                        iv_date         => l_get_rec.nyuko_dt
-                                       ,iv_date_format  => cv_yymmddhhmiss
-                                       );
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_nyuko_dt_ja;
---
+                                      iv_date         => l_get_rec.kanryo_dt
+                                     ,iv_date_format  => 'YYYY/MM/DD'
+        );
+        --リターンステータスが「FALSE」の場合,例外処理を行う
+        IF (lb_check_date = cb_false) THEN
+          /* 2009.11.27 K.Satomura E_本稼動_00118 START */
+          --lv_sub_msg := xxccp_common_pkg.get_msg(
+          --                       iv_application  => cv_app_name         -- アプリケーション短縮名
+          --                      ,iv_name         => cv_tkn_number_15    -- メッセージコード
+          --                      ,iv_token_name1  => cv_tkn_item         -- トークンコード1
+          --                      /* 2009.07.21 K.Hosoi 0000475対応 START */
+--        --                        ,iv_token_value1 => cv_lst_yr_mnth_tkn  -- トークン値1項目名
+          --                      ,iv_token_value1 => cv_kanryo_dt_tkn    -- トークン値1項目名
+          --                      /* 2009.07.21 K.Hosoi 0000475対応 START */
+          --                      ,iv_token_name2  => cv_tkn_value        -- トークンコード2
+          --                      ,iv_token_value2 => l_get_rec.kanryo_dt -- トークン値2値
+          --);
+          --lv_sub_buf  := lv_sub_msg;
+          --RAISE select_error_expt;
+          l_get_rec.kanryo_dt := NULL;
+          /* 2009.11.27 K.Satomura E_本稼動_00118 END */
         END IF;
---
-        -- ==========================
-        -- == 引揚会社コード
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.hikisakigaisya_cd
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.hikisakigaisya_cd) > 6 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_hikisakigaisya_cd_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 引揚事業所コード
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.hikisakijigyosyo_cd
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.hikisakijigyosyo_cd) > 4 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_hikisakijigyosyo_cd_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 設置先担当者名
-        -- ==========================
-        lb_check_date := cb_true;    -- 初期化
-        -- 桁数チェック
-        IF ( LENGTHB(l_get_rec.setti_tanto) > 20 ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_setti_tanto_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 設置先TEL1
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.setti_tel1
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.setti_tel1) > 6 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_setti_tel1_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 設置先TEL2
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.setti_tel2
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.setti_tel2) > 6 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_setti_tel2_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 設置先TEL3
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.setti_tel3
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.setti_tel3) > 6 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_setti_tel3_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 廃棄決裁日
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxcso_util_common_pkg.check_date(
-                                        iv_date         => l_get_rec.haikikessai_dt
-                                       ,iv_date_format  => cv_yymmdd
-                                       );
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_haikikessai_dt_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 転売廃棄業者
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.tenhai_tanto
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.tenhai_tanto) > 6 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_tenhai_tanto_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 転売廃棄伝票No
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.tenhai_den_no
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.tenhai_den_no) > 12 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_tenhai_den_no_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 所有者
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.syoyu_cd
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.syoyu_cd) > 4 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_syoyu_cd_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 転売廃棄状況フラグ
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.tenhai_flg
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.tenhai_flg) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_tenhai_flg_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 転売完了区分
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.kanryo_kbn
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.kanryo_kbn) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_kanryo_kbn_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 削除フラグ
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.sakujo_flg
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.sakujo_flg) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_sakujo_flg_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 最終顧客コード
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.ven_kyaku_last
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_kyaku_last) > 9 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_kyaku_last_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 他社コード1
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.ven_tasya_cd01
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_tasya_cd01) > 2 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_tasya_cd01_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 他社台数1
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.ven_tasya_daisu01
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_tasya_daisu01) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_tasya_daisu01_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 他社コード2
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.ven_tasya_cd02
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_tasya_cd02) > 2 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_tasya_cd02_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 他社台数2
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.ven_tasya_daisu02
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_tasya_daisu02) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_tasya_daisu02_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 他社コード3
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.ven_tasya_cd03
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_tasya_cd03) > 2 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_tasya_cd03_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 他社台数3
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.ven_tasya_daisu03
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_tasya_daisu03) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_tasya_daisu03_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 他社コード4
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.ven_tasya_cd04
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_tasya_cd04) > 2 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_tasya_cd04_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 他社台数4
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.ven_tasya_daisu04
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_tasya_daisu04) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_tasya_daisu04_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 他社コード5
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.ven_tasya_cd05
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_tasya_cd05) > 2 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_tasya_cd05_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 他社台数5
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.ven_tasya_daisu05
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_tasya_daisu05) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_tasya_daisu05_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 廃棄フラグ
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.ven_haiki_flg
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_haiki_flg) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_haiki_flg_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 資産区分
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.ven_sisan_kbn
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_sisan_kbn) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_sisan_kbn_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 購買日付
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxcso_util_common_pkg.check_date(
-                                        iv_date         => l_get_rec.ven_kobai_ymd
-                                       ,iv_date_format  => cv_yymmddhhmiss
-                                       );
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_kobai_ymd_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 購買金額
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_number(
-                                 iv_check_char => l_get_rec.ven_kobai_kg
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.ven_kobai_kg) > 9 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_ven_kobai_kg_ja;
---
-        END IF;
---
-
-
-        -- ==========================
-        -- == 安全設置基準
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.safty_level
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.safty_level) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_safty_level_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == リース区分
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.lease_kbn
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.lease_kbn) > 1 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_lease_kbn_ja;
---
-        END IF;
---
-        -- ==========================
-        -- == 先月末設置先顧客コード
-        -- ==========================
-        -- 書式チェック
-        lb_check_date := xxccp_common_pkg.chk_single_byte(
-                                 iv_chk_char => l_get_rec.last_inst_cust_code
-                                 );
-        -- 書式チェックがOK且つ、桁数チェックがNGの場合
-        IF (( lb_check_date = cb_true)
-          AND ( LENGTHB(l_get_rec.last_inst_cust_code) > 9 ) ) THEN
---
-          lb_check_date := cb_false;
---
-        END IF;
---
-        -- トークン(message)に項目名を設定
-        IF ( lb_check_date = cb_false ) THEN
---
-          IF lv_token_msg IS NOT NULL THEN
-            lv_token_msg := lv_token_msg || cv_comma;
-          END IF;
---
-          lv_token_msg := lv_token_msg || cv_last_inst_cust_code_ja;
---
-        END IF;
---
-        -- ==================================
-        -- == 書式・桁数チェック結果出力
-        -- ==================================
-        IF ( lv_token_msg IS NOT NULL ) THEN
---
-          -- スキップ件数をカウントアップ
-          gn_skip_cnt  := gn_skip_cnt + 1;
---
-          RAISE validation_expt;
---
-        END IF;
--- 2011/10/14 v1.19 T.Yoshimoto Add End E_本稼動_05929
+        --
+        /* 2009.05.18 K.Satomura T1_1049対応 END */
 --
         -- ================================================================
-        -- A-6 CSVファイルに出力する関連情報取得
+        -- A-5 CSVファイルに出力する関連情報取得
         -- ================================================================
 --
 -- UPD 20090220 Sai 関連情報抽出失敗時、警告スキップ⇒エラー中断に変更 START
@@ -4657,7 +3313,7 @@ AS
 -- UPD 20090220 Sai 関連情報抽出失敗時、警告スキップ⇒エラー中断　に変更　END
 --
         -- ========================================
-        -- A-7. 什器マスタデータCSVファイル出力
+        -- A-6. 什器マスタデータCSVファイル出力
         -- ========================================
         create_csv_rec(
           i_get_rec        =>  l_get_rec         -- 什器マスタデータ
@@ -4672,28 +3328,6 @@ AS
         gn_normal_cnt := gn_normal_cnt + 1;
 --
       EXCEPTION
--- 2011/10/14 v1.19 T.Yoshimoto Add Start E_本稼動_05929
-        -- *** 書式・桁数チェックのエラー例外ハンドラ ***
-        WHEN validation_expt THEN
---
-          lv_msg2 := xxccp_common_pkg.get_msg(
-                              iv_application  => cv_app_name                    -- アプリケーション短縮名
-                             ,iv_name         => cv_tkn_number_20               -- メッセージコード
-                             ,iv_token_name1  => cv_tkn_bukken                  -- トークン
-                             ,iv_token_value1 => l_get_rec.install_code         -- 値
-                             ,iv_token_name2  => cv_tkn_message                 -- トークン
-                             ,iv_token_value2 => lv_token_msg                   -- 値
-                            );
---
-          fnd_file.put_line(
-             which  => FND_FILE.OUTPUT
-            ,buff   => lv_msg2
-          );
---
-          -- ステータスに警告を設定
-          ov_retcode     := cv_status_warn;
--- 2011/10/14 v1.19 T.Yoshimoto Add End E_本稼動_05929
---
         -- *** データ抽出時のエラー例外ハンドラ ***
         WHEN lv_process_expt THEN
           RAISE global_process_expt;
@@ -4744,7 +3378,7 @@ AS
     );
 --
     -- ========================================
-    -- A-8.CSVファイルクローズ
+    -- A-7.CSVファイルクローズ
     -- ========================================
 --
     close_csv_file(
@@ -5013,7 +3647,7 @@ AS
     END IF;
 --
     -- =======================
-    -- A-9.終了処理
+    -- A-8.終了処理
     -- =======================
     --空行の出力
     fnd_file.put_line(
@@ -5056,19 +3690,17 @@ AS
       ,buff   => gv_out_msg
     );
     --
--- 2011/10/14 v1.19 T.Yoshimoto Add Start E_本稼動_05929(コメントアウト解除)
     --スキップ件数出力
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => cv_skip_rec_msg
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_skip_cnt)
-                   );
-    fnd_file.put_line(
-       which  => FND_FILE.OUTPUT
-      ,buff   => gv_out_msg
-    );
--- 2011/10/14 v1.19 T.Yoshimoto Add End E_本稼動_05929
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_appl_short_name
+--                    ,iv_name         => cv_skip_rec_msg
+--                    ,iv_token_name1  => cv_cnt_token
+--                    ,iv_token_value1 => TO_CHAR(gn_skip_cnt)
+--                   );
+--    fnd_file.put_line(
+--       which  => FND_FILE.OUTPUT
+--      ,buff   => gv_out_msg
+--    );
     --
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
