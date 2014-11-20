@@ -71,13 +71,19 @@ SELECT xoha.request_no                    request_no            -- 依頼No
       ,'N'                                new_flag              -- 新規フラグ(更新の場合、「N」固定)
       ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_weight, 'FM9,999,990'), '')
                                           based_weight          -- 基本重量
-      ,TO_CHAR(ROUND(xoha.sum_weight), 'FM9,999,990')
+-- 2008-08-01 H.Itou Mod Start
+--      ,TO_CHAR(ROUND(xoha.sum_weight), 'FM9,999,990')
+      ,TO_CHAR(CEIL(TRUNC(xoha.sum_weight, 1)), 'FM9,999,990')
+-- 2008-08-01 H.Itou Mod End
                                           sum_weight            -- 積載重量合計
       ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_weight, 'FM990.00'), '')
                                           efficiency_weight     -- 重量積載効率
       ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_capacity, 'FM9,999,990'), '')
                                           based_capacity        -- 基本容積
-      ,TO_CHAR(ROUND(xoha.sum_capacity), 'FM9,999,990')
+-- 2008-08-01 H.Itou Mod Start
+--      ,TO_CHAR(ROUND(xoha.sum_capacity), 'FM9,999,990')
+      ,TO_CHAR(CEIL(TRUNC(xoha.sum_capacity, 1)), 'FM9,999,990')
+-- 2008-08-01 H.Itou Mod End
                                           sum_capacity          -- 積載容積合計
       ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_capacity, 'FM990.00'), '')
                                           efficiency_capacity   -- 容積積載効率

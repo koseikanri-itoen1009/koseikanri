@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoShippedResultAMImpl
 * 概要説明   : 出庫実績要約アプリケーションモジュール
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-25 1.0  山本恭久     新規作成
 * 2008-06-30 1.1  二瓶大輔     内部変更要求対応#146,#149,ST不具合#248対応
+* 2008-07-31 1.2  伊藤ひとみ   内部変更要求対応#164,#174,#176対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo441001j.server;
@@ -234,7 +235,9 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
     ) throws OAException
   {
     ArrayList exceptions = new ArrayList(100);
-    boolean exeFlag = false;
+// 2008-07-31 H.Itou Del Start
+//    boolean exeFlag = false;
+// 2008-07-31 H.Itou Del End
 
     // 処理対象を取得
     OAViewObject vo = getXxpoShippedResultVO1();
@@ -255,55 +258,73 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
         // i番目の行を取得
         row = (OARow)rows[i];
         // 排他チェック
-        if(chkLockAndExclusive(vo, row))
+        if (chkLockAndExclusive(vo, row))
         {
-           // エラーチェック
-          if(chkInputAll(vo,row,exceptions))
+           // エラーチェック。全チェックをクリアした場合、全数出庫処理実行
+          if (chkInputAll(vo, row, exceptions))
           {
             // 全数出庫の実績登録処理
             Number orderHeader = (Number)row.getAttribute("OrderHeaderId");
             Date shipDate = (Date)row.getAttribute("ShippedDate");
-            if((XxpoUtility.updateOrderExecute(getOADBTransaction(),
-                                               orderHeader,
-                                               XxpoConstants.REC_TYPE_20,
-                                               shipDate)))
-            {
-              exeFlag = true;
-            } else
-            {
-              // トークン生成
-              MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_PROCESS,
-                                                         "全数処理") };
-              // エラーメッセージ出力
-              throw new OAException(XxcmnConstants.APPL_XXCMN, 
-                                    XxcmnConstants.XXCMN05002, 
-                                    tokens);
-            }
+// 2008-07-31 H.Itou Add Start 関数側でエラーメッセージを出すので、呼び元では判定不要。
+            boolean temp = XxpoUtility.updateOrderExecute(
+                              getOADBTransaction(),
+                              orderHeader,
+                              XxpoConstants.REC_TYPE_20,
+                              shipDate);
+// 2008-07-31 H.Itou Add End
+// 2008-07-31 H.Itou Del Start 関数側でエラーメッセージを出すので、呼び元では判定不要。
+//            if ((XxpoUtility.updateOrderExecute(getOADBTransaction(),
+//                                               orderHeader,
+//                                               XxpoConstants.REC_TYPE_20,
+//                                               shipDate)))
+//            {
+//              exeFlag = true;
+//
+//            } else
+//            {
+//              // トークン生成
+//              MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_PROCESS,
+//                                                         "全数処理") };
+//              // エラーメッセージ出力
+//              throw new OAException(XxcmnConstants.APPL_XXCMN, 
+//                                    XxcmnConstants.XXCMN05002, 
+//                                    tokens);
+//            }
+// 2008-07-31 H.Itou Del End
 
-            // 出庫処理
+            // コンカレント：出荷依頼/出荷実績作成処理発行
             String requestNo = (String)row.getAttribute("RequestNo");
             XxwshUtility.doShipRequestAndResultEntry(getOADBTransaction(), requestNo);
-            // エラーがあった場合エラーをスローします。
-            if (exceptions.size() > 0)
-            {
-              //トークン生成
-              MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_CONC_NAME,
-                                                         XxwshConstants.TOKEN_NAME_PGM_NAME_420001C) };
-              // エラーメッセージ出力
-              throw new OAException(XxcmnConstants.APPL_XXCMN, 
-                                    XxpoConstants.XXPO10024, 
-                                    tokens);
-            }
+
+// 2008-07-31 H.Itou Del Start 関数側でエラーメッセージを出すので、呼び元では判定不要。
+//            // エラーがあった場合エラーをスローします。
+//            if (exceptions.size() > 0)
+//            {
+//              //トークン生成
+//              MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_CONC_NAME,
+//                                                         XxwshConstants.TOKEN_NAME_PGM_NAME_420001C) };
+//              // エラーメッセージ出力
+//              throw new OAException(XxcmnConstants.APPL_XXCMN, 
+//                                    XxpoConstants.XXPO10024, 
+//                                    tokens);
+//            }
+// 2008-07-31 H.Itou Del End
           }
         }    
       }
-      // エラーがあった場合エラーをスローします。
+      // エラーがあった場合、エラーをスローします。
       if (exceptions.size() > 0)
       {
+// 2008-07-31 H.Itou Add Start 1件でもエラーがあった場合、すべてROLLBACK
+        // ロールバック
+        XxpoUtility.rollBack(getOADBTransaction());
+// 2008-07-31 H.Itou Add End
         OAException.raiseBundledOAException(exceptions);
-      }
-      // 更新完了メッセージ
-      if (exeFlag) 
+
+// 2008-07-31 H.Itou Add Start
+      // エラーがない場合、処理確定。
+      } else
       {
         // コミット発行
         XxpoUtility.commit(getOADBTransaction());
@@ -311,11 +332,24 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
         doSearchList(exeType);
         // 更新完了メッセージ
         XxcmnUtility.putSuccessMessage(XxpoConstants.TOKEN_NAME_ALL_SHIPPED);
-      } else
-      {
-        // ロールバックします。
-        XxpoUtility.rollBack(getOADBTransaction());
+// 2008-07-31 H.Itou Add End
       }
+// 2008-07-31 H.Itou Del Start
+//      // 更新完了メッセージ
+//      if (exeFlag) 
+//      {
+//        // コミット発行
+//        XxpoUtility.commit(getOADBTransaction());
+//        // 再検索を行います。
+//        doSearchList(exeType);
+//        // 更新完了メッセージ
+//        XxcmnUtility.putSuccessMessage(XxpoConstants.TOKEN_NAME_ALL_SHIPPED);
+//      } else
+//      {
+//        // ロールバックします。
+//        XxpoUtility.rollBack(getOADBTransaction());
+//      }
+// 2008-07-31 H.Itou Del End
     }
   } // doDecisionList
 
@@ -350,10 +384,26 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
                                             XxpoConstants.XXPO10119));
     }
 
+// 2008-07-31 H.Itou Add Start
+    // 出庫日未来日チェックを行います。
+    Date sysDate     = getOADBTransaction().getCurrentDBDate(); // システム日付
+    // 出庫日がシステム日付より未来日の場合、エラー
+    if (XxcmnUtility.chkCompareDate(1, shippedDate, sysDate))
+    {                        
+      exceptions.add(new OAAttrValException(OAAttrValException.TYP_VIEW_OBJECT,
+                                            vo.getName(),
+                                            row.getKey(),
+                                            "ShippedDate",
+                                            shippedDate,
+                                            XxcmnConstants.APPL_XXPO,
+                                            XxpoConstants.XXPO10264));
+    }
+// 2008-07-31 H.Itou Add End
+
     // 実績未入力チェックを行います。
     Number orderHeader = (Number)row.getAttribute("OrderHeaderId");
-    if(!(XxpoUtility.chkOrderResult(getOADBTransaction(),
-                                    orderHeader,XxpoConstants.REC_TYPE_20)))
+    if (!(XxpoUtility.chkOrderResult(getOADBTransaction(),
+                                      orderHeader,XxpoConstants.REC_TYPE_20)))
     {
       exceptions.add( new OAAttrValException(OAAttrValException.TYP_VIEW_OBJECT,          
                                              vo.getName(),
@@ -366,8 +416,8 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
 
     // ロットステータスチェックを行います。
     String requestNo = (String)row.getAttribute("RequestNo");
-    if(!(XxpoUtility.chkLotStatus(getOADBTransaction(),
-                                  requestNo)))
+    if (!(XxpoUtility.chkLotStatus(getOADBTransaction(),
+                                   requestNo)))
     {
       exceptions.add( new OAAttrValException(OAAttrValException.TYP_VIEW_OBJECT,          
                                              vo.getName(),
@@ -378,7 +428,7 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
                                              XxpoConstants.XXPO10202));
     }
 
-    if(exceptions.size() > 0 )
+    if (exceptions.size() > 0 )
     {
       retFlag = false;
     }
@@ -417,15 +467,15 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
         // i番目の行を取得
         row = (OARow)rows[i];
         // 排他チェック
-        if(chkLockAndExclusive(vo, row))
+        if (chkLockAndExclusive(vo, row))
         {
           // エラーチェック
-          if(chkRcvAll(vo, row, exceptions))
+          if (chkRcvAll(vo, row, exceptions))
           {
             // 指示受領更新処理
             Number orderHeader = (Number)row.getAttribute("OrderHeaderId");
-            if((updateInstRcvClass(getOADBTransaction(),
-                                   orderHeader)))
+            if ((updateInstRcvClass(getOADBTransaction(),
+                                    orderHeader)))
             {
               exeFlag = true;
             } else
@@ -514,7 +564,7 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
                                             XxpoConstants.XXPO10125));
     }
 
-    if(exceptions.size() > 0 )
+    if (exceptions.size() > 0 )
     {
       retFlag = false;
     }
@@ -1074,7 +1124,11 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
                                  hdrRow.getAttribute("DbShippedDate")))
       {
         // ステータスが「出荷実績計上済」の場合
-        if (XxcmnUtility.isEquals(hdrRow.getAttribute("TransStatus"), XxpoConstants.PROV_STATUS_SJK))
+// 2008-07-31 H.Itou Mod Start 実績計上済区分「Y」の場合を条件に追加
+//        if (XxcmnUtility.isEquals(hdrRow.getAttribute("TransStatus"), XxpoConstants.PROV_STATUS_SJK))
+        if (XxcmnUtility.isEquals(hdrRow.getAttribute("TransStatus"), XxpoConstants.PROV_STATUS_SJK)
+          && XxcmnUtility.isEquals(hdrRow.getAttribute("ActualConfirmClass"), XxcmnConstants.STRING_Y))
+// 2008-07-31 H.Itou Mod End
         {
           // ヘッダ実績変更処理
           orderHeaderInsUpd(hdrRow);
@@ -1115,7 +1169,10 @@ public class XxpoShippedResultAMImpl extends XxcmnOAApplicationModuleImpl
 
     // ステータスが「出荷実績計上済」で出庫日が変更されていた場合
     if ( XxcmnUtility.isEquals(hdrRow.getAttribute("TransStatus"), XxpoConstants.PROV_STATUS_SJK)
-     && !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippedDate"), hdrRow.getAttribute("DbShippedDate")))
+// 2008-07-31 H.Itou Add Start 実績計上済区分「Y」の場合を条件に追加
+      && XxcmnUtility.isEquals(hdrRow.getAttribute("ActualConfirmClass"), XxcmnConstants.STRING_Y)
+// 2008-07-31 H.Itou Add End
+      && !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippedDate"), hdrRow.getAttribute("DbShippedDate")))
     {
 
       // 受注明細アドオンIDのシーケンス取得

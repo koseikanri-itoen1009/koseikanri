@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoShipToResultAMImpl
 * 概要説明   : 入庫実績要約アプリケーションモジュール
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-11 1.0  新藤義勝     新規作成
 * 2008-07-01 1.1  二瓶大輔     内部変更要求対応#147,#149,ST不具合#248対応
+* 2008-07-30 1.2  伊藤ひとみ   内部変更要求対応#176,#164対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo442001j.server;
@@ -345,6 +346,22 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
                             XxpoConstants.XXPO10119));
 
     }
+// 2008-07-30 H.Itou Add 入庫日未来日チェックを追加 Start
+    Date sysDate     = getOADBTransaction().getCurrentDBDate(); // システム日付
+    Date arrivalDate = (Date)row.getAttribute("ArrivalDate");   // 入庫日
+    // 入庫日がシステム日付より未来日の場合、エラー
+    if (XxcmnUtility.chkCompareDate(1, arrivalDate, sysDate))
+    {
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,          
+                            vo.getName(),
+                            row.getKey(),
+                            "ArrivalDate",
+                            arrivalDate,
+                            XxcmnConstants.APPL_XXPO, 
+                            XxpoConstants.XXPO10265));
+    }
+// 2008-07-30 H.Itou Add 入庫日未来日チェックを追加 End
 
     // 実績未入力チェックを行います。
      Number orderHeader = (Number)row.getAttribute("OrderHeaderId");

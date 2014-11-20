@@ -78,13 +78,19 @@ SELECT xoha.order_header_id               order_header_id       -- Žó’ƒwƒbƒ_ƒAƒ
       ,xvv.spare2                         price_list            -- ‰¿Ši•\
       ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_weight, 'FM9,999,990'), '')
                                           based_weight          -- Šî–{d—Ê
-      ,TO_CHAR(ROUND(xoha.sum_weight), 'FM9,999,990')
+-- 2008-07-31 H.Itou Mod Start
+--      ,TO_CHAR(ROUND(xoha.sum_weight), 'FM9,999,990')
+      ,TO_CHAR(CEIL(TRUNC(xoha.sum_weight, 1)), 'FM9,999,990')
+-- 2008-07-31 H.Itou Mod End
                                           sum_weight            -- ÏÚd—Ê‡Œv
       ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_weight, 'FM990.00'), '')
                                           efficiency_weight     -- d—ÊÏÚŒø—¦
       ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_capacity, 'FM9,999,990'), '')
                                           based_capacity        -- Šî–{—eÏ
-      ,TO_CHAR(ROUND(xoha.sum_capacity), 'FM9,999,990')
+-- 2008-07-31 H.Itou Mod Start
+--      ,TO_CHAR(ROUND(xoha.sum_capacity), 'FM9,999,990')
+      ,TO_CHAR(CEIL(TRUNC(xoha.sum_capacity, 1)), 'FM9,999,990')
+-- 2008-07-31 H.Itou Mod End
                                           sum_capacity          -- ÏÚ—eÏ‡Œv
       ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_capacity, 'FM990.00'), '')
                                           efficiency_capacity   -- —eÏÏÚŒø—¦
@@ -150,6 +156,9 @@ SELECT xoha.order_header_id               order_header_id       -- Žó’ƒwƒbƒ_ƒAƒ
       ,xlvv8.meaning                      weight_capacity_class_name -- d—Ê—eÏ‹æ•ª
       ,xoha.organization_id               organization_id            -- ‘gDID
       ,xoha.program_update_date           program_update_date        -- ƒvƒƒOƒ‰ƒ€XV“ú
+-- 2008-07-31 H.Itou Add Start
+      ,xoha.actual_confirm_class          actual_confirm_class       -- ŽÀÑŒvãÏ‹æ•ª
+-- 2008-07-31 H.Itou Add End
 FROM   xxwsh_order_headers_all        xoha  -- Žó’ƒwƒbƒ_ƒAƒhƒIƒ“
       ,xxwsh_oe_transaction_types2_v  xottv -- Žó’ƒ^ƒCƒvî•ñVIEW2
       ,xxcmn_locations2_v             xlv1  -- Ž–‹ÆŠî•ñVIEW2(ˆË—Š•”—p)
@@ -1448,6 +1457,19 @@ AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN ximv.start_date_a
       AliasName="PROGRAM_UPDATE_DATE"
       Expression="PROGRAM_UPDATE_DATE"
       SQLType="DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ActualConfirmClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ACTUAL_CONFIRM_CLASS"
+      Expression="ACTUAL_CONFIRM_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">
       <Item Value="OrderHeaderId" />

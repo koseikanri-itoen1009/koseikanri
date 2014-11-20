@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoConstants
 * 概要説明   : 仕入共通定数
-* バージョン : 1.2
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,7 +11,7 @@
 * 2008-06-30 1.2  二瓶大輔　     内部変更要求#146,147対応
 * 2008-07-11 1.3  伊藤ひとみ     内部変更要求#153対応(メッセージ追加)
 * 2008-07-11 1.3  二瓶大輔　     ST#421対応(メッセージ追加)
-
+* 2008-07-30 1.4  伊藤ひとみ     内部変更要求#176(メッセージ追加)
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -221,6 +221,12 @@ public class XxpoConstants
   /** メッセージ：APP-XXPO-10227 数値0以下エラー */
   public static final String XXPO10227   = "APP-XXPO-10227";
 // 2008-07-11 D.Nihei Add END
+// 2008-07-30 H.Itou Add START
+  /** メッセージ：APP-XXPO-10264 出庫日未来日エラー */
+  public static final String XXPO10264   = "APP-XXPO-10264";
+  /** メッセージ：APP-XXPO-10265 入庫日未来日エラー */
+  public static final String XXPO10265   = "APP-XXPO-10265";
+// 2008-07-30 H.Itou Add END
   /** トークン：ENTRY */
   public static final String TOKEN_ENTRY       = "ENTRY";
   /** トークン：DATA */
@@ -245,6 +251,10 @@ public class XxpoConstants
   public static final String TOKEN_PROCESS     = "PROCESS";
   /** トークン：PROC_NAME */
   public static final String TOKEN_PROC_NAME   = "PROC_NAME";
+// 2008-07-30 H.Itou Add START
+  /** トークン：TOKEN */
+  public static final String TOKEN             = "TOKEN";
+// 2008-07-30 H.Itou Add END
   /** トークン名称：取引先 */
   public static final String TOKEN_NAME_ENTRY  = "取引先";
   /** トークン名称：出来高報告 */
