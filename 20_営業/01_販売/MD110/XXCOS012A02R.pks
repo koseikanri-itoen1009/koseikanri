@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A02R (spec)
  * Description      : ピックリスト（出荷先・販売先・製品別）
  * MD.050           : ピックリスト（出荷先・販売先・製品別） MD050_COS_012_A02
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *                                        ・エラー品目の明細レベル集約条件を商品コード２のみにする
  *                                        ・単位換算マスタの結合条件：無効日も外部結合項目に追加する
  *                                        ・非在庫品、エラー品目の取得条件の日付を業務日付から受注日に変更
+ *  2010/06/14    1.13  T.Maruyama       [E_本稼動_02638]
+ *                                       ・パラメータにEDI受信日を追加
  *
  *****************************************************************************************/
 --
@@ -64,7 +66,11 @@ AS
 /* 2010/02/22 Ver1.12 Mod Start */
 --    iv_bargain_class          IN      VARCHAR2)         -- 5.定番特売区分
     iv_bargain_class          IN      VARCHAR2,         -- 5.定番特売区分
-    iv_sales_output_type      IN      VARCHAR2)         -- 6.売上対象出力区分
+/* 2010/06/14 1.13 T.Maruyama Mod START */
+--    iv_sales_output_type      IN      VARCHAR2)         -- 6.売上対象出力区分
+    iv_sales_output_type      IN      VARCHAR2,         -- 6.売上対象出力区分
+    iv_edi_received_date      IN      VARCHAR2)         -- 7.EDI受信日
+/* 2010/06/14 1.13 T.Maruyama Mod END */
 /* 2010/02/22 Ver1.12 Mod End   */
   ;
 END XXCOS012A02R;

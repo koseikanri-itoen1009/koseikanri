@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A03R (spec)
  * Description      : ピックリスト（出荷先・製品・販売先別）
  * MD.050           : ピックリスト（出荷先・製品・販売先別） MD050_COS_012_A03
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -47,6 +47,8 @@ AS
  *                                          「対象」  ：手入力 or 情報区分「NULL or 02」のEDI受注
  *                                          「対象外」：情報区分「04」のEDI情報
  *                                          指定なし  ：「対象」と「対象外」の両方
+ *  2010/06/09    1.13  T.Maruyama       [E_本稼動_02638]
+ *                                       ・パラメータにEDI受信日を追加
  *
  *****************************************************************************************/
 --
@@ -61,7 +63,11 @@ AS
 -- ***************** 2010/02/22 M.Sano 1.12 Mod Start ****************************** --
 --    iv_bargain_class          IN      VARCHAR2          -- 5.定番特売区分
     iv_bargain_class          IN      VARCHAR2,         -- 5.定番特売区分
-    iv_sales_output_type      IN      VARCHAR2)         -- 6.売上対象区分
+-- ********** 2010/06/14 1.13 T.Maruyama Mod START ********** --
+    --iv_sales_output_type      IN      VARCHAR2)         -- 6.売上対象区分
+    iv_sales_output_type      IN      VARCHAR2,         -- 6.売上対象区分
+    iv_edi_received_date      IN      VARCHAR2)         -- 7.EDI受信日
+-- ********** 2010/06/14 1.13 T.Maruyama Mod END ********** --
 -- ***************** 2010/02/22 M.Sano 1.12 Mod End   ****************************** --
  ;
 END XXCOS012A03R;

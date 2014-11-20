@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A03R (body)
  * Description      : ピックリスト（出荷先・製品・販売先別）
  * MD.050           : ピックリスト（出荷先・製品・販売先別） MD050_COS_012_A03
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,8 @@ AS
  *                                          「対象」  ：手入力 or 情報区分「NULL or 02」のEDI受注
  *                                          「対象外」：情報区分「04」のEDI情報
  *                                          指定なし  ：「対象」と「対象外」の両方
+ *  2010/06/14    1.13  T.Maruyama       [E_本稼動_02638]
+ *                                       ・パラメータにEDI受信日を追加
  *
  *****************************************************************************************/
 --
@@ -210,6 +212,9 @@ AS
 -- ***************** 2010/02/22 M.Sano 1.12 Add Start ****************************** --
   cv_tkn_param6             CONSTANT VARCHAR2(100) := 'PARAM6';                 --第６入力パラメータ
 -- ***************** 2010/02/22 M.Sano 1.12 Add End   ****************************** --
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
+  cv_tkn_param7             CONSTANT VARCHAR2(100) := 'PARAM7';                 --第７入力パラメータ
+-- ***************** 2010/06/14 1.13 T.Maruyama Add END ***************** --
   cv_tkn_request            CONSTANT VARCHAR2(100) := 'REQUEST';                --要求ＩＤ
 -- ***************** 2010/02/22 M.Sano 1.12 Add Start ****************************** --
   cv_tkn_nm_profile2        CONSTANT VARCHAR2(100) :=  'PRO_TOK';               --プロファイル名(在庫領域)
@@ -385,6 +390,10 @@ AS
 -- ***************** 2010/02/22 M.Sano 1.12 Add Start ****************************** --
   gv_sales_output_type                VARCHAR2(1);                    -- 売上対象出力区分
 -- ***************** 2010/02/22 M.Sano 1.12 Add End   ****************************** --
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
+  gd_edi_received_date                DATE := NULL;                   -- EDI受信日
+-- ***************** 2010/06/14 1.13 T.Maruyama Add END ***************** --
+
   --初期取得
   gd_process_date                     DATE;                           -- 業務日付
   gn_org_id                           NUMBER;                         -- 営業単位
@@ -488,6 +497,9 @@ AS
 -- ***************** 2010/02/22 M.Sano 1.12 Add Start ****************************** --
     iv_sales_output_type      IN      VARCHAR2,         -- 6.売上対象区分
 -- ***************** 2010/02/22 M.Sano 1.12 Add End   ****************************** --
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
+    iv_edi_received_date      IN      VARCHAR2,         -- 7.EDI受信日
+-- ***************** 2010/06/14 1.13 T.Maruyama Add END ***************** --
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -544,7 +556,12 @@ AS
 --                                   iv_token_value5       => iv_bargain_class
                                    iv_token_value5       => iv_bargain_class,
                                    iv_token_name6        => cv_tkn_param6,
-                                   iv_token_value6       => iv_sales_output_type
+-- ***************** 2010/06/14 1.13 T.Maruyama Mod START ***************** --
+--                                   iv_token_value6       => iv_sales_output_type
+                                   iv_token_value6       => iv_sales_output_type,
+                                   iv_token_name7        => cv_tkn_param7,
+                                   iv_token_value7       => iv_edi_received_date
+-- ***************** 2010/06/14 1.13 T.Maruyama Mod END ***************** --
 -- ***************** 2010/02/22 M.Sano 1.12 Mod End   ****************************** --
                                  );
     --
@@ -580,6 +597,15 @@ AS
 -- ***************** 2010/02/22 M.Sano 1.12 Add Start ****************************** --
     gv_sales_output_type      := iv_sales_output_type;
 -- ***************** 2010/02/22 M.Sano 1.12 Add End   ****************************** --
+--
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
+    -- EDI受信日
+    IF ( iv_edi_received_date IS NOT NULL )THEN
+      gd_edi_received_date      := TO_DATE( TO_CHAR( TO_DATE(iv_edi_received_date,   cv_fmt_date)
+                                                    ,cv_fmt_date) || cv_time_min
+                                           ,cv_fmt_datetime );
+    END IF;
+-- ***************** 2010/06/14 1.13 T.Maruyama Add END ***************** --
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -1474,6 +1500,9 @@ AS
           AND (   gv_sales_output_type IS NULL
                OR gv_sales_output_type  = cv_sales_output_type_1 )
 -- ***************** 2010/02/22 M.Sano 1.12 Add End   ****************************** --
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
+          AND gd_edi_received_date IS NULL  -- EDI受信日が指定されていないこと。
+-- ***************** 2010/06/14 1.13 T.Maruyama Add END ***************** --
           UNION ALL
           SELECT
 -- 2009/08/12 Ver1.9 Add Start *
@@ -1775,6 +1804,13 @@ AS
               )
           AND oola.orig_sys_document_ref      = xeh.order_connection_number
           AND xeh.data_type_code              IN ( ct_data_type_code_edi, ct_data_type_code_shop )
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
+          AND ( gd_edi_received_date IS NULL
+            OR  ( xeh.edi_received_date >= gd_edi_received_date
+              AND xeh.edi_received_date <  gd_edi_received_date + 1
+                )
+              )                                                       -- パラメータ．EDI受信日
+-- ***************** 2010/06/14 1.13 T.Maruyama Add END ***************** --
           AND xeh.edi_header_info_id          = xel.edi_header_info_id
 --****************************** 2009/06/05 1.4 T.Kitajima MOD START ******************************--
 --          AND xel.line_no                     = oola.line_number
@@ -1980,6 +2016,13 @@ AS
                  , NVL( xeh.center_delivery_date
                       , NVL( xeh.order_date, xeh.creation_date ) ) )
                                              <= gd_request_date_to              -- 着日が入力のFROM-TOの間
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
+          AND ( gd_edi_received_date IS NULL
+            OR  ( xeh.edi_received_date >= gd_edi_received_date
+              AND xeh.edi_received_date <  gd_edi_received_date + 1
+                )
+              )                                                       -- パラメータ．EDI受信日
+-- ***************** 2010/06/14 1.13 T.Maruyama Add END ***************** --
           -- [顧客]顧客アドオン・顧客マスタ
           AND xca1.customer_code              = xeh.conv_customer_code
           AND xca1.delivery_base_code         = gv_login_base_code              -- 拠点コードがパラメータと同一
@@ -2262,6 +2305,9 @@ AS
       g_rpt_data_tab(ln_idx).quantity                     := ln_quantity;
       g_rpt_data_tab(ln_idx).entry_number                 := SUBSTRB( lt_key_slip_no, 1, 12 );
       g_rpt_data_tab(ln_idx).regular_sale_class_line      := SUBSTRB( lt_key_bargain_class_name, 1, 4 );
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
+      g_rpt_data_tab(ln_idx).edi_received_date            := gd_edi_received_date;  -- EDI受注日
+-- ***************** 2010/06/14 1.13 T.Maruyama Add END ***************** --
       --
       g_rpt_data_tab(ln_idx).created_by                   := cn_created_by;
       g_rpt_data_tab(ln_idx).creation_date                := cd_creation_date;
@@ -2932,6 +2978,9 @@ AS
 -- ***************** 2010/02/22 M.Sano 1.12 Add Start ****************************** --
     iv_sales_output_type      IN      VARCHAR2,         -- 6.売上対象区分
 -- ***************** 2010/02/22 M.Sano 1.12 Add End   ****************************** --
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
+    iv_edi_received_date      IN      VARCHAR2,         -- 7.EDI受信日
+-- ***************** 2010/06/14 1.13 T.Maruyama Add END ***************** --
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2982,6 +3031,9 @@ AS
 -- ***************** 2010/02/22 M.Sano 1.12 Add Start ****************************** --
       iv_sales_output_type      => iv_sales_output_type,        -- 6.売上対象区分
 -- ***************** 2010/02/22 M.Sano 1.12 Add End   ****************************** --
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
+      iv_edi_received_date      => iv_edi_received_date,        -- 7.EDI受信日
+-- ***************** 2010/06/14 1.13 T.Maruyama Add END ***************** --
       ov_errbuf                 => lv_errbuf,                   -- エラー・メッセージ
       ov_retcode                => lv_retcode,                  -- リターン・コード
       ov_errmsg                 => lv_errmsg                    -- ユーザー・エラー・メッセージ
@@ -3124,7 +3176,11 @@ AS
 -- ***************** 2010/02/22 M.Sano 1.12 Mod Start ****************************** --
 --    iv_bargain_class          IN      VARCHAR2          -- 5.定番特売区分
     iv_bargain_class          IN      VARCHAR2,         -- 5.定番特売区分
-    iv_sales_output_type      IN      VARCHAR2          -- 6.売上対象区分
+-- ***************** 2010/06/14 1.13 T.Maruyama Mod START ***************** --
+--    iv_sales_output_type      IN      VARCHAR2          -- 6.売上対象区分
+    iv_sales_output_type      IN      VARCHAR2,          -- 6.売上対象区分
+    iv_edi_received_date      IN      VARCHAR2         -- 7.EDI受信日    
+-- ***************** 2010/06/14 1.13 T.Maruyama Mod END ***************** --
 -- ***************** 2010/02/22 M.Sano 1.12 Mod End   ****************************** --
   )
 --
@@ -3188,6 +3244,9 @@ AS
 -- ***************** 2010/02/22 M.Sano 1.12 Add Start ****************************** --
       ,iv_sales_output_type                -- 6.売上対象区分
 -- ***************** 2010/02/22 M.Sano 1.12 Add End   ****************************** --
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
+      ,iv_edi_received_date                -- 7.EDI受信日
+-- ***************** 2010/06/14 1.13 T.Maruyama Add START ***************** --
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #

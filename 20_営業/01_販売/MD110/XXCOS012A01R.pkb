@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A01R (body)
  * Description      : ピックリスト（チェーン・製品別トータル）
  * MD.050           : ピックリスト（チェーン・製品別トータル） MD050_COS_012_A01
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,8 @@ AS
  *                                        ・クイックコード適用開始日～終了日判定日付を受注日に変更する
  *  2010/03/03    1.10  N.Maeda          [E_本稼動_01594]
  *                                       ・定番特売区分による出力制御追加
+ *  2010/06/09    1.11  M.Hirose         [E_本稼動_02638]
+ *                                       ・パラメータにEDI受信日を追加
  *
  *****************************************************************************************/
 --
@@ -223,6 +225,9 @@ AS
 -- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
   cv_tkn_param6             CONSTANT VARCHAR2(100) := 'PARAM6';                 --第６入力パラメータ
 -- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+  cv_tkn_param7             CONSTANT VARCHAR2(100) := 'PARAM7';                 --第７入力パラメータ
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
   cv_tkn_request            CONSTANT VARCHAR2(100) := 'REQUEST';                --要求ＩＤ
 -- 2010/02/12 Ver1.9 Add Start *
   cv_tkn_nm_profile2        CONSTANT VARCHAR2(100) :=  'PRO_TOK';               --プロファイル名(在庫領域)
@@ -381,6 +386,9 @@ AS
 -- 2010/02/12 Ver1.9 Add Start *
   gv_sales_output_type                VARCHAR2(1);                    -- 売上対象出力区分
 -- 2010/02/12 Ver1.9 Add End   *
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+  gd_edi_received_date                DATE := NULL;                   -- EDI受信日
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
 -- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
    gt_qcc_sale_class                  fnd_lookup_values.lookup_code%TYPE;
                                                                       -- 売上区分用
@@ -497,6 +505,9 @@ AS
 -- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add Start *
     iv_sales_output_type      IN      VARCHAR2,         -- 5.売上対象出力区分
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+    iv_edi_received_date      IN      VARCHAR2,         -- 7.EDI受信日
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add End   *
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
@@ -556,7 +567,12 @@ AS
 --                                   iv_token_value5       => iv_sales_output_type
                                    iv_token_value5       => iv_bargain_class,
                                    iv_token_name6        => cv_tkn_param6,
-                                   iv_token_value6       => iv_sales_output_type
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+--                                   iv_token_value6       => iv_sales_output_type
+                                   iv_token_value6       => iv_sales_output_type,
+                                   iv_token_name7        => cv_tkn_param7,
+                                   iv_token_value7       => iv_edi_received_date
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
 -- ********** 2010/03/03 1.10 N.Maeda MOD  END  ********** --
 -- 2010/02/12 Ver1.9 Add End *
                                  );
@@ -593,6 +609,14 @@ AS
    -- 定番特売区分
    gv_bargain_class             := iv_bargain_class;
 -- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+    -- EDI受信日
+    IF ( iv_edi_received_date IS NOT NULL )THEN
+      gd_edi_received_date      := TO_DATE( TO_CHAR( TO_DATE(iv_edi_received_date,   cv_fmt_date)
+                                                    ,cv_fmt_date) || cv_time_min
+                                           ,cv_fmt_datetime );
+    END IF;
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -1446,6 +1470,9 @@ AS
 -- 2010/02/12 Ver1.9 Mod End   *
                 AND     look_val.enabled_flag = ct_enabled_flag_yes
                 AND     look_val.lookup_type = ct_xxcos1_no_inv_item_code )
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+          AND gd_edi_received_date IS NULL  -- EDI受信日が指定されていないこと。
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
           UNION ALL
           SELECT
 -- 2009/08/10 Ver1.7 Add Start *
@@ -1700,6 +1727,13 @@ AS
           AND oola.orig_sys_document_ref      = xeh.order_connection_number
           AND xeh.data_type_code              IN ( ct_data_type_code_edi, ct_data_type_code_shop )
           AND xeh.edi_header_info_id          = xel.edi_header_info_id
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+          AND ( gd_edi_received_date IS NULL
+            OR  ( xeh.edi_received_date >= gd_edi_received_date
+              AND xeh.edi_received_date <  gd_edi_received_date + 1
+                )
+              )                                                       -- パラメータ．EDI受信日
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
 --****************************** 2009/06/05 1.3 T.Kitajima MOD START ******************************--
 --          AND xel.line_no                     = oola.line_number
           AND xel.order_connection_line_number  = oola.orig_sys_line_ref
@@ -1902,6 +1936,13 @@ AS
                            , NVL( xeh.order_date
                                 , xeh.creation_date ) ) ) BETWEEN gd_request_date_from      -- 入力パラメータ：着日（FROM）
                                                               AND gd_request_date_to        -- 入力パラメータ：着日（TO）
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+          AND ( gd_edi_received_date IS NULL
+            OR  ( xeh.edi_received_date >= gd_edi_received_date
+              AND xeh.edi_received_date <  gd_edi_received_date + 1
+                )
+              )                                                       -- パラメータ．EDI受信日
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
 --==非在庫品目の除外、但し、その中でもエラー品目は出力対象
           AND (   NOT EXISTS (
                 SELECT  cv_exists_flag_yes          exists_flag
@@ -2053,6 +2094,9 @@ AS
       g_rpt_data_tab(ln_idx).area_name                    := lt_key_edi_district_name;
       g_rpt_data_tab(ln_idx).shipped_date                 := lt_key_schedule_ship_date;
       g_rpt_data_tab(ln_idx).arrival_date                 := lt_key_request_date;
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+      g_rpt_data_tab(ln_idx).edi_received_date            := gd_edi_received_date;  -- EDI受注日
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
 -- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
       g_rpt_data_tab(ln_idx).regular_sale_class_head      := SUBSTRB( gt_bargain_class_name, 1, 4 );
 -- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
@@ -2765,6 +2809,9 @@ AS
 -- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add Start *
     iv_sales_output_type      IN      VARCHAR2,         -- 6.売上対象出力区分
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+    iv_edi_received_date      IN      VARCHAR2,         -- 7.EDI受信日
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add End   *
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
@@ -2818,6 +2865,9 @@ AS
 -- 2010/02/12 Ver1.9 Add Start *
       iv_sales_output_type      => iv_sales_output_type,        -- 6.売上対象出力区分
 -- 2010/02/12 Ver1.9 Add End   *
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+      iv_edi_received_date      => iv_edi_received_date,        -- 7.EDI受信日
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
       ov_errbuf                 => lv_errbuf,                   -- エラー・メッセージ
       ov_retcode                => lv_retcode,                  -- リターン・コード
       ov_errmsg                 => lv_errmsg                    -- ユーザー・エラー・メッセージ
@@ -2963,7 +3013,11 @@ AS
 -- ********** 2010/03/03 1.10 N.Maeda ADD START ********** --
     iv_bargain_class          IN      VARCHAR2,         -- 5.定番特売区分
 -- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
-    iv_sales_output_type      IN      VARCHAR2         -- 6.売上対象出力区分
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+--    iv_sales_output_type      IN      VARCHAR2         -- 6.売上対象出力区分
+    iv_sales_output_type      IN      VARCHAR2,        -- 6.売上対象出力区分
+    iv_edi_received_date      IN      VARCHAR2         -- 7.EDI受信日
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add End   *
   )
 --
@@ -3028,6 +3082,9 @@ AS
 -- ********** 2010/03/03 1.10 N.Maeda ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add Start *
       ,iv_sales_output_type                -- 6.売上対象出力区分
+-- ********** 2010/06/09 1.11 M.Hirose ADD START ********** --
+      ,iv_edi_received_date                -- 7.EDI受信日
+-- ********** 2010/06/09 1.11 M.Hirose ADD  END  ********** --
 -- 2010/02/12 Ver1.9 Add End   *
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
