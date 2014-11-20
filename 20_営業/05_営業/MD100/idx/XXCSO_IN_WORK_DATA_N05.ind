@@ -1,0 +1,17 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : xxcso_in_work_data_n05
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/05/28    1.0  K.Satomura    èââÒçÏê¨
+ ************************************************************************/
+CREATE INDEX xxcso.xxcso_in_work_data_n05 ON xxcso.xxcso_in_work_data (
+   install_code2
+  ,install2_processed_flag
+) TABLESPACE xxidx2;
