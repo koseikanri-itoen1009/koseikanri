@@ -59,6 +59,7 @@ AS
  *                                       [0000436]PT対応
  *  2009/07/24    1.8   N.Maeda          [0000644](伝票計)原価金額積上処理追加
  *  2009/08/06    1.8   M.Sano           [0000644]レビュー指摘対応
+ *  2009/09/02    1.9   M.Sano           [0001067]PT追加対応
  *
  *****************************************************************************************/
 --
@@ -6785,7 +6786,16 @@ AS
       id_purge_date DATE                                         -- EDI情報削除基準日
     )
     IS
-      SELECT  head.edi_header_info_id,                           -- EDIヘッダ情報ID
+-- 2009/09/02 Ver1.9 M.Sano Mod Start
+--      SELECT  head.edi_header_info_id,                           -- EDIヘッダ情報ID
+      SELECT  /*+ 
+                LEADING( head )
+                USE_NL( line )
+                INDEX( head xxcos_edi_headers_n06)
+                INDEX( line xxcos_edi_lines_n01)
+               */
+              head.edi_header_info_id,                           -- EDIヘッダ情報ID
+-- 2009/09/02 Ver1.9 M.Sano Mod End
               line.edi_line_info_id                              -- EDI明細情報ID
       FROM    xxcos_edi_lines           line,                    -- EDI明細情報テーブル
               xxcos_edi_headers         head                     -- EDIヘッダ情報テーブル
@@ -6820,10 +6830,21 @@ AS
     OPEN edi_head_line_cur(ld_purge_date);
 --
     -- EDI明細情報テーブルデータ削除
-    DELETE
-    FROM    xxcos_edi_lines
-    WHERE   edi_line_info_id IN (
-              SELECT  edi_line_info_id                                -- EDI明細情報ID
+-- 2009/09/02 Ver1.9 M.Sano Add Start
+--    DELETE
+--    FROM    xxcos_edi_lines
+--    WHERE   edi_line_info_id IN (
+--              SELECT  edi_line_info_id                                -- EDI明細情報ID
+    DELETE /*+ INDEX ( line_d xxcos_edi_lines_pk ) */
+    FROM    xxcos_edi_lines line_m
+    WHERE   line_m.edi_line_info_id IN (
+              SELECT  
+                  /*+ LEADING( head )
+                      USE_NL( line )
+                      INDEX( head xxcos_edi_headers_n06)
+                      INDEX( line xxcos_edi_lines_n01)   */
+                      edi_line_info_id                                -- EDI明細情報ID
+-- 2009/09/02 Ver1.9 M.Sano Mod END
               FROM    xxcos_edi_lines         line,                   -- EDI明細情報テーブル
                       xxcos_edi_headers       head                    -- EDIヘッダ情報テーブル
               WHERE   head.data_type_code     = cv_data_type_code     -- データ種コード：EDI受注
