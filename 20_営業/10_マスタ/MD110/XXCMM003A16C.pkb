@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A16C(body)
  * Description      : AFF顧客マスタ更新
  * MD.050           : MD050_CMM_003_A16_AFF顧客マスタ更新
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2009/02/06    1.0   Takuya Kaihara   新規作成
  *  2009/03/09    1.1   Takuya Kaihara   プロファイル値共通化
  *  2009/04/07    1.2   Yutaka.Kuboshima 障害T1_0320の対応
+ *  2009/12/08    1.3   Yutaka.Kuboshima 障害E_本稼動_00382の対応
  *
  *****************************************************************************************/
 --
@@ -107,6 +108,12 @@ AS
   cv_fnd_sytem_date          CONSTANT VARCHAR2(25)  := 'YYYY/MM/DD HH24:MI:SS';        --システム日付
   cv_proc_date_from          CONSTANT VARCHAR2(50)  := '新規登録日又は更新日（開始）'; --新規登録日又は更新日（開始）
   cv_proc_date_to            CONSTANT VARCHAR2(50)  := '新規登録日又は更新日（終了）'; --新規登録日又は更新日（終了）
+--
+-- 2009/12/07 Ver1.3 E_本稼動_00382 add start by Yutaka.Kuboshima
+  cv_min_date                CONSTANT VARCHAR2(15)  := ' 00:00:00';                    --最小時刻
+  cv_max_date                CONSTANT VARCHAR2(15)  := ' 23:59:59';                    --最大時刻
+-- 2009/12/07 Ver1.3 E_本稼動_00382 add end by Yutaka.Kuboshima
+--
 --
   --メッセージ
   cv_file_name_msg           CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-05102';             --ファイル名ノート
@@ -634,13 +641,23 @@ AS
     -- *** ローカル変数 ***
     ln_output_cnt                  NUMBER           := 0;                        --出力件数
     lv_system_date                 VARCHAR2(25)     := NULL;                     --システム日付
+-- 2009/12/08 Ver1.3 E_本稼動_00382 add start by Yutaka.Kuboshima
+    ld_proc_date_from              DATE;
+    ld_proc_date_to                DATE;
+-- 2009/12/08 Ver1.3 E_本稼動_00382 add end by Yutaka.Kuboshima
 --
 --
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
     -- AFF顧客マスタ更新カーソル
-    CURSOR cust_data_cur
+-- 2009/12/07 Ver1.3 E_本稼動_00382 modify start by Yutaka.Kuboshima
+-- カーソル変数の追加
+--    CURSOR cust_data_cur
+    CURSOR cust_data_cur(
+      p_proc_date_from IN DATE
+     ,p_proc_date_to   IN DATE)
+-- 2009/12/07 Ver1.3 E_本稼動_00382 modify end by Yutaka.Kuboshima
     IS
       SELECT hca.account_number       customer_code,    --顧客コード
              hca.account_name         customer_name     --顧客名称
@@ -654,14 +671,22 @@ AS
                                        AND    flvs.enabled_flag = cv_enabled_flag
                                        AND    (flvs.attribute1  = cv_par_lookup_cd
                                        OR     flvs.lookup_code  = cv_lookup_cd_syo ))
-      AND    (TO_DATE(TO_CHAR(hca.last_update_date, cv_fnd_slash_date), cv_fnd_slash_date)
-             BETWEEN TO_DATE(iv_proc_date_from, cv_fnd_slash_date) AND TO_DATE(iv_proc_date_to, cv_fnd_slash_date))
+-- 2009/12/08 Ver1.3 E_本稼動_00382 modify start by Yutaka.Kuboshima
+--      AND    (TO_DATE(TO_CHAR(hca.last_update_date, cv_fnd_slash_date), cv_fnd_slash_date)
+--             BETWEEN TO_DATE(iv_proc_date_from, cv_fnd_slash_date) AND TO_DATE(iv_proc_date_to, cv_fnd_slash_date))
+      AND   ((hca.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to)
+        OR   (xca.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to))
+-- 2009/12/08 Ver1.3 E_本稼動_00382 modify end by Yutaka.Kuboshima
       AND    (NOT EXISTS (SELECT 1
                          FROM   fnd_flex_value_sets  ffvs,
                                 fnd_flex_values      ffvv,
                                 fnd_flex_values_tl   ffvt
                          WHERE  hca.account_number          =  ffvv.flex_value
-                         AND    hca.account_name            =  ffvt.description
+-- 2009/12/08 Ver1.3 E_本稼動_00382 modify start by Yutaka.Kuboshima
+-- アカウント名がNULLの場合、必ず抽出対象となるので修正
+--                         AND    hca.account_name            =  ffvt.description
+                         AND    NVL(hca.account_name, 'X')  =  NVL(ffvt.description, 'X')
+-- 2009/12/08 Ver1.3 E_本稼動_00382 modify end by Yutaka.Kuboshima
                          AND    ffvs.flex_value_set_name    =  cv_fset_name
                          AND    ffvs.flex_value_set_id      =  ffvv.flex_value_set_id
                          AND    ffvv.flex_value_id          =  ffvt.flex_value_id
@@ -683,6 +708,18 @@ AS
     --システム日付取得
     lv_system_date := TO_CHAR(sysdate, cv_fnd_sytem_date);
 --
+-- 2009/12/07 Ver1.3 E_本稼動_00382 add start by Yutaka.Kuboshima
+    -- パラメータ(FROM)に' 00:00:00'を付与してDATE型に変換
+    ld_proc_date_from := TO_DATE(iv_proc_date_from || cv_min_date, cv_fnd_sytem_date);
+    -- パラメータ(TO)に' 23:59:59'を付与してDATE型に変換
+    ld_proc_date_to   := TO_DATE(iv_proc_date_to   || cv_max_date, cv_fnd_sytem_date);
+    -- パラメータ(TO)を + 1
+    -- ※夜間バッチ処理で顧客更新処理(顧客最終訪問日更新等)で
+    --   対象となった顧客のWHOカラム更新はシステム日付で更新するため
+    --   業務日付の内での差分では抽出対象とならないため + 1日とする
+    ld_proc_date_to   := ld_proc_date_to + 1;
+-- 2009/12/07 Ver1.3 E_本稼動_00382 add start by Yutaka.Kuboshima
+--
     SELECT NVL(COUNT(hca.account_number), 0)
     INTO   gn_customer_count                          --該当顧客件数
     FROM   hz_cust_accounts     hca,                  --顧客マスタ
@@ -695,14 +732,22 @@ AS
                                      AND    flvs.enabled_flag = cv_enabled_flag
                                      AND    (flvs.attribute1  = cv_par_lookup_cd
                                      OR     flvs.lookup_code  = cv_lookup_cd_syo ))
-    AND    (TO_DATE(TO_CHAR(hca.last_update_date, cv_fnd_slash_date), cv_fnd_slash_date)
-           BETWEEN TO_DATE(iv_proc_date_from, cv_fnd_slash_date) AND TO_DATE(iv_proc_date_to, cv_fnd_slash_date))
+-- 2009/12/08 Ver1.3 E_本稼動_00382 modify start by Yutaka.Kuboshima
+--    AND    (TO_DATE(TO_CHAR(hca.last_update_date, cv_fnd_slash_date), cv_fnd_slash_date)
+--           BETWEEN TO_DATE(iv_proc_date_from, cv_fnd_slash_date) AND TO_DATE(iv_proc_date_to, cv_fnd_slash_date))
+      AND   ((hca.last_update_date BETWEEN ld_proc_date_from AND ld_proc_date_to)
+        OR   (xca.last_update_date BETWEEN ld_proc_date_from AND ld_proc_date_to))
+-- 2009/12/08 Ver1.3 E_本稼動_00382 modify end by Yutaka.Kuboshima
     AND    (NOT EXISTS (SELECT 1
                        FROM   fnd_flex_value_sets  ffvs,
                               fnd_flex_values      ffvv,
                               fnd_flex_values_tl   ffvt
                        WHERE  hca.account_number          =  ffvv.flex_value
-                       AND    hca.account_name            =  ffvt.description
+-- 2009/12/08 Ver1.3 E_本稼動_00382 modify start by Yutaka.Kuboshima
+-- アカウント名がNULLの場合、必ず抽出対象となるので修正
+--                       AND    hca.account_name            =  ffvt.description
+                       AND    NVL(hca.account_name, 'X')  =  NVL(ffvt.description, 'X')
+-- 2009/12/08 Ver1.3 E_本稼動_00382 modify end by Yutaka.Kuboshima
                        AND    ffvs.flex_value_set_name    =  cv_fset_name
                        AND    ffvs.flex_value_set_id      =  ffvv.flex_value_set_id
                        AND    ffvv.flex_value_id          =  ffvt.flex_value_id
@@ -972,7 +1017,10 @@ AS
 --
     --AFF顧客マスタ更新カーソルループ
     << cust_for_loop >>
-    FOR cust_data_rec IN cust_data_cur
+-- 2009/12/07 Ver1.3 E_本稼動_00382 modify start by Yutaka.Kuboshima
+--    FOR cust_data_rec IN cust_data_cur
+    FOR cust_data_rec IN cust_data_cur(ld_proc_date_from, ld_proc_date_to)
+-- 2009/12/07 Ver1.3 E_本稼動_00382 modify end by Yutaka.Kuboshima
     LOOP
         -- ===============================
         -- 可変部の取得
