@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY APPS.XXCSM004A03C
+CREATE OR REPLACE PACKAGE BODY XXCSM004A03C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタと資格ポイントマスタから各営業員の資格ポイントを算出し、
  *                  : 新規獲得ポイント顧客別履歴テーブルに登録します。
  * MD.050           : MD050_CSM_004_A03_新規獲得ポイント集計（資格ポイント集計処理）
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008-12-12    1.0   T.Tsukino        新規作成
  *  2009-04-15    1.1   M.Ohtsuki       ［T1_0568］新・旧職務コードNULL値の対応
  *  2009-07-01    1.2   M.Ohtsuki       ［SCS障害管理番号0000253］対応
+ *  2009/07/07    1.3   M.Ohtsuki       ［SCS障害管理番号0000254］部署コード取得条件の不具合
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -100,7 +101,9 @@ AS
   cv_xxcsm_msg_125        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10125';                             -- 対象従業員コードの発令日取得エラーメッセージ
   cv_xxcsm_msg_126        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10126';                             -- 対象従業員コードの資格コード・職務コード取得エラーメッセージ
   --プロファイル名
-  cv_calc_point           CONSTANT VARCHAR2(100) := 'XXCSM1_CALC_POINT_POST_LEVEL';                 --  プロファイル:XXCSM:ポイント算出用部署階層格納用
+--//+DEL START 2009/07/07 0000254 M.Ohtsuki
+--  cv_calc_point           CONSTANT VARCHAR2(100) := 'XXCSM1_CALC_POINT_POST_LEVEL';                 --  プロファイル:XXCSM:ポイント算出用部署階層格納用
+--//+DEL END   2009/07/07 0000254 M.Ohtsuki
   -- トークンコード
   cv_tkn_prf_name         CONSTANT VARCHAR2(20) := 'PROF_NAME';
   cv_tkn_data             CONSTANT VARCHAR2(20) := 'DATA';
@@ -118,15 +121,25 @@ AS
   cv_tkn_count            CONSTANT VARCHAR2(20) := 'COUNT';
   cv_tkn_process          CONSTANT VARCHAR2(20) := 'PROCESS_DATE';
 --
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+  TYPE gt_loc_lv_ttype IS TABLE OF VARCHAR2(10)                                                     -- テーブル型の宣言
+    INDEX BY BINARY_INTEGER;
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
   gd_process_date         DATE;                                                 -- 業務日付格納用
-  gv_prf_point            VARCHAR2(100);                                        -- プロファイル:XXCSM:ポイント算出用部署階層格納用
+--//DEL START   2009/07/07 0000254 M.Ohtsuki
+--  gv_prf_point            VARCHAR2(100);                                        -- プロファイル:XXCSM:ポイント算出用部署階層格納用
+--//DEL END     2009/07/07 0000254 M.Ohtsuki
   gv_inprocess_date       VARCHAR2(100);                                        -- 入力パラメータ格納用パラメータ
   gv_year                 VARCHAR2(4);                                          -- 対象年度格納用:年
   gv_month                VARCHAR2(2);                                          -- 対象年度格納用:月
   gv_process_date         VARCHAR2(10);                                         -- 処理対象年度月
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+  gt_loc_lv_tab             gt_loc_lv_ttype;                                                        -- テーブル型変数の宣言
+  ln_loc_lv_cnt             NUMBER;                                                                 -- カウンタ
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -158,6 +171,10 @@ AS
     -- *** ローカル定数 ***
     cv_appl_short_name  CONSTANT VARCHAR2(10)    := 'XXCCP';                      -- アプリケーション短縮名
     cv_tkn_value        CONSTANT VARCHAR2(100)   := 'XXCSM_COMMON_PKG';         -- 共通関数名
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+    cv_location_level   CONSTANT VARCHAR2(100) := 'XXCSM1_CALC_POINT_LEVEL';                        -- ポイント算出用部署階層
+    cv_flg_y            CONSTANT VARCHAR2(1) := 'Y';                                                -- フラグ'Y'
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
     -- *** ローカル変数 ***
     lv_prm_msg          VARCHAR2(4000);                                         -- コンカレント入力パラメータメッセージ格納用
     lv_msg              VARCHAR2(100);                                          --
@@ -167,8 +184,22 @@ AS
     ld_chk_date         DATE;                                                   -- 入力パラメータ日付チェック
     -- *** ローカル例外 ***
     prm_err_expt        EXCEPTION;                                              -- 入力パラメータチェックエラー
-    getprofile_err_expt EXCEPTION;                                              -- プロファイル取得エラーメッセージ
+--//+DEL START   2009/07/07 0000254 M.Ohtsuki
+--    getprofile_err_expt EXCEPTION;                                              -- プロファイル取得エラーメッセージ
+--//+DEL END   2009/07/07 0000254 M.Ohtsuki
     get_year_expt       EXCEPTION;                                              -- 年度取得エラーメッセージ
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+    CURSOR get_loc_lv_cur
+    IS
+          SELECT   flv.lookup_code        lookup_code
+          FROM     fnd_lookup_values      flv                                                       -- クイックコード値
+          WHERE    flv.lookup_type        = cv_location_level                                       -- ポイント算出用部署階層
+            AND    flv.language           = USERENV('LANG')                                         -- 言語('JA')
+            AND    flv.enabled_flag       = cv_flg_y                                                -- 使用可能フラグ
+            AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date                    -- 適用開始日
+            AND    NVL(flv.end_date_active,gd_process_date)   >= gd_process_date                    -- 適用終了日
+          ORDER BY flv.lookup_code   DESC;                                                          -- ルックアップコード
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
 --
   BEGIN
 --
@@ -223,17 +254,19 @@ AS
       WHEN OTHERS THEN
         RAISE prm_err_expt;
     END;
+--//+DEL START   2009/07/07 0000254 M.Ohtsuki
     -- ================================
     -- A-1: ③ プロファイル値取得処理
     -- ================================
-    gv_prf_point := FND_PROFILE.VALUE(cv_calc_point);
+--    gv_prf_point := FND_PROFILE.VALUE(cv_calc_point);
 --
     -- プロファイル値取得に失敗した場合
-    IF (gv_prf_point IS NULL) THEN
-      RAISE getprofile_err_expt;
-    END IF;
+--    IF (gv_prf_point IS NULL) THEN
+--      RAISE getprofile_err_expt;
+--    END IF;
+--//+DEL END   2009/07/07 0000254 M.Ohtsuki
     -- =========================
-    -- A-1: ④  年度・月の算出
+    -- A-1: ③  年度・月の算出
     -- =========================
     -- 共通関数XXCSM_COMMON_PKG(XXCSM:年度算出関数)
     xxcsm_common_pkg.get_year_month(
@@ -250,6 +283,17 @@ AS
     END IF;
     gv_year    := lv_year;
     gv_month   := lv_month;
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+--  --==============================================================
+    --A-1: ④ 拠点階層の取得
+    --==============================================================
+    ln_loc_lv_cnt := 0;                                                                             -- 変数の初期化
+    <<get_loc_lv_cur_loop>>                                                                         -- 拠点階層取得LOOP
+    FOR rec IN get_loc_lv_cur LOOP
+      ln_loc_lv_cnt := ln_loc_lv_cnt + 1;
+      gt_loc_lv_tab(ln_loc_lv_cnt)   := rec.lookup_code;                                            -- 拠点階層
+    END LOOP get_loc_lv_cur_loop;
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
 --
   EXCEPTION
     WHEN prm_err_expt THEN
@@ -263,17 +307,19 @@ AS
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
       ov_retcode := cv_status_error;
-    WHEN getprofile_err_expt THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name                            --アプリケーション短縮名
-                     ,iv_name         => cv_xxcsm_msg_005                       --メッセージコード
-                     ,iv_token_name1  => cv_tkn_prf_name                        --トークンコード1
-                     ,iv_token_value1 => cv_calc_point                          --トークン値1
-                   );
-      lv_errbuf  := lv_errmsg;
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
-      ov_retcode := cv_status_error;
+--//+DEL START   2009/07/07 0000254 M.Ohtsuki
+--    WHEN getprofile_err_expt THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name                            --アプリケーション短縮名
+--                     ,iv_name         => cv_xxcsm_msg_005                       --メッセージコード
+--                     ,iv_token_name1  => cv_tkn_prf_name                        --トークンコード1
+--                     ,iv_token_value1 => cv_calc_point                          --トークン値1
+--                   );
+--      lv_errbuf  := lv_errmsg;
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+--      ov_retcode := cv_status_error;
+--//+DEL END   2009/07/07 0000254 M.Ohtsuki
     WHEN get_year_expt THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                       iv_application  => cv_app_name                            --アプリケーション短縮名
@@ -346,6 +392,9 @@ AS
     lv_shikaku_cd        VARCHAR2(100);                                         -- 資格コード
     lv_syokumu_cd        VARCHAR2(100);                                         -- 職務コード
     ln_shikaku_point     NUMBER;                                                -- 資格ポイント
+--//+ADD START   2009/07/07 0000254 M.Ohtsuki
+    ln_check_cnt         NUMBER;                                                                    -- 部署チェック用カウンタ
+--//+ADD END     2009/07/07 0000254 M.Ohtsuki
     -- *** ローカル例外 ***
     get_busyo_cd_expt    EXCEPTION;                                             -- 部署コード取得エラーメッセージ
 --
@@ -359,7 +408,19 @@ AS
 --
 --
   -- 部署コード抽出処理
-    SELECT DECODE(gv_prf_point, 'L6',xxlllv.cd_level6,
+--//+ADD START  2009/07/07 0000254 M.Ohtsuki
+      ln_check_cnt := 0;                                                                            -- 変数の初期化
+      lv_busyo_cd  := NULL;                                                                         -- 変数の初期化
+      LOOP
+        EXIT WHEN ln_check_cnt >= ln_loc_lv_cnt                                                      -- ポイント算出用部署階層の件数分
+              OR  lv_busyo_cd IS NOT NULL;                                                          -- 部署コードが取得できるまで
+        ln_check_cnt := ln_check_cnt + 1;
+--//+ADD END    2009/07/07 0000254 M.Ohtsuki
+--//+UPD START  2009/07/07 0000254 M.Ohtsuki
+--    SELECT DECODE(gv_prf_point, 'L6',xxlllv.cd_level6,
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+    SELECT DECODE(gt_loc_lv_tab(ln_check_cnt), 'L6',xxlllv.cd_level6,
+--//+UPD END    2009/07/07 0000254 M.Ohtsuki
                                 'L5',xxlllv.cd_level5,
                                 'L4',xxlllv.cd_level4,
                                 'L3',xxlllv.cd_level3,
@@ -376,6 +437,9 @@ AS
                                                            'L1',xxlllv.cd_level1
                                     )
     ;
+--//+ADD START  2009/07/07 0000254 M.Ohtsuki
+      END LOOP;
+--//+ADD END    2009/07/07 0000254 M.Ohtsuki
 --
   -- 取得結果チェック
     IF (lv_busyo_cd IS NULL) THEN
