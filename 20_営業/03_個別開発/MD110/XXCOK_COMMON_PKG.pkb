@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/03/13    1.7   M.HIRUTA         [障害T1_0020] 基準単位換算数取得 区分内換算対応
  *  2009/03/23    1.8   K.YAMAGUCHI      [障害T1_0074] 見積書の顧客コードから問屋管理コードを導出し、
  *                                                     問屋販売条件請求書の問屋管理コードで検索を行う
+ *  2009/04/09    1.9   K.YAMAGUCHI      [障害T1_0341] 請求先顧客取得 抽出条件変更
  *
  *****************************************************************************************/
   -- ==============================
@@ -2536,18 +2537,20 @@ AS
       AND    bill_hzcp_1.site_use_id                   IS NULL
              --請求先顧客マスタ.顧客ID                 = 請求先顧客プロファイル.顧客ID
       AND    bill_hzca_1.cust_account_id               = bill_hzcp_1.cust_account_id
-      AND    NOT EXISTS(
-               SELECT 'X'
-               FROM   hz_cust_acct_relate_all   cash_hcar_1   --顧客関連マスタ(入金関連)
-                      --顧客関連マスタ(入金関連).ステータス   = ‘A’
-               WHERE  cash_hcar_1.status                      = cv_status_a
-                      --顧客関連マスタ(入金関連).関連分類     = ‘2’ (入金)
-               AND    cash_hcar_1.attribute1                  = cv_receipt_of_money_2
-                      --顧客関連マスタ(入金関連).関連先顧客ID = 請求先顧客マスタ.顧客ID
-               AND    cash_hcar_1.related_cust_account_id     = bill_hzca_1.cust_account_id
-               --顧客関連マスタ(入金関連).組織ID              = ログインユーザの組織ID
-               AND    cash_hcar_1.org_id                      = TO_NUMBER( fnd_profile.value( 'ORG_ID' ) )
-             )
+-- 2009/04/09 Ver.1.9 [障害T1_0341] SCS K.Yamaguchi DEL START
+--      AND    NOT EXISTS(
+--               SELECT 'X'
+--               FROM   hz_cust_acct_relate_all   cash_hcar_1   --顧客関連マスタ(入金関連)
+--                      --顧客関連マスタ(入金関連).ステータス   = ‘A’
+--               WHERE  cash_hcar_1.status                      = cv_status_a
+--                      --顧客関連マスタ(入金関連).関連分類     = ‘2’ (入金)
+--               AND    cash_hcar_1.attribute1                  = cv_receipt_of_money_2
+--                      --顧客関連マスタ(入金関連).関連先顧客ID = 請求先顧客マスタ.顧客ID
+--               AND    cash_hcar_1.related_cust_account_id     = bill_hzca_1.cust_account_id
+--               --顧客関連マスタ(入金関連).組織ID              = ログインユーザの組織ID
+--               AND    cash_hcar_1.org_id                      = TO_NUMBER( fnd_profile.value( 'ORG_ID' ) )
+--             )
+-- 2009/04/09 Ver.1.9 [障害T1_0341] SCS K.Yamaguchi DEL END
       UNION ALL
       SELECT ship_hzca_2.account_number      AS bill_account_number   --請求先顧客コード
            , ship_hzca_2.account_number      AS ship_account_number   --出荷先顧客コード
@@ -2562,19 +2565,21 @@ AS
       AND    bill_hsua_2.org_id              = TO_NUMBER( fnd_profile.value( 'ORG_ID' ) )
              --出荷先顧客使用目的.組織ID     = ログインユーザの組織ID
       AND    ship_hsua_2.org_id              = TO_NUMBER( fnd_profile.value( 'ORG_ID' ) )
-      AND    NOT EXISTS(
-               SELECT ROWNUM
-               FROM   hz_cust_acct_relate_all ex_hcar_2        --顧客関連マスタ
-               WHERE   --顧客関連マスタ(請求関連).顧客ID        = 出荷先顧客マスタ.顧客ID
-                       (ex_hcar_2.cust_account_id               = ship_hzca_2.cust_account_id
-                        --
-                        --顧客関連マスタ(請求関連).関連先顧客ID = 出荷先顧客マスタ.顧客ID
-               OR       ex_hcar_2.related_cust_account_id       = ship_hzca_2.cust_account_id)
-                        --顧客関連マスタ(請求関連).ステータス   = ‘A’
-               AND      ex_hcar_2.status                        = cv_status_a
-                        --請求先顧客所在地.組織ID               = ログインユーザの組織ID
-               AND      ex_hcar_2.org_id                        = TO_NUMBER( fnd_profile.value( 'ORG_ID' ) )
-                       )
+-- 2009/04/09 Ver.1.9 [障害T1_0341] SCS K.Yamaguchi DEL START
+--      AND    NOT EXISTS(
+--               SELECT ROWNUM
+--               FROM   hz_cust_acct_relate_all ex_hcar_2        --顧客関連マスタ
+--               WHERE   --顧客関連マスタ(請求関連).顧客ID        = 出荷先顧客マスタ.顧客ID
+--                       (ex_hcar_2.cust_account_id               = ship_hzca_2.cust_account_id
+--                        --
+--                        --顧客関連マスタ(請求関連).関連先顧客ID = 出荷先顧客マスタ.顧客ID
+--               OR       ex_hcar_2.related_cust_account_id       = ship_hzca_2.cust_account_id)
+--                        --顧客関連マスタ(請求関連).ステータス   = ‘A’
+--               AND      ex_hcar_2.status                        = cv_status_a
+--                        --請求先顧客所在地.組織ID               = ログインユーザの組織ID
+--               AND      ex_hcar_2.org_id                        = TO_NUMBER( fnd_profile.value( 'ORG_ID' ) )
+--                       )
+-- 2009/04/09 Ver.1.9 [障害T1_0341] SCS K.Yamaguchi DEL END
              --請求先顧客マスタ.顧客ID           = 請求先顧客所在地.顧客ID
       AND    ship_hzca_2.cust_account_id         = bill_hasa_2.cust_account_id
              --請求先顧客所在地.顧客所在地ID     = 請求先顧客使用目的.顧客所在地ID
