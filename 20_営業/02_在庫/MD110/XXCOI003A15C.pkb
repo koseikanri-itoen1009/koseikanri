@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A15C(body)
  * Description      : 保管場所転送取引データOIF更新(基準在庫)
  * MD.050           : 保管場所転送取引データOIF更新(基準在庫) MD050_COI_003_A15
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------  ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/02/19    1.1   SCS H.Wada       障害番号 #015
  *  2009/04/06    1.2   SCS T.Nakamura   障害番号 T1_0004
  *                                         VDコラムマスタの更新処理の修正
+ *  2009/12/15    1.3   SCS N.Abe        [E_本稼動_00402]VDコラムマスタ更新処理の修正
  *
  *****************************************************************************************/
 --
@@ -453,7 +454,10 @@ AS
       WHERE  xmvc.customer_id   = hca.cust_account_id 
       AND    hca.account_number = hht_inv_tran_rec.customer_code
       AND    xmvc.column_no     = hht_inv_tran_rec.column_no
-      FOR UPDATE NOWAIT;
+-- == 2009/12/15 V1.3 Added START ===============================================================
+--      FOR UPDATE NOWAIT;
+      FOR UPDATE OF xmvc.vd_column_mst_id NOWAIT;
+-- == 2009/12/15 V1.3 Added END   ===============================================================
     EXCEPTION
       -- 対象データ無し
       WHEN NO_DATA_FOUND THEN
@@ -605,6 +609,9 @@ AS
               ,hz_cust_accounts      hca    -- 顧客アカウント
         WHERE  hca.account_number  = hht_inv_tran_rec.customer_code
         AND    hca.cust_account_id = xmvc1.customer_id
+-- == 2009/12/15 V1.3 Added START ===============================================================
+        AND    xmvc1.column_no     = hht_inv_tran_rec.column_no
+-- == 2009/12/15 V1.3 Added END   ===============================================================
         AND    NOT EXISTS (
           SELECT ROWID
           FROM   xxcoi_mst_vd_column xmvc2   -- VDコラムマスタ(前月情報)
@@ -946,6 +953,11 @@ AS
         -- 当月の品目ID、基準在庫数を更新
         UPDATE xxcoi_mst_vd_column xmvc
         SET    xmvc.inventory_quantity     = (gr_mst_vd_column_rec.inv_qnt + hht_inv_tran_rec.total_qnt)       -- 1.基準在庫数
+-- == 2009/12/15 V1.3 Added START ===============================================================
+              ,xmvc.item_id                = NULL                                            -- 9.品目ID
+              ,xmvc.price                  = NULL                                            --10.単価
+              ,xmvc.hot_cold               = NULL                                            --11.H/C
+-- == 2009/12/15 V1.3 Added END   ===============================================================
               ,xmvc.last_updated_by        = cn_last_updated_by                              -- 2.最終更新者
               ,xmvc.last_update_date       = cd_last_update_date                             -- 3.最終更新日
               ,xmvc.last_update_login      = cn_last_update_login                            -- 4.最終更新ログイン
@@ -1006,6 +1018,14 @@ AS
         UPDATE xxcoi_mst_vd_column xmvc
         SET    xmvc.inventory_quantity     = (gr_mst_vd_column_rec.inv_qnt + hht_inv_tran_rec.total_qnt)           -- 1.基準在庫数
               ,xmvc.last_month_inventory_quantity = (gr_mst_vd_column_rec.lm_inv_qnt + hht_inv_tran_rec.total_qnt) -- 2.前月末基準在庫数
+-- == 2009/12/15 V1.3 Added START ===============================================================
+              ,xmvc.item_id                = NULL                                            --10.品目ID
+              ,xmvc.price                  = NULL                                            --11.単価
+              ,xmvc.hot_cold               = NULL                                            --12.H/C
+              ,xmvc.last_month_item_id     = NULL                                            --13.前月末品目ID
+              ,xmvc.last_month_price       = NULL                                            --14.前月末単価
+              ,xmvc.last_month_hot_cold    = NULL                                            --15.前月末H/C
+-- == 2009/12/15 V1.3 Added END   ===============================================================
               ,xmvc.last_updated_by        = cn_last_updated_by                              -- 3.最終更新者
               ,xmvc.last_update_date       = cd_last_update_date                             -- 4.最終更新日
               ,xmvc.last_update_login      = cn_last_update_login                            -- 5.最終更新ログイン
