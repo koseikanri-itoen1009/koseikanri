@@ -1,0 +1,1 @@
+CREATE INDEX gmi.gmi_ijm_n01 ON gmi.ic_jrnl_mst( attribute1 ) TABLESPACE apps_ts_tx_idx;

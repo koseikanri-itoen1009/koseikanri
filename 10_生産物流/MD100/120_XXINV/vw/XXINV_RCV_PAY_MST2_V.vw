@@ -74,20 +74,22 @@ CREATE OR REPLACE VIEW xxinv_rcv_pay_mst2_v
               ,gme_material_details     gmd_b
               ,gme_batch_header         gbh_b
               ,gmd_routings_b           grb_b
-              ,( SELECT gbh_item.batch_id
-                       ,gmd_item.line_no
-                       ,MAX(DECODE(gmd_item.line_type,-1,xicv.item_class_code,null)) item_class_origin
-                       ,MAX(DECODE(gmd_item.line_type, 1,xicv.item_class_code,null)) item_class_ahead
-                 FROM   gme_batch_header         gbh_item
-                       ,gme_material_details     gmd_item
-                       ,gmd_routings_b           grb_item
-                       ,xxcmn_item_categories4_v xicv
-                 WHERE  gbh_item.batch_id      = gmd_item.batch_id
-                 AND    gbh_item.routing_id    = grb_item.routing_id
-                 AND    grb_item.routing_class = '70'
-                 AND    gmd_item.item_id       = xicv.item_id
-                 GROUP BY gbh_item.batch_id
-                         ,gmd_item.line_no ) gmd_item_b
+--mod start 2008/09/22 Y.Yamamoto PT 2_1_12 #63 çƒâ¸èC
+--              ,( SELECT gbh_item.batch_id
+--                       ,gmd_item.line_no
+--                       ,MAX(DECODE(gmd_item.line_type,-1,xicv.item_class_code,null)) item_class_origin
+--                       ,MAX(DECODE(gmd_item.line_type, 1,xicv.item_class_code,null)) item_class_ahead
+--                 FROM   gme_batch_header         gbh_item
+--                       ,gme_material_details     gmd_item
+--                       ,gmd_routings_b           grb_item
+--                       ,xxcmn_item_categories4_v xicv
+--                 WHERE  gbh_item.batch_id      = gmd_item.batch_id
+--                 AND    gbh_item.routing_id    = grb_item.routing_id
+--                 AND    grb_item.routing_class = '70'
+--                 AND    gmd_item.item_id       = xicv.item_id
+--                 GROUP BY gbh_item.batch_id
+--                         ,gmd_item.line_no ) gmd_item_b
+--mod end 2008/09/22 Y.Yamamoto
         WHERE  xrpm_b.doc_type          = 'PROD'
         AND    xrpm_b.routing_class     = '70'
         AND    gbh_b.batch_id           = gmd_b.batch_id
@@ -102,10 +104,30 @@ CREATE OR REPLACE VIEW xxinv_rcv_pay_mst2_v
          OR  (( gmd_b.attribute5        IS NOT NULL )
           AND ( xrpm_b.hit_in_div       = gmd_b.attribute5 )))
 --mod start 2008/07/08 Y.Yamamoto
-        AND    gmd_item_b.batch_id      = gmd_b.batch_id
-        AND    gmd_item_b.line_no       = gmd_b.line_no
-        AND    xrpm_b.item_div_ahead    = gmd_item_b.item_class_ahead
-        AND    xrpm_b.item_div_origin   = gmd_item_b.item_class_origin
+--mod start 2008/09/22 Y.Yamamoto PT 2_1_12 #63 çƒâ¸èC
+--        AND    gmd_item_b.batch_id      = gmd_b.batch_id
+--        AND    gmd_item_b.line_no       = gmd_b.line_no
+--        AND    xrpm_b.item_div_ahead    = gmd_item_b.item_class_ahead
+--        AND    xrpm_b.item_div_origin   = gmd_item_b.item_class_origin
+        AND    EXISTS
+               ( SELECT 1
+                 FROM   gme_batch_header         gbh_item
+                       ,gme_material_details     gmd_item
+                       ,gmd_routings_b           grb_item
+                       ,xxcmn_item_categories4_v xicv
+                 WHERE  gbh_item.batch_id      = gmd_item.batch_id
+                 AND    gbh_item.routing_id    = grb_item.routing_id
+                 AND    grb_item.routing_class = '70'
+                 AND    gmd_item.item_id       = xicv.item_id
+                 AND    gmd_item.batch_id      = gmd_b.batch_id
+                 AND    gmd_item.line_no       = gmd_b.line_no
+                 GROUP BY gbh_item.batch_id
+                         ,gmd_item.line_no
+                 HAVING
+                        xrpm_b.item_div_origin = MAX(DECODE(gmd_item.line_type,-1,xicv.item_class_code,null)) 
+                 AND    xrpm_b.item_div_ahead  = MAX(DECODE(gmd_item.line_type, 1,xicv.item_class_code,null)) 
+               )
+--mod end 2008/09/22 Y.Yamamoto PT 2_1_12 #63 çƒâ¸èC
   ) xrpm
   ;
 --

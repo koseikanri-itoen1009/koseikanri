@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/09/05    1.16  Yasuhisa Yamamoto  PT 2_1_12 再改修
  *  2008/09/17    1.17  Yasuhisa Yamamoto  PT 2_1_12 #63
  *  2008/09/19    1.18  Yasuhisa Yamamoto  T_TE080_BPO_550 #32#33,T_S_466,変更#171
+ *  2008/09/22    1.19  Yasuhisa Yamamoto  PT 2_1_12 #63 再改修
  *
  *****************************************************************************************/
 --
@@ -931,7 +932,10 @@ AS
 -- 08/09/19 Y.Yamamoto ADD v1.18 End
       )
     IS
-    SELECT xilv.whse_code                                       -- 倉庫コード
+-- 08/09/22 Y.Yamamoto ADD v1.19 Start
+--    SELECT xilv.whse_code                                       -- 倉庫コード
+    SELECT /*+ no_merge(xrpm) leading(xrpm) use_nl(xilv.iwm) */ xilv.whse_code -- 倉庫コード
+-- 08/09/22 Y.Yamamoto ADD v1.19 End
           ,ximv.item_id                                         -- 品目ID
           ,ximv.item_no                                         -- 品目コード
           ,ilm.lot_no                                           -- ロットNo
@@ -966,7 +970,10 @@ AS
           ,xxcmn_item_categories5_v                  xicv       -- OPM品目カテゴリ割当情報VIEW5
 -- 08/07/23 Y.Yamamoto ADD v1.14 End
           ,ic_lots_mst                               ilm        -- OPMロットマスタ
-          ,(SELECT  xrpmv.whse_code                             -- 倉庫コード
+-- 08/09/22 Y.Yamamoto ADD v1.19 Start
+--          ,(SELECT  xrpmv.whse_code                             -- 倉庫コード
+          ,(SELECT /*+ no_merge(xrpmv) */ xrpmv.whse_code       -- 倉庫コード
+-- 08/09/22 Y.Yamamoto ADD v1.19 End
                    ,xrpmv.location                              -- 保管倉庫コード
                    ,xrpmv.item_id                               -- 品目ID
                    ,xrpmv.lot_id                                -- ロットID
@@ -991,7 +998,10 @@ AS
                    ,xrpmv.trans_cnt                             -- トランザクション系データの抽出確認用
 -- 08/07/09 Y.Yamamoto ADD v1.14 End
                            -- 文書タイプ"ADJI"（在庫調整）の抽出
-            FROM ( SELECT  itc_adji.whse_code
+-- 08/09/22 Y.Yamamoto ADD v1.19 Start
+--            FROM ( SELECT  itc_adji.whse_code
+            FROM ( SELECT /*+ leading(itc_adji) */ itc_adji.whse_code
+-- 08/09/22 Y.Yamamoto ADD v1.19 End
                           ,itc_adji.location
                           ,itc_adji.item_id
                           ,itc_adji.lot_id
@@ -1013,17 +1023,18 @@ AS
                           ,ic_tran_cmp               itc_adji   -- OPM完了在庫トランザクション
                           ,ic_adjs_jnl               iaj_adji   -- OPM在庫調整ジャーナル
                           ,ic_jrnl_mst               ijm_adji   -- OPMジャーナルマスタ
-                          ,(SELECT gc_reason_adji_xrart as reason_code
-                                  ,ijm_x201.attribute1  as attribute1
-                            FROM   ic_jrnl_mst               ijm_x201
-                                  ,xxpo_rcv_and_rtn_txns     xrart_adji -- 受入返品実績（アドオン）
-                            WHERE  TO_NUMBER( ijm_x201.attribute1 ) = xrart_adji.txns_id
-                            UNION
-                            SELECT gc_reason_adji_xnpt  as reason_code
-                                  ,ijm_x988.attribute1  as attribute1
-                            FROM   ic_jrnl_mst               ijm_x988
-                                  ,xxpo_namaha_prod_txns     xnpt_adji  -- 生葉実績（アドオン）
-                            WHERE  ijm_x988.attribute1              = xnpt_adji.entry_number
+-- 08/09/22 Y.Yamamoto Delete v1.19 Start
+--                          ,(SELECT gc_reason_adji_xrart as reason_code
+--                                  ,ijm_x201.attribute1  as attribute1
+--                            FROM   ic_jrnl_mst               ijm_x201
+--                                  ,xxpo_rcv_and_rtn_txns     xrart_adji -- 受入返品実績（アドオン）
+--                            WHERE  TO_NUMBER( ijm_x201.attribute1 ) = xrart_adji.txns_id
+--                            UNION
+--                            SELECT gc_reason_adji_xnpt  as reason_code
+--                                  ,ijm_x988.attribute1  as attribute1
+--                            FROM   ic_jrnl_mst               ijm_x988
+--                                  ,xxpo_namaha_prod_txns     xnpt_adji  -- 生葉実績（アドオン）
+--                            WHERE  ijm_x988.attribute1              = xnpt_adji.entry_number
 -- 08/07/22 Y.Yamamoto Delete v1.14 Start
 --                            UNION
 --                            SELECT gc_reason_adji_xvst  as reason_code
@@ -1033,19 +1044,20 @@ AS
 --                            WHERE  TO_NUMBER( ijm_x977.attribute1 ) = xvst_adji.txns_id
 --                            AND    xvst_adji.txns_type              = gc_xvst_txns_type_1
 -- 08/07/22 Y.Yamamoto Delete v1.14 End
-                            UNION
-                            SELECT gc_reason_adji_xmril as reason_code
-                                  ,ijm_x123.attribute1  as attribute1
-                            FROM   ic_jrnl_mst               ijm_x123
-                                  ,xxinv_mov_req_instr_lines xmril_adji -- 移動依頼/指示明細（アドオン）
-                            WHERE  TO_NUMBER( ijm_x123.attribute1 ) = xmril_adji.mov_line_id 
+--                            UNION
+--                            SELECT gc_reason_adji_xmril as reason_code
+--                                  ,ijm_x123.attribute1  as attribute1
+--                            FROM   ic_jrnl_mst               ijm_x123
+--                                  ,xxinv_mov_req_instr_lines xmril_adji -- 移動依頼/指示明細（アドオン）
+--                            WHERE  TO_NUMBER( ijm_x123.attribute1 ) = xmril_adji.mov_line_id 
 -- 08/07/08 Y.Yamamoto ADD v1.14 Start
-                            UNION -- 重複防止のためのダミーデータ
-                            SELECT gc_doc_type_adji     as reason_code
-                                  ,NULL                 as attribute1
-                            FROM   DUAL
+--                            UNION -- 重複防止のためのダミーデータ
+--                            SELECT gc_doc_type_adji     as reason_code
+--                                  ,NULL                 as attribute1
+--                            FROM   DUAL
 -- 08/07/08 Y.Yamamoto ADD v1.14 End
-                           ) xx_data                                    -- 各アドオンに存在するデータ
+--                           ) xx_data                                    -- 各アドオンに存在するデータ
+-- 08/09/22 Y.Yamamoto Delete v1.19 End
                     WHERE  itc_adji.doc_type                 = gc_doc_type_adji
                     AND    xrpm6v.use_div_invent             = gc_use_div_invent_y
 -- 08/09/17 Y.Yamamoto Update v1.17 Start
@@ -1060,13 +1072,41 @@ AS
 -- 08/07/22 Y.Yamamoto Update v1.14 Start
 --                    AND    itc_adji.reason_code              = xx_data.reason_code
 --                    AND    ijm_adji.attribute1               = xx_data.attribute1
-                    AND (((ijm_adji.attribute1               IS NULL)
-                      AND (xx_data.reason_code               = gc_doc_type_adji))
-                     OR  ((ijm_adji.attribute1               IS NOT NULL)
-                      AND ((itc_adji.reason_code             = xx_data.reason_code)
-                      AND  (ijm_adji.attribute1              = xx_data.attribute1))
-                      OR  ((itc_adji.reason_code             = gc_reason_adji_xvst)
-                      AND  (xx_data.reason_code              = gc_doc_type_adji))))
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND (((ijm_adji.attribute1               IS NULL)
+--                      AND (xx_data.reason_code               = gc_doc_type_adji))
+--                     OR  ((ijm_adji.attribute1               IS NOT NULL)
+--                      AND ((itc_adji.reason_code             = xx_data.reason_code)
+--                      AND  (ijm_adji.attribute1              = xx_data.attribute1))
+--                      OR  ((itc_adji.reason_code             = gc_reason_adji_xvst)
+--                      AND  (xx_data.reason_code              = gc_doc_type_adji))))
+                     AND   ((ijm_adji.attribute1 IS NULL )
+                       OR  ((ijm_adji.attribute1 IS NOT NULL)
+                        AND ((itc_adji.reason_code = gc_reason_adji_xvst)
+                          OR (EXISTS(
+                                 SELECT /*+ leading(ijm_x201) use_nl(ijm_x201 xrart_adji) */ 1
+                                 FROM   ic_jrnl_mst ijm_x201
+                                       ,xxpo_rcv_and_rtn_txns xrart_adji
+                                 WHERE  TO_NUMBER ( ijm_x201.attribute1 ) = xrart_adji.txns_id
+                                 AND    itc_adji.reason_code = gc_reason_adji_xrart
+                                 AND    ijm_adji.attribute1  = ijm_x201.attribute1
+                                 UNION
+                                 SELECT /*+ leading(ijm_x988) use_nl(ijm_x988 xnpt_adji) */ 1
+                                 FROM   ic_jrnl_mst ijm_x988
+                                       ,xxpo_namaha_prod_txns  xnpt_adji
+                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+                                 AND    itc_adji.reason_code = gc_reason_adji_xnpt
+                                 AND    ijm_adji.attribute1  = ijm_x988.attribute1
+                                 UNION
+                                 SELECT /*+ leading(ijm_x123) use_nl(ijm_x123 xmril_adji)*/ 1
+                                 FROM   ic_jrnl_mst ijm_x123
+                                       ,xxinv_mov_req_instr_lines xmril_adji
+                                 WHERE  TO_NUMBER ( ijm_x123.attribute1 ) = xmril_adji.mov_line_id
+                                   AND  itc_adji.reason_code = gc_reason_adji_xmril
+                                   AND  ijm_adji.attribute1  = ijm_x123.attribute1 
+                                 ))
+                            )))
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/07/22 Y.Yamamoto Update v1.14 End
                     AND    itc_adji.doc_type                 = iaj_adji.trans_type
                     AND    itc_adji.doc_id                   = iaj_adji.doc_id
@@ -1081,7 +1121,10 @@ AS
 --                    UNION  -- 文書タイプ"TRNI"（積送なし移動）の抽出
                     UNION ALL  -- 文書タイプ"TRNI"（積送なし移動）の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT itc_trni.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT itc_trni.whse_code
+                    SELECT /*+ leading(itc_trni) */ itc_trni.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,itc_trni.location
                           ,itc_trni.item_id
                           ,itc_trni.lot_id
@@ -1104,14 +1147,16 @@ AS
                           ,ic_adjs_jnl               iaj_trni   -- OPM在庫調整ジャーナル
                           ,ic_jrnl_mst               ijm_trni   -- OPMジャーナルマスタ
                           ,xxinv_mov_req_instr_lines xmril_trni -- 移動依頼/指示明細（アドオン）
-                          ,( SELECT itc_b.whse_code
-                                   ,itc_b.doc_id
-                                   ,COUNT(*)      AS itc_cnt
-                             FROM   ic_tran_cmp      itc_b      -- OPM完了在庫トランザクション
-                             WHERE  itc_b.doc_type          = gc_doc_type_trni
-                             GROUP BY itc_b.whse_code
-                                     ,itc_b.doc_id
-                           )                         itc_trni_cnt
+-- 08/09/22 Y.Yamamoto Delete v1.19 Start
+--                          ,( SELECT itc_b.whse_code
+--                                   ,itc_b.doc_id
+--                                   ,COUNT(*)      AS itc_cnt
+--                             FROM   ic_tran_cmp      itc_b      -- OPM完了在庫トランザクション
+--                             WHERE  itc_b.doc_type          = gc_doc_type_trni
+--                             GROUP BY itc_b.whse_code
+--                                     ,itc_b.doc_id
+--                           )                         itc_trni_cnt
+-- 08/09/22 Y.Yamamoto Delete v1.19 End
                     WHERE  itc_trni.doc_type                = gc_doc_type_trni
                     AND    xrpm9v.doc_type                  = gc_doc_type_trni
                     AND    xrpm9v.use_div_invent            = gc_use_div_invent_y
@@ -1134,14 +1179,29 @@ AS
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itc_trni.trans_qty )
                     AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itc_trni.trans_qty ) )
 -- 08/05/07 Y.Yamamoto Update v1.1 End
-                    AND    itc_trni_cnt.whse_code           = itc_trni.whse_code
-                    AND    itc_trni_cnt.doc_id              = itc_trni.doc_id
-                    AND    itc_trni_cnt.itc_cnt             = 1
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND    itc_trni_cnt.whse_code           = itc_trni.whse_code
+--                    AND    itc_trni_cnt.doc_id              = itc_trni.doc_id
+--                    AND    itc_trni_cnt.itc_cnt             = 1
+                    AND    EXISTS(
+                             SELECT 1
+                             FROM   ic_tran_cmp itc_b
+                             WHERE  itc_b.doc_type  = gc_doc_type_trni
+                             AND    itc_b.whse_code = itc_trni.whse_code
+                             AND    itc_b.doc_id    = itc_trni.doc_id
+                             GROUP BY 
+                                    itc_b.whse_code
+                                  , itc_b.doc_id
+                             HAVING COUNT(*) = 1 )
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/06/07 Y.Yamamoto Update v2.1 Start
 --                    UNION  -- 文書タイプ"XFER"（積送あり移動）の抽出
                     UNION ALL  -- 文書タイプ"XFER"（積送あり移動）の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT itp_xfer.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT itp_xfer.whse_code
+                    SELECT /*+ leading(itp_xfer) index(itp_xfer ic_tran_pndi5) */ itp_xfer.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,itp_xfer.location
                           ,itp_xfer.item_id
                           ,itp_xfer.lot_id
@@ -1163,15 +1223,17 @@ AS
                           ,ic_tran_pnd               itp_xfer   -- OPM保留在庫トランザクション
                           ,ic_xfer_mst               ixm_xfer   -- OPM在庫転送マスタ
                           ,xxinv_mov_req_instr_lines xmril_xfer -- 移動依頼/指示明細（アドオン）
-                          ,( SELECT itp_b.whse_code
-                                   ,itp_b.doc_id
-                                   ,COUNT(*)      AS itp_cnt
-                             FROM   ic_tran_pnd      itp_b      -- OPM保留在庫トランザクション
-                             WHERE  itp_b.doc_type          = gc_doc_type_xfer
-                             AND    itp_b.completed_ind     = gc_completed_ind_1
-                             GROUP BY itp_b.whse_code
-                                     ,itp_b.doc_id
-                           )                         itp_xfer_cnt
+-- 08/09/22 Y.Yamamoto Delete v1.19 Start
+--                          ,( SELECT itp_b.whse_code
+--                                   ,itp_b.doc_id
+--                                   ,COUNT(*)      AS itp_cnt
+--                             FROM   ic_tran_pnd      itp_b      -- OPM保留在庫トランザクション
+--                             WHERE  itp_b.doc_type          = gc_doc_type_xfer
+--                             AND    itp_b.completed_ind     = gc_completed_ind_1
+--                             GROUP BY itp_b.whse_code
+--                                     ,itp_b.doc_id
+--                           )                         itp_xfer_cnt
+-- 08/09/22 Y.Yamamoto Delete v1.19 End
                     WHERE  itp_xfer.doc_type                = gc_doc_type_xfer
                     AND    itp_xfer.completed_ind           = gc_completed_ind_1
                     AND    xrpm9v.doc_type                  = gc_doc_type_xfer
@@ -1192,14 +1254,29 @@ AS
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
                     AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itp_xfer.trans_qty ) )
 -- 08/05/07 Y.Yamamoto Update v1.1 End
-                    AND    itp_xfer_cnt.whse_code           = itp_xfer.whse_code
-                    AND    itp_xfer_cnt.doc_id              = itp_xfer.doc_id
-                    AND    itp_xfer_cnt.itp_cnt             = 1
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND    itp_xfer_cnt.whse_code           = itp_xfer.whse_code
+--                    AND    itp_xfer_cnt.doc_id              = itp_xfer.doc_id
+--                    AND    itp_xfer_cnt.itp_cnt             = 1
+                    AND    EXISTS(
+                           SELECT 1
+                           FROM   ic_tran_pnd itp_b
+                           WHERE  itp_b.doc_type      = gc_doc_type_xfer
+                           AND    itp_b.completed_ind = gc_completed_ind_1
+                           AND    itp_b.whse_code     = itp_xfer.whse_code
+                           AND    itp_b.doc_id        = itp_xfer.doc_id
+                           GROUP BY itp_b.whse_code
+                                   ,itp_b.doc_id
+                           HAVING COUNT(*) = 1 )
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/06/07 Y.Yamamoto Update v2.1 Start
 --                    UNION  -- 文書タイプ"OMSO"（受注）の抽出
                     UNION ALL  -- 文書タイプ"OMSO"（受注）の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT itp_omso.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT itp_omso.whse_code
+                    SELECT  /*+ leading(itp_omso) */ itp_omso.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,itp_omso.location
                           ,itp_omso.item_id
                           ,itp_omso.lot_id
@@ -1244,7 +1321,10 @@ AS
 --                    UNION  -- 文書タイプ"PROD"（生産）の抽出
                     UNION ALL  -- 文書タイプ"PROD"（生産）の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT itp_prod.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT itp_prod.whse_code
+                    SELECT /*+ leading(itp_prod) push_pred(xrpm2v.xrpm) */ itp_prod.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,itp_prod.location
                           ,itp_prod.item_id
                           ,itp_prod.lot_id
@@ -1283,7 +1363,10 @@ AS
 --                    UNION  -- 文書タイプ"PORC"（発注）の抽出
                     UNION ALL  -- 文書タイプ"PORC"（発注）の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT itp_porc.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT itp_porc.whse_code
+                    SELECT /*+ leading(itp_porc)  push_pred(xrpm8v)*/ itp_porc.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,itp_porc.location
                           ,itp_porc.item_id
                           ,itp_porc.lot_id
@@ -1322,7 +1405,10 @@ AS
 --                    UNION  -- 前月末在庫の抽出
                     UNION ALL  -- 前月末在庫の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT xsims_be.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT xsims_be.whse_code
+                    SELECT /*+ leading(xsims_be) use_nl(xsims_be xilv_be.iwm xilv_be.mil xilv_be.haou) */ xsims_be.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,xilv_be.segment1                        AS location
                           ,xsims_be.item_id
                           ,xsims_be.lot_id
@@ -1342,9 +1428,17 @@ AS
                           ,xxcmn_item_locations_v xilv_be
                     WHERE  xsims_be.invent_ym = gv_date_ym_before    -- 棚卸年月前月のもの
                     AND    xilv_be.whse_code = xsims_be.whse_code
-                    AND    xilv_be.segment1 = ( SELECT MIN( x.segment1 )
-                                                FROM   xxcmn_item_locations_v x
-                                                WHERE  x.whse_code = xsims_be.whse_code )
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND    xilv_be.segment1 = ( SELECT MIN( x.segment1 )
+--                                                FROM   xxcmn_item_locations_v x
+--                                                WHERE  x.whse_code = xsims_be.whse_code )
+                    AND    EXISTS(
+                           SELECT /*+ nl_sj */ 1
+                           FROM   xxcmn_item_locations_v x
+                           WHERE  x.whse_code = xsims_be.whse_code
+                           GROUP BY x.whse_code
+                           HAVING   xilv_be.segment1 =MIN (x.segment1))
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/09/10 Y.Yamamoto ADD v1.16 Start
                     HAVING NOT (    SUM( NVL( xsims_be.monthly_stock,0 )) = 0         -- 月末在庫数
                                 AND SUM( NVL( xsims_be.cargo_stock,0   )) = 0         -- 積送中在庫数
@@ -1358,7 +1452,10 @@ AS
 --                    UNION  -- 月末在庫の抽出
                     UNION ALL  -- 月末在庫の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT xsims_nw.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT xsims_nw.whse_code
+                    SELECT /*+ leading(xsims_nw) use_nl(xsims_nw xilv_nw.iwm xilv_nw.mil xilv_nw.haou) */ xsims_nw.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,xilv_nw.segment1                        AS location
                           ,xsims_nw.item_id
                           ,xsims_nw.lot_id
@@ -1378,9 +1475,17 @@ AS
                           ,xxcmn_item_locations_v xilv_nw
                     WHERE  xsims_nw.invent_ym = TO_CHAR( gd_date_ym_first, gc_char_ym_format ) -- 棚卸年月当月のもの
                     AND    xilv_nw.whse_code = xsims_nw.whse_code
-                    AND    xilv_nw.segment1 = ( SELECT MIN( y.segment1 )
-                                                FROM   xxcmn_item_locations_v y
-                                                WHERE  y.whse_code = xsims_nw.whse_code )
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND    xilv_nw.segment1 = ( SELECT MIN( y.segment1 )
+--                                                FROM   xxcmn_item_locations_v y
+--                                                WHERE  y.whse_code = xsims_nw.whse_code )
+                    AND    EXISTS(
+                           SELECT /*+ nl_sj */ 1
+                           FROM   xxcmn_item_locations_v x
+                           WHERE  x.whse_code = xilv_nw.whse_code
+                           GROUP BY x.whse_code
+                           HAVING   xilv_nw.segment1 = MIN(x.segment1)) 
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/09/10 Y.Yamamoto ADD v1.16 Start
                     HAVING NOT (    SUM( NVL( xsims_nw.monthly_stock,0 )) = 0         -- 当月末在庫数
                                 AND SUM( NVL( xsims_nw.cargo_stock,0   )) = 0         -- 当月積送中在庫数
@@ -1394,7 +1499,10 @@ AS
 --                    UNION  -- 棚卸結果情報の抽出
                     UNION ALL  -- 棚卸結果情報の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT xsir.invent_whse_code AS whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT xsir.invent_whse_code AS whse_code
+                    SELECT /*+ leading(XSIR) use_nl(XSIR XILV_SIR.iwm XILV_SIR.mil XILV_SIR.haou) */ xsir.invent_whse_code AS whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,xilv_sir.segment1                       AS location
                           ,xsir.item_id
 -- 08/05/09 Y.Yamamoto Update v1.3 Start
@@ -1422,9 +1530,17 @@ AS
                                                  AND     gd_date_ymt_last       -- 月末日で取得
 -- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    xilv_sir.whse_code = xsir.invent_whse_code
-                    AND    xilv_sir.segment1 = ( SELECT MIN( z.segment1 )
-                                                 FROM   xxcmn_item_locations_v z
-                                                 WHERE  z.whse_code = xsir.invent_whse_code )
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND    xilv_sir.segment1 = ( SELECT MIN( z.segment1 )
+--                                                 FROM   xxcmn_item_locations_v z
+--                                                 WHERE  z.whse_code = xsir.invent_whse_code )
+                    AND    EXISTS(
+                           SELECT /*+ nl_sj */ 1
+                           FROM   xxcmn_item_locations_v z
+                           WHERE  z.whse_code = xsir.invent_whse_code
+                           GROUP BY z.whse_code
+                           HAVING   xilv_sir.segment1 =MIN(z.segment1)) 
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/09/10 Y.Yamamoto ADD v1.16 Start
                     HAVING NOT (    SUM( xsir.case_amt  ) = 0        -- 棚卸ケース数
                                 AND SUM( xsir.loose_amt ) = 0        -- 棚卸バラ
@@ -1504,9 +1620,17 @@ AS
 -- 08/05/08 Y.Yamamoto Update v1.1 Start
 --        OR xrpm.lot_id                  = 0 )
         OR (ximv.lot_ctl                = 0
-          AND xilv.segment1 = ( SELECT MIN( zz.segment1 )
-                                FROM   xxcmn_item_locations_v zz
-                                WHERE  zz.whse_code = xilv.whse_code ) ) )
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--          AND xilv.segment1 = ( SELECT MIN( zz.segment1 )
+--                                FROM   xxcmn_item_locations_v zz
+--                                WHERE  zz.whse_code = xilv.whse_code ) ) )
+          AND EXISTS(
+              SELECT /*+ nl_sj */ 1
+              FROM   xxcmn_item_locations_v  zz
+              WHERE  zz.whse_code = xilv.whse_code
+              GROUP BY zz.whse_code
+              HAVING   xilv.segment1 = MIN(zz.segment1)))) 
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/05/08 Y.Yamamoto Update v1.1 End
     AND    xrpm.item_id                 = ximv.item_id
     AND    xrpm.lot_id                  = ilm.lot_id
@@ -1663,7 +1787,10 @@ AS
 -- 08/09/19 Y.Yamamoto ADD v1.18 End
       )
     IS
-    SELECT xilv.whse_code                                       -- 倉庫コード
+-- 08/09/22 Y.Yamamoto ADD v1.19 Start
+--    SELECT xilv.whse_code                                       -- 倉庫コード
+    SELECT /*+ no_merge(xrpm) leading(xrpm) use_nl(xilv.iwm) */ xilv.whse_code -- 倉庫コード
+-- 08/09/22 Y.Yamamoto ADD v1.19 End
           ,ximv.item_id                                         -- 品目ID
           ,ximv.item_no                                         -- 品目コード
           ,ilm.lot_no                                           -- ロットNo
@@ -1698,7 +1825,10 @@ AS
           ,xxcmn_item_categories5_v                  xicv       -- OPM品目カテゴリ割当情報VIEW5
 -- 08/07/23 Y.Yamamoto ADD v1.14 Start
           ,ic_lots_mst                               ilm        -- OPMロットマスタ
-          ,(SELECT  xrpmv.whse_code                             -- 倉庫コード
+-- 08/09/22 Y.Yamamoto ADD v1.19 Start
+--          ,(SELECT  xrpmv.whse_code                             -- 倉庫コード
+          ,(SELECT /*+ no_merge(xrpmv) */ xrpmv.whse_code       -- 倉庫コード
+-- 08/09/22 Y.Yamamoto ADD v1.19 End
                    ,xrpmv.location                              -- 保管倉庫コード
                    ,xrpmv.item_id                               -- 品目ID
                    ,xrpmv.lot_id                                -- ロットID
@@ -1723,7 +1853,10 @@ AS
                    ,xrpmv.trans_cnt                             -- トランザクション系データの抽出確認用
 -- 08/07/09 Y.Yamamoto ADD v1.14 End
                            -- 文書タイプ"ADJI"（在庫調整）の抽出
-            FROM ( SELECT  itc_adji.whse_code
+-- 08/09/22 Y.Yamamoto ADD v1.19 Start
+--            FROM ( SELECT  itc_adji.whse_code
+            FROM ( SELECT /*+ leading(itc_adji) */ itc_adji.whse_code
+-- 08/09/22 Y.Yamamoto ADD v1.19 End
                           ,itc_adji.location
                           ,itc_adji.item_id
                           ,itc_adji.lot_id
@@ -1745,17 +1878,18 @@ AS
                           ,ic_tran_cmp               itc_adji   -- OPM完了在庫トランザクション
                           ,ic_adjs_jnl               iaj_adji   -- OPM在庫調整ジャーナル
                           ,ic_jrnl_mst               ijm_adji   -- OPMジャーナルマスタ
-                          ,(SELECT gc_reason_adji_xrart as reason_code
-                                  ,ijm_x201.attribute1  as attribute1
-                            FROM   ic_jrnl_mst               ijm_x201
-                                  ,xxpo_rcv_and_rtn_txns     xrart_adji -- 受入返品実績（アドオン）
-                            WHERE  TO_NUMBER( ijm_x201.attribute1 ) = xrart_adji.txns_id
-                            UNION
-                            SELECT gc_reason_adji_xnpt  as reason_code
-                                  ,ijm_x988.attribute1  as attribute1
-                            FROM   ic_jrnl_mst               ijm_x988
-                                  ,xxpo_namaha_prod_txns     xnpt_adji  -- 生葉実績（アドオン）
-                            WHERE  ijm_x988.attribute1              = xnpt_adji.entry_number
+-- 08/09/22 Y.Yamamoto Delete v1.19 Start
+--                          ,(SELECT gc_reason_adji_xrart as reason_code
+--                                  ,ijm_x201.attribute1  as attribute1
+--                            FROM   ic_jrnl_mst               ijm_x201
+--                                  ,xxpo_rcv_and_rtn_txns     xrart_adji -- 受入返品実績（アドオン）
+--                            WHERE  TO_NUMBER( ijm_x201.attribute1 ) = xrart_adji.txns_id
+--                            UNION
+--                            SELECT gc_reason_adji_xnpt  as reason_code
+--                                  ,ijm_x988.attribute1  as attribute1
+--                            FROM   ic_jrnl_mst               ijm_x988
+--                                  ,xxpo_namaha_prod_txns     xnpt_adji  -- 生葉実績（アドオン）
+--                            WHERE  ijm_x988.attribute1              = xnpt_adji.entry_number
 -- 08/07/22 Y.Yamamoto ADD v1.14 Start
 --                            UNION
 --                            SELECT gc_reason_adji_xvst  as reason_code
@@ -1765,19 +1899,20 @@ AS
 --                            WHERE  TO_NUMBER( ijm_x977.attribute1 ) = xvst_adji.txns_id
 --                            AND    xvst_adji.txns_type              = gc_xvst_txns_type_1
 -- 08/07/22 Y.Yamamoto ADD v1.14 End
-                            UNION
-                            SELECT gc_reason_adji_xmril as reason_code
-                                  ,ijm_x123.attribute1  as attribute1
-                            FROM   ic_jrnl_mst               ijm_x123
-                                  ,xxinv_mov_req_instr_lines xmril_adji -- 移動依頼/指示明細（アドオン）
-                            WHERE  TO_NUMBER( ijm_x123.attribute1 ) = xmril_adji.mov_line_id 
+--                            UNION
+--                            SELECT gc_reason_adji_xmril as reason_code
+--                                  ,ijm_x123.attribute1  as attribute1
+--                            FROM   ic_jrnl_mst               ijm_x123
+--                                  ,xxinv_mov_req_instr_lines xmril_adji -- 移動依頼/指示明細（アドオン）
+--                            WHERE  TO_NUMBER( ijm_x123.attribute1 ) = xmril_adji.mov_line_id 
 -- 08/07/08 Y.Yamamoto ADD v1.14 Start
-                            UNION -- 重複防止のためのダミーデータ
-                            SELECT gc_doc_type_adji     as reason_code
-                                  ,NULL                 as attribute1
-                            FROM   DUAL
+--                            UNION -- 重複防止のためのダミーデータ
+--                            SELECT gc_doc_type_adji     as reason_code
+--                                  ,NULL                 as attribute1
+--                            FROM   DUAL
 -- 08/07/08 Y.Yamamoto ADD v1.14 End
-                           ) xx_data                                    -- 各アドオンに存在するデータ
+--                           ) xx_data                                    -- 各アドオンに存在するデータ
+-- 08/09/22 Y.Yamamoto Delete v1.19 End
                     WHERE  itc_adji.doc_type                 = gc_doc_type_adji
                     AND    xrpm6v.use_div_invent             = gc_use_div_invent_y
 -- 08/09/17 Y.Yamamoto Update v1.17 Start
@@ -1792,13 +1927,41 @@ AS
 -- 08/07/22 Y.Yamamoto Update v1.14 Start
 --                    AND    itc_adji.reason_code              = xx_data.reason_code
 --                    AND    ijm_adji.attribute1               = xx_data.attribute1
-                    AND (((ijm_adji.attribute1               IS NULL)
-                      AND (xx_data.reason_code               = gc_doc_type_adji))
-                     OR  ((ijm_adji.attribute1               IS NOT NULL)
-                      AND ((itc_adji.reason_code             = xx_data.reason_code)
-                      AND  (ijm_adji.attribute1              = xx_data.attribute1))
-                      OR  ((itc_adji.reason_code             = gc_reason_adji_xvst)
-                      AND  (xx_data.reason_code              = gc_doc_type_adji))))
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND (((ijm_adji.attribute1               IS NULL)
+--                      AND (xx_data.reason_code               = gc_doc_type_adji))
+--                     OR  ((ijm_adji.attribute1               IS NOT NULL)
+--                      AND ((itc_adji.reason_code             = xx_data.reason_code)
+--                      AND  (ijm_adji.attribute1              = xx_data.attribute1))
+--                      OR  ((itc_adji.reason_code             = gc_reason_adji_xvst)
+--                      AND  (xx_data.reason_code              = gc_doc_type_adji))))
+                     AND   ((ijm_adji.attribute1 IS NULL )
+                       OR  ((ijm_adji.attribute1 IS NOT NULL)
+                        AND ((itc_adji.reason_code = gc_reason_adji_xvst)
+                          OR (EXISTS(
+                                 SELECT /*+ leading(ijm_x201) use_nl(ijm_x201 xrart_adji) */ 1
+                                 FROM   ic_jrnl_mst ijm_x201
+                                       ,xxpo_rcv_and_rtn_txns xrart_adji
+                                 WHERE  TO_NUMBER ( ijm_x201.attribute1 ) = xrart_adji.txns_id
+                                 AND    itc_adji.reason_code = gc_reason_adji_xrart
+                                 AND    ijm_adji.attribute1  = ijm_x201.attribute1
+                                 UNION
+                                 SELECT /*+ leading(ijm_x988) use_nl(ijm_x988 xnpt_adji) */ 1
+                                 FROM   ic_jrnl_mst ijm_x988
+                                       ,xxpo_namaha_prod_txns  xnpt_adji
+                                 WHERE  ijm_x988.attribute1  = xnpt_adji.entry_number
+                                 AND    itc_adji.reason_code = gc_reason_adji_xnpt
+                                 AND    ijm_adji.attribute1  = ijm_x988.attribute1
+                                 UNION
+                                 SELECT /*+ leading(ijm_x123) use_nl(ijm_x123 xmril_adji)*/ 1
+                                 FROM   ic_jrnl_mst ijm_x123
+                                       ,xxinv_mov_req_instr_lines xmril_adji
+                                 WHERE  TO_NUMBER ( ijm_x123.attribute1 ) = xmril_adji.mov_line_id
+                                   AND  itc_adji.reason_code = gc_reason_adji_xmril
+                                   AND  ijm_adji.attribute1  = ijm_x123.attribute1 
+                                 ))
+                            )))
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/07/22 Y.Yamamoto Update v1.14 End
                     AND    itc_adji.doc_type                 = iaj_adji.trans_type
                     AND    itc_adji.doc_id                   = iaj_adji.doc_id
@@ -1813,7 +1976,10 @@ AS
 --                    UNION  -- 文書タイプ"TRNI"（積送なし移動）の抽出
                     UNION ALL  -- 文書タイプ"TRNI"（積送なし移動）の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT itc_trni.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT itc_trni.whse_code
+                    SELECT /*+ leading(itc_trni) */ itc_trni.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,itc_trni.location
                           ,itc_trni.item_id
                           ,itc_trni.lot_id
@@ -1836,14 +2002,16 @@ AS
                           ,ic_adjs_jnl               iaj_trni   -- OPM在庫調整ジャーナル
                           ,ic_jrnl_mst               ijm_trni   -- OPMジャーナルマスタ
                           ,xxinv_mov_req_instr_lines xmril_trni -- 移動依頼/指示明細（アドオン）
-                          ,( SELECT itc_b.whse_code
-                                   ,itc_b.doc_id
-                                   ,COUNT(*)      AS itc_cnt
-                             FROM   ic_tran_cmp      itc_b      -- OPM完了在庫トランザクション
-                             WHERE  itc_b.doc_type          = gc_doc_type_trni
-                             GROUP BY itc_b.whse_code
-                                     ,itc_b.doc_id
-                           )                         itc_trni_cnt
+-- 08/09/22 Y.Yamamoto Delete v1.19 Start
+--                          ,( SELECT itc_b.whse_code
+--                                   ,itc_b.doc_id
+--                                   ,COUNT(*)      AS itc_cnt
+--                             FROM   ic_tran_cmp      itc_b      -- OPM完了在庫トランザクション
+--                             WHERE  itc_b.doc_type          = gc_doc_type_trni
+--                             GROUP BY itc_b.whse_code
+--                                     ,itc_b.doc_id
+--                           )                         itc_trni_cnt
+-- 08/09/22 Y.Yamamoto Delete v1.19 End
                     WHERE  itc_trni.doc_type                = gc_doc_type_trni
                     AND    xrpm9v.doc_type                  = gc_doc_type_trni
                     AND    xrpm9v.use_div_invent            = gc_use_div_invent_y
@@ -1866,14 +2034,29 @@ AS
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itc_trni.trans_qty )
                     AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itc_trni.trans_qty ) )
 -- 08/05/07 Y.Yamamoto Update v1.1 End
-                    AND    itc_trni_cnt.whse_code           = itc_trni.whse_code
-                    AND    itc_trni_cnt.doc_id              = itc_trni.doc_id
-                    AND    itc_trni_cnt.itc_cnt             = 1
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND    itc_trni_cnt.whse_code           = itc_trni.whse_code
+--                    AND    itc_trni_cnt.doc_id              = itc_trni.doc_id
+--                    AND    itc_trni_cnt.itc_cnt             = 1
+                    AND    EXISTS(
+                             SELECT 1
+                             FROM   ic_tran_cmp itc_b
+                             WHERE  itc_b.doc_type  = gc_doc_type_trni
+                             AND    itc_b.whse_code = itc_trni.whse_code
+                             AND    itc_b.doc_id    = itc_trni.doc_id
+                             GROUP BY 
+                                    itc_b.whse_code
+                                  , itc_b.doc_id
+                             HAVING COUNT(*) = 1 )
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/06/07 Y.Yamamoto Update v2.1 Start
 --                    UNION  -- 文書タイプ"XFER"（積送あり移動）の抽出
                     UNION ALL  -- 文書タイプ"XFER"（積送あり移動）の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT itp_xfer.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT itp_xfer.whse_code
+                    SELECT /*+ leading(itp_xfer) index(itp_xfer ic_tran_pndi5) */ itp_xfer.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,itp_xfer.location
                           ,itp_xfer.item_id
                           ,itp_xfer.lot_id
@@ -1895,15 +2078,17 @@ AS
                           ,ic_tran_pnd               itp_xfer   -- OPM保留在庫トランザクション
                           ,ic_xfer_mst               ixm_xfer   -- OPM在庫転送マスタ
                           ,xxinv_mov_req_instr_lines xmril_xfer -- 移動依頼/指示明細（アドオン）
-                          ,( SELECT itp_b.whse_code
-                                   ,itp_b.doc_id
-                                   ,COUNT(*)      AS itp_cnt
-                             FROM   ic_tran_pnd      itp_b      -- OPM保留在庫トランザクション
-                             WHERE  itp_b.doc_type          = gc_doc_type_xfer
-                             AND    itp_b.completed_ind     = gc_completed_ind_1
-                             GROUP BY itp_b.whse_code
-                                     ,itp_b.doc_id
-                           )                         itp_xfer_cnt
+-- 08/09/22 Y.Yamamoto Delete v1.19 Start
+--                          ,( SELECT itp_b.whse_code
+--                                   ,itp_b.doc_id
+--                                   ,COUNT(*)      AS itp_cnt
+--                             FROM   ic_tran_pnd      itp_b      -- OPM保留在庫トランザクション
+--                             WHERE  itp_b.doc_type          = gc_doc_type_xfer
+--                             AND    itp_b.completed_ind     = gc_completed_ind_1
+--                             GROUP BY itp_b.whse_code
+--                                     ,itp_b.doc_id
+--                           )                         itp_xfer_cnt
+-- 08/09/22 Y.Yamamoto Delete v1.19 End
                     WHERE  itp_xfer.doc_type                = gc_doc_type_xfer
                     AND    itp_xfer.completed_ind           = gc_completed_ind_1
                     AND    xrpm9v.doc_type                  = gc_doc_type_xfer
@@ -1924,14 +2109,29 @@ AS
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
                     AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itp_xfer.trans_qty ) )
 -- 08/05/07 Y.Yamamoto Update v1.1 End
-                    AND    itp_xfer_cnt.whse_code           = itp_xfer.whse_code
-                    AND    itp_xfer_cnt.doc_id              = itp_xfer.doc_id
-                    AND    itp_xfer_cnt.itp_cnt             = 1
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND    itp_xfer_cnt.whse_code           = itp_xfer.whse_code
+--                    AND    itp_xfer_cnt.doc_id              = itp_xfer.doc_id
+--                    AND    itp_xfer_cnt.itp_cnt             = 1
+                    AND    EXISTS(
+                           SELECT 1
+                           FROM   ic_tran_pnd itp_b
+                           WHERE  itp_b.doc_type      = gc_doc_type_xfer
+                           AND    itp_b.completed_ind = gc_completed_ind_1
+                           AND    itp_b.whse_code     = itp_xfer.whse_code
+                           AND    itp_b.doc_id        = itp_xfer.doc_id
+                           GROUP BY itp_b.whse_code
+                                   ,itp_b.doc_id
+                           HAVING COUNT(*) = 1 )
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/06/07 Y.Yamamoto Update v2.1 Start
 --                    UNION  -- 文書タイプ"OMSO"（受注）の抽出
                     UNION ALL  -- 文書タイプ"OMSO"（受注）の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT itp_omso.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT itp_omso.whse_code
+                    SELECT  /*+ leading(itp_omso) */ itp_omso.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,itp_omso.location
                           ,itp_omso.item_id
                           ,itp_omso.lot_id
@@ -1976,7 +2176,10 @@ AS
 --                    UNION  -- 文書タイプ"PROD"（生産）の抽出
                     UNION ALL  -- 文書タイプ"PROD"（生産）の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT itp_prod.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT itp_prod.whse_code
+                    SELECT /*+ leading(itp_prod) push_pred(xrpm2v.xrpm) */ itp_prod.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,itp_prod.location
                           ,itp_prod.item_id
                           ,itp_prod.lot_id
@@ -2015,7 +2218,10 @@ AS
 --                    UNION  -- 文書タイプ"PORC"（発注）の抽出
                     UNION ALL  -- 文書タイプ"PORC"（発注）の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT itp_porc.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT itp_porc.whse_code
+                    SELECT /*+ leading(itp_porc)  push_pred(xrpm8v)*/ itp_porc.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,itp_porc.location
                           ,itp_porc.item_id
                           ,itp_porc.lot_id
@@ -2054,7 +2260,10 @@ AS
 --                    UNION  -- 前月末在庫の抽出
                     UNION ALL  -- 前月末在庫の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT xsims_be.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT xsims_be.whse_code
+                    SELECT /*+ leading(xsims_be) use_nl(xsims_be xilv_be.iwm xilv_be.mil xilv_be.haou) */ xsims_be.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,xilv_be.segment1                        AS location
                           ,xsims_be.item_id
                           ,xsims_be.lot_id
@@ -2074,9 +2283,17 @@ AS
                           ,xxcmn_item_locations_v xilv_be
                     WHERE  xsims_be.invent_ym = gv_date_ym_before    -- 棚卸年月前月のもの
                     AND    xilv_be.whse_code = xsims_be.whse_code
-                    AND    xilv_be.segment1 = ( SELECT MIN( x.segment1 )
-                                                FROM   xxcmn_item_locations_v x
-                                                WHERE  x.whse_code = xsims_be.whse_code )
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND    xilv_be.segment1 = ( SELECT MIN( x.segment1 )
+--                                                FROM   xxcmn_item_locations_v x
+--                                                WHERE  x.whse_code = xsims_be.whse_code )
+                    AND    EXISTS(
+                           SELECT /*+ nl_sj */ 1
+                           FROM   xxcmn_item_locations_v x
+                           WHERE  x.whse_code = xsims_be.whse_code
+                           GROUP BY x.whse_code
+                           HAVING   xilv_be.segment1 =MIN (x.segment1))
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/09/10 Y.Yamamoto ADD v1.16 Start
                     HAVING NOT (    SUM( NVL( xsims_be.monthly_stock,0 )) = 0         -- 月末在庫数
                                 AND SUM( NVL( xsims_be.cargo_stock,0   )) = 0         -- 積送中在庫数
@@ -2090,7 +2307,10 @@ AS
 --                    UNION  -- 月末在庫の抽出
                     UNION ALL  -- 月末在庫の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT xsims_nw.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT xsims_nw.whse_code
+                    SELECT /*+ leading(xsims_nw) use_nl(xsims_nw xilv_nw.iwm xilv_nw.mil xilv_nw.haou) */ xsims_nw.whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,xilv_nw.segment1                        AS location
                           ,xsims_nw.item_id
                           ,xsims_nw.lot_id
@@ -2110,9 +2330,17 @@ AS
                           ,xxcmn_item_locations_v xilv_nw
                     WHERE  xsims_nw.invent_ym = TO_CHAR( gd_date_ym_first, gc_char_ym_format ) -- 棚卸年月当月のもの
                     AND    xilv_nw.whse_code = xsims_nw.whse_code
-                    AND    xilv_nw.segment1 = ( SELECT MIN( y.segment1 )
-                                                FROM   xxcmn_item_locations_v y
-                                                WHERE  y.whse_code = xsims_nw.whse_code )
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND    xilv_nw.segment1 = ( SELECT MIN( y.segment1 )
+--                                                FROM   xxcmn_item_locations_v y
+--                                                WHERE  y.whse_code = xsims_nw.whse_code )
+                    AND    EXISTS(
+                           SELECT /*+ nl_sj */ 1
+                           FROM   xxcmn_item_locations_v x
+                           WHERE  x.whse_code = xilv_nw.whse_code
+                           GROUP BY x.whse_code
+                           HAVING   xilv_nw.segment1 = MIN(x.segment1)) 
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/09/10 Y.Yamamoto ADD v1.16 Start
                     HAVING NOT (    SUM( NVL( xsims_nw.monthly_stock,0 )) = 0         -- 当月末在庫数
                                 AND SUM( NVL( xsims_nw.cargo_stock,0   )) = 0         -- 当月積送中在庫数
@@ -2126,7 +2354,10 @@ AS
 --                    UNION  -- 棚卸結果情報の抽出
                     UNION ALL  -- 棚卸結果情報の抽出
 -- 08/06/07 Y.Yamamoto Update v2.1 End
-                    SELECT xsir.invent_whse_code AS whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    SELECT xsir.invent_whse_code AS whse_code
+                    SELECT /*+ leading(XSIR) use_nl(XSIR XILV_SIR.iwm XILV_SIR.mil XILV_SIR.haou) */ xsir.invent_whse_code AS whse_code
+-- 08/09/22 Y.Yamamoto Update v1.19 End
                           ,xilv_sir.segment1                       AS location
                           ,xsir.item_id
 -- 08/05/09 Y.Yamamoto Update v1.3 Start
@@ -2154,9 +2385,17 @@ AS
                                                  AND     gd_date_ymt_last       -- 月末日で取得
 -- 08/09/17 Y.Yamamoto Update v1.17 End
                     AND    xilv_sir.whse_code = xsir.invent_whse_code
-                    AND    xilv_sir.segment1 = ( SELECT MIN( z.segment1 )
-                                                 FROM   xxcmn_item_locations_v z
-                                                 WHERE  z.whse_code = xsir.invent_whse_code )
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--                    AND    xilv_sir.segment1 = ( SELECT MIN( z.segment1 )
+--                                                 FROM   xxcmn_item_locations_v z
+--                                                 WHERE  z.whse_code = xsir.invent_whse_code )
+                    AND    EXISTS(
+                           SELECT /*+ nl_sj */ 1
+                           FROM   xxcmn_item_locations_v z
+                           WHERE  z.whse_code = xsir.invent_whse_code
+                           GROUP BY z.whse_code
+                           HAVING   xilv_sir.segment1 =MIN(z.segment1)) 
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/09/10 Y.Yamamoto ADD v1.16 Start
                     HAVING NOT (    SUM( xsir.case_amt  ) = 0        -- 棚卸ケース数
                                 AND SUM( xsir.loose_amt ) = 0        -- 棚卸バラ
@@ -2236,9 +2475,17 @@ AS
 -- 08/05/08 Y.Yamamoto Update v1.1 Start
 --        OR xrpm.lot_id                  = 0 )
         OR (ximv.lot_ctl                = 0
-          AND xilv.segment1 = ( SELECT MIN( zz.segment1 )
-                                FROM   xxcmn_item_locations_v zz
-                                WHERE  zz.whse_code = xilv.whse_code ) ) )
+-- 08/09/22 Y.Yamamoto Update v1.19 Start
+--          AND xilv.segment1 = ( SELECT MIN( zz.segment1 )
+--                                FROM   xxcmn_item_locations_v zz
+--                                WHERE  zz.whse_code = xilv.whse_code ) ) )
+          AND EXISTS(
+              SELECT /*+ nl_sj */ 1
+              FROM   xxcmn_item_locations_v  zz
+              WHERE  zz.whse_code = xilv.whse_code
+              GROUP BY zz.whse_code
+              HAVING   xilv.segment1 = MIN(zz.segment1)))) 
+-- 08/09/22 Y.Yamamoto Update v1.19 End
 -- 08/05/08 Y.Yamamoto Update v1.1 End
     AND    xrpm.item_id                 = ximv.item_id
     AND    xrpm.lot_id                  = ilm.lot_id
