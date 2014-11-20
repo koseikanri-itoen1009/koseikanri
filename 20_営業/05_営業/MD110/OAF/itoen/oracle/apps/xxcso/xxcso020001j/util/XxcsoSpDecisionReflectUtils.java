@@ -8,6 +8,7 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCSè¨êÏç_     êVãKçÏê¨
 * 2009-03-23 1.1  SCSñˆïΩíºêl   [STè·äQT1_0163]â€ëËNo.115éÊÇËçûÇ›
+* 2009-05-19 1.2  SCSñˆïΩíºêl   [STè·äQT1_1058]reflectAlléûå_ñÒêÊîΩâfèàóùí«â¡
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -876,6 +877,86 @@ public class XxcsoSpDecisionReflectUtils
     /////////////////////////////////////
     // ílÇÃê›íËÅFå_ñÒêÊ
     /////////////////////////////////////
+// 2009-05-19 [STè·äQT1_1058] Add Start
+    String sameInstAcctFlag = cntrctRow.getSameInstallAccountFlag();
+    if ( "Y".equals(sameInstAcctFlag) )
+    {
+      if ( isDiffer(cntrctRow.getCustomerId(), null) )
+      {
+        cntrctRow.setCustomerId(null);
+      }
+      if ( isDiffer(cntrctRow.getContractNumber(), null) )
+      {
+        cntrctRow.setContractNumber(null);
+      }
+      if ( isDiffer(cntrctRow.getPartyName(), installRow.getPartyName()) )
+      {
+        cntrctRow.setPartyName(
+          installRow.getPartyName()
+        );
+      }
+      if ( isDiffer(cntrctRow.getPartyNameAlt(), installRow.getPartyNameAlt()) )
+      {
+        cntrctRow.setPartyNameAlt(
+          installRow.getPartyNameAlt()
+        );
+      }
+      if ( isDiffer(
+             cntrctRow.getPostalCodeFirst()
+            ,installRow.getPostalCodeFirst()
+           )
+         )
+      {
+        cntrctRow.setPostalCodeFirst(
+          installRow.getPostalCodeFirst()
+        );
+      }
+      if ( isDiffer(
+             cntrctRow.getPostalCodeSecond()
+            ,installRow.getPostalCodeSecond()
+           )
+         )
+      {
+        cntrctRow.setPostalCodeSecond(
+          installRow.getPostalCodeSecond()
+        );
+      }
+      if ( isDiffer(cntrctRow.getState(), installRow.getState()) )
+      {
+        cntrctRow.setState(
+          installRow.getState()
+        );
+      }
+      if ( isDiffer(cntrctRow.getCity(), installRow.getCity()) )
+      {
+        cntrctRow.setCity(
+          installRow.getCity()
+        );
+      }
+      if ( isDiffer(cntrctRow.getAddress1(), installRow.getAddress1()) )
+      {
+        cntrctRow.setAddress1(
+          installRow.getAddress1()
+        );
+      }
+      if ( isDiffer(cntrctRow.getAddress2(), installRow.getAddress2()) )
+      {
+        cntrctRow.setAddress2(
+          installRow.getAddress2()
+        );
+      }
+      if ( isDiffer(
+             cntrctRow.getAddressLinesPhonetic()
+            ,installRow.getAddressLinesPhonetic()
+           )
+         )
+      {
+        cntrctRow.setAddressLinesPhonetic(
+          installRow.getAddressLinesPhonetic()
+        );
+      }
+    }
+// 2009-05-19 [STè·äQT1_1058] Add End
     if ( cntrctRow.getPostalCodeFirst() == null       ||
          "".equals(cntrctRow.getPostalCodeFirst())    ||
          cntrctRow.getPostalCodeSecond() == null      ||
