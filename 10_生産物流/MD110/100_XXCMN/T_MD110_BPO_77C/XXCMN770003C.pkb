@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2008/12/12    1.16  N.Yoshida        本番障害669対応
  *  2009/01/13    1.17  N.Yoshida        本番障害997対応
  *  2009/03/05    1.18  H.Marushita      本番障害1274対応
+ *  2009/05/29    1.19  Marushita        本番障害1511対応
  *
  *****************************************************************************************/
 --
@@ -216,6 +217,11 @@ AS
   gt_xml_data_table         XML_DATA ;                -- ＸＭＬデータタグ表
   gl_xml_idx                NUMBER ;                  -- ＸＭＬデータタグ表のインデックス
 --
+  ------------------------------
+  --  標準原価評価日付
+  ------------------------------
+  gd_st_unit_date         DATE; -- 2009/05/29 ADD
+--
 --#####################  固定共通例外宣言部 START   ####################
 --
   --*** 処理部共通例外 ***
@@ -312,13 +318,17 @@ AS
              OR   (price_v.start_date_active    <= gt_main_data(in_pos).trans_date))
             AND  ((price_v.end_date_active   IS NULL )
              OR   ( price_v.end_date_active     >= gt_main_data(in_pos).trans_date));*/
+-- 2008/10/22 v1.09 UPDATE END
         SELECT  price_v.stnd_unit_price  as price
         INTO    ln_unit_price
         FROM    xxcmn_stnd_unit_price_v price_v
         WHERE   price_v.item_id    = gt_main_data(in_pos).item_id
-        AND     price_v.start_date_active <= gt_main_data(in_pos).trans_date
-        AND     price_v.end_date_active   >= gt_main_data(in_pos).trans_date;
--- 2008/10/22 v1.09 UPDATE START
+-- 2009/05/29 MOD START
+        AND     price_v.start_date_active <= gd_st_unit_date
+        AND     price_v.end_date_active   >= gd_st_unit_date;
+--        AND     price_v.start_date_active <= gt_main_data(in_pos).trans_date
+--        AND     price_v.end_date_active   >= gt_main_data(in_pos).trans_date;
+-- 2009/05/29 MOD END
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           ln_unit_price := cn_zero;
@@ -7041,6 +7051,9 @@ AS
     lr_param_rec.crowd_code     := iv_crowd_code;
     lr_param_rec.account_code   := iv_account_code;
 --
+    -- 2009/05/29 ADD START
+    gd_st_unit_date := FND_DATE.STRING_TO_DATE(iv_process_year , gc_char_m_format);
+    -- 2009/05/29 ADD END
     -- =====================================================
     -- 前処理
     -- =====================================================

@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）原料・資材・半製品
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77A)
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2008/12/25    1.29  A.Shiina         本番障害674対応
  *  2009/01/07    1.30  N.Yoshida        本番障害954対応
  *  2009/03/05    1.31  A.Shiina         本番障害1272対応
+ *  2009/05/29    1.32  Marushita        本番障害1511対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -331,6 +332,10 @@ AS
   --  帳票総合計カウンタ
   ------------------------------
   ln_position             NUMBER DEFAULT 0;-- ポジション
+  ------------------------------
+  --  標準原価評価日付
+  ------------------------------
+  gd_st_unit_date         DATE; -- 2009/05/29 ADD
 --
 --#####################  固定共通例外宣言部 START   ####################
 --
@@ -14336,14 +14341,22 @@ NULL;
         -- 標準原価マスタより標準単価を取得します。=
         -- =========================================
         BEGIN
+-- 2009/05/29 MOD START
           SELECT stnd_unit_price as price
           INTO   on_unit_price
           FROM   xxcmn_stnd_unit_price_v xsup
           WHERE  xsup.item_id    =  gt_body_data(in_pos).item_id
-            AND (xsup.start_date_active IS NULL OR
-                 xsup.start_date_active  <= TRUNC(gt_body_data(in_pos).trans_date))
-            AND (xsup.end_date_active   IS NULL OR
-                 xsup.end_date_active    >= TRUNC(gt_body_data(in_pos).trans_date));
+            AND xsup.start_date_active  <= gd_st_unit_date
+            AND xsup.end_date_active    >= gd_st_unit_date;
+--          SELECT stnd_unit_price as price
+--          INTO   on_unit_price
+--          FROM   xxcmn_stnd_unit_price_v xsup
+--          WHERE  xsup.item_id    =  gt_body_data(in_pos).item_id
+--            AND (xsup.start_date_active IS NULL OR
+--                 xsup.start_date_active  <= TRUNC(gt_body_data(in_pos).trans_date))
+--            AND (xsup.end_date_active   IS NULL OR
+--                 xsup.end_date_active    >= TRUNC(gt_body_data(in_pos).trans_date));
+-- 2009/05/29 MOD END
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_unit_price :=  0;
@@ -14733,6 +14746,9 @@ NULL;
     ELSE
       lr_param_rec.exec_year_month := lv_f_date;
     END IF;                                                 -- 01 : 処理年月     (必須)
+    -- 2009/05/29 ADD START
+    gd_st_unit_date := FND_DATE.STRING_TO_DATE(iv_yyyymm , gc_char_ym_format);
+    -- 2009/05/29 ADD END
 --
     lr_param_rec.goods_class     := iv_product_class;       -- 02 : 商品区分    （必須)
     lr_param_rec.item_class      := iv_item_class;          -- 03 : 品目区分    （必須)

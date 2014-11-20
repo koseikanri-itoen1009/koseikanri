@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.34
+ * Version          : 1.35
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2008/12/25    1.32  A.Shiina         本番障害674対応
  *  2009/03/05    1.33  Y.Yamamoto       本番障害1274対応
  *  2009/04/08    1.34  A.Shiina         本番障害1387対応
+ *  2009/05/29    1.35  Marushita        本番障害1511対応
  *
  *****************************************************************************************/
 --
@@ -315,6 +316,11 @@ AS
   gt_main_data              tab_data_type_dtl ;       -- 取得レコード表
   gt_xml_data_table         XML_DATA ;                -- ＸＭＬデータタグ表
   gl_xml_idx                NUMBER DEFAULT 0 ;        -- ＸＭＬデータタグ表のインデックス
+--
+  ------------------------------
+  --  標準原価評価日付
+  ------------------------------
+  gd_st_unit_date         DATE; -- 2009/05/29 ADD
 --
 --#####################  固定共通例外宣言部 START   ####################
 --
@@ -16063,9 +16069,13 @@ AS
 --                 prc.start_date_active  <= TRUNC(gt_main_data(in_pos).trans_date))
 --            AND (prc.end_date_active   IS NULL OR
 --                 prc.end_date_active    >= TRUNC(gt_main_data(in_pos).trans_date));
-            AND  prc.start_date_active  <= TRUNC(gt_main_data(in_pos).trans_date)
-            AND  prc.end_date_active    >= TRUNC(gt_main_data(in_pos).trans_date);
 -- 2008/10/31 v1.14 MOD END
+--2009/05/29 MOD START
+--            AND  prc.start_date_active  <= TRUNC(gt_main_data(in_pos).trans_date)
+--            AND  prc.end_date_active    >= TRUNC(gt_main_data(in_pos).trans_date);
+            AND  prc.start_date_active  <= gd_st_unit_date
+            AND  prc.end_date_active    >= gd_st_unit_date;
+--2009/05/29 MOD END
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             ln_unit_price :=  0;
@@ -20122,6 +20132,10 @@ AS
     lr_param_rec.crowd_kind         := iv_crowd_kind;        -- 群種別
     lr_param_rec.crowd_code         := iv_crowd_code;        -- 群コード
     lr_param_rec.acct_crowd_code    := iv_acct_crowd_code;   -- 経理郡コード
+--
+    -- 2009/05/29 ADD START
+    gd_st_unit_date := FND_DATE.STRING_TO_DATE(iv_exec_year_month , gc_char_m_format);
+    -- 2009/05/29 ADD END
 --
     -- =====================================================
     -- 前処理
