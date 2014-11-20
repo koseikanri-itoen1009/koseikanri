@@ -22,6 +22,8 @@ SELECT  xql.quote_line_id
        ,xql.quote_end_date
        ,xql.remarks
        ,xql.line_order
+       ,NVL(xiiv.case_inc_num,0) case_inc_num
+       ,NVL(xiiv.bowl_inc_num,0) bowl_inc_num
 FROM    xxcso_quote_lines_sales_v   xql
        ,xxcso_inventory_items_v2    xiiv
 WHERE   xql.quote_header_id = :1
@@ -174,6 +176,32 @@ AND     xiiv.inventory_item_id = xql.inventory_item_id
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CaseIncNum"
+      IsPersistent="false"
+      Precision="10"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CASE_INC_NUM"
+      Expression="CASE_INC_NUM"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BowlIncNum"
+      IsPersistent="false"
+      Precision="10"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="BOWL_INC_NUM"
+      Expression="BOWL_INC_NUM"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>
