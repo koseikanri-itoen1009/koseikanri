@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcmn770009c
+create or replace PACKAGE BODY xxcmn770009c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : ëºä®íËêUë÷å¥âøç∑àŸï\
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD050_BPO_770)
  *                  : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/08/07    1.6   R.Tomoyose       éQè∆ÉrÉÖÅ[ÇÃïœçXÅuxxcmn_rcv_pay_mst_porc_rma_vÅvÅ®
  *                                                       Åuxxcmn_rcv_pay_mst_porc_rma09_vÅv
  *  2008/08/27    1.7   A.Shiina         T_TE080_BPO_770 éwìE18ëŒâû
+ *  2008/10/14    1.8   N.Yoshida        T_S_524ëŒâû(PTëŒâû)
  *
  *****************************************************************************************/
 --
@@ -416,6 +417,11 @@ AS
     cv_porc           CONSTANT VARCHAR2(4)  := 'PORC';
     cv_omso           CONSTANT VARCHAR2(4)  := 'OMSO';
 --
+    cn_prod_class_id  CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'));
+    cn_item_class_id  CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'));
+    cn_crowd_code_id  CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE'));
+    cn_acnt_crowd_code_id  CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE'));
+--
     -- *** ÉçÅ[ÉJÉãÅEïœêî ***
     lv_date_from  VARCHAR2(10) ;
     lv_date_to    VARCHAR2(10) ;
@@ -425,6 +431,10144 @@ AS
     TYPE   ref_cursor IS REF CURSOR ;
     lc_ref ref_cursor ;
 --
+-- 2008/10/14 v1.8 ADD START
+    -- ----------------------------------------------------
+    -- ì¸óÕÉpÉâÉÅÅ[É^Ç…ÇÊÇËÉJÅ[É\ÉãÇÃëIëÇçsÇ§
+    -- ----------------------------------------------------
+    --===============================================================
+    -- åüçıèåè.éÛï•ãÊï™          ÅÀ ì¸óÕÇ»Çµ
+    -- åüçıèåè.åQéÌï             ÅÀ åQï 
+    -- åüçıèåè.åQÉRÅ[Éh          ÅÀ ì¸óÕÇ»Çµ
+    -- åüçıèåè.åoóùåQÉRÅ[Éh      ÅÀ ì¸óÕÇ»Çµ/ì¸óÕÇ†ÇË
+    --===============================================================
+    CURSOR get_cur01 IS
+      -- ----------------------------------------------------
+      -- PORC1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) use_nl (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      ORDER BY rcv_pay_div
+              ,gun_code
+              ,item_code_to
+              ,item_code_from
+    ;
+    --===============================================================
+    -- åüçıèåè.éÛï•ãÊï™          ÅÀ ì¸óÕÇ†ÇË
+    -- åüçıèåè.åQéÌï             ÅÀ åQï 
+    -- åüçıèåè.åQÉRÅ[Éh          ÅÀ ì¸óÕÇ»Çµ
+    -- åüçıèåè.åoóùåQÉRÅ[Éh      ÅÀ ì¸óÕÇ»Çµ/ì¸óÕÇ†ÇË
+    --===============================================================
+    CURSOR get_cur02 IS
+      -- ----------------------------------------------------
+      -- PORC1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id        = iimb2.item_id
+      AND    xsup.item_id         = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) use_nl (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      ORDER BY rcv_pay_div
+              ,gun_code
+              ,item_code_to
+              ,item_code_from
+    ;
+    --===============================================================
+    -- åüçıèåè.éÛï•ãÊï™          ÅÀ ì¸óÕÇ»Çµ
+    -- åüçıèåè.åQéÌï             ÅÀ åQï 
+    -- åüçıèåè.åQÉRÅ[Éh          ÅÀ ì¸óÕÇ†ÇË
+    -- åüçıèåè.åoóùåQÉRÅ[Éh      ÅÀ ì¸óÕÇ»Çµ/ì¸óÕÇ†ÇË
+    --===============================================================
+    CURSOR get_cur03 IS
+      -- ----------------------------------------------------
+      -- PORC1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) use_nl (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      ORDER BY rcv_pay_div
+              ,gun_code
+              ,item_code_to
+              ,item_code_from
+    ;
+    --===============================================================
+    -- åüçıèåè.éÛï•ãÊï™          ÅÀ ì¸óÕÇ†ÇË
+    -- åüçıèåè.åQéÌï             ÅÀ åQï 
+    -- åüçıèåè.åQÉRÅ[Éh          ÅÀ ì¸óÕÇ†ÇË
+    -- åüçıèåè.åoóùåQÉRÅ[Éh      ÅÀ ì¸óÕÇ»Çµ/ì¸óÕÇ†ÇË
+    --===============================================================
+    CURSOR get_cur04 IS
+      -- ----------------------------------------------------
+      -- PORC1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) use_nl (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      AND    mcb3.segment1           = gr_param.crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      ORDER BY rcv_pay_div
+              ,gun_code
+              ,item_code_to
+              ,item_code_from
+    ;
+    --===============================================================
+    -- åüçıèåè.éÛï•ãÊï™          ÅÀ ì¸óÕÇ»Çµ
+    -- åüçıèåè.åQéÌï             ÅÀ åoóùåQï 
+    -- åüçıèåè.åQÉRÅ[Éh          ÅÀ ì¸óÕÇ»Çµ/ì¸óÕÇ†ÇË
+    -- åüçıèåè.åoóùåQÉRÅ[Éh      ÅÀ ì¸óÕÇ»Çµ
+    --===============================================================
+    CURSOR get_cur05 IS
+      -- ----------------------------------------------------
+      -- PORC1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) use_nl (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      ORDER BY rcv_pay_div
+              ,gun_code
+              ,item_code_to
+              ,item_code_from
+    ;
+    --===============================================================
+    -- åüçıèåè.éÛï•ãÊï™          ÅÀ ì¸óÕÇ†ÇË
+    -- åüçıèåè.åQéÌï             ÅÀ åoóùåQï 
+    -- åüçıèåè.åQÉRÅ[Éh          ÅÀ ì¸óÕÇ»Çµ/ì¸óÕÇ†ÇË
+    -- åüçıèåè.åoóùåQÉRÅ[Éh      ÅÀ ì¸óÕÇ»Çµ
+    --===============================================================
+    CURSOR get_cur06 IS
+      -- ----------------------------------------------------
+      -- PORC1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) use_nl (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      ORDER BY rcv_pay_div
+              ,gun_code
+              ,item_code_to
+              ,item_code_from
+    ;
+    --===============================================================
+    -- åüçıèåè.éÛï•ãÊï™          ÅÀ ì¸óÕÇ»Çµ
+    -- åüçıèåè.åQéÌï             ÅÀ åoóùåQï 
+    -- åüçıèåè.åQÉRÅ[Éh          ÅÀ ì¸óÕÇ»Çµ/ì¸óÕÇ†ÇË
+    -- åüçıèåè.åoóùåQÉRÅ[Éh      ÅÀ ì¸óÕÇ†ÇË
+    --===============================================================
+    CURSOR get_cur07 IS
+      -- ----------------------------------------------------
+      -- PORC1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) use_nl (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      ORDER BY rcv_pay_div
+              ,gun_code
+              ,item_code_to
+              ,item_code_from
+    ;
+    --===============================================================
+    -- åüçıèåè.éÛï•ãÊï™          ÅÀ ì¸óÕÇ†ÇË
+    -- åüçıèåè.åQéÌï             ÅÀ åoóùåQï 
+    -- åüçıèåè.åQÉRÅ[Éh          ÅÀ ì¸óÕÇ»Çµ/ì¸óÕÇ†ÇË
+    -- åüçıèåè.åoóùåQÉRÅ[Éh      ÅÀ ì¸óÕÇ†ÇË
+    --===============================================================
+    CURSOR get_cur08 IS
+      -- ----------------------------------------------------
+      -- PORC1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,rcv_shipment_lines       rsl
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    oola.header_id          = rsl.oe_order_header_id
+      AND    oola.line_id            = rsl.oe_order_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO1 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) use_nl (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xola.request_item_code  = xola.shipping_item_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       IN ('104','106')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.item_div_ahead     = mcb2.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO2 :åoóùéÛï•ãÊï™çwîÉä÷òA (è§ïiêUë÷óLèû)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('107','109')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.prod_div_origin    = mcb1.segment1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    xrpm.item_div_origin    = mcb2.segment1
+      AND    xrpm.dealings_div       IN ('110','111')
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO3 :åoóùéÛï•ãÊï™çwîÉä÷òA (êUë÷èoâ◊)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.item_div_ahead     = mcb5.segment1
+      AND    mcb2.segment1          <> '5'
+      AND    xrpm.dealings_div       = '113'
+      AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO4 :åoóùéÛï•ãÊï™çwîÉä÷òA (ëqë÷ÅAï‘ïi)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    ((otta.attribute4           <> '2')
+             OR  (otta.attribute4       IS NULL))
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('201','203')
+      AND    xrpm.shipment_provision_div = otta.attribute1
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      UNION ALL
+      -- ----------------------------------------------------
+      -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (å©ñ{ÅAîpãp)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd oola ooha otta) */
+             iimb.item_no               item_code_from
+            ,ximb.item_short_name       item_name_from
+            ,oola.attribute3            item_code_to
+            ,ximb2.item_short_name      item_name_to
+            ,mcb3.segment1              gun_code
+            ,xrpm.new_div_account       rcv_pay_div
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+            ,SUM(
+               DECODE(iimb.attribute15
+                    ,gn_one,xsup_m.stnd_unit_price
+                    ,DECODE(iimb.lot_ctl
+                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+               * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS from_cost
+            ,SUM(xsup.stnd_unit_price_gen) to_price
+            ,SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) to_cost
+      FROM   ic_tran_pnd              itp
+            ,wsh_delivery_details     wdd
+            ,oe_order_lines_all       oola
+            ,oe_order_headers_all     ooha
+            ,oe_transaction_types_all otta
+            ,xxwsh_order_headers_all  xoha
+            ,xxwsh_order_lines_all    xola
+            ,gmi_item_categories      gic1
+            ,mtl_categories_b         mcb1
+            ,gmi_item_categories      gic2
+            ,mtl_categories_b         mcb2
+            ,gmi_item_categories      gic3
+            ,mtl_categories_b         mcb3
+            ,gmi_item_categories      gic4
+            ,mtl_categories_b         mcb4
+            ,gmi_item_categories      gic5
+            ,mtl_categories_b         mcb5
+            ,ic_item_mst_b            iimb
+            ,xxcmn_item_mst_b         ximb
+            ,ic_item_mst_b            iimb2
+            ,xxcmn_item_mst_b         ximb2
+            ,xxcmn_lot_cost           xlc
+            ,xxcmn_stnd_unit_price_v  xsup_m
+            ,xxcmn_stnd_unit_price_v  xsup
+            ,xxcmn_rcv_pay_mst        xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+      AND    itp.trans_date <  FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    mcb1.category_id        = gic1.category_id
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    mcb2.category_id        = gic2.category_id
+      AND    gic3.item_id            = ximb2.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    mcb3.category_id        = gic3.category_id
+      AND    iimb.item_id            = itp.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    itp.trans_date BETWEEN ximb.start_date_active AND ximb.end_date_active
+      AND    xlc.item_id(+)          = itp.item_id
+      AND    xlc.lot_id(+)           = itp.lot_id
+      AND    xsup_m.item_id          = itp.item_id
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    oola.org_id             = wdd.org_id
+      AND    oola.header_id          = wdd.source_header_id
+      AND    oola.line_id            = wdd.source_line_id
+      AND    ooha.header_id          = oola.header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = oola.line_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_09       IS NOT NULL
+      AND    iimb2.item_no(+)        = oola.attribute3
+      AND    ximb2.item_id           = iimb2.item_id
+      AND    xsup.item_id            = iimb2.item_id
+      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    gic4.item_id            = ximb2.item_id
+      AND    gic4.category_set_id    = cn_prod_class_id
+      AND    mcb4.category_id        = gic4.category_id
+      AND    mcb4.segment1           = gr_param.prod_div
+      AND    gic5.item_id            = ximb2.item_id
+      AND    gic5.category_set_id    = cn_item_class_id
+      AND    mcb5.category_id        = gic5.category_id
+      AND    mcb5.segment1           = gr_param.item_div
+      AND    mcb3.segment1           = gr_param.acnt_crowd_code
+      AND    xrpm.new_div_account    = gr_param.rcv_pay_div
+      GROUP BY iimb.item_no
+              ,ximb.item_short_name
+              ,oola.attribute3
+              ,ximb2.item_short_name
+              ,mcb3.segment1
+              ,xrpm.new_div_account
+      ORDER BY rcv_pay_div
+              ,gun_code
+              ,item_code_to
+              ,item_code_from
+    ;
+-- 2008/10/14 v1.8 ADD END
 --
   BEGIN
 --
@@ -442,7 +10586,8 @@ AS
     -- ÇìÇëÇåê∂ê¨
     -- ====================================================
 --
-    lv_sql := 'SELECT '
+-- 2008/10/14 v1.8 DELETE START
+    /*lv_sql := 'SELECT '
       || '  xlei.item_code item_code_from,         '     --ïiñ⁄ÉRÅ[Éh
       || '  xlei.item_short_name item_name_from,   '     --ïiñ⁄ñºèÃ
       || '  xrpmpr.request_item_code item_code_to, '     --êªïiéÛï•ïiñ⁄ÉRÅ[Éh
@@ -664,17 +10809,97 @@ AS
       ||         ', item_code_to '
       ||         ', item_code_from '
     ;
---
-    -- ====================================================
-    -- ÉfÅ[É^íäèo
-    -- ====================================================
---
     -- ÉIÅ[ÉvÉì
     OPEN lc_ref FOR lv_sql ;
     -- ÉoÉãÉNÉtÉFÉbÉ`
     FETCH lc_ref BULK COLLECT INTO ot_data_rec ;
     -- ÉJÅ[É\ÉãÉNÉçÅ[ÉY
-    CLOSE lc_ref ;
+    CLOSE lc_ref ;*/
+-- 2008/10/14 v1.8 DELETE END
+--
+    -- ====================================================
+    -- ÉfÅ[É^íäèo
+    -- ====================================================
+--
+-- 2008/10/14 v1.8 ADD START
+    -- åQéÌï ÅÅÅu3ÅFåSï ÅvÇ™éwíËÇ≥ÇÍÇƒÇ¢ÇÈèÍçá
+    IF  (gr_param.crowd_type = gc_gun) THEN
+--
+      -- éÛï•ãÊï™Ç™ì¸óÕÇ≥ÇÍÇƒÇ¢ÇÈèÍçá
+      IF (gr_param.rcv_pay_div IS NOT NULL) THEN
+--
+        -- åQÉRÅ[ÉhÇ™ì¸óÕÇ≥ÇÍÇƒÇ¢ÇÈèÍçá
+        IF (gr_param.crowd_code IS NOT NULL) THEN
+          OPEN  get_cur04;
+          FETCH get_cur04 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_cur04;
+--
+        -- åQÉRÅ[ÉhÇ™ì¸óÕÇ≥ÇÍÇƒÇ¢Ç»Ç¢èÍçá
+        ELSE
+          OPEN  get_cur02;
+          FETCH get_cur02 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_cur02;
+--
+        END IF;
+--
+      ELSE
+--
+        -- åQÉRÅ[ÉhÇ™ì¸óÕÇ≥ÇÍÇƒÇ¢ÇÈèÍçá
+        IF (gr_param.crowd_code IS NOT NULL) THEN
+          OPEN  get_cur03;
+          FETCH get_cur03 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_cur03;
+--
+        -- åQÉRÅ[ÉhÇ™ì¸óÕÇ≥ÇÍÇƒÇ¢Ç»Ç¢èÍçá
+        ELSE
+          OPEN  get_cur01;
+          FETCH get_cur01 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_cur01;
+--
+        END IF;
+--
+      END IF;
+--
+    -- åQéÌï ÅÅÅu4ÅFåoóùåSï ÅvÇ™éwíËÇ≥ÇÍÇƒÇ¢ÇÈèÍçá
+    ELSE
+--
+      -- éÛï•ãÊï™Ç™ì¸óÕÇ≥ÇÍÇƒÇ¢ÇÈèÍçá
+      IF (gr_param.rcv_pay_div IS NOT NULL) THEN
+--
+        -- åoóùåQÉRÅ[ÉhÇ™ì¸óÕÇ≥ÇÍÇƒÇ¢ÇÈèÍçá
+        IF (gr_param.crowd_code IS NOT NULL) THEN
+          OPEN  get_cur08;
+          FETCH get_cur08 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_cur08;
+--
+        -- åoóùåQÉRÅ[ÉhÇ™ì¸óÕÇ≥ÇÍÇƒÇ¢Ç»Ç¢èÍçá
+        ELSE
+          OPEN  get_cur06;
+          FETCH get_cur06 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_cur06;
+--
+        END IF;
+--
+      ELSE
+--
+        -- åoóùåQÉRÅ[ÉhÇ™ì¸óÕÇ≥ÇÍÇƒÇ¢ÇÈèÍçá
+        IF (gr_param.crowd_code IS NOT NULL) THEN
+          OPEN  get_cur07;
+          FETCH get_cur07 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_cur07;
+--
+        -- åoóùåQÉRÅ[ÉhÇ™ì¸óÕÇ≥ÇÍÇƒÇ¢Ç»Ç¢èÍçá
+        ELSE
+          OPEN  get_cur05;
+          FETCH get_cur05 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_cur05;
+--
+        END IF;
+--
+      END IF;
+--
+    END IF;
+-- 2008/10/14 v1.8 ADD END
 --
   EXCEPTION
 --#################################  å≈íËó·äOèàóùïî start   ####################################

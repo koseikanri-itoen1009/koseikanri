@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（出庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93C)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -37,6 +37,9 @@ AS
  *  2008/07/08    1.5   Satoshi  Yunba   禁則文字対応
  *  2008/07/24    1.6   Akiyoshi Shiina  ST不具合#197、内部課題#32、内部変更要求#180対応
  *  2008/10/10    1.7   Naoki    Fukuda  統合テスト障害#338対応
+ *  2008/10/17    1.8   Naoki    Fukuda  統合テスト障害#146対応
+ *  2008/10/17    1.8   Naoki    Fukuda  課題T_S_458対応(部署を任意入力パラメータに変更。PACKAGEの修正はなし)
+ *  2008/10/17    1.8   Naoki    Fukuda  変更要求#210対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1889,7 +1892,7 @@ AS
     --------------------------------------------------
     -- 保留ステータス
 -- 2008/07/24 A.Shiina v1.7 UPDATE Start
-/*    BEGIN
+/*  BEGIN
       SELECT DISTINCT  xsli.reserved_status
       INTO   lv_reserved_status
       FROM xxwsh_shipping_headers_if  xshi      -- 出荷依頼インタフェースヘッダアドオン
@@ -1911,16 +1914,18 @@ AS
     -- EOSデータ種別取得
     BEGIN
       SELECT DISTINCT
-              xshi.eos_data_type
-             ,xsli.reserved_status
-      INTO    lv_eos_data_type
-             ,lv_reserved_status
+              xsli.reserved_status
+             --,xshi.eos_data_type    -- 2008/10/17 変更要求#210対応 Del
+      INTO    lv_reserved_status
+             --,lv_eos_data_type      -- 2008/10/17 変更要求#210対応 Del
       FROM    xxwsh_shipping_headers_if  xshi      -- 出荷依頼インタフェースヘッダアドオン
              ,xxwsh_shipping_lines_if    xsli      -- 出荷依頼インタフェース明細アドオン
       WHERE  xshi.header_id        = xsli.header_id
       AND    xshi.delivery_no      = ir_get_data.delivery_no   -- 配送Ｎｏ
       AND    xshi.order_source_ref = ir_get_data.request_no    -- 依頼Ｎｏ
       ;
+--
+      lv_eos_data_type := ir_get_data.order_type;   -- 2008/10/17 変更要求#210対応 Add
 --
       IF ((lv_reserved_status = gc_reserved_status_y)
         AND (lv_eos_data_type IN (cv_eos_data_cd_200
@@ -2276,7 +2281,8 @@ AS
             ,ximv.item_no                 AS item_code          -- 品目コード
             ,ximv.item_short_name         AS item_name          -- 品目名称
             ,ximv.lot_ctl                 AS lot_ctl            -- 検索条件：ロット使用
-            ,NVL( xola.based_request_quantity, 0 )  AS quant_r  -- 依頼数（ロット管理外）
+            --,NVL( xola.based_request_quantity, 0 )  AS quant_r  -- 依頼数（ロット管理外）--2008/10/17 統合テスト障害#146 Del
+            ,NVL( xola.quantity, 0 )  AS quant_r                -- 依頼数（ロット管理外）  --2008/10/17 統合テスト障害#146 Add
             ,NVL( xola.ship_to_quantity      , 0 )  AS quant_i  -- 入庫数（ロット管理外）
             ,NVL( xola.shipped_quantity      , 0 )  AS quant_o  -- 出庫数（ロット管理外）
             ,xoha.req_status              AS status             -- ヘッダステータス
@@ -2432,7 +2438,8 @@ AS
             ,ximv.item_no                       AS item_code        -- 品目コード
             ,ximv.item_short_name               AS item_name        -- 品目名称
             ,ximv.lot_ctl                       AS lot_ctl          -- 検索条件：ロット使用
-            ,NVL( xola.based_request_quantity, 0 )  AS quant_r      -- 依頼数（ロット管理外）
+            --,NVL( xola.based_request_quantity, 0 )  AS quant_r      -- 依頼数（ロット管理外）--2008/10/17 統合テスト障害#146 Del
+            ,NVL( xola.quantity, 0 )  AS quant_r                    -- 依頼数（ロット管理外）  --2008/10/17 統合テスト障害#146 Add
             ,NVL( xola.ship_to_quantity      , 0 )  AS quant_i      -- 入庫数（ロット管理外）
             ,NVL( xola.shipped_quantity      , 0 )  AS quant_o      -- 出庫数（ロット管理外）
             ,xoha.req_status                    AS status           -- ヘッダステータス

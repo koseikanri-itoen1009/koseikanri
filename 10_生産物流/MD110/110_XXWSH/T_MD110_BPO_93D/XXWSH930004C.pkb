@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -35,6 +35,8 @@ AS
  *  2008/07/09    1.5   Oracle椎名昭圭   変更要求対応#92
  *  2008/07/28    1.6   Oracle椎名昭圭   ST不具合#197、内部課題#32、内部変更要求#180対応
  *  2008/10/09    1.7   Oracle福田直樹   統合テスト障害#338対応
+ *  2008/10/17    1.8   Oracle福田直樹   課題T_S_458対応(部署を任意入力パラメータに変更。PACKAGEの修正はなし)
+ *  2008/10/17    1.8   Oracle福田直樹   変更要求#210対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -193,6 +195,7 @@ AS
      ,arvl_date        DATE           -- 入庫日
      ,career_id        VARCHAR2(100)  -- 検索条件：運送業者
      ,ship_method_code VARCHAR2(100)  -- 検索条件：配送区分
+     ,order_type       VARCHAR2(100)  -- 業務種別（コード）     -- 2008/10/18 変更要求#210 Add
      ,delivery_no      VARCHAR2(100)  -- 配送Ｎｏ
      ,request_no       VARCHAR2(100)  -- 移動Ｎｏ
      ,order_line_id    VARCHAR2(100)  -- 検索条件：明細ＩＤ
@@ -1548,16 +1551,23 @@ AS
     -- EOSデータ種別取得
     BEGIN
       SELECT DISTINCT
-              xshi.eos_data_type
-             ,xsli.reserved_status
-      INTO    lv_eos_data_type
-             ,lv_reserved_status
+              xsli.reserved_status
+             --,xshi.eos_data_type      -- 2008/10/18 変更要求#210 Del
+      INTO    lv_reserved_status
+             --,lv_eos_data_type        -- 2008/10/18 変更要求#210 Del
       FROM    xxwsh_shipping_headers_if  xshi      -- 出荷依頼インタフェースヘッダアドオン
              ,xxwsh_shipping_lines_if    xsli      -- 出荷依頼インタフェース明細アドオン
       WHERE  xshi.header_id        = xsli.header_id
       AND    xshi.delivery_no      = ir_get_data.delivery_no   -- 配送Ｎｏ
       AND    xshi.order_source_ref = ir_get_data.request_no    -- 依頼Ｎｏ
       ;
+--
+      lv_eos_data_type := ir_get_data.order_type;   -- 2008/10/18 変更要求#210 Add
+      
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ir_get_data.order_type' || ir_get_data.order_type);
+      
+      
+      
 --
       IF ((lv_reserved_status = gc_reserved_status_y)
         AND (lv_eos_data_type = cv_eos_data_cd_220)) THEN
@@ -2144,6 +2154,7 @@ AS
             ,xshi.arrival_date                AS arvl_date        -- 入庫日
             ,xshi.freight_carrier_code        AS career_id        -- 検索条件：運送業者
             ,xshi.shipping_method_code        AS ship_method_code -- 検索条件：配送区分
+            ,xshi.eos_data_type               AS order_type       -- 業務種別（コード）   2008/10/18 変更要求#210 Add
             ,xshi.delivery_no                 AS delivery_no      -- 配送Ｎｏ
             ,xshi.order_source_ref            AS request_no       -- 移動Ｎｏ
             ,xsli.line_id                     AS order_line_id    -- 検索条件：明細ＩＤ
@@ -2401,6 +2412,7 @@ AS
 -- 2008/07/09 A.Shiina v1.5 Update End
         lr_get_data.career_id        := re_main.career_id ;         -- 検索条件：運送業者
         lr_get_data.ship_method_code := re_main.ship_method_code ;  -- 検索条件：配送区分
+        lr_get_data.order_type       := re_main.order_type ;        -- 業務種別（コード）    2008/10/18 変更要求#210 Add
         lr_get_data.delivery_no      := re_main.delivery_no ;       -- 配送Ｎｏ
         lr_get_data.request_no       := re_main.request_no ;        -- 移動Ｎｏ
         lr_get_data.order_line_id    := re_main.order_line_id ;     -- 検索条件：明細ＩＤ

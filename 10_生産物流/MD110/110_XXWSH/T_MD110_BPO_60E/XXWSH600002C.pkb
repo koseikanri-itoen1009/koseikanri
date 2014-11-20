@@ -65,6 +65,7 @@ AS
  *  2008/10/06    1.21  M.Nomura         統合#306対応
  *  2008/10/07    1.22  M.Nomura         TE080_600指摘#27対応
  *  2008/10/14    1.23  M.Nomura         PT2-2_17指摘71対応
+ *  2008/10/20    1.24  M.Nomura         統合#417対応
  *
  *****************************************************************************************/
 --
@@ -4649,7 +4650,10 @@ AS
     CURSOR cu_eos_data
     IS
       SELECT DISTINCT xsdit.eos_csv_output
-      FROM xxwsh_stock_delivery_info_tmp    xsdit
+      FROM  xxwsh_stock_delivery_info_tmp    xsdit
+-- ##### 20081020 Ver.1.24 統合#417対応 START #####
+      WHERE xsdit.target_request_id = gn_request_id    -- 要求ID
+-- ##### 20081020 Ver.1.24 統合#417対応 END   #####
       ORDER BY xsdit.eos_csv_output
     ;
     ----------------------------------------
@@ -4713,6 +4717,9 @@ AS
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
       FROM xxwsh_stock_delivery_info_tmp    xsdit
       WHERE xsdit.eos_csv_output = p_eos_csv_output
+-- ##### 20081020 Ver.1.24 統合#417対応 START #####
+      AND  xsdit.target_request_id = gn_request_id    -- 要求ID
+-- ##### 20081020 Ver.1.24 統合#417対応 END   #####
       ORDER BY xsdit.new_modify_del_class   DESC    -- データ区分   （降順）
               ,xsdit.data_type                      -- データタイプ （昇順）
               ,xsdit.data_class                     -- データ種別   （昇順）
@@ -5025,7 +5032,10 @@ AS
       WHERE xndi.request_no IN
         ( SELECT DISTINCT xsdit.request_no
           FROM   xxwsh_stock_delivery_info_tmp    xsdit
-          WHERE  xsdit.new_modify_del_class = gc_data_class_del )
+          WHERE  xsdit.new_modify_del_class = gc_data_class_del 
+-- ##### 20081020 Ver.1.24 統合#417対応 START #####
+          AND  xsdit.target_request_id = gn_request_id)    -- 要求ID
+-- ##### 20081020 Ver.1.24 統合#417対応 END   #####
       FOR UPDATE NOWAIT
     ;
   BEGIN
@@ -5180,6 +5190,9 @@ AS
             ,SYSDATE                     -- プログラム更新日
       FROM xxwsh_stock_delivery_info_tmp    xsdit
       WHERE xsdit.new_modify_del_class = gc_data_class_ins
+-- ##### 20081020 Ver.1.24 統合#417対応 START #####
+      AND  xsdit.target_request_id     = gn_request_id    -- 要求ID
+-- ##### 20081020 Ver.1.24 統合#417対応 END   #####
     ;
 --
   EXCEPTION

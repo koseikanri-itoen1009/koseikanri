@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *                                       T_TE080_BPO_540 指摘44(同上)
  *                                       変更要求#171(同上)
  *  2008/09/22    1.17  Hitomi Itou      T_TE080_BPO_550 指摘28(在庫調整実績情報の外注出来高情報・受入返品情報取得(相手先在庫)の相手先を取引先に変更)
+ *  2008/10/20    1.18  Takao Ohashi     T_S_492(出力されない処理区分と事由コートの組み合わせを出力させる)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1341,10 +1342,12 @@ AS
 --mod end 2.1
        ,ximv.num_of_cases                                     num_of_cases        --ケース入り数
        ,NVL(slip.in_qty,0)                                    in_qty              --入庫数
+-- mod start 1.18
 --mod start 1.5
---       ,NVL(slip.out_qty,0)                                   out_qty             --出庫数
-       ,ABS(NVL(slip.out_qty,0))                                   out_qty             --出庫数
+       ,NVL(slip.out_qty,0)                                   out_qty             --出庫数
+--       ,ABS(NVL(slip.out_qty,0))                                   out_qty             --出庫数
 --mod end 1.5
+-- mod end 1.18
        ,xicv2.description                                     item_div_name       --品目区分名称
       FROM (
       --======================================================================================================
@@ -1506,7 +1509,10 @@ AS
 --                WHEN gn_lotctl_no THEN xm.shipped_quantity --非ロット管理品
 --                ELSE 0
 --              END)
-              SUM(NVL(xm.trans_qty,0)) * -1
+-- mod start 1.18
+--              SUM(NVL(xm.trans_qty,0)) * -1
+              ABS(SUM(NVL(xm.trans_qty,0)) * -1)
+-- mod end 1.18
 --mod end 1.2
             ELSE 0 END                                                out_qty             --出庫数
          ,CASE xm.mov_type --移動タイプ
@@ -2064,7 +2070,10 @@ AS
             ELSE 0
           END                                                 in_qty              --入庫数
          ,CASE sh_info.rcv_pay_div--受払区分
-            WHEN gv_rcvdiv_pay THEN sh_info.trans_qty_sum
+-- mod start 1.18
+--            WHEN gv_rcvdiv_pay THEN sh_info.trans_qty_sum
+            WHEN gv_rcvdiv_pay THEN ABS(sh_info.trans_qty_sum)
+-- mod end 1.18
             ELSE 0
           END                                                 out_qty             --出庫数
          ,sh_info.whse_code                                   whse_code           --倉庫コード
@@ -2548,10 +2557,14 @@ AS
             WHEN gn_linetype_mtrl THEN 0
             ELSE NVL(itp.trans_qty,0)
           END)                                                in_qty              --入庫数
-         ,SUM(CASE gmd.line_type --ラインタイプ
+-- mod start 1.18
+--         ,SUM(CASE gmd.line_type --ラインタイプ
+         ,ABS(SUM(CASE gmd.line_type --ラインタイプ
             WHEN gn_linetype_mtrl THEN NVL(itp.trans_qty,0)
             ELSE 0
-          END)                                                 out_qty             --出庫数
+--          END)                                                 out_qty             --出庫数
+          END))                                                out_qty             --出庫数
+-- mod end 1.18
          ,itp.whse_code                                       whse_code           --倉庫コード
          ,xilv.whse_name                                      whse_name           --倉庫名
          ,itp.location                                        location            --保管倉庫コード
@@ -2972,7 +2985,9 @@ AS
         AND xrpm.doc_type = 'ADJI'                                                --文書タイプ
         AND itc.reason_code = xrpm.reason_code                                    --事由コード
         AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
-        AND TO_CHAR(SIGN(itc.trans_qty)) = xrpm.rcv_pay_div                       --受払区分
+-- del start 1.18
+--        AND TO_CHAR(SIGN(itc.trans_qty)) = xrpm.rcv_pay_div                       --受払区分
+-- del end 1.18
         AND xrpm.reason_code = srcb.reason_code                                   --事由コード
         AND srcb.delete_mark = 0                                                  --削除マーク(未削除)
         --クイックコード抽出条件
