@@ -3,13 +3,14 @@
  *
  * Script Name     : XXCCP_CREATE_USER_SCS02
  * Description     : 参照ユーザー作成スクリプト
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2010/12/24    1.0    S.Niki          新規作成
+ *  2010/12/28    1.1    S.Niki          E_本稼動_06035 シーケンスのSELECT権限を付与
  *
  ****************************************************************************************/
 CREATE USER   scs02
@@ -25,6 +26,10 @@ GRANT EXECUTE ANY PROCEDURE TO scs02
 /
 GRANT SELECT ANY DICTIONARY TO scs02
 /
+-- 2010/12/28 Ver.1.1 [E_本稼動_06035] SCS S.Niki ADD START
+GRANT SELECT ANY SEQUENCE TO   scs02
+/
+-- 2010/12/28 Ver.1.1 [E_本稼動_06035] SCS S.Niki ADD END
 CREATE SYNONYM scs02.FND_GLOBAL FOR APPS.FND_GLOBAL
 /
 CREATE SYNONYM scs02.FND_APPLICATION FOR APPS.FND_APPLICATION

@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2010/12/24    1.0    S.Niki          新規作成
+ *  2010/12/28    1.1    S.Niki          E_本稼動_06035 シーケンスのSELECT権限を付与
  *
  ****************************************************************************************/
 CREATE USER   scs05
@@ -25,6 +26,10 @@ GRANT EXECUTE ANY PROCEDURE TO scs05
 /
 GRANT SELECT ANY DICTIONARY TO scs05
 /
+-- 2010/12/28 Ver.1.1 [E_本稼動_06035] SCS S.Niki ADD START
+GRANT SELECT ANY SEQUENCE TO   scs05
+/
+-- 2010/12/28 Ver.1.1 [E_本稼動_06035] SCS S.Niki ADD END
 CREATE SYNONYM scs05.FND_GLOBAL FOR APPS.FND_GLOBAL
 /
 CREATE SYNONYM scs05.FND_APPLICATION FOR APPS.FND_APPLICATION
