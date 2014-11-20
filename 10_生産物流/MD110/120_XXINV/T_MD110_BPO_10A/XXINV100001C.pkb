@@ -8,7 +8,7 @@ AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -109,6 +109,7 @@ AS
  *  2009/04/09   1.20 Oracle 吉元 強樹   本番#1350対応
  *  2009/04/13   1.21 Oracle 吉元 強樹   本番#1350対応,メッセージ出力不具合対応(エラー重複表示)
  *  2009/04/16   1.22 Oracle 椎名 昭圭   本番#1407対応
+ *  2009/05/19   1.23 Oracle 丸下        本番#1437対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -494,6 +495,9 @@ AS
   t_forecast_interface_tab_inst2   MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
 -- 2009/04/09 v1.20 T.Yoshimoto Add End 本番#1350
 --
+-- 2009/05/19 ADD START
+   gv_forecast_type VARCHAR2(2);  -- iv_forecast_designatorの値を保持する
+-- 2009/05/19 ADD END
 -- 2009/02/17 本番障害#38対応 ADD Start --
 -- =======================================
 --  プロシージャ宣言                    
@@ -10384,6 +10388,17 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
       FROM xxinv_mrp_forecast_interface
       WHERE  forecast_if_id = t_txns_type(ln_loop_cnt);
 --
+-- 2009/05/19 ADD START
+    -- 出荷数制限A、Bの場合は入力パラメータに関連するごみデータの削除を行う
+    IF gv_forecast_type IN( gv_cons_fc_type_seigen_a,gv_cons_fc_type_seigen_b ) THEN
+      DELETE
+      FROM  xxinv_mrp_forecast_interface  mfi
+      WHERE mfi.forecast_designator = gv_forecast_type                    -- 出荷数制限AとB
+      AND   mfi.forecast_date       = gd_in_start_date                    -- 入力パラメータ開始日付
+      AND   mfi.item_code           = NVL(gv_in_item_code,mfi.item_code)  -- 入力パラメータ品目
+      AND   mfi.created_by          = gn_created_by;                      -- ログインユーザ
+    END IF;
+-- 2009/05/19 ADD END
 --add start 1.4
       COMMIT;
 --add end 1.4
@@ -11867,6 +11882,15 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --del start 1.5
 --      gn_warn_cnt := gn_warn_cnt + 1;
 --del end 1.5
+-- 2009/05/19 ADD START
+      -- IFデータを削除する
+      -- A-X-6共通 インターフェーステーブル削除処理
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'del_if_data開始');
+      del_if_data( lt_if_data,
+                   lv_errbuf_d,
+                   lv_retcode_d,
+                   lv_errmsg_d );
+-- 2009/05/19 ADD START
       RAISE warn_expt;
     END IF;
 --
@@ -12413,6 +12437,14 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
 --del start 1.5
 --      gn_warn_cnt := gn_warn_cnt + 1;
 --del end 1.5
+-- 2009/05/19 ADD START
+      -- IFデータを削除する
+      -- A-X-6共通 インターフェーステーブル削除処理
+      del_if_data( lt_if_data,
+                   lv_errbuf_d,
+                   lv_retcode_d,
+                   lv_errmsg_d );
+-- 2009/05/19 ADD START
       RAISE warn_expt;
     END IF;
 --
@@ -12933,6 +12965,9 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
     -- Forecast分類を出力
     lc_out_par := gv_cons_input_forecast || gv_forecast_designator ;
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lc_out_par);
+-- 2009/05/19 ADD START
+    gv_forecast_type := iv_forecast_designator;
+-- 2009/05/19 ADD END
 --
     -- 入力パラメータを合体して出力
     lc_out_par := gv_cons_input_param  || iv_forecast_designator || gv_msg_pnt ||
