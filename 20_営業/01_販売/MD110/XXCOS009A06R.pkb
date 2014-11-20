@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A06R (body)
  * Description      : EDI納品予定未納リスト
  * MD.050           : EDI納品予定未納リスト MD050_COS_009_A06
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/06/26    1.4   N.Nishimura      障害対応[T1_1437]データパージ不具合対応
  *  2009/07/13    1.5   K.Kiriu          障害対応[0000488]PT対応
  *  2009/10/09    1.6   M.Sano           障害対応[0001378]帳票テーブルの桁あふれ対応
+ *  2011/08/24    1.7   K.Kiriu          [E_本稼動_08181]PT対応
  *
  *****************************************************************************************/
 --
@@ -378,6 +379,12 @@ AS
     CURSOR data_cur
     IS
       SELECT  
+/* 2011/08/24 Ver1.7 Add Start */
+        /*+
+          NO_MERGE(lbiv)
+          LEADING(lbiv)
+        */
+/* 2011/08/24 Ver1.7 Add End   */
         lbiv.base_code                    base_code,        --納品拠点コード
         MAX( lbiv.base_name )             base_name,        --納品拠点名
         ooha.request_date                 req_date,         --要求日
