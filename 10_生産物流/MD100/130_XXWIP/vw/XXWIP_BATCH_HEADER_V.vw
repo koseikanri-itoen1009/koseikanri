@@ -41,6 +41,9 @@ CREATE OR REPLACE VIEW apps.xxwip_batch_header_v
 , material_type_name              -- タイプ(名称)
 , rank1                           -- ランク1
 , rank2                           -- ランク2
+-- 2009/01/30 D.Nihei Add Start 本番障害#4
+, rank3                           -- ランク3
+-- 2009/01/30 D.Nihei Add End
 , wip_whse_code                   -- WIP倉庫コード
 , send_class                      -- 送信区分
 , result_management_post          -- 成績管理部署
@@ -105,6 +108,9 @@ AS
   , xlvv_l08.meaning                              material_type_name              -- タイプ(名称)
   , gmd.attribute2                                rank1                           -- ランク1
   , gmd.attribute3                                rank2                           -- ランク2
+-- 2009/01/30 D.Nihei Add Start 本番障害#4
+  , gmd.attribute26                               rank3                           -- ランク3
+-- 2009/01/30 D.Nihei Add End
   , gbh.wip_whse_code                             wip_whse_code                   -- WIP倉庫コード
   , gbh.attribute3                                send_class                      -- 送信区分
   , grv.attribute14                               result_management_post          -- 成績管理部署

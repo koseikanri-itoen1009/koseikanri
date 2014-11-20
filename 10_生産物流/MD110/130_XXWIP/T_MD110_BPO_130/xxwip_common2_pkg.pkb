@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY xxwip_common2_pkg
  * Package Name           : xxwip_common2_pkg(BODY)
  * Description            : 生産バッチ一覧画面用関数
  * MD.070(CMD.050)        : なし
- * Version                : 1.1
+ * Version                : 1.2
  *
  * Program List
  * --------------------   ---- ----- --------------------------------------------------
@@ -28,6 +28,7 @@ CREATE OR REPLACE PACKAGE BODY xxwip_common2_pkg
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/01/08   1.0   T.Oikawa         新規作成
  *  2008/12/22   1.1   Oracle 二瓶 大輔 本番障害#743対応(ロット追加・更新関数)
+ *  2009/01/30   1.2   Oracle 二瓶 大輔 本番障害#4対応(ランク3追加)
  *****************************************************************************************/
 AS
 --
@@ -732,6 +733,9 @@ AS
   , it_attribute13                  IN         ic_lots_mst.attribute13 %TYPE DEFAULT NULL -- タイプ
   , it_attribute14                  IN         ic_lots_mst.attribute14 %TYPE DEFAULT NULL -- ランク1
   , it_attribute15                  IN         ic_lots_mst.attribute15 %TYPE DEFAULT NULL -- ランク2
+-- 2009/01/30 D.Nihei ADD START
+  , it_attribute19                  IN         ic_lots_mst.attribute19 %TYPE DEFAULT NULL -- ランク3
+-- 2009/01/30 D.Nihei ADD END
   , it_attribute16                  IN         ic_lots_mst.attribute16 %TYPE DEFAULT NULL -- 伝票区分
   , it_attribute17                  IN         ic_lots_mst.attribute17 %TYPE DEFAULT NULL -- ラインNo
   , it_attribute18                  IN         ic_lots_mst.attribute18 %TYPE DEFAULT NULL -- 摘要
@@ -861,6 +865,11 @@ AS
     IF ( it_attribute15 IS NOT NULL ) THEN
       lr_ic_lots_mst.attribute15 := it_attribute15;   -- ランク2
     END IF;
+-- 2009/01/30 D.Nihei ADD START
+    IF ( it_attribute19 IS NOT NULL ) THEN
+      lr_ic_lots_mst.attribute19 := it_attribute19;   -- ランク3
+    END IF;
+-- 2009/01/30 D.Nihei ADD END
     IF ( it_attribute16 IS NOT NULL ) THEN
       lr_ic_lots_mst.attribute16 := it_attribute16;   -- 伝票区分
     END IF;
