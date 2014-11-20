@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK003A01C(body)
  * Description      : 移行顧客の基準在庫を元に旧拠点から新拠点への保管場所転送情報を作成。
  * MD.050           : VD在庫保管場所転送情報の作成 MD050_COK_003_A01
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/20    1.0   T.Kojima        新規作成
  *  2009/02/20    1.1   T.Kojima        [障害COK_051] 業態小分類 コード値修正
+ *  2009/12/10    1.2   S.Moriyama      [E_本稼動_00405] VDコラムマスタ前月、当月判定時に空きコラム考慮を追加
  *
  *****************************************************************************************/
 --
@@ -664,6 +665,22 @@ AS
 
         -- 顧客移行日が月初以外の場合
         ELSE
+-- 2009/12/10 Ver.1.2 [E_本稼動_00405] SCS S.Moriyama UPD START
+--          -- 前月VD在庫確定情報抽出
+--          SELECT   count(ROWID)                                                                  -- 前月VD在庫確定情報
+--          INTO     ln_last_manth_fix_info
+--          FROM     xxcoi_mst_vd_column   xmvc1                                                   -- VDコラムマスタ
+--          WHERE    xmvc1.customer_id = g_cust_shift_info_tab( gn_cust_cnt ).hca_cust_account_id  -- 顧客ID
+--          AND NOT EXISTS (
+--            SELECT ROWID 
+--            FROM   xxcoi_mst_vd_column xmvc2
+--            WHERE  xmvc2.customer_id                   = xmvc1.customer_id
+--            AND    xmvc2.column_no                     = xmvc1.column_no
+--            AND    xmvc2.last_month_item_id            = xmvc1.item_id
+--            AND    xmvc2.last_month_inventory_quantity = xmvc1.inventory_quantity
+--            AND    xmvc2.last_month_price              = xmvc1.price
+--          )
+--          AND    ROWNUM = 1;
           -- 前月VD在庫確定情報抽出
           SELECT   count(ROWID)                                                                  -- 前月VD在庫確定情報
           INTO     ln_last_manth_fix_info
@@ -672,14 +689,14 @@ AS
           AND NOT EXISTS (
             SELECT ROWID 
             FROM   xxcoi_mst_vd_column xmvc2
-            WHERE  xmvc2.customer_id                   = xmvc1.customer_id
-            AND    xmvc2.column_no                     = xmvc1.column_no
-            AND    xmvc2.last_month_item_id            = xmvc1.item_id
-            AND    xmvc2.last_month_inventory_quantity = xmvc1.inventory_quantity
-            AND    xmvc2.last_month_price              = xmvc1.price
+            WHERE  xmvc2.customer_id                           = xmvc1.customer_id
+            AND    xmvc2.column_no                             = xmvc1.column_no
+            AND    NVL(xmvc2.last_month_item_id,-1)            = NVL(xmvc1.item_id,-1)
+            AND    NVL(xmvc2.last_month_inventory_quantity,-1) = NVL(xmvc1.inventory_quantity,-1)
+            AND    NVL(xmvc2.last_month_price,-1)              = NVL(xmvc1.price,-1)
           )
           AND    ROWNUM = 1;
-          
+-- 2009/12/10 Ver.1.2 [E_本稼動_00405] SCS S.Moriyama UPD END
           -- 前月VD在庫確定情報が0件の場合
           IF ( ln_last_manth_fix_info = 0 ) THEN
             --「保留」更新対象とする
