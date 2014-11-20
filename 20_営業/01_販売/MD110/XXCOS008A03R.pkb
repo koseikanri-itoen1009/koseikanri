@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A03R (body)
  * Description      : 直送受注例外データリスト
  * MD.050           : 直送受注例外データリスト MD050_COS_008_A03
- * Version          : 1.4
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,9 @@ AS
  *  2009/02/19    1.2   K.Atsushiba      get_msgのパッケージ名修正
  *  2009/04/10    1.3   T.Kitajima       [T1_0381]出荷依頼情報の数量0データ除外
  *  2009/05/26    1.4   T.Kitajima       [T1_1183]受注数量のマイナス化
+ *  2009/06/17    1.5   N.Nishimura      [T1_1439]対象件数0件時、正常終了とする
+ *  2009/06/25    1.6   N.Nishimura      [T1_1437]データパージ不具合対応
+ *  2009/07/08    1.7   N.Maeda          [0000484]出荷品目を依頼品目に変更
  *
  *****************************************************************************************/
 --
@@ -465,7 +468,7 @@ AS
         ,ooa1.deliver_from_whse_name     deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
         ,ooa1.customer_number            customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
         ,ooa1.customer_name              customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-        ,ooa1.item_code                  item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+        ,ooa1.item_code                  item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
         ,ooa1.item_name                  item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
         ,TRUNC( ooa1.schedule_dlv_date ) schedule_dlv_date        -- 受注ﾍｯﾀﾞ.着日               ：納品予定日
         ,ooa1.schedule_inspect_date      schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
@@ -679,7 +682,10 @@ AS
         ( SELECT
              xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
             ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
-            ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+            ,xola.request_item_code       item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--            ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
             ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
             ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
           FROM
@@ -737,7 +743,7 @@ AS
         ,ooa1.deliver_from_whse_name     deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
         ,ooa1.customer_number            customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
         ,ooa1.customer_name              customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-        ,ooa1.item_code                  item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+        ,ooa1.item_code                  item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
         ,ooa1.item_name                  item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
         ,TRUNC( ooa1.schedule_dlv_date ) schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
         ,ooa1.schedule_inspect_date      schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
@@ -860,7 +866,10 @@ AS
         ( SELECT
              xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
             ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
-            ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+            ,xola.request_item_code       item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--            ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
             ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
 --MIYATA MODIFY 出荷実績済みではないので数量に変更
 --            ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
@@ -1095,8 +1104,11 @@ AS
                                                         ,xca.delivery_base_code
                                                         ,iv_base_code )
               AND  oola.packing_instructions =   xoha.request_no   -- 受注明細.梱包指示 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
-                                                                   -- NVL(受注明細.子コード,受注明細.受注品目 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷品目
-              AND  NVL( oola.attribute6, oola.ordered_item ) = xola.shipping_item_code
+                                                                   -- NVL(受注明細.子コード,受注明細.受注品目 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼品目
+-- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+              AND  NVL( oola.attribute6, oola.ordered_item ) = xola.request_item_code
+--              AND  NVL( oola.attribute6, oola.ordered_item ) = xola.shipping_item_code
+-- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
               )
 --
       UNION
@@ -1113,7 +1125,10 @@ AS
         ,xilv.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
         ,xoha.customer_code         customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
         ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-        ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+        ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--        ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
         ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
         ,NULL                       schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
         ,NULL                       schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
@@ -1156,7 +1171,10 @@ AS
                                                 ,iv_base_code )
       AND  hca2.customer_class_code  =  cv_party_type_1            -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
       AND  hca2.account_number       =  xca.delivery_base_code     -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
-      AND  xola.shipping_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = OPM品目.品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+      AND  xola.request_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = OPM品目.品目ｺｰﾄﾞ
+--      AND  xola.shipping_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = OPM品目.品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
       AND  iimb.item_id              =  ximb.item_id               -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
       AND  TRUNC( ximb.start_date_active )                   <= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
       AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
@@ -1204,8 +1222,12 @@ AS
                                                         ,xca.delivery_base_code
                                                         ,iv_base_code )
               AND  xoha.request_no            =  oola.packing_instructions -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No = 受注明細.梱包指示
-                                                                           -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = NVL(受注明細.子コード,受注明細.受注品目
-              AND  xola.shipping_item_code    =  NVL( oola.attribute6, oola.ordered_item )
+-- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+                                                                           -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = NVL(受注明細.子コード,受注明細.受注品目
+              AND  xola.request_item_code    =  NVL( oola.attribute6, oola.ordered_item )
+--                                                                           -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = NVL(受注明細.子コード,受注明細.受注品目
+--              AND  xola.shipping_item_code    =  NVL( oola.attribute6, oola.ordered_item )
+-- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
               )
 --
       UNION
@@ -1222,7 +1244,10 @@ AS
         ,xilv.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
         ,xoha.customer_code         customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
         ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-        ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+        ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--        ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
         ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
         ,NULL                       schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
         ,NULL                       schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
@@ -1265,7 +1290,10 @@ AS
                                                 ,iv_base_code )
       AND  hca2.customer_class_code  =  cv_party_type_1            -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
       AND  hca2.account_number       =  xca.delivery_base_code     -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
-      AND  xola.shipping_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = OPM品目.品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+      AND  xola.request_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = OPM品目.品目ｺｰﾄﾞ
+--      AND  xola.shipping_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = OPM品目.品目ｺｰﾄﾞ
+-- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
       AND  iimb.item_id              =  ximb.item_id               -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
       AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
       AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
@@ -1954,6 +1982,11 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+--2009/06/25  Ver1.6 T1_1437  Add start
+    lv_errbuf_svf  VARCHAR2(5000);  -- エラー・メッセージ(SVF実行結果保持用)
+    lv_retcode_svf VARCHAR2(1);     -- リターン・コード(SVF実行結果保持用)
+    lv_errmsg_svf  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ(SVF実行結果保持用)
+--2009/06/25  Ver1.6 T1_1437  Add end
 --
   BEGIN
 --
@@ -2026,11 +2059,19 @@ AS
       lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
-    IF ( lv_retcode = cv_status_normal ) THEN
-      NULL;
-    ELSE
-      RAISE global_process_expt;
-    END IF;
+-- 2009/06/25  Ver1.6  T1_1437  Mod Start
+--    IF ( lv_retcode = cv_status_normal ) THEN
+--      NULL;
+--    ELSE
+--      RAISE global_process_expt;
+--    END IF;
+--
+    --
+    --エラーでもワークテーブルを削除する為、エラー情報を保持
+    lv_errbuf_svf  := lv_errbuf;
+    lv_retcode_svf := lv_retcode;
+    lv_errmsg_svf  := lv_errmsg;
+-- 2009/06/25  Ver1.6 T1_1437  Mod End
 --
     -- ===============================
     -- A-5  ワークテーブルデータ削除
@@ -2047,8 +2088,24 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2009/06/25  Ver1.6 T1_1437  Add start
+    --エラーの場合、ロールバックするのでここでコミット
+    COMMIT;
+--
+    --SVF実行結果確認
+    IF ( lv_retcode_svf = cv_status_error ) THEN
+      lv_errbuf  := lv_errbuf_svf;
+      lv_retcode := lv_retcode_svf;
+      lv_errmsg  := lv_errmsg_svf;
+      RAISE global_process_expt;
+    END IF;
+-- 2009/06/25  Ver1.6 T1_1437  Add End
+--
     --明細0件時ステータス制御処理
-    IF ( gn_target_cnt = 0 ) THEN
+--****************************** 2009/06/17 1.5 N.Nishimura MOD START ******************************--
+--    IF ( gn_target_cnt = 0 ) THEN
+    IF ( gn_target_cnt <> 0 ) THEN
+--****************************** 2009/06/17 1.5 N.Nishimura MOD  END  ******************************--
       ov_retcode := cv_status_warn;
     END IF;
 --
