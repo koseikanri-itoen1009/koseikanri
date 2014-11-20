@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A05C(body)
  * Description      : APインターフェイス
  * MD.050           : APインターフェース MD050_COK_021_A05
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/02/02    1.1   S.Tozawa         [障害COK_006]結合テスト時修正対応
  *  2009/02/12    1.2   K.Iwabuchi       [障害COK_030]結合テスト時修正対応
  *  2009/10/06    1.3   S.Moriyama       [障害E_T3_00632]仕訳伝票入力者を処理実行ユーザーの従業員番号へ変更
+ *  2009/10/22    1.4   K.Yamaguchi      [障害E_T4_00070]支払グループを設定しないように変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -101,7 +102,9 @@ AS
   cv_prof_dept_act           CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF2_DEPT_ACT';           -- 部門コード_業務管理部
   cv_prof_detail_type_item   CONSTANT VARCHAR2(40)  := 'XXCOK1_OIF_DETAIL_TYPE_ITEM';    -- OIF明細タイプ_明細
   cv_prof_invoice_source     CONSTANT VARCHAR2(40)  := 'XXCOK1_INVOICE_SOURCE';          -- 請求書ソース
-  cv_prof_pay_group          CONSTANT VARCHAR2(40)  := 'XXCOK1_PAY_GROUP';               -- 支払グループ
+-- 2009/10/22 Ver.1.4 [障害E_T4_00070] SCS K.Yamaguchi DELETE START
+--  cv_prof_pay_group          CONSTANT VARCHAR2(40)  := 'XXCOK1_PAY_GROUP';               -- 支払グループ
+-- 2009/10/22 Ver.1.4 [障害E_T4_00070] SCS K.Yamaguchi DELETE END
   cv_prof_invoice_tax_code   CONSTANT VARCHAR2(40)  := 'XXCOK1_INVOICE_TAX_CODE';        -- 請求書税コード
   cv_prof_dept_fin           CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF2_DEPT_FIN';           -- 部門コード_財務経理部
   cv_prof_customer_dummy     CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF5_CUSTOMER_DUMMY';     -- 顧客コード_ダミー値
@@ -1579,19 +1582,22 @@ AS
                     );
       RAISE get_data_err_expt;
     END IF;    
-    -- カスタム・プロファイル：支払グループの取得
-    gv_prof_pay_group := FND_PROFILE.VALUE(
-                           cv_prof_pay_group
-                         );
-    IF ( gv_prof_pay_group IS NULL ) THEN
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_xxcok_appl_short_name
-                    , iv_name         => cv_msg_code_00003
-                    , iv_token_name1  => cv_token_profile             -- プロファイル名
-                    , iv_token_value1 => cv_prof_pay_group            -- 支払グループ
-                    );
-      RAISE get_data_err_expt;
-    END IF;    
+-- 2009/10/22 Ver.1.4 [障害E_T4_00070] SCS K.Yamaguchi REPAIR START
+--    -- カスタム・プロファイル：支払グループの取得
+--    gv_prof_pay_group := FND_PROFILE.VALUE(
+--                           cv_prof_pay_group
+--                         );
+--    IF ( gv_prof_pay_group IS NULL ) THEN
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_xxcok_appl_short_name
+--                    , iv_name         => cv_msg_code_00003
+--                    , iv_token_name1  => cv_token_profile             -- プロファイル名
+--                    , iv_token_value1 => cv_prof_pay_group            -- 支払グループ
+--                    );
+--      RAISE get_data_err_expt;
+--    END IF;    
+    gv_prof_pay_group := NULL;
+-- 2009/10/22 Ver.1.4 [障害E_T4_00070] SCS K.Yamaguchi REPAIR END
     -- カスタム・プロファイル：勘定科目_未払金の取得
     gv_prof_acct_payable := FND_PROFILE.VALUE(
                               cv_prof_acct_payable
