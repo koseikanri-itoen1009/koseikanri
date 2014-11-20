@@ -33,6 +33,7 @@ AS
  *  2009/02/19    1.0   Mio.Maruyama    ルートＮｏ訪問回数算出処理(ファンクション)追加
  *  2009/02/27    1.0   Kazuo.Satomura  売上計画日別配分処理桁溢れ対応
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
+ *  2009/07/07    1.2   Daisuke.Abe      0000473対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -725,9 +726,17 @@ AS
       END LOOP get_day_week1;
       -- 2週目以降の日にちセット
       ln_loop_cnt := ln_day_week2;
+      /* 20090707_abe_0000473 START*/
+      -- 1週目(月～日)が全て設定されているか
+      IF  ln_loop_cnt > 7 THEN
+        ln_week_cnt := ln_week_cnt + 1;    -- 第～曜日カウント
+      END IF;
+      /* 20090707_abe_0000473 END*/
       <<get_day_week2>>
       LOOP
-        ln_week_cnt := ln_week_cnt + 1;    -- 週カウント
+        /* 20090707_abe_0000473 START*/
+        --ln_week_cnt := ln_week_cnt + 1;    -- 週カウント
+        /* 20090707_abe_0000473 END*/
         -- 2週目以降の日にちをセット
         <<set_day_after_week>>
         FOR ln_j in 1..7 LOOP
@@ -735,7 +744,15 @@ AS
             IF ln_loop_cnt <= ln_day_on_month THEN
                l_all_day_week_tab(ln_week_cnt)(ln_j)   := ln_loop_cnt;
                ln_loop_cnt                             := ln_loop_cnt + 1; 
-            END IF;                                       
+            END IF;
+            /* 20090707_abe_0000473 START*/
+            -- 第2週目以降の第～曜日判定
+            IF  MOD(ln_loop_cnt ,7) = 1  THEN
+              ln_week_cnt := ln_week_cnt + 1;    -- 第～曜日カウント
+            END IF;
+            --
+            /* 20090707_abe_0000473 END*/
+
         END LOOP set_day_after_week;
         IF ln_loop_cnt > ln_day_on_month THEN 
           EXIT;
@@ -804,48 +821,60 @@ AS
 --
       -- 訪問日数が０の場合、エラー 
       IF ln_cnt_houmon_day = 0 THEN
-        lv_errbuf := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_02         -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_item              -- トークンコード1
-                       ,iv_token_value1 => cv_tkn_val_route_name    -- トークン値1
-                    );
-        lv_retcode := cv_status_error;
-        RAISE global_api_others_expt;
-      END IF;
+/* 20090707_abe_0000473 START*/
+        lt_sales_plan_day_amt := NULL;
+        --lv_errbuf := xxccp_common_pkg.get_msg(
+        --                iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+        --               ,iv_name         => cv_tkn_number_02         -- メッセージコード
+        --               ,iv_token_name1  => cv_tkn_item              -- トークンコード1
+        --               ,iv_token_value1 => cv_tkn_val_route_name    -- トークン値1
+        --            );
+        --lv_retcode := cv_status_error;
+        --RAISE global_api_others_expt;
+      --END IF;
+        <<distribute_sales_loop>>
+        FOR ln_loop_cnt IN 1..ln_day_on_month LOOP
+            -- 日別売上金額のセット
+            l_sales_plan_day_on_month_tbl(ln_loop_cnt).sales_plan_day_amt := lt_sales_plan_day_amt;
+        END LOOP distribute_sales_loop;
+      ELSE
+/* 20090707_abe_0000473 END*/
 --
-      -- ルートNoにより配分された訪問日の日別売上計画金額の計算
-      BEGIN
-        lt_sales_plan_day_amt := TRUNC(lt_sales_plan_amt/ln_cnt_houmon_day);
-      EXCEPTION
-        WHEN VALUE_ERROR THEN
-          -- 桁溢れが発生した場合
-          lv_errbuf := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                         ,iv_name         => cv_tkn_number_03         -- メッセージコード
-                      );
-          ov_errbuf  := cv_pkg_name || cv_msg_cont ||cv_prg_name || cv_msg_part || lv_errbuf;
-          ov_retcode := cv_status_error;
-          ov_errmsg  := lv_errbuf;
-          RETURN;
-      END;
+        -- ルートNoにより配分された訪問日の日別売上計画金額の計算
+        BEGIN
+          lt_sales_plan_day_amt := TRUNC(lt_sales_plan_amt/ln_cnt_houmon_day);
+        EXCEPTION
+          WHEN VALUE_ERROR THEN
+            -- 桁溢れが発生した場合
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_03         -- メッセージコード
+                        );
+            ov_errbuf  := cv_pkg_name || cv_msg_cont ||cv_prg_name || cv_msg_part || lv_errbuf;
+            ov_retcode := cv_status_error;
+            ov_errmsg  := lv_errbuf;
+            RETURN;
+        END;
 --
-      -- 訪問フラグがセットされている訪問日について売上計画金額をセット
-      <<distribute_sales_loop>>
-      FOR ln_loop_cnt IN 1..ln_day_on_month LOOP
-        -- 該当日が訪問日の場合、日別売上計画金額をセット
-        IF (l_sales_plan_day_on_month_tbl(ln_loop_cnt).houmon_flg = 1) THEN
-          -- 訪問日数のカウント
-          ln_cnt_first_houmon := ln_cnt_first_houmon + 1;
-          -- 日別売上金額のセット
-          l_sales_plan_day_on_month_tbl(ln_loop_cnt).sales_plan_day_amt := lt_sales_plan_day_amt;
-          -- 最初訪問日の日別売上金額の調整
-          IF ln_cnt_first_houmon = '1' THEN
-             l_sales_plan_day_on_month_tbl(ln_loop_cnt).sales_plan_day_amt := 
-               lt_sales_plan_amt - lt_sales_plan_day_amt*(ln_cnt_houmon_day-1);
+        -- 訪問フラグがセットされている訪問日について売上計画金額をセット
+        <<distribute_sales_loop>>
+        FOR ln_loop_cnt IN 1..ln_day_on_month LOOP
+          -- 該当日が訪問日の場合、日別売上計画金額をセット
+          IF (l_sales_plan_day_on_month_tbl(ln_loop_cnt).houmon_flg = 1) THEN
+            -- 訪問日数のカウント
+            ln_cnt_first_houmon := ln_cnt_first_houmon + 1;
+            -- 日別売上金額のセット
+            l_sales_plan_day_on_month_tbl(ln_loop_cnt).sales_plan_day_amt := lt_sales_plan_day_amt;
+            -- 最初訪問日の日別売上金額の調整
+            IF ln_cnt_first_houmon = '1' THEN
+               l_sales_plan_day_on_month_tbl(ln_loop_cnt).sales_plan_day_amt := 
+                 lt_sales_plan_amt - lt_sales_plan_day_amt*(ln_cnt_houmon_day-1);
+            END IF;
           END IF;
-        END IF;
-      END LOOP distribute_sales_loop;
+        END LOOP distribute_sales_loop;
+/* 20090707_abe_0000473 START*/
+      END IF;
+/* 20090707_abe_0000473 END*/
     END IF;
 --
     -- ===============================================
