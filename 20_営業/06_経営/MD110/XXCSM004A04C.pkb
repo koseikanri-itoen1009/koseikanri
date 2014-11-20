@@ -7,7 +7,7 @@ AS
  * Description      : 顧客マスタから新規獲得した顧客を抽出し、新規獲得ポイント顧客別履歴テーブル
  *                  : にデータを登録します。
  * MD.050           : 新規獲得ポイント集計（新規獲得ポイント集計処理）MD050_CSM_004_A04
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/08/17    1.6   T.Tsukino      ［SCS障害管理番号0000870］中止顧客判定期間の不具合追加
  *  2009/11/27    1.7   K.Kubo         ［障害管理番号E_本稼動_00112］獲得/紹介営業員が同一時の不具合
  *  2009/12/07    1.8   T.Tsukino      ［障害管理番号E_本稼動_00335］獲得/紹介営業員が入替え時の不具合/判定日付の変更
+ *  2009/12/15    1.9   T.Nakano       ［障害管理番号E_本稼動_00412］業態(小分類)が"27"時の不具合追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -188,6 +189,9 @@ AS
   cv_business_low_type_vd   CONSTANT VARCHAR2(2)   := '25';                                         -- 業態（小分類）フルサービスVD
   cv_business_low_type_n_vd CONSTANT VARCHAR2(2)   := '26';                                         -- 業態（小分類）納品VD
 --//+UPD END   2009/04/22 T1_0704 M.Ohtsuki
+--//+UPD START 2009/12/15 E_本番稼動_00412 T.Nakano
+  cv_business_low_type_gvd  CONSTANT VARCHAR2(2)   := '27';                                          -- 業態（小分類）納品VD
+--//+UPD END   2009/12/15 E_本番稼動_00412 T.Nakano
   cv_custom_condition_fvd   CONSTANT VARCHAR2(2)   := '01';                                         -- 顧客業態コード フルVD
   cv_custom_condition_nvd   CONSTANT VARCHAR2(2)   := '02';                                         -- 顧客業態コード 納品VD
   cv_custom_condition_gvd   CONSTANT VARCHAR2(2)   := '03';                                         -- 顧客業態コード 一般
@@ -580,7 +584,10 @@ AS
     -- 1.業態（小分類）から顧客業態コードを算出します。
     IF (it_business_low_type IN (cv_business_low_type_s_vd,cv_business_low_type_vd)) THEN           -- 業態（小分類）がフルVD、フルVD(消化)の場合
       lt_custom_condition_cd := cv_custom_condition_fvd;     -- 顧客業態コード フルVD
-    ELSIF (it_business_low_type = cv_business_low_type_n_vd) THEN                                   -- 業態（小分類）納品VDの場合
+--//+UPD START 2009/12/15 E_本番稼動_00412 T.Nakano
+    ELSIF (it_business_low_type IN (cv_business_low_type_n_vd,cv_business_low_type_gvd)) THEN            -- 業態（小分類）納品VDの場合
+--    ELSIF (it_business_low_type = cv_business_low_type_n_vd) THEN                                   -- 業態（小分類）納品VDの場合
+--//+UPD END 2009/12/15 E_本番稼動_00412 T.Nakano
       lt_custom_condition_cd := cv_custom_condition_nvd;     -- 顧客業態コード 納品VD
     ELSE                                                                                            -- その他の業態（小分類）の場合
       lt_custom_condition_cd := cv_custom_condition_gvd;     -- 顧客業態コード 一般
