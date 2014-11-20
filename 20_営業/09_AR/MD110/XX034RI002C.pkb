@@ -8,7 +8,7 @@ AS
  * Description      : インターフェーステーブルからの請求依頼データインポート
  * MD.050(CMD.040)  : 部門入力バッチ処理（AR）       OCSJ/BFAFIN/MD050/F702
  * MD.070(CMD.050)  : 部門入力（AR）データインポート OCSJ/BFAFIN/MD070/F702
- * Version          : 11.5.10.2.10H
+ * Version          : 11.5.10.2.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,7 +69,8 @@ AS
  *  2007/12/12   11.5.10.2.10G  単価×数量の結果は通貨書式に丸める処理を追加
  *  2008/02/18   11.5.10.2.10H  明細の納品書番号項目について、入力可能Byteを30Byte
  *                              とするため対象項目のByte数チェック処理を追加
- *
+ *  2012/10/24   11.5.10.2.11   [E_本稼動_09965]パフォーマンス対応のため、
+ *                              XX03_COMMITMENT_NUMBER_LOV_Vをコメントアウトするように修正
  *****************************************************************************************/
 --
 --#####################  固定共通例外宣言部 START   ####################
@@ -577,11 +578,15 @@ AS
          , xcsl.TAX_HEADER_LEVEL_FLAG_C             as AUTO_TAX_CALC_FLAG_C  -- 消費税計算レベル(顧客単位)
          , SUBSTRB(xcsl.TAX_ROUNDING_RULE_C, 1, 1)  as TAX_ROUNDING_RULE_C   -- 消費税端数処理(顧客単位)
          , xrsi.COMMITMENT_NUMBER      as COMMITMENT_NUMBER                  -- 前受金充当伝票番号
-         , xcnl.TRX_NUMBER             as COM_TRX_NUMBER                     --
-         -- ver 11.5.10.2.10E Chg Start
-         --, xcnl.COMMITMENT_AMOUNT      as COM_COMMITMENT_AMOUNT              --
-         , to_number(xcnl.COMMITMENT_AMOUNT, xx00_currency_pkg.get_format_mask(xrsi.CURRENCY_CODE, 38)) as COM_COMMITMENT_AMOUNT
-         -- ver 11.5.10.2.10E Chg End
+-- 2012/10/24 Ver11.5.10.2.11 START
+--         , xcnl.TRX_NUMBER             as COM_TRX_NUMBER                     --
+--         -- ver 11.5.10.2.10E Chg Start
+--         --, xcnl.COMMITMENT_AMOUNT      as COM_COMMITMENT_AMOUNT              --
+--         , to_number(xcnl.COMMITMENT_AMOUNT, xx00_currency_pkg.get_format_mask(xrsi.CURRENCY_CODE, 38)) as COM_COMMITMENT_AMOUNT
+--         -- ver 11.5.10.2.10E Chg End
+         , NULL                        as COM_TRX_NUMBER
+         , NULL                        as COM_COMMITMENT_AMOUNT
+-- 2012/10/24 Ver11.5.10.2.11 END
          , xrsi.ORG_ID                 as ORG_ID                             -- オルグID
          , xrsi.CREATED_BY             as CREATED_BY
          , xrsi.CREATION_DATE          as CREATION_DATE
@@ -790,7 +795,9 @@ AS
            )                           xrml
          -- ver 11.5.10.2.10C Chg End
          -- ver 11.5.10.2.6 Chg End
-         , XX03_COMMITMENT_NUMBER_LOV_V  xcnl
+-- 2012/10/24 Ver11.5.10.2.11 START
+--         , XX03_COMMITMENT_NUMBER_LOV_V  xcnl
+-- 2012/10/24 Ver11.5.10.2.11 END
          -- ver 11.5.10.2.10D Add Start
          ,(SELECT fc.CURRENCY_CODE CURRENCY_CODE ,xrsi.INTERFACE_ID INTERFACE_ID
              FROM FND_CURRENCIES fc ,XX03_RECEIVABLE_SLIPS_IF xrsi
@@ -829,7 +836,9 @@ AS
           -- ver 11.5.10.2.6 Add Start
           AND xrsi.INTERFACE_ID             = xrml.INTERFACE_ID          (+)
           -- ver 11.5.10.2.6 Add End
-          AND xrsi.COMMITMENT_NUMBER        = xcnl.TRX_NUMBER            (+)
+-- 2012/10/24 Ver11.5.10.2.11 START
+--          AND xrsi.COMMITMENT_NUMBER        = xcnl.TRX_NUMBER            (+)
+-- 2012/10/24 Ver11.5.10.2.11 END
          -- ver 11.5.10.2.10D Add Start
           AND xrsi.CURRENCY_CODE            = xfc.CURRENCY_CODE          (+)
           AND xrsi.INTERFACE_ID             = xfc.INTERFACE_ID           (+)
