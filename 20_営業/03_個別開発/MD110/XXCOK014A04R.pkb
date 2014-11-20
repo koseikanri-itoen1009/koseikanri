@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.0
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,8 @@ AS
  *  2009/03/02    1.3   SCS M.Hiruta     [障害COK_068]
  *                                       1.自拠点含むのデータ抽出条件修正
  *                                       2.当月BM及び電気料を当月分のみ集計
+ *  2009/04/17    1.4   SCS T.Taniguchi  [障害COK_647] 桁数修正
+ *  2009/04/23    1.5   SCS T.Taniguchi  [障害COK_684] 問合せ拠点修正
  *
  *****************************************************************************************/
   -- ===============================================
@@ -208,7 +210,10 @@ AS
    ,BANK_BRANCH_NAME             VARCHAR2(60)  -- 銀行支店名
    ,BANK_ACCT_TYPE               VARCHAR2(1)   -- 口座種別
    ,BANK_ACCT_TYPE_NAME          VARCHAR2(4)   -- 口座種別名
-   ,BANK_ACCT_NO                 VARCHAR2(7)   -- 口座番号
+-- 2009/04/17 Ver.1.4 [障害T1_0647] SCS T.Taniguchi START
+--   ,BANK_ACCT_NO                 VARCHAR2(7)   -- 口座番号
+   ,BANK_ACCT_NO                 VARCHAR2(30)  -- 口座番号
+-- 2009/04/17 Ver.1.4 [障害T1_0647] SCS T.Taniguchi END
    ,BANK_ACCT_NAME               VARCHAR2(150) -- 銀行口座名
    ,REF_BASE_CODE                VARCHAR2(4)   -- 問合せ担当拠点コード
    ,REF_BASE_NAME                VARCHAR2(240) -- 問合せ担当拠点名
@@ -739,15 +744,17 @@ AS
         ----------------
         -- PL/SQL表格納
         ----------------
+-- 2009/04/23 Ver.1.5 [障害T1_0684] SCS T.Taniguchi START
         -- BM支払区分より、問合せ担当拠点に設定する値を判定する
-        IF ( gt_bm_type_bk IN ( cv_bm_payment_type3 ,cv_bm_payment_type4 ) ) THEN
-          g_bm_balance_ttype( gn_index ).REF_BASE_CODE := gt_selling_base_code_bk; -- 問合せ担当拠点コード
-          g_bm_balance_ttype( gn_index ).REF_BASE_NAME := gt_selling_base_name_bk; -- 問合せ担当拠点名
-        ELSE
-          g_bm_balance_ttype( gn_index ).REF_BASE_CODE := gt_ref_base_code_bk;     -- 問合せ担当拠点コード
-          g_bm_balance_ttype( gn_index ).REF_BASE_NAME := gt_ref_base_name_bk;     -- 問合せ担当拠点名
-        END IF;
---   
+--        IF ( gt_bm_type_bk IN ( cv_bm_payment_type3 ,cv_bm_payment_type4 ) ) THEN
+--          g_bm_balance_ttype( gn_index ).REF_BASE_CODE := gt_selling_base_code_bk; -- 問合せ担当拠点コード
+--          g_bm_balance_ttype( gn_index ).REF_BASE_NAME := gt_selling_base_name_bk; -- 問合せ担当拠点名
+--        ELSE
+        g_bm_balance_ttype( gn_index ).REF_BASE_CODE             := gt_ref_base_code_bk;       -- 問合せ担当拠点コード
+        g_bm_balance_ttype( gn_index ).REF_BASE_NAME             := gt_ref_base_name_bk;       -- 問合せ担当拠点名
+--        END IF;
+-- 2009/04/23 Ver.1.5 [障害T1_0684] SCS T.Taniguchi END
+--
         g_bm_balance_ttype( gn_index ).PAYMENT_CODE              := gt_payment_code_bk;        -- 支払先コード
         g_bm_balance_ttype( gn_index ).PAYMENT_NAME              := gt_payment_name_bk;        -- 支払先名
         g_bm_balance_ttype( gn_index ).BANK_NO                   := gt_bank_no_bk;             -- 銀行番号
