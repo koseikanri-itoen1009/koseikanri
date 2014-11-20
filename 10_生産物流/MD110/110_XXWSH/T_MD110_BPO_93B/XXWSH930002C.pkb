@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.51
+ * Version          : 1.52
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -153,6 +153,7 @@ AS
  *  2009/04/07    1.49 SCS    伊藤ひとみ 本番障害対応#1105,1164(再対応) dummy_lot_checkでIFデータを検索する時の条件が漏れていたので修正
  *  2009/04/08    1.50 SCS    伊藤ひとみ 本番障害対応#1232 運送業者、出庫日、入庫日がNULLの場合の考慮ができていないため修正。配送Noが指示を同じかチェックを追加
  *  2009/04/27    1.51 SCS    伊藤ひとみ 本番障害対応#1435 指示と報告比較チェックで、運賃区分OFFの場合は、運送業者の比較は行わない
+ *  2009/05/26    1.52 SCS    伊藤ひとみ 本番障害対応#1495 在庫クローズチェックを在庫クローズ年月の月末で行うよう修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1199,6 +1200,10 @@ AS
   gt_prog_appl_id    xxinv_mov_lot_details.program_application_id%TYPE; -- アプリケーションID
   gt_conc_program_id xxinv_mov_lot_details.program_id%TYPE;             -- コンカレント・プログラムID
 --
+-- 2009/05/26 H.Itou Add Start 本番障害#1495
+  -- 在庫クローズ年月の月末
+  gd_close_last_day  DATE;
+-- 2009/05/26 H.Itou Add End
   -- デバッグ用
   gb_debug    BOOLEAN DEFAULT FALSE;    --デバッグログ出力用スイッチ
 --
@@ -4832,6 +4837,10 @@ AS
 --
     END IF;
 --
+-- 2009/05/26 H.Itou Add Start 本番障害#1495
+    -- 在庫クローズ年月の月末を取得
+    gd_close_last_day := LAST_DAY(FND_DATE.STRING_TO_DATE(xxcmn_common_pkg.get_opminv_close_period,'YYYY/MM'));
+-- 2009/05/26 H.Itou Add End
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
     --==============================================================
@@ -7242,7 +7251,9 @@ AS
     lt_delivery_no             xxwsh_shipping_headers_if.delivery_no%TYPE;   -- IF_H.配送No
     lv_error_flg               VARCHAR2(1);                                  -- エラーflag
     ln_cnt                     NUMBER;
-    lv_inv_close_period        NUMBER;
+-- 2009/05/26 H.Itou Del Start 本番障害#1495 グローバル変数で取得するため不要
+--    lv_inv_close_period        NUMBER;
+-- 2009/05/26 H.Itou Del End
     ln_err_flg                 NUMBER := 0;
     lv_msg_buff                VARCHAR2(5000);
 --
@@ -7847,6 +7858,57 @@ AS
           END IF;
 --
         END IF;
+-- 2009/05/26 H.Itou Add Start 本番障害#1495 在庫クローズチェックを下から移動
+        IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
+--
+          -- 出荷日/着荷日
+          IF ((gd_close_last_day >= gr_interface_info_rec(i).shipped_date) OR
+              (gd_close_last_day >= gr_interface_info_rec(i).arrival_date))
+          THEN
+--
+            --********** debug_log ********** START ***
+            debug_log(FND_FILE.LOG,'在庫会計期間CLOSEエラー（移動）');
+            --********** debug_log ********** END   ***
+            -- 在庫会計期間がCLOSEなので、ログを出力し、配送No単位にエラーをセット
+            lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                           gv_msg_kbn          -- 'XXWSH'
+                          ,gv_msg_93a_016  -- 在庫会計期間CLOSEエラー
+                          ,gv_param1_token
+                          ,gr_interface_info_rec(i).delivery_no      --IF_H.配送No
+                          ,gv_param2_token
+                          ,gr_interface_info_rec(i).order_source_ref --IF_H.受注ソース参照
+                          ,gv_param3_token
+                          ,TO_CHAR(gd_close_last_day, 'YYYY/MM')          --OPM在庫会計期間CLOSE年月取得関数の戻り値
+                          ,gv_param4_token
+                          ,gr_interface_info_rec(i).eos_data_type    --IF_H.EOSデータ種別
+                          ,gv_param5_token
+                          ,TO_CHAR(gr_interface_info_rec(i).shipped_date,'YYYY/MM/DD')     --IF_H.出荷日
+                          ,gv_param6_token
+                          ,TO_CHAR(gr_interface_info_rec(i).arrival_date,'YYYY/MM/DD')     --IF_H.着荷日
+                          )
+                          ,1
+                          ,5000);
+--
+            -- 配送NO-EOSデータ種別単位にエラーflagセット
+            set_deliveryno_unit_errflg(
+              lt_delivery_no,         -- 配送No
+              lt_eos_data_type,       -- EOSデータ種別
+              gv_err_class,           -- エラー種別：エラー
+              lv_msg_buff,            -- エラー・メッセージ(出力用)
+              lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+              lv_retcode,             -- リターン・コード             --# 固定 #
+              lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+--
+            -- エラーフラグ
+            ln_err_flg := 1;
+            -- 処理ステータス：警告
+            ov_retcode := gv_status_warn;
+--
+          END IF;
+--
+        END IF;
+-- 2009/05/26 H.Itou Add End
 --
       END IF; -- 移動出庫または移動入庫の場合、マスタチェック、配送No-移動Noの組み合わせのチェック
 --
@@ -8367,7 +8429,9 @@ AS
         END IF;
 --
         --OPM在庫会計期間CLOSE年月チェック
-        lv_inv_close_period := xxcmn_common_pkg.get_opminv_close_period;
+-- 2009/05/26 H.Itou Mod Start 本番障害#1495 在庫クローズ年月はLOOP中変わらないので、get_profileで取得する。
+--        lv_inv_close_period := xxcmn_common_pkg.get_opminv_close_period;
+-- 2009/05/26 H.Itou Mod End
 --
         IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
           -- 出荷or支給
@@ -8377,7 +8441,10 @@ AS
           THEN
 --
             --出荷日
-            IF (FND_DATE.STRING_TO_DATE(lv_inv_close_period,'YYYY/MM') >= gr_interface_info_rec(i).shipped_date)
+-- 2009/05/26 H.Itou Mod Start 本番障害#1495 在庫クローズ年月の月末と比較するよう、修正。
+--            IF (FND_DATE.STRING_TO_DATE(lv_inv_close_period,'YYYY/MM') >= gr_interface_info_rec(i).shipped_date)
+            IF (gd_close_last_day >= gr_interface_info_rec(i).shipped_date)
+-- 2009/05/26 H.Itou Mod End
             THEN
 --
               --********** debug_log ********** START ***
@@ -8392,7 +8459,10 @@ AS
                             ,gv_param2_token
                             ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
                             ,gv_param3_token
-                            ,lv_inv_close_period          --OPM在庫会計期間CLOSE年月取得関数の戻り値
+-- 2009/05/26 H.Itou Mod Start 本番障害#1495
+--                            ,lv_inv_close_period          --OPM在庫会計期間CLOSE年月取得関数の戻り値
+                            ,TO_CHAR(gd_close_last_day, 'YYYY/MM')          --OPM在庫会計期間CLOSE年月取得関数の戻り値
+-- 2009/05/26 H.Itou Mod End
                             ,gv_param4_token
                             ,gr_interface_info_rec(i).eos_data_type         --IF_H.EOSデータ種別
                             ,gv_param5_token
@@ -8425,61 +8495,64 @@ AS
 --
         END IF;
 --
-        IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
-          -- 移動出庫or移動入庫
-          IF ((lt_eos_data_type = gv_eos_data_cd_220)  OR
-              (lt_eos_data_type = gv_eos_data_cd_230))
-          THEN
---
-            -- 出荷日/着荷日
-            IF ((FND_DATE.STRING_TO_DATE(lv_inv_close_period,'YYYY/MM') >= gr_interface_info_rec(i).shipped_date) OR
-                (FND_DATE.STRING_TO_DATE(lv_inv_close_period,'YYYY/MM') >= gr_interface_info_rec(i).arrival_date))
-            THEN
---
-              --********** debug_log ********** START ***
-              debug_log(FND_FILE.LOG,'在庫会計期間CLOSEエラー（その２）');
-              --********** debug_log ********** END   ***
-              -- 在庫会計期間がCLOSEなので、ログを出力し、配送No単位にエラーをセット
-              lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
-                             gv_msg_kbn          -- 'XXWSH'
-                            ,gv_msg_93a_016  -- 在庫会計期間CLOSEエラー
-                            ,gv_param1_token
-                            ,gr_interface_info_rec(i).delivery_no      --IF_H.配送No
-                            ,gv_param2_token
-                            ,gr_interface_info_rec(i).order_source_ref --IF_H.受注ソース参照
-                            ,gv_param3_token
-                            ,lv_inv_close_period                    --OPM在庫会計期間CLS年月取得戻値
-                            ,gv_param4_token
-                            ,gr_interface_info_rec(i).eos_data_type    --IF_H.EOSデータ種別
-                            ,gv_param5_token
-                            ,TO_CHAR(gr_interface_info_rec(i).shipped_date,'YYYY/MM/DD')     --IF_H.出荷日
-                            ,gv_param6_token
-                            ,TO_CHAR(gr_interface_info_rec(i).arrival_date,'YYYY/MM/DD')     --IF_H.着荷日
-                            )
-                            ,1
-                            ,5000);
---
-              -- 配送NO-EOSデータ種別単位にエラーflagセット
-              set_deliveryno_unit_errflg(
-                lt_delivery_no,         -- 配送No
-                lt_eos_data_type,       -- EOSデータ種別
-                gv_err_class,           -- エラー種別：エラー
-                lv_msg_buff,            -- エラー・メッセージ(出力用)
-                lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-                lv_retcode,             -- リターン・コード             --# 固定 #
-                lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
-              );
---
-              -- エラーフラグ
-              ln_err_flg := 1;
-              -- 処理ステータス：警告
-              ov_retcode := gv_status_warn;
---
-            END IF;
---
-          END IF;
---
-        END IF;
+-- 2009/05/26 H.Itou Del Start 本番障害#1495 移動のデータは上でチェックするので上へ移動
+--        IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
+--          -- 移動出庫or移動入庫
+--          IF ((lt_eos_data_type = gv_eos_data_cd_220)  OR
+--              (lt_eos_data_type = gv_eos_data_cd_230))
+--          THEN
+----
+--            -- 出荷日/着荷日
+--            IF ((FND_DATE.STRING_TO_DATE(lv_inv_close_period,'YYYY/MM') >= gr_interface_info_rec(i).shipped_date) OR
+--                (FND_DATE.STRING_TO_DATE(lv_inv_close_period,'YYYY/MM') >= gr_interface_info_rec(i).arrival_date))
+--            THEN
+----
+--              --********** debug_log ********** START ***
+--              debug_log(FND_FILE.LOG,'在庫会計期間CLOSEエラー（その２）');
+--              --********** debug_log ********** END   ***
+--              -- 在庫会計期間がCLOSEなので、ログを出力し、配送No単位にエラーをセット
+--              lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+--                             gv_msg_kbn          -- 'XXWSH'
+--                            ,gv_msg_93a_016  -- 在庫会計期間CLOSEエラー
+--                            ,gv_param1_token
+--                            ,gr_interface_info_rec(i).delivery_no      --IF_H.配送No
+--                            ,gv_param2_token
+--                            ,gr_interface_info_rec(i).order_source_ref --IF_H.受注ソース参照
+--                            ,gv_param3_token
+--                            ,lv_inv_close_period                    --OPM在庫会計期間CLS年月取得戻値
+--                            ,TO_CHAR(gd_close_last_day, 'YYYY/MM')          --OPM在庫会計期間CLOSE年月取得関数の戻り値
+--                            ,gv_param4_token
+--                            ,gr_interface_info_rec(i).eos_data_type    --IF_H.EOSデータ種別
+--                            ,gv_param5_token
+--                            ,TO_CHAR(gr_interface_info_rec(i).shipped_date,'YYYY/MM/DD')     --IF_H.出荷日
+--                            ,gv_param6_token
+--                            ,TO_CHAR(gr_interface_info_rec(i).arrival_date,'YYYY/MM/DD')     --IF_H.着荷日
+--                            )
+--                            ,1
+--                            ,5000);
+----
+--              -- 配送NO-EOSデータ種別単位にエラーflagセット
+--              set_deliveryno_unit_errflg(
+--                lt_delivery_no,         -- 配送No
+--                lt_eos_data_type,       -- EOSデータ種別
+--                gv_err_class,           -- エラー種別：エラー
+--                lv_msg_buff,            -- エラー・メッセージ(出力用)
+--                lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+--                lv_retcode,             -- リターン・コード             --# 固定 #
+--                lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+--              );
+----
+--              -- エラーフラグ
+--              ln_err_flg := 1;
+--              -- 処理ステータス：警告
+--              ov_retcode := gv_status_warn;
+----
+--            END IF;
+----
+--          END IF;
+----
+--        END IF;
+-- 2009/05/26 H.Itou Del End
 --
       END IF; --出庫または支給の場合、マスタチェック、配送No-依頼Noの組み合わせのチェック
 --
