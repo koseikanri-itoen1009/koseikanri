@@ -258,7 +258,6 @@ SELECT
   ,NULL                                                AS    case_quantity       -- ケース数量
   ,xmld.lot_no                                         AS    lot_no              -- ロットNo
   ,NULL                                                AS    num_of_cases        -- 入数
-  
   ,CASE 
     WHEN ( xott2v.order_category_code   <> 'RETURN' ) THEN ( 
       xmld.actual_quantity 
@@ -344,7 +343,6 @@ SELECT
   ,NULL                                                AS    case_quantity       -- ケース数量
   ,xmld.lot_no                                         AS    lot_no              -- ロットNo
   ,NULL                                                AS    num_of_cases        -- 入数
-  
   ,CASE 
     WHEN ( xott2v.order_category_code   <> 'RETURN' ) THEN ( 
       CASE 
