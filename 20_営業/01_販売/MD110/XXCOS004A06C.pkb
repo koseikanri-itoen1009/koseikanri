@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : 消化ＶＤ掛率作成
  * MD.050           : 消化ＶＤ掛率作成 MD050_COS_004_A06
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/08/05    1.10  N.Maeda          [0000922]レビュー指摘対応
  *  2009/08/06    1.10  N.Maeda          [0000922]再レビュー指摘対応
  *  2010/01/19    1.11  K.Atsushiba      [E_本稼動_00622]消化計算締年月日導出処理修正
+ *  2010/01/25    1.12  K.Atsushiba      [E_本稼動_01386]前々回データを削除しなように修正
  *
  *****************************************************************************************/
 --
@@ -342,6 +343,11 @@ AS
   ct_lang                       CONSTANT fnd_lookup_values.language%TYPE
                                                       := USERENV('LANG');
 -- 2009/07/16 Ver.1.9 M.Sano Add End
+--
+/* 2010/01/25 Ver1.11 Add Start */
+  cv_delete_flag                CONSTANT VARCHAR2(1) := 'D';         -- 削除フラグ
+/* 2010/01/25 Ver1.11 Add End */
+
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -950,6 +956,9 @@ AS
       WHERE
         xvdh.vd_digestion_hdr_id          = it_vd_digestion_hdr_id
       AND xvdh.vd_digestion_hdr_id        = xvdl.vd_digestion_hdr_id (+)
+/* 2010/01/25 Ver1.11 Add Start */
+      AND xvdh.sales_result_creation_flag <> cv_delete_flag
+/* 2010/01/25 Ver1.11 Add Start */
       FOR UPDATE NOWAIT
       ;
 --
@@ -957,6 +966,12 @@ AS
     l_lock_rec lock_cur%ROWTYPE;
 --
     -- *** ローカル・関数 ***
+--
+    -- *** ローカル・例外 ***
+/* 2010/01/25 Ver1.11 Add Start */
+    update_data_expt            EXCEPTION;
+/* 2010/01/25 Ver1.11 Add End */
+
 --
   BEGIN
 --
@@ -979,6 +994,10 @@ AS
         WHEN global_data_lock_expt THEN
           RAISE global_data_lock_expt;
       END;
+/* 2010/01/25 Ver1.11 Add Start */
+      IF ( gt_regular_any_class = ct_regular_any_class_any ) THEN
+      -- 随時の場合
+/* 2010/01/25 Ver1.11 Add End */
       --======================================================
       -- 2.消化VD別消化計算ヘッダテーブル削除
       --======================================================
@@ -1042,6 +1061,49 @@ AS
           RAISE global_delete_data_expt;
           --
       END;
+/* 2010/01/25 Ver1.11 Add Start */
+      ELSE
+        -- 定期の場合
+        BEGIN
+        UPDATE
+           xxcos_vd_digestion_hdrs         xvdh
+        SET
+           xvdh.sales_result_creation_flag      = cv_delete_flag,              -- 販売実績作成済みフラグ
+           xvdh.last_updated_by                 = cn_last_updated_by,
+           xvdh.last_update_date                = cd_last_update_date,
+           xvdh.last_update_login               = cn_last_update_login,
+           xvdh.request_id                      = cn_request_id,
+           xvdh.program_application_id          = cn_program_application_id,
+           xvdh.program_id                      = cn_program_id,
+           xvdh.program_update_date             = cd_program_update_date
+        WHERE
+           xvdh.vd_digestion_hdr_id        =  g_tt_xvdh_tab(ln_idx).vd_digestion_hdr_id
+        ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            -- 更新エラーの場合
+            --消化VD別消化計算ヘッダテーブル文字列取得
+            lv_str_table_name   := xxccp_common_pkg.get_msg(
+                                     iv_application        => ct_xxcos_appl_short_name,
+                                     iv_name               => ct_msg_tt_xvdh_tblnm
+                                   );
+            --キー情報文字列取得
+            lv_str_key_data     := xxccp_common_pkg.get_msg(
+                                     iv_application        => ct_xxcos_appl_short_name,
+                                     iv_name               => ct_msg_key_info1,
+                                     iv_token_name1        => cv_tkn_diges_due_dt,
+                                     iv_token_value1       => TO_CHAR( g_tt_xvdh_tab(ln_idx).digestion_due_date,
+                                                                cv_fmt_date
+                                                              ),
+                                     iv_token_name2        => cv_tkn_cust_code,
+                                     iv_token_value2       => g_tt_xvdh_tab(ln_idx).customer_number
+                                   );
+            --
+            RAISE update_data_expt;
+            --
+        END;
+      END IF;
+/* 2010/01/25 Ver1.11 Add Start */
       --
     END LOOP tt_xvdh_tab_loop;
 --
@@ -1082,6 +1144,24 @@ AS
                                  );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
+--
+/* 2010/01/25 Ver1.11 Add Start */
+    WHEN update_data_expt THEN
+      IF ( lock_cur%ISOPEN ) THEN
+        CLOSE lock_cur;
+      END IF;
+      --
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_update_data_err,
+                                   iv_token_name1        => cv_tkn_table_name,
+                                   iv_token_value1       => lv_str_table_name,
+                                   iv_token_name2        => cv_tkn_key_data,
+                                   iv_token_value2       => lv_str_key_data
+                                 );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+/* 2010/01/25 Ver1.11 Add End */
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -2810,6 +2890,9 @@ AS
       WHERE
           xvdh.vd_digestion_hdr_id        = it_vd_digestion_hdr_id
       AND xvdh.vd_digestion_hdr_id        = xvdl.vd_digestion_hdr_id  (+)
+/* 2010/01/25 Ver1.11 Add Start */
+      AND xvdh.sales_result_creation_flag <> cv_delete_flag
+/* 2010/01/25 Ver1.11 Add Start */
       FOR UPDATE NOWAIT
       ;
 --
@@ -2830,11 +2913,27 @@ AS
     )
     AS
     BEGIN
-      DELETE FROM
+/* 2010/01/25 Ver1.11 Mod Start */
+      UPDATE
         xxcos_vd_digestion_hdrs         xvdh
+      SET
+        xvdh.sales_result_creation_flag      = cv_delete_flag,              -- 販売実績作成済みフラグ
+        xvdh.last_updated_by                 = cn_last_updated_by,
+        xvdh.last_update_date                = cd_last_update_date,
+        xvdh.last_update_login               = cn_last_update_login,
+        xvdh.request_id                      = cn_request_id,
+        xvdh.program_application_id          = cn_program_application_id,
+        xvdh.program_id                      = cn_program_id,
+        xvdh.program_update_date             = cd_program_update_date
       WHERE
         xvdh.vd_digestion_hdr_id        = it_vd_digestion_hdr_id
       ;
+--      DELETE FROM
+--        xxcos_vd_digestion_hdrs         xvdh
+--      WHERE
+--        xvdh.vd_digestion_hdr_id        = it_vd_digestion_hdr_id
+--      ;
+/* 2010/01/25 Ver1.11 Mod End */
     EXCEPTION
       WHEN OTHERS THEN
         --消化VD別消化計算ヘッダテーブル文字列取得
@@ -2856,41 +2955,43 @@ AS
     --
     END;
 --
-    --======================================================
-    -- 3.消化VD別消化計算明細テーブル削除
-    --======================================================
-    PROCEDURE del_vd_digestion_lns(
-      it_vd_digestion_hdr_id            xxcos_vd_digestion_lns.vd_digestion_hdr_id%TYPE,
-      it_customer_number                xxcos_vd_digestion_hdrs.customer_number%TYPE,
-      it_digestion_due_date             xxcos_vd_digestion_hdrs.digestion_due_date%TYPE
-    )
-    AS
-    BEGIN
-      DELETE FROM
-        xxcos_vd_digestion_lns          xvdl
-      WHERE
-        xvdl.vd_digestion_hdr_id        = it_vd_digestion_hdr_id
-      ;
-    EXCEPTION
-      WHEN OTHERS THEN
-        --消化VD別消化計算明細テーブル文字列取得
-        lv_str_table_name       := xxccp_common_pkg.get_msg(
-                                     iv_application        => ct_xxcos_appl_short_name,
-                                     iv_name               => ct_msg_blt_xvdl_tblnm
-                                   );
-        --キー情報文字列取得
-        lv_str_key_data         := xxccp_common_pkg.get_msg(
-                                     iv_application        => ct_xxcos_appl_short_name,
-                                     iv_name               => ct_msg_key_info1,
-                                     iv_token_name1        => cv_tkn_diges_due_dt,
-                                     iv_token_value1       => TO_CHAR( it_digestion_due_date, cv_fmt_date ),
-                                     iv_token_name2        => cv_tkn_cust_code,
-                                     iv_token_value2       => it_customer_number
-                                   );
-        --
-        RAISE global_delete_data_expt;
-    --
-    END;
+/* 2010/01/25 Ver1.11 Del Start */
+--    --======================================================
+--    -- 3.消化VD別消化計算明細テーブル削除
+--    --======================================================
+--    PROCEDURE del_vd_digestion_lns(
+--      it_vd_digestion_hdr_id            xxcos_vd_digestion_lns.vd_digestion_hdr_id%TYPE,
+--      it_customer_number                xxcos_vd_digestion_hdrs.customer_number%TYPE,
+--      it_digestion_due_date             xxcos_vd_digestion_hdrs.digestion_due_date%TYPE
+--    )
+--    AS
+--    BEGIN
+--      DELETE FROM
+--        xxcos_vd_digestion_lns          xvdl
+--      WHERE
+--        xvdl.vd_digestion_hdr_id        = it_vd_digestion_hdr_id
+--      ;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        --消化VD別消化計算明細テーブル文字列取得
+--        lv_str_table_name       := xxccp_common_pkg.get_msg(
+--                                     iv_application        => ct_xxcos_appl_short_name,
+--                                     iv_name               => ct_msg_blt_xvdl_tblnm
+--                                   );
+--        --キー情報文字列取得
+--        lv_str_key_data         := xxccp_common_pkg.get_msg(
+--                                     iv_application        => ct_xxcos_appl_short_name,
+--                                     iv_name               => ct_msg_key_info1,
+--                                     iv_token_name1        => cv_tkn_diges_due_dt,
+--                                     iv_token_value1       => TO_CHAR( it_digestion_due_date, cv_fmt_date ),
+--                                     iv_token_name2        => cv_tkn_cust_code,
+--                                     iv_token_value2       => it_customer_number
+--                                   );
+--        --
+--        RAISE global_delete_data_expt;
+--    --
+--    END;
+/* 2010/01/25 Ver1.11 Del End */
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -2931,14 +3032,16 @@ AS
           it_customer_number          => l_blt_rec.customer_number,
           it_digestion_due_date       => it_digestion_due_date
         );
-        --================================================
-        -- 3.消化VD別消化計算明細テーブル削除
-        --================================================
-        del_vd_digestion_lns(
-          it_vd_digestion_hdr_id      => l_blt_rec.vd_digestion_hdr_id,
-          it_customer_number          => l_blt_rec.customer_number,
-          it_digestion_due_date       => it_digestion_due_date
-        );
+/* 2010/01/25 Ver1.11 Del Start */
+--        --================================================
+--        -- 3.消化VD別消化計算明細テーブル削除
+--        --================================================
+--        del_vd_digestion_lns(
+--          it_vd_digestion_hdr_id      => l_blt_rec.vd_digestion_hdr_id,
+--          it_customer_number          => l_blt_rec.customer_number,
+--          it_digestion_due_date       => it_digestion_due_date
+--        );
+/* 2010/01/25 Ver1.11 Del End */
       ELSE
         lt_key_customer_number        := l_blt_rec.customer_number;
       END IF;
@@ -2975,7 +3078,10 @@ AS
       --
       ov_errmsg               := xxccp_common_pkg.get_msg(
                                    iv_application        => ct_xxcos_appl_short_name,
-                                   iv_name               => ct_msg_delete_data_err,
+/* 2010/01/25 Ver1.11 Mod Start */
+                                   iv_name               => ct_msg_update_data_err,
+--                                   iv_name               => ct_msg_delete_data_err,
+/* 2010/01/25 Ver1.11 Mod End */
                                    iv_token_name1        => cv_tkn_table_name,
                                    iv_token_value1       => lv_str_table_name,
                                    iv_token_name2        => cv_tkn_key_data,

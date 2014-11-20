@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.14
+ * Version          : 2.15
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -75,6 +75,7 @@ AS
  *  2009/11/24    2.12  N.Maeda          [E_本番_XXXX] 販売実績対象データ取得条件「検収日」⇒「納品日」へ修正
  *  2009/12/29    2.13  K.Kiriu          [E_本番_00531]伝票番号の桁数オーバー切捨て対応
  *  2010/01/06    2.14  K.Atsushiba      [E_本稼働_00922]情報系への売上実績連携のAR情報不正対応
+ *  2010/02/02    2.15  K.Atsushiba      [E_本稼動_01386]消化VDのAR(速報用)対応
  *
  *****************************************************************************************/
 --
@@ -173,6 +174,10 @@ AS
 /* 2009/12/29 Ver2.13 Add Start */
   cv_msg_ar_trx_number        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13323';    -- AR伝票番号桁数オーバーエラー
 /* 2009/12/29 Ver2.13 Add End   */
+-- 2010/02/02 Ver.2.15 Add Start
+  cv_msg_vd_digestion_data    CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13324';    -- 消化計算(消化VD)データ取得エラー
+  cv_msg_ar_start_date        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13325';    -- 消化VDのAR対象開始日
+-- 2010/02/02 Ver.2.15 Add End
   -- メッセージトークン
   cv_tkn_pro_tok              CONSTANT VARCHAR2(20) := 'PROFILE';             -- プロファイル名
   cv_tkn_table                CONSTANT VARCHAR2(20) := 'TABLE';               -- テーブル名
@@ -198,6 +203,10 @@ AS
   cv_tkn_gl_date              CONSTANT VARCHAR2(20) := 'GL_DATE';             -- GL記帳日
   cv_tkn_ar_trx_number        CONSTANT VARCHAR2(20) := 'TRX_NUMBER';          -- AR伝票番号
 /* 2009/12/29 Ver2.13 Add End   */
+-- 2010/02/02 Ver.2.15 Add Start
+  cv_tkn_delivery_date        CONSTANT VARCHAR2(20) := 'DELIVERY_DATE';
+  cv_tkn_sales_header_id      CONSTANT VARCHAR2(20) := 'SALES_HEADER_ID';
+-- 2010/02/02 Ver.2.15 Add End
   -- プロファイル
   cv_pf_output_directory      CONSTANT VARCHAR2(50) := 'XXCOS1_OUTBOUND_ZYOHO_DIR';        -- ディレクトリパス
   cv_pf_company_code          CONSTANT VARCHAR2(50) := 'XXCOI1_COMPANY_CODE';              -- 会社コード
@@ -206,6 +215,9 @@ AS
   cv_pf_var_elec_item_cd      CONSTANT VARCHAR2(50) := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE';    -- 変動電気品目コード
   cv_pro_bks_id               CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID';                 -- 会計帳簿ID
   cv_pf_sls_calc_dlv_ptn_cls  CONSTANT VARCHAR2(40) := 'XXCOS1_PROD_SLS_CALC_DLV_PTN_CLS'; -- 納品形態区分
+-- 2010/02/02 Ver.2.15 Add Start
+  cv_pf_vd_ar_start_date      CONSTANT VARCHAR2(40) := 'XXCOS1_VD_AR_START_DATE';          -- 消化VDのAR対象開始日
+-- 2010/02/02 Ver.2.15 Add End
   -- 参照タイプ
   cv_ref_t_mk_org_cls_mst     CONSTANT VARCHAR2(50) := 'XXCOS1_MK_ORG_CLS_MST_015_A01';   -- 作成元特定区分マスタ
   cv_ref_t_dlv_slp_cls_mst    CONSTANT VARCHAR2(50) := 'XXCOS1_DLV_SLP_CLS_MST_015_A01';  -- 納品伝票区分特定マスタ
@@ -218,7 +230,10 @@ AS
   cv_txn_type_01              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_01';                -- 直販売上
 --  cv_txn_type_02              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_02';                -- ｲﾝｼｮｯﾌﾟ売上
 --  cv_txn_type_03              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_03';                -- 売掛金訂正*/
-  cv_txn_sales_type           CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_%';                 -- 取引タイプ
+-- 2010/02/02 Ver.2.15 Mod Start
+  cv_txn_sales_type           CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_0%';                 -- 取引タイプ
+--  cv_txn_sales_type           CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_%';                 -- 取引タイプ
+-- 2010/02/02 Ver.2.15 Mod End
   -- 日付フォーマット
 /* 2009/12/29 Ver2.13 Mod Start */
   cv_date_format              CONSTANT VARCHAR2(20) := 'YYYY/MM/DD';
@@ -271,6 +286,12 @@ AS
   cn_trx_num_length           CONSTANT NUMBER(2)       := 12;   --AR取引番号桁数
   cn_1                        CONSTANT NUMBER(1)       := 1;    --数値:1(汎用)
 /* 2009/12/29 Ver2.13 Add End   */
+-- 2010/02/02 Ver.2.15 Add Start
+  cv_txn_type_02              CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_02';                -- 消化VD
+  cv_lang                     CONSTANT VARCHAR2(5)  := USERENV('LANG');                   -- 言語
+  cv_tkn_lookup_code          CONSTANT VARCHAR2(20) := 'LOOKUP_CODE';                     -- 参照コード
+  cv_txn_vd_digestion_type    CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_1%';                 -- 取引タイプ(消化VD)
+-- 2010/02/02 Ver.2.15 Add Start
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -295,6 +316,11 @@ AS
 /* 2009/12/29 Ver2.13 Add Start */
   gn_ar_trx_num_warn   NUMBER(1) DEFAULT 0;                                      -- AR伝票番号エラー警告保持
 /* 2009/12/29 Ver2.13 Add End   */
+-- 2010/02/02 Ver.2.15 Add Start
+  gt_mk_org_cls_vd       fnd_lookup_values.meaning%TYPE;                           -- 作成元特定区分(消化計算)
+  gt_ar_start_date       fnd_profile_option_values.profile_option_value%TYPE;      -- 納品形態区分
+  gd_ar_start_date       DATE;
+-- 2010/02/02 Ver.2.15 Add End
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -358,6 +384,9 @@ AS
            ,hca.cust_account_id                 hca_cust_account_id            -- 顧客アカウントID
            ,xchv.ship_account_name              xchv_ship_account_name         -- 出荷先顧客名
            ,xseh.rowid                          xseh_rowid
+-- 2010/02/02 Ver.2.15 Add Start
+           ,xseh.sales_exp_header_id            sales_exp_header_id            -- 販売実績ヘッダID
+-- 2010/02/02 Ver.2.15 Add End
     FROM    xxcos_sales_exp_headers             xseh                           -- 販売実績ヘッダ
            ,xxcos_sales_exp_lines               xsel                           -- 販売実績明細
            ,xxcos_cust_hierarchy_v              xchv                           -- 顧客階層ビュー
@@ -428,6 +457,9 @@ AS
            ,hca.cust_account_id                 hca_cust_account_id            -- 顧客アカウントID
            ,NULL                                xchv_ship_account_name         -- 出荷先顧客名
            ,xseh.rowid                          xseh_rowid
+-- 2010/02/02 Ver.2.15 Add Start
+           ,xseh.sales_exp_header_id            sales_exp_header_id            -- 販売実績ヘッダID
+-- 2010/02/02 Ver.2.15 Add End
     FROM    xxcos_sales_exp_headers             xseh                           -- 販売実績ヘッダ
            ,xxcos_sales_exp_lines               xsel                           -- 販売実績明細
            ,hz_cust_accounts                    hca                            -- 顧客アカウントマスタ
@@ -486,7 +518,12 @@ AS
     --
     -- AR取引データ抽出
     CURSOR get_ar_deal_info_cur(
-       id_delivery_date     DATE          -- 納品日
+-- 2010/02/02 Ver.2.15 Mod Start
+       id_gl_date_from      DATE           -- GL記帳日(開始)
+      ,id_gl_date_to        DATE           -- GL記帳日(終了)
+      ,iv_lookup_code       VARCHAR2       -- 参照コード
+--       id_delivery_date     DATE           -- 納品日
+-- 2010/02/02 Ver.2.15 Mod End
       ,in_ship_account_id   NUMBER)        -- 出荷先顧客ID
     IS
       SELECT  cust.trx_date                 rcta_trx_date                -- 取引日
@@ -531,8 +568,12 @@ AS
          AND    rctla.line_type              = cv_line_type_line             -- 明細タイプ
          AND    gcc.chart_of_accounts_id     = gsob.chart_of_accounts_id     -- アカウントID
          AND    rctlgda.customer_trx_line_id = rctla.customer_trx_line_id
-         AND    rctlgda.gl_date       BETWEEN  TRUNC(id_delivery_date,cv_trunc_fmt)
-                                      AND      LAST_DAY(id_delivery_date)   -- GL記帳日
+-- 2010/02/02 Ver.2.15 Mod Start
+         AND    rctlgda.gl_date       BETWEEN  id_gl_date_from
+                                      AND      id_gl_date_to                 -- GL記帳日
+--         AND    rctlgda.gl_date       BETWEEN  TRUNC(id_delivery_date,cv_trunc_fmt)
+--                                      AND      LAST_DAY(id_delivery_date)   -- GL記帳日
+-- 2010/02/02 Ver.2.15 Mod End
       ) line,
       (
          -- 取引データ(取引タイプ「請求書」)
@@ -557,8 +598,14 @@ AS
                 ,hz_cust_acct_sites_all        hcasa                          -- 顧客所在地（請求先）
                 ,hz_cust_site_uses_all         hcsua                        -- 顧客使用目的
                 ,ra_cust_trx_line_gl_dist_all   rctlgda                     -- AR取引配分(会計情報)
+-- 2010/02/02 Ver.2.15 Add Start
+                ,xxcfr_sales_data_reletes      xsdr                         -- 売上実績連携済テーブル
+-- 2010/02/02 Ver.2.15 Add End
          WHERE  rcta.org_id                 = gt_org_id                     -- 営業単位ID
          AND    rcta.customer_trx_id        = rctla.customer_trx_id         -- 取引データID
+-- 2010/02/02 Ver.2.15 Add Start
+         AND    rcta.customer_trx_id        = xsdr.customer_trx_id          -- 取引データID
+-- 2010/02/02 Ver.2.15 Add End
          AND    rctla.vat_tax_id            = avtab.vat_tax_id(+)           -- 税金ID
          AND    avtab.set_of_books_id       = TO_NUMBER(gt_book_id)         -- 会計帳簿ID
          AND    rctta.cust_trx_type_id      = rcta.cust_trx_type_id         -- 取引タイプID
@@ -567,7 +614,10 @@ AS
          AND    flv.lookup_type             = cv_ref_t_txn_type_mst         -- タイプ
          /*AND    flv.lookup_code             IN  (cv_txn_type_01
                                                 ,cv_txn_type_02)            -- コード*/
-         AND    flv.lookup_code             LIKE ( cv_txn_sales_type )      -- コード
+-- 2010/02/02 Ver.2.15 Mod Start
+         AND    flv.lookup_code             LIKE ( iv_lookup_code )         -- コード
+--         AND    flv.lookup_code             LIKE ( cv_txn_sales_type )      -- コード
+-- 2010/02/02 Ver.2.15 Mod End
          AND    flv.attribute1              = cv_val_y                      -- 属性1
          AND    flv.language                = USERENV('LANG')               -- 言語
          AND    rcta.cust_trx_type_id       = rctta.cust_trx_type_id        -- 取引タイプID
@@ -583,8 +633,12 @@ AS
          AND    rctla.customer_trx_line_id  = rctlgda.customer_trx_line_id
          AND    rctlgda.set_of_books_id     = TO_NUMBER(gt_book_id)
          AND    rcta.complete_flag          = cv_val_y
-         AND    rctlgda.gl_date       BETWEEN  TRUNC(id_delivery_date,cv_trunc_fmt)
-                                      AND      LAST_DAY(id_delivery_date)   -- GL記帳日
+-- 2010/02/02 Ver.2.15 Mod Start
+         AND    rctlgda.gl_date       BETWEEN  id_gl_date_from
+                                      AND      id_gl_date_to                 -- GL記帳日
+--         AND    rctlgda.gl_date       BETWEEN  TRUNC(id_delivery_date,cv_trunc_fmt)
+--                                      AND      LAST_DAY(id_delivery_date)   -- GL記帳日
+-- 2010/02/02 Ver.2.15 Mod End
          /*UNION ALL 
          -- 取引データ(取引タイプ「売掛金訂正」(元情報あり))
          SELECT  rcta.trx_date                 trx_date                     -- 取引日
@@ -697,7 +751,6 @@ AS
       AND    cust.customer_trx_line_id = line.customer_trx_line_id 
       ORDER BY  cust.customer_trx_id                                           -- 取引情報データID
                ,cust.customer_trx_line_id;                                     -- 取引明細ID
-
 --
   -- ===============================
   -- ユーザー定義グローバルTABLE型
@@ -723,8 +776,13 @@ AS
   TYPE g_ar_deal_ttype IS TABLE OF get_ar_deal_info_cur%ROWTYPE INDEX BY BINARY_INTEGER;
   -- AR情報変数定義
   gt_ar_deal_tbl               g_ar_deal_ttype;
-
-
+-- 2010/02/02 Ver.2.15 Add Start
+  -- 出力済み消化VD情報
+  TYPE g_ar_output_vd_ttype IS TABLE OF NUMBER INDEX BY VARCHAR2(30);
+  g_ar_output_vd_tbl         g_ar_output_vd_ttype;
+  g_vd_digestion_err_tbl     g_ar_output_vd_ttype;
+-- 2010/02/02 Ver.2.15 Add Start
+--
   -- ===============================
   -- ユーザー定義グローバルレコード
   -- ===============================
@@ -1124,6 +1182,31 @@ AS
     --
     CLOSE non_item_cur;
 --
+-- 2010/02/02 Ver.2.15 Add Start
+    --==================================
+    -- AR対象開始日(消化VD)
+    --==================================
+    gt_ar_start_date := FND_PROFILE.VALUE(
+                             name => cv_pf_vd_ar_start_date);
+--
+    IF ( gt_ar_start_date IS NULL ) THEN
+      -- プロファイルが取得できない場合
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
+        ,iv_name        => cv_msg_ar_start_date            -- メッセージID
+      );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
+                    ,iv_name         => cv_msg_notfound_profile     -- メッセージ
+                    ,iv_token_name1  => cv_tkn_pro_tok              -- トークン1名
+                    ,iv_token_value1 => lv_profile_name);        -- トークン1値
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    ELSE
+      gd_ar_start_date := TO_DATE(gt_ar_start_date,cv_date_format);
+    END IF;
+-- 2010/02/02 Ver.2.15 Add End
+--
   EXCEPTION
     --*** 業務日付取得エラー ***
     WHEN non_business_date_expt THEN
@@ -1339,9 +1422,14 @@ AS
                       iv_application  => cv_xxcos_short_name
                      ,iv_name         => cv_msg_mk_org_cls
                      ,iv_token_name1  => cv_tkn_lookup_type
-                     ,iv_token_value1 => lv_type_name
-                     ,iv_token_name2  => cv_tkn_attribute1
-                     ,iv_token_value2 => cv_val_y);
+-- 2010/02/02 Ver.2.15 Mod Start
+                     ,iv_token_value1 => cv_ref_t_mk_org_cls_mst
+                     ,iv_token_name2  => cv_tkn_lookup_code
+                     ,iv_token_value2 => cv_txn_type_01);
+--                     ,iv_token_value1 => lv_type_name
+--                     ,iv_token_name2  => cv_tkn_attribute1
+--                     ,iv_token_value2 => cv_val_y);
+-- 2010/02/02 Ver.2.15 Mod Start
       RAISE non_lookup_value_expt;  
     END;
 --
@@ -1402,6 +1490,37 @@ AS
                      ,iv_token_value2 => cv_val_y);
       RAISE non_lookup_value_expt;
     END;
+--
+-- 2010/02/02 Ver.2.15 Add Start
+    --=========================================
+    -- 消化計算（消化VD）の作成元区分取得
+    --=========================================
+    BEGIN
+      SELECT flv.meaning         flv_meaning
+      INTO   gt_mk_org_cls_vd
+      FROM   fnd_lookup_values  flv
+      WHERE  flv.lookup_type   = cv_ref_t_mk_org_cls_mst
+      AND    flv.lookup_code   = cv_txn_type_02
+      AND    flv.language      = cv_lang
+      AND    flv.enabled_flag  = cv_enabled_flag
+      AND    gd_business_date BETWEEN NVL(flv.start_date_active,gd_business_date)
+                              AND     NVL(flv.end_date_active,  gd_business_date);
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_type_name := xxccp_common_pkg.get_msg(
+           iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
+          ,iv_name        => cv_msg_mk_org_cls_name          -- メッセージID
+        );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcos_short_name
+                     ,iv_name         => cv_msg_mk_org_cls
+                     ,iv_token_name1  => cv_tkn_lookup_type
+                     ,iv_token_value1 => cv_ref_t_mk_org_cls_mst
+                     ,iv_token_name2  => cv_tkn_lookup_code
+                     ,iv_token_value2 => cv_txn_type_02);
+      RAISE non_lookup_value_expt;  
+    END;
+-- 2010/02/02 Ver.2.15 Add End
 --
     --==================================
     -- 売上明細データ取得
@@ -1877,7 +1996,13 @@ AS
    * Description      : AR取引情報データ抽出(A-5)
    ***********************************************************************************/
   PROCEDURE get_ar_deal_info(
-    id_delivery_date      IN  DATE,             --   納品日
+-- 2010/02/02 Ver.2.15 Mod Start
+    id_gl_date_from       IN  DATE,             -- GL記帳日(開始)
+    id_gl_date_to         IN  DATE,             -- GL記帳日(終了)
+    iv_lookup_code        IN  VARCHAR2,         -- 参照コード
+    iv_ship_account_code  IN  VARCHAR2,         -- 出荷先顧客コード
+--    id_delivery_date      IN  DATE,             --   納品日
+-- 2010/02/02 Ver.2.15 Mod End
     in_ship_account_id    IN  NUMBER,           --   出荷先顧客ID
     iv_ship_account_name  IN  VARCHAR2,         --   出荷先顧客名
     ov_errbuf             OUT NOCOPY VARCHAR2,         --   エラー・メッセージ           --# 固定 #
@@ -1917,7 +2042,12 @@ AS
 --
     BEGIN
       OPEN get_ar_deal_info_cur(
-              id_delivery_date    => id_delivery_date       -- 納品日
+-- 2010/02/02 Ver.2.15 Mod Start
+               id_gl_date_from    => id_gl_date_from        -- GL記帳日(開始)
+              ,id_gl_date_to      => id_gl_date_to          -- GL記帳日(終了)
+              ,iv_lookup_code     => iv_lookup_code         -- 参照コード
+--              id_delivery_date    => id_delivery_date       -- 納品日
+-- 2010/02/02 Ver.2.15 Mod End
              ,in_ship_account_id  => in_ship_account_id     -- 出荷先顧客ID
            );
       --
@@ -1940,12 +2070,22 @@ AS
                      ,iv_name         => cv_msg_notfound_ar_deal
                      ,iv_token_name1  => cv_tkn_account_name
                      ,iv_token_value1 => iv_ship_account_name
-                     ,iv_token_name2  => cv_tkn_account_id
-                     ,iv_token_value2 => TO_CHAR(in_ship_account_id));
+-- 2010/02/02 Ver.2.15 Mod Start
+                     ,iv_token_name2  => cv_tkn_account_number
+                     ,iv_token_value2 => iv_ship_account_code);
+--                     ,iv_token_name2  => cv_tkn_account_id
+--                     ,iv_token_value2 => TO_CHAR(in_ship_account_id));
+-- 2010/02/02 Ver.2.15 Mod End
       FND_FILE.PUT_LINE(
          which  => FND_FILE.OUTPUT
         ,buff   => lv_errmsg
       );
+-- 2010/02/02 Ver.2.15 Add Start
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => ''
+      );
+-- 2010/02/02 Ver.2.15 Add End
       -- データが取得できない場合、警告
       ov_retcode := cv_status_warn;
     END IF;
@@ -2118,6 +2258,20 @@ AS
           which  => FND_FILE.OUTPUT 
          ,buff   => lv_errmsg
         );
+-- 2010/02/02 Ver.2.15 Add Start
+        --ログ
+        FND_FILE.PUT_LINE( 
+          which  => FND_FILE.LOG 
+         ,buff   => ''
+        );
+        --出力
+        FND_FILE.PUT_LINE( 
+          which  => FND_FILE.OUTPUT 
+         ,buff   => ''
+        );
+-- 2010/02/02 Ver.2.15 Add End
+        
+        
         --コンカレントを警告とする為、フラグで保持
         gn_ar_trx_num_warn := cn_1;
         --12桁に切捨て
@@ -2511,6 +2665,10 @@ AS
     lv_retcode_wk VARCHAR2(1);     -- リターン・コード
     lv_errmsg_wk  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
     lv_index      VARCHAR2(30);    -- インデックス・キー
+-- 2010/02/02 Ver.2.15 Add Start
+    ld_pre_digestion_due_date     DATE;
+    ld_digestion_due_date         DATE;
+-- 2010/02/02 Ver.2.15 Add Start
 --
     -- *** ローカル例外 ***
     sub_program_expt      EXCEPTION;
@@ -2572,7 +2730,10 @@ AS
         FETCH get_sales_actual_cur INTO g_sales_actual_rec;
         EXIT WHEN get_sales_actual_cur%NOTFOUND;
         gn_target_cnt := gn_target_cnt + 1;
-  --
+--
+-- 2010/02/02 Ver.2.15 Add Start
+        IF ( g_sales_actual_rec.xseh_create_class <> gt_mk_org_cls_vd ) THEN
+-- 2010/02/02 Ver.2.15 Add Start
         --==================================
         -- 売上実績CSV作成(A-4)
         --==================================
@@ -2585,6 +2746,9 @@ AS
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE sub_program_expt;
         END IF;
+-- 2010/02/02 Ver.2.15 Add Start
+        END IF;
+-- 2010/02/02 Ver.2.15 Add Start
         --
         IF ( g_sales_actual_rec.xseh_create_class = gt_mk_org_cls ) THEN
           -- 消化計算の場合、売上実績（AR取引情報)CSVファイル作成
@@ -2596,7 +2760,13 @@ AS
             -- AR取引情報データ抽出(A-5)
             --==================================
             get_ar_deal_info(
-               id_delivery_date     => g_sales_actual_rec.xseh_delivery_date       -- 納品日
+-- 2010/02/02 Ver.2.15 Mod Start
+               id_gl_date_from      => TRUNC(g_sales_actual_rec.xseh_delivery_date,cv_trunc_fmt)   -- GL記帳日(開始)
+              ,id_gl_date_to        => LAST_DAY(g_sales_actual_rec.xseh_delivery_date)             -- GL記帳日(終了)
+              ,iv_lookup_code       => cv_txn_sales_type                                           -- 参照コード
+              ,iv_ship_account_code => g_sales_actual_rec.xseh_ship_to_customer_code               -- 出荷先顧客コード
+--               id_delivery_date     => g_sales_actual_rec.xseh_delivery_date       -- 納品日
+-- 2010/02/02 Ver.2.15 Mod End
               ,in_ship_account_id   => g_sales_actual_rec.xchv_ship_account_id     -- 出荷先顧客ID
               ,iv_ship_account_name => g_sales_actual_rec.xchv_ship_account_name   -- 請求先顧客名
               ,ov_errbuf            => lv_errbuf                                   -- エラー・メッセージ
@@ -2626,11 +2796,131 @@ AS
             -- AR出力済み顧客情報に設定
             g_ar_output_settled_tbl(lv_index) := NULL;
           END IF;
+ -- 2010/02/02 Ver.2.15 Add Start
+        ELSIF ( g_sales_actual_rec.xseh_create_class = gt_mk_org_cls_vd ) THEN
+          -- 消化VDの消化計算の場合
+          lv_index := TO_CHAR(g_sales_actual_rec.sales_exp_header_id);
+          IF ( g_ar_output_vd_tbl.EXISTS(lv_index) = FALSE ) THEN
+            -- 未出力の場合
+            BEGIN
+              SELECT  xvdh.pre_digestion_due_date                           -- 前回消化計算締年月日
+                     ,xvdh.digestion_due_date                               -- 消化計算締年月日
+              INTO    ld_pre_digestion_due_date
+                     ,ld_digestion_due_date
+              FROM   xxcos_vd_digestion_hdrs    xvdh
+              WHERE  xvdh.sales_exp_header_id          = g_sales_actual_rec.sales_exp_header_id
+              ;
+              --
+              IF ( ld_pre_digestion_due_date IS NULL ) THEN
+                ld_pre_digestion_due_date := gd_ar_start_date;
+              ELSE
+                ld_pre_digestion_due_date := ld_pre_digestion_due_date + 1;
+              END IF;
+              --
+              -- GL記帳日(開始)の判定
+              IF ( ld_pre_digestion_due_date < gd_ar_start_date ) THEN
+                -- 前回消化計算締年月日がAR対象開始日より過去の場合、AR対象開始日を設定
+                ld_pre_digestion_due_date    := gd_ar_start_date;
+              END IF;
+              --
+              --==================================
+              -- AR取引情報データ抽出(A-5)
+              --==================================
+              get_ar_deal_info(
+                 id_gl_date_from      => ld_pre_digestion_due_date                        -- GL記帳日(開始)
+                ,id_gl_date_to        => ld_digestion_due_date                            -- GL記帳日(終了)
+                ,iv_lookup_code       => cv_txn_vd_digestion_type                         -- 参照コード
+                ,iv_ship_account_code => g_sales_actual_rec.xseh_ship_to_customer_code    -- 出荷先顧客コード
+                ,in_ship_account_id   => g_sales_actual_rec.xchv_ship_account_id          -- 出荷先顧客ID
+                ,iv_ship_account_name => g_sales_actual_rec.xchv_ship_account_name        -- 請求先顧客名
+                ,ov_errbuf            => lv_errbuf                                        -- エラー・メッセージ
+                ,ov_retcode           => lv_retcode                                       -- リターン・コード
+                ,ov_errmsg            => lv_errmsg);                                      -- メッセージ
+              IF ( lv_retcode = cv_status_error ) THEN
+                RAISE sub_program_expt;
+              END IF;
+              --
+              IF ( lv_retcode = cv_status_normal) THEN
+                -- AR情報がある場合
+                --==================================
+                --  売上実績CSV作成(AR取引情報)(A-6)
+                --==================================
+                output_for_ar_deal(
+                   it_sales_rec    => g_sales_actual_rec    -- 売上実績(レコード型)
+                  ,ov_errbuf       => lv_errbuf             -- エラー・メッセージ
+                  ,ov_retcode      => lv_retcode            -- リターン・コード
+                  ,ov_errmsg       => lv_errmsg);           -- ユーザ・エラー・メッセージ
+                IF ( lv_retcode = cv_status_error ) THEN
+                  RAISE sub_program_expt;
+                END IF;
+              ELSE
+                -- 対象データなし
+                -- エラー件数カウント
+                gn_error_cnt := gn_error_cnt + 1;
+              END IF;
+            EXCEPTION
+              -- 消化VDの消化計算が取得できない場合
+              WHEN OTHERS THEN
+                -- エラーテーブルに設定
+                g_vd_digestion_err_tbl(lv_index) := NULL;
+                --
+                -- メッセージ作成
+                lv_errmsg_wk := xxccp_common_pkg.get_msg(
+                   iv_application  => cv_xxcos_short_name                             -- アプリケーション短縮名
+                  ,iv_name         => cv_msg_vd_digestion_data                        -- メッセージ
+                  ,iv_token_name1  => cv_tkn_account_number                           -- 出荷先顧客コード
+                  ,iv_token_value1 => g_sales_actual_rec.xseh_ship_to_customer_code
+                  ,iv_token_name2  => cv_tkn_delivery_date                            -- 納品日
+                  ,iv_token_value2 => TO_CHAR(g_sales_actual_rec.xseh_delivery_date,cv_date_format)
+                  ,iv_token_name3  => cv_tkn_sales_header_id                          -- 販売実績ID
+                  ,iv_token_value3 => g_sales_actual_rec.sales_exp_header_id
+                );
+                -- メッセージ出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.OUTPUT
+                  ,buff   => lv_errmsg_wk
+                );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.OUTPUT
+                  ,buff   => ''
+                );
+                -- エラー件数カウント
+                gn_error_cnt := gn_error_cnt + 1;
+                -- 警告を設定
+                ov_retcode := cv_status_warn;
+            END;
+            -- AR出力済み顧客情報に設定
+            g_ar_output_vd_tbl(lv_index) := NULL;
+          END IF;
+--
+        IF ( g_vd_digestion_err_tbl.EXISTS(TO_CHAR(g_sales_actual_rec.sales_exp_header_id)) = FALSE ) THEN
+          -- エラーテーブルに販売実績ヘッダが設定されていない場合
+          --==================================
+          -- 売上実績CSV作成(A-4)
+          --==================================
+          output_for_seles_actual(
+             it_sales_actual => g_sales_actual_rec     -- 売上実績レコード型
+            ,ov_errbuf       => lv_errbuf              -- エラー・メッセージ
+            ,ov_retcode      => lv_retcode             -- リターン・コード
+            ,ov_errmsg       => lv_errmsg);            -- ユーザー・エラー・メッセージ
+          --
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE sub_program_expt;
+          END IF;
         END IF;
-  --
+-- 2010/02/02 Ver.2.15 Add End
+        END IF;
+--
+-- 2010/02/02 Ver.2.15 Add Start
+        -- 消化VDの消化計算情報の取得エラーが発生していない場合、フラグ更新用テーブルに設定
+        IF ( g_vd_digestion_err_tbl.EXISTS(TO_CHAR(g_sales_actual_rec.sales_exp_header_id)) = FALSE ) THEN
+-- 2010/02/02 Ver.2.15 Add End
         -- ROWIDと納品伝票番号を内部テーブルに設定
         g_sales_h_tbl(gn_sales_h_count) := g_sales_actual_rec.xseh_rowid;
         gn_sales_h_count := gn_sales_h_count + 1;
+-- 2010/02/02 Ver.2.15 Add Start
+        END IF;
+-- 2010/02/02 Ver.2.15 Add End
   --
       END LOOP sales_actual_loop;
       --
@@ -2647,6 +2937,9 @@ AS
 --****************************** 2009/07/03 2.9 T.Miyata ADD START ******************************--
       ELSE
         -- 処理対象データあり
+-- 2010/02/02 Ver.2.15 Add End
+        IF ( g_sales_h_tbl.COUNT > 0 ) THEN
+-- 2010/02/02 Ver.2.15 Add End
         -- ===============================
         -- A-7.売上実績ヘッダステータス更新
         -- ===============================
@@ -2657,6 +2950,9 @@ AS
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE sub_program_expt;
         END IF;
+-- 2010/02/02 Ver.2.15 Add End
+        END IF;
+-- 2010/02/02 Ver.2.15 Add End
 --****************************** 2009/07/03 2.9 T.Miyata ADD  END  ******************************--
       END IF;
       --

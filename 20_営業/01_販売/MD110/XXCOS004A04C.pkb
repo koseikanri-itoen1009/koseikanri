@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2010/01/12   1.22  K.Atsushiba       [E_本稼動_01111]消費税の差額金額算出方法変更
  *                                       [E_本稼動_01110]赤黒フラグ判定条件変更
  *  2010/01/27   1.23  K.Atsushiba       [E_本稼動_01323]調整本体金額算出処理修正
+ *  2010/02/01   1.24  K.Atsushiba       [E_本稼動_01386]販売実績ID保持対応
  *
  *****************************************************************************************/
 --
@@ -451,9 +452,17 @@ AS
       deli_seq                    VARCHAR2(12),                                            --納品伝票番号
       cust_status                 VARCHAR2(30)                                             --顧客ステータス
   );
+/* 2010/02/01 Ver1.24 Mod Start */
+  TYPE g_rec_vd_digestion_hdr_id IS RECORD
+    (
+      vd_digestion_hdr_id     xxcos_vd_digestion_hdrs.vd_digestion_hdr_id%TYPE,           -- 消化VD用消化計算ヘッダID
+      sales_exp_header_id     xxcos_vd_digestion_hdrs.sales_exp_header_id%TYPE            -- 販売実績ヘッダID
+  );
   --更新用
-  TYPE g_tab_vd_digestion_hdr_id IS TABLE OF xxcos_vd_digestion_hdrs.vd_digestion_hdr_id%TYPE
-    INDEX BY PLS_INTEGER;   -- 消化ＶＤ用消化計算ヘッダID
+  TYPE g_tab_vd_digestion_hdr_id IS TABLE OF g_rec_vd_digestion_hdr_id   INDEX BY PLS_INTEGER;   -- 消化ＶＤ用消化計算ヘッダID
+--  TYPE g_tab_vd_digestion_hdr_id IS TABLE OF xxcos_vd_digestion_hdrs.vd_digestion_hdr_id%TYPE
+--    INDEX BY PLS_INTEGER;   -- 消化ＶＤ用消化計算ヘッダID
+/* 2010/02/01 Ver1.24 Mod End */
   --テーブル定義
   TYPE g_tab_work_data IS TABLE OF g_rec_work_data INDEX BY PLS_INTEGER;                         --消化ＶＤ用消化計算データ格納用変数
   TYPE g_tab_sales_exp_headers IS TABLE OF xxcos_sales_exp_headers%ROWTYPE INDEX BY PLS_INTEGER; --販売実績ヘッダ
@@ -2885,7 +2894,11 @@ AS
 --**************************** 2009/03/30 1.10 T.kitajima ADD  END  ****************************
         ELSE --存在しなかった
           --ヘッダデータ設定
-          gt_tab_vd_digestion_hdr_id(ln_h)                           := gt_tab_work_data(ln_i).vd_digestion_hdr_id;      --販売実績ヘッダID
+/* 2010/02/01 Ver1.24 Mod Start */
+          gt_tab_vd_digestion_hdr_id(ln_h).vd_digestion_hdr_id       := gt_tab_work_data(ln_i).vd_digestion_hdr_id;      --消化計算ヘッダID
+          gt_tab_vd_digestion_hdr_id(ln_h).sales_exp_header_id       := ln_header_id;                                    -- 販売実績ヘッダID
+--          gt_tab_vd_digestion_hdr_id(ln_h)                           := gt_tab_work_data(ln_i).vd_digestion_hdr_id;      --販売実績ヘッダID
+/* 2010/02/01 Ver1.24 Mod End */
           gt_tab_sales_exp_headers(ln_h).sales_exp_header_id         := ln_header_id;                                    --販売実績ヘッダID
           gt_tab_sales_exp_headers(ln_h).dlv_invoice_number          := lv_deli_seq;                                     --納品伝票番号
           gt_tab_sales_exp_headers(ln_h).order_invoice_number        := NULL;                                            --注文伝票番号
@@ -3398,7 +3411,10 @@ AS
     -- 1.販売実績作成分更新処理
     -- ===============================
     BEGIN
-      FORALL ln_i in 1..gt_tab_vd_digestion_hdr_id.COUNT SAVE EXCEPTIONS
+/* 2010/02/01 Ver1.24 Mod Start */
+      FOR ln_i IN 1..gt_tab_vd_digestion_hdr_id.COUNT  LOOP
+--      FORALL ln_i in 1..gt_tab_vd_digestion_hdr_id.COUNT SAVE EXCEPTIONS
+/* 2010/02/01 Ver1.24 Mod Start */
         UPDATE xxcos_vd_digestion_hdrs
            SET sales_result_creation_flag = ct_make_flag_yes,
                sales_result_creation_date = gd_business_date,
@@ -3409,7 +3425,12 @@ AS
                program_application_id     = cn_program_application_id,
                program_id                 = cn_program_id,
                program_update_date        = cd_program_update_date
-         WHERE vd_digestion_hdr_id        = gt_tab_vd_digestion_hdr_id(ln_i);
+/* 2010/02/01 Ver1.24 Mod Start */
+              ,sales_exp_header_id        = gt_tab_vd_digestion_hdr_id(ln_i).sales_exp_header_id
+         WHERE vd_digestion_hdr_id        = gt_tab_vd_digestion_hdr_id(ln_i).vd_digestion_hdr_id;
+      END LOOP;
+--         WHERE vd_digestion_hdr_id        = gt_tab_vd_digestion_hdr_id(ln_i);
+/* 2010/02/01 Ver1.24 Mod End */
     EXCEPTION
       -- エラー処理（データ追加エラー）
       WHEN OTHERS THEN
