@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,7 +40,10 @@ AS
  *  2008/07/01    1.13  Kazuo Kumamoto   結合テスト障害対応(パラメータ.物流ブロック・倉庫/保管倉庫をOR条件とする)
  *  2008/07/02    1.14  Satoshi Yunba    禁則文字対応
  *  2008/07/07    1.15 Yasuhisa Yamamoto 結合テスト障害対応(発注実績の取得数量を発注明細から取得するように変更)
- *
+ *  2008/09/16    1.16  Hitomi Itou      T_TE080_BPO_550 指摘31(積送ありの場合も同一倉庫内移動の場合、抽出しない。)
+ *                                       T_TE080_BPO_550 指摘28(在庫調整実績情報の受入返品情報取得(相手先在庫)を追加)
+ *                                       T_TE080_BPO_540 指摘44(同上)
+ *                                       変更要求#171(同上)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -248,6 +251,10 @@ AS
 --add start 1.3
   gv_nullvalue         CONSTANT VARCHAR2(2) := CHR(09);
 --add end 1.3
+--add start 1.16
+  --発注区分
+  po_type_inv          CONSTANT VARCHAR2(1) := '3'; --相手先在庫
+--add end 1.16
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -1640,8 +1647,19 @@ AS
          OR    xmld.lot_id IS NULL
          )
          AND xilv.segment1 = itp.location                                         --保管倉庫コード
-         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ
+         AND itp.completed_ind = gv_tran_cmp                                      --完了フラグ　
 --add start 1.2
+--add start 1.16
+         AND NOT EXISTS (                                                         --同一倉庫内の移動情報は対象外とする
+             SELECT COUNT(*)
+             FROM ic_tran_pnd itp2                                                --OPM保留在庫トランザクション
+             WHERE itp.doc_id = itp2.doc_id                                       --文書ID
+             AND   itp.whse_code = itp2.whse_code                                 --倉庫コード
+             GROUP BY itp2.doc_id
+                     ,itp2.whse_code
+             HAVING COUNT(*) > 1
+             )
+--add end 1.16
         UNION ALL
           --積送あり(ADJI)
           SELECT
@@ -1694,8 +1712,23 @@ AS
              ,gv_rcvdiv_pay                                   rcv_pay_div         --受払区分
             FROM
               xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
+--add start 1.16
+             ,xxcmn_item_locations2_v                         xilv_locat          --OPM保管場所情報VIEW2(保管倉庫の倉庫コード取得用)
+             ,xxcmn_item_locations2_v                         xilv_other          --OPM保管場所情報VIEW2(相手先の倉庫コード取得用)
+--add end 1.16
             --移動依頼/指示ヘッダ(アドオン)抽出条件
             WHERE xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
+--add start 1.16
+            --OPM保管場所情報VIEW2(保管倉庫)抽出条件
+            AND xmrih.shipped_locat_id = xilv_locat.inventory_location_id                        --保管倉庫ID
+            AND xmrih.actual_ship_date
+              BETWEEN xilv_locat.date_from AND NVL(xilv_locat.date_to,xmrih.actual_ship_date)    --適用開始日・終了日
+            --OPM保管場所情報VIEW2(相手先)抽出条件
+            AND xmrih.ship_to_locat_id = xilv_other.inventory_location_id                        --保管倉庫ID
+            AND xmrih.actual_arrival_date
+              BETWEEN xilv_other.date_from AND NVL(xilv_other.date_to,xmrih.actual_arrival_date) --適用開始日・終了日
+            AND xilv_locat.whse_code <> xilv_other.whse_code                      --同一倉庫内の移動情報は対象外とする
+--add end 1.16
             UNION ALL
             --入庫実績情報
             SELECT
@@ -1716,8 +1749,23 @@ AS
              ,gv_rcvdiv_rcv                                   rcv_pay_div         --受払区分
             FROM
               xxinv_mov_req_instr_headers                     xmrih               --移動依頼/指示ヘッダ(アドオン)
+--add start 1.16
+             ,xxcmn_item_locations2_v                         xilv_locat          --OPM保管場所情報VIEW2(保管倉庫の倉庫コード取得用)
+             ,xxcmn_item_locations2_v                         xilv_other          --OPM保管場所情報VIEW2(相手先の倉庫コード取得用)
+--add end 1.16
             --移動依頼/指示ヘッダ(アドオン)抽出条件
             WHERE xmrih.mov_type = gv_movetype_yes                                --移動タイプ(積送あり)
+--add start 1.16
+            --OPM保管場所情報VIEW2(保管倉庫)抽出条件
+            AND xmrih.ship_to_locat_id = xilv_locat.inventory_location_id                        --保管倉庫ID
+            AND xmrih.actual_arrival_date
+              BETWEEN xilv_locat.date_from AND NVL(xilv_locat.date_to,xmrih.actual_arrival_date) --適用開始日・終了日
+            --OPM保管場所情報VIEW2(相手先)抽出条件
+            AND xmrih.shipped_locat_id = xilv_other.inventory_location_id                        --保管倉庫ID
+            AND xmrih.actual_ship_date
+              BETWEEN xilv_other.date_from AND NVL(xilv_other.date_to,xmrih.actual_ship_date)    --適用開始日・終了日
+            AND xilv_locat.whse_code <> xilv_other.whse_code                      --同一倉庫内の移動情報は対象外とする
+--add end 1.16
           ) xmrih
          ,xxinv_mov_req_instr_lines                           xmril               --移動依頼/指示明細(アドオン)
          ,xxinv_mov_lot_details                               xmld                --移動ロット詳細(アドオン)
@@ -2114,8 +2162,8 @@ AS
            ,xxcmn_rcv_pay_mst                                 xrpm                --受入区分アドオンマスタ
            ,xxcmn_item_mst2_v                                 ximv_s              --OPM品目情報VIEW2(出荷品目用)
            ,xxcmn_item_mst2_v                                 ximv_r              --OPM品目情報VIEW2(依頼品目用)
-           ,xxcmn_item_categories4_v                          xicv_s              --OPM品目カテゴリ割当情報VIEW4(出荷品目用)
-           ,xxcmn_item_categories4_v                          xicv_r              --OPM品目カテゴリ割当情報VIEW4(依頼品目用)
+           ,xxcmn_item_categories5_v                          xicv_s              --OPM品目カテゴリ割当情報VIEW5(出荷品目用)
+           ,xxcmn_item_categories5_v                          xicv_r              --OPM品目カテゴリ割当情報VIEW5(依頼品目用)
            ,xxcmn_item_locations2_v                           xilv                --OPM保管場所情報VIEW2
           --受注ヘッダ(アドオン)抽出条件
           WHERE oe_info.header_id = xoha.header_id                                --受注ヘッダID
@@ -2133,14 +2181,14 @@ AS
           AND oe_info.trans_date
             BETWEEN ximv_s.start_date_active
             AND NVL(ximv_s.end_date_active,oe_info.trans_date)                    --適用開始日・終了日
-          --OPM品目カテゴリ割当情報VIEW4(出荷品目用)抽出条件
+          --OPM品目カテゴリ割当情報VIEW5(出荷品目用)抽出条件
           AND ximv_s.item_id = xicv_s.item_id                                     --品目ID
           --OPM品目情報VIEW2(依頼品目用)抽出条件
           AND xola.request_item_code = ximv_r.item_no                             --品目コード
           AND oe_info.trans_date
             BETWEEN ximv_r.start_date_active
             AND NVL(ximv_r.end_date_active,oe_info.trans_date)                    --適用開始日・終了日
-          --OPM品目カテゴリ割当情報VIEW4(依頼品目用)抽出条件
+          --OPM品目カテゴリ割当情報VIEW5(依頼品目用)抽出条件
           AND ximv_r.item_id = xicv_r.item_id                                     --品目ID
 --add start 1.7
           --パーティサイト情報VIEW2抽出条件
@@ -2536,7 +2584,7 @@ AS
              gme_batch_header                                 gbh                 --生産バッチ
             ,gme_material_details                             gmd                 --生産原料詳細
             ,gmd_routings_tl                                  grt                 --工順マスタ日本語
-            ,xxcmn_item_categories4_v                         xicv                --OPM品目カテゴリ割当情報VIEW4
+            ,xxcmn_item_categories5_v                         xicv                --OPM品目カテゴリ割当情報VIEW5
            --生産原料詳細抽出条件
            WHERE gbh.batch_id = gmd.batch_id                                      --バッチID
            --工順マスタ日本語抽出条件
@@ -2544,7 +2592,7 @@ AS
            AND grt.language = gv_lang                                             --言語
            AND grt.source_lang = gv_source_lang                                   --言語
            AND grt.routing_desc = gv_item_transfer                                --工順名
-           --OPM品目カテゴリ割当情報VIEW4
+           --OPM品目カテゴリ割当情報VIEW5
            AND gmd.item_id = xicv.item_id
            GROUP BY gbh.batch_id
                    ,gmd.line_no
@@ -2686,7 +2734,7 @@ AS
         FROM
           (
             -----------------------
-            --受入返品実績情報
+            --受入返品実績情報(仕入先返品)
             -----------------------
             SELECT
               ijm.journal_id                                  journal_id          --ジャーナルID
@@ -2710,6 +2758,37 @@ AS
             AND xrart.txns_date                                                   --取引日
               BETWEEN start_date_active                                           --適用開始日
               AND NVL(end_date_active,xrart.txns_date)                            --適用終了日
+--add start 1.16
+            UNION ALL
+            -----------------------
+            --受入返品実績情報(相手先在庫)
+            -----------------------
+            SELECT
+              ijm.journal_id                                  journal_id          --ジャーナルID
+             ,xrart.source_document_number                    slip_no             --伝票No
+             ,xrart.location_code                             other_code          --入出庫先コード
+             ,xilv.description                                other_name          --摘要（入出庫先名称）
+             ,gv_adji_xrart                                   adji_type           --在庫タイプ
+            FROM
+              ic_jrnl_mst                                     ijm                 --OPMジャーナルマスタ
+             ,xxpo_rcv_and_rtn_txns                           xrart               --受入返品実績アドオン
+             ,xxcmn_item_locations2_v                         xilv                --OPM保管場所マスタ
+             ,po_headers_all                                  pha                 --発注ヘッダ
+            --受入返品実績(アドオン)抽出条件
+            WHERE xrart.txns_type  = gv_txns_type_rcv                             --実績区分
+            AND TRUNC(xrart.txns_date)                                            --取引日
+              BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
+              AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
+            --OPMジャーナルマスタ抽出条件
+            AND ijm.attribute1 = xrart.txns_id                                    --実績ID
+            --OPM保管場所マスタview抽出条件
+            AND xrart.location_code = xilv.segment1                               --入出庫先コード
+            AND xrart.txns_date                                                   --取引日
+              BETWEEN xilv.date_from AND NVL(xilv.date_to,xrart.txns_date)
+            --発注ヘッダ
+            AND xrart.source_document_number = pha.segment1                       --発注番号
+            AND pha.attribute11 = po_type_inv                                     --発注区分(相手先在庫)
+--add end 1.16
             UNION ALL
             -----------------------
             --生葉実績情報
