@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP006A01C(body)
  * Description      : 親子コンカレント終了ステータス監視
  * MD.050           : MD050_CCP_006_A01_親子コンカレント終了ステータス監視
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/15    1.0   Yohei Takayama   新規作成
  *  2009/03/11    1.1   Masayuki Sano    メッセージ表示不正対応
+ *  2009/04/20    1.2   Masayuki Sano    障害対応T1_0443
+ *                                       ・2階層目⇒3階層目まで参照可能となるように修正。
  *
  *****************************************************************************************/
 --
@@ -560,13 +562,15 @@ AS
     IF ( ln_param_cnt > cn_param_max_cnt ) THEN
       -- 件数を最大件数へ修正
       on_parent_param_cnt := cn_param_max_cnt;
-      -- 例外処理
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application => cv_appl_short_name
-                     ,iv_name        => cv_max_para_err_msg
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
+-- 2009/04/20 Ver.1.2 DELETE By Masayuki.Sano Start
+--      -- 例外処理
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application => cv_appl_short_name
+--                     ,iv_name        => cv_max_para_err_msg
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+-- 2009/04/20 Ver.1.2 DELETE By Masayuki.Sano End
     ELSE
       on_parent_param_cnt := ln_param_cnt;
     END IF;
@@ -891,9 +895,17 @@ AS
     -- 子コンカレント要求ID取得カーソル
     CURSOR get_child_conc_cur
     IS
-      SELECT  request_id  request_id                 -- 要求ID
+      SELECT  request_id  request_id                 -- 要求ID(2階層目)
       FROM    fnd_concurrent_requests  fcq           -- 要求管理マスタ
       WHERE   fcq.parent_request_id = in_request_id  -- 親要求ID
+-- 2009/04/20 Ver.1.2 Add By Masayuki.Sano Start
+      UNION ALL
+      SELECT  fcq3.request_id                        -- 要求ID(3階層目)
+      FROM    fnd_concurrent_requests  fcq2          -- 要求管理マスタ(2階層目)
+             ,fnd_concurrent_requests  fcq3          -- 要求管理マスタ(3階層目)
+      WHERE   fcq2.parent_request_id = in_request_id -- 親要求ID
+      AND     fcq3.parent_request_id = fcq2.request_id
+-- 2009/04/20 Ver.1.2 Add By Masayuki.Sano End
       ORDER BY request_id
       ;
     -- 子コンカレント要求IDレコード型
@@ -918,18 +930,20 @@ AS
     OPEN  get_child_conc_cur;
     FETCH get_child_conc_cur INTO get_child_conc_rec;
 --
-    -- 子コンカレント要求IDが0件の場合
-    IF ( get_child_conc_cur%NOTFOUND ) THEN
-      -- カーソルのクローズ
-      CLOSE get_child_conc_cur;
-      -- メッセージ取得
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => cv_child_conc_err_msg
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_process_expt;
-    END IF;
+-- 2009/04/20 Ver.1.2 Add By Masayuki.Sano Start
+--    -- 子コンカレント要求IDが0件の場合
+--    IF ( get_child_conc_cur%NOTFOUND ) THEN
+--      -- カーソルのクローズ
+--      CLOSE get_child_conc_cur;
+--      -- メッセージ取得
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_appl_short_name
+--                    ,iv_name         => cv_child_conc_err_msg
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
+-- 2009/04/20 Ver.1.2 Add By Masayuki.Sano End
 --
     -- ******************************************************
     -- 子コンカレントについて、ステータスチェックを行う。
