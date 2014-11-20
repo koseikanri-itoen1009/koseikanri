@@ -16,6 +16,8 @@
  *                                       ・拠点コード、顧客ステータス項目の削除
  *  2009/07/10    1.3   K.Kakishita      [T3_0317]パフォーマンス対応
  *                                       ・ヒント句追加、EXISTSからINへの変更
+ *  2009/07/15    1.4   K.Kakishita      [T3_0757]重複データが表示される障害対応
+ *                                       ・GROUP BY句を追加
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_order_customer_number_v (
@@ -54,7 +56,7 @@ AS
   AND acct.cust_account_id              = xca.customer_id
   AND xlbiv.base_code IN ( xca.sale_base_code, xca.past_sale_base_code, xca.delivery_base_code )
   AND EXISTS(
-        SELECT 'Y' exeist_flag
+        SELECT 'Y' exists_flag
         FROM fnd_lookup_values flv
         WHERE flv.lookup_type = 'XXCOS1_CUS_CLASS_MST_005_A01'
         AND flv.meaning = acct.customer_class_code
@@ -63,6 +65,15 @@ AS
         AND xxccp_common_pkg2.get_process_date >= flv.start_date_active
         AND xxccp_common_pkg2.get_process_date <= NVL(flv.end_date_active, xxccp_common_pkg2.get_process_date )
       )
+  GROUP BY
+    acct.account_number,
+    acct.account_name,
+    party.party_number,
+    party.party_name,
+    party.party_type,
+    acct.cust_account_id,
+    party.email_address,
+    NVL( party.gsa_indicator_flag, 'N' )
 ;
 COMMENT ON  COLUMN  xxcos_order_customer_number_v.account_number       IS  '顧客コード';
 COMMENT ON  COLUMN  xxcos_order_customer_number_v.account_description  IS  '顧客名称';
