@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A09C(body)
  * Description      : 資材取引情報を元に月次在庫受払表（日次）を作成します
  * MD.050           : 日次在庫受払表作成<MD050_COI_006_A09>
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/10/15    1.11  H.Sasaki         [E_最終移行リハ_00494]Ver1.10の修正
  *  2010/01/25    1.12  N.Abe            [E_本稼動_01186]PT対応(起動パラメータによる処理分割)
  *                                                       前回コピー時に帳簿0のデータは作成しない
+ *  2010/05/02    1.13  H.Sasaki         [E_本稼動_02548]前回コピー時に帳簿0のデータは作成しない（累計作成）
  *
  *****************************************************************************************/
 --
@@ -1237,7 +1238,11 @@ AS
              ,xirs.book_inventory_quantity
       FROM    xxcoi_inv_reception_sum   xirs
       WHERE   xirs.organization_id  = gn_f_organization_id
-      AND     xirs.practice_date    = SUBSTRB(TO_CHAR(ADD_MONTHS(gd_f_business_date, -1), cv_date), 1, 6);
+      AND     xirs.practice_date    = SUBSTRB(TO_CHAR(ADD_MONTHS(gd_f_business_date, -1), cv_date), 1, 6)
+-- == 2010/05/02 V1.13 Added START ===============================================================
+      AND     xirs.book_inventory_quantity  <>  0
+-- == 2010/05/02 V1.13 Added END   ===============================================================
+      ;
     --
     -- <カーソル名>レコード型
     daily_sum_rec     daily_sum_cur%ROWTYPE;
