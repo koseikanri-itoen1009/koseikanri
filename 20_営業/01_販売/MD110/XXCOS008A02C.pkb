@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2010/08/23    1.26  H.Sasaki         [E_本稼動_01763][E_本稼動_02635]INV連携日中化対応
  *  2010/10/12    1.27  K.Kiriu          [E_本稼動_01763]INV連携日中化再対応
  *  2010/11/22    1.28  H.Sasaki         [E_本稼動_05719]随時実行のPT対応
+ *  2011/01/11    1.29  H.Sekine         [E_本稼動_01762]管轄拠点の取得、設定の対応
  *
  *****************************************************************************************/
 --
@@ -582,6 +583,9 @@ AS
     , info_class                  oe_order_headers_all.global_attribute3%TYPE       -- 情報区分
 /* 2009/07/09 Ver1.11 Add End   */
     , check_status                NUMBER                                            -- チェックステータス
+/* 2011/01/11 Ver1.29 Add Start */
+    , head_sales_branch           xxwsh_order_headers_all.head_sales_branch%TYPE    -- 管轄拠点
+/* 2011/01/11 Ver1.29 Add End   */
   );
 --
   -- 売上区分
@@ -1674,6 +1678,9 @@ AS
       , ooha.global_attribute3                AS info_class                 -- 情報区分
   /* 2009/07/09 Ver1.11 Add End   */
       , cn_check_status_normal                AS check_status               -- チェックステータス
+  /* 2011/01/11 Ver1.29 Add Start */
+      , xoha.head_sales_branch                AS head_sales_branch          -- 管轄拠点
+  /* 2011/01/11 Ver1.29 Add End   */
       BULK COLLECT INTO
   /* 2009/07/09 Ver1.11 Mod Start */
   --      g_order_data_tab
@@ -2013,6 +2020,9 @@ AS
       , xola.shipped_quantity                 AS shipped_quantity           -- 出荷実績数量
       , ooha.global_attribute3                AS info_class                 -- 情報区分
       , cn_check_status_normal                AS check_status               -- チェックステータス
+/* 2011/01/11 Ver1.29 Add Start */
+      , xoha.head_sales_branch                AS head_sales_branch          -- 管轄拠点
+/* 2011/01/11 Ver1.29 Add End   */
       BULK COLLECT INTO
         g_order_data_all_tab
       FROM
@@ -4745,6 +4755,10 @@ AS
         g_sale_hdr_tab(j).create_class                := g_order_exp_tab(ln_now_index).create_class;
         -- 登録業務日付
         g_sale_hdr_tab(j).business_date               := gd_business_date;
+/* 2011/01/11 Ver1.29 Add Start */
+        -- 管轄拠点
+        g_sale_hdr_tab(j).head_sales_branch           := g_order_exp_tab(ln_now_index).head_sales_branch;
+/* 2011/01/11 Ver1.29 Add End   */
         -- 作成者
         g_sale_hdr_tab(j).created_by                  := cn_created_by;
         -- 作成日

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/09/14    1.11  S.Miyakoshi      [0001360]BULKへの対応
  *  2009/10/08    1.12  M.Sano           [0001520]PT対応
  *  2010/11/01    1.13  K.Kiriu          [E_本稼動_05350]日中化対応に伴う対象外データ更新判定追加
+ *  2011/01/17    1.14  K.Kiriu          [E_本稼動_01762]入出庫データの拠点コード設定見直し対応
  *
  *****************************************************************************************/
 --
@@ -244,6 +245,9 @@ AS
   cv_goods_prod_item        CONSTANT  VARCHAR2(1)   := '1';  -- 商品
 -- ************ 2009/07/29 N.Maeda 1.8 ADD  END  *********************** --
 --
+/* 2011/01/17 Ver1.14 Add Start */
+  cv_h_s_branch_dummy       CONSTANT  VARCHAR2(4)   := 'AAAA';  --ソート用ダミー(管轄拠点)
+/* 2011/01/17 Ver1.14 Add End   */
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -253,6 +257,9 @@ AS
     dlv_date                    xxcos_sales_exp_headers.delivery_date%TYPE,              --納品日
     dlv_invoice_class           xxcos_sales_exp_headers.dlv_invoice_class%TYPE,          --納品伝票区分
     sales_base_code             xxcos_sales_exp_headers.sales_base_code%TYPE,            --売上拠点コード
+/* 2011/01/17 Ver1.14 Add Start */
+    head_sales_branch           xxcos_sales_exp_headers.head_sales_branch%TYPE,          --管轄拠点
+/* 2011/01/17 Ver1.14 Add End   */
     dlv_pattern_class           xxcos_sales_exp_lines.delivery_pattern_class%TYPE,       --納品形態区分
     sales_class                 xxcos_sales_exp_lines.sales_class%TYPE,                  --売上区分
     red_black_flag              xxcos_sales_exp_lines.red_black_flag%TYPE,               --赤黒フラグ
@@ -313,6 +320,9 @@ AS
     transaction_source_id       mtl_transactions_interface.transaction_source_id%TYPE,   --取引ソースID
     transaction_source_type_id  mtl_transactions_interface.transaction_source_type_id%TYPE, --取引ソースタイプID
     transaction_type_id         mtl_transactions_interface.transaction_type_id%TYPE,     --取引タイプID
+/* 2011/01/17 Ver1.14 Add Start */
+    attribute6                  mtl_transactions_interface.attribute6%TYPE,              --DFF6(管轄拠点)
+/* 2011/01/17 Ver1.14 Add End   */
     scheduled_flag              mtl_transactions_interface.scheduled_flag%TYPE,          --計画フラグ
     flow_schedule               mtl_transactions_interface.flow_schedule%TYPE,           --計画フロー
     created_by                  mtl_transactions_interface.created_by%TYPE,              --作成者ID
@@ -408,6 +418,9 @@ AS
   gt_last_transaction_source_id      mtl_transactions_interface.transaction_source_id%TYPE;      --取引ソースID
   gt_last_tran_source_type_id        mtl_transactions_interface.transaction_source_type_id%TYPE; --取引ソースタイプID
   gt_last_transaction_type_id        mtl_transactions_interface.transaction_type_id%TYPE;        --取引タイプID
+/* 2011/01/17 Ver1.14 Add Start */
+  gt_last_attribute6                 mtl_transactions_interface.attribute6%TYPE;                 --DFF6(管轄拠点)
+/* 2011/01/17 Ver1.14 Add End   */
   gt_last_scheduled_flag             mtl_transactions_interface.scheduled_flag%TYPE;             --計画フラグ
   gt_last_flow_schedule              mtl_transactions_interface.flow_schedule%TYPE;              --計画フロー
   gt_last_created_by                 mtl_transactions_interface.created_by%TYPE;                 --作成者ID
@@ -440,6 +453,9 @@ AS
            seh.delivery_date,                     --納品日
            seh.dlv_invoice_class,                 --納品伝票区分
            seh.sales_base_code,                   --売上拠点コード
+/* 2011/01/17 Ver1.14 Add Start */
+           seh.head_sales_branch head_sales_branch, --管轄拠点
+/* 2011/01/17 Ver1.14 Add End   */
            sel.delivery_pattern_class,            --納品形態区分
            sel.sales_class,                       --売上区分
            sel.red_black_flag,                    --赤黒フラグ
@@ -530,7 +546,11 @@ AS
            sel.ship_from_subinventory_code,     --出荷元保管場所
            msib.inventory_item_id,
            seh.delivery_date,                   --納品日
-           seh.sales_base_code                  --売上拠点コード
+/* 2011/01/17 Ver1.14 Mod Start */
+--           seh.sales_base_code                  --売上拠点コード
+           seh.sales_base_code,                 --売上拠点コード
+           seh.head_sales_branch                --管轄拠点(直送倉庫のときのみ有効)
+/* 2011/01/17 Ver1.14 Mod End   */
     ;
 -- ********** 2009/09/14 S.Miyakoshi Var1.11 ADD  END  *********** --
 --
@@ -2412,6 +2432,10 @@ AS
             EXIT;
           END IF;
             g_mtl_txn_oif_tab(ln_mtl_txn_inx).transaction_type_id     := lt_type_id;
+/* 2011/01/17 Ver1.14 Add Start */
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).attribute6              := g_sales_exp_tab(i).head_sales_branch;
+            --DFF6(管轄拠点)
+/* 2011/01/17 Ver1.14 Add End   */
             --計画フラグ
             g_mtl_txn_oif_tab(ln_mtl_txn_inx).scheduled_flag          := cn_scheduled_flag;
             --計画フロー
@@ -2448,7 +2472,7 @@ AS
     --テーブルソート
     <<loop_make_sort_data>>
     FOR s IN 1..g_mtl_txn_oif_tab.COUNT LOOP
-      --ソートキーは保管場所、品目ID、取引日、部門コード、販売実績明細ID
+      --ソートキーは保管場所、品目ID、取引日、部門コード、管轄拠点、販売実績明細ID
       lv_idx_key := g_mtl_txn_oif_tab(s).subinventory_code
                     || g_mtl_txn_oif_tab(s).inventory_item_id
 -- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD START ************************ --
@@ -2456,6 +2480,9 @@ AS
                     || TO_CHAR( g_mtl_txn_oif_tab(s).transaction_date, 'yyyymmdd' )
 -- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD  END  ************************ --
                     || g_mtl_txn_oif_tab(s).dept_code
+/* 2011/01/17 Ver1.14 Add Start */
+                    || NVL( g_mtl_txn_oif_tab(s).attribute6, cv_h_s_branch_dummy )
+/* 2011/01/17 Ver1.14 Add End   */
                     || g_mtl_txn_oif_tab(s).sales_exp_line_id;
       g_mtl_txn_oif_tab_spare(lv_idx_key) := g_mtl_txn_oif_tab(s);
     END LOOP loop_make_sort_data;
@@ -2542,6 +2569,9 @@ AS
     lt_subinventory              mtl_transactions_interface.subinventory_code%TYPE;   --取引元の保管場所(ブレークキー)
     lt_item_id                   mtl_transactions_interface.inventory_item_id%TYPE;   --取引品目ID(ブレークキー)
     lt_txn_date                  mtl_transactions_interface.transaction_date%TYPE;    --取引発生日(ブレークキー)
+/* 2011/01/17 Ver1.17 Add Start */
+    lt_h_s_branch                mtl_transactions_interface.attribute6%TYPE;          --DFF6(管轄拠点)(ブレークキー)
+/* 2011/01/17 Ver1.17 Add End   */
     lt_type_id                   mtl_transactions_interface.transaction_type_id%TYPE; --取引タイプID
     ln_break_start               NUMBER;                                              --集約ブレーク開始
     ln_break_end                 NUMBER;                                              --集約ブレーク終了
@@ -2571,6 +2601,9 @@ AS
     lt_item_id      := g_mtl_txn_oif_ins_tab(1).inventory_item_id;
     lt_txn_date     := g_mtl_txn_oif_ins_tab(1).transaction_date;
     lt_dept_code    := g_mtl_txn_oif_ins_tab(1).dept_code;
+/* 2011/01/17 Ver1.14 Add Start */
+    lt_h_s_branch   := NVL( g_mtl_txn_oif_ins_tab(1).attribute6, cv_h_s_branch_dummy );
+/* 2011/01/17 Ver1.14 Add End   */
 --    lt_subinventory := g_mtl_txn_oif_tab(1).subinventory_code;
 --    lt_item_id      := g_mtl_txn_oif_tab(1).inventory_item_id;
 --    lt_txn_date     := g_mtl_txn_oif_tab(1).transaction_date;
@@ -2587,6 +2620,9 @@ AS
          lt_item_id      = gt_last_inventory_item_id AND
          lt_txn_date     = gt_last_transaction_date  AND
          lt_dept_code    = gt_last_dept_code         AND
+/* 2011/01/17 Add Start */
+         lt_h_s_branch   = NVL( gt_last_attribute6, cv_h_s_branch_dummy ) AND
+/* 2011/01/17 Add End   */
          g_mtl_txn_oif_ins_tab(1).transaction_type_id = gt_last_transaction_type_id ) THEN
       --取引数量の集約
       g_mtl_txn_oif_ins_tab(1).transaction_quantity := g_mtl_txn_oif_ins_tab(1).transaction_quantity + gt_last_transaction_quantity;
@@ -2604,12 +2640,17 @@ AS
 --           lt_item_id      = g_mtl_txn_oif_tab(i).inventory_item_id AND
 --           lt_txn_date     = g_mtl_txn_oif_tab(i).transaction_date ) THEN
     FOR i IN g_mtl_txn_oif_ins_tab.FIRST .. g_mtl_txn_oif_ins_tab.LAST LOOP
-      --取引元の保管場所、取引品目ID、取引発生日、部門コードでブレーク
+      --取引元の保管場所、取引品目ID、取引発生日、部門コード、管轄拠点でブレーク
 -- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD START ************************ --
       IF ( ( lt_subinventory = g_mtl_txn_oif_ins_tab(i).subinventory_code AND
              lt_item_id      = g_mtl_txn_oif_ins_tab(i).inventory_item_id AND
              lt_txn_date     = g_mtl_txn_oif_ins_tab(i).transaction_date  AND
-             lt_dept_code    = g_mtl_txn_oif_ins_tab(i).dept_code )
+/* 2011/01/17 Ver1.14 Mod Start */
+--             lt_dept_code    = g_mtl_txn_oif_ins_tab(i).dept_code )
+             lt_dept_code    = g_mtl_txn_oif_ins_tab(i).dept_code         AND
+             lt_h_s_branch   = NVL( g_mtl_txn_oif_ins_tab(i).attribute6, cv_h_s_branch_dummy )
+           )
+/* 2011/01/17 Ver1.14 Mod End   */
            OR
            ( i = g_mtl_txn_oif_ins_tab.LAST ) ) THEN
 --      IF ( lt_subinventory = g_mtl_txn_oif_ins_tab(i).subinventory_code AND
@@ -2685,6 +2726,9 @@ AS
             g_mtl_txn_oif_ins_tab(i+1).transaction_source_id      := gt_last_transaction_source_id;        --取引ソースID
             g_mtl_txn_oif_ins_tab(i+1).transaction_source_type_id := gt_last_tran_source_type_id;          --取引ソースタイプID
             g_mtl_txn_oif_ins_tab(i+1).transaction_type_id        := gt_last_transaction_type_id;          --取引タイプID
+/* 2011/01/17 Ver1.14 Add Start */
+            g_mtl_txn_oif_ins_tab(i+1).attribute6                 := gt_last_attribute6;                   --DFF6(管轄拠点)
+/* 2011/01/17 Ver1.14 Add End   */
             g_mtl_txn_oif_ins_tab(i+1).scheduled_flag             := gt_last_scheduled_flag;               --計画フラグ
             g_mtl_txn_oif_ins_tab(i+1).flow_schedule              := gt_last_flow_schedule;                --計画フロー
             g_mtl_txn_oif_ins_tab(i+1).created_by                 := gt_last_created_by;                   --作成者ID
@@ -2702,6 +2746,9 @@ AS
                lt_item_id      = g_mtl_txn_oif_ins_tab(i).inventory_item_id AND
                lt_txn_date     = g_mtl_txn_oif_ins_tab(i).transaction_date  AND
                lt_dept_code    = g_mtl_txn_oif_ins_tab(i).dept_code         AND
+/* 2011/01/17 Ver1.14 Add Start */
+               lt_h_s_branch   = NVL( g_mtl_txn_oif_ins_tab(i).attribute6, cv_h_s_branch_dummy ) AND
+/* 2011/01/17 Ver1.14 Add End   */
                lt_type_id      = g_mtl_txn_oif_ins_tab(i).transaction_type_id ) THEN
             <<last_same_break_loop>>
             FOR j IN ln_break_start .. ln_break_end LOOP
@@ -2740,6 +2787,9 @@ AS
               gt_last_transaction_source_id  := g_mtl_txn_oif_ins_tab( ln_last_data ).transaction_source_id;       --取引ソースID
               gt_last_tran_source_type_id    := g_mtl_txn_oif_ins_tab( ln_last_data ).transaction_source_type_id;  --取引ソースタイプID
               gt_last_transaction_type_id    := g_mtl_txn_oif_ins_tab( ln_last_data ).transaction_type_id;         --取引タイプID
+/* 2011/01/17 Ver1.14 Add Start */
+              gt_last_attribute6             := g_mtl_txn_oif_ins_tab( ln_last_data ).attribute6;                  --DFF6(管轄拠点)
+/* 2011/01/17 Ver1.14 Add End   */
               gt_last_scheduled_flag         := g_mtl_txn_oif_ins_tab( ln_last_data ).scheduled_flag;              --計画フラグ
               gt_last_flow_schedule          := g_mtl_txn_oif_ins_tab( ln_last_data ).flow_schedule;               --計画フロー
               gt_last_created_by             := g_mtl_txn_oif_ins_tab( ln_last_data ).created_by;                  --作成者ID
@@ -2790,6 +2840,9 @@ AS
             gt_last_transaction_source_id  := g_mtl_txn_oif_ins_tab( i ).transaction_source_id;       --取引ソースID
             gt_last_tran_source_type_id    := g_mtl_txn_oif_ins_tab( i ).transaction_source_type_id;  --取引ソースタイプID
             gt_last_transaction_type_id    := g_mtl_txn_oif_ins_tab( i ).transaction_type_id;         --取引タイプID
+/* 2011/01/17 Ver1.14 Add Start */
+            gt_last_attribute6             := g_mtl_txn_oif_ins_tab( i ).attribute6;                  --DFF6(管轄拠点)
+/* 2011/01/17 Ver1.14 Add End   */
             gt_last_scheduled_flag         := g_mtl_txn_oif_ins_tab( i ).scheduled_flag;              --計画フラグ
             gt_last_flow_schedule          := g_mtl_txn_oif_ins_tab( i ).flow_schedule;               --計画フロー
             gt_last_created_by             := g_mtl_txn_oif_ins_tab( i ).created_by;                  --作成者ID
@@ -2852,6 +2905,9 @@ AS
         lt_dept_code    := g_mtl_txn_oif_ins_tab(i).dept_code;
         lt_type_id      := g_mtl_txn_oif_ins_tab(i).transaction_type_id;
 --************************************* 2009/04/28 N.Maeda Var1.4 MOD  END  *********************************************
+/* 2011/01/17  Ver1.14 Add Start */
+        lt_h_s_branch   := NVL( g_mtl_txn_oif_ins_tab(i).attribute6, cv_h_s_branch_dummy );
+/* 2011/01/17  Ver1.14 Add End   */
         --次のブレーク開始Indexを設定します。
         ln_break_start := i;
       END IF;
@@ -2890,6 +2946,9 @@ AS
               transaction_source_id,         --取引ソースID
               transaction_source_type_id,    --取引ソースタイプID
               transaction_type_id,           --取引タイプID
+/* 2011/01/17 Ver1.14 Add Start */
+              attribute6,                    --DFF6(管轄拠点)
+/* 2011/01/17 Ver1.14 Add End   */
               scheduled_flag,                --計画フラグ
               flow_schedule,                 --計画フロー
               created_by,                    --作成者ID
@@ -2945,6 +3004,9 @@ AS
             g_mtl_txn_oif_ins_tab(l).transaction_source_id,
             g_mtl_txn_oif_ins_tab(l).transaction_source_type_id,
             g_mtl_txn_oif_ins_tab(l).transaction_type_id,
+/* 2011/01/17 Ver1.14 Add Start */
+            g_mtl_txn_oif_ins_tab(l).attribute6,
+/* 2011/01/17 Ver1.14 Add End   */
             g_mtl_txn_oif_ins_tab(l).scheduled_flag,
             g_mtl_txn_oif_ins_tab(l).flow_schedule,
             g_mtl_txn_oif_ins_tab(l).created_by,
@@ -3597,6 +3659,9 @@ AS
           transaction_source_id,          --取引ソースID
           transaction_source_type_id,     --取引ソースタイプID
           transaction_type_id,            --取引タイプID
+/* 2011/01/17 Ver1.14 Add Start */
+          attribute6,                     --DFF6(管轄拠点)
+/* 2011/01/17 Ver1.14 Add End   */
           scheduled_flag,                 --計画フラグ
           flow_schedule,                  --計画フロー
           created_by,                     --作成者ID
@@ -3625,6 +3690,9 @@ AS
         gt_last_transaction_source_id,    --取引ソースID
         gt_last_tran_source_type_id,      --取引ソースタイプID
         gt_last_transaction_type_id,      --取引タイプID
+/* 2011/01/17 Ver1.14 Add Start */
+        gt_last_attribute6,               --DFF6(管轄拠点)
+/* 2011/01/17 Ver1.14 Add End   */
         gt_last_scheduled_flag,           --計画フラグ
         gt_last_flow_schedule,            --計画フロー
         gt_last_created_by,               --作成者ID

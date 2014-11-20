@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A02C(body)
  * Description      : 情報系システムへの連携の為、EBSの資材取引（標準）をCSVファイルに出力
  * MD.050           : 入出庫情報系連携 <MD050_COI_008_A02>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/01/15    1.0   S.Kanda          新規作成
  *  2009/04/02    1.1   T.Nakamura       [障害T1_0226]IF項目の順序を修正
  *  2009/06/03    1.2   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
+ *  2011/01/18    1.3   H.Sekine         [E_本稼動_01762]管轄拠点コードの対応
  *
  *****************************************************************************************/
 --
@@ -153,6 +154,9 @@ AS
          , mmt.transaction_date            -- 取引日
          , mmt.transaction_set_id          -- 取引ヘッダ
          , mmt.transfer_subinventory       -- 移動先保管場所コード
+/* 2011/01/18 Ver1.3 Add Start */
+         , mmt.attribute6                  -- 管轄拠点コード(DFF6)
+/* 2011/01/18 Ver1.3 Add End   */
          , msib.segment1                   -- 品目コード
          , msi.attribute7                  -- 拠点コード
     FROM   mtl_material_transactions   mmt    -- 資材取引テーブル
@@ -575,6 +579,9 @@ AS
     lv_material_tran    VARCHAR2(3000);  -- CSV出力用変数
     lv_process_date     VARCHAR2(14);    -- システム日付 格納用変数
     lv_transaction_date VARCHAR2(14);    -- 最終更新日 格納用変数
+/* 2011/01/18 Ver1.3 Add Start */
+    lv_base_code        xxwsh_order_headers_all.head_sales_branch%TYPE;   -- 拠点コード
+/* 2011/01/18 Ver1.3 Add End   */
 --
     -- *** ローカル・カーソル ***
 --
@@ -604,6 +611,15 @@ AS
     --
     -- 取引IDの最大値を取得するため変数に格納
     gn_max_tran         :=  ir_material_tran_cur.transaction_id;
+/* 2011/01/18 Ver1.3 Add Start */
+    --
+    -- 管轄拠点コードのセット
+    IF ( ir_material_tran_cur.attribute6 IS NOT NULL ) THEN
+      lv_base_code := ir_material_tran_cur.attribute6;
+    ELSE
+      lv_base_code := ir_material_tran_cur.attribute7;
+    END IF;
+/* 2011/01/18 Ver1.3 Add End   */
 --
     -- =================================
     -- CSVファイル作成
@@ -625,7 +641,10 @@ AS
       cv_file_encloser || ir_material_tran_cur.transfer_subinventory || cv_file_encloser || cv_csv_com || -- 移動先保管場所コード
 -- == 2009/04/02 V1.1 Moded START ===============================================================
 --      cv_file_encloser || ir_material_tran_cur.segment1              || cv_file_encloser || cv_csv_com || -- 品目コード
-      cv_file_encloser || ir_material_tran_cur.attribute7            || cv_file_encloser || cv_csv_com || -- 拠点コード
+/* 2011/01/18 Ver1.3 Mod Start */
+--      cv_file_encloser || ir_material_tran_cur.attribute7            || cv_file_encloser || cv_csv_com || -- 拠点コード
+      cv_file_encloser || lv_base_code                               || cv_file_encloser || cv_csv_com || -- 拠点コード
+/* 2011/01/18 Ver1.3 Mod End   */
       cv_file_encloser || ir_material_tran_cur.segment1              || cv_file_encloser || cv_csv_com || -- 品目コード
 -- == 2009/04/02 V1.1 Moded END   ===============================================================
                           lv_process_date;                                                                -- 連携日時
