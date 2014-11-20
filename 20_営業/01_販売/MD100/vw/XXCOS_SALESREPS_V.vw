@@ -3,13 +3,16 @@
  *
  * View Name       : xxcos_salesreps_v
  * Description     : 担当営業員ビュー
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/01    1.0   K.Kakishita      新規作成
+ *  2009/07/22    1.1   K.Kakishita      [0000741]パフォーマンス対応
+ *                                       ・ヒント句追加
+ *                                       ・'HZ_ORG_PROFILES_GROUP'の条件追加
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_salesreps_v (
   cust_account_id,                      --顧客ID
@@ -28,6 +31,16 @@ CREATE OR REPLACE VIEW apps.xxcos_salesreps_v (
 )
 AS
   SELECT
+    /*+
+      INDEX( hop )
+      INDEX( hopeb )
+      INDEX( efdfce )
+      INDEX( fa )
+      INDEX( jrre )
+      INDEX( hp )
+      INDEX( hca )
+      INDEX( papf )
+    */
     hca.cust_account_id                     cust_account_id,                    --顧客ID
     hca.account_number                      account_number,                     --顧客番号
     hp.party_name                           party_name,                         --顧客名称
@@ -57,7 +70,7 @@ AS
 --AND hopeb.organization_profile_id         = hopet.organization_profile_id
 --AND hopet.language                        = USERENV( 'LANG' )
   AND hopeb.attr_group_id                   = efdfce.attr_group_id
---AND efdfce.descriptive_flexfield_name     = 'HZ_ORG_PROFILES_GROUP'
+  AND efdfce.descriptive_flexfield_name     = 'HZ_ORG_PROFILES_GROUP'
   AND efdfce.descriptive_flex_context_code  = 'RESOURCE'
   AND efdfce.application_id                 = fa.application_id
   AND fa.application_short_name             = 'AR'
