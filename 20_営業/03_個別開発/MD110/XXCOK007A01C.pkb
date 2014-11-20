@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -35,7 +35,9 @@ AS
  *  2009/05/14    1.3   M.Hiruta         [障害T1_1003]文字列バッファ修正
  *  2009/05/19    1.4   M.Hiruta         [障害T1_1043]一時表作成時 売上金額・売上金額（税抜き）小数点以下切捨て
  *  2009/06/08    1.5   M.Hiruta         [障害T1_1354]EDIで取得した値のうち、マスターと突き合わせする文字列値の
- *                                                    前後スペースを除去するよう修正
+ *                                                    前スペースを除去するよう修正
+ *  2009/07/13    1.6   M.Hiruta         [障害0000514]処理対象に顧客ステータス「30:承認済」「50:休止」のデータを追加
+ *                                                    APではなく、ARの税コードマスタを使用するよう修正
  *
  *****************************************************************************************/
   -- =========================
@@ -96,6 +98,9 @@ AS
   cv_org_id_profile      CONSTANT VARCHAR2(100) := 'ORG_ID';                      --組織ID
   cv_case_uom_profile    CONSTANT VARCHAR2(100) := 'XXCOS1_CASE_UOM_CODE';        --ケース単位
   cv_org_code_profile    CONSTANT VARCHAR2(100) := 'XXCOI1_ORGANIZATION_CODE';    --在庫組織コード
+-- Start 2009/07/29 Ver_1.6 0000514 M.Hiruta
+  cv_set_of_books_id     CONSTANT VARCHAR2(100) := 'GL_SET_OF_BKS_ID';            -- 会計帳簿ID
+-- End   2009/07/29 Ver_1.6 0000514 M.Hiruta
   --トークン
   cv_token_proc_type          CONSTANT VARCHAR2(10) := 'PROC_TYPE';               --トークン名(PROC_TYPE)
   cv_token_file_name          CONSTANT VARCHAR2(10) := 'FILE_NAME';               --トークン名(FILE_NAME)
@@ -137,6 +142,10 @@ AS
   cv_10                       CONSTANT VARCHAR2(2)  := '10';                             --顧客区分(10:顧客)
   cv_18                       CONSTANT VARCHAR2(2)  := '18';                             --顧客区分(18:チェーン店)
   cv_40                       CONSTANT VARCHAR2(2)  := '40';                             --顧客ステータス(40:顧客)
+-- Start 2009/07/13 Ver_1.6 0000514 M.Hiruta ADD
+  cv_30                       CONSTANT VARCHAR2(2)  := '30';                             --顧客ステータス(30:承認済)
+  cv_50                       CONSTANT VARCHAR2(2)  := '50';                             --顧客ステータス(50:休止)
+-- End   2009/07/13 Ver_1.6 0000514 M.Hiruta ADD
   cv_99                       CONSTANT VARCHAR2(2)  := '99';                             --文字列:99
   cv_ship_to                  CONSTANT VARCHAR2(10) := 'SHIP_TO';                        --使用目的(出荷先)
   cv_flag_y                   CONSTANT VARCHAR2(1)  := 'Y';                              --フラグ(Y)
@@ -177,6 +186,9 @@ AS
   gv_cust_code            VARCHAR2(9)   DEFAULT '0';    --顧客コード
   gv_item_code            VARCHAR2(7)   DEFAULT '0';    --品目コード
   gd_prdate               DATE;                         --業務日付
+-- Start 2009/07/29 Ver_1.6 0000514 M.Hiruta ADD
+  gn_set_of_books_id      NUMBER        DEFAULT NULL;   -- 会計帳簿ID
+-- End   2009/07/29 Ver_1.6 0000514 M.Hiruta ADD
   -- =======================
   -- グローバルRECODE型
   -- =======================
@@ -1114,7 +1126,10 @@ AS
       AND     hcasa.cust_acct_site_id  = hcsua.cust_acct_site_id
       AND     hp.party_id              = hca.party_id
       AND     hca.customer_class_code  = cv_10
-      AND     hp.duns_number_c         = cv_40
+-- Start 2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
+--      AND     hp.duns_number_c         = cv_40
+      AND     hp.duns_number_c        IN( cv_30 , cv_40 , cv_50 )
+-- End   2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
       AND     xca.selling_transfer_div = cv_1
       AND     xca.chain_store_code     = iv_edi_chain_store_code
       AND     xca.store_code           = iv_code
@@ -1612,7 +1627,10 @@ AS
       AND     hp.party_id               = hca1.party_id
       AND     hca1.customer_class_code  = cv_10
       AND     hca1.cust_account_id      = xca1.customer_id
-      AND     hp.duns_number_c          = cv_40
+-- Start 2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
+--      AND     hp.duns_number_c          = cv_40
+      AND     hp.duns_number_c         IN( cv_30 , cv_40 , cv_50 )
+-- End   2009/07/13 Ver_1.6 0000514 M.Hiruta REPAIR
       AND     xca1.selling_transfer_div = cv_1
       AND     xca1.chain_store_code     = xca2.edi_chain_code
       AND     hca2.cust_account_id      = xca2.customer_id
@@ -2016,20 +2034,38 @@ AS
       IF (   ( lv_tax_type = cv_2 )
           OR ( lv_tax_type = cv_3 )
          ) THEN
-        SELECT  atca.tax_rate AS tax_rate
+-- Start 2009/07/29 Ver_1.6 0000514 M.Hiruta REPAIR
+--        SELECT  atca.tax_rate AS tax_rate
+--        INTO    ln_tax_rate
+--        FROM    ap_tax_codes_all  atca     --税コードマスタ
+--              , fnd_lookup_values flv      --参照タイプ
+--        WHERE   flv.lookup_type  = cv_lookup_type
+--        AND     flv.lookup_code  = lv_tax_type
+--        AND     flv.enabled_flag = cv_flag_y
+--        AND     gd_prdate BETWEEN flv.start_date_active
+--                          AND     NVL( flv.end_date_active, gd_prdate )
+--        AND     flv.language     = USERENV('LANG')
+---- Start 2009/05/19 Ver_1.4 T1_1043 M.Hiruta
+--        AND     atca.org_id      = gn_org_id
+---- End   2009/05/19 Ver_1.4 T1_1043 M.Hiruta
+--        AND     atca.name        = flv.attribute1;
+        SELECT  avtab.tax_rate AS tax_rate
         INTO    ln_tax_rate
-        FROM    ap_tax_codes_all  atca     --税コードマスタ
+        FROM    ar_vat_tax_all_b  avtab    --税コードマスタ
               , fnd_lookup_values flv      --参照タイプ
-        WHERE   flv.lookup_type  = cv_lookup_type
-        AND     flv.lookup_code  = lv_tax_type
-        AND     flv.enabled_flag = cv_flag_y
-        AND     gd_prdate BETWEEN flv.start_date_active
-                          AND     NVL( flv.end_date_active, gd_prdate )
-        AND     flv.language     = USERENV('LANG')
--- Start 2009/05/19 Ver_1.4 T1_1043 M.Hiruta
-        AND     atca.org_id      = gn_org_id
--- End   2009/05/19 Ver_1.4 T1_1043 M.Hiruta
-        AND     atca.name        = flv.attribute1;
+        WHERE   flv.lookup_type       = cv_lookup_type
+        AND     flv.lookup_code       = lv_tax_type
+        AND     flv.enabled_flag      = cv_flag_y
+        AND     gd_prdate      BETWEEN flv.start_date_active
+                               AND     NVL( flv.end_date_active, gd_prdate )
+        AND     flv.language          = USERENV('LANG')
+        AND     avtab.enabled_flag    = cv_flag_y
+        AND     gd_prdate      BETWEEN avtab.start_date
+                               AND     NVL( avtab.end_date, gd_prdate )
+        AND     avtab.set_of_books_id = gn_set_of_books_id
+        AND     avtab.org_id          = gn_org_id
+        AND     avtab.tax_code        = flv.attribute1;
+-- End   2009/07/29 Ver_1.6 0000514 M.Hiruta REPAIR
       END IF;
     EXCEPTION
       -- *** 上記で消費税区分、または、消費税率が取得できなかった場合、例外処理 ***
@@ -2441,6 +2477,17 @@ AS
     IF ( gd_prdate IS NULL ) THEN
       RAISE get_process_expt;
     END IF;
+-- Start 2009/07/29 Ver_1.6 0000514 M.Hiruta ADD
+    -- =============================================================================
+    -- 9.プロファイル、会計帳簿IDの取得
+    -- =============================================================================
+    gn_set_of_books_id := FND_PROFILE.VALUE( cv_set_of_books_id );
+--
+    IF ( gn_set_of_books_id IS NULL ) THEN
+      lv_profile_code := cv_set_of_books_id;
+      RAISE get_profile_expt;
+    END IF;
+-- End   2009/07/29 Ver_1.6 0000514 M.Hiruta ADD
   EXCEPTION
     -- *** init内エラー ***
     WHEN init_err_expt THEN
