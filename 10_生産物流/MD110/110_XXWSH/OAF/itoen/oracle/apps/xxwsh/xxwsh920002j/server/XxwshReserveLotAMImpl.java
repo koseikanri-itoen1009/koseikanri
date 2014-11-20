@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -20,6 +20,7 @@
 *                                本番障害#1034対応
 * 2009-12-04 1.11 伊藤ひとみ     E_本稼動_00011対応
 * 2010-02-03 1.12 伊藤ひとみ     E_本稼動_00011対応
+* 2010-12-27 1.13 桐生和幸       E_本稼動_05951対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -899,7 +900,10 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     String instructQty             = (String)lrow.getAttribute("InstructQty");                // 指示数量
 
     // 指示数量と引当数量合計が一致する場合
-    if (instructQty.equals(sumReservedQuantityItem.toString()))
+// 2010-12-27 Ver1.13 K.kiriu Mod Start E_本稼動_05951
+//    if (instructQty.equals(sumReservedQuantityItem.toString()))
+    if (XxcmnUtility.chkCompareNumeric(3, XxcmnUtility.commaRemoval(sumReservedQuantityItem.toString()), instructQty))
+// 2010-12-27 Ver1.13 K.kiriu Mod End
     {
       // 指示数量更新フラグに"0"(更新しない)をセット
       instructQtyUpdFlag = XxwshConstants.INSTRUCT_QTY_UPD_FLAG_EXCLUD;
