@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *                                       ・CSV出力レイアウトに「Ａ寸法」を追加
  *  2009-03-10          K.Satomura       結合障害対応(不具合ＩＤ51)
  *                                       ・現設置先顧客情報の取得条件を修正
+ *  2009-04-02    1.2   K.Satomura       ＳＴ障害対応(T1_0169対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3419,13 +3420,21 @@ AS
               ,ph.segment1                      po_header_num                    -- 発注番号
               ,pl.line_num                      po_line_num                      -- 発注明細番号
               ,pd.distribution_num              po_distribution_num              -- 発注搬送番号
-              ,null                             req_header_num                   -- 発注依頼番号
-              ,null                             req_line_num                     -- 発注依頼明細番号
+              /* 2009.04.02 K.Satomura T1_0169対応 START */
+              --,null                             req_header_num                   -- 発注依頼番号
+              --,null                             req_line_num                     -- 発注依頼明細番号
+              ,prh.segment1                     req_header_num                   -- 発注依頼番号
+              ,prlv.line_num                    req_line_num                     -- 発注依頼明細番号
+              /* 2009.04.02 K.Satomura T1_0169対応 END */
               ,ph.segment1                      log_po_header_num                -- ログ用発注番号
               ,pl.line_num                      log_po_line_num                  -- ログ用発注明細番号
               ,pd.distribution_num              log_po_distribution_num          -- ログ用発注搬送番号
-              ,null                             log_req_header_num               -- ログ用発注依頼番号
-              ,null                             log_req_line_num                 -- ログ用発注依頼明細番号
+              /* 2009.04.02 K.Satomura T1_0169対応 START */
+              --,null                             log_req_header_num               -- ログ用発注依頼番号
+              --,null                             log_req_line_num                 -- ログ用発注依頼明細番号
+              ,prh.segment1                     log_req_header_num               -- ログ用発注依頼番号
+              ,prlv.line_num                    log_req_line_num                 -- ログ用発注依頼明細番号
+              /* 2009.04.02 K.Satomura T1_0169対応 END */
               ,prh.created_by                   created_by                       -- 作成者
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
@@ -3502,13 +3511,21 @@ AS
               ,ph.segment1                      po_header_num                    -- 発注番号
               ,pl.line_num                      po_line_num                      -- 発注明細番号
               ,pd.distribution_num              po_distribution_num              -- 発注搬送番号
-              ,null                             req_header_num                   -- 発注依頼番号
-              ,null                             req_line_num                     -- 発注依頼明細番号
+              /* 2009.04.02 K.Satomura T1_0169対応 START */
+              --,null                             req_header_num                   -- 発注依頼番号
+              --,null                             req_line_num                     -- 発注依頼明細番号
+              ,prh.segment1                     req_header_num                   -- 発注依頼番号
+              ,prlv.line_num                    req_line_num                     -- 発注依頼明細番号
+              /* 2009.04.02 K.Satomura T1_0169対応 END */
               ,ph.segment1                      log_po_header_num                -- ログ用発注番号
               ,pl.line_num                      log_po_line_num                  -- ログ用発注明細番号
               ,pd.distribution_num              log_po_distribution_num          -- ログ用発注搬送番号
-              ,null                             log_req_header_num               -- ログ用発注依頼番号
-              ,null                             log_req_line_num                 -- ログ用発注依頼明細番号
+              /* 2009.04.02 K.Satomura T1_0169対応 START */
+              --,null                             log_req_header_num               -- ログ用発注依頼番号
+              --,null                             log_req_line_num                 -- ログ用発注依頼明細番号
+              ,prh.segment1                     log_req_header_num               -- ログ用発注依頼番号
+              ,prlv.line_num                    log_req_line_num                 -- ログ用発注依頼明細番号
+              /* 2009.04.02 K.Satomura T1_0169対応 END */
               ,prh.created_by                   created_by                       -- 作成者
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
