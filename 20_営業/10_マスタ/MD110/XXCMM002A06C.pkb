@@ -26,6 +26,7 @@ AS
  *  2009/04/24    1.1   Yutaka.Kuboshima 障害T1_0799の対応
  *  2009/06/08    1.2   H.Yoshikawa      障害T1_1135の対応
  *  2009/06/17    1.3   H.Yoshikawa      障害T1_1481の対応(営業員番号の設定誤り修正)
+ *  2009/08/04    1.4   Yutaka.Kuboshima 障害0000890の対応
  *
  *****************************************************************************************/
 --
@@ -116,6 +117,11 @@ AS
   -- 固定値(設定値、抽出条件)
   cv_kbn_souko              CONSTANT VARCHAR2(1)   := '1';                          -- 保管場所区分(倉庫)
   cv_category               CONSTANT VARCHAR2(10)  := 'EMPLOYEE';                   -- カテゴリ
+--
+-- 2009/08/04 Ver1.4 add start by Yutaka.Kuboshima
+  cv_base                   CONSTANT VARCHAR2(1)   := '1';                          -- 顧客区分(拠点)
+  cv_dept_div_mult          CONSTANT VARCHAR2(1)   := '1';                          -- 百貨店HHT区分(拠点複)
+-- 2009/08/04 Ver1.4 add end by Yutaka.Kuboshima
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -749,11 +755,28 @@ AS
       ORDER BY  jrrm.start_date_active  DESC
                ,jrrm.last_update_date   DESC;
     --
+-- 2009/08/04 Ver1.4 add start by Yutaka.Kuboshima
+    -- 管理元拠点検索カーソル
+    CURSOR management_base_cur(p_base_code IN VARCHAR2)
+    IS
+      SELECT xca.management_base_code   -- 管理元拠点コード
+            ,xca.dept_hht_div           -- 百貨店HHT区分
+      FROM   hz_cust_accounts    hca    -- 顧客マスタ
+            ,xxcmm_cust_accounts xca    -- 顧客追加情報マスタ
+      WHERE  hca.cust_account_id     = xca.customer_id
+        AND  hca.customer_class_code = cv_base
+        AND  hca.account_number      = p_base_code;
+-- 2009/08/04 Ver1.4 add end by Yutaka.Kuboshima
     -- *** ローカル・レコード ***
     -- リソースグループ役割有効データ再抽出カーソルレコードタイプ
     l_act_rs_data_rec     get_act_rs_data_cur%ROWTYPE;
     --
 -- End 1.2
+--
+-- 2009/08/04 Ver1.4 add start by Yutaka.Kuboshima
+    -- 管理元拠点検索カーソルレコードタイプ
+    l_management_base_rec management_base_cur%ROWTYPE;
+-- 2009/08/04 Ver1.4 add start by Yutaka.Kuboshima
 --
   BEGIN
 --
@@ -829,6 +852,19 @@ AS
         --
         CLOSE get_act_rs_data_cur;
         --
+-- 2009/08/04 Ver1.4 add start by Yutaka.Kuboshima
+        -- 管理元拠点を取得します
+        OPEN management_base_cur(g_rs_data_tab(ln_stack_cnt).resource_department);
+        FETCH management_base_cur INTO l_management_base_rec;
+        CLOSE management_base_cur;
+        -- 百貨店HHT区分が'1'の場合
+        IF (l_management_base_rec.dept_hht_div = cv_dept_div_mult) THEN
+          -- リソースグループに管理元拠点をセットします
+          g_rs_data_tab(ln_stack_cnt).resource_department := SUBSTRB( l_management_base_rec.management_base_code, 1, 4 );
+        END IF;
+        -- 変数初期化
+        l_management_base_rec := NULL;
+-- 2009/08/04 Ver1.4 add end by Yutaka.Kuboshima
       END IF;
     END LOOP get_rs_data;
     --
