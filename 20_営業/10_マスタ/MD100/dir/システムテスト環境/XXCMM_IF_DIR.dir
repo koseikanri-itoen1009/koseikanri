@@ -6,3 +6,5 @@ CREATE DIRECTORY xxcmm_workflow_out AS '/var/ST/ebsif/outbound/ad_iffile/mc/';
 CREATE DIRECTORY xxcmm_jinji_in     AS '/var/ST/ebsif/inbound/ad_iffile/na/';
 CREATE DIRECTORY xxcmm_tmp_out      AS '/var/ST/ebsif/outbound/ad_iffile/tmp';
 CREATE DIRECTORY xxcmm_tmp_in       AS '/var/ST/ebsif/inbound/ad_iffile/tmp';
+-- Ver1.1 2009/04/03 Add  BFA取込ファイル出力ディレクトリ定義を追加
+CREATE DIRECTORY xxcmm_bfa_out      AS '/usr/tmp';
