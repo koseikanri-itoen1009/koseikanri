@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/02/17    1.2   H.Ri             get_msgのパッケージ名修正
  *  2009/02/20    1.3   H.Ri             パラメータのログファイル出力対応
  *  2009/04/28    1.4   N.Maeda          資材取引OIFデータの集約条件に部門コードを追加
+ *  2009/05/13    1.5   K.Kiriu          [T1_0984]製品、商品判定の追加
  *
  *****************************************************************************************/
 --
@@ -197,6 +198,10 @@ AS
   --カテゴリ／ステータス
   cv_inv_flg_n              CONSTANT  VARCHAR2(100) := 'N';                    --在庫未連携
   cv_inv_flg_y              CONSTANT  VARCHAR2(100) := 'Y';                    --在庫連携済
+/* 2009/05/13 Ver1.5 Add Start */
+  --商品製品区分
+  cv_goods_prod_sei         CONSTANT  VARCHAR2(1)   := '2';  -- 品目区分：製品= 2
+/* 2009/05/13 Ver1.5 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -661,12 +666,29 @@ AS
            sel.standard_qty,                      --基準数量
            sel.ship_from_subinventory_code,       --出荷元保管場所
            gpcv.inventory_item_id,                --品目ID
-           gpcv.goods_prod_class_code             --商品製品区分
+/* 2009/05/13 Ver1.5 Mod Start */
+--           gpcv.goods_prod_class_code             --商品製品区分
+           CASE
+             WHEN mcavd.subinventory_code IS NULL THEN  --専門店以外
+               cv_goods_prod_sei  --製品固定
+             ELSE
+               gpcv.goods_prod_class_code
+           END
+/* 2009/05/13 Ver1.5 Mod End   */
     BULK COLLECT INTO
            g_sales_exp_tab
     FROM   xxcos_sales_exp_headers  seh,          --販売実績ヘッダテーブル
            xxcos_sales_exp_lines    sel,          --販売実績明細テーブル
-           xxcos_good_prod_class_v  gpcv          --商品製品区分ビュー
+/* 2009/05/13 Ver1.5 Mod Start */
+--           xxcos_good_prod_class_v  gpcv          --商品製品区分ビュー
+           xxcos_good_prod_class_v  gpcv,         --商品製品区分ビュー
+/* 2009/05/13 Ver1.5 Mod End   */
+/* 2009/05/13 Ver1.5 Add Start */
+           ( SELECT DISTINCT
+                    mcav.subinventory_code   subinventory_code
+             FROM   mtl_category_accounts_v  mcav  -- 専門店View
+           )                        mcavd
+/* 2009/05/13 Ver1.5 Add End   */
            --販売実績ヘッダ.ヘッダID=販売実績明細.ヘッダID
     WHERE  seh.sales_exp_header_id = sel.sales_exp_header_id
            --納品日<=業務日付
@@ -749,6 +771,9 @@ AS
            )
            --INVインタフェース済フラグ(未連携)
     AND    sel.inv_interface_flag       = cv_inv_flg_n
+/* 2009/05/13 Ver1.5 Add Start */
+    AND    sel.ship_from_subinventory_code = mcavd.subinventory_code(+)
+/* 2009/05/13 Ver1.5 Add End   */
     ORDER BY
            sel.ship_from_subinventory_code,     --出荷元保管場所
            gpcv.inventory_item_id,              --品目ID
