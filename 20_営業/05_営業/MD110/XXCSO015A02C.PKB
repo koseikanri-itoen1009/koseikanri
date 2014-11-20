@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2011-07-01    1.30  K.Kiriu          E_本稼動_07712対応(対応変更分)
  *  2011-07-08    1.31  K.Kiriu          E_本稼動_07712対応(担当営業取得変更)
  *  2012-09-28    1.32  K.Taniguchi      E_本稼動_09604対応(担当営業取得変更)
+ *  2014-05-16    1.33  Y.Shoji          E_本稼動_11853対応(連携項目：リース区分追加)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -351,6 +352,9 @@ AS
     ,un_number_id            NUMBER                                                    -- 機種ID
     ,requisition_line_id     NUMBER                                                    -- 発注依頼明細ID
     ,created_by              NUMBER                                                    -- 作成者
+    /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+    ,lease_kbn               VARCHAR2(1)                                               -- リース区分
+    /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
   );
   /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
   TYPE g_higher_emp_ttype    IS TABLE OF xxcso_employees_v.employee_number%TYPE INDEX BY VARCHAR2( 4 );
@@ -904,6 +908,9 @@ AS
     cv_phone_old           CONSTANT VARCHAR2(100) := '現設置先';
     cv_phone_new           CONSTANT VARCHAR2(100) := '新設置先';
     /* 2009.05.22 K.Satomura T1_1142対応 END */
+    /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+    cv_lease_kbn_info      CONSTANT VARCHAR2(100) := '購買依頼のリース区分';
+    /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
     /* 2009.12.14 T.Maruyama E_本稼動_00469 START */
     cv_cust_name_size  CONSTANT NUMBER := 40; --設置先名連携桁数
     cv_cust_add1_size  CONSTANT NUMBER := 8;  --設置先住所１連携桁数
@@ -924,6 +931,11 @@ AS
     /* 2009.12.21 K.Hosoi E_本稼動_00563対応 END */
     /* 2010.03.08 K.Hosoi E_本稼動_01838対応 START */
     cv_yes                    CONSTANT VARCHAR2(1)   :=  'Y';
+    /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+    cv_lease_type          CONSTANT VARCHAR2(10)  := 'LEASE_TYPE';
+    cv_xxcs01_lease_kbn    CONSTANT VARCHAR2(16)  := 'XXCSO1_LEASE_KBN';
+    cv_lease_kbn           CONSTANT VARCHAR2(9)   := 'LEASE_KBN';
+    /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
     -- プロファイル名
     -- XXCSO:作業依頼IF作業会社自動設定フラグ
     cv_wkcmp_auto_flg         CONSTANT VARCHAR2(100) :=  'XXCSO1_WKCMP_AUTO_FLG';
@@ -947,6 +959,11 @@ AS
     ln_job_kbn                 NUMBER;                                                  -- 作業区分
     lv_install_code1           csi_item_instances.external_reference%TYPE;              -- 物件コード１
     lv_vendor_mode1            po_un_numbers_vl.un_number%TYPE;                         -- 機種名１
+    /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+    lv_lease_kbn               VARCHAR2(1);                                             -- リース区分
+    lv_lease_kbn_un_numbers    VARCHAR2(1);                                             -- リース区分（機種マスタ）
+    lv_lease_kbn_csi_item      VARCHAR2(1);                                             -- リース区分（物件マスタ）
+    /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
     lv_vendor_number1          csi_item_instances.attribute2%TYPE;                      -- 機番１
     lv_install_code2           csi_item_instances.external_reference%TYPE;              -- 物件コード２
     lv_vendor_mode2            csi_item_instances.attribute1%TYPE;                      -- 機種名２
@@ -1188,6 +1205,10 @@ AS
   /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
   lt_empoyee_number      := NULL;
   /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD END */
+  /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+  -- リース区分
+  lv_lease_kbn           := io_get_data_rec.lease_kbn;
+  /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
 --
     /* 2009.12.21 K.Hosoi E_本稼動_00563対応 START */
     -- =================
@@ -1274,7 +1295,13 @@ AS
         --WHERE  punvl.un_number_id = ln_un_number_id
 --
         SELECT punv.un_number
+        /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,punv.attribute13        -- リース区分
+        /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
         INTO   lv_vendor_mode1
+        /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,lv_lease_kbn_un_numbers
+        /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
         FROM   po_headers ph
               ,po_lines pl
               ,po_un_numbers_vl punv
@@ -1328,6 +1355,57 @@ AS
           lv_errbuf := lv_errmsg;
           RAISE global_process_expt;
       END;
+      /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+      -- 発注配送のリース区分がNULLの場合
+      IF lv_lease_kbn IS NULL THEN
+        -- 機種マスタのリース区分を取得
+        lv_lease_kbn := lv_lease_kbn_un_numbers;
+--
+        -- 機種マスタのリース区分がNULLの場合
+        IF lv_lease_kbn IS NULL THEN
+          BEGIN
+            -- 購買依頼からリース区分を取得 ※参照タイプ「リース区分（物件）」のコード値を取得
+            SELECT flvv.lookup_code
+            INTO   lv_lease_kbn
+            FROM   apps.fnd_lookup_values_vl       flvv
+                  ,icx.por_template_info           pti
+                  ,apps.por_template_attributes_v  ptav
+            WHERE  flvv.attribute1                             =  pti.attribute_value
+            AND    pti.attribute_code                          =  ptav.attribute_code
+            AND    flvv.lookup_type                            =  cv_xxcs01_lease_kbn
+            AND    TRUNC(NVL(flvv.start_date_active, ld_date)) <= ld_date
+            AND    TRUNC(NVL(flvv.end_date_active, ld_date))   >= ld_date
+            AND    flvv.enabled_flag                           =  cv_yes
+            AND    pti.requisition_line_id                     =  io_get_data_rec.requisition_line_id
+            AND    ptav.attribute_name                         =  cv_lease_type
+            AND    ptav.node_display_flag                      =  cv_yes
+            ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_app_name                  -- アプリケーション短縮名
+                             ,iv_name         => cv_tkn_number_07             -- メッセージコード
+                             ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                             ,iv_token_value1 => cv_lease_kbn_info            -- トークン値1
+                             ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+                             ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+                             ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+                             ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+                             ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+                             ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+                             ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+                             ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+                             ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+                             ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+                             ,iv_token_name7  => cv_tkn_errmsg                -- トークンコード7
+                             ,iv_token_value7 => SQLERRM                      -- トークン値7
+                           );
+              lv_errbuf := lv_errmsg;
+              RAISE global_process_expt;
+          END;
+        END IF;
+      END IF;
+      /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
     END IF;
 --
     -- 作業区分が旧台設置、旧台代替、店内移動時
@@ -1338,9 +1416,15 @@ AS
         SELECT ciins.external_reference
               ,ciins.attribute1
               ,ciins.attribute2
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,xxcso_ib_common_pkg.get_ib_ext_attribs(ciins.instance_id,cv_lease_kbn)
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
         INTO   lv_install_code1
               ,lv_vendor_mode1
               ,lv_vendor_number1
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,lv_lease_kbn
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
         FROM   csi_item_instances ciins
         WHERE  ciins.external_reference = lv_install_code1
         ;
@@ -1403,10 +1487,16 @@ AS
               ,ciins.attribute1
               ,ciins.attribute2
               ,ciins.instance_type_code
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,xxcso_ib_common_pkg.get_ib_ext_attribs(ciins.instance_id,cv_lease_kbn)
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
         INTO   lv_install_code2
               ,lv_vendor_mode2
               ,lv_vendor_number2
               ,lv_instance_type_code
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,lv_lease_kbn_csi_item
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
         FROM   csi_item_instances ciins
         WHERE  ciins.external_reference = lv_install_code2
         ;
@@ -1454,6 +1544,13 @@ AS
           lv_errbuf := lv_errmsg;
           RAISE global_process_expt;
       END;
+      /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+      -- 引揚の場合
+      IF (ln_job_kbn = cn_work_kbn5) THEN
+        -- リース区分を取得
+        lv_lease_kbn := lv_lease_kbn_csi_item;
+      END IF;
+      /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
     END IF;  
 --
     -- 作業区分が新台設置、旧台設置時
@@ -3689,6 +3786,10 @@ AS
     io_get_data_rec.new_customer_code1     := lv_new_customer_code1;
     -- 顧客コード２（現設置先)
     io_get_data_rec.cur_customer_code2     := lv_cur_customer_code2;
+    /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+    -- リース区分
+    io_get_data_rec.lease_kbn              := lv_lease_kbn;
+    /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
 --  
   EXCEPTION
 --
@@ -4781,6 +4882,9 @@ AS
         || cv_sep_com || l_get_data_rec.req_line_num                                          -- 発注依頼明細番号
         || cv_sep_com || cv_sep_wquot || l_get_data_rec.new_customer_code1    || cv_sep_wquot -- 顧客コード１（新設置先）
         || cv_sep_com || cv_sep_wquot || l_get_data_rec.cur_customer_code2    || cv_sep_wquot -- 顧客コード２（現設置先）
+        /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+        || cv_sep_com || cv_sep_wquot || l_get_data_rec.lease_kbn             || cv_sep_wquot -- リース区分
+        /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
       ;
 --
       -- データ出力
@@ -5327,6 +5431,9 @@ AS
               ,prlv.line_num                    log_req_line_num                 -- ログ用発注依頼明細番号
               /* 2009.04.02 K.Satomura T1_0169対応 END */
               ,prh.created_by                   created_by                       -- 作成者
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,pd.attribute1                    lease_kbn                        -- リース区分
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,po_req_distributions             prd                              -- 発注依頼搬送明細ビュー
@@ -5442,6 +5549,9 @@ AS
               ,prlv.line_num                    log_req_line_num                 -- ログ用発注依頼明細番号
               /* 2009.04.02 K.Satomura T1_0169対応 END */
               ,prh.created_by                   created_by                       -- 作成者
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,pd.attribute1                    lease_kbn                        -- リース区分
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,po_req_distributions             prd                              -- 発注依頼搬送明細ビュー
@@ -5549,6 +5659,9 @@ AS
               ,prh.segment1                     log_req_header_num               -- ログ用発注依頼番号
               ,prlv.line_num                    log_req_line_num                 -- ログ用発注依頼明細番号
               ,prh.created_by                   created_by                       -- 作成者
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,null                             lease_kbn                        -- リース区分
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
@@ -5647,6 +5760,9 @@ AS
               ,prh.segment1                     log_req_header_num               -- ログ用発注依頼番号
               ,prlv.line_num                    log_req_line_num                 -- ログ用発注依頼明細番号
               ,prh.created_by                   created_by                       -- 作成者
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,null                             lease_kbn                        -- リース区分
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
@@ -5745,6 +5861,9 @@ AS
               ,prh.segment1                     log_req_header_num               -- ログ用発注依頼番号
               ,prlv.line_num                    log_req_line_num                 -- ログ用発注依頼明細番号
               ,prh.created_by                   created_by                       -- 作成者
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,null                             lease_kbn                        -- リース区分
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
@@ -5843,6 +5962,9 @@ AS
               ,prh.segment1                     log_req_header_num               -- ログ用発注依頼番号
               ,prlv.line_num                    log_req_line_num                 -- ログ用発注依頼明細番号
               ,prh.created_by                   created_by                       -- 作成者
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+              ,null                             lease_kbn                        -- リース区分
+              /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
@@ -6231,6 +6353,10 @@ AS
         l_get_data_rec.new_customer_code1      := l_get_ipro_po_data_rec.install_at_customer_code;
         -- 作成者
         l_get_data_rec.created_by              := l_get_ipro_po_data_rec.created_by;
+        /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
+        -- リース区分
+        l_get_data_rec.lease_kbn               := l_get_ipro_po_data_rec.lease_kbn;
+        /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
 --
 
         -- ========================================
