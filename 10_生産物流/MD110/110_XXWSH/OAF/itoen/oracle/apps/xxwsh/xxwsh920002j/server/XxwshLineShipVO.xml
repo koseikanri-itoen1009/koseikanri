@@ -33,22 +33,20 @@ SELECT xola.order_line_id line_id,
        TO_CHAR(xola.designated_production_date,
        'YYYY/MM/DD') designated_production_date,
        xilv.short_name input_inventory_location_name,
-       (SELECT xlvv.attribute6                             
-          FROM xxcmn_lookup_values_v xlvv                 
-         WHERE xlvv.lookup_type = 'XXCMN_SHIP_METHOD'      
-           AND xlvv.lookup_code = xoha.shipping_method_code
-       ) small_amount_class
-  FROM xxwsh_order_lines_all xola,                         
-       xxwsh_order_headers_all xoha,                       
-       xxcmn_cust_accounts2_v xcav,     
-       xxcmn_item_locations_v xilv
- WHERE xola.order_line_id = :0
-   AND xoha.order_header_id = xola.order_header_id         
-   AND xilv.segment1 = xoha.deliver_from                    
-   AND xcav.party_number = xoha.head_sales_branch
-   AND xoha.schedule_ship_date
-     BETWEEN xcav.start_date_active
-         AND xcav.end_date_active
+       xlvv.attribute6 small_amount_class
+  FROM xxwsh_order_lines_all   xola,
+       xxwsh_order_headers_all xoha,
+       xxcmn_cust_accounts2_v  xcav,
+       xxcmn_lookup_values_v xlvv,
+       xxcmn_item_locations_v  xilv
+ WHERE xola.order_line_id       = :0
+   AND xoha.order_header_id     = xola.order_header_id
+   AND xilv.segment1            = xoha.deliver_from
+   AND xcav.party_number        = xoha.head_sales_branch
+   AND xlvv.lookup_type(+)      = 'XXCMN_SHIP_METHOD'
+   AND xlvv.lookup_code(+)      = xoha.shipping_method_code
+   AND xoha.schedule_ship_date  BETWEEN xcav.start_date_active
+                                AND     xcav.end_date_active
    AND xcav.customer_class_code = '1'
    ]]></SQLQuery>
    <DesignTime>
