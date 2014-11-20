@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.14
+ * Version          : 1.13
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -53,7 +53,6 @@ AS
  *  2008/12/24    1.11  Masayoshi Uehara      本番#640対応
  *  2008/12/25    1.12  Masayoshi Uehara      本番#640対応取消(ver1.11は残し、ver1.9をver1.12に更新)
  *  2009/01/15    1.13  Yasuhisa Yamamoto     本番#1021対応
- *  2009/01/30    1.14  Yoshida Natsuki       本番#855対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -85,7 +84,6 @@ AS
   -- 処理区分
   gv_syori_kbn_leaf             CONSTANT VARCHAR2(1) := '1';                    -- リーフ
   gv_syori_kbn_drink            CONSTANT VARCHAR2(1) := '2';                    -- ドリンク
-  gv_syori_kbn_leaf_hikitori    CONSTANT VARCHAR2(1) := '3';                    -- リーフ引取変更
   -- ステータス（出荷実績計上済）
   gv_req_status                 CONSTANT VARCHAR2(10) := '04';
   -- クイックコード（出荷調整抽出対象ステータス種別）
@@ -125,9 +123,6 @@ AS
 -- 2008/12/09 v1.9 ADD START
   gv_n                          CONSTANT VARCHAR2(1) := 'N';
 -- 2008/12/09 v1.9 ADD END
--- 2009/01/30 v1.14 N.Yoshida Mod Start
-  gv_order_auto_code            CONSTANT VARCHAR2(1) := '1';
--- 2009/01/30 v1.14 N.Yoshida Mod End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1110,9 +1105,6 @@ AS
   PROCEDURE prc_get_chosei_data
     (
       id_arrival_date       IN  DATE
--- 2009/01/30 v1.14 N.Yoshida Mod Start
-     ,iv_syori_kbn          IN  VARCHAR2
--- 2009/01/30 v1.14 N.Yoshida Mod End
      ,ot_chosei_data        OUT NOCOPY type_chosei_data_tbl
      ,ov_errbuf             OUT NOCOPY VARCHAR2      -- エラー・メッセージ           --# 固定 #
      ,ov_retcode            OUT NOCOPY VARCHAR2      -- リターン・コード             --# 固定 #
@@ -1170,13 +1162,6 @@ AS
     AND xsatt.head_sales_branch                    = xcav.party_number
     AND xcav.start_date_active                    <= id_arrival_date
     AND xcav.end_date_active                      >= id_arrival_date
--- 009/01/30 v1.14 N.Yoshida Mod Start
-    AND (
-          (iv_syori_kbn = gv_syori_kbn_leaf_hikitori
-           AND xcav.order_auto_code = gv_order_auto_code)
-        OR (iv_syori_kbn <> gv_syori_kbn_leaf_hikitori)
-        )
--- 009/01/30 v1.14 N.Yoshida Mod End
     ------------------------------------------------------------------------
     ORDER BY xsatt.head_sales_branch
             ,xsatt.item_code
@@ -2472,9 +2457,6 @@ AS
       -- ====================================================
       prc_get_chosei_data(
           id_arrival_date      =>     id_arrival_date      -- 着日
--- 2009/01/30 v1.14 N.Yoshida Mod Start
-         ,iv_syori_kbn         =>     iv_syori_kbn       -- 処理区分
--- 2009/01/30 v1.14 N.Yoshida Mod End
          ,ot_chosei_data       =>     lt_chosei_data       -- 取得レコード表（ドリンク情報）
          ,ov_errbuf            =>     lv_errbuf            -- エラー・メッセージ
          ,ov_retcode           =>     lv_retcode           -- リターン・コード
@@ -3706,9 +3688,6 @@ AS
       -- ====================================================
       prc_get_chosei_data(
           id_arrival_date      =>     id_arrival_date      -- 着日
--- 2009/01/30 v1.14 N.Yoshida Mod Start
-         ,iv_syori_kbn         =>     iv_syori_kbn       -- 処理区分
--- 2009/01/30 v1.14 N.Yoshida Mod End
          ,ot_chosei_data       =>     lt_chosei_data       -- 取得レコード表（リーフ情報）
          ,ov_errbuf            =>     lv_errbuf            -- エラー・メッセージ
          ,ov_retcode           =>     lv_retcode           -- リターン・コード
@@ -4207,10 +4186,7 @@ AS
       RAISE global_process_expt ;
     END IF ;
 --
--- 2009/01/30 v1.14 N.Yoshida Mod Start
---    IF (iv_syori_kbn = gv_syori_kbn_leaf) THEN
-    IF (iv_syori_kbn = gv_syori_kbn_leaf OR iv_syori_kbn = gv_syori_kbn_leaf_hikitori) THEN
--- 2009/01/30 v1.14 N.Yoshida Mod End
+    IF (iv_syori_kbn = gv_syori_kbn_leaf) THEN
 --
     -- ====================================================
     -- リーフ情報取得処理
