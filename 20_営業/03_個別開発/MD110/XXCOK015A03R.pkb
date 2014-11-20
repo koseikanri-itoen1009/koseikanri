@@ -7,7 +7,7 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *                                       [障害T1_0866] 本振（案内書あり）の場合の抽出条件を変更
  *  2009/05/25    1.4   M.Hiruta         [障害T1_1168] 支払案内書(明細)の発行日をシステム日付から業務処理日付へ変更
  *  2009/09/10    1.5   S.Moriyama       [障害0000060] 住所の桁数変更対応
+ *  2009/10/14    1.6   S.Moriyama       [変更依頼I_E_573]仕入先名称、住所の設定内容変更対応
  *
  *****************************************************************************************/
   --==================================================
@@ -592,12 +593,20 @@ AS
 --         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
 --         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
          , SUBSTRB( pvsa.zip , 1, 8 )                           AS payment_zip_code
-         , SUBSTR( pvsa.city  || pvsa.address_line1
-                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
-         , SUBSTR( pvsa.city  || pvsa.address_line1
-                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
-         , SUBSTR( pv.vendor_name,  1, 20 )                     AS payment_name_1
-         , SUBSTR( pv.vendor_name, 21, 20 )                     AS payment_name_2
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD START
+--         , SUBSTR( pvsa.city  || pvsa.address_line1
+--                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
+--         , SUBSTR( pvsa.city  || pvsa.address_line1
+--                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
+--         , SUBSTR( pv.vendor_name,  1, 20 )                     AS payment_name_1
+--         , SUBSTR( pv.vendor_name, 21, 20 )                     AS payment_name_2
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 1 , 20 )             AS payment_addr_1
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 21, 20 )             AS payment_addr_2
+         , SUBSTR( pvsa.attribute1,  1, 20 )                    AS payment_name_1
+         , SUBSTR( pvsa.attribute1, 21, 20 )                    AS payment_name_2
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
          , hca2.contact_area_code                               AS contact_base
          , hca2.contact_code                                    AS contact_base_code
@@ -774,9 +783,14 @@ AS
 --           , pvsa.address_line2
 --           , SUBSTR( pv.vendor_name,  1, 15 )
 --           , SUBSTR( pv.vendor_name, 16     )
-           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
-           , SUBSTR( pv.vendor_name,  1, 20 )
-           , SUBSTR( pv.vendor_name, 21, 20 )
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD START
+--           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
+--           , SUBSTR( pv.vendor_name,  1, 20 )
+--           , SUBSTR( pv.vendor_name, 21, 20 )
+           , pvsa.address_line1 || pvsa.address_line2
+           , SUBSTR( pvsa.attribute1,  1, 20 )
+           , SUBSTR( pvsa.attribute1, 21, 20 )
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
            , hca2.contact_area_code
            , hca2.contact_code
@@ -865,12 +879,20 @@ AS
 --         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
 --         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
          , SUBSTRB( pvsa.zip , 1, 8 )                           AS payment_zip_code
-         , SUBSTR( pvsa.city  || pvsa.address_line1
-                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
-         , SUBSTR( pvsa.city  || pvsa.address_line1
-                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
-         , SUBSTR( pv.vendor_name,  1, 20 )                     AS payment_name_1
-         , SUBSTR( pv.vendor_name, 21, 20 )                     AS payment_name_2
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD START
+--         , SUBSTR( pvsa.city  || pvsa.address_line1
+--                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
+--         , SUBSTR( pvsa.city  || pvsa.address_line1
+--                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
+--         , SUBSTR( pv.vendor_name,  1, 20 )                     AS payment_name_1
+--         , SUBSTR( pv.vendor_name, 21, 20 )                     AS payment_name_2
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 1 , 20 )             AS payment_addr_1
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 21, 20 )             AS payment_addr_2
+         , SUBSTR( pvsa.attribute1,  1, 20 )                    AS payment_name_1
+         , SUBSTR( pvsa.attribute1, 21, 20 )                    AS payment_name_2
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
          , hca2.contact_area_code                               AS contact_base
          , hca2.contact_code                                    AS contact_base_code
@@ -1038,9 +1060,14 @@ AS
 --           , pvsa.address_line2
 --           , SUBSTR( pv.vendor_name,  1, 15 )
 --           , SUBSTR( pv.vendor_name, 16     )
-           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
-           , SUBSTR( pv.vendor_name,  1, 20 )
-           , SUBSTR( pv.vendor_name, 21, 20 )
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD START
+--           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
+--           , SUBSTR( pv.vendor_name,  1, 20 )
+--           , SUBSTR( pv.vendor_name, 21, 20 )
+           , pvsa.address_line1 || pvsa.address_line2
+           , SUBSTR( pvsa.attribute1,  1, 20 )
+           , SUBSTR( pvsa.attribute1, 21, 20 )
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
            , hca2.contact_area_code
            , hca2.contact_code
@@ -1129,12 +1156,20 @@ AS
 --         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
 --         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
          , SUBSTRB( pvsa.zip , 1, 8 )                           AS payment_zip_code
-         , SUBSTR( pvsa.city  || pvsa.address_line1
-                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
-         , SUBSTR( pvsa.city  || pvsa.address_line1
-                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
-         , SUBSTR( pv.vendor_name,  1, 20 )                     AS payment_name_1
-         , SUBSTR( pv.vendor_name, 21, 20 )                     AS payment_name_2
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD START
+--         , SUBSTR( pvsa.city  || pvsa.address_line1
+--                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
+--         , SUBSTR( pvsa.city  || pvsa.address_line1
+--                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
+--         , SUBSTR( pv.vendor_name,  1, 20 )                     AS payment_name_1
+--         , SUBSTR( pv.vendor_name, 21, 20 )                     AS payment_name_2
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 1 , 20 )             AS payment_addr_1
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 21, 20 )             AS payment_addr_2
+         , SUBSTR( pvsa.attribute1,  1, 20 )                    AS payment_name_1
+         , SUBSTR( pvsa.attribute1, 21, 20 )                    AS payment_name_2
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
          , hca3.base_area_code                                  AS contact_base
          , hca3.base_code                                       AS contact_base_code
@@ -1285,9 +1320,14 @@ AS
 --           , pvsa.address_line2
 --           , SUBSTR( pv.vendor_name,  1, 15 )
 --           , SUBSTR( pv.vendor_name, 16     )
-           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
-           , SUBSTR( pv.vendor_name,  1, 20 )
-           , SUBSTR( pv.vendor_name, 21, 20 )
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD START
+--           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
+--           , SUBSTR( pv.vendor_name,  1, 20 )
+--           , SUBSTR( pv.vendor_name, 21, 20 )
+           , pvsa.address_line1 || pvsa.address_line2
+           , SUBSTR( pvsa.attribute1,  1, 20 )
+           , SUBSTR( pvsa.attribute1, 21, 20 )
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
            , hca3.base_code
            , hca3.base_name
@@ -1376,12 +1416,20 @@ AS
 --         , SUBSTR( pv.vendor_name,  1, 15 )                     AS payment_name_1
 --         , SUBSTR( pv.vendor_name, 16     )                     AS payment_name_2
          , SUBSTRB( pvsa.zip , 1 , 8 )                          AS payment_zip_code
-         , SUBSTR( pvsa.city  || pvsa.address_line1
-                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
-         , SUBSTR( pvsa.city  || pvsa.address_line1
-                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
-         , SUBSTR( pv.vendor_name,  1 , 20 )                    AS payment_name_1
-         , SUBSTR( pv.vendor_name, 21 , 20 )                    AS payment_name_2
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD START
+--         , SUBSTR( pvsa.city  || pvsa.address_line1
+--                              || pvsa.address_line2 , 1 , 20 )  AS payment_addr_1
+--         , SUBSTR( pvsa.city  || pvsa.address_line1
+--                              || pvsa.address_line2 , 21, 20 )  AS payment_addr_2
+--         , SUBSTR( pv.vendor_name,  1 , 20 )                    AS payment_name_1
+--         , SUBSTR( pv.vendor_name, 21 , 20 )                    AS payment_name_2
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 1 , 20 )             AS payment_addr_1
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 21, 20 )             AS payment_addr_2
+         , SUBSTR( pvsa.attribute1,  1 , 20 )                   AS payment_name_1
+         , SUBSTR( pvsa.attribute1, 21 , 20 )                   AS payment_name_2
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
          , hca3.base_area_code                                  AS contact_base
          , hca3.base_code                                       AS contact_base_code
@@ -1530,9 +1578,14 @@ AS
 --           , pvsa.address_line2
 --           , SUBSTR( pv.vendor_name,  1, 15 )
 --           , SUBSTR( pv.vendor_name, 16     )
-           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
-           , SUBSTR( pv.vendor_name,  1, 20 )
-           , SUBSTR( pv.vendor_name, 21, 20 )
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD START
+--           , pvsa.city || pvsa.address_line1 || pvsa.address_line2
+--           , SUBSTR( pv.vendor_name,  1, 20 )
+--           , SUBSTR( pv.vendor_name, 21, 20 )
+           , pvsa.address_line1 || pvsa.address_line2
+           , SUBSTR( pvsa.attribute1,  1, 20 )
+           , SUBSTR( pvsa.attribute1, 21, 20 )
+-- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPS END
            , hca3.base_code
            , hca3.base_name
