@@ -8,7 +8,7 @@ AS
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *                    
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,7 +31,7 @@ AS
  *  2009-03-03    1.1   Kazuyo.Hosoi     SVF起動API埋め込み
  *  2009-03-06    1.1   Abe.Daisuke     【課題No71】売価別条件、一律条件・容器別条件の画面入力制御の変更対応
  *  2009-03-13    1.1   Mio.Maruyama    【障害052,055,056】抽出条件変更・テーブルサイズ変更
- *
+ *  2009-04-27    1.2   Kazuo.Satomura   システムテスト障害対応(T1_0705,T1_0778)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -393,7 +393,7 @@ AS
     -- *** ローカル・カーソル *** 
     CURSOR l_sales_charge_cur
     IS
-     SELECT xsdh.sp_decision_header_id sp_decision_header_id        -- ＳＰ専決ヘッダＩＤ
+      SELECT xsdh.sp_decision_header_id sp_decision_header_id        -- ＳＰ専決ヘッダＩＤ
             ,xsdl.sp_decision_line_id sp_decision_line_id           -- ＳＰ専決明細ＩＤ
             ,xcm.close_day_code close_day_code                      -- 締め日
             ,(SELECT flvv_month.meaning                             -- 内容
@@ -434,23 +434,36 @@ AS
                                || 'のとき、１本につき '
                                || TO_CHAR(xsdl.bm1_bm_amount) || '円を支払う'
               END) condition_contents                               -- 条件内容
-      FROM   xxcso_contract_managements xcm      -- 契約管理テーブル
-            ,xxcso_sp_decision_headers  xsdh     -- ＳＰ専決ヘッダテーブル
-            ,xxcso_sp_decision_lines    xsdl     -- ＳＰ専決明細テーブル
-            ,(SELECT  flv.meaning
-                      ,flv.lookup_code
-                FROM  fnd_lookup_values_vl flv
-               WHERE  flv.lookup_type = cv_lkup_container_type
-                 AND  TRUNC(ld_sysdate) BETWEEN TRUNC(flv.start_date_active)
-                 AND  TRUNC(NVL(flv.end_date_active, ld_sysdate))
-                 AND  flv.enabled_flag = cv_enabled_flag
-             )  flvv    -- 参照タイプ
-      WHERE  xcm.contract_management_id = gt_con_mng_id
-        AND  xcm.sp_decision_header_id  = xsdh.sp_decision_header_id
-        AND  xsdh.sp_decision_header_id = xsdl.sp_decision_header_id
-        AND  xsdh.condition_business_type
-               IN (cv_cond_b_type_1, cv_cond_b_type_2, cv_cond_b_type_3, cv_cond_b_type_4)
-        AND  xsdl.sp_container_type = flvv.lookup_code(+);
+       FROM   xxcso_contract_managements xcm      -- 契約管理テーブル
+             ,xxcso_sp_decision_headers  xsdh     -- ＳＰ専決ヘッダテーブル
+             ,xxcso_sp_decision_lines    xsdl     -- ＳＰ専決明細テーブル
+             ,(SELECT  flv.meaning
+                       ,flv.lookup_code
+                       /* 2009.04.27 K.Satomura T1_0778対応 START */
+                       ,flv.attribute4
+                       /* 2009.04.27 K.Satomura T1_0778対応 END */
+                 FROM  fnd_lookup_values_vl flv
+                WHERE  flv.lookup_type = cv_lkup_container_type
+                  AND  TRUNC(ld_sysdate) BETWEEN TRUNC(flv.start_date_active)
+                  AND  TRUNC(NVL(flv.end_date_active, ld_sysdate))
+                  AND  flv.enabled_flag = cv_enabled_flag
+              )  flvv    -- 参照タイプ
+       WHERE  xcm.contract_management_id = gt_con_mng_id
+         AND  xcm.sp_decision_header_id  = xsdh.sp_decision_header_id
+         AND  xsdh.sp_decision_header_id = xsdl.sp_decision_header_id
+         AND  xsdh.condition_business_type
+                IN (cv_cond_b_type_1, cv_cond_b_type_2, cv_cond_b_type_3, cv_cond_b_type_4)
+       /* 2009.04.27 K.Satomura T1_0778対応 START */
+         --AND  xsdl.sp_container_type = flvv.lookup_code(+);
+         AND  xsdl.sp_container_type = flvv.lookup_code(+)
+       ORDER BY DECODE(xsdh.condition_business_type
+                      ,cv_cond_b_type_1 ,xsdl.sp_decision_line_id
+                      ,cv_cond_b_type_2 ,xsdl.sp_decision_line_id
+                      ,cv_cond_b_type_3 ,flvv.attribute4
+                      ,cv_cond_b_type_4 ,flvv.attribute4
+                      )
+       ;
+       /* 2009.04.27 K.Satomura T1_0778対応 END */
 
 --
     -- *** ローカル・レコード *** 
@@ -971,7 +984,12 @@ AS
       -- 販売手数料有無の設定
         o_rep_cont_data_rec.condition_contents_flag := lb_bm1_bm;
       -- 設置協賛金有り
-      IF (o_rep_cont_data_rec.install_support_amt IS NOT NULL) THEN
+      /* 2009.04.27 K.Satomura T1_0705対応 START */
+      --IF (o_rep_cont_data_rec.install_support_amt IS NOT NULL) THEN
+      IF ((o_rep_cont_data_rec.install_support_amt IS NOT NULL)
+        AND (o_rep_cont_data_rec.install_support_amt <> 0))
+      THEN
+      /* 2009.04.27 K.Satomura T1_0705対応 END */
         o_rep_cont_data_rec.install_support_amt_flag := TRUE;
       -- 設置協賛金無し
       ELSE
