@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoConstants
 * 概要説明   : 【アドオン：営業・営業領域】共通固定値クラス
-* バージョン : 1.13
+* バージョン : 1.15
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -23,6 +23,7 @@
 * 2010-03-01 1.11 SCS阿部大輔  [E_本稼動_01868]物件対応
 * 2010-03-23 1.12 SCS阿部大輔  [E_本稼動_01942]管理元拠点対応
 * 2011-01-06 1.13 SCS桐生和幸  [E_本稼動_02498]銀行支店マスタチェック対応
+* 2011-04-04 1.14 SCS吉元強樹  [E_本稼動_02496]SP専決回送先承認者必須チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -106,6 +107,9 @@ public class XxcsoConstants
   public static final String APP_XXCSO1_00320    = "APP-XXCSO1-00320";
   public static final String APP_XXCSO1_00335    = "APP-XXCSO1-00335";
   public static final String APP_XXCSO1_00336    = "APP-XXCSO1-00336";
+// 2011-04-04 v1.14 T.Yoshimoto Add Start E_本稼動_02496
+  public static final String APP_XXCSO1_00345    = "APP-XXCSO1-00345";
+// 2011-04-04 v1.14 T.Yoshimoto Add End E_本稼動_02496  
   public static final String APP_XXCSO1_00396    = "APP-XXCSO1-00396";
   public static final String APP_XXCSO1_00397    = "APP-XXCSO1-00397";
   public static final String APP_XXCSO1_00398    = "APP-XXCSO1-00398";

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.15
+* バージョン : 1.16
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -23,6 +23,7 @@
 * 2010-01-15 1.13 SCS阿部大輔  [E_本稼動_00950]画面値、ＤＢ値チェック対応
 * 2010-01-20 1.14 SCS阿部大輔  [E_本稼動_01176]顧客コード必須対応
 * 2010-03-01 1.15 SCS阿部大輔  [E_本稼動_01678]現金支払対応
+* 2011-04-04 1.16 SCS吉元強樹  [E_本稼動_02498]SP専決回送先承認者必須チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -3469,12 +3470,57 @@ public class XxcsoSpDecisionValidateUtils
           }
         }
 
+// 2011-04-04 v1.16 T.Yoshimoto Add Start E_本稼動_02496
+        // 作業依頼区分を取得する
+        String workRequestType = sendRow.getWorkRequestType();
+        // 作業依頼区分が承認の場合、必須エラーとする
+        if ( XxcsoSpDecisionConstants.REQ_APPROVE.equals(workRequestType) )
+        {
+          // 回送先社員番号を取得する
+          String approveCode = sendRow.getApproveCode();
+          if ( XxcsoSpDecisionConstants.INIT_APPROVE_CODE.equals(approveCode) )
+          {
+            String currentApprovalAutorityName = sendRow.getApprovalAuthorityName();
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00345
+                 ,XxcsoConstants.TOKEN_ITEM
+                 ,currentApprovalAutorityName
+                );
+
+            errorList.add(error);
+
+          }
+        }
+// 2011-04-04 v1.16 T.Yoshimoto Add End E_本稼動_02496
+
         // 以降に有効回送先があるかどうかをチェックする
         checkFlag = true;
       }
 
       if ( ! checkFlag )
       {
+// 2011-04-04 v1.16 T.Yoshimoto Add Start E_本稼動_02496
+        // 作業依頼区分を取得する
+        String workRequestType = sendRow.getWorkRequestType();
+        // 作業依頼区分が承認の場合、必須エラーとする
+        if ( XxcsoSpDecisionConstants.REQ_APPROVE.equals(workRequestType) )
+        {
+          // 回送先社員番号を取得する
+          String approveCode = sendRow.getApproveCode();
+          if ( XxcsoSpDecisionConstants.INIT_APPROVE_CODE.equals(approveCode) )
+          {
+            String currentApprovalAutorityName = sendRow.getApprovalAuthorityName();
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00345
+                 ,XxcsoConstants.TOKEN_ITEM
+                 ,currentApprovalAutorityName
+                );
+            errorList.add(error);
+          }
+        }
+// 2011-04-04 v1.16 T.Yoshimoto Add End E_本稼動_02496
         // 有効チェックフラグが立っていない場合は、次のレコードへ
         sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.next();
         continue;
