@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmm_003common_pkg(body)
  * Description            :
  * MD.110                 : MD110_CMM_顧客_共通関数
- * Version                : 1.9
+ * Version                : 1.10
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/07/15    1.7  Yutaka.Kuboshima 統合テスト障害0000648の対応
  *  2009/09/15    1.8  Yutaka.Kuboshima 統合テスト障害0001350の対応
  *  2009/10/30    1.9  Yutaka.Kuboshima 障害E_T4_00100の対応
+ *  2009/11/26    1.10 Yutaka.Kuboshima 障害E_本稼動_00106の対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -524,6 +525,9 @@ AS
                         AND  hps3.location_id        = hl3.location_id
                         AND  hps3.party_site_id      = hcas3.party_site_id
                         AND  hcas3.cust_acct_site_id = hcsu3.cust_acct_site_id
+-- 2009/11/26 Ver1.10 E_本稼動_00106 add start by Yutaka.Kuboshima
+                        AND  hca3.cust_account_id    = hcas3.cust_account_id
+-- 2009/11/26 Ver1.10 E_本稼動_00106 add end by Yutaka.Kuboshima
                         AND  hcsu3.status            = cv_a_flag
                         AND ( ( hca3.customer_class_code = cv_cust_kyoten_kbn
                             AND hcsu3.site_use_code = cv_site_use_other_to)
