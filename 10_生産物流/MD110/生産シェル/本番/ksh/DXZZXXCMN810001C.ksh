@@ -10,6 +10,8 @@
 ##                        初版                                                ##
 ##                    Oracle    椎名 昭圭    2009/03/02 1.0.2                 ##
 ##                      品目マスタ更新(日次)_呼出パラメータ｢起動区分｣追加     ##
+##                    Oracle    椎名 昭圭    2009/03/13 1.0.3  本番#1315対応  ##
+##                                                                            ##
 ##    [戻り値]                                                                ##
 ##        0     正常                                                          ##
 ##        4     警告                                                          ##
@@ -123,7 +125,9 @@ L_conc_args="${L_conc_args} WAIT=Y CONCURRENT"
 L_conc_args="${L_conc_args} \"${L_conc_appl}\""
 L_conc_args="${L_conc_args} \"${L_conc_name}\""
 L_conc_args="${L_conc_args} \"${L_param_001}\""
+# 2009/03/02 v1.0.2 ADD START
 L_conc_args="${L_conc_args} \"0\""
+# 2009/03/02 v1.0.2 ADD END
 
 ### Set Language ###
 NLS_LANG=Japanese_Japan.JA16SJIS
@@ -145,7 +149,10 @@ EOF
   shell_end ${L_exit_eror}
 fi
 
-L_reqid=`/usr/bin/awk 'NR==1 {print $6}' ${L_std_out}`
+# 2009/03/13 v1.03 UPDATE START
+#L_reqid=`/usr/bin/awk 'NR==1 {print $6}' ${L_std_out}`
+L_reqid=`/usr/bin/awk 'NR==1 {print $7}' ${L_std_out}`
+# 2009/03/13 v1.03 UPDATE END
 
 output_log "RequestID : ${L_reqid}"
 
