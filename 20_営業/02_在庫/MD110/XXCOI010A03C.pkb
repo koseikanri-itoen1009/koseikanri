@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A03C(body)
  * Description      : VDコラムマスタHHT連携
  * MD.050           : VDコラムマスタHHT連携 MD050_COI_010_A03
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/02    1.0   T.Nakamura       新規作成
  *  2009/09/14    1.1   H.Sasaki         [0001348]PT対応
+ *  2009/11/23    1.2   T.Kojima         [E_本稼動_00006]空コラムIF
  *
  *****************************************************************************************/
 --
@@ -107,6 +108,11 @@ AS
   cv_cust_status_stop_apr     CONSTANT VARCHAR2(2)   := '90';               -- 顧客ステータス：中止決裁済
   cv_del_flag_y               CONSTANT VARCHAR2(1)   := '1';                -- 削除フラグ：'1'
   cv_del_flag_n               CONSTANT VARCHAR2(1)   := '0';                -- 削除フラグ：'0'
+-- == 2009/11/23 V1.2 ADD START  ===============================================================
+  cn_price_dummy              CONSTANT NUMBER        := 0;                  -- 価格ダミー
+  cv_hot_cold_dummy           CONSTANT VARCHAR2(1)   := '0';                -- H/Cダミー
+  cv_item_code_dummy          CONSTANT VARCHAR2(7)   := '0000000';          -- 品目コードダミー
+-- == 2009/11/23 V1.2 ADD END    ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -187,11 +193,20 @@ AS
   IS
     SELECT   /*+ use_nl(hp hca xmvc msib) */
              xmvc.column_no                AS column_no                   -- コラムNO.
-           , xmvc.price                    AS price                       -- 単価
+-- == 2009/11/23 V1.2 MOD START  ===============================================================
+--         , xmvc.price                    AS price                       -- 単価
+           , NVL( xmvc.price, cn_price_dummy )          AS price          -- 単価
+-- == 2009/11/23 V1.2 MOD END    ===============================================================
            , xmvc.inventory_quantity       AS inventory_quantity          -- 満タン数
-           , xmvc.hot_cold                 AS hot_cold                    -- H/C
+-- == 2009/11/23 V1.2 MOD START  ===============================================================
+--         , xmvc.hot_cold                 AS hot_cold                    -- H/C
+           , NVL( xmvc.hot_cold, cv_hot_cold_dummy )    AS hot_cold       -- H/C
+-- == 2009/11/23 V1.2 MOD END    ===============================================================
            , xmvc.last_update_date         AS last_update_date            -- 更新日時
-           , msib.segment1                 AS item_code                   -- 品目コード
+-- == 2009/11/23 V1.2 MOD START  ===============================================================
+--         , msib.segment1                 AS item_code                   -- 品目コード
+           , NVL( msib.segment1, cv_item_code_dummy )   AS item_code      -- 品目コード
+-- == 2009/11/23 V1.2 MOD END    ===============================================================
            , hca.account_number            AS cust_code                   -- 顧客コード
            , CASE WHEN hp.duns_number_c IN ( cv_cust_status_reorg_crd     -- 顧客ステータスが「更正債権」
                                            , cv_cust_status_stop_apr )    -- または、「中止決裁済」の場合
@@ -204,8 +219,12 @@ AS
            , hz_parties                    hp                             -- パーティ
     WHERE    xmvc.last_update_date         >= gd_last_coop_date           -- 取得条件：最終更新日が最終連携日時以降
     AND      xmvc.last_update_date         <  gd_sysdate                  -- 取得条件：最終更新日がSYSDATEより前
-    AND      msib.inventory_item_id        =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
-    AND      msib.organization_id          =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
+-- == 2009/11/23 V1.2 MOD START  ===============================================================
+--  AND      msib.inventory_item_id        =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
+--  AND      msib.organization_id          =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
+    AND      msib.inventory_item_id (+)    =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
+    AND      msib.organization_id   (+)    =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
+-- == 2009/11/23 V1.2 MOD END    ===============================================================
     AND      hca.cust_account_id           =  xmvc.customer_id            -- 結合条件：顧客マスタとVDコラムマスタ
     AND      hp.party_id                   =  hca.party_id;               -- 結合条件：パーティと顧客マスタ
   --
@@ -213,11 +232,20 @@ AS
   IS
     SELECT   /*+ use_nl(hp hca xcsi xmvc msib) */
              xmvc.column_no                AS column_no                   -- コラムNO.
-           , xmvc.price                    AS price                       -- 単価
+-- == 2009/11/23 V1.2 MOD START  ===============================================================
+--         , xmvc.price                    AS price                       -- 単価
+           , NVL( xmvc.price, cn_price_dummy )          AS price          -- 単価
+-- == 2009/11/23 V1.2 MOD END    ===============================================================
            , xmvc.inventory_quantity       AS inventory_quantity          -- 満タン数
-           , xmvc.hot_cold                 AS hot_cold                    -- H/C
+-- == 2009/11/23 V1.2 MOD START  ===============================================================
+--         , xmvc.hot_cold                 AS hot_cold                    -- H/C
+           , NVL( xmvc.hot_cold, cv_hot_cold_dummy )    AS hot_cold       -- H/C
+-- == 2009/11/23 V1.2 MOD END    ===============================================================
            , xmvc.last_update_date         AS last_update_date            -- 更新日時
-           , msib.segment1                 AS item_code                   -- 品目コード
+-- == 2009/11/23 V1.2 MOD START  ===============================================================
+--         , msib.segment1                 AS item_code                   -- 品目コード
+           , NVL( msib.segment1, cv_item_code_dummy )   AS item_code      -- 品目コード
+-- == 2009/11/23 V1.2 MOD END    ===============================================================
            , hca.account_number            AS cust_code                   -- 顧客コード
            , CASE WHEN hp.duns_number_c IN ( cv_cust_status_reorg_crd     -- 顧客ステータスが「更正債権」
                                            , cv_cust_status_stop_apr )    -- または、「中止決裁済」の場合
@@ -230,8 +258,12 @@ AS
            , xxcok_cust_shift_info         xcsi                           -- 顧客移行情報
            , hz_parties                    hp                             -- パーティ
     WHERE    xmvc.last_update_date         <  gd_last_coop_date           -- 取得条件：最終更新日が最終連携日時より前
-    AND      msib.inventory_item_id        =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
-    AND      msib.organization_id          =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
+-- == 2009/11/23 V1.2 MOD START  ===============================================================
+--  AND      msib.inventory_item_id        =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
+--  AND      msib.organization_id          =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
+    AND      msib.inventory_item_id (+)    =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
+    AND      msib.organization_id   (+)    =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
+-- == 2009/11/23 V1.2 MOD END    ===============================================================
     AND      hca.cust_account_id           =  xmvc.customer_id            -- 結合条件：顧客マスタとVDコラムマスタ
     AND      xcsi.cust_code                =  hca.account_number          -- 結合条件：顧客移行情報と顧客マスタ
     AND      xcsi.cust_shift_date          >= TRUNC( gd_last_coop_date )  -- 取得条件：顧客移行日が最終連携日日付以降
