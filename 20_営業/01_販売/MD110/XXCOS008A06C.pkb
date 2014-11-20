@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A06C(body)
  * Description      : 出荷依頼実績からの受注作成
  * MD.050           : 出荷依頼実績からの受注作成 MD050_COS_008_A06
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,7 +37,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2010/03/23    1.0   H.Itou           新規作成
  *  2010/05/10    1.1   H.Itou           E_本稼動_02532,E_本稼動_02595
- *
+ *  2012/06/25    1.2   D.Sugahara       [E_本稼動_09744]受注OIF取りこぼし対応（呼出コンカレントを
+ *                                                       受注インポートエラー検知(Online用）に変更）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2958,7 +2959,11 @@ AS
     -- *** ローカル定数 ***
     --コンカレント定数
     cv_application            CONSTANT VARCHAR2(5)   := 'XXCOS';         -- Application
-    cv_program                CONSTANT VARCHAR2(12)  := 'XXCOS010A06C';  -- Program
+--2012/06/25 Ver.1.2 Mod Start 
+--  受注インポートエラー検知(CSV受注取込用）を呼び出すようにに変更
+--    cv_program                CONSTANT VARCHAR2(12)  := 'XXCOS010A06C';  -- Program
+    cv_program                CONSTANT VARCHAR2(13)  := 'XXCOS010A062C';  -- Program
+--2012/06/25 Ver.1.2 Mod End 
     cv_description            CONSTANT VARCHAR2(9)   := NULL;            -- Description
     cv_start_time             CONSTANT VARCHAR2(10)  := NULL;            -- Start_time
     cb_sub_request            CONSTANT BOOLEAN       := FALSE;           -- Sub_request

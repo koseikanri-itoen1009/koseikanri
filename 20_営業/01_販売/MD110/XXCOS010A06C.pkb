@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A06C (body)
  * Description      : 受注インポートエラー検知
  * MD.050           : MD050_COS_010_A06_受注インポートエラー検知
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,7 +16,8 @@ AS
  *  reg_order_proc         受注インポート(A-2)
  *  err_chk_proc           エラーチェック(A-3)
  *    err_msg_out_proc       エラーメッセージ出力(A-4)
- *  end_proc               終了処理(A-5)
+ *  retry_proc             リトライ処理(A-5)
+ *  end_proc               終了処理(A-6)
  * ---------------------- ----------------------------------------------------------
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
@@ -27,6 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/07/06    1.0   K.Satomura       新規作成
  *  2009/11/10    1.1   M.Sano           [E_T4_00173]不要な結合テーブルの削除・ヒント句追加
+ *  2012/06/25    1.2   D.Sugahara       [E_本稼動_09744]受注OIF取りこぼし対応（リトライ処理追加）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -96,6 +98,9 @@ AS
   --
   -- メッセージ
   ct_msg_get_profile_err CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00004'; -- プロファイル取得エラー
+--2012/06/25 Ver.1.2 Add Start
+  ct_msg_upd_data_err    CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00011'; -- データ更新エラーメッセージ
+--2012/06/25 Ver.1.2 Add End
   ct_msg_get_data_err    CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00013'; -- データ抽出エラーメッセージ
   ct_msg_param_output    CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13801'; -- パラメータ出力メッセージ
   ct_msg_err_chk_failed  CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13802'; -- エラーチェック失敗メッセージ
@@ -115,6 +120,11 @@ AS
   ct_msg_publish_request CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13816'; -- 要求発行メッセージ
   ct_msg_time_over       CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13817'; -- 待機時間経過メッセージ
   ct_msg_imp_war_err     CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13818'; -- 受注インポート警告・エラーメッセージ
+--2012/06/25 Ver.1.2 Add Start
+  ct_msg_retry_over      CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13819'; -- 受注インポートエラー検知リトライオーバメッセージ
+  ct_msg_retry_info      CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13820'; -- 受注インポートエラー検知リトライ情報メッセージ
+  ct_msg_retry_dtl_info1 CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13821'; -- 受注インポートエラー検知リトライ詳細情報メッセージ
+--2012/06/25 Ver.1.2 Add End
   --
   -- トークン
   cv_tkn_param      CONSTANT VARCHAR2(512) := 'PARAM';      -- パラメータ
@@ -128,6 +138,12 @@ AS
   cv_tkn_colmun2    CONSTANT VARCHAR2(512) := 'COLMUN2';    -- カラム2
   cv_tkn_code       CONSTANT VARCHAR2(512) := 'CODE';       -- コード
   cv_tkn_name       CONSTANT VARCHAR2(512) := 'NAME';       -- 名称
+--2012/06/25 Ver.1.2 Add Start
+  cv_tkn_retry_cnt  CONSTANT VARCHAR2(100) := 'RETRY_CNT';         --トークン リトライ回数
+  cv_tkn_retry_sec  CONSTANT VARCHAR2(100) := 'RETRY_SEC';         --トークン リトライ経過秒
+  cv_tkn_retry_reqid  CONSTANT VARCHAR2(100) := 'RETRY_REQID';     --トークン リトライ要求ID
+  cv_tkn_retry_docref CONSTANT VARCHAR2(100) := 'RETRY_DOCREF';    --トークン リトライ対象受注関連番号
+--2012/06/25 Ver.1.2 Add End
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -517,7 +533,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : <err_msg_out_proc>
-   * Description      : <エラーメッセージ出力>(A-4)
+   * Description      : <エラーメッセージ出力>(A-5) Mod V1.2 A-4 → A-5
    ***********************************************************************************/
   PROCEDURE err_msg_out_proc(
      iv_order_source_name IN         VARCHAR2                                -- 受注ソース名称
@@ -654,7 +670,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : <err_chk_proc>
-   * Description      : <エラーチェック>(A-3)
+   * Description      : <エラーチェック>(A-4) Mod V1.2 A-3 → A-4
    ***********************************************************************************/
   PROCEDURE err_chk_proc(
      iv_order_source_name IN         VARCHAR2 -- 受注ソース名称
@@ -934,9 +950,298 @@ AS
 --
   END err_chk_proc;
 --
+--2012/06/25 Ver.1.2 Add Start
+  /**********************************************************************************
+   * Procedure Name   : <retry_proc>
+   * Description      : <取りこぼしリトライ処理>(A-3)
+   ***********************************************************************************/
+  PROCEDURE retry_proc(
+     iv_order_source_name IN         VARCHAR2 -- 受注ソース名称
+    ,ov_errbuf            OUT NOCOPY VARCHAR2 -- エラー・メッセージ           --# 固定 #
+    ,ov_retcode           OUT NOCOPY VARCHAR2 -- リターン・コード             --# 固定 #
+    ,ov_errmsg            OUT NOCOPY VARCHAR2 -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name     CONSTANT VARCHAR2(100) := 'retry_proc'; -- プログラム名
+    cv_tkn_col_name CONSTANT VARCHAR2(100) := 'request_id = '; -- キー項目名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_prof_retry_maxcnt     CONSTANT VARCHAR2(100)                             := 'XXCOS1_RETRY_MAX_CNT'; --プロファイル名：リトライ最大回数
+    cv_prof_retry_maxsec     CONSTANT VARCHAR2(100)                             := 'XXCOS1_RETRY_MAX_SEC'; --プロファイル名：リトライ最大秒数
+    --
+    -- *** ローカル変数 ***
+    lv_msg_data         VARCHAR2(3000);
+    ln_retry_rec_cnt    NUMBER;         --リトライ対象件数
+    ln_retry_cnt        NUMBER;         --リトライ回数
+    ln_retry_maxcnt     NUMBER;         --リトライ最大回数
+    ld_retry_start      DATE;           --リトライ開始時刻
+    ln_retry_maxsec     NUMBER;         --リトライ最大経過秒
+    ln_proc_sec         NUMBER;         --リトライ経過秒
+    lv_msg_step         VARCHAR2(100);  --メッセージ用
+    --
+    -- *** ローカル・カーソル ***
+    -- リトライ情報用カーソル
+    CURSOR get_retry_info_cur
+    IS
+      SELECT /*+ use_nl(fcr ohi oli) */
+             fcr.parent_request_id      parent_request_id     -- 要求ＩＤ(受注インポート親）
+            ,ohi.request_id             child_requestid       -- OIF要求ID（受注インポート子）
+            ,ohi.orig_sys_document_ref  orig_sys_document_ref -- 受注関連番号
+      FROM   fnd_concurrent_requests fcr  -- コンカレント要求表
+            ,oe_headers_iface_all    ohi  -- 受注ヘッダOIF
+            ,oe_lines_iface_all      oli  -- 受注明細OIF
+      WHERE  fcr.parent_request_id     = gn_request_id
+      AND    fcr.request_id            = ohi.request_id
+      AND    fcr.request_id            = oli.request_id
+      AND    ohi.orig_sys_document_ref = oli.orig_sys_document_ref
+      AND    NVL(ohi.error_flag,'N') = cv_flag_no
+      AND    NVL(oli.error_flag,'N') = cv_flag_no
+      GROUP BY fcr.parent_request_id, ohi.request_id , ohi.orig_sys_document_ref
+      ORDER BY ohi.request_id ASC
+      ;
+    --
+    -- *** ローカル・レコード ***
+    lt_retry_info_rec get_retry_info_cur%ROWTYPE;
+    --
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+--
+    --リトライ処理開始時刻取得
+    ld_retry_start := SYSDATE;
+    --リトライ処理回数
+    ln_retry_cnt := 0;
+    --リトライ最大回数取得
+    ln_retry_maxcnt := TO_NUMBER(fnd_profile.value(cv_prof_retry_maxcnt));
+    --リトライ最大秒数取得
+    ln_retry_maxsec := TO_NUMBER(fnd_profile.value(cv_prof_retry_maxsec));
+--
+    --リトライ処理開始
+    <<retry_loop>>
+    LOOP
+--
+      --リトライ対象件数情報取得
+      SELECT /*+ use_nl(fcr ohi oli) */
+             count(ohi.request_id)
+      INTO   ln_retry_rec_cnt
+      FROM   fnd_concurrent_requests fcr  -- コンカレント要求表
+            ,oe_headers_iface_all    ohi  -- 受注ヘッダOIF
+            ,oe_lines_iface_all      oli  -- 受注明細OIF
+      WHERE  fcr.parent_request_id     = gn_request_id
+      AND    fcr.request_id            = ohi.request_id
+      AND    fcr.request_id            = oli.request_id
+      AND    ohi.orig_sys_document_ref = oli.orig_sys_document_ref
+      AND    NVL(ohi.error_flag,'N') = cv_flag_no
+      AND    NVL(oli.error_flag,'N') = cv_flag_no
+      ;
+--
+      --リトライ対象件数確認
+      IF NVL(ln_retry_rec_cnt,0) > 0 THEN
+--
+        -- 経過秒数取得
+        ln_proc_sec := (sysdate - ld_retry_start) * 24 * 60 * 60;
+--
+        --まだ残データがある場合、リトライ可否確認（最大回数超過、最大秒数超過）、超過ならリトライ処理終了
+        IF ln_retry_cnt >= ln_retry_maxcnt OR ln_proc_sec >= ln_retry_maxsec THEN
+          --リトライオーバメッセージ出力
+          lv_msg_data := xxccp_common_pkg.get_msg(
+                          iv_application  => ct_xxcos_appl_short_name -- アプリケーション短縮名
+                         ,iv_name         => ct_msg_retry_over        -- メッセージコード 受注インポートリトライ最大回数/最大経過時間を超えました。（リトライ回数：NN回、経過時間：ZZ秒）
+                                                                      -- 未処理データが残る可能性があります。受注インポートデータを確認してください。
+                         ,iv_token_name1  => cv_tkn_retry_cnt        -- トークンコード1 リトライ回数
+                         ,iv_token_value1 => TO_CHAR(ln_retry_cnt)   -- トークン値1
+                         ,iv_token_name2  => cv_tkn_retry_sec        -- トークンコード2 リトライ経過時間
+                         ,iv_token_value2 => TO_CHAR(ln_proc_sec)    -- トークン値2
+                  );
+          --コンカレント出力
+          fnd_file.put_line(fnd_file.output, lv_msg_data);
+          fnd_file.put_line(fnd_file.output, NULL);
+          --警告終了設定
+          gv_imp_warm_flg := cv_flag_yes;
+--
+          EXIT; --LOOP retry_loop
+--
+        END IF;
+--
+        --リトライ回数設定
+        ln_retry_cnt := ln_retry_cnt + 1;
+--
+        -- リトライ開始メッセージ出力
+        lv_msg_data := xxccp_common_pkg.get_msg(
+                        iv_application  => ct_xxcos_appl_short_name -- アプリケーション短縮名
+                       ,iv_name         => ct_msg_retry_info        -- メッセージコード 受注インポートリトライ処理を開始します（N回目）
+                       ,iv_token_name1  => cv_tkn_retry_cnt        -- トークンコード1 リトライ回数
+                       ,iv_token_value1 => TO_CHAR(ln_retry_cnt)   -- トークン値1
+                );
+        --コンカレント出力
+        fnd_file.put_line(fnd_file.output, lv_msg_data);
+        fnd_file.put_line(fnd_file.output, NULL);
+--
+        --リトライ対象情報取得
+        OPEN get_retry_info_cur;
+        FETCH get_retry_info_cur INTO lt_retry_info_rec;
+--
+        --要求IDのクリアループ開始
+        --・1リトライ中に複数子要求で取りこぼしがある可能性があるため
+        <<recovery_loop>>
+        LOOP
+          --要求IDのクリア処理
+          BEGIN
+--
+            --リトライ詳細情報コンカレント出力
+            lv_msg_data := xxccp_common_pkg.get_msg(
+                            iv_application  => ct_xxcos_appl_short_name -- アプリケーション短縮名
+                           ,iv_name         => ct_msg_retry_dtl_info1   -- メッセージコード クリア対象OIF要求ID/対象受注関連番号 =[REQID]/[DOCREF]
+                           ,iv_token_name1  => cv_tkn_retry_reqid                           -- トークンコード1 要求ID
+                           ,iv_token_value1 => TO_CHAR(lt_retry_info_rec.child_requestid)   -- 要求ID
+                           ,iv_token_name2  => cv_tkn_retry_docref                       -- トークンコード2 対象受注関連番号
+                           ,iv_token_value2 => lt_retry_info_rec.orig_sys_document_ref   -- 対象受注関連番号
+                    );
+            fnd_file.put_line(fnd_file.output, lv_msg_data);
+            fnd_file.put_line(fnd_file.output, NULL);
+--
+            --ステップ設定
+            lv_msg_step := '受注OIFヘッダ';
+            --OIFヘッダの要求IDクリア
+            UPDATE oe_headers_iface_all
+            SET    request_id = NULL
+            WHERE  request_id = lt_retry_info_rec.child_requestid
+            AND    error_flag IS NULL;
+--
+            --ステップ設定
+            lv_msg_step := '受注OIF明細';
+            --OIF明細の要求IDクリア
+            UPDATE oe_lines_iface_all
+            SET    request_id = NULL
+            WHERE  request_id = lt_retry_info_rec.child_requestid
+            AND    error_flag IS NULL;
+            --
+          EXCEPTION
+            WHEN OTHERS THEN
+              -- 更新に失敗した場合
+              IF (get_retry_info_cur%ISOPEN) THEN
+                CLOSE get_retry_info_cur;
+              --
+              END IF;
+              --メッセージの設定
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => ct_xxcos_appl_short_name -- アプリケーション短縮名
+                               ,iv_name         => ct_msg_upd_data_err    -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_table_name
+                               ,iv_token_value1 => lv_msg_step
+                               ,iv_token_name2  => cv_tkn_key_data
+                               ,iv_token_value2 => cv_tkn_col_name || TO_CHAR(gn_request_id)
+                             );
+              lv_errbuf := SQLERRM;
+              --
+              RAISE global_api_expt;
+--
+          END;
+--
+          --次のリトライ対象情報取得
+          FETCH get_retry_info_cur INTO lt_retry_info_rec;
+          --対象無しの場合
+          EXIT WHEN get_retry_info_cur%NOTFOUND;
+--
+        END LOOP recovery_loop;
+--
+        --受注インポート再実行
+        --メッセージ
+        reg_order_proc (
+           ov_errbuf  => lv_errbuf  -- エラー・メッセージ           --# 固定 #
+          ,ov_retcode => lv_retcode -- リターン・コード             --# 固定 #
+          ,ov_errmsg  => lv_errmsg  -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        --
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_api_expt;
+          --
+        END IF;
+--
+      ELSE
+        --取りこぼし無し
+        IF (get_retry_info_cur%ISOPEN) THEN
+          CLOSE get_retry_info_cur;
+        --
+        END IF;
+        --
+        EXIT;  --get_retry_info_loop
+      END IF;
+--
+      -- カーソルがオープンしている場合、クローズ
+      IF (get_retry_info_cur%ISOPEN) THEN
+        CLOSE get_retry_info_cur;
+        --
+      END IF;
+      --
+    END LOOP get_retry_info_loop;
+    --
+    IF (get_retry_info_cur%ISOPEN) THEN
+      CLOSE get_retry_info_cur;
+    --
+    END IF;
+    --
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      -- カーソルがオープンしている場合、クローズ
+      IF (get_retry_info_cur%ISOPEN) THEN
+        CLOSE get_retry_info_cur;
+        --
+      END IF;
+      --
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      -- カーソルがオープンしている場合、クローズ
+      IF (get_retry_info_cur%ISOPEN) THEN
+        CLOSE get_retry_info_cur;
+        --
+      END IF;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- カーソルがオープンしている場合、クローズ
+      IF (get_retry_info_cur%ISOPEN) THEN
+        CLOSE get_retry_info_cur;
+        --
+      END IF;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END retry_proc;
+--2012/06/25 Ver.1.2 Add End
   /**********************************************************************************
    * Procedure Name   : <end_proc>
-   * Description      : <終了処理>(A-5)
+   * Description      : <終了処理>(A-6) Mod V1.2 A-5 → A-6
    ***********************************************************************************/
   PROCEDURE end_proc(
      ov_errbuf  OUT NOCOPY VARCHAR2 -- エラー・メッセージ           --# 固定 #
@@ -1091,8 +1396,25 @@ AS
       --
     END IF;
     --
+--2012/06/25 Ver.1.2 Add Start 
     -- --------------------------------------------------------------------
-    -- * err_chk_proc       エラーチェック                            (A-3)
+    -- * retry_proc       取りこぼしリトライ処理                      (A-3)
+    -- --------------------------------------------------------------------
+    retry_proc(
+       iv_order_source_name => iv_order_source_name -- 受注ソース名称
+      ,ov_errbuf            => lv_errbuf            -- エラー・メッセージ           --# 固定 #
+      ,ov_retcode           => lv_retcode           -- リターン・コード             --# 固定 #
+      ,ov_errmsg            => lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+      --
+    END IF;
+    --
+--2012/06/25 Ver.1.2 Add End 
+    -- --------------------------------------------------------------------
+    -- * err_chk_proc       エラーチェック                            (A-4) Mod V1.2 A-3 → A-4
     -- --------------------------------------------------------------------
     err_chk_proc(
        iv_order_source_name => iv_order_source_name -- 受注ソース名称
@@ -1107,7 +1429,7 @@ AS
     END IF;
     --
     -- --------------------------------------------------------------------
-    -- * end_proc         終了処理                                    (A-5)
+    -- * end_proc         終了処理                                    (A-6) Mod V1.2 A-5 → A-6
     -- --------------------------------------------------------------------
     end_proc(
        ov_errbuf  => lv_errbuf  -- エラー・メッセージ           --# 固定 #

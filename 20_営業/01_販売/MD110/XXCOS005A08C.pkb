@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -77,6 +77,8 @@ AS
  *  2011/02/01    1.24  H.Sekine         [E_本稼動_06457] 問屋CSVについて単価が0となってしまう障害を修正
  *  2011/02/21    1.25  H.Sekine         [E_本稼動_06614] 特殊商品コードが設定されている場合の出荷予定日の導出方法の変更
  *  2012/01/10    1.26  Y.Horikawa       [E_本稼動_08893] 問屋CSV取込時、出荷予定日をNULLとするように変更
+ *  2012/06/25    1.27  D.Sugahara       [E_本稼動_09744]受注OIF取りこぼし対応（呼出コンカレントを
+ *                                                       受注インポートエラー検知(CSV受注取込用）に変更）
  *
  *****************************************************************************************/
 --
@@ -4979,7 +4981,11 @@ AS
 --    cv_argument12             CONSTANT VARCHAR2(1)   := 'Y';           -- Argument1
 --
     cv_application            CONSTANT VARCHAR2(5)   := 'XXCOS';         -- Application
-    cv_program                CONSTANT VARCHAR2(12)  := 'XXCOS010A06C';  -- Program
+--2012/06/25 Ver.1.27 Mod Start 
+--  受注インポートエラー検知(CSV受注取込用）を呼び出すようにに変更
+--    cv_program                CONSTANT VARCHAR2(12)  := 'XXCOS010A06C';  -- Program
+    cv_program                CONSTANT VARCHAR2(13)  := 'XXCOS010A061C';  -- Program
+--2012/06/25 Ver.1.27 Mod End
     cv_description            CONSTANT VARCHAR2(9)   := NULL;            -- Description
     cv_start_time             CONSTANT VARCHAR2(10)  := NULL;            -- Start_time
     cb_sub_request            CONSTANT BOOLEAN       := FALSE;           -- Sub_request
