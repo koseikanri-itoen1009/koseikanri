@@ -54,7 +54,6 @@ AND       fcp.concurrent_program_name IN (
 ,'GLLEZL'
 ,'POXPOIV'
 ,'RAXMTR'
-,'RAXTRX'
 ,'RGOPTM'
 ,'XX031AP001C'
 ,'XX031EC001C'
@@ -64,7 +63,6 @@ AND       fcp.concurrent_program_name IN (
 ,'XX033JU001C'
 ,'XX034GT001C'
 ,'XX034PT001C'
-,'XX034RT001C'
 ,'XXCFF002A01C'
 ,'XXCFF006A12C'
 ,'XXCFF009A15C'
@@ -82,19 +80,23 @@ AND       fcp.concurrent_program_name IN (
 ,'XXCFR005A04C'
 ,'XXCFR005A05C'
 ,'XXCFR006A03C'
-,'XXCMM002A01C'
 ,'XXCMM002A11D'
 ,'XXCMM003A14C'
 ,'XXCMM003A15C'
 ,'XXCOK008A06C'
 ,'XXCSO010A02C'
+,'XXCMM002A01C'
 ))
-OR (fcp.concurrent_program_name IN ('XX032AP001C','XXCFO007S07C','XXCFR006A02C','APXXTR','XXCFO008A01C','APXIIMPT')))
+OR (fcp.concurrent_program_name IN ('XXCFR006A02C','APXXTR','XXCFO008A01C','APXIIMPT','RAXTRX')))
 AND      fcr.request_date  BETWEEN TO_DATE(NVL('&&input_date',TO_CHAR(SYSDATE,'YYYYMMDD'))||' 000000','YYYYMMDD HH24MISS') 
                                AND TO_DATE(NVL('&&input_date',TO_CHAR(SYSDATE,'YYYYMMDD'))||' 060000','YYYYMMDD HH24MISS') 
 UNION
 SELECT    /*+ LEADING(fcr) */
          CASE   fcp.concurrent_program_name
+           WHEN 'XX034RT001C' THEN
+             'get '|| fcr.LOGFILE_NAME || ' ' || to_multi_byte(pt.user_concurrent_program_name) ||  'LOG_' || fcr.request_id || '.txt'
+           WHEN 'XXCFO007S07C' THEN
+             'get '|| fcr.LOGFILE_NAME || ' ' || to_multi_byte(pt.user_concurrent_program_name) ||  'LOG_' || fcr.request_id || '.txt'
            WHEN 'XX032AP001C' THEN
              'get '|| fcr.LOGFILE_NAME || ' ' || to_multi_byte(pt.user_concurrent_program_name) ||  'LOG_' || fcr.request_id || '.txt'
            WHEN 'XXCMM002A01C' THEN
@@ -113,10 +115,16 @@ AND       pt.concurrent_program_id = fcp.concurrent_program_id
 AND       fcr.requested_by         = fu.user_id 
 AND       pt.language              = 'JA' 
 AND       fu.user_name             IN ('JP1SALES','VDBM_FB','JP1OIE') 
-AND       fcp.concurrent_program_name IN (
- 'XX032AP001C'
-,'XXCMM002A01C'
-)
+AND      (
+             (fcp.concurrent_program_name IN ( 'XX032AP001C'
+                                              ,'XXCFO007S07C'
+                                             )
+             )
+         OR  (fcr.status_code          IN ('G','E')
+        AND   fcp.concurrent_program_name IN ('XXCMM002A01C'
+                                             ,'XX034RT001C')
+             )
+         )
 AND      fcr.request_date  BETWEEN TO_DATE(NVL('&&input_date',TO_CHAR(SYSDATE,'YYYYMMDD'))||' 000000','YYYYMMDD HH24MISS') 
                                AND TO_DATE(NVL('&&input_date',TO_CHAR(SYSDATE,'YYYYMMDD'))||' 060000','YYYYMMDD HH24MISS') 
 /

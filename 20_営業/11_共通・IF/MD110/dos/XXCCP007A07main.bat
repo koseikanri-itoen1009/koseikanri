@@ -44,21 +44,21 @@ IF !ERRORLEVEL! EQU 0 (
 )
 )
 
-for /F %%A in ('dir /b *未払金オープン・インタフェース*') do ( set CHK_FILE=%%A
-find "このレポートに対するデータが存在しません" !CHK_FILE!
-IF !ERRORLEVEL! EQU 0 (
-  ren  !CHK_FILE! 却下レポートなし_!CHK_FILE!
-) ELSE (
-  ren  !CHK_FILE! 却下レポートあり_!CHK_FILE!
-)
-)
-
 for /F %%A in ('dir /b 経費精算書インポート*') do ( set CHK_FILE=%%A
 find "否認された経費精算書合計: 0" !CHK_FILE!
 IF !ERRORLEVEL! EQU 0 (
   ren  !CHK_FILE! 例外レポートなし_!CHK_FILE!
 ) ELSE (
   ren  !CHK_FILE! 例外レポートあり_!CHK_FILE!
+)
+)
+
+for /F %%A in ('dir /b 自動インボイス・インポート・プログラム*') do ( set CHK_FILE=%%A
+find "エラー" !CHK_FILE!
+IF !ERRORLEVEL! EQU 0 (
+  ren  !CHK_FILE! エラーあり_!CHK_FILE!
+) ELSE (
+  ren  !CHK_FILE! エラーなし_!CHK_FILE!
 )
 )
 
