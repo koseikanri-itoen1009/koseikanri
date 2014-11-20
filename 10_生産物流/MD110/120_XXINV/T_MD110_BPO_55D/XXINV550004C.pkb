@@ -8,7 +8,7 @@ AS
  * Description      : 棚卸スナップショット作成
  * MD.050           : 在庫(帳票)               T_MD050_BPO_550
  * MD.070           : 棚卸スナップショット作成 T_MD070_BPO_55D
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/03/30    1.10  H.Iida           本番障害#1346対応（営業単位対応）
  *  2009/09/10    1.11  M.Nomura         本番障害#1607対応
  *  2010/05/13    1.12  M.Hokkanji       本稼動障害#2250対応
+ *  2012/04/19    1.13  SCSK D.Sugahara  E_本稼動_09050対応
  *
  *****************************************************************************************/
 --  
@@ -237,7 +238,9 @@ AS
     -- ===============================
 -- 2009/03/30 H.Iida ADD START 本番障害#1346
     -- *** ローカル定数 ***
-    cv_prf_org_id CONSTANT VARCHAR2(100) := 'ORG_ID';          -- プロファイル：ORG_ID
+-- 2012/04/19 Ver.1.13 D.Sugahara Del Start
+--    cv_prf_org_id CONSTANT VARCHAR2(100) := 'ORG_ID';          -- プロファイル：ORG_ID
+-- 2012/04/19 Ver.1.13 D.Sugahara Del End
 -- 2009/03/30 H.Iida ADD END
 --
     -- *** ローカル変数 ***
@@ -284,7 +287,9 @@ AS
     lv_sysdate_ym   VARCHAR2(6);           -- 現在日付
 --
 -- 2009/03/30 H.Iida ADD START 本番障害#1346
-    lv_org_id       VARCHAR2(1000);        -- ORG_ID
+-- 2012/04/19 Ver.1.13 D.Sugahara Del Start
+--    lv_org_id       VARCHAR2(1000);        -- ORG_ID
+-- 2012/04/19 Ver.1.13 D.Sugahara Del End    
 -- 2009/03/30 H.Iida ADD END
 -- 2008/09/16 v1.5 Y.Yamamoto ADD Start
     lv_D2sql            VARCHAR2(15000) DEFAULT NULL; -- 動的SQL文字列 D-2. 手持数量情報
@@ -467,7 +472,9 @@ AS
     --==========================
     -- ORG_ID取得
     --==========================
-    lv_org_id := FND_PROFILE.VALUE(cv_prf_org_id);
+-- 2012/04/19 Ver.1.13 D.Sugahara Del Start
+--    lv_org_id := FND_PROFILE.VALUE(cv_prf_org_id);
+-- 2012/04/19 Ver.1.13 D.Sugahara Del End    
 -- 2009/03/30 H.Iida ADD END
 --
 --add start 2008/05/12 #47対応
@@ -1233,12 +1240,14 @@ AS
                     OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
                    )
               AND   xmld.lot_id = curr_lot_id_tbl(i)                              -- ③のロットid = d-2で取得したロットid
-              AND NOT EXISTS (SELECT 'X'
-                              FROM   oe_order_headers_all ooha
-                              WHERE  ooha.attribute1 = xoha.request_no
--- 2009/03/30 H.Iida ADD START 本番障害#1346
-                              AND    ooha.org_id     = TO_NUMBER(lv_org_id))
--- 2009/03/30 H.Iida ADD END
+-- 2012/02/17 Ver.1.13 D.Sugahara Del Start
+--              AND NOT EXISTS (SELECT 'X'
+--                              FROM   oe_order_headers_all ooha
+--                              WHERE  ooha.attribute1 = xoha.request_no
+---- 2009/03/30 H.Iida ADD START 本番障害#1346
+--                              AND    ooha.org_id     = TO_NUMBER(lv_org_id))
+---- 2009/03/30 H.Iida ADD END
+-- 2012/02/17 Ver.1.13 D.Sugahara Del End
               GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
 --
             ELSE
@@ -1266,12 +1275,14 @@ AS
               AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_invent_end_ymd)           -- ①の入庫実績日の年月＞起動パラメータの対象年月
                     OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
                    )
-              AND NOT EXISTS (SELECT 'X'
-                              FROM   oe_order_headers_all ooha
-                              WHERE  ooha.attribute1 = xoha.request_no
--- 2009/03/30 H.Iida ADD START 本番障害#1346
-                              AND    ooha.org_id     = TO_NUMBER(lv_org_id))
--- 2009/03/30 H.Iida ADD END
+-- 2012/02/17 Ver.1.13 D.Sugahara Del Start
+--              AND NOT EXISTS (SELECT 'X'
+--                              FROM   oe_order_headers_all ooha
+--                              WHERE  ooha.attribute1 = xoha.request_no
+---- 2009/03/30 H.Iida ADD START 本番障害#1346
+--                              AND    ooha.org_id     = TO_NUMBER(lv_org_id))
+---- 2009/03/30 H.Iida ADD END
+-- 2012/02/17 Ver.1.13 D.Sugahara Del End
               GROUP BY xilv.whse_code, ximv.item_id;
 --
             END IF;
@@ -1792,12 +1803,14 @@ AS
                     OR xoha.arrival_date IS NULL                                    -- ①の着荷日=指定なし
                    )
               AND   xmld.lot_id = pre_lot_id_tbl(i)                              -- ③のロットid = d-2で取得したロットid
-              AND NOT EXISTS (SELECT 'X'
-                              FROM   oe_order_headers_all ooha
-                              WHERE  ooha.attribute1 = xoha.request_no
--- 2009/03/30 H.Iida ADD START 本番障害#1346
-                              AND    ooha.org_id     = TO_NUMBER(lv_org_id))
--- 2009/03/30 H.Iida ADD END
+-- 2012/02/17 Ver.1.13 D.Sugahara Del Start
+--              AND NOT EXISTS (SELECT 'X'
+--                              FROM   oe_order_headers_all ooha
+--                              WHERE  ooha.attribute1 = xoha.request_no
+---- 2009/03/30 H.Iida ADD START 本番障害#1346
+--                              AND    ooha.org_id     = TO_NUMBER(lv_org_id))
+---- 2009/03/30 H.Iida ADD END
+---- 2012/02/17 Ver.1.13 D.Sugahara Del End
               GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
 --
             ELSE
@@ -1825,12 +1838,14 @@ AS
               AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_pre_invent_end_ymd)         -- ①の着荷日の年月＞起動パラメータの対象年月の前月
                     OR xoha.arrival_date IS NULL                                    -- ①の着荷日=指定なし
                    )
-              AND NOT EXISTS (SELECT 'X'
-                              FROM   oe_order_headers_all ooha
-                              WHERE  ooha.attribute1 = xoha.request_no
--- 2009/03/30 H.Iida ADD START 本番障害#1346
-                              AND    ooha.org_id     = TO_NUMBER(lv_org_id))
--- 2009/03/30 H.Iida ADD END
+-- 2012/02/17 Ver.1.13 D.Sugahara Del Start
+--              AND NOT EXISTS (SELECT 'X'
+--                              FROM   oe_order_headers_all ooha
+--                              WHERE  ooha.attribute1 = xoha.request_no
+---- 2009/03/30 H.Iida ADD START 本番障害#1346
+--                              AND    ooha.org_id     = TO_NUMBER(lv_org_id))
+---- 2009/03/30 H.Iida ADD END
+-- 2012/02/17 Ver.1.13 D.Sugahara Del End
               GROUP BY xilv.whse_code, ximv.item_id;
 --
             END IF;
