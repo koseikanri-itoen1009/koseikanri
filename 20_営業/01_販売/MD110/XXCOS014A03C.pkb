@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A03C (body)
  * Description      : 納品確定情報データ作成(EDI)
  * MD.050           : 納品確定情報データ作成(EDI) MD050_COS_014_A03
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2009/10/02    1.13  M.Sano           [0001306] 売上区分混在チェックのIF条件修正
  *  2010/02/16    1.14  K.Kiriu          [E_本稼動_01590] エラー明細出力対応（単位換算実行チェック追加）
  *  2010/06/14    1.15  S.Arizumi        [E_本稼動_03075] 拠点選択対応
+ *  2011/09/20    1.16  T.Ishiwata       [E_本稼動_07906] 流通BMS対応
  *
  *****************************************************************************************/
 --
@@ -2846,6 +2847,10 @@ AS
 -- 2010/02/16 Ver.1.14 add Start
             ,xe.tsukagatazaiko_div                                              tsukagatazaiko_div            --通過在庫型区分
 -- 2010/02/16 Ver.1.14 add End
+-- 2011/09/20 Ver.1.16 add Start
+            ,xe.bms_header_data                                                 bms_header_data               --流通BMSヘッダデータ
+            ,xe.bms_line_data                                                   bms_line_data                 --流通BMS明細データ
+-- 2011/09/20 Ver.1.16 add End
       FROM
              (
               SELECT 1                                                           select_block                  --店舗コードがある
@@ -3189,6 +3194,10 @@ AS
                      ,hp.party_name                                              party_name                    --顧客名（漢字）
                      ,hp.organization_name_phonetic                              organization_name_phonetic    --顧客名（カナ）
                      ,avtab.tax_rate                                             tax_rate                      --顧客-税率
+-- 2011/09/20 Ver.1.16 add Start
+                     ,xeh.bms_header_data                                        bms_header_data               --流通BMSヘッダデータ
+                     ,xel.bms_line_data                                          bms_line_data                 --流通BMS明細データ
+-- 2011/09/20 Ver.1.16 add End
                 FROM  xxcos_edi_headers                                          xeh                           --EDIヘッダ情報テーブル
                      ,xxcos_edi_lines                                            xel                           --EDI明細情報テーブル
                      ,hz_cust_accounts                                           hca                           --顧客マスタ
@@ -3587,6 +3596,10 @@ AS
                      ,NULL                                                       party_name                    --顧客名（漢字）
                      ,NULL                                                       organization_name_phonetic    --顧客名（カナ）
                      ,NULL                                                       tax_rate                      --顧客-税率
+-- 2011/09/20 Ver.1.16 add Start
+                     ,xeh.bms_header_data                                        bms_header_data               --流通BMSヘッダデータ
+                     ,xel.bms_line_data                                          bms_line_data                 --流通BMS明細データ
+-- 2011/09/20 Ver.1.16 add End
                 FROM  xxcos_edi_headers                                          xeh                           --EDIヘッダ情報テーブル
                      ,xxcos_edi_lines                                            xel                           --EDI明細情報テーブル
                WHERE xel.edi_header_info_id   = xeh.edi_header_info_id           --EDIヘッダ.ヘッダID                  = EDI明細.ヘッダID
@@ -4327,6 +4340,10 @@ AS
 -- 2010/02/16 Ver.1.14 add start
        ,lt_tsukagatazaiko_div                                                                                 --通過在庫型区分
 -- 2010/02/16 Ver.1.14 add end
+-- 2011/09/20 Ver.1.16 add start
+       ,l_data_tab('BMS_HEADER_DATA')                                                                         --流通BMSヘッダデータ
+       ,l_data_tab('BMS_LINE_DATA')                                                                           --流通BMS明細データ
+-- 2011/09/20 Ver.1.16 add end
       ;
       EXIT WHEN cur_data_record%NOTFOUND;
 --***************************** 2009/07/16 1.9 N.Maeda  ADD START  *************************** --
