@@ -1,0 +1,24 @@
+CREATE TABLE xxwsh.xxwsh_mixed_carriers_tmp
+(
+  intensive_no                  NUMBER        NOT NULL,
+  delivery_no                   VARCHAR2(12)  NOT NULL,
+  default_line_number           VARCHAR2(12),
+  fixed_shipping_method_code    VARCHAR2(30),
+  mixed_class                   VARCHAR2(1),
+  mixed_total_weight            NUMBER,
+  mixed_total_capacity          NUMBER,
+  mixed_no                      VARCHAR2(12),
+  CONSTRAINT xxwsh_mixed_carriers_tmp_pk PRIMARY KEY ( intensive_no,delivery_no )
+  USING INDEX TABLESPACE XXIDX
+  );
+--
+COMMENT ON COLUMN xxwsh.xxwsh_mixed_carriers_tmp.intensive_no                IS '集約No';
+COMMENT ON COLUMN xxwsh.xxwsh_mixed_carriers_tmp.delivery_no                 IS '配送No';
+COMMENT ON COLUMN xxwsh.xxwsh_mixed_carriers_tmp.default_line_number         IS '基準明細No';
+COMMENT ON COLUMN xxwsh.xxwsh_mixed_carriers_tmp.fixed_shipping_method_code  IS '修正配送区分';
+COMMENT ON COLUMN xxwsh.xxwsh_mixed_carriers_tmp.mixed_class                 IS '混載種別';
+COMMENT ON COLUMN xxwsh.xxwsh_mixed_carriers_tmp.mixed_total_weight          IS '混載合計重量';
+COMMENT ON COLUMN xxwsh.xxwsh_mixed_carriers_tmp.mixed_total_capacity        IS '混載合計容積';
+COMMENT ON COLUMN xxwsh.xxwsh_mixed_carriers_tmp.mixed_no                    IS '混載元No';
+--
+COMMENT ON TABLE xxwsh.xxwsh_mixed_carriers_tmp IS '自動配車混載中間テーブル';

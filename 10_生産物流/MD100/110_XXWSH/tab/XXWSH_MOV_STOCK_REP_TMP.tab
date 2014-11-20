@@ -1,0 +1,47 @@
+CREATE TABLE xxwsh.xxwsh_mov_stock_rep_tmp
+(
+  mov_num                 VARCHAR2(12)   NOT NULL,
+  shipped_locat_id        NUMBER         NOT NULL,
+  shipped_locat_code      VARCHAR2(4),
+  ship_to_locat_id        NUMBER         NOT NULL,
+  ship_to_locat_code      VARCHAR2(4),
+  weight_capacity_class   VARCHAR2(1)    NOT NULL,
+  inventory_item_id       NUMBER         NOT NULL,
+  item_id                 NUMBER         NOT NULL,
+  item_code               VARCHAR2(7),
+  instruct_qty            NUMBER,
+  item_class_code         VARCHAR2(1)   NOT NULL,
+  prod_class_code         VARCHAR2(1)   NOT NULL,
+  num_of_deliver          NUMBER,
+  conv_unit               VARCHAR2(4),
+  num_of_cases            NUMBER(5),
+  item_um                 VARCHAR2(4),
+  frequent_qty            NUMBER(8,3),
+  stock_rep_rule          VARCHAR2(1),
+  stock_rep_origin        VARCHAR2(4),
+  CONSTRAINT xxwsh_mov_stock_rep_tmp_pk
+  PRIMARY KEY (mov_num,shipped_locat_id,ship_to_locat_id,item_id)
+  USING INDEX TABLESPACE XXIDX
+  );
+--
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.mov_num                 IS '移動No';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.shipped_locat_id        IS '出庫元ID';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.shipped_locat_code      IS '出庫元(コード)';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.ship_to_locat_id        IS '入庫先ID';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.ship_to_locat_code      IS '入庫先(コード)';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.weight_capacity_class   IS '重量容積区分';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.inventory_item_id       IS '在庫品目ID';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.item_id                 IS '品目ID';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.item_code               IS '品目(コード)';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.instruct_qty            IS '指示数量';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.item_class_code         IS '品目区分';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.prod_class_code         IS '商品区分';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.num_of_deliver          IS '出荷入数';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.conv_unit               IS '入出庫換算単位';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.num_of_cases            IS 'ケース入数';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.item_um                 IS '単位';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.frequent_qty            IS '代表入数';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.stock_rep_rule          IS '在庫補充ルール';
+COMMENT ON COLUMN xxwsh.xxwsh_mov_stock_rep_tmp.stock_rep_origin        IS '在庫補充元';
+--
+COMMENT ON TABLE xxwsh.xxwsh_mov_stock_rep_tmp  IS '移動在庫補充元中間テーブル';

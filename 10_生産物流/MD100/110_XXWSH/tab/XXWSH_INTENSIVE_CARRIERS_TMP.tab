@@ -1,0 +1,52 @@
+CREATE TABLE xxwsh.xxwsh_intensive_carriers_tmp
+(
+  intensive_no                    NUMBER      NOT NULL,
+  transaction_type                VARCHAR2(2),
+  intensive_source_no             VARCHAR2(12),
+  deliver_from                    VARCHAR2(30),
+  deliver_from_id                 NUMBER,
+  deliver_to                      VARCHAR2(20),
+  deliver_to_id                   NUMBER,
+  schedule_ship_date              DATE,
+  schedule_arrival_date           DATE,
+  transaction_type_name           VARCHAR2(30),
+  freight_carrier_code            VARCHAR2(20),
+  carrier_id                      NUMBER,
+  head_sales_branch               VARCHAR2(4),
+  reserve_order                   VARCHAR2(5),
+  intensive_sum_weight            NUMBER,
+  intensive_sum_capacity          NUMBER,
+  max_shipping_method_code        VARCHAR2(30),
+  weight_capacity_class           VARCHAR2(1),
+  max_weight                      NUMBER,
+  max_capacity                    NUMBER,
+  based_weight                    NUMBER,
+  based_capacity                  NUMBER,
+  CONSTRAINT xxwsh_int_car_tmp_pk PRIMARY KEY ( intensive_no )
+  USING INDEX TABLESPACE XXIDX
+  );
+--
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.intensive_no                IS '集約No';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.transaction_type            IS '処理種別（配車）';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.intensive_source_no         IS '集約元No';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.deliver_from                IS '配送元';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.deliver_from_id             IS '配送元ID';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.deliver_to                  IS '配送先';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.deliver_to_id               IS '配送先ID';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.schedule_ship_date          IS '出庫予定日';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.schedule_arrival_date       IS '着荷予定日';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.transaction_type_name       IS '出庫形態';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.freight_carrier_code        IS '運送業者';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.carrier_id                  IS '運送業者ID';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.head_sales_branch           IS '管轄拠点';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.reserve_order               IS '引当順';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.intensive_sum_weight        IS '集約合計重量';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.intensive_sum_capacity      IS '集約合計容積';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.max_shipping_method_code    IS '最大配送区分';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.weight_capacity_class       IS '重量容積区分';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.max_weight                  IS '最大積載重量';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.max_capacity                IS '最大積載容積';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.based_weight                IS '基本重量';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carriers_tmp.based_capacity              IS '基本容積';
+--
+COMMENT ON TABLE xxwsh.xxwsh_intensive_carriers_tmp IS '自動配車集約中間テーブル';

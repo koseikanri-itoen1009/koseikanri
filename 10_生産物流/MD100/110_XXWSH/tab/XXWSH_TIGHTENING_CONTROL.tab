@@ -5,6 +5,7 @@ CREATE TABLE xxwsh.xxwsh_tightening_control
   order_type_id                 NUMBER          NOT NULL,
   deliver_from                  VARCHAR2(4)     NOT NULL,
   prod_class                    VARCHAR2(3)     NOT NULL,
+  sales_branch                  VARCHAR2(4)     NOT NULL,
   sales_branch_category         VARCHAR2(3)     NOT NULL,
   lead_time_day                 NUMBER          NOT NULL,
   schedule_ship_date            DATE            NOT NULL,
@@ -29,6 +30,7 @@ COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.concurrent_id          IS 'コン
 COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.order_type_id          IS '受注タイプID';
 COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.deliver_from           IS '出荷元保管場所';
 COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.prod_class             IS '商品区分';
+COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.sales_branch           IS '拠点';
 COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.sales_branch_category  IS '拠点カテゴリ';
 COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.lead_time_day          IS '生産物流LT';
 COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.schedule_ship_date     IS '出荷予定日';
@@ -45,3 +47,4 @@ COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.program_application_id IS 'コン
 COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.program_id             IS 'コンカレント・プログラムID';
 COMMENT ON COLUMN xxwsh.xxwsh_tightening_control.program_update_date    IS 'プログラム更新日';
 --
+COMMENT ON TABLE xxwsh.xxwsh_shipping_lines_if IS '出荷依頼締め管理（アドオン）';

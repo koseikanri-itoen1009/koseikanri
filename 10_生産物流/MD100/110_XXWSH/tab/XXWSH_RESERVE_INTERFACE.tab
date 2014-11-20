@@ -1,0 +1,64 @@
+CREATE TABLE xxwsh.xxwsh_reserve_interface
+(
+  reserve_interface_id      NUMBER(15,0)  NOT NULL,
+  data_class                VARCHAR2(3),
+  r_no                      VARCHAR2(1),
+  continue                  VARCHAR2(2),
+  recorded_year             VARCHAR2(6),
+  input_base_code           VARCHAR2(4),
+  receive_base_code         VARCHAR2(4),
+  invoice_class_1           VARCHAR2(2),
+  invoice_class_2           VARCHAR2(1),
+  recorded_date             DATE,
+  ship_to_code              VARCHAR2(9),
+  customer_code             VARCHAR2(9),
+  invoice_no                VARCHAR2(9),
+  item_code                 VARCHAR2(7),
+  parent_item_code          VARCHAR2(7),
+  crowd_code                VARCHAR2(4),
+  case_amount_of_content    NUMBER,
+  quantity_in_case          NUMBER,
+  quantity                  NUMBER,
+  created_by                NUMBER(15,0)  NOT NULL,
+  creation_date             DATE          NOT NULL,
+  last_updated_by           NUMBER(15,0)  NOT NULL,
+  last_update_date          DATE          NOT NULL,
+  last_update_login         NUMBER(15,0),
+  request_id                NUMBER(15,0),
+  program_application_id    NUMBER(15,0),
+  program_id                NUMBER(15,0),
+  program_update_date       DATE,
+  CONSTRAINT xxwsh_reserve_if_pk PRIMARY KEY ( RESERVE_INTERFACE_ID )
+  USING INDEX TABLESPACE xxidx
+) ;
+--
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.reserve_interface_id     IS '倉替返品インタフェースID';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.data_class               IS 'データ種別';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.r_no                     IS 'RNo.';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.continue                 IS '継続';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.recorded_year            IS '計上年月';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.input_base_code          IS '入力拠点コード';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.receive_base_code        IS '相手拠点コード';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.invoice_class_1          IS '伝区１';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.invoice_class_2          IS '伝区２';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.recorded_date            IS '計上日付（着日）';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.ship_to_code             IS '配送先コード';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.customer_code            IS '顧客コード';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.invoice_no               IS '伝票No';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.item_code                IS '品名コードエントリ';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.parent_item_code         IS '品名コード親';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.crowd_code               IS '群コード';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.case_amount_of_content   IS 'ケース数';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.quantity_in_case         IS '入数';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.quantity                 IS '本数（バラ）';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.created_by               IS '作成者';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.creation_date            IS '作成日';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.last_updated_by          IS '最終更新者';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.last_update_date         IS '最終更新日';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.last_update_login        IS '最終更新ログイン';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.request_id               IS '要求ID';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.program_application_id   IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.program_id               IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwsh.xxwsh_reserve_interface.program_update_date      IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxwsh.xxwsh_reserve_interface IS '倉替返品インタフェース（アドオン）';

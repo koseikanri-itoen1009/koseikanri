@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxwsh_carriers_sort_tmp_s1 FOR xxwsh.xxwsh_carriers_sort_tmp_s1;

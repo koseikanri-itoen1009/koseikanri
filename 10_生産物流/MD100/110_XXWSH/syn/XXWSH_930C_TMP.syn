@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxwsh_930c_tmp FOR xxwsh.xxwsh_930c_tmp ;

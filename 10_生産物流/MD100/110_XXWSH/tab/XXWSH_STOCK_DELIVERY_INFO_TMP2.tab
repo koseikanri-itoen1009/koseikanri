@@ -1,0 +1,93 @@
+CREATE TABLE xxwsh.xxwsh_stock_delivery_info_tmp2
+(
+  line_number               NUMBER,
+  line_id                   NUMBER(15,0),
+  line_delete_flag          VARCHAR2(1),
+  req_status                VARCHAR2(2),
+  notif_status              VARCHAR2(3),
+  prev_notif_status         VARCHAR2(3),
+  data_type                 VARCHAR2(1),
+  eos_shipped_locat         VARCHAR2(4),
+  eos_freight_carrier       VARCHAR2(4),
+  delivery_no               VARCHAR2(12),
+  request_no                VARCHAR2(12),
+  head_sales_branch         VARCHAR2(4),
+  head_sales_branch_name    VARCHAR2(60),
+  shipped_locat_code        VARCHAR2(4),
+  shipped_locat_name        VARCHAR2(20),
+  ship_to_locat_code        VARCHAR2(4),
+  ship_to_locat_name        VARCHAR2(20),
+  freight_carrier_code      VARCHAR2(4),
+  freight_carrier_name      VARCHAR2(60),
+  deliver_to                VARCHAR2(9),
+  deliver_to_name           VARCHAR2(60),
+  schedule_ship_date        DATE,
+  schedule_arrival_date     DATE,
+  shipping_method_code      VARCHAR2(3),
+  weight                    NUMBER(7,0),
+  mixed_no                  VARCHAR2(12),
+  collected_pallet_qty      NUMBER(3,0),
+  freight_charge_class      VARCHAR2(1),
+  arrival_time_from         VARCHAR2(4),
+  arrival_time_to           VARCHAR2(4),
+  cust_po_number            VARCHAR2(20),
+  description               VARCHAR2(60),
+  pallet_sum_quantity_out   NUMBER(3,0),
+  pallet_sum_quantity_in    NUMBER(3,0),
+  report_dept               VARCHAR2(4),
+  prod_class                VARCHAR2(2),
+  item_class                VARCHAR2(2),
+  item_code                 VARCHAR2(7),
+  item_id                   NUMBER(15,0),
+  item_name                 VARCHAR2(60),
+  item_uom_code             VARCHAR2(3),
+  conv_unit                 VARCHAR2(3),
+  item_quantity             NUMBER(12,3),
+  case_quantity             NUMBER(5,0),
+  lot_class                 VARCHAR2(1)
+);
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.line_number                IS '明細番号';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.line_id                    IS '明細ID';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.line_delete_flag           IS '明細削除フラグ';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.req_status                 IS 'ステータス';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.notif_status               IS '通知ステータス';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.prev_notif_status          IS '前回通知ステータス';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.data_type                  IS 'データタイプ';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.eos_shipped_locat          IS 'EOS宛先（出庫倉庫）';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.eos_freight_carrier        IS 'EOS宛先（運送業者）';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.delivery_no                IS '配送No';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.request_no                 IS '依頼No';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.head_sales_branch          IS '拠点コード';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.head_sales_branch_name     IS '管轄拠点名称';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.shipped_locat_code         IS '出庫倉庫コード';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.shipped_locat_name         IS '出庫倉庫名称';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.ship_to_locat_code         IS '入庫倉庫コード';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.ship_to_locat_name         IS '入庫倉庫名称';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.freight_carrier_code       IS '運送業者コード';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.freight_carrier_name       IS '運送業者名';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.deliver_to                 IS '配送先コード';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.deliver_to_name            IS '配送先名';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.schedule_ship_date         IS '発日';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.schedule_arrival_date      IS '着日';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.shipping_method_code       IS '配送区分';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.weight                     IS '重量/容積';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.mixed_no                   IS '混載元依頼№';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.collected_pallet_qty       IS 'パレット回収枚数';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.freight_charge_class       IS '運賃区分';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.arrival_time_from          IS '着荷時間指定(FROM)';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.arrival_time_to            IS '着荷時間指定(TO)';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.cust_po_number             IS '顧客発注番号';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.description                IS '摘要';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.pallet_sum_quantity_out    IS 'パレット使用枚数（出）';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.pallet_sum_quantity_in     IS 'パレット使用枚数（入）';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.report_dept                IS '報告部署';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.prod_class                 IS '商品区分';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.item_class                 IS '品目区分';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.item_code                  IS '品目コード';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.item_id                    IS '品目ID';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.item_name                  IS '品目名';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.item_uom_code              IS '単位';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.conv_unit                  IS '入出庫換算単位';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.item_quantity              IS '数量';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.case_quantity              IS 'ケース入数';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.lot_class                  IS 'ロット管理区分';

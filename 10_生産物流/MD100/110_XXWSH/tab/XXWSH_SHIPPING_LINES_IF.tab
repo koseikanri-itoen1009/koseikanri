@@ -1,0 +1,74 @@
+CREATE TABLE xxwsh.xxwsh_shipping_lines_if
+(
+  line_id                       NUMBER          NOT NULL,
+  header_id                     NUMBER          NOT NULL,
+  line_number                   NUMBER,
+  orderd_item_code              VARCHAR2(7)     NOT NULL,
+  case_quantity                 NUMBER,
+  orderd_quantity               NUMBER,
+  shiped_quantity               NUMBER,
+  designated_production_date    DATE,
+  original_character            VARCHAR2(6),
+  use_by_date                   DATE,
+  detailed_quantity             NUMBER,
+  ship_to_quantity              NUMBER,
+  reserved_status               VARCHAR2(1),
+  lot_no                        VARCHAR2(10),
+  filler01                      VARCHAR2(150),
+  filler02                      VARCHAR2(150),
+  filler03                      VARCHAR2(150),
+  filler04                      VARCHAR2(150),
+  filler05                      VARCHAR2(150),
+  filler06                      VARCHAR2(150),
+  filler07                      VARCHAR2(150),
+  filler08                      VARCHAR2(150),
+  filler09                      VARCHAR2(150),
+  filler10                      VARCHAR2(150),
+  created_by                    NUMBER(15,0)    NOT NULL,
+  creation_date                 DATE            NOT NULL,
+  last_updated_by               NUMBER(15,0)    NOT NULL,
+  last_update_date              DATE            NOT NULL,
+  last_update_login             NUMBER(15,0),
+  request_id                    NUMBER(15,0),
+  program_application_id        NUMBER(15,0),
+  program_id                    NUMBER(15,0),
+  program_update_date           DATE,
+  CONSTRAINT xxwsh_shipping_lines_if_PK PRIMARY KEY ( line_id )
+  USING INDEX TABLESPACE XXIDX
+  );
+--
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.line_id                     IS '明細ID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.header_id                   IS 'ヘッダID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.line_number                 IS '明細番号';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.orderd_item_code            IS '受注品目';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.case_quantity               IS 'ケース数';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.orderd_quantity             IS '数量';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.shiped_quantity             IS '出荷実績数量';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.designated_production_date  IS '製造日(インタフェース用)';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.original_character          IS '固有記号(インタフェース用)';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.use_by_date                 IS '賞味期限(インタフェース用)';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.detailed_quantity           IS '内訳数量(インタフェース用)';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.ship_to_quantity            IS '入庫実績数量';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.reserved_status             IS '保留ステータス';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.lot_no                      IS 'ロットNo';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.filler01                    IS '品目名';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.filler02                    IS '品目単位';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.filler03                    IS '会社名';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.filler04                    IS 'データ種別';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.filler05                    IS '伝送用枝番';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.filler06                    IS '配送No';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.filler07                    IS '依頼No';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.filler08                    IS '予備08';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.filler09                    IS '予備09';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.filler10                    IS '予備10';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.created_by                  IS '作成者';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.creation_date               IS '作成日';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.last_updated_by             IS '最終更新者';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.last_update_date            IS '最終更新日';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.last_update_login           IS '最終更新ログイン';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.request_id                  IS '要求ID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.program_application_id      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.program_id                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_lines_if.program_update_date         IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxwsh.xxwsh_shipping_lines_if IS '出荷依頼インタフェース明細（アドオン）';

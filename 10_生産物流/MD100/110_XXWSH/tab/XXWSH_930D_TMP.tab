@@ -1,0 +1,69 @@
+CREATE TABLE xxwsh.xxwsh_930d_tmp
+  (
+    arvl_code                 VARCHAR2(4),
+    arvl_name                 VARCHAR2(20),
+    arvl_date                 DATE,
+    ship_date                 DATE,
+    location_code             VARCHAR2(4),
+    location_name             VARCHAR2(20),
+    career_code               VARCHAR2(4),
+    career_name               VARCHAR2(20),
+    ship_method_code          VARCHAR2(2),
+    ship_method_name          VARCHAR2(14),
+    delivery_no               VARCHAR2(12),
+    request_no                VARCHAR2(12),
+    item_code                 VARCHAR2(7),
+    item_name                 VARCHAR2(20),
+    lot_no                    VARCHAR2(10),
+    product_date              DATE,
+    use_by_date               DATE,
+    original_char             VARCHAR2(6),
+    lot_status                VARCHAR2(10),
+    quant_r                   NUMBER(12),
+    quant_i                   NUMBER(12),
+    quant_o                   NUMBER(12),
+    reason                    VARCHAR2(6),
+    created_by                NUMBER(15)    NOT NULL,
+    creation_date             DATE          NOT NULL,
+    last_updated_by           NUMBER(15)    NOT NULL,
+    last_update_date          DATE          NOT NULL,
+    last_update_login         NUMBER(15),
+    request_id                NUMBER(15),
+    program_application_id    NUMBER(15),
+    program_id                NUMBER(15),
+    program_update_date       DATE
+  ) ;
+--
+COMMENT ON TABLE xxwsh.xxwsh_930d_tmp IS '帳票用中間テーブル（93D）' ;
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.arvl_code                IS '入庫倉庫コード';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.arvl_name                IS '入庫倉庫名称';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.arvl_date                IS '入庫日';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.ship_date                IS '出庫日';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.location_code            IS '出庫倉庫コード';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.location_name            IS '出庫倉庫名称';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.career_code              IS '運送業者コード';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.career_name              IS '運送業者名称';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.ship_method_code         IS '配送区分コード';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.ship_method_name         IS '配送区分名称';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.delivery_no              IS '配送Ｎｏ';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.request_no               IS '移動No';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.item_code                IS '品目コード';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.item_name                IS '品目名称';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.lot_no                   IS 'ロット番号';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.product_date             IS '製造日';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.use_by_date              IS '賞味期限';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.original_char            IS '固有記号';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.lot_status               IS '品質';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.quant_r                  IS '依頼数';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.quant_i                  IS '入庫数';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.quant_o                  IS '出庫数';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.reason                   IS '差異事由';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.created_by               IS '作成者' ;
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.creation_date            IS '作成日' ;
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.last_updated_by          IS '最終更新者' ;
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.last_update_date         IS '最終更新日' ;
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.last_update_login        IS '最終更新ログイン' ;
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.request_id               IS '要求ID' ;
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.program_application_id   IS 'コンカレント・プログラム・アプリケーションID' ;
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.program_id               IS 'コンカレント・プログラムID' ;
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.program_update_date      IS 'プログラム更新日' ;

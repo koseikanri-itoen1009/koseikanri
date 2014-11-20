@@ -1,0 +1,53 @@
+CREATE TABLE xxwsh.xxwsh_shipping_stock_rep_tmp
+(
+  deliver_to_id                 NUMBER         NOT NULL,
+  deliver_to                    VARCHAR2(9),
+  request_no                    VARCHAR2(12)   NOT NULL,
+  deliver_from_id               NUMBER         NOT NULL,
+  deliver_from                  VARCHAR2(9),
+  weight_capacity_class         VARCHAR2(1)    NOT NULL,
+  shipping_inventory_item_id    NUMBER         NOT NULL,
+  item_id                       NUMBER         NOT NULL,
+  shipping_item_code            VARCHAR2(7),
+  quantity                      NUMBER,
+  order_type_id                 NUMBER,
+  transaction_type_name         VARCHAR2(30),
+  item_class_code               VARCHAR2(1)   NOT NULL,
+  prod_class_code               VARCHAR2(1)   NOT NULL,
+  drop_ship_wsh_div             VARCHAR2(1),
+  num_of_deliver                NUMBER(5),
+  conv_unit                     VARCHAR2(4),
+  num_of_cases                  NUMBER(5),
+  item_um                       VARCHAR2(4),
+  frequent_qty                  NUMBER(8,3),
+  stock_rep_rule                VARCHAR2(1),
+  stock_rep_origin              VARCHAR2(4),
+  CONSTRAINT xxwsh_shipping_stck_rep_tmp_pk 
+  PRIMARY KEY (request_no,deliver_to_id,deliver_from_id,shipping_inventory_item_id)
+  USING INDEX TABLESPACE XXIDX
+  );
+--
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.deliver_to_id                 IS '出荷先ID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.deliver_to                    IS '出荷先(コード)';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.request_no                    IS '依頼No';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.deliver_from_id               IS '出荷元ID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.deliver_from                  IS '出荷元(コード)';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.weight_capacity_class         IS '重量容積区分';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.shipping_inventory_item_id    IS '出荷品目ID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.item_id                       IS '品目ID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.shipping_item_code            IS '品目(コード)';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.quantity                      IS '数量';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.order_type_id                 IS '受注タイプID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.transaction_type_name         IS '出庫形態';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.item_class_code               IS '品目区分';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.prod_class_code               IS '商品区分';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.drop_ship_wsh_div             IS '直送区分';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.num_of_deliver                IS '出荷入数';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.conv_unit                     IS '入出庫換算単位';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.num_of_cases                  IS 'ケース入数';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.item_um                       IS '単位';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.frequent_qty                  IS '代表入数';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.stock_rep_rule                IS '在庫補充ルール';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_stock_rep_tmp.stock_rep_origin              IS '在庫補充元';
+--
+COMMENT ON TABLE xxwsh.xxwsh_shipping_stock_rep_tmp  IS '出荷在庫補充元中間テーブル';

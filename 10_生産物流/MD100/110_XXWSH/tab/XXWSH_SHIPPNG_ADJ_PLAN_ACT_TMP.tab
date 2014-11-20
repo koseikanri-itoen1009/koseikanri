@@ -1,0 +1,17 @@
+CREATE TABLE xxwsh.xxwsh_shippng_adj_plan_act_tmp
+(
+  head_sales_branch     VARCHAR2(4),
+  item_code             VARCHAR2(7),
+  item_name             VARCHAR2(60),
+  arrival_date          DATE,
+  confirm_quantity      NUMBER(12,3),
+  CONSTRAINT xxwsh_ship_adj_plan_act_tmp_pk PRIMARY KEY ( head_sales_branch, item_code, arrival_date )
+  USING INDEX TABLESPACE XXIDX
+) ;
+--
+COMMENT ON COLUMN xxwsh.xxwsh_shippng_adj_plan_act_tmp.head_sales_branch  IS '拠点コード' ;
+COMMENT ON COLUMN xxwsh.xxwsh_shippng_adj_plan_act_tmp.item_code          IS '品目コード' ;
+COMMENT ON COLUMN xxwsh.xxwsh_shippng_adj_plan_act_tmp.item_name          IS '品目名' ;
+COMMENT ON COLUMN xxwsh.xxwsh_shippng_adj_plan_act_tmp.arrival_date       IS '着日' ;
+COMMENT ON COLUMN xxwsh.xxwsh_shippng_adj_plan_act_tmp.confirm_quantity   IS '予実数' ;
+COMMENT ON TABLE xxwsh.xxwsh_shippng_adj_plan_act_tmp IS '出荷調整表予実中間テーブル' ;

@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxwsh_mixed_carriers_tmp FOR xxwsh.xxwsh_mixed_carriers_tmp;

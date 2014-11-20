@@ -1,0 +1,9 @@
+CREATE TABLE xxwsh.xxwsh_shippng_adj_bucket_tmp
+(
+  bucket_date DATE,
+  CONSTRAINT xxwsh_ship_adj_bucket_tmp_pk PRIMARY KEY ( bucket_date )
+  USING INDEX TABLESPACE XXIDX
+) ;
+--
+COMMENT ON COLUMN xxwsh.xxwsh_shippng_adj_bucket_tmp.bucket_date  IS 'バケット日付' ;
+COMMENT ON TABLE xxwsh.xxwsh_shippng_adj_bucket_tmp IS '出荷調整表バケット中間テーブル' ;

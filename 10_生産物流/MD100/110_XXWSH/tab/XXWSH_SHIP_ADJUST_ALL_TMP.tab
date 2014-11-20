@@ -1,0 +1,13 @@
+CREATE TABLE xxwsh.xxwsh_ship_adjust_all_tmp
+(
+  item_code         VARCHAR2(7),
+  plan_quantity     NUMBER(12,3),
+  confirm_quantity  NUMBER(12,3),
+  CONSTRAINT xxwsh_ship_adjust_all_tmp_pk PRIMARY KEY ( item_code )
+  USING INDEX TABLESPACE XXIDX
+) ;
+--
+COMMENT ON COLUMN xxwsh.xxwsh_ship_adjust_all_tmp.item_code         IS '品目コード' ;
+COMMENT ON COLUMN xxwsh.xxwsh_ship_adjust_all_tmp.plan_quantity     IS '計画数' ;
+COMMENT ON COLUMN xxwsh.xxwsh_ship_adjust_all_tmp.confirm_quantity  IS '予実数' ;
+COMMENT ON TABLE xxwsh.xxwsh_ship_adjust_all_tmp IS '出荷調整表全社中間テーブル' ;

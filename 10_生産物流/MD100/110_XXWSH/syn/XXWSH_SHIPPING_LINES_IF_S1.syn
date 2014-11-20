@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxwsh_shipping_lines_if_s1 FOR xxwsh.xxwsh_shipping_lines_if_s1;

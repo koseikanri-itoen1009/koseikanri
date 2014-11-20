@@ -1,0 +1,120 @@
+CREATE TABLE xxwsh.xxwsh_shipping_headers_if
+(
+  header_id                     NUMBER        NOT NULL,
+  order_type                    VARCHAR2(30),
+  ordered_date                  DATE,
+  party_site_code               VARCHAR2(9),
+  shipping_instructions         VARCHAR2(40),
+  cust_po_number                VARCHAR2(20),
+  order_source_ref              VARCHAR2(12)  NOT NULL,
+  schedule_ship_date            DATE,
+  schedule_arrival_date         DATE,
+  used_pallet_qty               NUMBER,
+  collected_pallet_qty          NUMBER,
+  location_code                 VARCHAR2(4),
+  head_sales_branch             VARCHAR2(4),
+  input_sales_branch            VARCHAR2(4),
+  arrival_time_from             VARCHAR2(4),
+  arrival_time_to               VARCHAR2(4),
+  data_type                     VARCHAR2(2),
+  freight_carrier_code          VARCHAR2(4),
+  shipping_method_code          VARCHAR2(2),
+  delivery_no                   VARCHAR2(12),
+  shipped_date                  DATE,
+  arrival_date                  DATE,
+  eos_data_type                 VARCHAR2(3),
+  tranceration_number           NUMBER(2,0),
+  ship_to_location              VARCHAR2(4),
+  rm_class                      VARCHAR2(2),
+  ordered_class                 VARCHAR2(1),
+  report_post_code              VARCHAR2(4),
+  line_number                   NUMBER,
+  filler01                      VARCHAR2(150),
+  filler02                      VARCHAR2(150),
+  filler03                      VARCHAR2(150),
+  filler04                      VARCHAR2(150),
+  filler05                      VARCHAR2(150),
+  filler06                      VARCHAR2(150),
+  filler07                      VARCHAR2(150),
+  filler08                      VARCHAR2(150),
+  filler09                      VARCHAR2(150),
+  filler10                      VARCHAR2(150),
+  filler11                      VARCHAR2(150),
+  filler12                      VARCHAR2(150),
+  filler13                      VARCHAR2(150),
+  filler14                      VARCHAR2(150),
+  filler15                      VARCHAR2(150),
+  filler16                      VARCHAR2(150),
+  filler17                      VARCHAR2(150),
+  filler18                      VARCHAR2(150),
+  created_by                    NUMBER(15,0)  NOT NULL,
+  creation_date                 DATE          NOT NULL,
+  last_updated_by               NUMBER(15,0)  NOT NULL,
+  last_update_date              DATE          NOT NULL,
+  last_update_login             NUMBER(15,0),
+  request_id                    NUMBER(15,0),
+  program_application_id        NUMBER(15,0),
+  program_id                    NUMBER(15,0),
+  program_update_date           DATE,
+  CONSTRAINT xxwsh_shipping_headers_if_PK PRIMARY KEY ( header_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.header_id              IS 'ヘッダID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.order_type             IS '受注タイプ';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.ordered_date           IS '受注日';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.party_site_code        IS '出荷先';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.shipping_instructions  IS '出荷指示';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.cust_po_number         IS '顧客発注';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.order_source_ref       IS '受注ソース参照';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.schedule_ship_date     IS '出荷予定日';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.schedule_arrival_date  IS '着荷予定日';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.used_pallet_qty        IS 'パレット使用枚数';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.collected_pallet_qty   IS 'パレット回収枚数';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.location_code          IS '出荷元';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.head_sales_branch      IS '管轄拠点';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.input_sales_branch     IS '入力拠点';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.arrival_time_from      IS '着荷時間From';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.arrival_time_to        IS '着荷時間To';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.data_type              IS 'データタイプ';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.freight_carrier_code   IS '運送業者';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.shipping_method_code   IS '配送区分';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.delivery_no            IS '配送No';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.shipped_date           IS '出荷日';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.arrival_date           IS '着荷日';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.eos_data_type          IS 'EOSデータ種別';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.tranceration_number    IS '伝送用枝番';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.ship_to_location       IS '入庫倉庫';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.rm_class               IS '倉替返品区分';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.ordered_class          IS '依頼区分';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.report_post_code       IS '報告部署';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.line_number            IS '制御番号';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler01               IS '予備01';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler02               IS '予備02';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler03               IS '予備03';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler04               IS '予備04';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler05               IS '予備05';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler06               IS '予備06';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler07               IS '予備07';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler08               IS '予備08';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler09               IS '予備09';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler10               IS '予備10';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler11               IS '予備11';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler12               IS '予備12';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler13               IS '予備13';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler14               IS '予備14';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler15               IS '予備15';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler16               IS '予備16';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler17               IS '予備17';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler18               IS '予備18';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.created_by             IS '作成者';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.creation_date          IS '作成日';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.request_id             IS '要求ID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.program_update_date    IS 'プログラム更新日';
+--
+COMMENT ON TABLE xxwsh.xxwsh_shipping_headers_if IS '出荷依頼インタフェースヘッダ（アドオン）';

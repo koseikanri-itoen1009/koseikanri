@@ -1,0 +1,45 @@
+CREATE  TABLE xxwsh.xxwsh_confirm_block_tmp
+(
+  data_class             VARCHAR2(1) NOT NULL,
+  whse_code              VARCHAR2(4),
+  header_id              NUMBER NOT NULL,
+  notif_status           VARCHAR2(3),
+  prod_class             VARCHAR2(2),
+  item_class             VARCHAR2(2),
+  delivery_no            VARCHAR2(12),
+  request_no             VARCHAR2(12),
+  freight_charge_class   VARCHAR2(1),
+  d1_whse_code           VARCHAR2(1),
+  base_date              DATE,
+  created_by             NUMBER(15,0) NOT NULL,
+  creation_date          DATE NOT NULL,
+  last_updated_by        NUMBER(15,0) NOT NULL,
+  last_update_date       DATE NOT NULL,
+  last_update_login      NUMBER(15,0),
+  request_id             NUMBER(15,0),
+  program_application_id NUMBER(15,0),
+  program_id             NUMBER(15,0),
+  program_update_date    DATE,
+  CONSTRAINT xxwsh_confirm_block_tmp_pk PRIMARY KEY ( header_id,data_class )
+) ;
+COMMENT ON TABLE xxwsh.xxwsh_confirm_block_tmp IS '確定ブロック処理中間テーブル' ;
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.data_class IS 'データ区分';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.whse_code IS '保管倉庫コード';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.header_id IS 'ヘッダID';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.notif_status IS '通知ステータス';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.prod_class IS '商品区分';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.item_class IS '品目区分';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.delivery_no IS '配送No';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.request_no IS '依頼No';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.freight_charge_class IS '運賃区分';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.d1_whse_code IS 'D+1倉庫フラグ';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.base_date IS '基準日';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.created_by IS '作成者';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.creation_date IS '作成日';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.last_updated_by IS '最終更新者';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.last_update_date IS '最終更新日';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.last_update_login IS '最終更新ログイン';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.request_id IS '要求ID';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.program_id IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.program_update_date IS 'プログラム更新日';

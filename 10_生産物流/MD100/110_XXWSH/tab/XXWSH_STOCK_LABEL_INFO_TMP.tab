@@ -1,0 +1,28 @@
+CREATE TABLE xxwsh.xxwsh_stock_label_info_tmp
+(
+  request_id                  NUMBER(15,0)  NOT NULL,
+  delivery_no                 VARCHAR2(12)  NOT NULL,
+  request_no                  VARCHAR2(12)  NOT NULL,
+  address                     VARCHAR2(60),
+  phone                       VARCHAR2(15),
+  deliver_to_name             VARCHAR2(60),
+  small_quantity              NUMBER,
+  schedule_ship_date          DATE,
+  freight_carrier_code        VARCHAR2(4),
+  deliver_from                VARCHAR2(4),
+  deliver_to                  VARCHAR2(9)
+  ) ;
+--
+COMMENT ON COLUMN xxwsh.xxwsh_stock_label_info_tmp.request_id             IS '要求ID';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_label_info_tmp.DELIVERY_NO            IS '配送No';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_label_info_tmp.REQUEST_NO             IS '依頼No/移動No';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_label_info_tmp.ADDRESS                IS '住所';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_label_info_tmp.PHONE                  IS '電話番号';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_label_info_tmp.FREIGHT_CARRIER_CODE   IS '運送業者';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_label_info_tmp.DELIVER_FROM           IS '出庫元';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_label_info_tmp.DELIVER_TO             IS '出荷先';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_label_info_tmp.DELIVER_TO_NAME        IS '出荷先名称';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_label_info_tmp.SMALL_QUANTITY         IS '小口個数';
+COMMENT ON COLUMN xxwsh.xxwsh_stock_label_info_tmp.SCHEDULE_SHIP_DATE     IS '出荷予定日';
+--
+COMMENT ON TABLE  xxwsh.xxwsh_stock_label_info_tmp IS 'ラベル情報中間テーブル';

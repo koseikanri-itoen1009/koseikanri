@@ -1,0 +1,12 @@
+CREATE TABLE xxwsh.xxwsh_intensive_carrier_ln_tmp
+(
+  intensive_no                    NUMBER      NOT NULL,
+  request_no                       VARCHAR2(12)      NOT NULL,
+  CONSTRAINT xxwsh_int_car_ln_tmp_pk PRIMARY KEY ( intensive_no, request_no )
+  USING INDEX TABLESPACE XXIDX
+  );
+--
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carrier_ln_tmp.intensive_no                IS '集約No';
+COMMENT ON COLUMN xxwsh.xxwsh_intensive_carrier_ln_tmp.request_no                  IS '依頼No';
+--
+COMMENT ON TABLE xxwsh.xxwsh_intensive_carrier_ln_tmp IS '自動配車集約中間明細テーブル';

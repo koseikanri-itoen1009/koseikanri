@@ -1,0 +1,64 @@
+CREATE TABLE xxwsh.xxwsh_carriers_sort_tmp
+(
+  transaction_id            NUMBER        NOT NULL,
+  transaction_type          VARCHAR2(2)   NOT NULL,
+  delivery_no               VARCHAR2(12),
+  prev_delivery_no          VARCHAR2(12),
+  request_no                VARCHAR2(12)  NOT NULL,
+  mixed_no                  VARCHAR2(12),
+  freight_carrier_code      VARCHAR2(4),
+  career_id                 NUMBER,
+  deliver_from              VARCHAR2(4)   NOT NULL,
+  deliver_from_id           NUMBER        NOT NULL,
+  deliver_to                VARCHAR2(9)   NOT NULL,
+  deliver_to_id             NUMBER        NOT NULL,
+  shipping_method_code      VARCHAR2(2)   NOT NULL,
+  small_sum_class           VARCHAR2(1),
+  schedule_ship_date        DATE          NOT NULL,
+  schedule_arrival_date     DATE          NOT NULL,
+  based_weight              NUMBER        NOT NULL,
+  based_capacity            NUMBER        NOT NULL,
+  sum_weight                NUMBER        NOT NULL,
+  sum_capacity              NUMBER        NOT NULL,
+  weight_capacity_class     VARCHAR2(1),
+  sum_pallet_weight         NUMBER,
+  prod_class                VARCHAR2(2),
+  order_type_id             NUMBER,
+  reserve_order             VARCHAR2(5),
+  max_shipping_method_code  VARCHAR2(2),
+  head_sales_branch         VARCHAR2(4),
+  pre_saved_flg             VARCHAR2(1),
+  CONSTRAINT xxwsh_car_sort_tmp_pk PRIMARY KEY ( transaction_id )
+  USING INDEX TABLESPACE XXIDX
+  );
+--
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.transaction_id            IS 'トランザクションID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.transaction_type          IS '処理種別（配車）';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.delivery_no               IS '配送No';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.prev_delivery_no          IS '前回配送No';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.request_no                IS '依頼No/移動No';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.mixed_no                  IS '混載元No';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.freight_carrier_code      IS '運送業者';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.career_id                 IS '運送業者ID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.deliver_from              IS '出荷元保管場所';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.deliver_from_id           IS '出荷元ID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.deliver_to                IS '出荷先';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.deliver_to_id             IS '出荷先ID';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.shipping_method_code      IS '配送区分';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.small_sum_class           IS '小口区分';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.schedule_ship_date        IS '出庫日';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.schedule_arrival_date     IS '着荷日';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.based_weight              IS '基本重量';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.based_capacity            IS '基本容積';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.sum_weight                IS '積載重量合計';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.sum_capacity              IS '積載容積合計';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.weight_capacity_class     IS '重量容積区分';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.sum_pallet_weight         IS '合計パレット重量';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.prod_class                IS '商品区分';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.order_type_id             IS '取引タイプ';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.reserve_order             IS '引当順';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.max_shipping_method_code  IS '最大配送区分';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.head_sales_branch         IS '管轄拠点';
+COMMENT ON COLUMN xxwsh.xxwsh_carriers_sort_tmp.pre_saved_flg             IS '拠点混載登録済フラグ';
+--
+COMMENT ON TABLE xxwsh.xxwsh_carriers_sort_tmp IS '自動配車ソート用中間テーブル';
