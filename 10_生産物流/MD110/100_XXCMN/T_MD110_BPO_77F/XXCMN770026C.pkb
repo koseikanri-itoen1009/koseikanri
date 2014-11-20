@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/09/02    1.8   A.Shiina         仕様不備障害#T_S_475対応
  *  2008/09/22    1.9   A.Shiina         内部変更要求#236対応
  *  2008/10/15    1.10  A.Shiina         T_S_524対応
+ *  2008/10/24    1.11  N.Yoshida        T_S_524対応(再対応)
  *
  *****************************************************************************************/
 --
@@ -541,9 +542,16 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル・定数 ***
+-- 2008/10/24 v1.10 ADD START
+    cn_prod_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'));
+    cn_item_class_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'));
+    cn_crowd_code_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE'));
+    cn_acnt_crowd_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE'));
+-- 2008/10/24 v1.10 ADD END
 --
     -- *** ローカル・変数 ***
-    lv_select               VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
+-- 2008/10/24 v1.10 UPDATE START
+    /*lv_select               VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
     lv_from_omso            VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
     lv_from_porc            VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
     lv_where                VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
@@ -555,13 +563,169 @@ AS
     lv_where_no_charge      VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
     lv_where_charge         VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
     lv_from_porc_where      VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
-    lv_from_omso_where      VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
+    lv_from_omso_where      VARCHAR2(32000) ;     -- データ取得用ＳＱＬ*/
+    lv_where                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_main_start            VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_common                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_main_end              VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group1                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group2                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group3                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group4                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group5                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group6                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group7                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_group8                VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po102_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po102_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_po102               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_po102               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po101_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po101_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_po101               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_po101               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po112_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po112_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_po112               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_po112               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po103x5_1_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po103x5_2_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_po103x5             VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_po103x5             VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po103x124_1_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po103x124_2_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_po103x124           VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_po103x124           VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po105_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po105_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_po105               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_po105               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po108_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_po108_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_po108               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_po108               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po102_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po102_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po101_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po101_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po112_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po112_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po103x5_1_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po103x5_2_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po103x124_1_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po103x124_2_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po105_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po105_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po108_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_po108_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po102_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po102_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po101_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po101_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po112_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po112_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po103x5_1_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po103x5_2_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po103x124_1_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po103x124_2_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po105_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po105_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po108_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_po108_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po102_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po102_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po101_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po101_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po112_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po112_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po103x5_1_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po103x5_2_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po103x124_1_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po103x124_2_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po105_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po105_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po108_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_po108_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om102_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om102_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_om102               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_om102               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om101_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om101_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_om101               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_om101               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om112_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om112_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_om112               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_om112               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om103x5_1_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om103x5_2_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_om103x5             VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_om103x5             VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om103x124_1_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om103x124_2_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_om103x124           VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_om103x124           VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om105_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om105_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_om105               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_om105               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om108_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g1_om108_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_1_om108               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_2_om108               VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om102_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om102_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om101_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om101_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om112_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om112_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om103x5_1_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om103x5_2_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om103x124_1_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om103x124_2_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om105_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om105_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om108_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g3_om108_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om102_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om102_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om101_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om101_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om112_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om112_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om103x5_1_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om103x5_2_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om103x124_1_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om103x124_2_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om105_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om105_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om108_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g5_om108_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om102_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om102_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om101_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om101_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om112_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om112_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om103x5_1_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om103x5_2_hint     VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om103x124_1_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om103x124_2_hint   VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om105_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om105_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om108_1_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
+    lv_select_g8_om108_2_hint       VARCHAR2(32767) ;     -- データ取得用ＳＱＬ
 --
-    lv_crowd_c_name         VARCHAR2(20) ;        -- 郡コードカラム名(抽出条件用)
+    lt_lkup_code            fnd_lookup_values.lookup_code%TYPE;
+    --lv_crowd_c_name         VARCHAR2(20) ;        -- 郡コードカラム名(抽出条件用)
 --
     -- *** ローカル・カーソル ***
     TYPE   ref_cursor IS REF CURSOR ;
     lc_ref ref_cursor ;
+--
+    get_cur01    ref_cursor;
+-- 2008/10/24 v1.10 UPDATE END
 --
   BEGIN
 --
@@ -571,17 +735,3349 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2008/10/24 v1.10 UPDATE START
+-- 2008/10/24 v1.10 ADD START  
+    SELECT flv.lookup_code
+    INTO   lt_lkup_code
+    FROM   xxcmn_lookup_values_v flv
+    WHERE  flv.lookup_type = 'XXCMN_CONSUMPTION_TAX_RATE'
+    AND    ROWNUM          = 1;
+--
+    lv_select_main_start :=
+       ' SELECT'
+    || ' mst.group1_code AS group1_code' -- [集計1]コード
+    || ' ,mst.group2_code AS group2_code' -- [集計2]コード
+    || ' ,mst.group3_code AS group3_code' -- [集計3]コード
+    || ' ,mst.group4_code AS group4_code' -- [集計4]コード
+    || ' ,mst.group5_code AS group5_code' -- [集計5]コード
+    || ' ,mst.request_item_code AS request_item_code' -- 出荷品目コード
+    || ' ,mst.item_code AS item_code' -- 品目コード
+    || ' ,MAX(mst.request_item_name) AS request_item_name' -- 出荷品目名称
+    || ' ,MAX(mst.item_name) AS item_name' -- 取引単位
+    || ' ,MAX(mst.trans_um) AS trans_um' -- 取引数量
+    || ' ,SUM(mst.trans_qty) AS trans_qty' -- 取引数量
+    || ' ,SUM(mst.actual_price) AS actual_price' -- 実際金額
+    || ' ,SUM(mst.stnd_price) AS stnd_price' -- 標準金額
+    || ' ,SUM(mst.price) AS price' -- 有償金額
+    || ' ,SUM(mst.price * DECODE( NVL(mst.tax,0),0,0,(mst.tax/100) ) )'
+    || ' AS tax' -- 消費税率 
+    || ' FROM ('
+       ;
+-- 
+ -- 共通SELECT
+    lv_select_common :=
+       ' oola.attribute3 AS request_item_code'
+    || ' ,ximb2.item_short_name AS request_item_name'
+    || ' ,iimb.item_no AS item_code'
+    || ' ,ximb.item_short_name AS item_name'
+    || ' ,itp.trans_um AS trans_um'
+    || ' ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)'
+    || ' AS trans_qty' -- 取引数量 
+    || ' ,(' 
+    || ' (CASE iimb2.attribute15'
+    || ' WHEN ''1'' THEN xsupv.stnd_unit_price' 
+    || ' ELSE DECODE('
+    || ' iimb2.lot_ctl' 
+    || ' ,1,(SELECT DECODE('
+    || ' SUM(NVL(xlc.trans_qty,0))' 
+    || ' ,0,0' 
+    || ' ,SUM(xlc.trans_qty * xlc.unit_ploce) / SUM(NVL(xlc.trans_qty,0)))'
+    || ' FROM xxcmn_lot_cost xlc'
+    || ' WHERE xlc.item_id = iimb2.item_id),xsupv.stnd_unit_price)' 
+    || ' END) * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+    || ' ) AS actual_price' -- 実際金額
+    || ' ,(xsupv.stnd_unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+    || ' ) AS stnd_price' -- 標準金額
+    || ' ,(CASE iimb.lot_ctl'
+    || ' WHEN 0 THEN (xola.unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))'
+    || ' ELSE ((SELECT DECODE('
+    || ' SUM(NVL(xlc.trans_qty,0))' 
+    || ' ,0,0' 
+    || ' ,SUM(xlc.trans_qty * xlc.unit_ploce) / SUM(NVL(xlc.trans_qty,0)))'
+    || ' FROM xxcmn_lot_cost xlc'
+    || ' WHERE xlc.item_id = itp.item_id ) * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))'
+    || ' )' 
+    || ' END) AS price' -- 有償金額
+    || ' ,TO_NUMBER(''' || lt_lkup_code    || ''') AS tax' 
+    ;
+-- 
+ -- 共通SELECT group1 
+    lv_select_group1 :=
+       ' ,ooha.attribute11 AS group1_code' -- 成績部署 
+    || ' ,mcb2.segment1 AS group2_code' -- 品目区分
+    || ' ,itp.whse_code AS group3_code' -- 倉庫
+    || ' ,xpv.party_number AS group4_code' -- 出荷先
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+    ;
+ -- 共通SELECT group2 
+    lv_select_group2 :=
+      ' ,ooha.attribute11 AS group1_code' -- 成績部署 
+    || ' ,mcb2.segment1 AS group2_code' -- 品目区分
+    || ' ,itp.whse_code AS group3_code' -- 倉庫
+    || ' ,NULL AS group4_code' -- NULL
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+    ;
+-- 
+ -- 共通SELECT group3 
+    lv_select_group3 :=
+       ' ,ooha.attribute11 AS group1_code' -- 成績部署 
+    || ' ,mcb2.segment1 AS group2_code' -- 品目区分
+    || ' ,xpv.party_number AS group3_code' -- 出荷先
+    || ' ,NULL AS group4_code' -- NULL
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+    ;
+-- 
+ -- 共通SELECT group4 
+    lv_select_group4 :=
+       ' ,ooha.attribute11 AS group1_code' -- 成績部署 
+    || ' ,mcb2.segment1 AS group2_code' -- 品目区分
+    || ' ,NULL AS group3_code' -- NULL
+    || ' ,NULL AS group4_code' -- NULL
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+    ;
+-- 
+ -- 共通SELECT group5 
+    lv_select_group5 :=
+       ' ,mcb2.segment1 AS group1_code' -- 品目区分 
+    || ' ,itp.whse_code AS group2_code' -- 倉庫
+    || ' ,xpv.party_number AS group3_code' -- 出荷先
+    || ' ,NULL AS group4_code' -- NULL
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+    ;
+-- 
+ -- 共通SELECT group6 
+    lv_select_group6 :=
+       ' ,mcb2.segment1 AS group1_code' -- 品目区分 
+    || ' ,itp.whse_code AS group2_code' -- 倉庫
+    || ' ,NULL AS group3_code' -- NULL
+    || ' ,NULL AS group4_code' -- NULL
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+    ;
+-- 
+ -- 共通SELECT group7 
+    lv_select_group7 :=
+       ' ,mcb2.segment1 AS group1_code' -- 品目区分 
+    || ' ,xpv.party_number AS group2_code' -- 出荷先
+    || ' ,NULL AS group3_code' -- NULL
+    || ' ,NULL AS group4_code' -- NULL
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+    ;
+-- 
+ -- 共通SELECT group8 
+    lv_select_group8 :=
+       ' ,mcb2.segment1 AS group1_code' -- 品目区分 
+    || ' ,NULL AS group2_code' -- NULL
+    || ' ,NULL AS group3_code' -- NULL
+    || ' ,NULL AS group4_code' -- NULL
+    || ' ,mcb3.segment1 AS group5_code' -- 郡コード or 経理郡コード 
+    ;
+-- 
+    lv_select_main_end :=
+       ' ) mst' 
+    || ' GROUP BY '
+    || ' mst.group1_code' -- [集計1]コード
+    || ' ,mst.group2_code' -- [集計2]コード
+    || ' ,mst.group3_code' -- [集計3]コード
+    || ' ,mst.group4_code' -- [集計4]コード
+    || ' ,mst.group5_code' -- [集計5]コード
+    || ' ,mst.request_item_code' -- 出荷品目コード
+    || ' ,mst.item_code' -- 品目コード
+    || ' ORDER BY '
+    || ' mst.group1_code' -- [集計1]コード
+    || ' ,mst.group2_code' -- [集計2]コード
+    || ' ,mst.group3_code' -- [集計3]コード
+    || ' ,mst.group4_code' -- [集計4]コード
+    || ' ,mst.group5_code' -- [集計5]コード
+    || ' ,mst.request_item_code' -- 出荷品目コード
+    || ' ,mst.item_code' -- 品目コード
+    ;
+-- 
+ --===============================================================
+ -- GROUP1、2、4、6、7
+ --===============================================================
+ -- PORC_102
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_po102_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_102
+ -- パターン:1
+    lv_select_1_po102 :=
+       ' FROM ' 
+    || '  ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND xrpm.item_div_origin = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''102''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+--
+ -- PORC_102
+ -- パターン:2
+    lv_select_2_po102 :=
+       ' FROM ' 
+    || '  ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND xrpm.item_div_origin = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = rsl.oe_order_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''102''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- PORC_101
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_po101_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_101
+ -- パターン:1
+    lv_select_1_po101 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''101''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- PORC_101
+ -- パターン:2
+    lv_select_2_po101 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = rsl.oe_order_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''101''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- PORC_112
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_po112_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_112
+ -- パターン:1
+    lv_select_1_po112 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' ||cn_item_class_id    || '''' 
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''112''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- PORC_112
+ -- パターン:2
+    lv_select_2_po112 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' ||cn_item_class_id    || '''' 
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = rsl.oe_order_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''112''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- PORC_103_5
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_po103x5_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_103_5
+ -- パターン:1
+    lv_select_1_po103x5 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''103''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND (xrpm.item_div_origin = mcb2.segment1' 
+    || ' OR xrpm.item_div_origin IS NULL)' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    || ' AND xrpm.item_div_origin = mcb2.segment1' 
+    ;
+-- 
+ -- PORC_103_5
+ -- パターン:2
+    lv_select_2_po103x5 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = rsl.oe_order_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''103''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND (xrpm.item_div_origin = mcb2.segment1' 
+    || ' OR xrpm.item_div_origin IS NULL)' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    || ' AND xrpm.item_div_origin = mcb2.segment1' 
+    ;
+-- 
+ -- PORC_103_124
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_po103x124_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_103_124
+ -- パターン:1
+    lv_select_1_po103x124 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code'
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''103''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND (xrpm.item_div_origin = mcb2.segment1' 
+    || ' OR xrpm.item_div_origin IS NULL)' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    || ' AND xrpm.item_div_origin IS NULL' 
+    ;
+-- 
+ -- PORC_103_124
+ -- パターン:2
+    lv_select_2_po103x124 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = rsl.oe_order_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code'
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''103''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND (xrpm.item_div_origin = mcb2.segment1' 
+    || ' OR xrpm.item_div_origin IS NULL)' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    || ' AND xrpm.item_div_origin IS NULL' 
+    ;
+-- 
+ -- PORC_105
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_po105_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_105
+ -- パターン:1
+    lv_select_1_po105 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''105''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- PORC_105
+ -- パターン:2
+    lv_select_2_po105 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = rsl.oe_order_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''105''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- PORC_108
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_po108_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_108
+ -- パターン:1
+    lv_select_1_po108 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,gmi_item_categories gic5'
+    || ' ,mtl_categories_b mcb5'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND mcb1.segment1 = ''1''' 
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 = ''5''' 
+    || ' AND gic5.item_id = itp.item_id' 
+    || ' AND gic5.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic5.category_id = mcb5.category_id' 
+    || ' AND mcb5.segment1 = ''2''' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''108''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- PORC_108
+ -- パターン:2
+    lv_select_2_po108 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,rcv_shipment_lines rsl'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,gmi_item_categories gic5'
+    || ' ,mtl_categories_b mcb5'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''PORC''' -- 文書タイプ(PORC)
+    || ' AND itp.completed_ind = 1' -- 完了フラグ
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND mcb1.segment1 = ''1''' 
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 = ''5''' 
+    || ' AND gic5.item_id = itp.item_id' 
+    || ' AND gic5.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic5.category_id = mcb5.category_id' 
+    || ' AND mcb5.segment1 = ''2''' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND rsl.shipment_header_id = itp.doc_id' 
+    || ' AND rsl.line_num = itp.doc_line' 
+    || ' AND oola.header_id = rsl.oe_order_header_id' 
+    || ' AND oola.line_id = rsl.oe_order_line_id' 
+    || ' AND ooha.header_id = rsl.oe_order_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''108''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- OMSO_102
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_om102_1_hint :=
+       ' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd oola ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_102
+ -- パターン:1
+    lv_select_1_om102 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND xrpm.item_div_origin = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''102''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- OMSO_102
+ -- パターン:2
+    lv_select_2_om102 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND xrpm.item_div_origin = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = wdd.source_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''102''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- OMSO_101
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_om101_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_101
+ -- パターン:1
+    lv_select_1_om101 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code'
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''101''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- OMSO_101
+ -- パターン:2
+    lv_select_2_om101 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = wdd.source_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code'
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''101''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- OMSO_112
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_om112_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_112
+ -- パターン:1
+    lv_select_1_om112 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''112''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- OMSO_112
+ -- パターン:2
+    lv_select_2_om112 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,xxcmn_party_sites2_v xpsv' -- パーティサイト情報View2 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = wdd.source_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_site_id = xoha.result_deliver_to_id' 
+    || ' AND xpsv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xpsv.party_id = xpv.party_id' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''112''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- OMSO_103_5
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_om103x5_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_103_5
+ -- パターン:1
+    lv_select_1_om103x5 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code'
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''103''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND (xrpm.item_div_origin = mcb2.segment1' 
+    || ' OR xrpm.item_div_origin IS NULL)' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    || ' AND xrpm.item_div_origin = mcb2.segment1' 
+    ;
+-- 
+ -- OMSO_103_5
+ -- パターン:2
+    lv_select_2_om103x5 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = wdd.source_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code'
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''103''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND (xrpm.item_div_origin = mcb2.segment1' 
+    || ' OR xrpm.item_div_origin IS NULL)' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    || ' AND xrpm.item_div_origin = mcb2.segment1' 
+    ;
+-- 
+ -- OMSO_103_124
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_om103x124_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_103_124
+ -- パターン:1
+    lv_select_1_om103x124 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code'
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''103''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND (xrpm.item_div_origin = mcb2.segment1' 
+    || ' OR xrpm.item_div_origin IS NULL)' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    || ' AND xrpm.item_div_origin IS NULL' 
+    ;
+-- 
+ -- OMSO_103_124
+ -- パターン:2
+    lv_select_2_om103x124 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = itp.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = itp.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND gic3.item_id = itp.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = wdd.source_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND xola.request_item_code = xola.shipping_item_code'
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = itp.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''103''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND (xrpm.item_div_origin = mcb2.segment1' 
+    || ' OR xrpm.item_div_origin IS NULL)' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    || ' AND xrpm.item_div_origin IS NULL' 
+    ;
+-- 
+ -- OMSO_105
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_om105_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_105
+ -- パターン:1
+    lv_select_1_om105 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''105''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- OMSO_105
+ -- パターン:2
+    lv_select_2_om105 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 IN (''1'',''2'',''4'')' 
+    || ' AND xrpm.item_div_ahead = mcb2.segment1' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = wdd.source_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''105''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- OMSO_108
+ -- group1
+ -- 受払区分入力無し(1)
+ -- ヒント句
+    lv_select_g1_om108_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_108
+ -- パターン:1
+    lv_select_1_om108 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,gmi_item_categories gic5'
+    || ' ,mtl_categories_b mcb5'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND mcb1.segment1 = ''1''' 
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_set_id = ''' || cn_crowd_code_id    || ''''
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 = ''5''' 
+    || ' AND gic5.item_id = itp.item_id' 
+    || ' AND gic5.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic5.category_id = mcb5.category_id' 
+    || ' AND mcb5.segment1 = ''2''' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = oola.header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''108''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- OMSO_108
+ -- パターン:2
+    lv_select_2_om108 :=
+       ' FROM ' 
+    || ' ic_tran_pnd itp'
+    || ' ,wsh_delivery_details wdd'
+    || ' ,oe_order_lines_all oola'
+    || ' ,oe_order_headers_all ooha'
+    || ' ,oe_transaction_types_all otta'
+    || ' ,xxwsh_order_headers_all xoha'
+    || ' ,xxwsh_order_lines_all xola'
+    || ' ,gmi_item_categories gic1'
+    || ' ,mtl_categories_b mcb1'
+    || ' ,gmi_item_categories gic2'
+    || ' ,mtl_categories_b mcb2'
+    || ' ,gmi_item_categories gic3'
+    || ' ,mtl_categories_b mcb3'
+    || ' ,gmi_item_categories gic4'
+    || ' ,mtl_categories_b mcb4'
+    || ' ,gmi_item_categories gic5'
+    || ' ,mtl_categories_b mcb5'
+    || ' ,ic_item_mst_b iimb'
+    || ' ,xxcmn_item_mst_b ximb'
+    || ' ,ic_lots_mst ilm'
+    || ' ,xxcmn_lot_cost xlc'
+    || ' ,ic_item_mst_b iimb2'
+    || ' ,xxcmn_item_mst_b ximb2'
+    || ' ,ic_item_mst_b iimb3'
+    || ' ,xxcmn_stnd_unit_price_v xsupv' -- 標準原価情報View 
+    || ' ,po_vendor_sites_all pvsa' -- 仕入先サイトマスタ 
+    || ' ,po_vendors pv' -- 仕入先マスタ 
+    || ' ,xxcmn_parties2_v xpv' -- パーティ情報View2 
+    || ' ,xxcmn_rcv_pay_mst xrpm'
+    || ' WHERE itp.doc_type = ''OMSO''' 
+    || ' AND itp.completed_ind = 1' 
+    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
+    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND gic1.item_id = iimb3.item_id' 
+    || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic1.category_id = mcb1.category_id' 
+    || ' AND mcb1.segment1 = ''' || ir_param.prod_div    || ''''
+    || ' AND mcb1.segment1 = ''1''' 
+    || ' AND gic2.item_id = iimb3.item_id' 
+    || ' AND gic2.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic2.category_id = mcb2.category_id' 
+    || ' AND mcb2.segment1 = ''5''' 
+    || ' AND gic3.item_id = iimb3.item_id' 
+    || ' AND gic3.category_set_id = ''' || cn_crowd_code_id    || ''''
+    || ' AND gic3.category_id = mcb3.category_id' 
+    || ' AND gic4.item_id = itp.item_id' 
+    || ' AND gic4.category_set_id = ''' || cn_item_class_id    || ''''
+    || ' AND gic4.category_id = mcb4.category_id' 
+    || ' AND mcb4.segment1 = ''5''' 
+    || ' AND gic5.item_id = itp.item_id' 
+    || ' AND gic5.category_set_id = ''' || cn_prod_class_id    || ''''
+    || ' AND gic5.category_id = mcb5.category_id' 
+    || ' AND mcb5.segment1 = ''2''' 
+    || ' AND ilm.item_id = itp.item_id' 
+    || ' AND ilm.lot_id = itp.lot_id' 
+    || ' AND iimb.item_id = ilm.item_id' 
+    || ' AND xlc.item_id(+) = ilm.item_id' 
+    || ' AND xlc.lot_id (+) = ilm.lot_id'
+    || ' AND ximb.item_id = iimb.item_id' 
+    || ' AND ximb.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND ximb.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND wdd.delivery_detail_id = itp.line_detail_id' 
+    || ' AND oola.org_id = wdd.org_id' 
+    || ' AND oola.header_id = wdd.source_header_id' 
+    || ' AND oola.line_id = wdd.source_line_id' 
+    || ' AND ooha.header_id = wdd.source_header_id' 
+    || ' AND otta.transaction_type_id = ooha.order_type_id' 
+    || ' AND ((otta.attribute4 <> ''2'')' 
+    || ' OR (otta.attribute4 IS NULL))' 
+    || ' AND xoha.header_id = ooha.header_id' 
+    || ' AND xola.line_id = oola.line_id' 
+    || ' AND iimb3.item_no = xola.request_item_code' 
+    || ' AND iimb2.item_no(+) = oola.attribute3' 
+    || ' AND ximb2.item_id(+) = iimb2.item_id' 
+    || ' AND ximb2.start_date_active(+) <= SYSDATE' 
+    || ' AND ximb2.end_date_active(+) >= SYSDATE' 
+    || ' AND xsupv.item_id = iimb3.item_id' 
+    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
+    || ' AND pv.vendor_id = pvsa.vendor_id' 
+    || ' AND pv.customer_num = xpv.account_number' 
+    || ' AND xpv.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
+    || ' AND xrpm.doc_type = itp.doc_type' 
+    || ' AND xrpm.dealings_div = ''108''' 
+    || ' AND xrpm.shipment_provision_div = otta.attribute1' 
+    || ' AND xrpm.ship_prov_rcv_pay_category = otta.attribute11' 
+    || ' AND xrpm.break_col_06 IS NOT NULL'
+    ;
+-- 
+ -- PORC_102
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_po102_2_hint :=
+ ' SELECT /*+ leading(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */'; 
+-- 
+ -- PORC_101
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_po101_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */'; 
+-- 
+ -- PORC_112
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_po112_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta xrpm gic4 mcb4) use_nl(itp rsl ooha otta xrpm gic4 mcb4) */'; 
+-- 
+ -- PORC_103_5
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_po103x5_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */'; 
+-- 
+ -- PORC_103_124
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_po103x124_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */'; 
+-- 
+ -- PORC_105
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_po105_2_hint :=
+ ' SELECT /*+ leading(itp rsl ooha otta gic4 mcb4) use_nl(itp rsl ooha otta gic4 mcb4) */'; 
+-- 
+ -- PORC_108
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_po108_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta xrpm gic4 mcb4) use_nl(itp rsl ooha otta xrpm gic4 mcb4) */'; 
+-- 
+ -- OMSO_102
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_om102_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta xrpm gic2 mcb2 gic1 mcb1) use_nl(itp wdd ooha otta xrpm gic2 mcb2 gic1 mcb1)*/';
+-- 
+ -- OMSO_101
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_om101_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl(itp wdd ooha otta xrpm gic1 mcb1 gic2 mcb2)*/';
+-- 
+ -- OMSO_112
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_om112_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta xrpm gic4 mcb4) use_nl(itp wdd ooha otta xrpm gic4 mcb4)*/';
+-- 
+ -- OMSO_103_5
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_om103x5_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl(itp wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) */'; 
+-- 
+ -- OMSO_103_124
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_om103x124_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl(itp wdd ooha otta xrpm gic1 mcb1 gic2 mcb2) */'; 
+-- 
+ -- OMSO_105
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_om105_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic4 mcb4) use_nl(itp wdd ooha otta gic4 mcb4) */'; 
+-- 
+ -- OMSO_108
+ -- group1
+ -- 受払区分入力有り(2)
+ -- ヒント句
+    lv_select_g1_om108_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta xrpm gic4 mcb4) use_nl(itp wdd ooha otta xrpm gic4 mcb4) */'; 
+-- 
+ --===============================================================
+ -- GROUP3
+ --===============================================================
+ -- PORC_102
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_po102_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_101
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_po101_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_112
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_po112_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_103_5
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_po103x5_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_103_124
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_po103x124_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_105
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_po105_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_108
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_po108_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- OMSO_102
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_om102_1_hint :=
+       ' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd oola ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_101
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_om101_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_112
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_om112_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_103_5
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_om103x5_1_hint :=
+        ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_103_124
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_om103x124_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_105
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_om105_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_108
+ -- group3
+ -- 倉庫コード入力ALL(1)
+ -- ヒント句
+    lv_select_g3_om108_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- PORC_102
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_po102_2_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_101
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_po101_2_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_112
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_po112_2_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_103_5
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_po103x5_2_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_103_124
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_po103x124_2_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_105
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_po105_2_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_108
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_po108_2_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- OMSO_102
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_om102_2_hint :=
+        ' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd oola ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_101
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_om101_2_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_112
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_om112_2_hint :=
+        ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_103_5
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_om103x5_2_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_103_124
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_om103x124_2_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_105
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_om105_2_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_108
+ -- group3
+ -- 倉庫コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g3_om108_2_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ --===============================================================
+ -- GROUP5
+ --===============================================================
+ -- PORC_102
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_po102_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_101
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_po101_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_112
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_po112_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_103_5
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_po103x5_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_103_124
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_po103x124_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_105
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_po105_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_108
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_po108_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- OMSO_102
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_om102_1_hint :=
+       ' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd oola ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_101
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_om101_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_112
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_om112_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_103_5
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_om103x5_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_103_124
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_om103x124_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_105
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_om105_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_108
+ -- group5
+ -- 成績部署コード入力ALL(1)
+ -- ヒント句
+    lv_select_g5_om108_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- PORC_102
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_po102_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */'; 
+-- 
+ -- PORC_101
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_po101_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */'; 
+-- 
+ -- PORC_112
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_po112_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta gic4 mcb4) use_nl(itp rsl ooha otta gic4 mcb4) */';
+-- 
+ -- PORC_103_5
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_po103x5_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta gic1 mcb1 gic2 mcb2) */';
+-- 
+ -- PORC_103_124
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_po103x124_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta gic1 mcb1 gic2 mcb2) */';
+-- 
+ -- PORC_105
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_po105_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta gic4 mcb4) use_nl(itp rsl ooha otta gic4 mcb4) */';
+-- 
+ -- PORC_108
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_po108_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta gic4 mcb4) use_nl(itp rsl ooha otta gic4 mcb4) */';
+-- 
+ -- OMSO_102
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_om102_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic2 mcb2 gic1 mcb1) use_nl(itp wdd ooha otta gic2 mcb2 gic1 mcb1) */';
+-- 
+ -- OMSO_101
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_om101_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic1 mcb1 gic2 mcb2) use_nl(itp wdd ooha otta gic1 mcb1 gic2 mcb2) */';
+-- 
+ -- OMSO_112
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_om112_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic4 mcb4) use_nl(itp wdd ooha otta gic4 mcb4) */';
+-- 
+ -- OMSO_103_5
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_om103x5_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic1 mcb1 gic2 mcb2) use_nl(itp wdd ooha otta gic1 mcb1 gic2 mcb2) */';
+-- 
+ -- OMSO_103_124
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_om103x124_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic1 mcb1 gic2 mcb2) use_nl(itp wdd ooha otta gic1 mcb1 gic2 mcb2) */';
+-- 
+ -- OMSO_105
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_om105_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic4 mcb4) use_nl(itp wdd ooha otta gic4 mcb4) */';
+-- 
+ -- OMSO_108
+ -- group5
+ -- 成績部署コード入力<>ALL(2)
+ -- ヒント句
+    lv_select_g5_om108_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic4 mcb4) use_nl(itp wdd ooha otta gic4 mcb4) */';
+-- 
+ --===============================================================
+ -- GROUP8
+ --===============================================================
+ -- PORC_102
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_po102_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_101
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_po101_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_112
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_po112_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_103_5
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_po103x5_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb1 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb1 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_103_124
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_po103x124_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb1 rsl oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb1 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_105
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_po105_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- PORC_108
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_po108_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 rsl oola ooha otta) use_nl(itp gic4 mcb4 rsl oola ooha otta) */'; 
+-- 
+ -- OMSO_102
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_om102_1_hint :=
+       ' SELECT /*+ leading(itp gic2 mcb2 gic1 mcb1 wdd oola ooha otta) use_nl(itp gic2 mcb2 gic1 mcb1 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_101
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_om101_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_112
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_om112_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_103_5
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_om103x5_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_103_124
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_om103x124_1_hint :=
+       ' SELECT /*+ leading(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta) use_nl(itp gic1 mcb1 gic2 mcb2 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_105
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_om105_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- OMSO_108
+ -- group8
+ -- 品目区分入力無し(1)
+ -- ヒント句
+    lv_select_g8_om108_1_hint :=
+       ' SELECT /*+ leading(itp gic4 mcb4 wdd oola ooha otta) use_nl(itp gic4 mcb4 wdd oola ooha otta)*/';
+-- 
+ -- PORC_102
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_po102_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */'; 
+-- 
+ -- PORC_101
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_po101_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta xrpm gic1 mcb1 gic2 mcb2) */'; 
+-- 
+ -- PORC_112
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_po112_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta gic4 mcb4) use_nl(itp rsl ooha otta gic4 mcb4) */';
+-- 
+ -- PORC_103_5
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_po103x5_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta gic1 mcb1 gic2 mcb2) */';
+-- 
+ -- PORC_103_124
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_po103x124_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta gic1 mcb1 gic2 mcb2) use_nl(itp rsl ooha otta gic1 mcb1 gic2 mcb2) */';
+-- 
+ -- PORC_105
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_po105_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta gic4 mcb4) use_nl(itp rsl ooha otta gic4 mcb4) */';
+-- 
+ -- PORC_108
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_po108_2_hint :=
+       ' SELECT /*+ leading(itp rsl ooha otta gic4 mcb4) use_nl(itp rsl ooha otta gic4 mcb4) */';
+-- 
+ -- OMSO_102
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_om102_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic2 mcb2 gic1 mcb1) use_nl(itp wdd ooha otta gic2 mcb2 gic1 mcb1) */';
+-- 
+ -- OMSO_101
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_om101_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic1 mcb1 gic2 mcb2) use_nl(itp wdd ooha otta gic1 mcb1 gic2 mcb2) */';
+-- 
+ -- OMSO_112
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_om112_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic4 mcb4) use_nl(itp wdd ooha otta gic4 mcb4) */';
+-- 
+ -- OMSO_103_5
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_om103x5_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic1 mcb1 gic2 mcb2) use_nl(itp wdd ooha otta gic1 mcb1 gic2 mcb2) */';
+-- 
+ -- OMSO_103_124
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_om103x124_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic1 mcb1 gic2 mcb2) use_nl(itp wdd ooha otta gic1 mcb1 gic2 mcb2) */';
+-- 
+ -- OMSO_105
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_om105_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic4 mcb4) use_nl(itp wdd ooha otta gic4 mcb4) */';
+-- 
+ -- OMSO_108
+ -- group8
+ -- 品目区分入力有り(2)
+ -- ヒント句
+    lv_select_g8_om108_2_hint :=
+       ' SELECT /*+ leading(itp wdd ooha otta gic4 mcb4) use_nl(itp wdd ooha otta gic4 mcb4) */';
+-- 
+-- 2008/10/24 v1.10 ADD END
+--
     -- ----------------------------------------------------
     -- 初期処理
     -- ----------------------------------------------------
     -- 郡コードカラム名設定(3：郡コード／4：経理郡コード)
-    IF ( ir_param.crowd_type  = gc_crowd_type_3 ) THEN
+    /*IF ( ir_param.crowd_type  = gc_crowd_type_3 ) THEN
       lv_crowd_c_name := 'crowd_code';
     ELSE
       lv_crowd_c_name := 'acnt_crowd_code';
-    END IF;
+    END IF;*/
 --
--- 2008/10/15 v1.10 UPDATE START
 /*
     -- ----------------------------------------------------
     -- ＳＥＬＥＣＴ句生成
@@ -1152,7 +4648,8 @@ AS
            ;
 --
 */
-    -- ----------------------------------------------------
+-- 2008/10/24 v1.10 DELETE START
+    /*-- ----------------------------------------------------
     -- ＳＥＬＥＣＴ句生成
     -- ----------------------------------------------------
     lv_select := 'SELECT '
@@ -1693,7 +5190,1618 @@ AS
     -- バルクフェッチ
     FETCH lc_ref BULK COLLECT INTO ot_data_rec ;
     -- カーソルクローズ
-    CLOSE lc_ref ;
+    CLOSE lc_ref ;*/
+-- 2008/10/24 v1.10 DELETE END
+--
+-- 2008/10/24 v1.10 ADD START
+--
+    -- 入力パラメーターの設定
+    -- 「受払区分」を抽出条件に設定
+    IF  ( ir_param.rcv_pay_div IS NOT NULL ) THEN
+      lv_where := lv_where
+        || ' AND xrpm.new_div_account = ''' || ir_param.rcv_pay_div || ''''
+        ;
+    END IF;
+--
+    -- 「倉庫コード」が個別選択されている場合(*ALLを除く)、抽出条件に設定
+    IF  ( ir_param.whse_code IS NOT NULL )
+    AND ( ir_param.whse_code != gc_param_all_code )
+    THEN
+      lv_where := lv_where
+        || ' AND itp.whse_code = '''        || ir_param.whse_code || ''''
+        ;
+    END IF;
+--
+    -- 「成績部署」が個別選択されている場合(*ALLを除く)、抽出条件に設定
+    IF  ( ir_param.result_post IS NOT NULL )
+    AND ( ir_param.result_post != gc_param_all_code )
+    THEN
+      lv_where := lv_where
+--        || ' AND xrpm.result_post = '''     || ir_param.result_post || ''''
+        || ' AND ooha.attribute11 = '''     || ir_param.result_post || ''''
+        ;
+    END IF;
+--
+    -- 「郡種別」が「3:郡コード」で、かつ、「郡コード」が入力されている場合、抽出条件に設定
+    IF    ( ir_param.crowd_type = gc_crowd_type_3 ) THEN
+      lv_where := lv_where
+        || ' AND gic3.category_set_id = '''      || cn_crowd_code_id || ''''
+        ;
+--
+      IF ( ir_param.crowd_code IS NOT NULL ) THEN
+        lv_where := lv_where
+          || ' AND mcb3.segment1 = '''      || ir_param.crowd_code || ''''
+          ;
+      END IF;
+    -- 「郡種別」が「4:経理郡コード」で、かつ、「経理郡コード」が入力されている場合、抽出条件に設定
+    ELSIF ( ir_param.crowd_type =  gc_crowd_type_4 ) THEN
+      lv_where := lv_where
+        || ' AND gic3.category_set_id = ''' || cn_acnt_crowd_id || ''''
+        ;
+      IF ( ir_param.acnt_crowd_code IS NOT NULL ) THEN
+        lv_where := lv_where
+          || ' AND mcb3.segment1 = ''' || ir_param.acnt_crowd_code || ''''
+          ;
+      END IF;
+    END IF;
+--
+    -- 「品目区分」が個別選択されている場合、抽出条件に設定
+    IF  ( ir_param.item_div IS NOT NULL ) THEN
+      lv_where := lv_where
+--        || ' AND mcb2.item_div = '''        || ir_param.item_div || ''''
+        || ' AND mcb2.segment1 = '''        || ir_param.item_div || ''''
+        ;
+    END IF;
+--
+    -- 「出荷先コード」が個別選択されている場合(*ALLを除く)、抽出条件に設定
+    IF  ( ir_param.party_code IS NOT NULL )
+    AND ( ir_param.party_code != gc_param_all_code )
+    THEN
+      lv_where := lv_where
+        || ' AND xpv.party_number = '''    || ir_param.party_code || ''''
+               ;
+    END IF;
+--
+--
+    -- 集計パターン１設定 (集計：1.成績部署、2.品目区分、3.倉庫、4.出荷先)
+    IF  ( ir_param.result_post IS NULL )
+    AND ( ir_param.whse_code   IS NULL )
+    AND ( ir_param.party_code  IS NULL )
+    THEN
+--
+      IF ( ir_param.rcv_pay_div IS NULL ) THEN
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g1_po102_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po101_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po112_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po105_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po108_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om102_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om101_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om112_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om105_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om108_1_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_1_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      ELSE
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g1_po102_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po101_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po112_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po105_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po108_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om102_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om101_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om112_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om105_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om108_2_hint
+                         || lv_select_common
+                         || lv_select_group1
+                         || lv_select_2_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      END IF;
+--
+    -- 集計パターン２設定 (集計：1.成績部署、2.品目区分、3.倉庫)
+    ELSIF ( ir_param.result_post IS NULL )
+    AND   ( ir_param.whse_code   IS NULL )
+    AND   ( ir_param.party_code  IS NOT NULL )
+    THEN
+--
+      IF ( ir_param.rcv_pay_div IS NULL ) THEN
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g1_po102_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po101_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po112_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po105_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po108_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om102_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om101_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om112_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om105_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om108_1_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_1_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      ELSE
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g1_po102_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po101_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po112_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po105_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po108_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om102_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om101_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om112_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om105_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om108_2_hint
+                         || lv_select_common
+                         || lv_select_group2
+                         || lv_select_2_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      END IF;
+--
+    -- 集計パターン３設定 (集計：1.成績部署、2.品目区分、3.出荷先)
+    ELSIF ( ir_param.result_post IS NULL )
+    AND   ( ir_param.whse_code   IS NOT NULL )
+    AND   ( ir_param.party_code  IS NULL )
+    THEN
+--
+      IF ( ir_param.whse_code = gc_param_all_code ) THEN
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g3_po102_1_hint 
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po101_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po112_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po105_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po108_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om102_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om101_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om112_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om105_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om108_1_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      ELSIF ( ir_param.whse_code <> gc_param_all_code ) THEN
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g3_po102_2_hint 
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po101_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po112_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po105_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_po108_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om102_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om101_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om112_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om105_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g3_om108_2_hint
+                         || lv_select_common
+                         || lv_select_group3
+                         || lv_select_1_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      END IF;
+--
+    -- 集計パターン４設定 (集計：1.成績部署、2.品目区分)
+    ELSIF ( ir_param.result_post IS NULL )
+    AND   ( ir_param.whse_code   IS NOT NULL )
+    AND   ( ir_param.party_code  IS NOT NULL )
+    THEN
+--
+      IF ( ir_param.rcv_pay_div IS NULL ) THEN
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g1_po102_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po101_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po112_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po105_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po108_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om102_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om101_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om112_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om105_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om108_1_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_1_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      ELSE
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g1_po102_2_hint 
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po101_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po112_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po105_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po108_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om102_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om101_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om112_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om105_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om108_2_hint
+                         || lv_select_common
+                         || lv_select_group4
+                         || lv_select_2_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      END IF;
+--
+    -- 集計パターン５設定 (集計：1.品目区分、2.倉庫、3.出荷先)
+    ELSIF ( ir_param.result_post IS NOT NULL )
+    AND   ( ir_param.whse_code   IS NULL )
+    AND   ( ir_param.party_code  IS NULL )
+    THEN
+--
+      IF ( ir_param.result_post = gc_param_all_code ) THEN
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g5_po102_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po101_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po112_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po105_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po108_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om102_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om101_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om112_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om105_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om108_1_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_1_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      ELSIF ( ir_param.result_post <> gc_param_all_code ) THEN
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g5_po102_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po101_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po112_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po105_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_po108_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om102_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om101_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om112_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om105_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g5_om108_2_hint
+                         || lv_select_common
+                         || lv_select_group5
+                         || lv_select_2_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      END IF;
+--
+    -- 集計パターン６設定 (集計：1.品目区分、2.倉庫)
+    ELSIF ( ir_param.result_post IS NOT NULL )
+    AND   ( ir_param.whse_code   IS NULL )
+    AND   ( ir_param.party_code  IS NOT NULL )
+    THEN
+--
+      IF ( ir_param.rcv_pay_div IS NULL ) THEN
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g1_po102_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po101_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po112_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po105_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po108_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om102_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om101_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om112_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om105_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om108_1_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_1_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      ELSE
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g1_po102_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po101_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po112_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po105_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po108_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om102_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om101_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om112_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om105_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om108_2_hint
+                         || lv_select_common
+                         || lv_select_group6
+                         || lv_select_2_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      END IF;
+--
+    -- 集計パターン７設定 (集計：1.品目区分、2.出荷先)
+    ELSIF ( ir_param.result_post IS NOT NULL )
+    AND   ( ir_param.whse_code   IS NOT NULL )
+    AND   ( ir_param.party_code  IS NULL )
+    THEN
+--
+      IF ( ir_param.rcv_pay_div IS NULL ) THEN
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g1_po102_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po101_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po112_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po105_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po108_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om102_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om101_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om112_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om105_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om108_1_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_1_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      ELSE
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g1_po102_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po101_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po112_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po105_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_po108_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om102_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om101_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om112_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om105_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g1_om108_2_hint
+                         || lv_select_common
+                         || lv_select_group7
+                         || lv_select_2_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      END IF;
+--
+    -- 集計パターン８設定 (集計：1.品目区分)
+    ELSIF ( ir_param.result_post IS NOT NULL )
+    AND   ( ir_param.whse_code   IS NOT NULL )
+    AND   ( ir_param.party_code  IS NOT NULL )
+    THEN
+--
+      IF ( ir_param.item_div IS NULL ) THEN
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g8_po102_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po101_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po112_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po105_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po108_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om102_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om101_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om103x5_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om112_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om103x124_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om105_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om108_1_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_1_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      ELSE
+        -- オープン
+        OPEN  get_cur01 FOR lv_select_main_start
+                         || lv_select_g8_po102_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_po102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po101_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_po101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po112_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_po112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_po103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_po103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po105_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_po105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_po108_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_po108
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om102_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_om102
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om101_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_om101
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om112_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_om112
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om103x5_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_om103x5
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om103x124_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_om103x124
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om105_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_om105
+                         || lv_where
+                         || ' UNION ALL '
+                         || lv_select_g8_om108_2_hint
+                         || lv_select_common
+                         || lv_select_group8
+                         || lv_select_2_om108
+                         || lv_where
+                         || lv_select_main_end
+                         ;
+        -- バルクフェッチ
+        FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
+        -- カーソルクローズ
+        CLOSE get_cur01 ;
+      END IF;
+--
+    END IF;
+--
+-- 2008/10/24 v1.10 ADD END
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
@@ -1760,10 +6868,16 @@ AS
 --
     -- *** ローカル変数 ***
     -- キーブレイク判断用
-    lv_gp_cd1             VARCHAR2(5)   DEFAULT lc_break_init ;              -- 集計グループ１
-    lv_gp_cd2             VARCHAR2(5)   DEFAULT lc_break_init ;              -- 集計グループ２
-    lv_gp_cd3             VARCHAR2(5)   DEFAULT lc_break_init ;              -- 集計グループ３
-    lv_gp_cd4             VARCHAR2(5)   DEFAULT lc_break_init ;              -- 集計グループ４
+-- 2008/10/24 v1.10 ADD START
+    --lv_gp_cd1             VARCHAR2(5)   DEFAULT lc_break_init ;              -- 集計グループ１
+    --lv_gp_cd2             VARCHAR2(5)   DEFAULT lc_break_init ;              -- 集計グループ２
+    --lv_gp_cd3             VARCHAR2(5)   DEFAULT lc_break_init ;              -- 集計グループ３
+    --lv_gp_cd4             VARCHAR2(5)   DEFAULT lc_break_init ;              -- 集計グループ４
+    lv_gp_cd1             VARCHAR2(10)   DEFAULT lc_break_init ;              -- 集計グループ１
+    lv_gp_cd2             VARCHAR2(10)   DEFAULT lc_break_init ;              -- 集計グループ２
+    lv_gp_cd3             VARCHAR2(10)   DEFAULT lc_break_init ;              -- 集計グループ３
+    lv_gp_cd4             VARCHAR2(10)   DEFAULT lc_break_init ;              -- 集計グループ４
+-- 2008/10/24 v1.10 ADD END
     lv_crowd_l            VARCHAR2(1)   DEFAULT lc_break_init ;              -- 大郡計グループ
     lv_crowd_m            VARCHAR2(2)   DEFAULT lc_break_init ;              -- 中郡計グループ
     lv_crowd_s            VARCHAR2(3)   DEFAULT lc_break_init ;              -- 小郡計グループ
