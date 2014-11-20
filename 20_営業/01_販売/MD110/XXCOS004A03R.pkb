@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A03R (body)
  * Description      : 消化計算チェックリスト
  * MD.050           : 消化計算チェックリスト MD050_COS_004_A03
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/06/19    1.3   K.Kiriu          [T1_1437]データパージ不具合対応
  *  2009/09/30    1.4   S.Miyakoshi      [0001378]帳票ワークテーブルの桁あふれ対応
  *  2010/02/23    1.5   K.Atsushiba      [E_本稼動_01670]異常掛率対応
+ *  2012/08/08    1.6   K.Onotsuka       [E_本稼動_09900]入力パラメータ及び明細ソート条件追加対応
  *
  *****************************************************************************************/
 --
@@ -94,6 +95,9 @@ AS
   global_delete_data_expt   EXCEPTION;
   global_nodata_expt        EXCEPTION;
   global_get_profile_expt   EXCEPTION;
+/* 2012/08/03 Ver1.6 Add Start */
+  global_param_date_err_expt  EXCEPTION;
+/* 2012/08/03 Ver1.6 Add End */
     --*** 処理対象データロック例外 ***
   global_data_lock_expt       EXCEPTION;
 --
@@ -148,6 +152,14 @@ AS
                                      := 'APP-XXCOS1-11003';         --帳票ワークテーブル
   ct_msg_name_err           CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-00055';         --拠点コード
+/* 2012/08/03 Ver1.6 Add Start */
+  ct_msg_param_data_from    CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-11004';         --年月（FROM）
+  ct_msg_param_data_to      CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-11005';         --年月（TO）
+  ct_msg_param_data_err     CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-11006';         --年月逆転エラー
+/* 2012/08/03 Ver1.6 Add End */
   --トークン
   cv_tkn_table              CONSTANT VARCHAR2(100) := 'TABLE';                --テーブル
   cv_tkn_profile            CONSTANT VARCHAR2(100) := 'PROFILE';              --プロファイル
@@ -156,6 +168,12 @@ AS
   cv_tkn_api_name           CONSTANT VARCHAR2(100) := 'API_NAME';             --ＡＰＩ名称
   cv_tkn_param1             CONSTANT VARCHAR2(100) := 'PARAM1';               --第１入力パラメータ
   cv_tkn_param2             CONSTANT VARCHAR2(100) := 'PARAM2';               --第２入力パラメータ
+/* 2012/08/03 Ver1.6 Add Start */
+  cv_tkn_param3             CONSTANT VARCHAR2(100) := 'PARAM3';               --第３入力パラメータ
+  cv_tkn_param4             CONSTANT VARCHAR2(100) := 'PARAM4';               --第４入力パラメータ
+  cv_tkn_date_from          CONSTANT VARCHAR2(100) := 'DATE_FROM';            --日付（FROM）
+  cv_tkn_date_to            CONSTANT VARCHAR2(100) := 'DATE_TO';              --日付（TO）
+/* 2012/08/03 Ver1.6 Add End */
   cv_tkn_request            CONSTANT VARCHAR2(100) := 'REQUEST';              --要求ＩＤ
   cv_tkn_profile_name       CONSTANT VARCHAR2(100) := 'PROFILE_NAME';         --プロファイル値
   cv_tkn_in_param           CONSTANT VARCHAR2(100) := 'IN_PARAM';             --入力パラメータ
@@ -182,6 +200,9 @@ AS
   --フォーマット
   cv_fmt_date8              CONSTANT VARCHAR2(8)   := 'RRRRMMDD';
   cv_fmt_date               CONSTANT VARCHAR2(10)  := 'RRRR/MM/DD';
+/* 2012/08/03 Ver1.6 Add Start */
+  cv_fmt_date7              CONSTANT VARCHAR2(7)   := 'RRRR/MM';
+/* 2012/08/03 Ver1.6 Add End */
   cv_fmt_tax                CONSTANT VARCHAR2(7)   := '990.00';
   --パーセント定数
   cv_pr_tax                 CONSTANT VARCHAR2(7)   := '%';
@@ -208,6 +229,10 @@ AS
   --パラメータ
   gv_sales_base_code              VARCHAR2(100);                      -- 拠点コード
   gv_customer_number              VARCHAR2(100);                      -- 顧客コード
+/* 2012/08/03 Ver1.6 Add Start */
+  gd_yyyymm_from                  DATE;                               -- 年月（From）
+  gd_yyyymm_to                    DATE;                               -- 年月（To）
+/* 2012/08/03 Ver1.6 Add End */
   --初期取得
   gd_process_date                 DATE;                               -- 業務日付
   gd_max_date                     DATE;                               -- MAX日付
@@ -222,6 +247,10 @@ AS
   PROCEDURE init(
     iv_sales_base_code        IN      VARCHAR2,                       -- 拠点コード
     iv_customer_number        IN      VARCHAR2,                       -- 顧客コード
+/* 2012/08/03 Ver1.6 Add Start */
+    iv_yyyymm_from            IN      VARCHAR2,                       -- 年月（From）
+    iv_yyyymm_to              IN      VARCHAR2,                       -- 年月（To）
+/* 2012/08/03 Ver1.6 Add End */
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -268,7 +297,13 @@ AS
         iv_token_name1        => cv_tkn_param1,
         iv_token_value1       => iv_sales_base_code,
         iv_token_name2        => cv_tkn_param2,
-        iv_token_value2       => iv_customer_number
+        iv_token_value2       => iv_customer_number,
+/* 2012/08/03 Ver1.6 Add Start */
+        iv_token_name3        => cv_tkn_param3,
+        iv_token_value3       => iv_yyyymm_from,
+        iv_token_name4        => cv_tkn_param4,
+        iv_token_value4       => iv_yyyymm_to
+/* 2012/08/03 Ver1.6 Add End */
       );
     --
     fnd_file.put_line(
@@ -286,6 +321,10 @@ AS
     --==================================
     gv_sales_base_code      := iv_sales_base_code;
     gv_customer_number      := iv_customer_number;
+/* 2012/08/03 Ver1.6 Add Start */
+    gd_yyyymm_from            := TO_DATE( iv_yyyymm_from, cv_fmt_date7 );
+    gd_yyyymm_to              := TO_DATE( iv_yyyymm_to, cv_fmt_date7 );
+/* 2012/08/03 Ver1.6 Add End */
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -341,6 +380,9 @@ AS
     lv_org_id        VARCHAR2(5000);
     lv_max_date      VARCHAR2(5000);
     lv_profile_name  VARCHAR2(5000);
+/* 2012/08/03 Ver1.6 Add Start */
+    lv_profile_name2 VARCHAR2(5000);
+/* 2012/08/03 Ver1.6 Add End */
 --
     -- *** ローカル・カーソル ***
 --
@@ -400,6 +442,25 @@ AS
                                    iv_name               => ct_msg_no_add
                                  );
 --
+/* 2012/08/03 Ver1.6 Add Start */
+    --==================================
+    -- 5.年月のFrom＞Toチェック
+    --==================================
+    IF ( gd_yyyymm_to IS NOT NULL ) THEN
+      IF ( gd_yyyymm_from > gd_yyyymm_to ) THEN
+        lv_profile_name       := xxccp_common_pkg.get_msg(
+                                 iv_application        => ct_xxcos_appl_short_name,
+                                 iv_name               => ct_msg_param_data_from
+                                 );
+        lv_profile_name2      := xxccp_common_pkg.get_msg(
+                                 iv_application        => ct_xxcos_appl_short_name,
+                                 iv_name               => ct_msg_param_data_to
+                                 );
+        RAISE global_param_date_err_expt;
+      END IF;
+    END IF;
+--
+/* 2012/08/03 Ver1.6 Add End */
   EXCEPTION
     -- *** 業務日付取得例外ハンドラ ***
     WHEN global_proc_date_err_expt  THEN
@@ -429,6 +490,20 @@ AS
       );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
+/* 2012/08/03 Ver1.6 Add Start */
+    -- *** 日付パラメータ逆転例外ハンドラ ***
+    WHEN global_param_date_err_expt  THEN
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+        iv_application        => ct_xxcos_appl_short_name,
+        iv_name               => ct_msg_param_data_err,
+        iv_token_name1        => cv_tkn_date_from,
+        iv_token_value1       => lv_profile_name,
+        iv_token_name2        => cv_tkn_date_to,
+        iv_token_value2       => lv_profile_name2
+      );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+/* 2012/08/03 Ver1.6 Add End */
 --#################################  固定例外処理部 START   #######################################
 --
     -- *** 共通関数例外ハンドラ ***
@@ -559,7 +634,11 @@ AS
                     AND    xcae.management_base_code = gv_sales_base_code
                                      --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
              )--店舗別用消化計算ヘッダテーブル.売上拠点コード IN
-      AND     xsdh.customer_number = NVL( gv_customer_number, xsdh.customer_number );
+      AND     xsdh.customer_number = NVL( gv_customer_number, xsdh.customer_number )
+/* 2012/08/03 Ver1.6 Add Start */
+      AND    xsdh.digestion_due_date                       >= TRUNC( gd_yyyymm_from )
+      AND    xsdh.digestion_due_date                       <= LAST_DAY( NVL( gd_yyyymm_to, gd_process_date ) );
+/* 2012/08/03 Ver1.6 Add End */
 --
     -- *** ローカル・レコード ***
     l_data_rec                          data_cur%ROWTYPE;
@@ -1074,6 +1153,10 @@ AS
   PROCEDURE submain(
     iv_sales_base_code      IN      VARCHAR2,       -- 1.拠点
     iv_customer_number      IN      VARCHAR2,       -- 2.顧客コード
+/* 2012/08/03 Ver1.6 Add Start */
+    iv_yyyymm_from          IN      VARCHAR2,       -- 3.年月（From）
+    iv_yyyymm_to            IN      VARCHAR2,       -- 4.年月（To）
+/* 2012/08/03 Ver1.6 Add End */
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1119,6 +1202,10 @@ AS
     init(
       iv_sales_base_code        => iv_sales_base_code,         -- 1.拠点
       iv_customer_number        => iv_customer_number,         -- 2.顧客コード
+/* 2012/08/03 Ver1.6 Add Start */
+      iv_yyyymm_from            => iv_yyyymm_from,             -- 3.年月（From）
+      iv_yyyymm_to              => iv_yyyymm_to,               -- 4.年月（To）
+/* 2012/08/03 Ver1.6 Add End */
       ov_errbuf                 => lv_errbuf,                  -- エラー・メッセージ
       ov_retcode                => lv_retcode,                 -- リターン・コード
       ov_errmsg                 => lv_errmsg                   -- ユーザー・エラー・メッセージ
@@ -1255,7 +1342,11 @@ AS
     errbuf        OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
     retcode       OUT VARCHAR2,      --   リターン・コード    --# 固定 #
     iv_sales_base_code      IN      VARCHAR2,       -- 1.拠点
-    iv_customer_number      IN      VARCHAR2        -- 2.顧客コード
+    iv_customer_number      IN      VARCHAR2,       -- 2.顧客コード
+/* 2012/08/03 Ver1.6 Add Start */
+    iv_yyyymm_from          IN      VARCHAR2,       -- 3.年月（From）
+    iv_yyyymm_to            IN      VARCHAR2        -- 4.年月（To）
+/* 2012/08/03 Ver1.6 Add End */
   )
 --
 --
@@ -1312,6 +1403,10 @@ AS
     submain(
       iv_sales_base_code,                -- 1.拠点
       iv_customer_number,                -- 2．顧客コード
+/* 2012/08/03 Ver1.6 Add Start */
+      iv_yyyymm_from,                    -- 3.年月（From）
+      iv_yyyymm_to,                      -- 4.年月（To）
+/* 2012/08/03 Ver1.6 Add End */
       lv_errbuf,   -- エラー・メッセージ           --# 固定 #
       lv_retcode,  -- リターン・コード             --# 固定 #
       lv_errmsg    -- ユーザー・エラー・メッセージ --# 固定 #
