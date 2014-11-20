@@ -1775,7 +1775,10 @@ AS
           AND    flv_in_ad_e_xx.lookup_code             = xrpm_in_ad_e_xx.new_div_invent
           AND    xrpm_in_ad_e_xx.doc_type               = 'ADJI'
           AND    xrpm_in_ad_e_xx.use_div_invent         = 'Y'
-          AND    xrpm_in_ad_e_xx.reason_code       NOT IN ('X977','X988','X123')
+-- 2008/12/11 T.Ohashi start
+--          AND    xrpm_in_ad_e_xx.reason_code       NOT IN ('X977','X988','X123')
+          AND    xrpm_in_ad_e_xx.reason_code       NOT IN ('X977','X988','X123','X201')
+-- 2008/12/11 T.Ohashi end
           AND    xrpm_in_ad_e_xx.rcv_pay_div            = '1'                  -- 受入
          ) xrpm
   WHERE  itc_in_ad_e_xx.doc_type                = xrpm.doc_type
@@ -2889,12 +2892,16 @@ AS
         ,xrart_out_ad_e_x2.rcv_rtn_number              AS voucher_no
         ,xv_out_ad_e_x2.vendor_name                    AS ukebaraisaki_name
         ,NULL                                          AS deliver_to_name
+-- 2008/12/11 T.Ohashi start
 -- 2008/12/02 Y.Yamamoto update start
 --        ,itc_out_ad_e_x2.trans_qty                     AS deliver_to_name
 --        ,0                                             AS leaving_quantity
-        ,0                                             AS stock_quantity
-        ,itc_out_ad_e_x2.trans_qty * -1                AS leaving_quantity
+--        ,0                                             AS stock_quantity
+        ,itc_out_ad_e_x2.trans_qty                     AS stock_quantity
+--        ,itc_out_ad_e_x2.trans_qty * -1                AS leaving_quantity
+        ,0                                             AS leaving_quantity
 -- 2008/12/02 Y.Yamamoto update end
+-- 2008/12/11 T.Ohashi end
   FROM   ic_adjs_jnl                  iaj_out_ad_e_x2                   -- OPM在庫調整ジャーナル
         ,ic_jrnl_mst                  ijm_out_ad_e_x2                   -- OPMジャーナルマスタ
         ,ic_tran_cmp                  itc_out_ad_e_x2                   -- OPM完了在庫トランザクション
@@ -2916,7 +2923,10 @@ AS
           AND    xrpm_out_ad_e_x2.doc_type               = 'ADJI'
           AND    xrpm_out_ad_e_x2.use_div_invent         = 'Y'
           AND    xrpm_out_ad_e_x2.reason_code            = 'X201'               -- 仕入返品出庫
-          AND    xrpm_out_ad_e_x2.rcv_pay_div            = '-1'                 -- 払出
+-- 2008/12/11 T.Ohashi start
+--          AND    xrpm_out_ad_e_x2.rcv_pay_div            = '-1'                 -- 払出
+          AND    xrpm_out_ad_e_x2.rcv_pay_div            = '1'                  -- 受入
+-- 2008/12/11 T.Ohashi end
          ) xrpm
   WHERE  itc_out_ad_e_x2.doc_type                = xrpm.doc_type
   AND    itc_out_ad_e_x2.reason_code             = xrpm.reason_code
