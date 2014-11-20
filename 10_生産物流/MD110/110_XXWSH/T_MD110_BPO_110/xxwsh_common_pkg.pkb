@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.22
+ * Version                : 1.23
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -71,6 +71,7 @@ AS
  *                                                                    配車解除時のエラーメッセージが正しく出力されない問題を修正
  *  2008/08/28   1.21  Oracle 伊藤ひとみ[配車解除関数] PT 1-2_8 指摘#32対応
  *  2008/09/02   1.22  Oracle 北寒寺正夫[配車解除関数] 統合テスト環境不具合対応
+ *  2008/09/03   1.23  Oracle 河野優子  [引当解除関数] 統合テスト不具合対応 移動：複数明細・複数ロット解除対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -310,11 +311,13 @@ AS
   -- ===============================
   gt_mov_req_instr_tbl            mov_req_instr_tbl;         -- 移動依頼/指示の結合配列
   gt_order_line_id_tbl            order_line_id_tbl;         -- 受注明細アドオンID
-  gt_mov_line_id_tbl              mov_line_id_tbl;           -- 移動明細ID
-  gt_ship_to_locat_id_tbl         ship_to_locat_id_tbl;      -- 入庫先ID
-  gt_schedule_arrival_date_tbl    schedule_arrival_date_tbl; -- 入庫予定日
-  gt_item_short_name_tbl          item_short_name_tbl;       -- 摘要
-  gt_description_tbl              description_tbl;           -- 保管場所
+--2008/09/03 Y.Kawano DEL Start
+--  gt_mov_line_id_tbl              mov_line_id_tbl;           -- 移動明細ID
+--  gt_ship_to_locat_id_tbl         ship_to_locat_id_tbl;      -- 入庫先ID
+--  gt_schedule_arrival_date_tbl    schedule_arrival_date_tbl; -- 入庫予定日
+--  gt_item_short_name_tbl          item_short_name_tbl;       -- 摘要
+--  gt_description_tbl              description_tbl;           -- 保管場所
+--2008/09/03 Y.Kawano DEL End
   gt_mov_lot_dtl_id_tbl           mov_lot_dtl_id_tbl;        -- ロット詳細ID
   gt_lot_id_tbl                   lot_id_tbl;                -- ロットID
   gt_item_id_tbl                  item_id_tbl;               -- OPM品目ID
@@ -4431,6 +4434,13 @@ AS
     ld_sysdate                    DATE;             -- システム現在日付
     TYPE dummy_tble IS TABLE OF NUMBER INDEX BY BINARY_INTEGER;
     ln_dummy                      dummy_tble;       -- ロック用ダミー変数
+--2008/09/03 Y.Kawano ADD Start
+    lt_mov_line_id           xxinv_mov_req_instr_lines.mov_line_id%TYPE;             -- 移動明細ID
+    lt_ship_to_locat_id      xxinv_mov_req_instr_headers.ship_to_locat_id%TYPE;      -- 入庫先ID
+    lt_schedule_arrival_date xxinv_mov_req_instr_headers.schedule_arrival_date%TYPE; -- 入庫予定日
+    lt_item_short_name       ic_item_mst_b.attribute25%TYPE;                         -- 保管場所名称
+    lt_description           hr_locations_all.description%TYPE;                      -- 保管場所
+--2008/09/03 Y.Kawano ADD End
 --
     -- *** ローカル・カーソル ***
 --
@@ -4689,11 +4699,25 @@ AS
 --
       <<gt_mov_req_instr_tbl_loop>>
       FOR i IN gt_mov_req_instr_tbl.FIRST .. gt_mov_req_instr_tbl.LAST LOOP
-        gt_mov_line_id_tbl(i)           := gt_mov_req_instr_tbl(i).mov_line_id;
-        gt_ship_to_locat_id_tbl(i)      := gt_mov_req_instr_tbl(i).ship_to_locat_id;
-        gt_schedule_arrival_date_tbl(i) := gt_mov_req_instr_tbl(i).schedule_arrival_date;
-        gt_item_short_name_tbl(i)       := gt_mov_req_instr_tbl(i).item_short_name;
-        gt_description_tbl(i)           := gt_mov_req_instr_tbl(i).description;
+--2008/09/03 Y.Kawano MOD Start
+--        gt_mov_line_id_tbl(i)           := gt_mov_req_instr_tbl(i).mov_line_id;
+--        gt_ship_to_locat_id_tbl(i)      := gt_mov_req_instr_tbl(i).ship_to_locat_id;
+--        gt_schedule_arrival_date_tbl(i) := gt_mov_req_instr_tbl(i).schedule_arrival_date;
+--        gt_item_short_name_tbl(i)       := gt_mov_req_instr_tbl(i).item_short_name;
+--        gt_description_tbl(i)           := gt_mov_req_instr_tbl(i).description;
+        --初期化
+        lt_mov_line_id           := NULL;
+        lt_ship_to_locat_id      := NULL;
+        lt_schedule_arrival_date := NULL;
+        lt_item_short_name       := NULL;
+        lt_description           := NULL;
+        --
+        lt_mov_line_id           := gt_mov_req_instr_tbl(i).mov_line_id;
+        lt_ship_to_locat_id      := gt_mov_req_instr_tbl(i).ship_to_locat_id;
+        lt_schedule_arrival_date := gt_mov_req_instr_tbl(i).schedule_arrival_date;
+        lt_item_short_name       := gt_mov_req_instr_tbl(i).item_short_name;
+        lt_description           := gt_mov_req_instr_tbl(i).description;
+--2008/09/03 Y.Kawano MOD End
 --
         BEGIN
           -- 検索処理を行います
@@ -4708,29 +4732,48 @@ AS
                   gt_actual_quantity_tbl,
                   gt_lot_no_tbl
           FROM   xxinv_mov_lot_details          xmld              -- 移動ロット詳細(アドオン)
-          WHERE  xmld.mov_line_id               =  gt_mov_line_id_tbl(i)
+--2008/09/03 Y.Kawano MOD Start
+--          WHERE  xmld.mov_line_id               =  gt_mov_line_id_tbl(i)
+          WHERE  xmld.mov_line_id               =  lt_mov_line_id
+--2008/09/03 Y.Kawano MOD End
           AND    xmld.document_type_code        =  cv_move_type
           AND    xmld.record_type_code          =  cv_instr_rec_type
           FOR UPDATE OF xmld.mov_lot_dtl_id NOWAIT;
 --
           <<gt_mov_lot_dtl_id_tbl_loop>>
           FOR j IN gt_mov_lot_dtl_id_tbl.FIRST .. gt_mov_lot_dtl_id_tbl.LAST LOOP
+--2008/09/03 Y.Kawano MOD Start
+--            -- 共通関数(引当可能数算出API)の呼び出し
+--            ln_can_enc_qty := xxcmn_common_pkg.get_can_enc_qty(gt_ship_to_locat_id_tbl(j),
+--                                                               gt_item_id_tbl(j),
+--                                                               gt_lot_id_tbl(j),
+--                                                               gt_schedule_arrival_date_tbl(j));
+--            IF ((ln_can_enc_qty - gt_actual_quantity_tbl(i)) < 0) THEN
+--              -- 供給数の減数チェックワーニング
+--              ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxcmn,
+--                                                    cv_msg_supply_chk_warn,
+--                                                    'LOCATION',
+--                                                    gt_description_tbl(i),
+--                                                    'ITEM',
+--                                                    gt_item_short_name_tbl(i),
+--                                                    'LOT',
+--                                                    gt_lot_no_tbl(i));
             -- 共通関数(引当可能数算出API)の呼び出し
-            ln_can_enc_qty := xxcmn_common_pkg.get_can_enc_qty(gt_ship_to_locat_id_tbl(j),
+            ln_can_enc_qty := xxcmn_common_pkg.get_can_enc_qty(lt_ship_to_locat_id,
                                                                gt_item_id_tbl(j),
                                                                gt_lot_id_tbl(j),
-                                                               gt_schedule_arrival_date_tbl(j));
---
-            IF ((ln_can_enc_qty - gt_actual_quantity_tbl(i)) < 0) THEN
+                                                               lt_schedule_arrival_date);
+            IF ((ln_can_enc_qty - gt_actual_quantity_tbl(j)) < 0) THEN
               -- 供給数の減数チェックワーニング
               ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxcmn,
                                                     cv_msg_supply_chk_warn,
                                                     'LOCATION',
-                                                    gt_description_tbl(i),
+                                                    lt_description,
                                                     'ITEM',
-                                                    gt_item_short_name_tbl(i),
+                                                    lt_item_short_name,
                                                     'LOT',
-                                                    gt_lot_no_tbl(i));
+                                                    gt_lot_no_tbl(j));
+--2008/09/03 Y.Kawano MOD End
               ROLLBACK TO advance_sp;
               RETURN cv_enc_cancel_err;                             -- 引当解除データ無し
             END IF;
@@ -4769,7 +4812,10 @@ AS
                  mril.program_application_id    =  ln_prog_appl_id,
                  mril.program_id                =  ln_conc_program_id,
                  mril.program_update_date       =  ld_sysdate
-          WHERE  mril.mov_line_id               =  gt_mov_line_id_tbl(i);
+--2008/09/03 Y.Kawano MOD Start
+--          WHERE  mril.mov_line_id               =  gt_mov_line_id_tbl(i);
+          WHERE  mril.mov_line_id               =  lt_mov_line_id;
+--2008/09/03 Y.Kawano MOD End
 --
         EXCEPTION
           -- エラーの場合はセーブポイントにロールバック
