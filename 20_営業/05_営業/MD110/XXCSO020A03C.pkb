@@ -9,7 +9,7 @@ AS
  *                    画面にて変更された既存顧客情報を顧客マスタに反映します。
  * MD.050           : MD050_CSO_020_A03_各種マスタ反映処理機能
  *
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *                                       ・顧客ステータス、顧客区分を定数に変更
  *  2009-04-21          Kazuo.Satomura   システムテスト障害対応(T1_0685)
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
+ *  2009-05-08    1.2   Kazuo.Satomura   システムテスト障害対応(T1_0913)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1504,6 +1505,11 @@ AS
     -- *** ローカル定数 ***
     cv_ship_to_site_code CONSTANT VARCHAR2(30) := 'SHIP_TO';
     cv_bill_to_site_code CONSTANT VARCHAR2(30) := 'BILL_TO';
+    /* 2009.05.08 K.Satomura T1_0913対応 START */
+    cv_payment_name_promptly  CONSTANT VARCHAR2(8)  := '00_00_00';
+    cv_tkn_value_payment_term CONSTANT VARCHAR2(50) := '00_00_00（即時払い）';
+    cv_tkn_value_table_name   CONSTANT VARCHAR2(50) := '支払条件ビュー';
+    /* 2009.05.08 K.Satomura T1_0913対応 END */
     --
     -- トークン用定数
     cv_tkn_value_site_use_ship CONSTANT VARCHAR2(40) := '顧客使用目的マスタ登録（出荷先）';
@@ -1619,6 +1625,47 @@ AS
       lt_cust_site_use_rec.site_use_code     := cv_bill_to_site_code; -- 使用目的
       lt_cust_site_use_rec.created_by_module := SUBSTRB(cv_pkg_name, 1, 150);
       --
+      /* 2009.05.08 K.Satomura T1_0913対応 START */
+      -- 支払条件ＩＤの取得
+      BEGIN
+        SELECT rtv.term_id
+        INTO   lt_cust_site_use_rec.payment_term_id
+        FROM   ra_terms_vl rtv
+        WHERE  rtv.name = cv_payment_name_promptly
+        ;
+        --
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- データが存在しない場合
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_03          -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_item               -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_payment_term -- トークン値1
+                         ,iv_token_name2  => cv_tkn_table              -- トークンコード2
+                         ,iv_token_value2 => cv_tkn_value_table_name   -- トークン値2
+                      );
+          --
+          RAISE global_api_expt;
+          --
+        WHEN OTHERS THEN
+          -- その他の例外の場合
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_04          -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_table              -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_table_name   -- トークン値1
+                         ,iv_token_name2  => cv_tkn_key                -- トークンコード2
+                         ,iv_token_value2 => cv_tkn_value_payment_term -- トークン値2
+                         ,iv_token_name3  => cv_tkn_err_msg            -- トークンコード3
+                         ,iv_token_value3 => SQLERRM                   -- トークン値3
+                      );
+          --
+          RAISE global_api_expt;
+          --
+      END;
+      --
+      /* 2009.05.08 K.Satomura T1_0913対応 END */
       hz_cust_account_site_v2pub.create_cust_site_use(
          p_init_msg_list        => fnd_api.g_true
         ,p_cust_site_use_rec    => lt_cust_site_use_rec
@@ -1720,6 +1767,11 @@ AS
     cv_tkn_value_action_create CONSTANT VARCHAR2(30) := '顧客アドオンマスタの登録';
     cv_tkn_value_action_update CONSTANT VARCHAR2(30) := '顧客アドオンマスタの更新';
     cv_tkn_value_table         CONSTANT VARCHAR2(30) := '顧客アドオンマスタ';
+    /* 2009.05.08 K.Satomura T1_0913対応 START */
+    cv_torihiki_form_direct CONSTANT xxcmm_cust_accounts.torihiki_form%TYPE := '1'; -- 直接納品
+    cv_delivery_form_eigyo  CONSTANT xxcmm_cust_accounts.delivery_form%TYPE := '1'; -- 営業員配送
+    cv_tax_div_included     CONSTANT xxcmm_cust_accounts.tax_div%TYPE       := '3'; -- 内税
+    /* 2009.05.08 K.Satomura T1_0913対応 END */
     --
     ct_cust_update_flag CONSTANT xxcmm_cust_accounts.cust_update_flag%TYPE := '1';
     ct_vist_target_div  CONSTANT xxcmm_cust_accounts.vist_target_div%TYPE  := '1';
@@ -1774,7 +1826,14 @@ AS
           ,creation_date          -- 作成日
           ,last_updated_by        -- 最終更新者
           ,last_update_date       -- 最終更新日
-          ,last_update_login)     -- 最終更新ログイン
+          /* 2009.05.08 K.Satomura T1_0913対応 START */
+          --,last_update_login)     -- 最終更新ログイン
+          ,last_update_login      -- 最終更新ログイン
+          ,torihiki_form          -- 取引形態
+          ,delivery_form          -- 配送形態
+          ,tax_div                -- 消費税区分
+        )
+          /* 2009.05.08 K.Satomura T1_0913対応 END */
         VALUES (
            it_cust_account_id                                  -- 顧客ＩＤ
           ,it_account_number                                   -- 顧客コード
@@ -1795,6 +1854,11 @@ AS
           ,cn_last_updated_by                                  -- 最終更新者
           ,cd_last_update_date                                 -- 最終更新日
           ,cn_last_update_login                                -- 最終更新ログイン
+          /* 2009.05.08 K.Satomura T1_0913対応 START */
+          ,cv_torihiki_form_direct -- 取引形態
+          ,cv_delivery_form_eigyo  -- 配送形態
+          ,cv_tax_div_included     -- 消費税区分
+          /* 2009.05.08 K.Satomura T1_0913対応 END */
         );
         --
       EXCEPTION
@@ -1863,6 +1927,11 @@ AS
               ,last_updated_by        = cn_last_updated_by                                  -- 最終更新者
               ,last_update_date       = cd_last_update_date                                 -- 最終更新日
               ,last_update_login      = cn_last_update_login                                -- 最終更新ログイン
+              /* 2009.05.08 K.Satomura T1_0913対応 START */
+              ,torihiki_form          = cv_torihiki_form_direct                             -- 取引形態
+              ,delivery_form          = cv_delivery_form_eigyo                              -- 配送形態
+              ,tax_div                = cv_tax_div_included                                 -- 消費税区分
+              /* 2009.05.08 K.Satomura T1_0913対応 END */
         WHERE  customer_id = it_cust_account_id
         ;
         --
