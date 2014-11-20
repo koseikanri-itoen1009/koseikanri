@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A15C(body)
  * Description      : 保管場所転送取引データOIF更新(基準在庫)
  * MD.050           : 保管場所転送取引データOIF更新(基準在庫) MD050_COI_003_A15
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------  ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2010/04/19    1.4   SCS H.Sasaki     [E_本稼動_06588]HHTからのVDコラムマスタ登録
  *  2011/12/07    1.5   SCSK K.Nakamura  [E_本稼動_08842]同一顧客で伝票日付が不一致の場合のエラー処理追加
  *                                       [E_本稼動_08843]VDコラムマスタ存在チェックフラグの初期化を修正
+ *  2011/12/12    1.6   SCSK K.Nakamura  [E_本稼動_08842]伝票日付不一致エラーはYYYYMMでチェックするよう修正
  *
  *****************************************************************************************/
 --
@@ -2268,7 +2269,10 @@ AS
               FETCH chk_cust_date_cur INTO chk_cust_date_rec;
               EXIT WHEN ( chk_cust_date_cur%NOTFOUND );
                 --  顧客内で伝票日付が不一致の場合
-                IF ( hht_inv_tran_rec.invoice_date <> chk_cust_date_rec.invoice_date ) THEN
+-- == 2011/12/12 V1.6 Modified START ============================================================
+--                IF ( hht_inv_tran_rec.invoice_date <> chk_cust_date_rec.invoice_date ) THEN
+                IF ( TO_CHAR(hht_inv_tran_rec.invoice_date, cv_day_form_m) <> TO_CHAR(chk_cust_date_rec.invoice_date, cv_day_form_m) ) THEN
+-- == 2011/12/12 V1.6 Modified END   ============================================================
                   --  顧客内伝票日付不一致チェックフラグ
                   gb_cust_date_chk := FALSE;
                   ov_retcode       := cv_status_warn;
