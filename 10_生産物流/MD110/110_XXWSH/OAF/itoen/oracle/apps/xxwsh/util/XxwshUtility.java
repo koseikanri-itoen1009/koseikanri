@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2008-12-06 1.10 宮田         本番障害#484対応
 * 2008-12-15 1.11 二瓶大輔     本番障害#648対応
 * 2009-01-22 1.12 伊藤ひとみ   本番障害#1000対応
+* 2009-01-26 1.13 伊藤ひとみ   本番障害#936対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -40,7 +41,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.12
+ * @version 1.13
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -4004,7 +4005,10 @@ public class XxwshUtility
         XxcmnUtility.writeLog(
           trans,
           XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
-          cstmt.getString(9), // エラーメッセージ
+// 2009-01-22 H.Itou MOD START 本番障害#1000対応
+//          cstmt.getString(9), // エラーメッセージ
+          errmsg,
+// 2009-01-22 H.Itou MOD END
           6);
         // エラーメッセージ出力
         throw new OAException(
@@ -6107,4 +6111,156 @@ public class XxwshUtility
     }
   } // doCancelCareersSchedule
 // 2008-10-24 D.Nihei ADD END
+// 2009-01-26 H.Itou ADD START 本番障害＃936対応
+  /*****************************************************************************
+   * 鮮度条件合格製造日を取得します。
+   * @param trans - トランザクション
+   * @param moveToId     - 配送先ID
+   * @param itemNo       - 品目コード
+   * @param arrivalDate  - 着日
+   * @param standard_date  - 基準日(適用日基準日)
+   * @return HashMap 
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static HashMap getFreshPassDate(
+    OADBTransaction trans,
+    Number moveToId,
+    String itemNo,
+    Date   arrivalDate,
+    Date   standardDate
+  ) throws OAException
+  {
+    String apiName = "getFreshPassDate";
+    HashMap ret    = new HashMap();
+    
+    // OUTパラメータ
+    String exeType = XxcmnConstants.RETURN_NOT_EXE;
+
+    // バインド変数
+    int paramBind  = 1;
+    //PL/SQL作成
+    StringBuffer sb = new StringBuffer(100);
+    sb.append("DECLARE                                              ");
+    sb.append("  it_move_to_id       NUMBER;                        ");
+    sb.append("  it_item_no          xxcmn_item_mst_v.item_no%TYPE; ");
+    sb.append("  id_arrival_date     DATE;                          ");
+    sb.append("  id_standard_date    DATE;                          ");
+    sb.append("  od_manufacture_date DATE;                          ");
+    sb.append("  ov_retcode          VARCHAR2(5000);                ");
+    sb.append("  ov_errmsg           VARCHAR2(5000);                ");
+    sb.append("BEGIN                                                ");
+                 // INパラメータ設定
+    sb.append("  it_move_to_id     := :" + paramBind++ + ";         "); // IN:配送先ID
+    sb.append("  it_item_no        := :" + paramBind++ + ";         "); // IN:品目コード
+    sb.append("  id_arrival_date   := :" + paramBind++ + ";         "); // IN:着荷予定日
+    sb.append("  id_standard_date  := :" + paramBind++ + ";         "); // IN:基準日(適用日基準日)
+    sb.append("  xxwsh_common910_pkg.get_fresh_pass_date(           ");
+    sb.append("    it_move_to_id       => it_move_to_id             ");
+    sb.append("   ,it_item_no          => it_item_no                ");
+    sb.append("   ,id_arrival_date     => id_arrival_date           ");
+    sb.append("   ,id_standard_date    => id_standard_date          ");
+    sb.append("   ,od_manufacture_date => od_manufacture_date       ");
+    sb.append("   ,ov_retcode          => ov_retcode                ");
+    sb.append("   ,ov_errmsg           => ov_errmsg                 ");
+    sb.append("   );                                                ");
+                 // OUTパラメータ設定
+    sb.append("   :" + paramBind++ + " := ov_retcode;               "); // OUT:リターンコード
+    sb.append("   :" + paramBind++ + " := ov_errmsg;                "); // OUT:エラーメッセージ
+    sb.append("   :" + paramBind++ + " := od_manufacture_date;      "); // OUT:鮮度条件合格製造日
+    sb.append("END;                                                 ");
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // INパラメータ設定
+      paramBind  = 1;
+      cstmt.setInt   (paramBind++, XxcmnUtility.intValue(moveToId));      // IN:配送先ID
+      cstmt.setString(paramBind++, itemNo);                               // IN:品目コード
+      cstmt.setDate  (paramBind++, XxcmnUtility.dateValue(arrivalDate));  // IN:着荷予定日
+      cstmt.setDate  (paramBind++, XxcmnUtility.dateValue(standardDate)); // IN:基準日(適用日基準日)
+
+      // OUTパラメータ設定
+      int outParamStart = paramBind; // OUTパラメータ開始を保持。
+      cstmt.registerOutParameter(paramBind++, Types.VARCHAR); // OUT:リターンコード
+      cstmt.registerOutParameter(paramBind++, Types.VARCHAR); // OUT:エラーメッセージ
+      cstmt.registerOutParameter(paramBind++, Types.DATE);    // OUT:鮮度条件合格製造日
+
+      //PL/SQL実行
+      cstmt.execute();
+
+      // OUTパラメータ取得
+      paramBind  = outParamStart;
+      String retCode         = cstmt.getString(paramBind++);         // OUT:リターンコード
+      String errMsg          = cstmt.getString(paramBind++);         // OUT:エラーメッセージ
+      Date   manufactureDate = new Date(cstmt.getDate(paramBind++)); // OUT:鮮度条件合格製造日
+
+      // APIエラー終了でない場合
+      if (!XxcmnConstants.API_RETURN_ERROR.equals(retCode))
+      {
+        ret.put("retCode",         retCode);         // OUT:リターンコード
+        ret.put("manufactureDate", manufactureDate); // OUT:鮮度条件合格製造日
+
+      // API正常終了でない場合、エラー  
+      } else
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          errMsg, // エラーメッセージ
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      // ログ出力
+      XxcmnUtility.writeLog(
+        trans,
+        XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+        s.toString(),
+        6);
+      // エラーメッセージ出力
+      throw new OAException(
+        XxcmnConstants.APPL_XXCMN, 
+        XxcmnConstants.XXCMN10123);
+        
+    } finally
+    {
+      try
+      {
+        // PL/SQLクローズ
+        cstmt.close();
+        
+      // クローズ中ににエラーが発生した場合
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    }
+    return ret;
+  } // getFreshPassDate
+// 2009-01-26 H.Itou ADD END
 }

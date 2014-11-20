@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2008-12-11 1.6  伊藤ひとみ     本番障害#675対応
 * 2008-12-25 1.7  二瓶　大輔     本番障害#771対応
 * 2009-01-22 1.8  伊藤ひとみ     本番障害#1000対応
+* 2009-01-26 1.9  伊藤ひとみ     本番障害#936対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -45,7 +46,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仮引当ロット入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 北寒寺 正夫
- * @version 1.8
+ * @version 1.9
  ***************************************************************************
  */
  
@@ -1901,13 +1902,36 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
     String[]  deliverToNameRow  = new String[vo.getRowCount()]; // 入庫先保管場所
 // 2008-10-22 D.Nihei ADD END
 
-
     // チェックで複数回使用する変数を宣言
     HashMap data              = null;                         // 戻り値格納用
     Number result             = null;                         // 処理結果
     Date   revDate            = null;                         // 逆転日付
     Date   standardDate       = null;                         // 基準日
     Number shipToCanEncQty    = null;                         // 入庫先引当可能数
+// 2009-01-26 H.Itou ADD START 本番障害＃936対応
+    String getFreshRetCode    = null;                         // 鮮度条件合格製造日リターンコード
+
+    // 以下のすべてを満たす場合、鮮度チェックを行うため、鮮度条件合格製造日を取得する。
+    // ・呼出画面区分が出荷
+    // ・ロット管理品
+    // ・品目区分が製品の場合または、商品区分がリーフで品目区分が半製品の場合
+    if (XxwshConstants.CALL_PIC_KBN_SHIP_INPUT.equals(callPictureKbn)
+      && XxwshConstants.LOT_CTL_Y.equals(lotCtl.toString())
+      && (XxwshConstants.ITEM_TYPE_PROD.equals(itemClass)
+        || XxwshConstants.PROD_CLASS_CODE_LEAF.equals(prodClass)
+          && XxwshConstants.ITEM_TYPE_HALF.equals(itemClass)))
+    {
+      // 鮮度条件合格製造日
+      HashMap retHash = XxwshUtility.getFreshPassDate(
+                          getOADBTransaction(),
+                          deliverToId,
+                          itemCode,
+                          scheduleArrivalDate,
+                          scheduleShipDate);
+      getFreshRetCode = (String)retHash.get("retCode");       // 鮮度条件合格製造日リターンコード
+      standardDate    = (Date)retHash.get("manufactureDate"); // 鮮度条件合格製造日
+    }
+// 2009-01-26 H.Itou ADD END
 
     // 手持在庫数・引当可能数一覧リージョンの一行目をセット
     vo.first();
@@ -2008,20 +2032,27 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                 warningClass = XxwshConstants.WARNING_CLASS_LOT;   // 警告区分
                 warningDate  = revDate;                            // 警告日付
               }
-            }            
-            // 鮮度条件チェックを実行
-            data = XxwshUtility.doCheckFreshCondition(
-                     getOADBTransaction(),
-                     deliverToId,
-                     lotId,
-                     scheduleArrivalDate,
-                     scheduleShipDate);
-
-            result       = (Number)data.get("result");     // 処理結果
-            standardDate = (Date)data.get("standardDate"); // 基準日
-
-            // API実行結果が1:エラーの場合
-            if (!XxwshConstants.RETURN_SUCCESS.equals(result))
+            }
+// 2009-01-26 H.Itou MOD START 本番障害＃936対応
+//            // 鮮度条件チェックを実行
+//            data = XxwshUtility.doCheckFreshCondition(
+//                     getOADBTransaction(),
+//                     deliverToId,
+//                     lotId,
+//                     scheduleArrivalDate,
+//                     scheduleShipDate);
+//
+//            result       = (Number)data.get("result");     // 処理結果
+//            standardDate = (Date)data.get("standardDate"); // 基準日
+//
+//            // API実行結果が1:エラーの場合
+//            if (!XxwshConstants.RETURN_SUCCESS.equals(result))
+            // 以下の場合、鮮度条件警告
+            // ・鮮度条件合格製造日リターンコードが0(リターンコード1は賞味期間が0の場合なので、鮮度条件チェックを行わない。)
+            // ・製造日が鮮度条件合格製造日より古い
+            if (XxcmnConstants.API_RETURN_NORMAL.equals(getFreshRetCode)
+              && XxcmnUtility.chkCompareDate(1, standardDate, new Date(productionDate.replaceAll("/", "-"))))
+// 2009-01-26 H.Itou MOD END
             {
               // 鮮度条件チェックエラーフラグをYに設定
               freshErrFlgRow[vo.getCurrentRowIndex()]      = XxcmnConstants.STRING_Y;
@@ -2034,7 +2065,7 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                 warningClass = XxwshConstants.WARNING_CLASS_FRESH;   // 警告区分
                 warningDate  = standardDate;                         // 警告日付
                   
-              // 警告日付が逆転日付より小さい日付の場合
+              // 警告日付が鮮度条件合格製造日より小さい日付の場合
               } else if (
                 XxcmnUtility.chkCompareDate(
                   1,
