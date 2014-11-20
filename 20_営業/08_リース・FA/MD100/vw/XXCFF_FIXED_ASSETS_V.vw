@@ -6,6 +6,10 @@ BOOK_TYPE_CODE,                --台帳名
 COST,                          --取得価額
 ADJUSTED_RECOVERABLE_COST,     --償却対象額
 DEPRN_RESERVE,                 --純帳簿価額
+-- ADD E_本稼動_04156 2010/08/04 Start
+LAST_FISCAL_YEAR,              --台帳最新会計年度
+DEPRN_FISCAL_YEAR,             --最終償却時会計年度
+-- ADD E_本稼動_04156 2010/08/04 End
 YTD_DEPRN,                     --年償却累計額
 TOTAL_AMOUNT,                  --償却累計額
 PERIOD_NAME,                   --減価償却対象期間
@@ -105,7 +109,19 @@ AS
       ,MAIN.COST                    AS COST--取得価額
       ,MAIN.ADJUSTED_RECOVERABLE_COST  AS ADJUSTED_RECOVERABLE_COST--償却対象額
       ,MAIN.DEPRN_RESERVE           AS DEPRN_RESERVE--純帳簿価額
-      ,MAIN.YTD_DEPRN               AS YTD_DEPRN--年償却累計額
+--
+-- Modify E_本稼動_04156 2010/08/04 Start
+      ,MAIN.LAST_FISCAL_YEAR        AS LAST_FISCAL_YEAR  --台帳の最新会計年度
+      ,MAIN.DEPRN_FISCAL_YEAR       AS DEPRN_FISCAL_YEAR --資産の最終償却時の会計年度
+      ,CASE
+         WHEN (MAIN.LAST_FISCAL_YEAR = MAIN.DEPRN_FISCAL_YEAR) THEN
+           MAIN.YTD_DEPRN
+         ELSE
+           0
+         END YTD_DEPRN                                       --年償却累計額
+      --,MAIN.YTD_DEPRN               AS YTD_DEPRN--年償却累計額
+-- Modify E_本稼動_04156 2010/08/04 End
+--
       ,MAIN.TOTAL_AMOUNT            AS TOTAL_AMOUNT--償却累計額
 -- Modify 2009.08.19 Ver1.1 Start
 --      ,FDP.PERIOD_NAME              AS PERIOD_NAME--減価償却対象期間
@@ -216,6 +232,18 @@ FROM   FA_ADDITIONS              C    -- 資産詳細
 -- Modify 2009.08.19 Ver1.1 Start
                ,FDP.PERIOD_NAME              AS PERIOD_NAME
 -- Modify 2009.08.19 Ver1.1 End
+--
+-- Add E_本稼動_04156 2010/08/04 Start
+               ,FDP.FISCAL_YEAR              AS LAST_FISCAL_YEAR                         --台帳の最新会計年度
+               ,(SELECT /*+ 
+                            INDEX( FDP_FISCAL FA_DEPRN_PERIODS_U3)
+                        */
+                        FDP_FISCAL.FISCAL_YEAR
+                 FROM APPS.FA_DEPRN_PERIODS FDP_FISCAL
+                 WHERE B.BOOK_TYPE_CODE   = FDP_FISCAL.BOOK_TYPE_CODE
+                 AND   FDS.PERIOD_COUNTER = FDP_FISCAL.PERIOD_COUNTER) DEPRN_FISCAL_YEAR --最終償却時の会計年度
+-- Add E_本稼動_04156 2010/08/04 End
+--
         FROM    FA_BOOKS                  B    -- 資産台帳情報
               ,(SELECT  FDSY.DEPRN_RESERVE
                        ,FDSY.YTD_DEPRN                  AS YTD_DEPRN--年償却累計額
@@ -271,6 +299,8 @@ COMMENT ON COLUMN XXCFF_FIXED_ASSETS_V.BOOK_TYPE_CODE IS '台帳名';
 COMMENT ON COLUMN XXCFF_FIXED_ASSETS_V.COST IS '取得価額';
 COMMENT ON COLUMN XXCFF_FIXED_ASSETS_V.ADJUSTED_RECOVERABLE_COST IS '償却対象額';
 COMMENT ON COLUMN XXCFF_FIXED_ASSETS_V.DEPRN_RESERVE IS '純帳簿価額';
+COMMENT ON COLUMN XXCFF_FIXED_ASSETS_V.LAST_FISCAL_YEAR IS '台帳最新会計年度';
+COMMENT ON COLUMN XXCFF_FIXED_ASSETS_V.DEPRN_FISCAL_YEAR IS '最終償却時会計年度';
 COMMENT ON COLUMN XXCFF_FIXED_ASSETS_V.YTD_DEPRN IS '年償却累計額';
 COMMENT ON COLUMN XXCFF_FIXED_ASSETS_V.TOTAL_AMOUNT IS '償却累計額';
 COMMENT ON COLUMN XXCFF_FIXED_ASSETS_V.PERIOD_NAME IS '減価償却対象期間';
