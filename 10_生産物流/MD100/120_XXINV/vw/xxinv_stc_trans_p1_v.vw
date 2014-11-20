@@ -387,6 +387,9 @@ AS
           AND    flv_in_pr.lookup_code              = xrpm_in_pr.new_div_invent
           AND    xrpm_in_pr.doc_type                = 'PROD'
           AND    xrpm_in_pr.use_div_invent          = 'Y'
+-- 2009/01/07 Y.Yamamoto #IS50 add start
+          AND    xrpm_in_pr.routing_class          <> '70'
+-- 2009/01/07 Y.Yamamoto #IS50 add end
          ) xrpm
   WHERE  gbh_in_pr.batch_id                 = gmd_in_pr.batch_id
   AND    gmd_in_pr.line_type               IN ( 1                -- 完成品
@@ -437,6 +440,96 @@ AS
   AND    grb_in_pr.routing_id               = grt_in_pr.routing_id
   AND    grt_in_pr.language                 = 'JA'
   AND    iwm_in_pr.mtl_organization_id      = mil_in_pr.organization_id
+-- 2009/01/07 Y.Yamamoto #IS50 add start
+  UNION ALL
+  -- 品目振替予定
+  SELECT NULL                                         AS po_trans_id
+        ,iwm_in_pr.attribute1                         AS ownership_code
+        ,mil_in_pr.inventory_location_id              AS inventory_location_id
+        ,xmld_in_pr.item_id                           AS item_id
+        ,ilm_in_pr.lot_no                             AS lot_no
+        ,ilm_in_pr.attribute1                         AS manufacture_date
+        ,ilm_in_pr.attribute2                         AS uniqe_sign
+        ,ilm_in_pr.attribute3                         AS expiration_date -- <---- ここまで共通
+        ,TRUNC(gbh_in_pr.plan_start_date)             AS arrival_date
+        ,TRUNC(gbh_in_pr.plan_start_date)             AS leaving_date
+        ,'1'                                          AS status       -- 予定
+        ,xrpm.new_div_invent                          AS reason_code
+        ,xrpm.meaning                                 AS reason_code_name
+        ,gbh_in_pr.batch_no                           AS voucher_no
+        ,grt_in_pr.routing_desc                       AS ukebaraisaki_name
+        ,NULL                                         AS deliver_to_name
+        ,xmld_in_pr.actual_quantity                   AS stock_quantity
+        ,0                                            AS leaving_quantity
+  FROM   gme_batch_header             gbh_in_pr                  -- 生産バッチ
+        ,gme_material_details         gmd_in_pr                  -- 生産原料詳細
+        ,gme_material_details         gmd_in_pr2                 -- 生産原料詳細
+        ,xxinv_mov_lot_details        xmld_in_pr                 -- 移動ロット詳細(アドオン)
+        ,gmd_routings_b               grb_in_pr                  -- 工順マスタ
+        ,gmd_routings_tl              grt_in_pr                  -- 工順マスタ日本語
+        ,ic_tran_pnd                  itp_in_pr                  -- OPM保留在庫トランザクション
+        ,ic_whse_mst                  iwm_in_pr                  -- OPM倉庫マスタ
+        ,mtl_item_locations           mil_in_pr                  -- OPM保管場所マスタ
+        ,ic_lots_mst                  ilm_in_pr                  -- OPMロットマスタ
+        ,gmi_item_categories          gic
+        ,mtl_categories_b             mcb
+        ,gmi_item_categories          gic2
+        ,mtl_categories_b             mcb2
+        ,(SELECT xrpm_in_pr.new_div_invent
+                ,flv_in_pr.meaning
+                ,xrpm_in_pr.routing_class
+                ,xrpm_in_pr.line_type
+                ,xrpm_in_pr.doc_type
+                ,xrpm_in_pr.item_div_origin
+                ,xrpm_in_pr.item_div_ahead
+          FROM   fnd_lookup_values flv_in_pr                      -- クイックコード
+                ,xxcmn_rcv_pay_mst xrpm_in_pr                    -- 受払区分アドオンマスタ
+          WHERE  flv_in_pr.lookup_type              = 'XXCMN_NEW_DIVISION'
+          AND    flv_in_pr.language                 = 'JA'
+          AND    flv_in_pr.lookup_code              = xrpm_in_pr.new_div_invent
+          AND    xrpm_in_pr.doc_type                = 'PROD'
+          AND    xrpm_in_pr.use_div_invent          = 'Y'
+          AND    xrpm_in_pr.routing_class           = '70'
+         ) xrpm
+  WHERE  gbh_in_pr.batch_id                 = gmd_in_pr.batch_id
+  AND    gmd_in_pr.material_detail_id       = xmld_in_pr.mov_line_id
+  AND    gmd_in_pr.line_type               IN ( 1                -- 完成品
+                                               ,2 )              -- 副産物
+  AND    itp_in_pr.doc_type                 = xrpm.doc_type
+  AND    itp_in_pr.doc_id                   = gmd_in_pr.batch_id
+  AND    itp_in_pr.line_id                  = gmd_in_pr.material_detail_id
+  AND    itp_in_pr.doc_line                 = gmd_in_pr.line_no
+  AND    itp_in_pr.line_type                = gmd_in_pr.line_type
+  AND    itp_in_pr.item_id                  = gmd_in_pr.item_id
+  AND    itp_in_pr.completed_ind            = 0
+  AND    itp_in_pr.delete_mark              = 0                  -- 有効チェック(OPM保留在庫)
+  AND    itp_in_pr.item_id                  = ilm_in_pr.item_id
+  AND    itp_in_pr.lot_id                   = ilm_in_pr.lot_id
+  AND    itp_in_pr.item_id                  = gic.item_id
+  AND    gic.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  AND    mcb.category_id                    = gic.category_id
+  AND    xrpm.item_div_ahead                = mcb.segment1
+  AND    gmd_in_pr2.item_id                 = gic2.item_id
+  AND    gic2.category_set_id               = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  AND    mcb2.category_id                   = gic.category_id
+  AND    xrpm.item_div_origin               = mcb2.segment1
+  AND    xmld_in_pr.document_type_code      = '40'
+  AND    xmld_in_pr.record_type_code        = '10'
+  AND    xmld_in_pr.item_id                 = ilm_in_pr.item_id
+  AND    xmld_in_pr.lot_id                  = ilm_in_pr.lot_id
+  AND    grb_in_pr.attribute9               = mil_in_pr.segment1
+  AND    iwm_in_pr.mtl_organization_id      = mil_in_pr.organization_id
+  AND    gbh_in_pr.batch_status            IN ( 1                  -- 保留
+                                                ,2 )                -- WIP
+  AND    grb_in_pr.routing_id               = gbh_in_pr.routing_id
+  AND    xrpm.routing_class                 = grb_in_pr.routing_class
+  AND    xrpm.line_type                     = gmd_in_pr.line_type
+  AND    gbh_in_pr.batch_id                 = gmd_in_pr2.batch_id
+  AND    gmd_in_pr.batch_id                 = gmd_in_pr2.batch_id
+  AND    gmd_in_pr2.line_type               = -1                  -- 投入品
+  AND    grb_in_pr.routing_id               = grt_in_pr.routing_id
+  AND    grt_in_pr.language                 = 'JA'
+-- 2009/01/07 Y.Yamamoto #IS50 add end
   UNION ALL
   ------------------------------------------------------------------------
   -- 出庫予定
@@ -1193,6 +1286,9 @@ AS
           AND    flv_out_pr.lookup_code              = xrpm_out_pr.new_div_invent
           AND    xrpm_out_pr.doc_type                = 'PROD'
           AND    xrpm_out_pr.use_div_invent          = 'Y'
+-- 2009/01/07 Y.Yamamoto #IS50 add start
+          AND    xrpm_out_pr.routing_class          <> '70'
+-- 2009/01/07 Y.Yamamoto #IS50 add end
          ) xrpm
   WHERE  gbh_out_pr.batch_id                 = gmd_out_pr.batch_id
   AND    gmd_out_pr.material_detail_id       = xmld_out_pr.mov_line_id
@@ -1237,6 +1333,95 @@ AS
     AND ( xrpm.hit_in_div                    = gmd_out_pr.attribute5 )))
   AND    grb_out_pr.routing_id               = grt_out_pr.routing_id
   AND    grt_out_pr.language                 = 'JA'
+-- 2009/01/07 Y.Yamamoto #IS50 add start
+  UNION ALL
+  -- 品目振替予定
+  SELECT NULL                                          AS po_trans_id
+        ,iwm_out_pr.attribute1                         AS ownership_code
+        ,mil_out_pr.inventory_location_id              AS inventory_location_id
+        ,xmld_out_pr.item_id                           AS item_id
+        ,ilm_out_pr.lot_no                             AS lot_no
+        ,ilm_out_pr.attribute1                         AS manufacture_date
+        ,ilm_out_pr.attribute2                         AS uniqe_sign
+        ,ilm_out_pr.attribute3                         AS expiration_date -- <---- ここまで共通
+        ,TRUNC(gbh_out_pr.plan_start_date)             AS arrival_date
+        ,TRUNC(gbh_out_pr.plan_start_date)             AS leaving_date
+        ,'1'                                           AS status       -- 予定
+        ,xrpm.new_div_invent                           AS reason_code
+        ,xrpm.meaning                                  AS reason_code_name
+        ,gbh_out_pr.batch_no                           AS voucher_no
+        ,grt_out_pr.routing_desc                       AS ukebaraisaki_name
+        ,NULL                                          AS deliver_to_name
+        ,0                                             AS stock_quantity
+        ,xmld_out_pr.actual_quantity                   AS leaving_quantity
+  FROM   gme_batch_header             gbh_out_pr                  -- 生産バッチ
+        ,gme_material_details         gmd_out_pr                  -- 生産原料詳細
+        ,gme_material_details         gmd_out_pr2                 -- 生産原料詳細
+        ,xxinv_mov_lot_details        xmld_out_pr                 -- 移動ロット詳細(アドオン)
+        ,gmd_routings_b               grb_out_pr                  -- 工順マスタ
+        ,gmd_routings_tl              grt_out_pr                  -- 工順マスタ日本語
+        ,ic_tran_pnd                  itp_out_pr                  -- OPM保留在庫トランザクション
+        ,ic_whse_mst                  iwm_out_pr                  -- OPM倉庫マスタ
+        ,mtl_item_locations           mil_out_pr                  -- OPM保管場所マスタ
+        ,ic_lots_mst                  ilm_out_pr                  -- OPMロットマスタ
+        ,gmi_item_categories          gic
+        ,mtl_categories_b             mcb
+        ,gmi_item_categories          gic2
+        ,mtl_categories_b             mcb2
+        ,(SELECT xrpm_out_pr.new_div_invent
+                ,flv_out_pr.meaning
+                ,xrpm_out_pr.routing_class
+                ,xrpm_out_pr.line_type
+                ,xrpm_out_pr.doc_type
+                ,xrpm_out_pr.item_div_origin
+                ,xrpm_out_pr.item_div_ahead
+          FROM   fnd_lookup_values flv_out_pr                      -- クイックコード
+                ,xxcmn_rcv_pay_mst xrpm_out_pr                    -- 受払区分アドオンマスタ
+          WHERE  flv_out_pr.lookup_type              = 'XXCMN_NEW_DIVISION'
+          AND    flv_out_pr.language                 = 'JA'
+          AND    flv_out_pr.lookup_code              = xrpm_out_pr.new_div_invent
+          AND    xrpm_out_pr.doc_type                = 'PROD'
+          AND    xrpm_out_pr.use_div_invent          = 'Y'
+          AND    xrpm_out_pr.routing_class           = '70'
+         ) xrpm
+  WHERE  gbh_out_pr.batch_id                 = gmd_out_pr.batch_id
+  AND    gmd_out_pr.material_detail_id       = xmld_out_pr.mov_line_id
+  AND    gmd_out_pr.line_type                = -1                 -- 投入品
+  AND    itp_out_pr.doc_type                 = xrpm.doc_type
+  AND    itp_out_pr.doc_id                   = gmd_out_pr.batch_id
+  AND    itp_out_pr.line_id                  = gmd_out_pr.material_detail_id
+  AND    itp_out_pr.doc_line                 = gmd_out_pr.line_no
+  AND    itp_out_pr.line_type                = gmd_out_pr.line_type
+  AND    itp_out_pr.item_id                  = gmd_out_pr.item_id
+  AND    itp_out_pr.completed_ind            = 0
+  AND    itp_out_pr.delete_mark              = 0                  -- 有効チェック(OPM保留在庫)
+  AND    itp_out_pr.item_id                  = ilm_out_pr.item_id
+  AND    itp_out_pr.lot_id                   = ilm_out_pr.lot_id
+  AND    itp_out_pr.item_id                  = gic.item_id
+  AND    gic.category_set_id                 = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  AND    mcb.category_id                     = gic.category_id
+  AND    xrpm.item_div_ahead                 = mcb.segment1
+  AND    gmd_out_pr2.item_id                 = gic2.item_id
+  AND    gic2.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  AND    mcb2.category_id                    = gic.category_id
+  AND    xrpm.item_div_origin                = mcb2.segment1
+  AND    xmld_out_pr.document_type_code      = '40'
+  AND    xmld_out_pr.record_type_code        = '10'
+  AND    xmld_out_pr.item_id                 = ilm_out_pr.item_id
+  AND    xmld_out_pr.lot_id                  = ilm_out_pr.lot_id
+  AND    grb_out_pr.attribute9               = mil_out_pr.segment1
+  AND    iwm_out_pr.mtl_organization_id      = mil_out_pr.organization_id
+  AND    gbh_out_pr.batch_status            IN ( 1                  -- 保留
+                                                ,2 )                -- WIP
+  AND    grb_out_pr.routing_id               = gbh_out_pr.routing_id
+  AND    xrpm.routing_class                  = grb_out_pr.routing_class
+  AND    xrpm.line_type                      = gmd_out_pr.line_type
+  AND    gbh_out_pr.batch_id                 = gmd_out_pr2.batch_id
+  AND    gmd_out_pr.batch_id                 = gmd_out_pr2.batch_id
+  AND    gmd_out_pr2.line_type               = -1                  -- 投入品
+  AND    grb_out_pr.routing_id               = grt_out_pr.routing_id
+  AND    grt_out_pr.language                 = 'JA'
+-- 2009/01/07 Y.Yamamoto #IS50 add end
   UNION ALL
   -- 相手先在庫出庫予定
 -- 2008/12/07 N.Yoshida start
