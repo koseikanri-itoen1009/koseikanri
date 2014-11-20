@@ -53,7 +53,7 @@ AS
   WHERE  iimb.item_id = gic.item_id
   AND    gic.category_id = xicv4.category_id
   AND    gic.category_set_id = xicv4.category_set_id
-  AND    xicv4.segment1 LIKE REPLACE(xig1v.item_group_cd(+),'*','_')
+  AND    xicv4.segment1 LIKE REPLACE(xig1v.item_group_cd,'*','_')
   AND    iimb.item_id = iv_cmpcst.item_id(+)
   AND    iimb.item_no = xsib.item_code(+)
   AND    xsib.item_status = iv_is.item_status
