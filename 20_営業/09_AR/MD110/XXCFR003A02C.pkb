@@ -33,6 +33,7 @@ AS
  *  2009/04/20    1.01 SCS 萱原 伸哉    障害T1_0564対応 税差額計算処理
  *  2009/07/13    1.02 SCS 廣瀬 真佐人  障害0000344対応 パフォーマンス改善
  *  2009/07/21    1.03 SCS 松尾 泰生    障害0000819対応 一意制約エラー対応
+ *  2009/07/22    1.04 SCS 廣瀬 真佐人  障害0000827対応 パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -865,7 +866,11 @@ AS
             , tax_div
             , bill_pub_cycle
           )
-            SELECT  hzca.account_number                        bill_cust_code          -- 請求先顧客コード
+-- Modify 2009.07.22 Ver1.04 start
+--            SELECT  hzca.account_number                        bill_cust_code          -- 請求先顧客コード
+            SELECT  /*+ USE_CONCAT */
+                    hzca.account_number                        bill_cust_code          -- 請求先顧客コード
+-- Modify 2009.07.22 Ver1.04 start
                   , lt_get1_term_cut_date_tab(ln_loop_cnt)     cutoff_date             -- 締日
                   , xxcfr_common_pkg.get_cust_account_name(
                                        hzca.account_number,
@@ -967,7 +972,11 @@ AS
             , tax_div
             , bill_pub_cycle
           )
-            SELECT  hzca.account_number                       bill_cust_code          -- 請求先顧客コード
+-- Modify 2009.07.22 Ver1.04 start
+--            SELECT  hzca.account_number                       bill_cust_code          -- 請求先顧客コード
+            SELECT  /*+ USE_CONCAT */
+                    hzca.account_number                       bill_cust_code          -- 請求先顧客コード
+-- Modify 2009.07.22 Ver1.04 start
                   , lt_get2_term_cut_date_tab(ln_loop_cnt)    cutoff_date             -- 締日
                   , xxcfr_common_pkg.get_cust_account_name(
                                        hzca.account_number,
@@ -1169,7 +1178,11 @@ AS
             , tax_div
             , bill_pub_cycle
           )
-            SELECT  hzca.account_number                      bill_cust_code          -- 請求先顧客コード
+-- Modify 2009.07.22 Ver1.04 start
+--            SELECT  hzca.account_number                      bill_cust_code          -- 請求先顧客コード
+            SELECT  /*+ USE_CONCAT */
+                    hzca.account_number                      bill_cust_code          -- 請求先顧客コード
+-- Modify 2009.07.22 Ver1.04 start
                   , lt_get_term_cut_date_tab(ln_loop_cnt)    cutoff_date             -- 締日
                   , xxcfr_common_pkg.get_cust_account_name(
                                        hzca.account_number,
