@@ -6,7 +6,8 @@
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2009-01-27 1.0  SCS朴邦彦　  新規作成
+* 2009-01-27 1.0  SCS朴邦彦    新規作成
+* 2009-04-22 1.1  SCS柳平直人  [ST障害T1_0585]画面遷移セキュリティ不正対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019002j.server;
@@ -19,7 +20,9 @@ import itoen.oracle.apps.xxcso.common.util.XxcsoUtils;
 import itoen.oracle.apps.xxcso.common.util.XxcsoMessage;
 import itoen.oracle.apps.xxcso.common.util.XxcsoRouteManagementUtils;
 import itoen.oracle.apps.xxcso.common.util.XxcsoValidateUtils;
-import itoen.oracle.apps.xxcso.common.util.XxcsoAcctSalesPlansUtils;
+// 2009/04/22 [ST障害T1_0585] Del Start
+//import itoen.oracle.apps.xxcso.common.util.XxcsoAcctSalesPlansUtils;
+// 2009/04/22 [ST障害T1_0585] Del End
 
 import oracle.apps.fnd.framework.OAException;
 import oracle.apps.fnd.framework.server.OAApplicationModuleImpl;
@@ -32,7 +35,7 @@ import com.sun.java.util.collections.ArrayList;
 import com.sun.java.util.collections.List;
 
 /*******************************************************************************
- * 売上計画(複数顧客)　アプリケーションモジュールクラス
+ * 売上計画(複数顧客) アプリケーションモジュールクラス
  * @author  SCS朴邦彦
  * @version 1.0
  *******************************************************************************
@@ -105,14 +108,39 @@ public class XxcsoSalesPlanBulkRegistAMImpl extends OAApplicationModuleImpl
       initRow.setResultRender(Boolean.FALSE);
     }
 
-    // ログインユーザが拠点営業員の場合、営業員は選択不可（自身固定）
-    initRow.setReadOnlyFlg(Boolean.FALSE);
-    if ( XxcsoAcctSalesPlansUtils.isSalesPerson( txn ) )
+// 2009/04/22 [ST障害T1_0585] Mod Start
+//    // ログインユーザが拠点営業員の場合、営業員は選択不可（自身固定）
+//    initRow.setReadOnlyFlg(Boolean.FALSE);
+//    if ( XxcsoAcctSalesPlansUtils.isSalesPerson( txn ) )
+//    {
+//      initRow.setReadOnlyFlg(Boolean.TRUE);
+//      initRow.setEmployeeNumber(initRow.getMyEmployeeNumber());
+//      initRow.setFullName(initRow.getMyFullName());
+//    }
+    // プロファイルの取得（売上計画セキュリティ）
+    String salesPlanSequrity =
+      txn.getProfile(
+        XxcsoSalesPlanBulkRegistConstants.XXCSO1_SALES_PLAN_SECURITY
+      );
+    if ( salesPlanSequrity == null || "".equals(salesPlanSequrity.trim()) )
     {
-      initRow.setReadOnlyFlg(Boolean.TRUE);
-      initRow.setEmployeeNumber(initRow.getMyEmployeeNumber());
-      initRow.setFullName(initRow.getMyFullName());
+      throw
+        XxcsoMessage.createProfileNotFoundError(
+          XxcsoSalesPlanBulkRegistConstants.XXCSO1_SALES_PLAN_SECURITY
+        );
     }
+    initRow.setReadOnlyFlg( Boolean.FALSE );
+    if ( XxcsoSalesPlanBulkRegistConstants.SECURITY_REFERENCE.equals(
+           salesPlanSequrity)
+    )
+    {
+      // ログインユーザーが担当営業員の場合
+      // 営業員入力項目は編集不可・ログインユーザーを設定
+      initRow.setReadOnlyFlg( Boolean.TRUE );
+      initRow.setEmployeeNumber( initRow.getMyEmployeeNumber() );
+      initRow.setFullName(       initRow.getMyFullName()       );
+    }
+// 2009/04/22 [ST障害T1_0585] Mod End
 
     XxcsoTargetYearListVOImpl yearListVo = getXxcsoTargetYearListVO1();
     yearListVo.executeQuery();
