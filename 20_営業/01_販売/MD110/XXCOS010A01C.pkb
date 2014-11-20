@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2010/03/23    1.17  M.Sano           [E_本稼動_01728] 営業担当の日付チェック変更
  *  2010/04/19    1.18  Y.Goto           [E_本稼動_01719] 営業担当チェックを共通関数に変更
  *                                       [E_本稼動_01900] EDI明細情報テーブルにEDI原単価(発注)を追加
+ *  2010/05/06    1.19  K.Oomata         [E_本稼動_02569] 受注作成対象外データの担当営業員取得エラー不具合対応
  *
  *****************************************************************************************/
 --
@@ -4350,6 +4351,12 @@ AS
       -- チェック処理終了
       ov_retcode := cv_status_warn;
       RETURN;
+-- 2010/05/06 Ver.1.19 K.Oomata Add Start
+    --チェック対象でなければ、営業担当員取得の可否に限らず共通関数のリターンコードを正常にする。
+    ELSIF ( gn_check_record_flag = cn_check_record_no )
+    THEN
+      lv_retcode := cv_status_normal;
+-- 2010/05/06 Ver.1.19 K.Oomata Add End
     END IF;
 -- 2010/04/19 Ver.1.18 Y.Goto mod End
 -- 2010/01/19 Ver.1.15 M.Sano add End
@@ -7982,6 +7989,12 @@ AS
         IF ( lv_retcode != cv_status_normal ) THEN
           -- 終了ステータス設定
           ov_retcode := lv_retcode;
+-- 2010/05/06 Ver.1.19 K.Oomata Add Start
+          --A-4にてエラーが発生した場合は、処理中止。
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+-- 2010/05/06 Ver.1.19 K.Oomata Add End
         END IF;
 --
         -- 伝票エラーが発生していない場合
