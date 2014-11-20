@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOS_ORDER_SOURCE_REF_S01
  * Description     : 受注ソース参照
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,5 +11,6 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   S.Tomita         新規作成
  *  2009/04/06    1.1   T.Kitajima       [T1_0175]出荷依頼No採番ルール変更
+ *  2009/07/23    1.2   M.Maruyama       障害番号0000752 対応
  ************************************************************************/
-CREATE SEQUENCE XXCOS.XXCOS_ORDER_SOURCE_REF_S01 MINVALUE 1 MAXVALUE 9999999999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER NOCYCLE;
+CREATE SEQUENCE XXCOS.XXCOS_ORDER_SOURCE_REF_S01 MINVALUE 1 MAXVALUE 9999999999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER CYCLE;
