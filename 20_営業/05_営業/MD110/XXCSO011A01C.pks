@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -16,12 +16,14 @@ AS
  * -------------------- ------------------------------------------------------------
  *  main_for_application メイン処理（発注依頼申請用）
  *  main_for_approval    メイン処理（発注依頼承認用）
+ *  main_for_denegation  メイン処理（発注依頼否認用）
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2009-01-21    1.0   Noriyuki.Yabuki  新規作成
+ *  2009-01-21    1.0   N.Yabuki         新規作成
+ *  2009-04-16    1.1   N.Yabuki        【ST障害管理398】否認時にIBの作業依頼中フラグをOFFにする処理を追加
  *
  *****************************************************************************************/
   --
@@ -42,6 +44,17 @@ AS
     , funcmode   IN         VARCHAR2
     , resultout  OUT NOCOPY VARCHAR2
   );
+  --
+/*20090416_yabuki_ST398 START*/
+  -- メイン処理（発注依頼承認用）
+  PROCEDURE main_for_denegation(
+      itemtype   IN         VARCHAR2
+    , itemkey    IN         VARCHAR2
+    , actid      IN         VARCHAR2
+    , funcmode   IN         VARCHAR2
+    , resultout  OUT NOCOPY VARCHAR2
+  );
+/*20090416_yabuki_ST398 END*/
   --
 END XXCSO011A01C;
 /

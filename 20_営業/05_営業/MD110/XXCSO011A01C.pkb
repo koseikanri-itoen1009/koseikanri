@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  submain                   メイン処理プロシージャ
  *  main_for_application      メイン処理（発注依頼申請用）
  *  main_for_approval         メイン処理（発注依頼承認用）
+ *  main_for_denegation       メイン処理（発注依頼否認用）
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -54,6 +55,8 @@ AS
  *                                       【ST障害対応171】設置場所区分が「1:屋外」の場合、設置場所階数不要のチェック追加
  *                                       【ST障害対応198】リース情報のチェックをリース区分が「1:自社リース」時のみに修正
  *                                       【ST障害対応527】引揚時の設置作業会社、事業所のチェックを削除
+ *  2009-04-16    1.7   N.Yabuki         【ST障害対応398】否認時にIBの作業依頼中フラグをOFFにする処理を追加
+ *                                       【ST障害対応549】廃棄申請時の機器状態３、廃棄フラグ更新処理のタイミング変更
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -172,6 +175,10 @@ AS
 /*20090413_yabuki_ST171 START*/
   cv_tkn_number_47  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00562';  -- 設置場所階数入力チェックエラーメッセージ
 /*20090413_yabuki_ST171 END*/
+/*20090416_yabuki_ST549 START*/
+  cv_tkn_number_48  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00563';  -- ステータスID取得エラー
+  cv_tkn_number_49  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00564';  -- ステータスID抽出エラー
+/*20090416_yabuki_ST549 END*/
   --
   -- トークンコード
   cv_tkn_param_nm       CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -198,10 +205,15 @@ AS
 /*20090406_yabuki_ST297 END*/
 /*20090406_yabuki_ST101 START*/
   cv_tkn_process        CONSTANT VARCHAR2(20) := 'PROCESS';
-/*20090406_yabuki_ST101 START*/
+/*20090406_yabuki_ST101 END*/
 /*20090413_yabuki_ST170 START*/
   cv_tkn_req_date       CONSTANT VARCHAR2(20) := 'REQUEST_DATE';
 /*20090413_yabuki_ST170 END*/
+  --
+/*20090416_yabuki_ST549 START*/
+  -- 参照タイプのIBステータスタイプコード
+  cv_xxcso1_instance_status CONSTANT VARCHAR2(30)  := 'XXCSO1_INSTANCE_STATUS';
+/*20090416_yabuki_ST549 END*/
   --
   -- 複数エラーメッセージの区切り文字（カンマ）
   cv_msg_comma CONSTANT VARCHAR2(3) := ' , ';
@@ -212,6 +224,9 @@ AS
   -- 処理区分
   cv_proc_kbn_req_appl  CONSTANT VARCHAR2(1) := '1';  -- 発注依頼申請
   cv_proc_kbn_req_aprv  CONSTANT VARCHAR2(1) := '2';  -- 発注依頼承認
+/*20090416_yabuki_ST398 START*/
+  cv_proc_kbn_req_dngtn CONSTANT VARCHAR2(1) := '3';  -- 発注依頼否認
+/*20090416_yabuki_ST398 END*/
   --
   -- カテゴリ区分
   cv_category_kbn_new_install  CONSTANT VARCHAR2(5) := '10';  -- 新台設置
@@ -252,6 +267,9 @@ AS
   --
   -- 物件関連の項目の固定値
   cv_op_req_flag_on         CONSTANT VARCHAR2(1) := 'Y';  -- 作業依頼中フラグ「ＯＮ」
+/*20090416_yabuki_ST398 START*/
+  cv_op_req_flag_off        CONSTANT VARCHAR2(1) := 'N';  -- 作業依頼中フラグ「ＯＦＦ」
+/*20090416_yabuki_ST398 END*/
   cv_jotai_kbn1_operate     CONSTANT VARCHAR2(1) := '1';  -- 機器状態１（稼動状態）「稼動」
   cv_jotai_kbn1_hold        CONSTANT VARCHAR2(1) := '2';  -- 機器状態１（稼動状態）「滞留」
   cv_jotai_kbn3_non_schdl   CONSTANT VARCHAR2(1) := '0';  -- 機器状態３（廃棄情報）「予定無」
@@ -271,6 +289,14 @@ AS
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
+/*20090413_yabuki_ST549 START*/
+  gt_instance_status_id_1 csi_instance_statuses.instance_status_id%TYPE; -- 稼働中
+  gt_instance_status_id_2 csi_instance_statuses.instance_status_id%TYPE; -- 使用可
+  gt_instance_status_id_3 csi_instance_statuses.instance_status_id%TYPE; -- 整備中
+  gt_instance_status_id_4 csi_instance_statuses.instance_status_id%TYPE; -- 廃棄手続中
+  gt_instance_status_id_5 csi_instance_statuses.instance_status_id%TYPE; -- 廃棄処理済
+  gt_instance_status_id_6 csi_instance_statuses.instance_status_id%TYPE; -- 物件削除済
+/*20090413_yabuki_ST549 END*/
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -380,12 +406,39 @@ AS
     cv_ib_ui       CONSTANT VARCHAR2(30) := 'IB_UI';
     --
     -- トークン用
-    cv_tkn_val_req_number     CONSTANT VARCHAR2(30) := '発注依頼番号';
-    cv_tkn_val_process_kbn    CONSTANT VARCHAR2(30) := '処理区分';
-    cv_tkn_val_tran_type_id   CONSTANT VARCHAR2(30) := '取引タイプの取引タイプＩＤ';
-    cv_tkn_val_ext_attr_id    CONSTANT VARCHAR2(30) := '追加属性ＩＤ';
+    cv_tkn_val_req_number     CONSTANT VARCHAR2(30)  := '発注依頼番号';
+    cv_tkn_val_process_kbn    CONSTANT VARCHAR2(30)  := '処理区分';
+    cv_tkn_val_tran_type_id   CONSTANT VARCHAR2(30)  := '取引タイプの取引タイプＩＤ';
+    cv_tkn_val_ext_attr_id    CONSTANT VARCHAR2(30)  := '追加属性ＩＤ';
+/*20090416_yabuki_ST549 START*/
+    cv_tkn_val_status_nm      CONSTANT VARCHAR2(30)  := 'ステータス名';
+/*20090416_yabuki_ST549 END*/
+    --
+/*20090416_yabuki_ST549 START*/
+    -- 参照タイプのIBステータスコード
+    cv_instance_status_1      CONSTANT VARCHAR2(1)   := '1';    -- 稼動中
+    cv_instance_status_2      CONSTANT VARCHAR2(1)   := '2';    -- 使用可
+    cv_instance_status_3      CONSTANT VARCHAR2(1)   := '3';    -- 整備中
+    cv_instance_status_4      CONSTANT VARCHAR2(1)   := '4';    -- 廃棄手続中
+    cv_instance_status_5      CONSTANT VARCHAR2(1)   := '5';    -- 廃棄処理済
+    cv_instance_status_6      CONSTANT VARCHAR2(1)   := '6';    -- 物件削除済
+    --
+    -- インスタンスステータス名
+    cv_status_name01          CONSTANT VARCHAR2(100) := '稼働中';
+    cv_status_name02          CONSTANT VARCHAR2(100) := '使用可';
+    cv_status_name03          CONSTANT VARCHAR2(100) := '整備中';
+    cv_status_name04          CONSTANT VARCHAR2(100) := '廃棄手続中';
+    cv_status_name05          CONSTANT VARCHAR2(100) := '廃棄処理済';
+    cv_status_name06          CONSTANT VARCHAR2(100) := '物件削除済';
+    --
+    -- 抽出内容名
+    cv_instance_status        CONSTANT VARCHAR2(100) := '物件のステータスID';
+/*20090416_yabuki_ST549 END*/
     --
     -- *** ローカル変数 ***
+/*20090416_yabuki_ST549 START*/
+    lt_status_name    csi_instance_statuses.name%TYPE;
+/*20090416_yabuki_ST549 END*/
     --
     -- *** ローカル例外 ***
     input_parameter_expt  EXCEPTION;
@@ -576,6 +629,61 @@ AS
       RAISE input_parameter_expt;
       --
     END IF;
+    --
+/*20090416_yabuki_ST549 START*/
+    -- ======================
+    -- インスタンスステータスID取得
+    -- ======================
+    -- 初期化
+    lt_status_name := NULL;
+    --
+    -- 「廃棄手続中」
+    BEGIN
+      lt_status_name := xxcso_util_common_pkg.get_lookup_meaning(
+                            cv_xxcso1_instance_status
+                          , cv_instance_status_4
+                          , od_process_date
+                        );
+      SELECT cis.instance_status_id       -- インスタンスステータスID
+      INTO   gt_instance_status_id_4
+      FROM   csi_instance_statuses cis    -- インスタンスステータスマスタ
+      WHERE  cis.name = lt_status_name
+      AND    od_process_date
+               BETWEEN TRUNC( NVL( cis.start_date_active, od_process_date ) )
+               AND     TRUNC( NVL( cis.end_date_active, od_process_date ) )
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- データが存在しない場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_48          -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                       ,iv_token_value1 => cv_instance_status        -- トークン値1
+                       ,iv_token_name2  => cv_tkn_item               -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_status_nm      -- トークン値2
+                       ,iv_token_name3  => cv_tkn_value              -- トークンコード3
+                       ,iv_token_value3 => cv_status_name04          -- トークン値3
+                     );
+        RAISE input_parameter_expt;
+        -- 抽出に失敗した場合
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_49          -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm            -- トークンコード1
+                       ,iv_token_value1 => cv_instance_status        -- トークン値1
+                       ,iv_token_name2  => cv_tkn_item               -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_status_nm      -- トークン値2
+                       ,iv_token_name3  => cv_tkn_value              -- トークンコード3
+                       ,iv_token_value3 => cv_status_name04          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_err_msg            -- トークンコード4
+                       ,iv_token_value4 => SQLERRM                   -- トークン値4
+                     );
+        RAISE input_parameter_expt;
+    END;
+    --
+/*20090416_yabuki_ST549 END*/
     --
   EXCEPTION
     --
@@ -2447,7 +2555,11 @@ AS
    * Description      : 設置用物件更新処理(A-14)
    ***********************************************************************************/
   PROCEDURE update_ib_info(
-      i_instance_rec          IN         g_instance_rtype                        -- 物件情報
+/*20090416_yabuki_ST398 START*/
+      iv_process_kbn          IN         VARCHAR2                                -- 処理区分
+    , i_instance_rec          IN         g_instance_rtype                        -- 物件情報
+--      i_instance_rec          IN         g_instance_rtype                        -- 物件情報
+/*20090416_yabuki_ST398 END*/
     , i_requisition_rec       IN         g_requisition_rtype                     -- 発注依頼情報
     , in_transaction_type_id  IN         csi_txn_types.transaction_type_id%TYPE  -- 取引タイプID
     , ov_errbuf               OUT NOCOPY VARCHAR2    -- エラー・メッセージ --# 固定 #
@@ -2470,7 +2582,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_op_req_flag_on      CONSTANT VARCHAR2(1)    := 'Y';  -- 作業依頼中フラグ「ＯＮ」
+/*20090416_yabuki_ST398 START*/
+--    cv_op_req_flag_on      CONSTANT VARCHAR2(1)    := 'Y';  -- 作業依頼中フラグ「ＯＮ」
+/*20090416_yabuki_ST398 END*/
     cn_api_version         CONSTANT NUMBER         := 1.0;
     cv_commit_false        CONSTANT VARCHAR2(1)    := 'F';
     cv_init_msg_list_true  CONSTANT VARCHAR2(2000) := 'T';
@@ -2530,16 +2644,40 @@ AS
       --
     END IF;
     --
-    ------------------------------
-    -- インスタンスレコード設定
-    ------------------------------
-    l_instance_rec.instance_id            := i_instance_rec.instance_id;
-    l_instance_rec.attribute4             := cv_op_req_flag_on;
-    l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
-    l_instance_rec.request_id             := fnd_global.conc_request_id;
-    l_instance_rec.program_application_id := fnd_global.prog_appl_id;
-    l_instance_rec.program_id             := fnd_global.conc_program_id;
-    l_instance_rec.program_update_date    := SYSDATE;
+/*20090416_yabuki_ST398 START*/
+    --------------------------------------------------
+    -- 処理区分が「発注依頼申請」の場合
+    --------------------------------------------------
+    IF ( iv_process_kbn = cv_proc_kbn_req_appl ) THEN
+/*20090416_yabuki_ST398 END*/
+      ------------------------------
+      -- インスタンスレコード設定
+      ------------------------------
+      l_instance_rec.instance_id            := i_instance_rec.instance_id;
+      l_instance_rec.attribute4             := cv_op_req_flag_on;
+      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
+      l_instance_rec.request_id             := fnd_global.conc_request_id;
+      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
+      l_instance_rec.program_id             := fnd_global.conc_program_id;
+      l_instance_rec.program_update_date    := SYSDATE;
+/*20090416_yabuki_ST398 START*/
+    --------------------------------------------------
+    -- 処理区分が「発注依頼否認」の場合
+    --------------------------------------------------
+    ELSE
+      ------------------------------
+      -- インスタンスレコード設定
+      ------------------------------
+      l_instance_rec.instance_id            := i_instance_rec.instance_id;
+      l_instance_rec.attribute4             := cv_op_req_flag_off;
+      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
+      l_instance_rec.request_id             := fnd_global.conc_request_id;
+      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
+      l_instance_rec.program_id             := fnd_global.conc_program_id;
+      l_instance_rec.program_update_date    := SYSDATE;
+      --
+    END IF;
+/*20090416_yabuki_ST398 END*/
     --
     ------------------------------
     -- 取引レコード設定
@@ -2632,7 +2770,11 @@ AS
    * Description      : 引揚用物件更新処理(A-15)
    ***********************************************************************************/
   PROCEDURE update_withdraw_ib_info(
-      i_instance_rec          IN         g_instance_rtype                        -- 物件情報
+/*20090416_yabuki_ST398 START*/
+      iv_process_kbn          IN         VARCHAR2                                -- 処理区分
+    , i_instance_rec          IN         g_instance_rtype                        -- 物件情報
+--      i_instance_rec          IN         g_instance_rtype                        -- 物件情報
+/*20090416_yabuki_ST398 END*/
     , i_requisition_rec       IN         g_requisition_rtype                     -- 発注依頼情報
     , in_transaction_type_id  IN         csi_txn_types.transaction_type_id%TYPE  -- 取引タイプID
     , ov_errbuf               OUT NOCOPY VARCHAR2    -- エラー・メッセージ --# 固定 #
@@ -2655,7 +2797,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_op_req_flag_on      CONSTANT VARCHAR2(1)    := 'Y';  -- 作業依頼中フラグ「ＯＮ」
+/*20090416_yabuki_ST398 START*/
+--    cv_op_req_flag_on      CONSTANT VARCHAR2(1)    := 'Y';  -- 作業依頼中フラグ「ＯＮ」
+/*20090416_yabuki_ST398 END*/
     cn_api_version         CONSTANT NUMBER         := 1.0;
     cv_commit_false        CONSTANT VARCHAR2(1)    := 'F';
     cv_init_msg_list_true  CONSTANT VARCHAR2(2000) := 'T';
@@ -2715,16 +2859,40 @@ AS
       --
     END IF;
     --
-    ------------------------------
-    -- インスタンスレコード設定
-    ------------------------------
-    l_instance_rec.instance_id            := i_instance_rec.instance_id;
-    l_instance_rec.attribute4             := cv_op_req_flag_on;
-    l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
-    l_instance_rec.request_id             := fnd_global.conc_request_id;
-    l_instance_rec.program_application_id := fnd_global.prog_appl_id;
-    l_instance_rec.program_id             := fnd_global.conc_program_id;
-    l_instance_rec.program_update_date    := SYSDATE;
+/*20090416_yabuki_ST398 START*/
+    --------------------------------------------------
+    -- 処理区分が「発注依頼申請」の場合
+    --------------------------------------------------
+    IF ( iv_process_kbn = cv_proc_kbn_req_appl ) THEN
+/*20090416_yabuki_ST398 END*/
+      ------------------------------
+      -- インスタンスレコード設定
+      ------------------------------
+      l_instance_rec.instance_id            := i_instance_rec.instance_id;
+      l_instance_rec.attribute4             := cv_op_req_flag_on;
+      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
+      l_instance_rec.request_id             := fnd_global.conc_request_id;
+      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
+      l_instance_rec.program_id             := fnd_global.conc_program_id;
+      l_instance_rec.program_update_date    := SYSDATE;
+/*20090416_yabuki_ST398 START*/
+    --------------------------------------------------
+    -- 処理区分が「発注依頼否認」の場合
+    --------------------------------------------------
+    ELSE
+      ------------------------------
+      -- インスタンスレコード設定
+      ------------------------------
+      l_instance_rec.instance_id            := i_instance_rec.instance_id;
+      l_instance_rec.attribute4             := cv_op_req_flag_off;
+      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
+      l_instance_rec.request_id             := fnd_global.conc_request_id;
+      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
+      l_instance_rec.program_id             := fnd_global.conc_program_id;
+      l_instance_rec.program_update_date    := SYSDATE;
+      --
+    END IF;
+/*20090416_yabuki_ST398 END*/
     --
     ------------------------------
     -- 取引レコード設定
@@ -2842,8 +3010,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_op_req_flag_on      CONSTANT VARCHAR2(1)    := 'Y';  -- 作業依頼中フラグ「ＯＮ」
-    cv_op_req_flag_off     CONSTANT VARCHAR2(1)    := 'N';  -- 作業依頼中フラグ「ＯＦＦ」
+/*20090416_yabuki_ST398 START*/
+--    cv_op_req_flag_on      CONSTANT VARCHAR2(1)    := 'Y';  -- 作業依頼中フラグ「ＯＮ」
+--    cv_op_req_flag_off     CONSTANT VARCHAR2(1)    := 'N';  -- 作業依頼中フラグ「ＯＦＦ」
+/*20090416_yabuki_ST398 END*/
     cn_api_version         CONSTANT NUMBER         := 1.0;
     cv_commit_false        CONSTANT VARCHAR2(1)    := 'F';
     cv_init_msg_list_true  CONSTANT VARCHAR2(2000) := 'T';
@@ -2898,6 +3068,79 @@ AS
     -- 処理区分が「発注依頼申請」の場合
     --------------------------------------------------
     IF ( iv_process_kbn = cv_proc_kbn_req_appl ) THEN
+/*20090416_yabuki_ST549 START*/
+--      ------------------------------
+--      -- 追加属性値情報取得
+--      ------------------------------
+--      -- 機器状態３（廃棄情報）
+--      l_iea_val_tab(1)
+--        := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(
+--               in_instance_id    => i_instance_rec.instance_id  -- インスタンスID
+--             , iv_attribute_code => cv_attr_cd_jotai_kbn3       -- 属性定義
+--           );
+--      --
+--      -- 廃棄フラグ
+--      l_iea_val_tab(2)
+--        := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(
+--               in_instance_id    => i_instance_rec.instance_id  -- インスタンスID
+--             , iv_attribute_code => cv_attr_cd_ven_haiki_flg    -- 属性定義
+--           );
+--      --
+--      ------------------------------
+--      -- 追加属性値情報レコード設定
+--      ------------------------------
+--      -- 機器状態３（廃棄情報）
+--      l_ext_attrib_values_tab(1).attribute_value_id    := l_iea_val_tab(1).attribute_value_id;
+--      l_ext_attrib_values_tab(1).attribute_value       := cv_jotai_kbn3_ablsh_appl;
+--      l_ext_attrib_values_tab(1).object_version_number := l_iea_val_tab(1).object_version_number;
+--      --
+--      -- 廃棄フラグ
+--      IF ( l_iea_val_tab(2).attribute_value_id IS NULL ) THEN
+--        l_ext_attrib_values_tab(2).attribute_id    := i_ib_ext_attr_id_rec.abolishment_flag;
+--        l_ext_attrib_values_tab(2).instance_id     := i_instance_rec.instance_id;
+--        l_ext_attrib_values_tab(2).attribute_value := cv_ablsh_flg_ablsh_appl;
+--        --
+--      ELSE
+--        l_ext_attrib_values_tab(2).attribute_value_id    := l_iea_val_tab(2).attribute_value_id;
+--        l_ext_attrib_values_tab(2).attribute_value       := cv_ablsh_flg_ablsh_appl;
+--        l_ext_attrib_values_tab(2).object_version_number := l_iea_val_tab(2).object_version_number;
+--        --
+--      END IF;
+/*20090416_yabuki_ST549 END*/
+      --
+      ------------------------------
+      -- インスタンスレコード設定
+      ------------------------------
+      l_instance_rec.instance_id            := i_instance_rec.instance_id;
+      l_instance_rec.attribute4             := cv_op_req_flag_on;
+      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
+      l_instance_rec.request_id             := fnd_global.conc_request_id;
+      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
+      l_instance_rec.program_id             := fnd_global.conc_program_id;
+      l_instance_rec.program_update_date    := SYSDATE;
+      --
+/*20090416_yabuki_ST398 START*/
+    --------------------------------------------------
+    -- 処理区分が「発注依頼否認」の場合
+    --------------------------------------------------
+    ELSIF ( iv_process_kbn = cv_proc_kbn_req_dngtn ) THEN
+      ------------------------------
+      -- インスタンスレコード設定
+      ------------------------------
+      l_instance_rec.instance_id            := i_instance_rec.instance_id;
+      l_instance_rec.attribute4             := cv_op_req_flag_off;
+      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
+      l_instance_rec.request_id             := fnd_global.conc_request_id;
+      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
+      l_instance_rec.program_id             := fnd_global.conc_program_id;
+      l_instance_rec.program_update_date    := SYSDATE;
+/*20090416_yabuki_ST398 END*/
+      --
+    --------------------------------------------------
+    -- 処理区分が「発注依頼承認」の場合
+    --------------------------------------------------
+    ELSE
+/*20090416_yabuki_ST549 START*/
       ------------------------------
       -- 追加属性値情報取得
       ------------------------------
@@ -2935,22 +3178,8 @@ AS
         l_ext_attrib_values_tab(2).object_version_number := l_iea_val_tab(2).object_version_number;
         --
       END IF;
+/*20090416_yabuki_ST549 END*/
       --
-      ------------------------------
-      -- インスタンスレコード設定
-      ------------------------------
-      l_instance_rec.instance_id            := i_instance_rec.instance_id;
-      l_instance_rec.attribute4             := cv_op_req_flag_on;
-      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
-      l_instance_rec.request_id             := fnd_global.conc_request_id;
-      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
-      l_instance_rec.program_id             := fnd_global.conc_program_id;
-      l_instance_rec.program_update_date    := SYSDATE;
-      --
-    --------------------------------------------------
-    -- 処理区分が「発注依頼承認」の場合
-    --------------------------------------------------
-    ELSE
       ------------------------------
       -- インスタンスレコード設定
       ------------------------------
@@ -2961,6 +3190,9 @@ AS
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
       l_instance_rec.program_id             := fnd_global.conc_program_id;
       l_instance_rec.program_update_date    := SYSDATE;
+/*20090416_yabuki_ST549 START*/
+      l_instance_rec.instance_status_id     := gt_instance_status_id_4;    -- インスタンスステータスID（廃棄手続中）
+/*20090416_yabuki_ST549 END*/
       --
     END IF;
     --
@@ -3099,8 +3331,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_op_req_flag_on      CONSTANT VARCHAR2(1)    := 'Y';  -- 作業依頼中フラグ「ＯＮ」
-    cv_op_req_flag_off     CONSTANT VARCHAR2(1)    := 'N';  -- 作業依頼中フラグ「ＯＦＦ」
+/*20090416_yabuki_ST398 START*/
+--    cv_op_req_flag_on      CONSTANT VARCHAR2(1)    := 'Y';  -- 作業依頼中フラグ「ＯＮ」
+--    cv_op_req_flag_off     CONSTANT VARCHAR2(1)    := 'N';  -- 作業依頼中フラグ「ＯＦＦ」
+/*20090416_yabuki_ST398 END*/
     cn_api_version         CONSTANT NUMBER         := 1.0;
     cv_commit_false        CONSTANT VARCHAR2(1)    := 'F';
     cv_init_msg_list_true  CONSTANT VARCHAR2(2000) := 'T';
@@ -3165,6 +3399,23 @@ AS
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
       l_instance_rec.program_id             := fnd_global.conc_program_id;
       l_instance_rec.program_update_date    := SYSDATE;
+      --
+/*20090416_yabuki_ST398 START*/
+    --------------------------------------------------
+    -- 処理区分が「発注依頼否認」の場合
+    --------------------------------------------------
+    ELSIF ( iv_process_kbn = cv_proc_kbn_req_dngtn ) THEN
+      ------------------------------
+      -- インスタンスレコード設定
+      ------------------------------
+      l_instance_rec.instance_id            := i_instance_rec.instance_id;
+      l_instance_rec.attribute4             := cv_op_req_flag_off;
+      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
+      l_instance_rec.request_id             := fnd_global.conc_request_id;
+      l_instance_rec.program_application_id := fnd_global.prog_appl_id;
+      l_instance_rec.program_id             := fnd_global.conc_program_id;
+      l_instance_rec.program_update_date    := SYSDATE;
+/*20090416_yabuki_ST398 END*/
       --
     --------------------------------------------------
     -- 処理区分が「発注依頼承認」の場合
@@ -3238,6 +3489,9 @@ AS
       l_instance_rec.program_application_id := fnd_global.prog_appl_id;
       l_instance_rec.program_id             := fnd_global.conc_program_id;
       l_instance_rec.program_update_date    := SYSDATE;
+/*20090416_yabuki_ST549 START*/
+      l_instance_rec.instance_status_id     := gt_instance_status_id_4;    -- インスタンスステータスID（廃棄手続中）
+/*20090416_yabuki_ST549 END*/
       --
     END IF;
     --
@@ -4292,7 +4546,11 @@ AS
         -- A-15. 引揚用物件更新処理
         -- ========================================
         update_withdraw_ib_info(
-            i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+/*20090416_yabuki_ST398 START*/
+            iv_process_kbn         => iv_process_kbn           -- 処理区分
+          , i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+--            i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+/*20090416_yabuki_ST398 END*/
           , i_requisition_rec      => l_requisition_rec        -- 発注依頼情報
           , in_transaction_type_id => ln_transaction_type_id   -- 取引タイプID
           , ov_errbuf              => lv_errbuf                -- エラー・メッセージ  --# 固定 #
@@ -4498,7 +4756,11 @@ AS
         -- A-13. 設置用物件更新処理
         -- ========================================
         update_ib_info(
-            i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+/*20090416_yabuki_ST398 START*/
+            iv_process_kbn         => iv_process_kbn          -- 処理区分
+          , i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+--            i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+/*20090416_yabuki_ST398 END*/
           , i_requisition_rec      => l_requisition_rec       -- 発注依頼情報
           , in_transaction_type_id => ln_transaction_type_id  -- 取引タイプID
           , ov_errbuf              => lv_errbuf               -- エラー・メッセージ  --# 固定 #
@@ -4741,7 +5003,11 @@ AS
         -- A-13. 設置用物件更新処理
         -- ========================================
         update_ib_info(
-            i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+/*20090416_yabuki_ST398 START*/
+            iv_process_kbn         => iv_process_kbn          -- 処理区分
+          , i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+--            i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+/*20090416_yabuki_ST398 END*/
           , i_requisition_rec      => l_requisition_rec       -- 発注依頼情報
           , in_transaction_type_id => ln_transaction_type_id  -- 取引タイプID
           , ov_errbuf              => lv_errbuf               -- エラー・メッセージ  --# 固定 #
@@ -4757,7 +5023,11 @@ AS
         -- A-15. 引揚用物件更新処理
         -- ========================================
         update_withdraw_ib_info(
-            i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+/*20090416_yabuki_ST398 START*/
+            iv_process_kbn         => iv_process_kbn           -- 処理区分
+          , i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+--            i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+/*20090416_yabuki_ST398 END*/
           , i_requisition_rec      => l_requisition_rec        -- 発注依頼情報
           , in_transaction_type_id => ln_transaction_type_id   -- 取引タイプID
           , ov_errbuf              => lv_errbuf                -- エラー・メッセージ  --# 固定 #
@@ -4926,7 +5196,11 @@ AS
         -- A-15. 引揚用物件更新処理
         -- ========================================
         update_withdraw_ib_info(
-            i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+/*20090416_yabuki_ST398 START*/
+            iv_process_kbn         => iv_process_kbn           -- 処理区分
+          , i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+--            i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+/*20090416_yabuki_ST398 END*/
           , i_requisition_rec      => l_requisition_rec        -- 発注依頼情報
           , in_transaction_type_id => ln_transaction_type_id   -- 取引タイプID
           , ov_errbuf              => lv_errbuf                -- エラー・メッセージ  --# 固定 #
@@ -5353,7 +5627,11 @@ AS
         -- A-13. 設置用物件更新処理
         -- ========================================
         update_ib_info(
-            i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+/*20090416_yabuki_ST398 START*/
+            iv_process_kbn         => iv_process_kbn          -- 処理区分
+          , i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+--            i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+/*20090416_yabuki_ST398 END*/
           , i_requisition_rec      => l_requisition_rec       -- 発注依頼情報
           , in_transaction_type_id => ln_transaction_type_id  -- 取引タイプID
           , ov_errbuf              => lv_errbuf               -- エラー・メッセージ  --# 固定 #
@@ -5504,6 +5782,310 @@ AS
       END IF;
       --
 /*20090406_yabuki_ST101 END*/
+      --
+/*20090416_yabuki_ST398 START*/
+    ----------------------------------------------------------------------
+    -- 処理区分が「発注依頼否認」の場合
+    ----------------------------------------------------------------------
+    ELSIF ( iv_process_kbn = cv_proc_kbn_req_dngtn ) THEN
+      --------------------------------------------------
+      -- カテゴリ区分が「新台設置」の場合
+      --------------------------------------------------
+      IF ( l_requisition_rec.category_kbn = cv_category_kbn_new_install ) THEN
+        NULL;
+        --
+      --------------------------------------------------
+      -- カテゴリ区分が「新台代替」の場合
+      --------------------------------------------------
+      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_new_replace ) THEN
+        -- ========================================
+        -- A-4. 物件マスタ存在チェック処理
+        -- ========================================
+        check_ib_existence(
+            iv_install_code => l_requisition_rec.withdraw_install_code  -- 引揚用物件コード
+          , o_instance_rec  => l_withdraw_instance_rec                  -- 物件情報（引揚用）
+          , ov_errbuf       => lv_errbuf                                -- エラー・メッセージ  --# 固定 #
+          , ov_retcode      => lv_retcode                               -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+        -- ========================================
+        -- A-15. 引揚用物件更新処理
+        -- ========================================
+        update_withdraw_ib_info(
+            iv_process_kbn         => iv_process_kbn           -- 処理区分
+          , i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+          , i_requisition_rec      => l_requisition_rec        -- 発注依頼情報
+          , in_transaction_type_id => ln_transaction_type_id   -- 取引タイプID
+          , ov_errbuf              => lv_errbuf                -- エラー・メッセージ  --# 固定 #
+          , ov_retcode             => lv_retcode               -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+      --------------------------------------------------
+      -- カテゴリ区分が「旧台設置」の場合
+      --------------------------------------------------
+      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_old_install ) THEN
+        -- ========================================
+        -- A-4. 物件マスタ存在チェック処理
+        -- ========================================
+        check_ib_existence(
+            iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
+          , o_instance_rec  => l_instance_rec                  -- 物件情報（設置用）
+          , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
+          , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+        -- ========================================
+        -- A-13. 設置用物件更新処理
+        -- ========================================
+        update_ib_info(
+            iv_process_kbn         => iv_process_kbn          -- 処理区分
+          , i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+          , i_requisition_rec      => l_requisition_rec       -- 発注依頼情報
+          , in_transaction_type_id => ln_transaction_type_id  -- 取引タイプID
+          , ov_errbuf              => lv_errbuf               -- エラー・メッセージ  --# 固定 #
+          , ov_retcode             => lv_retcode              -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+      --------------------------------------------------
+      -- カテゴリ区分が「旧台代替」の場合
+      --------------------------------------------------
+      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_old_replace ) THEN
+        -- ========================================
+        -- A-4. 物件マスタ存在チェック処理
+        -- ========================================
+        ----------------------------------------
+        -- チェック対象：設置用物件
+        ----------------------------------------
+        check_ib_existence(
+            iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
+          , o_instance_rec  => l_instance_rec                  -- 物件情報（設置用）
+          , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
+          , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+        ----------------------------------------
+        -- チェック対象：引揚用物件
+        ----------------------------------------
+        check_ib_existence(
+            iv_install_code => l_requisition_rec.withdraw_install_code  -- 引揚用物件コード
+          , o_instance_rec  => l_withdraw_instance_rec                  -- 物件情報（引揚用）
+          , ov_errbuf       => lv_errbuf                                -- エラー・メッセージ  --# 固定 #
+          , ov_retcode      => lv_retcode                               -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+        -- ========================================
+        -- A-13. 設置用物件更新処理
+        -- ========================================
+        update_ib_info(
+            iv_process_kbn         => iv_process_kbn          -- 処理区分
+          , i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+          , i_requisition_rec      => l_requisition_rec       -- 発注依頼情報
+          , in_transaction_type_id => ln_transaction_type_id  -- 取引タイプID
+          , ov_errbuf              => lv_errbuf               -- エラー・メッセージ  --# 固定 #
+          , ov_retcode             => lv_retcode              -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+        -- ========================================
+        -- A-15. 引揚用物件更新処理
+        -- ========================================
+        update_withdraw_ib_info(
+            iv_process_kbn         => iv_process_kbn           -- 処理区分
+          , i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+          , i_requisition_rec      => l_requisition_rec        -- 発注依頼情報
+          , in_transaction_type_id => ln_transaction_type_id   -- 取引タイプID
+          , ov_errbuf              => lv_errbuf                -- エラー・メッセージ  --# 固定 #
+          , ov_retcode             => lv_retcode               -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+      --------------------------------------------------
+      -- カテゴリ区分が「引揚」の場合
+      --------------------------------------------------
+      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_withdraw ) THEN
+        -- ========================================
+        -- A-4. 物件マスタ存在チェック処理
+        -- ========================================
+        check_ib_existence(
+            iv_install_code => l_requisition_rec.withdraw_install_code  -- 引揚用物件コード
+          , o_instance_rec  => l_withdraw_instance_rec                  -- 物件情報（引揚用）
+          , ov_errbuf       => lv_errbuf                                -- エラー・メッセージ  --# 固定 #
+          , ov_retcode      => lv_retcode                               -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+        -- ========================================
+        -- A-15. 引揚用物件更新処理
+        -- ========================================
+        update_withdraw_ib_info(
+            iv_process_kbn         => iv_process_kbn           -- 処理区分
+          , i_instance_rec         => l_withdraw_instance_rec  -- 物件情報（引揚用）
+          , i_requisition_rec      => l_requisition_rec        -- 発注依頼情報
+          , in_transaction_type_id => ln_transaction_type_id   -- 取引タイプID
+          , ov_errbuf              => lv_errbuf                -- エラー・メッセージ  --# 固定 #
+          , ov_retcode             => lv_retcode               -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+      --------------------------------------------------
+      -- カテゴリ区分が「廃棄申請」の場合
+      --------------------------------------------------
+      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_ablsh_appl ) THEN
+        -- ========================================
+        -- A-4. 物件マスタ存在チェック処理
+        -- ========================================
+        check_ib_existence(
+            iv_install_code => l_requisition_rec.abolishment_install_code  -- 廃棄_物件コード
+          , o_instance_rec  => l_abolishment_instance_rec                  -- 物件情報（廃棄用）
+          , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
+          , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+        -- ========================================
+        -- A-16. 廃棄申請用物件更新処理
+        -- ========================================
+        update_abo_appl_ib_info(
+            iv_process_kbn         => iv_process_kbn              -- 処理区分
+          , i_instance_rec         => l_abolishment_instance_rec  -- 物件情報（廃棄用）
+          , i_requisition_rec      => l_requisition_rec           -- 発注依頼情報
+          , i_ib_ext_attr_id_rec   => l_ib_ext_attr_id_rec        -- IB追加属性ID情報
+          , in_transaction_type_id => ln_transaction_type_id      -- 取引タイプID
+          , ov_errbuf              => lv_errbuf                   -- エラー・メッセージ  --# 固定 #
+          , ov_retcode             => lv_retcode                  -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+      --------------------------------------------------
+      -- カテゴリ区分が「廃棄決裁」の場合
+      --------------------------------------------------
+      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_ablsh_dcsn ) THEN
+        -- ========================================
+        -- A-4. 物件マスタ存在チェック処理
+        -- ========================================
+        check_ib_existence(
+            iv_install_code => l_requisition_rec.abolishment_install_code  -- 廃棄_物件コード
+          , o_instance_rec  => l_abolishment_instance_rec                  -- 物件情報（廃棄用）
+          , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
+          , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+        -- ========================================
+        -- A-17. 廃棄決裁用物件更新処理
+        -- ========================================
+        update_abo_aprv_ib_info(
+            iv_process_kbn         => iv_process_kbn              -- 処理区分
+          , id_process_date        => ld_process_date             -- 業務処理日付
+          , i_instance_rec         => l_abolishment_instance_rec  -- 物件情報（廃棄用）
+          , i_requisition_rec      => l_requisition_rec           -- 発注依頼情報
+          , i_ib_ext_attr_id_rec   => l_ib_ext_attr_id_rec        -- IB追加属性ID情報
+          , in_transaction_type_id => ln_transaction_type_id      -- 取引タイプID
+          , ov_errbuf              => lv_errbuf                   -- エラー・メッセージ  --# 固定 #
+          , ov_retcode             => lv_retcode                  -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+      --------------------------------------------------
+      -- カテゴリ区分が「店内移動」の場合
+      --------------------------------------------------
+      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_mvmt_in_shp ) THEN
+        -- ========================================
+        -- A-4. 物件マスタ存在チェック処理
+        -- ========================================
+        check_ib_existence(
+            iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
+          , o_instance_rec  => l_instance_rec                  -- 物件情報（設置用）
+          , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
+          , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+        --
+        -- ========================================
+        -- A-13. 設置用物件更新処理
+        -- ========================================
+        update_ib_info(
+            iv_process_kbn         => iv_process_kbn          -- 処理区分
+          , i_instance_rec         => l_instance_rec          -- 物件情報（設置用）
+          , i_requisition_rec      => l_requisition_rec       -- 発注依頼情報
+          , in_transaction_type_id => ln_transaction_type_id  -- 取引タイプID
+          , ov_errbuf              => lv_errbuf               -- エラー・メッセージ  --# 固定 #
+          , ov_retcode             => lv_retcode              -- リターン・コード    --# 固定 #
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+      END IF;
+/*20090416_yabuki_ST398 END*/
       --
     END IF;
     --
@@ -5753,6 +6335,120 @@ AS
       );
       --
   END main_for_approval;
+  --
+  --
+/*20090416_yabuki_ST398 START*/
+  /**********************************************************************************
+   * Procedure Name   : main_for_denegation
+   * Description      : メイン処理（発注依頼否認用）
+   **********************************************************************************/
+  --
+  PROCEDURE main_for_denegation(
+      itemtype   IN         VARCHAR2
+    , itemkey    IN         VARCHAR2
+    , actid      IN         VARCHAR2
+    , funcmode   IN         VARCHAR2
+    , resultout  OUT NOCOPY VARCHAR2
+  )
+  --
+  IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name       CONSTANT VARCHAR2(100) := 'main_for_denegation';  -- プログラム名
+    cv_ib_chk_errmsg  CONSTANT VARCHAR2(30)  := 'XXCSO_IB_CHK_ERRMSG';
+    --
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_errbuf           VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode          VARCHAR2(1);     -- リターン・コード
+    lv_errbuf_wf        VARCHAR2(5000);  -- エラー・メッセージ
+    ln_notification_id  NUMBER;
+    --
+  BEGIN
+    --
+    -- 複数回起動されるため、通知IDが取得できない場合は終了する。
+    BEGIN
+      SELECT wias.notification_id
+      INTO   ln_notification_id
+      FROM   wf_item_activity_statuses wias
+      WHERE  wias.item_type = itemtype
+      AND    wias.item_key  = itemkey
+      AND    wias.notification_id IS NOT NULL;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
+    --
+    -- ===============================================
+    -- submainの呼び出し（実際の処理はsubmainで行う）
+    -- ===============================================
+    submain(
+        iv_itemtype    => itemtype
+      , iv_itemkey     => itemkey
+      , iv_process_kbn => cv_proc_kbn_req_dngtn  -- 処理区分（発注依頼否認）
+      , ov_errbuf      => lv_errbuf              -- エラー・メッセージ  --# 固定 #
+      , ov_retcode     => lv_retcode             -- リターン・コード    --# 固定 #
+    );
+    --
+    -- submainが正常終了の場合
+    IF lv_retcode = cv_status_normal THEN
+      resultout   := wf_engine.eng_completed || cv_msg_part_only || cv_result_yes;
+      --
+    -- submainが異常終了の場合
+    ELSIF lv_retcode = cv_status_error THEN
+      resultout   := wf_engine.eng_completed || cv_msg_part_only || cv_result_no;
+      --
+      wf_engine.setitemattrtext(
+          itemtype => itemtype
+        , itemkey  => itemkey
+        , aname    => cv_ib_chk_errmsg
+        , avalue   => lv_errbuf
+      );
+      --
+      lv_errbuf_wf := lv_errbuf;
+      -- ========================================
+      -- A-21. 承認ワークフロー起動(エラー通知)
+      -- ========================================
+      start_approval_wf_proc(
+        iv_itemtype => itemtype
+      , iv_itemkey  => itemkey
+      , iv_errmsg   => lv_errbuf_wf    -- エラーメッセージ
+      , ov_errbuf   => lv_errbuf       -- エラー・メッセージ  --# 固定 #
+      , ov_retcode  => lv_retcode      -- リターン・コード    --# 固定 #
+      );
+      --
+    END IF;
+--
+  EXCEPTION
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      resultout := wf_engine.eng_completed || cv_msg_part_only || cv_result_no;
+      lv_errbuf := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM || lv_errbuf;
+      --
+      wf_engine.setitemattrtext(
+          itemtype => itemtype
+        , itemkey  => itemkey
+        , aname    => cv_ib_chk_errmsg
+        , avalue   => lv_errbuf
+      );
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      resultout := wf_engine.eng_completed || cv_msg_part_only || cv_result_no;
+      lv_errbuf := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      --
+      wf_engine.setitemattrtext(
+          itemtype => itemtype
+        , itemkey  => itemkey
+        , aname    => cv_ib_chk_errmsg
+        , avalue   => lv_errbuf
+      );
+      --
+  END main_for_denegation;
+/*20090416_yabuki_ST398 END*/
 --
 END XXCSO011A01C;
 /
