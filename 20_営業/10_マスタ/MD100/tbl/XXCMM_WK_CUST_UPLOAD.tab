@@ -1,0 +1,127 @@
+CREATE TABLE XXCMM.XXCMM_WK_CUST_UPLOAD (
+     file_id                        NUMBER
+    ,line_no                        NUMBER
+    ,customer_name                  VARCHAR2(240)
+    ,customer_name_kana             VARCHAR2(100)
+    ,customer_name_ryaku            VARCHAR2(160)
+    ,customer_class_code            VARCHAR2(10)
+    ,customer_status                VARCHAR2(10)
+    ,sale_base_code                 VARCHAR2(10)
+    ,sales_chain_code               VARCHAR2(30)
+    ,delivery_chain_code            VARCHAR2(30)
+    ,postal_code                    VARCHAR2(30)
+    ,state                          VARCHAR2(50)
+    ,city                           VARCHAR2(50)
+    ,address1                       VARCHAR2(480)
+    ,address2                       VARCHAR2(480)
+    ,address3                       VARCHAR2(30)
+    ,tel_no                         VARCHAR2(50)
+    ,fax                            VARCHAR2(50)
+    ,business_low_type_tmp          VARCHAR2(10)
+    ,manager_name                   VARCHAR2(300)
+    ,emp_number                     VARCHAR2(30)
+    ,rest_emp_name                  VARCHAR2(300)
+    ,mc_hot_deg                     VARCHAR2(10)
+    ,mc_importance_deg              VARCHAR2(10)
+    ,mc_conf_info                   VARCHAR2(300)
+    ,mc_business_talk_details       VARCHAR2(300)
+    ,resource_no                    VARCHAR2(10)
+    ,resource_s_date                VARCHAR2(30)
+    ,business_low_type              VARCHAR2(10)
+    ,industry_div                   VARCHAR2(10)
+    ,torihiki_form                  VARCHAR2(10)
+    ,delivery_form                  VARCHAR2(10)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcmm_wk_cust_upload IS '顧客一括登録用ワーク'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.file_id                                   IS 'ファイルID'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.line_no                                   IS '行番号'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.customer_name                             IS '顧客名'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.customer_name_kana                        IS '顧客名カナ'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.customer_name_ryaku                       IS '略称'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.customer_class_code                       IS '顧客区分'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.customer_status                           IS '顧客ステータス'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.sale_base_code                            IS '売上拠点'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.sales_chain_code                          IS '販売先チェーン'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.delivery_chain_code                       IS '納品先チェーン'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.postal_code                               IS '郵便番号'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.state                                     IS '都道府県'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.city                                      IS '市・区'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.address1                                  IS '住所１'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.address2                                  IS '住所２'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.address3                                  IS '地区コード'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.tel_no                                    IS '電話番号'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.fax                                       IS 'FAX'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.business_low_type_tmp                     IS '業態小分類（仮）'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.manager_name                              IS '店長名'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.emp_number                                IS '社員数'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.rest_emp_name                             IS '担当者休日'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.mc_hot_deg                                IS 'MC：HOT度'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.mc_importance_deg                         IS 'MC：重要度'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.mc_conf_info                              IS 'MC：競合情報'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.mc_business_talk_details                  IS 'MC：商談経緯'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.resource_no                               IS '担当営業員'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.resource_s_date                           IS '適用開始日（担当営業員）'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.business_low_type                         IS '業態（小分類）'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.industry_div                              IS '業種'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.torihiki_form                             IS '取引形態'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.delivery_form                             IS '配送形態'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.created_by                                IS '作成者'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.creation_date                             IS '作成日'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.last_updated_by                           IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.last_update_date                          IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.last_update_login                         IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.request_id                                IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.program_application_id                    IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.program_id                                IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmm_wk_cust_upload.program_update_date                       IS 'プログラム更新日'
+/

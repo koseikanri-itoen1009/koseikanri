@@ -1,0 +1,2 @@
+CREATE SYNONYM apps.xxcmm_wk_cust_upload FOR xxcmm.xxcmm_wk_cust_upload
+/
