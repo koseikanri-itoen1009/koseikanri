@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS008A02C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS008A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *                                       [0000435] PT対応
  *  2009/09/02    1.12  N.Maeda          [0000864] PT対応
  *                                       [0001211] 消費税基準日の修正
+ *  2009/09/12    1.13  M.Sano           [0001345] PT対応
  *
  *****************************************************************************************/
 --
@@ -1178,15 +1179,28 @@ AS
 --
 --
     SELECT
--- ********** 2009/09/02 1.12 N.Maeda ADD START ************ --
+-- ********** 2009/09/12 1.13 M.Sano  MOD START ************ --
+---- ********** 2009/09/02 1.12 N.Maeda ADD START ************ --
+--    /*+
+--        leading(ooha)
+--        index(ooha xxcos_oe_order_headers_all_n11)
+--        use_nl(oola ooha xca ottth otttl ottth ottal msi)
+--        use_nl(ooha xchv)
+--        use_nl(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
+--    */
+---- ********** 2009/09/02 1.12 N.Maeda ADD  END  ************ --
     /*+
         leading(ooha)
         index(ooha xxcos_oe_order_headers_all_n11)
+        index(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
+        index(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
+        index(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
+        index(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
         use_nl(oola ooha xca ottth otttl ottth ottal msi)
         use_nl(ooha xchv)
         use_nl(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
     */
--- ********** 2009/09/02 1.12 N.Maeda ADD  END  ************ --
+-- ********** 2009/09/12 1.13 M.Sano  MOD START ************ --
       ooha.header_id                        AS header_id                  -- 受注ヘッダID
     , oola.line_id                          AS line_id                    -- 受注明細ID
     , ottth.name                            AS order_type                 -- 受注タイプ
