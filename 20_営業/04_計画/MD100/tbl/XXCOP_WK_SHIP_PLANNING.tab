@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOP_WK_SHIP_PLANNING
  * Description     : 物流計画ワークテーブル
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,11 +11,15 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009-02-23    1.0   SCS.Uchida      新規作成
  *  2009-03-19    1.1   SCS.Kayahara    コメント作成文の列名にスキーマ追加
+ *  2009-04-15    1.2   SCS.Goto        T1_0565対応
  *
  ************************************************************************/
 CREATE TABLE XXCOP.XXCOP_WK_SHIP_PLANNING
 (
-   transaction_id                 NUMBER(6)
+--20090415_Ver1.2_T1_0565_SCS.Goto_MOD_START
+--   transaction_id                 NUMBER(6)
+   transaction_id                 NUMBER(15)
+--20090415_Ver1.2_T1_0565_SCS.Goto_MOD_END
   ,org_data_lvl                   NUMBER(6)
   ,plant_org_id                   NUMBER
   ,plant_org_code                 VARCHAR2(4)
