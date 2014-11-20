@@ -3,7 +3,7 @@
  * VIEW Name       : XXCSO_VISIT_SALES_RESULTS_V
  * Description     : 共通用：訪問売上実績ビュー
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/03    1.1  K.Boku        売上実績VIEWを参照する
+ *  2009/04/14    1.2  K.Satomura    システムテスト障害対応(T1_0479,T1_0480)
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXCSO_VISIT_SALES_RESULTS_V
 (
@@ -22,43 +23,136 @@ CREATE OR REPLACE VIEW APPS.XXCSO_VISIT_SALES_RESULTS_V
  ,pure_amount_sum
 )
 AS
-SELECT  *
-  FROM  (
-         SELECT  jtb.source_object_id
-                ,jtb.task_id
-                ,jtb.owner_id
-                ,jtb.attribute13
-                ,jtb.actual_end_date
-                ,SUM(xsv.pure_amount)
-           FROM  jtf_tasks_b jtb
-                ,xxcso_sales_v xsv
-          WHERE jtb.source_object_type_code = 'PARTY'
-            AND jtb.task_status_id          = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID')
-            AND jtb.owner_type_code         = 'RS_EMPLOYEE'
-            AND jtb.deleted_flag            = 'N'
-            AND jtb.attribute11             = '1'
-            AND jtb.attribute12             IN ('3', '5')
-            AND jtb.attribute13             = xsv.order_no_hht(+)
-          GROUP BY
-                jtb.source_object_id
-               ,jtb.task_id
-               ,jtb.owner_id
-               ,jtb.attribute13
-               ,jtb.actual_end_date
-        )
+/* 2009.04.14 K.Satomura T1_0479,T1_0480対応 START */
+--SELECT  *
+--  FROM  (
+--         SELECT  jtb.source_object_id
+--                ,jtb.task_id
+--                ,jtb.owner_id
+--                ,jtb.attribute13
+--                ,jtb.actual_end_date
+--                ,SUM(xsv.pure_amount)
+--           FROM  jtf_tasks_b jtb
+--                ,xxcso_sales_v xsv
+--          WHERE jtb.source_object_type_code = 'PARTY'
+--            AND jtb.task_status_id          = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID')
+--            AND jtb.owner_type_code         = 'RS_EMPLOYEE'
+--            AND jtb.deleted_flag            = 'N'
+--            AND jtb.attribute11             = '1'
+--            AND jtb.attribute12             IN ('3', '5')
+--            AND jtb.attribute13             = xsv.order_no_hht(+)
+--          GROUP BY
+--                jtb.source_object_id
+--               ,jtb.task_id
+--               ,jtb.owner_id
+--               ,jtb.attribute13
+--               ,jtb.actual_end_date
+--        )
+--UNION ALL
+--SELECT  jtb.source_object_id
+--       ,jtb.task_id
+--       ,jtb.owner_id
+--       ,jtb.attribute13
+--       ,jtb.actual_end_date
+--       ,NULL
+--  FROM  jtf_tasks_b jtb
+-- WHERE jtb.source_object_type_code = 'PARTY'
+--   AND jtb.task_status_id          = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID')
+--   AND jtb.owner_type_code         = 'RS_EMPLOYEE'
+--   AND jtb.deleted_flag            = 'N'
+--   AND NVL(jtb.attribute11, ' ') || '-' || NVL(jtb.attribute12, ' ') NOT IN ('1-3', '1-5')
+SELECT party_id
+      ,task_id
+      ,owner_id
+      ,attribute13
+      ,actual_end_date
+      ,pure_amount
+FROM   (
+         SELECT jtb.source_object_id party_id
+               ,jtb.task_id          task_id
+               ,jtb.owner_id         owner_id
+               ,jtb.attribute13      attribute13
+               ,jtb.actual_end_date  actual_end_date
+               ,SUM(xsv.pure_amount) pure_amount
+         FROM   jtf_tasks_b   jtb
+               ,xxcso_sales_v xsv
+         WHERE jtb.source_object_type_code = 'PARTY'
+         AND   jtb.task_status_id          = fnd_profile.value('XXCSO1_TASK_STATUS_CLOSED_ID')
+         AND   jtb.task_type_id            = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
+         AND   jtb.owner_type_code         = 'RS_EMPLOYEE'
+         AND   jtb.deleted_flag            = 'N'
+         AND   jtb.attribute11             = '1'
+         AND   jtb.attribute12             IN ('3', '5')
+         AND   jtb.attribute13             = xsv.order_no_hht(+)
+         GROUP BY jtb.source_object_id
+                 ,jtb.task_id
+                 ,jtb.owner_id
+                 ,jtb.attribute13
+                 ,jtb.actual_end_date
+         UNION ALL
+         SELECT ala.customer_id      party_id
+               ,jtb.task_id          task_id
+               ,jtb.owner_id         owner_id
+               ,jtb.attribute13      attribute13
+               ,jtb.actual_end_date  actual_end_date
+               ,SUM(xsv.pure_amount) pure_amount
+         FROM   jtf_tasks_b   jtb
+               ,xxcso_sales_v xsv
+               ,as_leads_all  ala
+         WHERE jtb.source_object_type_code = 'OPPORTUNITY'
+         AND   jtb.task_status_id          = fnd_profile.value('XXCSO1_TASK_STATUS_CLOSED_ID')
+         AND   jtb.task_type_id            = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
+         AND   jtb.owner_type_code         = 'RS_EMPLOYEE'
+         AND   jtb.deleted_flag            = 'N'
+         AND   jtb.attribute11             = '1'
+         AND   jtb.attribute12             IN ('3', '5')
+         AND   jtb.attribute13             = xsv.order_no_hht(+)
+         AND   ala.customer_id             = jtb.source_object_id
+         GROUP BY ala.customer_id
+                 ,jtb.task_id
+                 ,jtb.owner_id
+                 ,jtb.attribute13
+                 ,jtb.actual_end_date
+       )
 UNION ALL
-SELECT  jtb.source_object_id
-       ,jtb.task_id
-       ,jtb.owner_id
-       ,jtb.attribute13
-       ,jtb.actual_end_date
-       ,NULL
-  FROM  jtf_tasks_b jtb
- WHERE jtb.source_object_type_code = 'PARTY'
-   AND jtb.task_status_id          = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID')
-   AND jtb.owner_type_code         = 'RS_EMPLOYEE'
-   AND jtb.deleted_flag            = 'N'
-   AND NVL(jtb.attribute11, ' ') || '-' || NVL(jtb.attribute12, ' ') NOT IN ('1-3', '1-5')
+SELECT party_id
+      ,task_id
+      ,owner_id
+      ,attribute13
+      ,actual_end_date
+      ,NULL
+FROM   (
+         SELECT jtb.source_object_id party_id
+               ,jtb.task_id          task_id
+               ,jtb.owner_id         owner_id
+               ,jtb.attribute13      attribute13
+               ,jtb.actual_end_date  actual_end_date
+               ,NULL                 pure_amount
+         FROM  jtf_tasks_b jtb
+         WHERE jtb.source_object_type_code = 'PARTY'
+         AND jtb.task_status_id          = fnd_profile.value('XXCSO1_TASK_STATUS_CLOSED_ID')
+         AND jtb.task_type_id            = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
+         AND jtb.owner_type_code         = 'RS_EMPLOYEE'
+         AND jtb.deleted_flag            = 'N'
+         AND NVL(jtb.attribute11, ' ') || '-' || NVL(jtb.attribute12, ' ') NOT IN ('1-3', '1-5')
+         UNION ALL
+         SELECT ala.customer_id     party_id
+               ,jtb.task_id         task_id
+               ,jtb.owner_id        owner_id
+               ,jtb.attribute13     attribute13
+               ,jtb.actual_end_date actual_end_date
+               ,NULL                pure_amount
+         FROM   jtf_tasks_b  jtb
+               ,as_leads_all ala
+         WHERE jtb.source_object_type_code = 'OPPORTUNITY'
+         AND   jtb.task_status_id          = fnd_profile.value('XXCSO1_TASK_STATUS_CLOSED_ID')
+         AND   jtb.task_type_id            = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
+         AND   jtb.owner_type_code         = 'RS_EMPLOYEE'
+         AND   jtb.deleted_flag            = 'N'
+         AND   NVL(jtb.attribute11, ' ') || '-' || NVL(jtb.attribute12, ' ') NOT IN ('1-3', '1-5')
+         AND   ala.customer_id             = jtb.source_object_id
+       )
+       /* 2009.04.14 K.Satomura T1_0479,T1_0480対応 END */
 WITH READ ONLY
 ;
 
