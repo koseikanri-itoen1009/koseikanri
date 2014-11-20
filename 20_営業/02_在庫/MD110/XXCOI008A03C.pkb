@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A03C(body)
  * Description      : 情報系システムへの連携の為、EBSの月次在庫受払表(アドオン)をCSVファイルに出力
  * MD.050           : 月別受払残高情報系連携 <MD050_COI_008_A03>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,8 @@ AS
  *                                                      受払残高情報を取得するよう変更
  *  2010/01/06    1.2   N.Abe            [E_本稼動_00630] 基準在庫変更の算出を変更
  *                                                        棚卸情報の送信を追加
+ *  2010/02/03    1.3   H.Sasaki         [E_本稼動_01424] 数量項目が全て０のレコードは
+ *                                                        連携しないよう修正
  *
  *****************************************************************************************/
 --
@@ -802,15 +804,15 @@ AS
                               get_no_sumdata_rec.inv_wear                               || cv_csv_com || -- 26.棚卸減耗
                               lv_last_update_date                                       || cv_csv_com || -- 27.更新日時
                               lv_process_date;                                                           -- 28.連携日時
---
-          UTL_FILE.PUT_LINE(
-              gv_activ_file_h     -- A-3.で取得したファイルハンドル
-            , lv_recept_month     -- デリミタ＋上記CSV出力項目
-            );
---
+    --
+        UTL_FILE.PUT_LINE(
+            gv_activ_file_h     -- A-3.で取得したファイルハンドル
+          , lv_recept_month     -- デリミタ＋上記CSV出力項目
+          );
+  --
         -- 正常件数に加算
         gn_normal_cnt := gn_normal_cnt + 1;
-      --
+        --
       --ループの終了
       END LOOP no_sumdata_loop;
       --
@@ -1010,51 +1012,114 @@ AS
     -- =================================
     --
     -- カーソルで取得した値をCSVファイルに格納します
-    lv_recept_month := 
-      cv_file_encloser || gv_company_code                       || cv_file_encloser || cv_csv_com || -- 1.会社コード
--- == 2009/04/08 V1.1 Moded START ===============================================================
---                          ir_recept_month_cur.practice_month                        || cv_csv_com || -- 2.年月
-                          ir_recept_month_cur.practice_date                         || cv_csv_com || -- 2.年月
--- == 2009/04/08 V1.1 Moded END   ===============================================================
-      cv_file_encloser || ir_recept_month_cur.base_code         || cv_file_encloser || cv_csv_com || -- 3.拠点（部門）コード
-      cv_file_encloser || ir_recept_month_cur.subinventory_code || cv_file_encloser || cv_csv_com || -- 4.保管場所コード
-      cv_file_encloser || ir_recept_month_cur.segment1          || cv_file_encloser || cv_csv_com || -- 5.商品コード
-      cv_file_encloser || ir_recept_month_cur.subinventory_type || cv_file_encloser || cv_csv_com || -- 6.保管場所区分
-                          ir_recept_month_cur.operation_cost                        || cv_csv_com || -- 7.営業原価
-                          ir_recept_month_cur.standard_cost                         || cv_csv_com || -- 8.標準原価
--- == 2009/04/08 V1.1 Moded START ===============================================================
---                          ir_recept_month_cur.month_begin_quantity                  || cv_csv_com || -- 9.月首棚卸高
-                          gn_month_begin_quantity                                   || cv_csv_com || -- 9.月首棚卸高
--- == 2009/04/08 V1.1 Moded END   ===============================================================
-                          ln_factory_stock                                          || cv_csv_com || -- 10.工場入庫
-                          ir_recept_month_cur.change_stock                          || cv_csv_com || -- 11.倉替入庫
-                          ln_sum_stock                                              || cv_csv_com || -- 12.拠点内入庫
-                          ir_recept_month_cur.goods_transfer_new                    || cv_csv_com || -- 13.振替入庫
-                          ln_sales_shipped                                          || cv_csv_com || -- 14.売上出庫
-                          ln_return_goods                                           || cv_csv_com || -- 15.顧客返品
-                          ir_recept_month_cur.change_ship                           || cv_csv_com || -- 16.倉替出庫
-                          ln_sum_ship                                               || cv_csv_com || -- 17.拠点内出庫
-                          ln_sum_inv_change                                         || cv_csv_com || -- 18.基準在庫変更
-                          ln_factory_return                                         || cv_csv_com || -- 19.工場返品
-                          ln_factory_change                                         || cv_csv_com || -- 20.工場倉替
-                          ln_removed_goods                                          || cv_csv_com || -- 21.廃却出庫
-                          ir_recept_month_cur.goods_transfer_old                    || cv_csv_com || -- 22.振替出庫
-                          ln_sum_sample                                             || cv_csv_com || -- 23.協賛見本
--- == 2009/04/08 V1.1 Moded START ===============================================================
---                          ir_recept_month_cur.inv_result                            || cv_csv_com || -- 24.棚卸結果
---                          ir_recept_month_cur.inv_result_bad                        || cv_csv_com || -- 25.棚卸結果(不良品)
---                          ir_recept_month_cur.inv_wear                              || cv_csv_com || -- 26.棚卸減耗
-                          gn_inv_result                                             || cv_csv_com || -- 24.棚卸結果
-                          gn_inv_result_bad                                         || cv_csv_com || -- 25.棚卸結果(不良品)
-                          gn_inv_wear                                               || cv_csv_com || -- 26.棚卸減耗
--- == 2009/04/08 V1.1 Moded END   ===============================================================
-                          lv_last_update_date                                       || cv_csv_com || -- 27.更新日時
-                          lv_process_date;                                                           -- 28.連携日時
+-- == 2010/02/03 V1.3 Modified START ===============================================================
+--    lv_recept_month := 
+--      cv_file_encloser || gv_company_code                       || cv_file_encloser || cv_csv_com || -- 1.会社コード
+---- == 2009/04/08 V1.1 Moded START ===============================================================
+----                          ir_recept_month_cur.practice_month                        || cv_csv_com || -- 2.年月
+--                          ir_recept_month_cur.practice_date                         || cv_csv_com || -- 2.年月
+---- == 2009/04/08 V1.1 Moded END   ===============================================================
+--      cv_file_encloser || ir_recept_month_cur.base_code         || cv_file_encloser || cv_csv_com || -- 3.拠点（部門）コード
+--      cv_file_encloser || ir_recept_month_cur.subinventory_code || cv_file_encloser || cv_csv_com || -- 4.保管場所コード
+--      cv_file_encloser || ir_recept_month_cur.segment1          || cv_file_encloser || cv_csv_com || -- 5.商品コード
+--      cv_file_encloser || ir_recept_month_cur.subinventory_type || cv_file_encloser || cv_csv_com || -- 6.保管場所区分
+--                          ir_recept_month_cur.operation_cost                        || cv_csv_com || -- 7.営業原価
+--                          ir_recept_month_cur.standard_cost                         || cv_csv_com || -- 8.標準原価
+---- == 2009/04/08 V1.1 Moded START ===============================================================
+----                          ir_recept_month_cur.month_begin_quantity                  || cv_csv_com || -- 9.月首棚卸高
+--                          gn_month_begin_quantity                                   || cv_csv_com || -- 9.月首棚卸高
+---- == 2009/04/08 V1.1 Moded END   ===============================================================
+--                          ln_factory_stock                                          || cv_csv_com || -- 10.工場入庫
+--                          ir_recept_month_cur.change_stock                          || cv_csv_com || -- 11.倉替入庫
+--                          ln_sum_stock                                              || cv_csv_com || -- 12.拠点内入庫
+--                          ir_recept_month_cur.goods_transfer_new                    || cv_csv_com || -- 13.振替入庫
+--                          ln_sales_shipped                                          || cv_csv_com || -- 14.売上出庫
+--                          ln_return_goods                                           || cv_csv_com || -- 15.顧客返品
+--                          ir_recept_month_cur.change_ship                           || cv_csv_com || -- 16.倉替出庫
+--                          ln_sum_ship                                               || cv_csv_com || -- 17.拠点内出庫
+--                          ln_sum_inv_change                                         || cv_csv_com || -- 18.基準在庫変更
+--                          ln_factory_return                                         || cv_csv_com || -- 19.工場返品
+--                          ln_factory_change                                         || cv_csv_com || -- 20.工場倉替
+--                          ln_removed_goods                                          || cv_csv_com || -- 21.廃却出庫
+--                          ir_recept_month_cur.goods_transfer_old                    || cv_csv_com || -- 22.振替出庫
+--                          ln_sum_sample                                             || cv_csv_com || -- 23.協賛見本
+---- == 2009/04/08 V1.1 Moded START ===============================================================
+----                          ir_recept_month_cur.inv_result                            || cv_csv_com || -- 24.棚卸結果
+----                          ir_recept_month_cur.inv_result_bad                        || cv_csv_com || -- 25.棚卸結果(不良品)
+----                          ir_recept_month_cur.inv_wear                              || cv_csv_com || -- 26.棚卸減耗
+--                          gn_inv_result                                             || cv_csv_com || -- 24.棚卸結果
+--                          gn_inv_result_bad                                         || cv_csv_com || -- 25.棚卸結果(不良品)
+--                          gn_inv_wear                                               || cv_csv_com || -- 26.棚卸減耗
+---- == 2009/04/08 V1.1 Moded END   ===============================================================
+--                          lv_last_update_date                                       || cv_csv_com || -- 27.更新日時
+--                          lv_process_date;                                                           -- 28.連携日時
+----
+--    UTL_FILE.PUT_LINE(
+--        gv_activ_file_h     -- A-3.で取得したファイルハンドル
+--      , lv_recept_month        -- デリミタ＋上記CSV出力項目
+--      );
 --
-    UTL_FILE.PUT_LINE(
-        gv_activ_file_h     -- A-3.で取得したファイルハンドル
-      , lv_recept_month        -- デリミタ＋上記CSV出力項目
-      );
+    -- 9.から26.の数量項目が全て０のレコードはCSV出力しない
+    IF  NOT(
+              (gn_month_begin_quantity                =  0)     --  9.月首棚卸高
+          AND (ln_factory_stock                       =  0)     -- 10.工場入庫
+          AND (ir_recept_month_cur.change_stock       =  0)     -- 11.倉替入庫
+          AND (ln_sum_stock                           =  0)     -- 12.拠点内入庫
+          AND (ir_recept_month_cur.goods_transfer_new =  0)     -- 13.振替入庫
+          AND (ln_sales_shipped                       =  0)     -- 14.売上出庫
+          AND (ln_return_goods                        =  0)     -- 15.顧客返品
+          AND (ir_recept_month_cur.change_ship        =  0)     -- 16.倉替出庫
+          AND (ln_sum_ship                            =  0)     -- 17.拠点内出庫
+          AND (ln_sum_inv_change                      =  0)     -- 18.基準在庫変更
+          AND (ln_factory_return                      =  0)     -- 19.工場返品
+          AND (ln_factory_change                      =  0)     -- 20.工場倉替
+          AND (ln_removed_goods                       =  0)     -- 21.廃却出庫
+          AND (ir_recept_month_cur.goods_transfer_old =  0)     -- 22.振替出庫
+          AND (ln_sum_sample                          =  0)     -- 23.協賛見本
+          AND (gn_inv_result                          =  0)     -- 24.棚卸結果
+          AND (gn_inv_result_bad                      =  0)     -- 25.棚卸結果(不良品)
+          AND (gn_inv_wear                            =  0)     -- 26.棚卸減耗
+        )
+    THEN
+      lv_recept_month := 
+        cv_file_encloser || gv_company_code                       || cv_file_encloser || cv_csv_com || --  1.会社コード
+                            ir_recept_month_cur.practice_date                         || cv_csv_com || --  2.年月
+        cv_file_encloser || ir_recept_month_cur.base_code         || cv_file_encloser || cv_csv_com || --  3.拠点（部門）コード
+        cv_file_encloser || ir_recept_month_cur.subinventory_code || cv_file_encloser || cv_csv_com || --  4.保管場所コード
+        cv_file_encloser || ir_recept_month_cur.segment1          || cv_file_encloser || cv_csv_com || --  5.商品コード
+        cv_file_encloser || ir_recept_month_cur.subinventory_type || cv_file_encloser || cv_csv_com || --  6.保管場所区分
+                            ir_recept_month_cur.operation_cost                        || cv_csv_com || --  7.営業原価
+                            ir_recept_month_cur.standard_cost                         || cv_csv_com || --  8.標準原価
+                            gn_month_begin_quantity                                   || cv_csv_com || --  9.月首棚卸高
+                            ln_factory_stock                                          || cv_csv_com || -- 10.工場入庫
+                            ir_recept_month_cur.change_stock                          || cv_csv_com || -- 11.倉替入庫
+                            ln_sum_stock                                              || cv_csv_com || -- 12.拠点内入庫
+                            ir_recept_month_cur.goods_transfer_new                    || cv_csv_com || -- 13.振替入庫
+                            ln_sales_shipped                                          || cv_csv_com || -- 14.売上出庫
+                            ln_return_goods                                           || cv_csv_com || -- 15.顧客返品
+                            ir_recept_month_cur.change_ship                           || cv_csv_com || -- 16.倉替出庫
+                            ln_sum_ship                                               || cv_csv_com || -- 17.拠点内出庫
+                            ln_sum_inv_change                                         || cv_csv_com || -- 18.基準在庫変更
+                            ln_factory_return                                         || cv_csv_com || -- 19.工場返品
+                            ln_factory_change                                         || cv_csv_com || -- 20.工場倉替
+                            ln_removed_goods                                          || cv_csv_com || -- 21.廃却出庫
+                            ir_recept_month_cur.goods_transfer_old                    || cv_csv_com || -- 22.振替出庫
+                            ln_sum_sample                                             || cv_csv_com || -- 23.協賛見本
+                            gn_inv_result                                             || cv_csv_com || -- 24.棚卸結果
+                            gn_inv_result_bad                                         || cv_csv_com || -- 25.棚卸結果(不良品)
+                            gn_inv_wear                                               || cv_csv_com || -- 26.棚卸減耗
+                            lv_last_update_date                                       || cv_csv_com || -- 27.更新日時
+                            lv_process_date;                                                           -- 28.連携日時
+      --
+      UTL_FILE.PUT_LINE(
+          gv_activ_file_h     -- A-3.で取得したファイルハンドル
+        , lv_recept_month        -- デリミタ＋上記CSV出力項目
+        );
+      --
+      -- 正常件数に加算
+      gn_normal_cnt := gn_normal_cnt + 1;
+    END IF;
+-- == 2010/02/03 V1.3 Modified END   ===============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -1370,8 +1435,10 @@ AS
         FETCH recept_month_cur INTO recept_month_rec;
         --次データがなくなったら終了
         EXIT WHEN recept_month_cur%NOTFOUND;
-        --対象件数加算
-        gn_target_cnt := gn_target_cnt + 1;
+-- == 2010/02/03 V1.3 Deleted START ===============================================================
+--        --対象件数加算
+--        gn_target_cnt := gn_target_cnt + 1;
+-- == 2010/02/03 V1.3 Deleted END   ===============================================================
 --
 -- == 2009/04/08 V1.1 Added START ===============================================================
         -- ===============================
@@ -1405,14 +1472,20 @@ AS
           RAISE global_process_expt;
         END IF;
 --
-        -- 正常件数に加算
-        gn_normal_cnt := gn_normal_cnt + 1;
+-- == 2010/02/03 V1.3 Deleted START ===============================================================
+--        -- 正常件数に加算
+--        gn_normal_cnt := gn_normal_cnt + 1;
+-- == 2010/02/03 V1.3 Deleted END   ===============================================================
       --
       --ループの終了
       END LOOP recept_month_loop;
       --
     --カーソルのクローズ
     CLOSE recept_month_cur;
+-- == 2010/02/03 V1.3 Added START ===============================================================
+    -- 対象件数設定
+    gn_target_cnt :=  gn_normal_cnt;
+-- == 2010/02/03 V1.3 Added END   ===============================================================
     --
 -- == 2009/04/08 V1.1 Deleted START ===============================================================
 --    -- データが０件で終了した場合
