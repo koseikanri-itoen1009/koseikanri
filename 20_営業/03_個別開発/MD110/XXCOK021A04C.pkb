@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A04C(body)
  * Description      : 情報系システムインターフェースファイル作成-問屋支払
  * MD.050           : 情報系システムインターフェースファイル作成-問屋支払 MD050_COK_021_A04
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,8 @@ AS
  *  2009/02/06    1.1   T.Abe            [障害COK_016] ディレクトリパス出力対応
  *  2009/03/19    1.2   A.Yano           [障害T1_0087] 必須項目の不具合対応
  *  2009/04/21    1.3   M.Hiruta         [障害T1_0551] 補填額・問屋マージン額・拡売費額の取得方法を変更
+ *  2009/12/18    1.4   K.Yamaguchi      [E_本稼動_00530] 支払金額=補填+問屋マージン+拡売費を満たさない場合
+ *                                                        問屋マージンで金額調整を行うように修正（端数調整）
  *
  *****************************************************************************************/
 --
@@ -80,6 +82,12 @@ AS
   cv_estimated_no_dummy     CONSTANT VARCHAR2(30)   := 'XXCOK1_ESTIMATED_NO_DUMMY';  -- XXCOK:見積番号_ダミー値
 --【2009/03/19 A.Yano Ver.1.2 追加END  】------------------------------------------------------
   cv_organization_code      CONSTANT VARCHAR2(30)   := 'XXCOK1_ORG_CODE_SALES';      -- XXCOK:在庫組織コード_営業組織
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi ADD START
+  cv_prof_aff3_fee          CONSTANT VARCHAR2(30)   := 'XXCOK1_AFF3_SELL_FEE';      -- 勘定科目_販売手数料（問屋）
+  cv_prof_aff3_support      CONSTANT VARCHAR2(30)   := 'XXCOK1_AFF3_SELL_SUPPORT';  -- 勘定科目_販売協賛金（問屋）
+  cv_prof_aff4_fee          CONSTANT VARCHAR2(30)   := 'XXCOK1_AFF4_SELL_FEE';      -- 補助科目_問屋条件
+  cv_prof_aff4_support      CONSTANT VARCHAR2(30)   := 'XXCOK1_AFF4_SELL_SUPPORT';  -- 補助科目_拡売費
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi ADD END
   -- AP連携ステータス
   cv_ap_interface_status    CONSTANT VARCHAR2(1)    := '1';                          -- 連携済
   -- 情報系システム連携ステータス
@@ -112,6 +120,12 @@ AS
   gn_organization_id        NUMBER                                               DEFAULT NULL;  -- 在庫組織ID
   g_file_handle             UTL_FILE.FILE_TYPE;                                                 -- ファイルハンドル
   gv_dire_path              VARCHAR2(1000)                                       DEFAULT NULL;  -- ディレクトリパス(メッセージ出力用)
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi ADD START
+  gv_aff3_fee               VARCHAR2(50);                -- プロファイル値(販売手数料（問屋）)
+  gv_aff3_support           VARCHAR2(50);                -- プロファイル値(販売協賛金（問屋）)
+  gv_aff4_fee               VARCHAR2(50);                -- プロファイル値(問屋条件)
+  gv_aff4_support           VARCHAR2(50);                -- プロファイル値(拡売費)
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi ADD END
   -- ===============================
   -- グローバルカーソル
   -- ===============================
@@ -298,6 +312,40 @@ AS
       RAISE nodata_profile_expt;
     END IF;
 --【2009/03/19 A.Yano Ver.1.2 追加END  】------------------------------------------------------
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi ADD START
+    -- ===============================================
+    -- プロファイル取得(販売手数料（問屋）)
+    -- ===============================================
+    gv_aff3_fee := FND_PROFILE.VALUE( cv_prof_aff3_fee );
+    IF ( gv_aff3_fee IS NULL ) THEN
+      lv_nodata_profile := cv_prof_aff3_fee;
+      RAISE nodata_profile_expt;
+    END IF;
+    -- ===============================================
+    -- プロファイル取得(販売協賛金（問屋）)
+    -- ===============================================
+    gv_aff3_support := FND_PROFILE.VALUE( cv_prof_aff3_support );
+    IF ( gv_aff3_support IS NULL ) THEN
+      lv_nodata_profile := cv_prof_aff3_support;
+      RAISE nodata_profile_expt;
+    END IF;
+    -- ===============================================
+    -- プロファイル取得(問屋条件)
+    -- ===============================================
+    gv_aff4_fee := FND_PROFILE.VALUE( cv_prof_aff4_fee );
+    IF ( gv_aff4_fee IS NULL ) THEN
+      lv_nodata_profile := cv_prof_aff4_fee;
+      RAISE nodata_profile_expt;
+    END IF;
+    -- ===============================================
+    -- プロファイル取得(拡売費)
+    -- ===============================================
+    gv_aff4_support := FND_PROFILE.VALUE( cv_prof_aff4_support );
+    IF ( gv_aff4_support IS NULL ) THEN
+      lv_nodata_profile := cv_prof_aff4_support;
+      RAISE nodata_profile_expt;
+    END IF;
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi ADD END
     -- (7)在庫組織コード取得
     lv_organization_code := FND_PROFILE.VALUE( cv_organization_code );
     IF( lv_organization_code IS NULL ) THEN
@@ -611,6 +659,9 @@ AS
     lv_expansion_sales_sum  VARCHAR2(20)                                      DEFAULT NULL;  -- 拡売費額
     lv_misc_acct_amt        VARCHAR2(20)                                      DEFAULT NULL;  -- その他科目額
     lv_sysdate              VARCHAR2(14)                                      DEFAULT NULL;  -- システム日付
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi ADD START
+    ln_fraction_amount       NUMBER         DEFAULT NULL;              -- 端数計算用
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi ADD END
 --
   BEGIN
 --
@@ -675,27 +726,94 @@ AS
     THEN
       lv_coverage_amt_sum := '0';
     ELSE
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi REPAIR START
+--      lv_coverage_amt_sum :=
+--        TO_CHAR( ( NVL( g_wholesale_info_tab( in_index ).market_amt , 0 )
+--                     - NVL( g_wholesale_info_tab( in_index ).selling_discount , 0 )
+--                     - NVL( g_wholesale_info_tab( in_index ).normal_store_deliver_amt , 0) 
+--                 ) * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) );
       lv_coverage_amt_sum :=
-        TO_CHAR( ( NVL( g_wholesale_info_tab( in_index ).market_amt , 0 )
-                     - NVL( g_wholesale_info_tab( in_index ).selling_discount , 0 )
-                     - NVL( g_wholesale_info_tab( in_index ).normal_store_deliver_amt , 0) 
-                 ) * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) );
+        TO_CHAR( ROUND( (   NVL( g_wholesale_info_tab( in_index ).market_amt               , 0 )
+                          - NVL( g_wholesale_info_tab( in_index ).selling_discount         , 0 )
+                          - NVL( g_wholesale_info_tab( in_index ).normal_store_deliver_amt , 0 )
+                        ) * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 )
+                 )
+        );
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi REPAIR END
     END IF;
     -- 問屋マージン額
     IF ( g_wholesale_info_tab( in_index ).backmargin >= 0 ) THEN
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi REPAIR START
+--      lv_wholesale_margin_sum :=
+--        TO_CHAR( NVL( g_wholesale_info_tab( in_index ).backmargin , 0 )
+--                   * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) - TO_NUMBER( lv_coverage_amt_sum ) );
       lv_wholesale_margin_sum :=
-        TO_CHAR( NVL( g_wholesale_info_tab( in_index ).backmargin , 0 )
-                   * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) - TO_NUMBER( lv_coverage_amt_sum ) );
+        TO_CHAR( ROUND(   NVL( g_wholesale_info_tab( in_index ).backmargin  , 0 )
+                        * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 )
+                        - TO_NUMBER( lv_coverage_amt_sum )
+                 )
+         );
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi REPAIR END
     ELSE
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi REPAIR START
+--      lv_wholesale_margin_sum :=
+--        TO_CHAR( NVL( g_wholesale_info_tab( in_index ).backmargin , 0 )
+--                   * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) );
       lv_wholesale_margin_sum :=
-        TO_CHAR( NVL( g_wholesale_info_tab( in_index ).backmargin , 0 )
-                   * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) );
+        TO_CHAR( ROUND(   NVL( g_wholesale_info_tab( in_index ).backmargin  , 0 )
+                        * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 )
+                 )
+        );
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi REPAIR END
     END IF;
     -- 拡売費額
-    lv_expansion_sales_sum := TO_CHAR( NVL( g_wholesale_info_tab( in_index ).sales_support_amt , 0 )
-                                         * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) );
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi REPAIR START
+--    lv_expansion_sales_sum := TO_CHAR( NVL( g_wholesale_info_tab( in_index ).sales_support_amt , 0 )
+--                                         * NVL( g_wholesale_info_tab( in_index ).payment_qty , 0 ) );
+    lv_expansion_sales_sum := TO_CHAR( ROUND(   NVL( g_wholesale_info_tab( in_index ).sales_support_amt, 0 )
+                                              * NVL( g_wholesale_info_tab( in_index ).payment_qty      , 0 )
+                                       )
+                              );
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi REPAIR END
 -- End   2009/04/21 Ver_1.3 T1_0551 M.Hiruta
-    lv_misc_acct_amt        := TO_CHAR( g_wholesale_info_tab( in_index ).misc_acct_amt );            -- その他科目額
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi ADD START
+
+    -- ===============================================
+    -- 端数処理
+    -- 支払金額=補填+問屋マージン+拡売費を満たさない場合
+    -- 問屋マージンにて金額調整を行う
+    -- ===============================================
+    IF( g_wholesale_info_tab( in_index ).acct_code IS NULL ) THEN
+      ln_fraction_amount :=   TO_NUMBER( lv_coverage_amt_sum     )
+                            + TO_NUMBER( lv_wholesale_margin_sum )
+                            + TO_NUMBER( lv_expansion_sales_sum  );
+      IF ( NVL( g_wholesale_info_tab( in_index ).payment_amt
+              , g_wholesale_info_tab( in_index ).demand_amt ) != ln_fraction_amount ) THEN
+        lv_wholesale_margin_sum := TO_CHAR(   TO_NUMBER( lv_wholesale_margin_sum )
+                                            + ( NVL( g_wholesale_info_tab( in_index ).payment_amt
+                                                   , g_wholesale_info_tab( in_index ).demand_amt  ) - ln_fraction_amount )
+                                   );
+      END IF;
+    END IF;
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi ADD END
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi REPAIR START
+--    lv_misc_acct_amt        := TO_CHAR( g_wholesale_info_tab( in_index ).misc_acct_amt );            -- その他科目額
+    IF( g_wholesale_info_tab( in_index ).acct_code IS NOT NULL ) THEN
+      IF (     g_wholesale_info_tab( in_index ).acct_code     = gv_aff3_fee
+           AND g_wholesale_info_tab( in_index ).sub_acct_code = gv_aff4_fee
+      ) THEN
+        lv_wholesale_margin_sum := TO_CHAR( g_wholesale_info_tab( in_index ).misc_acct_amt );
+      ELSIF (     g_wholesale_info_tab( in_index ).acct_code     = gv_aff3_support
+              AND g_wholesale_info_tab( in_index ).sub_acct_code = gv_aff4_support
+      ) THEN
+        lv_expansion_sales_sum := TO_CHAR( g_wholesale_info_tab( in_index ).misc_acct_amt );
+      ELSE
+        lv_misc_acct_amt := TO_CHAR( g_wholesale_info_tab( in_index ).misc_acct_amt );
+      END IF;
+    ELSE
+      lv_misc_acct_amt        := TO_CHAR( g_wholesale_info_tab( in_index ).misc_acct_amt );            -- その他科目額
+    END IF;
+-- 2009/12/18 Ver.1.4 [E_本稼動_00530] SCS K.Yamaguchi REPAIR END
     lv_sysdate              := TO_CHAR( gd_sysdate, 'YYYYMMDDHH24MISS' );                            -- システム日付
     -- ===============================
     -- 出力データを変数に格納
