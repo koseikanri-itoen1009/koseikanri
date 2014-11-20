@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI002A01R(body)
  * Description      : 倉替伝票
  * MD.050           : 倉替伝票 MD050_COI_002_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/07/30    1.2   N.Abe            [0000638]数量の取得項目修正
  *  2009/12/14    1.3   N.Abe            [E_本稼動_00385]倉替抽出方法修正
  *  2009/12/25    1.4   N.Abe            [E_本稼動_00610]パフォーマンス対応
+ *  2012/08/03    1.5   K.Nakamura       [E_本稼動_09899]A4への印刷方式追記
  *
  *****************************************************************************************/
 --
@@ -171,6 +172,9 @@ AS
   gv_para_date_to                VARCHAR2(100); -- 日付（To）
   gv_para_kyoten_from            VARCHAR2(100); -- 出庫元拠点
   gv_para_kyoten_to              VARCHAR2(100); -- 入庫先拠点
+-- == 2012/08/03 V1.5 Added START ===============================================================
+  gv_print_form                  VARCHAR2(100); -- 印刷方式制御区分
+-- == 2012/08/03 V1.5 Added END   ===============================================================
   --
   gv_date                        VARCHAR2(100); -- SYSDATE(文字列)
   -- 書式変換後
@@ -1155,10 +1159,20 @@ AS
     cv_vrq_name   CONSTANT VARCHAR2(20) := 'XXCOI002A01S.vrq';  -- クエリー様式ファイル名
     cv_out_div    CONSTANT VARCHAR2(20) := '1';   -- 出力区分
     cv_svf        CONSTANT VARCHAR2(20) := 'SVF'; -- メッセージ出力用
+-- == 2012/08/03 V1.5 Added START ===============================================================
+    cv_frm_name2  CONSTANT VARCHAR2(20) := 'XXCOI002A01S02.xml';  -- フォーム様式ファイル名
+    cv_vrq_name2  CONSTANT VARCHAR2(20) := 'XXCOI002A01S02.vrq';  -- クエリー様式ファイル名
+    cv_print_form1 CONSTANT VARCHAR2(1) := '1';   -- 印刷方式区分値(1：制定用紙)
+    cv_print_form2 CONSTANT VARCHAR2(1) := '2';   -- 印刷方式区分値(2：A4用紙)
+-- == 2012/08/03 V1.5 Added END   ===============================================================
 --
     -- *** ローカル変数 ***
     ld_date       VARCHAR2(8);   -- 日付
     lv_file_name  VARCHAR2(100); -- 出力ファイル名
+-- == 2012/08/03 V1.5 Added START ===============================================================
+    lv_frm_name   VARCHAR2(20);  -- フォーム様式ファイル名
+    lv_vrq_name   VARCHAR2(20);  -- クエリー様式ファイル名
+-- == 2012/08/03 V1.5 Added END   ===============================================================
 --
     -- *** ローカル・カーソル ***
 --
@@ -1178,6 +1192,15 @@ AS
     -- 出力ファイル名
     lv_file_name := cv_pkg_name || ld_date || cn_request_id;
 --
+-- == 2012/08/03 V1.5 Added START ===============================================================
+    IF ( gv_print_form = cv_print_form1 ) THEN
+      lv_frm_name := cv_frm_name;
+      lv_vrq_name := cv_vrq_name;
+    ELSIF ( gv_print_form = cv_print_form2 ) THEN
+      lv_frm_name := cv_frm_name2;
+      lv_vrq_name := cv_vrq_name2;
+    END IF;
+-- == 2012/08/03 V1.5 Added END   ===============================================================
     -- SVF共通関数起動
     xxccp_svfcommon_pkg.submit_svf_request(
         ov_retcode      => lv_retcode           -- リターンコード
@@ -1187,8 +1210,12 @@ AS
       , iv_file_name    => lv_file_name         -- 出力ファイル名
       , iv_file_id      => cv_pkg_name          -- 帳票ID
       , iv_output_mode  => cv_out_div           -- 出力区分
-      , iv_frm_file     => cv_frm_name          -- フォーム様式ファイル名
-      , iv_vrq_file     => cv_vrq_name          -- クエリー様式ファイル名
+-- == 2012/08/03 V1.5 Modified START ===============================================================
+--      , iv_frm_file     => cv_frm_name          -- フォーム様式ファイル名
+--      , iv_vrq_file     => cv_vrq_name          -- クエリー様式ファイル名
+      , iv_frm_file     => lv_frm_name          -- フォーム様式ファイル名
+      , iv_vrq_file     => lv_vrq_name          -- クエリー様式ファイル名
+-- == 2012/08/03 V1.5 Modified END   ===============================================================
       , iv_org_id       => fnd_global.org_id    -- ORG_ID
       , iv_user_name    => fnd_global.user_name -- ログイン・ユーザ名
       , iv_resp_name    => fnd_global.resp_name -- ログイン・ユーザの職責名
@@ -1382,6 +1409,9 @@ AS
     iv_date_to      IN  VARCHAR2,  --  4.日付（To）
     iv_kyoten_from  IN  VARCHAR2,  --  5.出庫元拠点
     iv_kyoten_to    IN  VARCHAR2,  --  6.入庫先拠点
+-- == 2012/08/03 V1.5 Added START ===============================================================
+    iv_print_form   IN  VARCHAR2,  --  7.印刷方式制御区分
+-- == 2012/08/03 V1.5 Added END   ===============================================================
     ov_errbuf       OUT VARCHAR2,  --  エラー・メッセージ           --# 固定 #
     ov_retcode      OUT VARCHAR2,  --  リターン・コード             --# 固定 #
     ov_errmsg       OUT VARCHAR2)  --  ユーザー・エラー・メッセージ --# 固定 #
@@ -1449,6 +1479,9 @@ AS
     gv_para_date_to     := SUBSTRB( iv_date_to, 1, 10);   -- 日付（To）
     gv_para_kyoten_from := iv_kyoten_from;                -- 出庫元拠点
     gv_para_kyoten_to   := iv_kyoten_to;                  -- 入庫先拠点
+-- == 2012/08/03 V1.5 Added START ===============================================================
+    gv_print_form       := iv_print_form;                 -- 印刷方式制御区分
+-- == 2012/08/03 V1.5 Added END   ===============================================================
 --
     -- ===============================
     -- 初期処理 (A-1)
@@ -1603,7 +1636,11 @@ AS
     iv_date_to      IN  VARCHAR2,      -- 4.日付（To）
     iv_kyoten_from  IN  VARCHAR2,      -- 5.出庫元拠点
     iv_dummy        IN  VARCHAR2,      -- 入力制御用ダミー値
-    iv_kyoten_to    IN  VARCHAR2       -- 6.入庫先拠点
+-- == 2012/08/03 V1.5 Modified START ===============================================================
+--    iv_kyoten_to    IN  VARCHAR2       -- 6.入庫先拠点
+    iv_kyoten_to    IN  VARCHAR2,      -- 6.入庫先拠点
+    iv_print_form   IN  VARCHAR2       -- 印刷方式制御区分
+-- == 2012/08/03 V1.5 Modified END   ===============================================================
   )
 --
 --###########################  固定部 START   ###########################
@@ -1663,6 +1700,9 @@ AS
       , iv_date_to     => iv_date_to      -- 4.日付（To）
       , iv_kyoten_from => iv_kyoten_from  -- 5.出庫元拠点
       , iv_kyoten_to   => iv_kyoten_to    -- 6.入庫先拠点
+-- == 2012/08/03 V1.5 Added START ===============================================================
+      , iv_print_form  => iv_print_form   -- 印刷方式制御区分
+-- == 2012/08/03 V1.5 Added END   ===============================================================
       , ov_errbuf      => lv_errbuf       -- エラー・メッセージ           --# 固定 #
       , ov_retcode     => lv_retcode      -- リターン・コード             --# 固定 #
       , ov_errmsg      => lv_errmsg       -- ユーザー・エラー・メッセージ --# 固定 #
