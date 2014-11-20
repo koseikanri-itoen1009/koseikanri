@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A02C(spec)
  * Description      : 組織マスタIF出力（情報系）
  * MD.050           : 組織マスタIF出力（情報系） CMM_005_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/04/20    1.2  Yutaka.Kuboshima  障害T1_0590の対応
  *  2009/05/15    1.3  Yutaka.Kuboshima  障害T1_1026の対応
  *  2009/10/06    1.4  Shigeto.Niki      I_E_542、E_T3_00469対応
+ *  2009/12/14    1.5  Yutaka.Kuboshima  E_本稼動_00453対応
  *
  *****************************************************************************************/
 --
@@ -477,7 +478,12 @@ AS
                                                AS enabled_flag                               -- 使用可能フラグ
                 ,xhdal.start_date_active       AS start_date_active                          -- 有効期間開始日
                 ,xhdal.end_date_active         AS end_date_active                            -- 有効期間終了日
-      FROM      xxcmm_hierarchy_dept_all_v     xhdal
+-- 2009/12/14 Ver1.5 modify start by Yutaka.Kuboshima
+-- 抽出ビューを変更
+-- ※XXCMM_HIERARCHY_DEPT_ALL_V ：上位階層補完用
+--   XXCMM_HIERARCHY_DEPT_ALL2_V：下位階層補完用
+--      FROM      xxcmm_hierarchy_dept_all_v     xhdal
+      FROM      xxcmm_hierarchy_dept_all2_v     xhdal
 -- 2009/10/06 Ver1.4 mod start by Shigeto.Niki
 --       ORDER BY  xhdal.dpt1_cd ASC
       ORDER BY  xhdal.dpt6_cd ASC
@@ -736,9 +742,9 @@ AS
   --
   END create_aff_date_proc;
 --
-
-
-
+--
+--
+--
   /**********************************************************************************
    * Procedure Name   : output_aff_date_proc
    * Description      : AFF部門マスタ情報書き込みプロシージャ(A-5)
@@ -767,7 +773,6 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_company_code           CONSTANT VARCHAR2(10) := '001';                             -- 会社コード：固定値"001"
-
 --
     -- *** ローカル変数 ***
     ln_max_cnt                NUMBER := 0;                                                -- カーソルLoop時の最大LOOP数
