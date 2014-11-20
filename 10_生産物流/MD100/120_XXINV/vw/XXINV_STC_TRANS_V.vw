@@ -442,6 +442,9 @@ SELECT xstv.whse_code
 --add start 2008/06/10
         AND    xmrih_in_xf20.shipped_locat_id       = xilv_in_xf202.inventory_location_id
 --add end 2008/06/10
+--add start 2008/06/16
+        AND    xmrih_in_xf20.mov_type               = '1'  -- êœëóÇ†ÇË
+--add end 2008/06/16
         AND    xmril_in_xf20.item_id                = ximv_in_xf20.item_id
         AND    ilm_in_xf20.item_id                  = ximv_in_xf20.item_id
         AND    xmld_in_xf20.mov_line_id             = xmril_in_xf20.mov_line_id
@@ -841,6 +844,9 @@ SELECT xstv.whse_code
 --add start 2008/06/10
         AND    xmrih_out_xf20.ship_to_locat_id       = xilv_out_xf202.inventory_location_id
 --add end 2008/06/10
+--add start 2008/06/16
+        AND    xmrih_out_xf20.mov_type               = '1'  -- êœëóÇ†ÇË
+--add end 2008/06/16
         AND    xmril_out_xf20.item_id                = ximv_out_xf20.item_id
         AND    ilm_out_xf20.item_id                  = ximv_out_xf20.item_id
         AND    xmld_out_xf20.mov_line_id             = xmril_out_xf20.mov_line_id
@@ -2053,7 +2059,10 @@ SELECT xstv.whse_code
         AND    flv_in_po_e_rma.language                     = 'JA'
         AND    flv_in_po_e_rma.lookup_code                  = xrpm_in_po_e_rma.new_div_invent
         AND    xoha_in_po_e_rma.customer_id                 = xcav_in_po_e_rma.party_id
-        AND    xoha_in_po_e_rma.deliver_to_id               = xpsv_in_po_e_rma.party_site_id
+--mod start 2008/06/16
+--        AND    xoha_in_po_e_rma.deliver_to_id               = xpsv_in_po_e_rma.party_site_id
+        AND    xoha_in_po_e_rma.result_deliver_to_id        = xpsv_in_po_e_rma.party_site_id
+--mod end 2008/06/16
         UNION ALL
 --mod start 2008/06/06
         -- ç›å…í≤êÆ ì¸å…é¿ê—(ëäéËêÊç›å…)
@@ -2096,6 +2105,9 @@ SELECT xstv.whse_code
         AND    xrpm_in_ad_e_x97.reason_code            = 'X977'               -- ëäéËêÊç›å…
         AND    xrpm_in_ad_e_x97.rcv_pay_div            = '1'                  -- éÛì¸
         AND    xrpm_in_ad_e_x97.use_div_invent         = 'Y'
+--mod start 2008/06/16
+        AND    itc_in_ad_e_x97.doc_type                = xrpm_in_ad_e_x97.doc_type
+--mod end 2008/06/16
         AND    itc_in_ad_e_x97.reason_code             = xrpm_in_ad_e_x97.reason_code
         AND    SIGN( itc_in_ad_e_x97.trans_qty )       = xrpm_in_ad_e_x97.rcv_pay_div
         AND    itc_in_ad_e_x97.item_id                 = ximv_in_ad_e_x97.item_id
