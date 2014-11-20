@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2008/05/20    1.2   Oracle 丸下 博宣 OPM品目カテゴリ割当の修正
  *  2008/05/27    1.3   Oracle 丸下 博宣 内部変更要求No122対応
  *  2008/06/23    1.4   Oracle 山根 一浩 ST事前検証不具合対応
+ *  2008/06/25    1.5   Oracle 山根 一浩 不具合No275対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -276,6 +277,7 @@ AS
     cost_cmpntcls_id      cm_cmpt_mst_tl.cost_cmpntcls_id%TYPE,     -- コンポーネント区分ID
     cost_cmpntcls_code    cm_cmpt_mst.cost_cmpntcls_code%TYPE,      -- コンポーネント区分コード
     cost_cmpntcls_desc    cm_cmpt_mst_tl.cost_cmpntcls_desc%TYPE,   -- コンポーネント区分名
+    sorter                NUMBER,                                   -- 順番
     cost_price            NUMBER                                    -- 金額
   );
 --
@@ -458,9 +460,30 @@ AS
   gn_program_id            NUMBER(15);
   gd_min_date              DATE;
   gd_max_date              DATE;
-  gv_user_name             VARCHAR2(100);
+  gv_user_name             fnd_user.user_name%TYPE;
 --
   gt_cmpntcls_mast cmpntcls_tbl; -- コンポーネント区分マスタのデータ
+--
+  gv_cmpntcls_desc_01      VARCHAR2(20);
+  gv_cmpntcls_desc_02      VARCHAR2(20);
+  gv_cmpntcls_desc_03      VARCHAR2(20);
+  gv_cmpntcls_desc_04      VARCHAR2(20);
+  gv_cmpntcls_desc_05      VARCHAR2(20);
+  gv_cmpntcls_desc_06      VARCHAR2(20);
+  gv_cmpntcls_desc_07      VARCHAR2(20);
+  gv_cmpntcls_desc_08      VARCHAR2(20);
+  gv_cmpntcls_desc_09      VARCHAR2(20);
+  gv_cmpntcls_desc_10      VARCHAR2(20);
+  gv_cmpntcls_num_01       NUMBER;
+  gv_cmpntcls_num_02       NUMBER;
+  gv_cmpntcls_num_03       NUMBER;
+  gv_cmpntcls_num_04       NUMBER;
+  gv_cmpntcls_num_05       NUMBER;
+  gv_cmpntcls_num_06       NUMBER;
+  gv_cmpntcls_num_07       NUMBER;
+  gv_cmpntcls_num_08       NUMBER;
+  gv_cmpntcls_num_09       NUMBER;
+  gv_cmpntcls_num_10       NUMBER;
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -536,97 +559,6 @@ AS
       AND    ccd.cost_mthd_code = gv_cost_div
       AND    ccd.cost_level     = gv_cost_level_on
       FOR UPDATE OF ccd.item_id NOWAIT;
---
-  /**********************************************************************************
-   * Procedure Name   : put_api_log
-   * Description      : 標準APIログ出力APIプロシージャ
-   ***********************************************************************************/
-  PROCEDURE put_api_log(
-    ov_errbuf   OUT NOCOPY VARCHAR2,          -- エラー・メッセージ           --# 固定 #
-    ov_retcode  OUT NOCOPY VARCHAR2,          -- リターン・コード             --# 固定 #
-    ov_errmsg   OUT NOCOPY VARCHAR2)          -- ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'put_api_log'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
-    lv_msg            VARCHAR2(2000);
-    ln_dummy_cnt      NUMBER(10);
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := gv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
-    -- ***************************************
---
-    <<count_msg_loop>>
-    FOR i IN 1 .. FND_MSG_PUB.COUNT_MSG LOOP
-IF (i <> 3) THEN
-      -- メッセージ取得
-      FND_MSG_PUB.GET(
-             p_msg_index      => i
-            ,p_encoded        => FND_API.G_FALSE
-            ,p_data           => lv_msg
-            ,p_msg_index_out  => ln_dummy_cnt
-      );
-      -- ログ出力
-      FND_FILE.PUT_LINE(FND_FILE.LOG, lv_msg);
-END IF;
---
-    END LOOP count_msg_loop;
---
-    --==============================================================
-    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
-    --==============================================================
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := gv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
-      ov_retcode := gv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
-      ov_retcode := gv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END put_api_log;
 --
   /***********************************************************************************
    * Procedure Name   : get_profile
@@ -2778,12 +2710,34 @@ END IF;
     IS
       SELECT ccmt.cost_cmpntcls_id,
              ccm.cost_cmpntcls_code,
-             ccmt.cost_cmpntcls_desc
+             ccmt.cost_cmpntcls_desc,
+             DECODE(ccmt.cost_cmpntcls_desc,
+                    gv_raw_material_cost, 1,                   -- 原料
+                    gv_agein_cost,        2,                   -- 再製費
+                    gv_material_cost,     3,                   -- 資材費
+                    gv_pack_cost,         4,                   -- 包装費
+                    gv_out_order_cost,    5,                   -- 外注加工費
+                    gv_safekeep_cost,     6,                   -- 保管費
+                    gv_other_expense_cost,7,                   -- その他経費
+                    gv_spare1,            8,                   -- 予備１
+                    gv_spare2,            9,                   -- 予備２
+                    gv_spare3,            10                   -- 予備３
+                   ) as sorter
       FROM   cm_cmpt_mst_tl ccmt,
              cm_cmpt_mst ccm
       WHERE  ccmt.cost_cmpntcls_id   = ccm.cost_cmpntcls_id
       AND    ccmt.language           = gv_language
-      ORDER BY ccmt.cost_cmpntcls_id;
+      AND    ccmt.cost_cmpntcls_desc IN (
+                            gv_raw_material_cost,
+                            gv_agein_cost,
+                            gv_material_cost,
+                            gv_pack_cost,
+                            gv_out_order_cost,
+                            gv_safekeep_cost,
+                            gv_other_expense_cost,
+                            gv_spare1,
+                            gv_spare2,
+                            gv_spare3);
 --
     -- *** ローカル・レコード ***
     lr_cmpnt_rec cmpnt_cur%ROWTYPE;
@@ -2801,7 +2755,16 @@ END IF;
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    ln_cnt := 1;
+    gt_cmpntcls_mast.DELETE;
+--
+    <<init_loop>>
+    FOR i IN 1..10 LOOP
+--
+      gt_cmpntcls_mast(i).cost_cmpntcls_id   := NULL;
+      gt_cmpntcls_mast(i).cost_cmpntcls_code := NULL;
+      gt_cmpntcls_mast(i).cost_cmpntcls_desc := NULL;
+--
+    END LOOP init_loop;
 --
     OPEN cmpnt_cur;
 --
@@ -2810,11 +2773,12 @@ END IF;
       FETCH cmpnt_cur INTO lr_cmpnt_rec;
       EXIT WHEN cmpnt_cur%NOTFOUND;
 --
+      ln_cnt := lr_cmpnt_rec.sorter;
+--
       gt_cmpntcls_mast(ln_cnt).cost_cmpntcls_id   := lr_cmpnt_rec.cost_cmpntcls_id;
       gt_cmpntcls_mast(ln_cnt).cost_cmpntcls_code := lr_cmpnt_rec.cost_cmpntcls_code;
       gt_cmpntcls_mast(ln_cnt).cost_cmpntcls_desc := lr_cmpnt_rec.cost_cmpntcls_desc;
---
-      ln_cnt := ln_cnt + 1;
+      gt_cmpntcls_mast(ln_cnt).sorter             := ln_cnt;
 --
     END LOOP cmpnt_loop;
 --
@@ -3874,6 +3838,7 @@ END IF;
     ln_price     NUMBER;
     lv_type      VARCHAR2(2);
     ln_flg       NUMBER;
+    ln_ind       NUMBER;
 --
     -- *** ローカル・カーソル ***
 --
@@ -3899,26 +3864,33 @@ END IF;
     FOR i IN 1..10 LOOP
       lv_type := TO_CHAR(i);
 --
-      -- 単価の取得
-      get_price(ir_masters_rec,
-                lv_type,
-                ln_price,
-                lv_errbuf,
-                lv_retcode,
-                lv_errmsg);
+      -- 入力あり
+      IF (ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id IS NOT NULL) THEN
 --
-      IF (lv_retcode = gv_status_error) THEN
-        RAISE global_api_expt;
-      END IF;
+        -- 単価の取得
+        get_price(ir_masters_rec,
+                  lv_type,
+                  ln_price,
+                  lv_errbuf,
+                  lv_retcode,
+                  lv_errmsg);
 --
-      IF (lv_type = ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id) THEN
-        -- 入力あり
-        IF (ir_masters_rec.cmpntcls_mast(i).cost_price IS NOT NULL) THEN
-          IF (NVL(ln_price,-1) <> ir_masters_rec.cmpntcls_mast(i).cost_price) THEN
-            ln_flg := 1;
-            ov_retmsg := ov_retmsg || ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_desc;
-            IF (i <> 10) THEN
-              ov_retmsg := ov_retmsg || gv_msg_pnt;
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+--
+        IF (lv_type = ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id) THEN
+--
+          -- 入力あり
+          IF (ir_masters_rec.cmpntcls_mast(i).cost_price IS NOT NULL) THEN
+--
+            -- 金額の比較
+            IF (NVL(ln_price,-1) <> ir_masters_rec.cmpntcls_mast(i).cost_price) THEN
+              ln_flg := 1;
+              ov_retmsg := ov_retmsg || ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_desc;
+              IF (i <> 10) THEN
+                ov_retmsg := ov_retmsg || gv_msg_pnt;
+              END IF;
             END IF;
           END IF;
         END IF;
@@ -5113,6 +5085,9 @@ END IF;
     -- 2008/02/05 Mod
     lr_item_rec.loct_ctl := gn_loct_ctl_on;                        -- 保管場所
 --
+    -- 2008.06.25 Mod
+    lr_item_rec.user_name := gv_user_name;
+--
     -- OPM品目マスタ(登録)
     GMI_ITEM_PUB.CREATE_ITEM(
         P_API_VERSION      => gv_api_ver
@@ -5131,11 +5106,17 @@ END IF;
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn,      gv_msg_80b_013,
                                             gv_tkn_api_name, lv_api_name);
 --
-      FND_MSG_PUB.GET( P_MSG_INDEX     => 1,
-                       P_ENCODED       => FND_API.G_FALSE,
-                       P_DATA          => lv_msg_data,
-                       P_MSG_INDEX_OUT => ln_msg_count );
+      lv_msg_data := lv_errmsg;
 --
+      xxcmn_common_pkg.put_api_log(
+                  lv_errbuf,
+                  lv_retcode,
+                  lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+      lv_errmsg := lv_msg_data;
       lv_errbuf := lv_msg_data;
       RAISE global_api_expt;
     END IF;
@@ -5477,7 +5458,6 @@ END IF;
     lv_return_status  VARCHAR2(30);
     ln_msg_count      NUMBER;
     lv_msg_data       VARCHAR2(5000);
-    lv_id             VARCHAR2(2);
     ln_price          NUMBER;
     lv_desc           VARCHAR2(50);
     ln_cnt            NUMBER;
@@ -5528,26 +5508,30 @@ END IF;
     lr_head_rec.cost_mthd_code := gv_cost_div;
     lr_head_rec.user_name      := gv_user_name;
 --
+    ln_cnt := 1;
+--
     <<cmpt_insert_loop>>
     FOR i IN 1..10 LOOP
-      lv_id := TO_CHAR(i);
 --
-      -- 入力あり
-      IF (ir_masters_rec.cmpntcls_mast(i).cost_price IS NOT NULL) THEN
-        lr_this_tbl(i).cost_analysis_code := '0000';
-        lr_this_tbl(i).burden_ind  := 0;
-        lr_this_tbl(i).delete_mark := 0;
+      -- 区分入力あり
+      IF (ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id IS NOT NULL) THEN
 --
-        IF (lv_id = ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id) THEN
-          lr_this_tbl(i).cmpnt_cost       := ir_masters_rec.cmpntcls_mast(i).cost_price;
-          lr_this_tbl(i).cost_cmpntcls_id := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+        -- 金額入力あり
+        IF (ir_masters_rec.cmpntcls_mast(i).cost_price IS NOT NULL) THEN
+          lr_this_tbl(ln_cnt).cost_analysis_code := '0000';
+          lr_this_tbl(ln_cnt).burden_ind  := 0;
+          lr_this_tbl(ln_cnt).delete_mark := 0;
+--
+          lr_this_tbl(ln_cnt).cmpnt_cost       := ir_masters_rec.cmpntcls_mast(i).cost_price;
+          lr_this_tbl(ln_cnt).cost_cmpntcls_id := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+          ln_cnt := ln_cnt + 1;
         END IF;
       END IF;
 --
     END LOOP cmpt_insert_loop;
 --
     -- 対象あり
-    IF (lr_this_tbl.count > 0) THEN
+    IF (lr_this_tbl.COUNT > 0) THEN
 --
       -- 品目原価マスタ(登録)
       GMF_ITEMCOST_PUB.CREATE_ITEM_COST(
@@ -5570,7 +5554,7 @@ END IF;
                                               gv_tkn_api_name, lv_api_name);
         lv_msg_data := lv_errmsg;
 --
-        put_api_log(
+        xxcmn_common_pkg.put_api_log(
                     lv_errbuf,
                     lv_retcode,
                     lv_errmsg);
@@ -5650,7 +5634,6 @@ END IF;
     lv_return_status  VARCHAR2(30);
     ln_msg_count      NUMBER;
     lv_msg_data       VARCHAR2(2000);
-    lv_id             VARCHAR2(2);
     ln_price          NUMBER;
     lv_desc           VARCHAR2(50);
     ln_cnt            NUMBER;
@@ -5701,36 +5684,40 @@ END IF;
     lr_head_rec.cost_mthd_code := gv_cost_div;
     lr_head_rec.user_name      := gv_user_name;
 --
+    ln_cnt := 1;
+--
     <<cmpt_update_loop>>
     FOR i IN 1..10 LOOP
-      lv_id := TO_CHAR(i);
 --
-      -- 入力あり
-      IF (ir_masters_rec.cmpntcls_mast(i).cost_price IS NOT NULL) THEN
-        lr_this_tbl(i).burden_ind  := 0;
-        lr_this_tbl(i).delete_mark := 0;
+      -- 区分入力あり
+      IF (ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id IS NOT NULL) THEN
 --
-        IF (lv_id = ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id) THEN
-          ir_masters_rec.cost_id    := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
-          lr_this_tbl(i).cmpnt_cost := ir_masters_rec.cmpntcls_mast(i).cost_price;
+        -- 金額入力あり
+        IF (ir_masters_rec.cmpntcls_mast(i).cost_price IS NOT NULL) THEN
+          lr_this_tbl(ln_cnt).burden_ind  := 0;
+          lr_this_tbl(ln_cnt).delete_mark := 0;
+--
+          ir_masters_rec.cost_id         := ir_masters_rec.cmpntcls_mast(i).cost_cmpntcls_id;
+          lr_this_tbl(ln_cnt).cmpnt_cost := ir_masters_rec.cmpntcls_mast(i).cost_price;
+--
+          -- 原価詳細IDの取得
+          get_cmpnt_id(ir_masters_rec,
+                       lv_errbuf,
+                       lv_retcode,
+                       lv_errmsg);
+--
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE global_api_expt;
+          END IF;
+--
+          lr_this_tbl(ln_cnt).cmpntcost_id := ir_masters_rec.cmpntcost_id;
+          ln_cnt := ln_cnt + 1;
         END IF;
---
-        -- 原価詳細IDの取得
-        get_cmpnt_id(ir_masters_rec,
-                     lv_errbuf,
-                     lv_retcode,
-                     lv_errmsg);
---
-        IF (lv_retcode = gv_status_error) THEN
-          RAISE global_api_expt;
-        END IF;
---
-        lr_this_tbl(i).cmpntcost_id := ir_masters_rec.cmpntcost_id;
       END IF;
     END LOOP cmpt_update_loop;
 --
     -- 対象あり
-    IF (lr_this_tbl.count > 0) THEN
+    IF (lr_this_tbl.COUNT > 0) THEN
 --
       -- 品目原価マスタ(更新)
       GMF_ITEMCOST_PUB.UPDATE_ITEM_COST(
@@ -5752,7 +5739,7 @@ END IF;
                                               gv_tkn_api_name, lv_api_name);
         lv_msg_data := lv_errmsg;
 --
-        put_api_log(
+        xxcmn_common_pkg.put_api_log(
                     lv_errbuf,
                     lv_retcode,
                     lv_errmsg);
@@ -6573,16 +6560,36 @@ END IF;
       lr_masters_rec.cmpntcls_mast        := gt_cmpntcls_mast;
 --
       -- 原価内訳の数値化
-      lr_masters_rec.cmpntcls_mast(1).cost_price  := TO_NUMBER(lr_masters_rec.raw_material_cost);
-      lr_masters_rec.cmpntcls_mast(2).cost_price  := TO_NUMBER(lr_masters_rec.agein_cost);
-      lr_masters_rec.cmpntcls_mast(3).cost_price  := TO_NUMBER(lr_masters_rec.material_cost);
-      lr_masters_rec.cmpntcls_mast(4).cost_price  := TO_NUMBER(lr_masters_rec.pack_cost);
-      lr_masters_rec.cmpntcls_mast(5).cost_price  := TO_NUMBER(lr_masters_rec.out_order_cost);
-      lr_masters_rec.cmpntcls_mast(6).cost_price  := TO_NUMBER(lr_masters_rec.safekeep_cost);
-      lr_masters_rec.cmpntcls_mast(7).cost_price  := TO_NUMBER(lr_masters_rec.other_expense_cost);
-      lr_masters_rec.cmpntcls_mast(8).cost_price  := TO_NUMBER(lr_masters_rec.spare1);
-      lr_masters_rec.cmpntcls_mast(9).cost_price  := TO_NUMBER(lr_masters_rec.spare2);
-      lr_masters_rec.cmpntcls_mast(10).cost_price := TO_NUMBER(lr_masters_rec.spare3);
+      IF (lr_masters_rec.raw_material_cost IS NOT NULL) THEN
+        lr_masters_rec.cmpntcls_mast(1).cost_price := TO_NUMBER(lr_masters_rec.raw_material_cost);
+      END IF;
+      IF (lr_masters_rec.agein_cost IS NOT NULL) THEN
+        lr_masters_rec.cmpntcls_mast(2).cost_price := TO_NUMBER(lr_masters_rec.agein_cost);
+      END IF;
+      IF (lr_masters_rec.material_cost IS NOT NULL) THEN
+        lr_masters_rec.cmpntcls_mast(3).cost_price := TO_NUMBER(lr_masters_rec.material_cost);
+      END IF;
+      IF (lr_masters_rec.pack_cost IS NOT NULL) THEN
+        lr_masters_rec.cmpntcls_mast(4).cost_price := TO_NUMBER(lr_masters_rec.pack_cost);
+      END IF;
+      IF (lr_masters_rec.out_order_cost IS NOT NULL) THEN
+        lr_masters_rec.cmpntcls_mast(5).cost_price := TO_NUMBER(lr_masters_rec.out_order_cost);
+      END IF;
+      IF (lr_masters_rec.safekeep_cost IS NOT NULL) THEN
+        lr_masters_rec.cmpntcls_mast(6).cost_price := TO_NUMBER(lr_masters_rec.safekeep_cost);
+      END IF;
+      IF (lr_masters_rec.other_expense_cost IS NOT NULL) THEN
+        lr_masters_rec.cmpntcls_mast(7).cost_price := TO_NUMBER(lr_masters_rec.other_expense_cost);
+      END IF;
+      IF (lr_masters_rec.spare1 IS NOT NULL) THEN
+        lr_masters_rec.cmpntcls_mast(8).cost_price := TO_NUMBER(lr_masters_rec.spare1);
+      END IF;
+      IF (lr_masters_rec.spare2 IS NOT NULL) THEN
+        lr_masters_rec.cmpntcls_mast(9).cost_price := TO_NUMBER(lr_masters_rec.spare2);
+      END IF;
+      IF (lr_masters_rec.spare3 IS NOT NULL) THEN
+        lr_masters_rec.cmpntcls_mast(10).cost_price := TO_NUMBER(lr_masters_rec.spare3);
+      END IF;
 --
       -- 日付の文字列化
       lr_masters_rec.crowd_start_days := TO_CHAR(lr_item_if_rec.crowd_start_date,'YYYY/MM/DD');
