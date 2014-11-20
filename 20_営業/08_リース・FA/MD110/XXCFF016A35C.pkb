@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF016A35C(body)
  * Description      : リース契約メンテナンス
  * MD.050           : MD050_CFF_016_A35_リース契約メンテナンス
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/10/12    1.0   SCSK谷口         新規作成
  *  2013/02/12    1.1   SCSK中野         「E_本稼動_09967」対応
+ *  2013/02/27    1.2   SCSK中村         「E_本稼動_09967」対応 入力パラメータチェック追加
  *
  *****************************************************************************************/
 --
@@ -114,6 +115,9 @@ AS
   cv_acct_if_flag_sent            CONSTANT VARCHAR2(100) := '2';                      -- 会計ＩＦフラグ：送信済
   cv_payment_match_flag_matched   CONSTANT VARCHAR2(100) := '1';                      -- 照合済フラグ：照合済
   cv_pay_plan_shori_type_create   CONSTANT VARCHAR2(100) := '1';                      -- 支払計画作成処理区分：登録
+-- Add 2013/02/27 Ver1.2 Start
+  cv_payment_frequency_3          CONSTANT NUMBER := 3;                               -- 支払回数（最終支払日導出用の3回）
+-- Add 2013/02/27 Ver1.2 End
   -- メッセージ
   cv_msg_param_output             CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00206';       -- パラメータ出力用
   cv_msg_common_err               CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00094';       -- 共通関数エラー
@@ -137,6 +141,9 @@ AS
   cv_msg_insert_err               CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00102';       -- 登録エラー
   cv_msg_select_err               CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00101';       -- 取得エラー
   cv_msg_process_date_err         CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00092';       -- 業務日付取得エラー
+-- Add 2013/02/27 Ver1.2 Start
+  cv_msg_last_payment_date_err    CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00031';       -- 支払日妥当性エラー（最終支払日）
+-- Add 2013/02/27 Ver1.2 End
   -- トークン
   cv_tkn_param_name               CONSTANT VARCHAR2(100) := 'PARAM_NAME';             -- パラメータ論理名
   cv_tkn_param_val                CONSTANT VARCHAR2(100) := 'PARAM_VAL';              -- パラメータ入力値
@@ -620,6 +627,11 @@ AS
 --
     -- *** ローカル変数 ***
     ln_db_cnt             NUMBER;
+-- Add 2013/02/27 Ver1.2 Start
+    ld_last_payment_date      DATE; -- 最終支払日
+    lt_param_lease_start_date xxcff_contract_headers.lease_start_date%TYPE;
+    lt_param_lease_end_date   xxcff_contract_headers.lease_end_date%TYPE;
+-- Add 2013/02/27 Ver1.2 End
 --
     -- *** ローカル・カーソル ***
 --
@@ -935,6 +947,82 @@ AS
       END IF;
     END IF;
 --
+-- Add 2013/02/27 Ver1.2 Start
+    -- ============================================
+    -- 「リース開始日」または「リース終了日」の導出
+    -- ============================================
+    -- 入力パラメータ「リース開始日」「リース終了日」「支払回数」のいずれか１つでも設定されている場合のみ
+    IF ( ( gd_param_lease_start_date  IS NOT NULL )
+      OR ( gd_param_lease_end_date    IS NOT NULL )
+      OR ( gn_param_payment_frequency IS NOT NULL ) )
+    THEN
+      -- 入力パラメータ退避
+      lt_param_lease_start_date := gd_param_lease_start_date;
+      lt_param_lease_end_date   := gd_param_lease_end_date;
+      --
+      -- 入力パラメータ「リース開始日」≠NULLの場合
+      IF ( gd_param_lease_start_date IS NOT NULL ) THEN
+        -- リース終了日
+        gd_param_lease_end_date := CASE g_cont_hdr_rec.payment_type      -- 頻度
+                                     WHEN cv_payment_type_month THEN     -- 月
+                                       ( ADD_MONTHS(gd_param_lease_start_date, NVL(gn_param_payment_frequency, g_cont_hdr_rec.payment_frequency)) - 1 )
+                                     WHEN cv_payment_type_year  THEN     -- 年
+                                       ( ADD_MONTHS(gd_param_lease_start_date, 12 * NVL(gn_param_payment_frequency, g_cont_hdr_rec.payment_frequency)) - 1 )
+                                   END;
+      -- 入力パラメータ「リース開始日」＝NULLの場合
+      ELSE
+        --
+        -- 入力パラメータ「支払回数」≠NULLの場合
+        IF ( gn_param_payment_frequency IS NOT NULL ) THEN
+          --
+          -- 入力パラメータ「リース終了日」≠NULLの場合
+          IF ( gd_param_lease_end_date IS NOT NULL ) THEN
+            -- リース開始日
+            gd_param_lease_start_date := CASE g_cont_hdr_rec.payment_type     -- 頻度
+                                          WHEN cv_payment_type_month THEN     -- 月
+                                            ( ADD_MONTHS(gd_param_lease_end_date, -1  * gn_param_payment_frequency) + 1 )
+                                          WHEN cv_payment_type_year  THEN     -- 年
+                                            ( ADD_MONTHS(gd_param_lease_end_date, -12 * gn_param_payment_frequency) + 1 )
+                                         END;
+          -- 入力パラメータ「リース終了日」＝NULLの場合
+          ELSE
+            -- リース開始日
+            gd_param_lease_start_date := g_cont_hdr_rec.lease_start_date;
+            -- リース終了日
+            gd_param_lease_end_date   := CASE g_cont_hdr_rec.payment_type      -- 頻度
+                                           WHEN cv_payment_type_month THEN     -- 月
+                                             ( ADD_MONTHS(gd_param_lease_start_date, gn_param_payment_frequency) - 1 )
+                                           WHEN cv_payment_type_year  THEN     -- 年
+                                             ( ADD_MONTHS(gd_param_lease_start_date, 12 * gn_param_payment_frequency) - 1 )
+                                         END;
+          END IF;
+        -- 入力パラメータ「支払回数」＝NULLの場合
+        ELSE
+          --
+          -- 入力パラメータ「リース終了日」≠NULLの場合
+          IF ( gd_param_lease_end_date IS NOT NULL ) THEN
+            -- リース開始日
+            gd_param_lease_start_date := CASE g_cont_hdr_rec.payment_type     -- 頻度
+                                          WHEN cv_payment_type_month THEN     -- 月
+                                            ( ADD_MONTHS(gd_param_lease_end_date, -1  * g_cont_hdr_rec.payment_frequency) + 1 )
+                                          WHEN cv_payment_type_year  THEN     -- 年
+                                            ( ADD_MONTHS(gd_param_lease_end_date, -12 * g_cont_hdr_rec.payment_frequency) + 1 )
+                                         END;
+          -- 入力パラメータ「リース終了日」＝NULLの場合
+          ELSE
+            -- リース開始日
+            gd_param_lease_start_date := g_cont_hdr_rec.lease_start_date;
+            -- リース終了日
+            gd_param_lease_end_date   := g_cont_hdr_rec.lease_end_date;
+          END IF;
+          --
+        END IF;
+        --
+      END IF;
+      --
+    END IF;
+-- Add 2013/02/27 Ver1.2 End
+--
     -- ============================================
     -- 「リース契約日」妥当性チェック
     -- ============================================
@@ -1006,6 +1094,23 @@ AS
 -- Del 2013/02/12 Ver1.1 Start
 --    IF (gd_param_first_payment_date IS NOT NULL) THEN
 -- Del 2013/02/12 Ver1.1 End
+-- Add 2013/02/27 Ver1.2 Start
+    -- リース開始日 ＞ 初回支払日 の場合、エラー
+    IF ( NVL(gd_param_lease_start_date, g_cont_hdr_rec.lease_start_date) >
+           NVL(gd_param_first_payment_date, g_cont_hdr_rec.first_payment_date) )
+    THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application   => cv_appl_short_name_xxcff   -- アプリケーション短縮名
+                    ,iv_name          => cv_msg_date_context_err    -- メッセージコード
+                    ,iv_token_name1   => cv_tkn_date_object1        -- トークンコード1
+                    ,iv_token_value1  => cv_val_lease_start_date    -- トークン値1
+                    ,iv_token_name2   => cv_tkn_date_object2        -- トークンコード2
+                    ,iv_token_value2  => cv_val_first_payment_date  -- トークン値2
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+-- Add 2013/02/27 Ver1.2 End
 --
       -- 初回支払日 ＞ ２回目支払日 の場合、エラー
 -- Mod 2013/02/12 Ver1.1 Start
@@ -1082,6 +1187,50 @@ AS
 -- Del 2013/02/12 Ver1.1 Start
 --    END IF;
 -- Del 2013/02/12 Ver1.1 End
+-- Add 2013/02/27 Ver1.2 Start
+    -- 支払回数＜3の場合
+    IF ( NVL(gn_param_payment_frequency, g_cont_hdr_rec.payment_frequency) < cv_payment_frequency_3 ) THEN
+      -- 最終支払日
+      ld_last_payment_date := NVL(gd_param_second_payment_date, g_cont_hdr_rec.second_payment_date);
+    ELSE
+      -- 月末日以外の場合
+      IF ( NVL(gd_param_second_payment_date, g_cont_hdr_rec.second_payment_date) <>
+             LAST_DAY(NVL(gd_param_second_payment_date, g_cont_hdr_rec.second_payment_date)) )
+      THEN
+        -- 最終支払日
+        ld_last_payment_date := CASE g_cont_hdr_rec.payment_type      -- 頻度
+                                  WHEN cv_payment_type_month THEN     -- 月
+                                    ( ADD_MONTHS(NVL(gd_param_second_payment_date, g_cont_hdr_rec.second_payment_date), NVL(gn_param_payment_frequency, g_cont_hdr_rec.payment_frequency) - 2 ) )
+                                  WHEN cv_payment_type_year  THEN     -- 年
+                                    ( ADD_MONTHS(NVL(gd_param_second_payment_date, g_cont_hdr_rec.second_payment_date), ( NVL(gn_param_payment_frequency, g_cont_hdr_rec.payment_frequency) - 2 ) * 12 ) )
+                                END;
+      --月末日
+      ELSE
+        -- 最終支払日
+        ld_last_payment_date := CASE g_cont_hdr_rec.payment_type      -- 頻度
+                                  WHEN cv_payment_type_month THEN     -- 月
+                                    ( ADD_MONTHS(NVL(gd_param_second_payment_date, g_cont_hdr_rec.second_payment_date), NVL(gn_param_payment_frequency, g_cont_hdr_rec.payment_frequency) - 2 ) )
+                                  WHEN cv_payment_type_year  THEN     -- 年
+                                    ( LAST_DAY(ADD_MONTHS(NVL(gd_param_second_payment_date, g_cont_hdr_rec.second_payment_date), ( NVL(gn_param_payment_frequency, g_cont_hdr_rec.payment_frequency) - 2 ) * 12 ) ) )
+                                END;
+      END IF;
+      --
+    END IF;
+    --
+    -- 最終支払日がリース終了日より後でエラー
+    IF ( ld_last_payment_date > NVL(gd_param_lease_end_date, g_cont_hdr_rec.lease_end_date) ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application   => cv_appl_short_name_xxcff     -- アプリケーション短縮名
+                    ,iv_name          => cv_msg_last_payment_date_err -- メッセージコード
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- 入力パラメータ戻し
+    gd_param_lease_start_date := lt_param_lease_start_date;
+    gd_param_lease_end_date   := lt_param_lease_end_date;
+-- Add 2013/02/27 Ver1.2 End
 --
     --==============================================================
     -- メッセージ出力をする必要がある場合は処理を記述
