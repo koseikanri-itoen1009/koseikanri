@@ -229,19 +229,19 @@ public class XxcsoContractRegistConstants
   // 項目名
   // 契約者（甲）情報リージョン
   public static final String
-    TOKEN_VALUE_CONTRACT_NAME           = "契約者名";
+    TOKEN_VALUE_CONTRACT_NAME           = "契約者名(全角)";
   public static final String
-    TOKEN_VALUE_DELEGATE_NAME           = "代表者名";
+    TOKEN_VALUE_DELEGATE_NAME           = "代表者名(全角)";
   public static final String
-    TOKEN_VALUE_CONTRACT_POST_CODE      = "契約者住所（郵便番号）";
+    TOKEN_VALUE_CONTRACT_POST_CODE      = "契約者住所　郵便番号(半角)";
   public static final String
-    TOKEN_VALUE_CONTRACT_PREFECTURES    = "契約者住所（都道府県）";
+    TOKEN_VALUE_CONTRACT_PREFECTURES    = "契約者住所　都道府県(全角)";
   public static final String
-    TOKEN_VALUE_CONTRACT_CITY_WARD      = "契約者住所（市・区）";
+    TOKEN_VALUE_CONTRACT_CITY_WARD      = "契約者住所　市・区(全角)";
   public static final String
-    TOKEN_VALUE_CONTRACT_ADDRESS_1      = "契約者住所（住所１）";
+    TOKEN_VALUE_CONTRACT_ADDRESS_1      = "契約者住所　住所１(全角)";
   public static final String
-    TOKEN_VALUE_CONTRACT_ADDRESS_2      = "契約者住所（住所２）";
+    TOKEN_VALUE_CONTRACT_ADDRESS_2      = "契約者住所　住所２(全角)";
   public static final String
     TOKEN_VALUE_CONTRACT_EFFECT_DATE    = "契約書発効日";
 
@@ -274,45 +274,45 @@ public class XxcsoContractRegistConstants
   public static final String
     TOKEN_VALUE_INQUERY_CHARGE_HUB_CD   = "問合せ担当拠点";
   public static final String
-    TOKEN_VALUE_PAYMENT_NAME            = "送付先名";
+    TOKEN_VALUE_PAYMENT_NAME            = "送付先名(全角)";
   public static final String
-    TOKEN_VALUE_PAYMENT_NAME_ALT        = "送付先名カナ";
+    TOKEN_VALUE_PAYMENT_NAME_ALT        = "送付先名カナ(半角)";
   public static final String
-    TOKEN_VALUE_POST_CODE               = "送付先住所（郵便番号）";
+    TOKEN_VALUE_POST_CODE               = "送付先住所　郵便番号(0000000)";
   public static final String
-    TOKEN_VALUE_PREFECTURES             = "送付先住所（都道府県）";
+    TOKEN_VALUE_PREFECTURES             = "送付先住所　都道府県(全角)";
   public static final String
-    TOKEN_VALUE_CITY_WARD               = "送付先住所（市・区）";
+    TOKEN_VALUE_CITY_WARD               = "送付先住所　市・区(全角)";
   public static final String
-    TOKEN_VALUE_ADDRESS_1               = "送付先住所（住所１）";
+    TOKEN_VALUE_ADDRESS_1               = "送付先住所　住所１(全角)";
   public static final String
-    TOKEN_VALUE_ADDRESS_2               = "送付先住所（住所２）";
+    TOKEN_VALUE_ADDRESS_2               = "送付先住所　住所２(全角)";
   public static final String
-    TOKEN_VALUE_ADDRESS_LINES_PHONETIC  = "送付先電話番号";
+    TOKEN_VALUE_ADDRESS_LINES_PHONETIC  = "送付先電話番号(00-0000-0000)";
   public static final String
     TOKEN_VALUE_BANK_NUMBER             = "金融機関名";
   public static final String
     TOKEN_VALUE_BANK_ACCOUNT_TYPE       = "口座種別";
   public static final String
-    TOKEN_VALUE_BANK_ACCOUNT_NUMBER     = "口座番号";
+    TOKEN_VALUE_BANK_ACCOUNT_NUMBER     = "口座番号(半角)";
   public static final String
-    TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA  = "口座名義カナ";
+    TOKEN_VALUE_BANK_ACCOUNT_NAME_KANA  = "口座名義カナ(半角)";
   public static final String
-    TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI = "口座名義漢字";
+    TOKEN_VALUE_BANK_ACCOUNT_NAME_KANJI = "口座名義漢字(全角)";
 
   // 設置先情報
   public static final String
-    TOKEN_VALUE_INSTALL_PARTY_NAME      = "設置先名";
+    TOKEN_VALUE_INSTALL_PARTY_NAME      = "設置先名(全角)";
   public static final String
-    TOKEN_VALUE_INSTALL_POSTAL_CODE     = "設置先住所（郵便番号）";
+    TOKEN_VALUE_INSTALL_POSTAL_CODE     = "設置先住所　郵便番号(0000000)";
   public static final String
-    TOKEN_VALUE_INSTALL_STATE           = "設置先住所（都道府県）";
+    TOKEN_VALUE_INSTALL_STATE           = "設置先住所　都道府県(全角)";
   public static final String
-    TOKEN_VALUE_INSTALL_CITY            = "設置先住所（市・区）";
+    TOKEN_VALUE_INSTALL_CITY            = "設置先住所　市・区(全角)";
   public static final String
-    TOKEN_VALUE_INSTALL_ADDRESS1        = "設置先住所（住所１）";
+    TOKEN_VALUE_INSTALL_ADDRESS1        = "設置先住所　住所１(全角)";
   public static final String
-    TOKEN_VALUE_INSTALL_ADDRESS2        = "設置先住所（住所２）";
+    TOKEN_VALUE_INSTALL_ADDRESS2        = "設置先住所　住所２(全角)";
   public static final String
     TOKEN_VALUE_INSTALL_DATE            = "設置日";
   public static final String
