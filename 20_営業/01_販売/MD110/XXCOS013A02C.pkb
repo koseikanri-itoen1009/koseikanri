@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/02/13    1.1   H.Ri             [COS_076]資材取引OIFの設定項目を変更
  *  2009/02/17    1.2   H.Ri             get_msgのパッケージ名修正
  *  2009/02/20    1.3   H.Ri             パラメータのログファイル出力対応
+ *  2009/04/28    1.4   N.Maeda          資材取引OIFデータの集約条件に部門コードを追加
  *
  *****************************************************************************************/
 --
@@ -276,10 +277,17 @@ AS
     request_id                  mtl_transactions_interface.request_id%TYPE,              --要求ID
     program_application_id      mtl_transactions_interface.program_application_id%TYPE,  --プログラムアプリケーションID
     program_id                  mtl_transactions_interface.program_id%TYPE,              --プログラムID
-    program_update_date         mtl_transactions_interface.program_update_date%TYPE      --プログラム更新日
+    program_update_date         mtl_transactions_interface.program_update_date%TYPE,     --プログラム更新日
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+    sales_exp_line_id           xxcos_sales_exp_lines.sales_exp_line_id%TYPE,            --販売実績明細ID
+    dept_code                   VARCHAR2(20)                                             --部門コード
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
   );
   --資材取引OIFコレクション型
   TYPE g_mtl_txn_oif_ttype IS TABLE OF g_rec_mtl_txn_oif_rtype INDEX BY BINARY_INTEGER;
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+  TYPE g_mtl_txn_oif_ttype_var IS TABLE OF g_rec_mtl_txn_oif_rtype INDEX BY VARCHAR(1000);
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
   --勘定科目別名レコード型
   TYPE g_rec_disposition_rtype IS RECORD (
     org_id                  mtl_generic_dispositions.organization_id%TYPE,               --在庫組織ID
@@ -318,6 +326,10 @@ AS
   gv_res1_dummy             VARCHAR2(100);                                      --予備１コード(ダミー値)
   gv_res2_dummy             VARCHAR2(100);                                      --予備２コード(ダミー値)
   g_mtl_txn_oif_tab         g_mtl_txn_oif_ttype;                                --資材取引OIFコレクション
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+  g_mtl_txn_oif_tab_spare   g_mtl_txn_oif_ttype_var;
+  g_mtl_txn_oif_ins_tab     g_mtl_txn_oif_ttype;
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
   g_disposition_tab         g_disposition_ttype;                                --勘定科目別名コレクション
   g_ccid_tab                g_ccid_ttype;                                       --勘定科目ID(CCID)コレクション
 --
@@ -740,7 +752,10 @@ AS
     ORDER BY
            sel.ship_from_subinventory_code,     --出荷元保管場所
            gpcv.inventory_item_id,              --品目ID
-           seh.delivery_date                    --納品日
+           seh.delivery_date,                   --納品日
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+           seh.sales_base_code                  --売上拠点コード
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
     FOR UPDATE OF sel.sales_exp_line_id NOWAIT
     ;
 --
@@ -1043,6 +1058,12 @@ AS
     lt_disposition_id            mtl_generic_dispositions.disposition_id%TYPE;          --勘定科目別名ID
     lt_ccid                      mtl_generic_dispositions.disposition_id%TYPE;          --勘定科目ID(CCID)
     lv_warnmsg                   VARCHAR2(5000);                                        --ユーザー・警告・メッセージ
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+    lv_idx_key                   VARCHAR2(1000);                                        -- PL/SQL表ソート用インデックス文字列
+    ln_now_index                 VARCHAR2(1000);
+    ln_smb_idx                   NUMBER DEFAULT 0;           -- 生成したインデックス
+    ln_first_index               VARCHAR2(300);
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
 --
     -- *** ローカル・カーソル ***
 --
@@ -1470,6 +1491,9 @@ AS
           ELSE
             lt_dept_code := l_jor_out_tab(k).dept_code;
           END IF;
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+          g_mtl_txn_oif_tab(ln_mtl_txn_inx).sales_exp_line_id     := g_sales_exp_tab(i).line_id;
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
           --勘定科目情報取得
           IF ( l_jor_out_tab(k).txn_src_type = lv_another_nm ) THEN
             --勘定科目別名ID取得
@@ -1654,34 +1678,68 @@ AS
             --当ループ中止
             EXIT;
           END IF;
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).transaction_type_id     := lt_type_id;
-          --計画フラグ
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).scheduled_flag          := cn_scheduled_flag;
-          --計画フロー
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).flow_schedule           := cv_flow_schedule;
-          --作成者ID
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).created_by              := cn_created_by;
-          --作成日
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).creation_date           := cd_creation_date;
-          --最終更新者ID
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).last_updated_by         := cn_last_updated_by;
-          --最終更新日
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).last_update_date        := cd_last_update_date;
-          --最終ログインID
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).last_update_login       := cn_last_update_login;
-          --要求ID
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).request_id              := cn_request_id;
-          --プログラムアプリケーションID
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).program_application_id  := cn_program_application_id;
-          --プログラムID
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).program_id              := cn_program_id;
-          --プログラム更新日
-          g_mtl_txn_oif_tab(ln_mtl_txn_inx).program_update_date     := cd_program_update_date;
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).transaction_type_id     := lt_type_id;
+            --計画フラグ
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).scheduled_flag          := cn_scheduled_flag;
+            --計画フロー
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).flow_schedule           := cv_flow_schedule;
+            --作成者ID
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).created_by              := cn_created_by;
+            --作成日
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).creation_date           := cd_creation_date;
+            --最終更新者ID
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).last_updated_by         := cn_last_updated_by;
+            --最終更新日
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).last_update_date        := cd_last_update_date;
+            --最終ログインID
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).last_update_login       := cn_last_update_login;
+            --要求ID
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).request_id              := cn_request_id;
+            --プログラムアプリケーションID
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).program_application_id  := cn_program_application_id;
+            --プログラムID
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).program_id              := cn_program_id;
+            --プログラム更新日
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).program_update_date     := cd_program_update_date;
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+            --部門コード
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).dept_code               := lt_dept_code;
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
         END LOOP make_data_sub_loop;
         --該当販売実績の取引タイプ／仕訳パターン情報のクリア
         l_jor_out_tab.DELETE;
       END IF;
     END LOOP make_data_main_loop;
+--
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+    --テーブルソール
+    <<loop_make_sort_data>>
+    FOR s IN 1..g_mtl_txn_oif_tab.COUNT LOOP
+      --ソートキーは保管場所、品目ID、取引日、部門コード、販売実績明細ID
+      lv_idx_key := g_mtl_txn_oif_tab(s).subinventory_code
+                    || g_mtl_txn_oif_tab(s).inventory_item_id
+                    || g_mtl_txn_oif_tab(s).transaction_date
+                    || g_mtl_txn_oif_tab(s).dept_code
+                    || g_mtl_txn_oif_tab(s).sales_exp_line_id;
+      g_mtl_txn_oif_tab_spare(lv_idx_key) := g_mtl_txn_oif_tab(s);
+    END LOOP loop_make_sort_data;
+--
+    IF g_mtl_txn_oif_tab_spare.COUNT = 0 THEN
+      RETURN;
+    END IF;
+--
+    ln_first_index := g_mtl_txn_oif_tab_spare.first;
+    ln_now_index := ln_first_index;
+--
+    WHILE ln_now_index IS NOT NULL LOOP
+--
+      ln_smb_idx := ln_smb_idx + 1;
+      g_mtl_txn_oif_ins_tab(ln_smb_idx) := g_mtl_txn_oif_tab_spare(ln_now_index);
+      -- 次のインデックスを取得する
+      ln_now_index := g_mtl_txn_oif_tab_spare.next(ln_now_index);
+--
+    END LOOP;--ソート完了--
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
 --
   EXCEPTION
     --*** データ抽出例外ハンドラ ***
@@ -1752,6 +1810,9 @@ AS
     ln_break_start               NUMBER;                                              --集約ブレーク開始
     ln_break_end                 NUMBER;                                              --集約ブレーク終了
     lv_tkn_vl_table_name         VARCHAR2(100);                                       --エラー対象であるテーブル名
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+    lt_dept_code                 VARCHAR2(20);                                        --部門コード
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
 --
     -- *** ローカル・カーソル ***
 --
@@ -1769,33 +1830,89 @@ AS
     lt_subinventory := g_mtl_txn_oif_tab(1).subinventory_code;
     lt_item_id      := g_mtl_txn_oif_tab(1).inventory_item_id;
     lt_txn_date     := g_mtl_txn_oif_tab(1).transaction_date;
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
+    lt_dept_code    := g_mtl_txn_oif_tab(1).dept_code;
+--************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
     ln_break_start  := 1;
     ln_break_end    := 1;
 --
     --資材取引OIFデータの集約処理
     <<sum_main_loop>>
-    FOR i IN 1 .. g_mtl_txn_oif_tab.LAST LOOP
-      --取引元の保管場所、取引品目ID、取引発生日でブレーク
-      IF ( lt_subinventory = g_mtl_txn_oif_tab(i).subinventory_code AND
-           lt_item_id      = g_mtl_txn_oif_tab(i).inventory_item_id AND
-           lt_txn_date     = g_mtl_txn_oif_tab(i).transaction_date ) THEN
+--************************************* 2009/04/28 N.Maeda Var1.4 MOD START *********************************************
+--    FOR i IN 1 .. g_mtl_txn_oif_tab.LAST LOOP
+--      --取引元の保管場所、取引品目ID、取引発生日でブレーク
+--      IF ( lt_subinventory = g_mtl_txn_oif_tab(i).subinventory_code AND
+--           lt_item_id      = g_mtl_txn_oif_tab(i).inventory_item_id AND
+--           lt_txn_date     = g_mtl_txn_oif_tab(i).transaction_date ) THEN
+    FOR i IN g_mtl_txn_oif_ins_tab.FIRST .. g_mtl_txn_oif_ins_tab.LAST LOOP
+      --取引元の保管場所、取引品目ID、取引発生日、部門コードでブレーク
+      IF ( lt_subinventory = g_mtl_txn_oif_ins_tab(i).subinventory_code AND
+           lt_item_id      = g_mtl_txn_oif_ins_tab(i).inventory_item_id AND
+           lt_txn_date     = g_mtl_txn_oif_ins_tab(i).transaction_date  AND
+           lt_dept_code    = g_mtl_txn_oif_ins_tab(i).dept_code ) THEN
+--
+--        --ブレーク終了まで、Indexを保持
+--        ln_break_end := i;
+--        --最後のブレーク
+--        IF ( i = g_mtl_txn_oif_tab.LAST ) THEN
+--          <<last_same_break_loop>>
+--          FOR j IN ln_break_start .. ln_break_end LOOP
+--            --当レコードが削除されていなければ、集計される対象となります。
+--            IF ( g_mtl_txn_oif_tab.EXISTS( j ) ) THEN
+--              --ブレーク内で同じ取引タイプIDの取引数量を計上します。
+--              <<last_sum_sub_loop>>
+--              FOR k IN ( j + 1 ) .. ln_break_end LOOP
+--                IF ( g_mtl_txn_oif_tab.EXISTS( k ) AND 
+--                     g_mtl_txn_oif_tab(k).transaction_type_id = g_mtl_txn_oif_tab(j).transaction_type_id ) THEN
+--                  g_mtl_txn_oif_tab(j).transaction_quantity := g_mtl_txn_oif_tab(j).transaction_quantity +
+--                                                               g_mtl_txn_oif_tab(k).transaction_quantity;
+--                  --計上されたため、削除します。
+--                  g_mtl_txn_oif_tab.DELETE( k );
+--                END IF;
+--              END LOOP last_sum_sub_loop;
+--            END IF;
+--          END LOOP last_same_break_loop;
+--        END IF;
+--      ELSE
+--        --今回のブレーク内で集計
+--        <<same_break_loop>>
+--        FOR j IN ln_break_start .. ln_break_end LOOP
+--          --当レコードが削除されていなければ、集計される対象となります。
+--          IF ( g_mtl_txn_oif_tab.EXISTS( j ) ) THEN
+--            --ブレーク内で同じ取引タイプIDの取引数量を計上します。
+--            <<sum_sub_loop>>
+--            FOR k IN ( j + 1 ) .. ln_break_end LOOP
+--              IF ( g_mtl_txn_oif_tab.EXISTS( k ) AND 
+--                   g_mtl_txn_oif_tab(k).transaction_type_id = g_mtl_txn_oif_tab(j).transaction_type_id ) THEN
+--                g_mtl_txn_oif_tab(j).transaction_quantity := g_mtl_txn_oif_tab(j).transaction_quantity +
+--                                                             g_mtl_txn_oif_tab(k).transaction_quantity;
+--                --計上されたため、削除します。
+--                g_mtl_txn_oif_tab.DELETE( k );
+--              END IF;
+--            END LOOP sum_sub_loop;
+--          END IF;
+--        END LOOP same_break_loop;
+--        --次のブレークキーを設定します。
+--        lt_subinventory := g_mtl_txn_oif_tab(i).subinventory_code;
+--        lt_item_id      := g_mtl_txn_oif_tab(i).inventory_item_id;
+--        lt_txn_date     := g_mtl_txn_oif_tab(i).transaction_date;
         --ブレーク終了まで、Indexを保持
         ln_break_end := i;
         --最後のブレーク
-        IF ( i = g_mtl_txn_oif_tab.LAST ) THEN
+        IF ( i = g_mtl_txn_oif_ins_tab.LAST ) THEN
           <<last_same_break_loop>>
           FOR j IN ln_break_start .. ln_break_end LOOP
             --当レコードが削除されていなければ、集計される対象となります。
-            IF ( g_mtl_txn_oif_tab.EXISTS( j ) ) THEN
+            IF ( g_mtl_txn_oif_ins_tab.EXISTS( j ) ) THEN
               --ブレーク内で同じ取引タイプIDの取引数量を計上します。
               <<last_sum_sub_loop>>
               FOR k IN ( j + 1 ) .. ln_break_end LOOP
-                IF ( g_mtl_txn_oif_tab.EXISTS( k ) AND 
-                     g_mtl_txn_oif_tab(k).transaction_type_id = g_mtl_txn_oif_tab(j).transaction_type_id ) THEN
-                  g_mtl_txn_oif_tab(j).transaction_quantity := g_mtl_txn_oif_tab(j).transaction_quantity +
-                                                               g_mtl_txn_oif_tab(k).transaction_quantity;
+                IF ( g_mtl_txn_oif_ins_tab.EXISTS( k ) AND 
+                     g_mtl_txn_oif_ins_tab(k).transaction_type_id = g_mtl_txn_oif_ins_tab(j).transaction_type_id ) THEN
+                  g_mtl_txn_oif_ins_tab(j).transaction_quantity := g_mtl_txn_oif_ins_tab(j).transaction_quantity +
+                                                               g_mtl_txn_oif_ins_tab(k).transaction_quantity;
                   --計上されたため、削除します。
-                  g_mtl_txn_oif_tab.DELETE( k );
+                  g_mtl_txn_oif_ins_tab.DELETE( k );
                 END IF;
               END LOOP last_sum_sub_loop;
             END IF;
@@ -1806,24 +1923,26 @@ AS
         <<same_break_loop>>
         FOR j IN ln_break_start .. ln_break_end LOOP
           --当レコードが削除されていなければ、集計される対象となります。
-          IF ( g_mtl_txn_oif_tab.EXISTS( j ) ) THEN
+          IF ( g_mtl_txn_oif_ins_tab.EXISTS( j ) ) THEN
             --ブレーク内で同じ取引タイプIDの取引数量を計上します。
             <<sum_sub_loop>>
             FOR k IN ( j + 1 ) .. ln_break_end LOOP
-              IF ( g_mtl_txn_oif_tab.EXISTS( k ) AND 
-                   g_mtl_txn_oif_tab(k).transaction_type_id = g_mtl_txn_oif_tab(j).transaction_type_id ) THEN
-                g_mtl_txn_oif_tab(j).transaction_quantity := g_mtl_txn_oif_tab(j).transaction_quantity +
-                                                             g_mtl_txn_oif_tab(k).transaction_quantity;
+              IF ( g_mtl_txn_oif_ins_tab.EXISTS( k ) AND 
+                   g_mtl_txn_oif_ins_tab(k).transaction_type_id = g_mtl_txn_oif_ins_tab(j).transaction_type_id ) THEN
+                g_mtl_txn_oif_ins_tab(j).transaction_quantity := g_mtl_txn_oif_ins_tab(j).transaction_quantity +
+                                                             g_mtl_txn_oif_ins_tab(k).transaction_quantity;
                 --計上されたため、削除します。
-                g_mtl_txn_oif_tab.DELETE( k );
+                g_mtl_txn_oif_ins_tab.DELETE( k );
               END IF;
             END LOOP sum_sub_loop;
           END IF;
         END LOOP same_break_loop;
         --次のブレークキーを設定します。
-        lt_subinventory := g_mtl_txn_oif_tab(i).subinventory_code;
-        lt_item_id      := g_mtl_txn_oif_tab(i).inventory_item_id;
-        lt_txn_date     := g_mtl_txn_oif_tab(i).transaction_date;
+        lt_subinventory := g_mtl_txn_oif_ins_tab(i).subinventory_code;
+        lt_item_id      := g_mtl_txn_oif_ins_tab(i).inventory_item_id;
+        lt_txn_date     := g_mtl_txn_oif_ins_tab(i).transaction_date;
+        lt_dept_code    := g_mtl_txn_oif_ins_tab(i).dept_code;
+--************************************* 2009/04/28 N.Maeda Var1.4 MOD  END  *********************************************
         --次のブレーク開始Indexを設定します。
         ln_break_start := i;
       END IF;
@@ -1832,8 +1951,12 @@ AS
     --資材取引テーブル登録処理
     BEGIN
       <<insert_loop>>
-      FOR l IN g_mtl_txn_oif_tab.FIRST .. g_mtl_txn_oif_tab.LAST LOOP
-        IF ( g_mtl_txn_oif_tab.EXISTS( l ) ) THEN
+--************************************* 2009/04/28 N.Maeda Var1.4 MOD START *********************************************
+--      FOR l IN g_mtl_txn_oif_tab.FIRST .. g_mtl_txn_oif_tab.LAST LOOP
+--        IF ( g_mtl_txn_oif_tab.EXISTS( l ) ) THEN
+      FOR l IN g_mtl_txn_oif_ins_tab.FIRST .. g_mtl_txn_oif_ins_tab.LAST LOOP
+        IF ( g_mtl_txn_oif_ins_tab.EXISTS( l ) ) THEN
+--************************************* 2009/04/28 N.Maeda Var1.4 MOD  END  *********************************************
           INSERT INTO 
             mtl_transactions_interface(
               source_code,                   --ソースコード
@@ -1864,32 +1987,60 @@ AS
               program_update_date            --プログラム更新日
             )
           VALUES(
-            g_mtl_txn_oif_tab(l).source_code,
-            g_mtl_txn_oif_tab(l).source_line_id,
-            g_mtl_txn_oif_tab(l).source_header_id,
-            g_mtl_txn_oif_tab(l).process_flag,
-            g_mtl_txn_oif_tab(l).validation_required,
-            g_mtl_txn_oif_tab(l).transaction_mode,
-            g_mtl_txn_oif_tab(l).inventory_item_id,
-            g_mtl_txn_oif_tab(l).organization_id,
-            g_mtl_txn_oif_tab(l).transaction_quantity,
-            g_mtl_txn_oif_tab(l).transaction_uom,
-            g_mtl_txn_oif_tab(l).transaction_date,
-            g_mtl_txn_oif_tab(l).subinventory_code,
-            g_mtl_txn_oif_tab(l).transaction_source_id,
-            g_mtl_txn_oif_tab(l).transaction_source_type_id,
-            g_mtl_txn_oif_tab(l).transaction_type_id,
-            g_mtl_txn_oif_tab(l).scheduled_flag,
-            g_mtl_txn_oif_tab(l).flow_schedule,
-            g_mtl_txn_oif_tab(l).created_by,
-            g_mtl_txn_oif_tab(l).creation_date,
-            g_mtl_txn_oif_tab(l).last_updated_by,
-            g_mtl_txn_oif_tab(l).last_update_date,
-            g_mtl_txn_oif_tab(l).last_update_login,
-            g_mtl_txn_oif_tab(l).request_id,
-            g_mtl_txn_oif_tab(l).program_application_id,
-            g_mtl_txn_oif_tab(l).program_id,
-            g_mtl_txn_oif_tab(l).program_update_date
+--************************************* 2009/04/28 N.Maeda Var1.4 MOD START *********************************************
+--            g_mtl_txn_oif_tab(l).source_code,
+--            g_mtl_txn_oif_tab(l).source_line_id,
+--            g_mtl_txn_oif_tab(l).source_header_id,
+--            g_mtl_txn_oif_tab(l).process_flag,
+--            g_mtl_txn_oif_tab(l).validation_required,
+--            g_mtl_txn_oif_tab(l).transaction_mode,
+--            g_mtl_txn_oif_tab(l).inventory_item_id,
+--            g_mtl_txn_oif_tab(l).organization_id,
+--            g_mtl_txn_oif_tab(l).transaction_quantity,
+--            g_mtl_txn_oif_tab(l).transaction_uom,
+--            g_mtl_txn_oif_tab(l).transaction_date,
+--            g_mtl_txn_oif_tab(l).subinventory_code,
+--            g_mtl_txn_oif_tab(l).transaction_source_id,
+--            g_mtl_txn_oif_tab(l).transaction_source_type_id,
+--            g_mtl_txn_oif_tab(l).transaction_type_id,
+--            g_mtl_txn_oif_tab(l).scheduled_flag,
+--            g_mtl_txn_oif_tab(l).flow_schedule,
+--            g_mtl_txn_oif_tab(l).created_by,
+--            g_mtl_txn_oif_tab(l).creation_date,
+--            g_mtl_txn_oif_tab(l).last_updated_by,
+--            g_mtl_txn_oif_tab(l).last_update_date,
+--            g_mtl_txn_oif_tab(l).last_update_login,
+--            g_mtl_txn_oif_tab(l).request_id,
+--            g_mtl_txn_oif_tab(l).program_application_id,
+--            g_mtl_txn_oif_tab(l).program_id,
+--            g_mtl_txn_oif_tab(l).program_update_date
+            g_mtl_txn_oif_ins_tab(l).source_code,
+            g_mtl_txn_oif_ins_tab(l).source_line_id,
+            g_mtl_txn_oif_ins_tab(l).source_header_id,
+            g_mtl_txn_oif_ins_tab(l).process_flag,
+            g_mtl_txn_oif_ins_tab(l).validation_required,
+            g_mtl_txn_oif_ins_tab(l).transaction_mode,
+            g_mtl_txn_oif_ins_tab(l).inventory_item_id,
+            g_mtl_txn_oif_ins_tab(l).organization_id,
+            g_mtl_txn_oif_ins_tab(l).transaction_quantity,
+            g_mtl_txn_oif_ins_tab(l).transaction_uom,
+            g_mtl_txn_oif_ins_tab(l).transaction_date,
+            g_mtl_txn_oif_ins_tab(l).subinventory_code,
+            g_mtl_txn_oif_ins_tab(l).transaction_source_id,
+            g_mtl_txn_oif_ins_tab(l).transaction_source_type_id,
+            g_mtl_txn_oif_ins_tab(l).transaction_type_id,
+            g_mtl_txn_oif_ins_tab(l).scheduled_flag,
+            g_mtl_txn_oif_ins_tab(l).flow_schedule,
+            g_mtl_txn_oif_ins_tab(l).created_by,
+            g_mtl_txn_oif_ins_tab(l).creation_date,
+            g_mtl_txn_oif_ins_tab(l).last_updated_by,
+            g_mtl_txn_oif_ins_tab(l).last_update_date,
+            g_mtl_txn_oif_ins_tab(l).last_update_login,
+            g_mtl_txn_oif_ins_tab(l).request_id,
+            g_mtl_txn_oif_ins_tab(l).program_application_id,
+            g_mtl_txn_oif_ins_tab(l).program_id,
+            g_mtl_txn_oif_ins_tab(l).program_update_date
+--************************************* 2009/04/28 N.Maeda Var1.4 MOD  END  *********************************************
           )
           ;
         END IF;
@@ -2160,8 +2311,14 @@ AS
       END IF;
     END IF;
 --
+--
+--************************************* 2009/04/28 N.Maeda Var1.4 MOD START *********************************************
     --正常件数取得
-    gn_normal_cnt := g_mtl_txn_oif_tab.COUNT;
+--    gn_normal_cnt := g_mtl_txn_oif_tab.COUNT;
+    --正常件数取得
+    gn_normal_cnt := g_mtl_txn_oif_ins_tab.COUNT;
+--************************************* 2009/04/28 N.Maeda Var1.4 MOD  END  *********************************************
+--
 --
     --ステータス制御処理
     IF ( gn_target_cnt = 0 OR gn_warn_cnt > 0 ) THEN
