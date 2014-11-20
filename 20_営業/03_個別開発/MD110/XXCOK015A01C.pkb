@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてイセトー社へ送信する支払案内書(圧着はがき)用データファイル作成
- * Version          : 2.0
+ * Version          : 2.2
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/08/24    1.7   T.Taniguchi      [障害0001160] 顧客名２、宛名２の編集修正
  *  2009/09/19    2.0   S.Moriyama       [障害0001309] 変更管理番号I_E_540対応（台別内訳明細出力）
  *  2009/10/14    2.1   S.Moriyama       [変更依頼I_E_573] 宛名、住所の取得元を変更
+ *  2009/11/16    2.2   S.Moriyama       [変更依頼I_E_665] 郵便番号を7桁ハイフンなしからハイフンありへ変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -178,6 +179,8 @@ AS
   cv_separator_char          CONSTANT VARCHAR2(1)     := CHR(9);                -- タブ区切り
   -- エラー連携文字
   cv_edi_output_error_kbn    CONSTANT VARCHAR2(10)    := '×';                  -- エラー
+  -- 郵便番号区切り
+  cv_zip_separator_char      CONSTANT VARCHAR2(1)     := '-';                   -- 郵便番号ハイフン
   -- ===============================================
   -- グローバル変数
   -- ===============================================
@@ -586,11 +589,21 @@ AS
            || cv_separator_char || it_bm_data_rec.payee_code                               -- 支払先コード
            || cv_separator_char || NULL                                                    -- 明細番号
            || cv_separator_char || SUBSTRB( it_bm_data_rec.payee_name , 1 , 80 )           -- 宛名
-           || cv_separator_char || SUBSTRB( it_bm_data_rec.payee_zip , 1 , 15 )            -- 郵便番号
+-- 2009/11/16 Ver.2.2 [変更依頼I_E_665] SCS S.Moriyama UPD START
+--           || cv_separator_char || SUBSTRB( it_bm_data_rec.payee_zip , 1 , 15 )            -- 郵便番号
+           || cv_separator_char || SUBSTRB( it_bm_data_rec.payee_zip , 1 , 3 )
+                                || cv_zip_separator_char
+                                || SUBSTRB( it_bm_data_rec.payee_zip , 4 , 4 )             -- 郵便番号
+-- 2009/11/16 Ver.2.2 [変更依頼I_E_665] SCS S.Moriyama UPD END
            || cv_separator_char || SUBSTRB( it_bm_data_rec.payee_address , 1 , 80 )        -- 住所
            || cv_separator_char || SUBSTRB( it_bm_data_rec.cntct_base_name , 1 , 80 )      -- 拠点名
            || cv_separator_char || SUBSTRB( it_bm_data_rec.cntct_base_address , 1 , 80 )   -- 拠点住所
-           || cv_separator_char || SUBSTRB( it_bm_data_rec.cntct_base_zip , 1 , 8 )        -- 拠点郵便番号
+-- 2009/11/16 Ver.2.2 [変更依頼I_E_665] SCS S.Moriyama UPD START
+--           || cv_separator_char || SUBSTRB( it_bm_data_rec.cntct_base_zip , 1 , 8 )        -- 拠点郵便番号
+           || cv_separator_char || SUBSTRB( it_bm_data_rec.cntct_base_zip , 1 , 3 )
+                                || cv_zip_separator_char
+                                || SUBSTRB( it_bm_data_rec.cntct_base_zip , 4 , 4 )        -- 拠点郵便番号
+-- 2009/11/16 Ver.2.2 [変更依頼I_E_665] SCS S.Moriyama UPD END
            || cv_separator_char || SUBSTRB( it_bm_data_rec.cntct_base_phone , 1 , 15 )     -- 拠点電話番号
            || cv_separator_char || TO_CHAR( it_bm_data_rec.closing_date_end , cv_format_ee
                                                                  , cv_nls_param )          -- 年号
