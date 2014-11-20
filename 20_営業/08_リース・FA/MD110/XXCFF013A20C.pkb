@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF013A20C(body)
  * Description      : FAアドオンIF
  * MD.050           : MD050_CFF_013_A20_FAアドオンIF
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,7 +42,13 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/01    1.0   SCS渡辺学        新規作成
  *  2008/02/23    1.1   SCS渡辺学        [障害CFF_047]除売却データ抽出条件不具合対応
- *
+ *  2009/04/23    1.2   SCS礒崎祐次      [障害T1_0759]
+ *                                       ①資産カテゴリCCID取得処理における耐用年数に、
+ *                                         リース期間（リース契約の支払回数/12）を設定を設定する。
+ *                                       ②償却方法を取得時に、資産カテゴリ償却基準テーブルの計算月数
+ *                                         を取得し、追加OIFの計算月数へ設定する。
+ *  2009/05/19    1.3   SCS礒崎祐次      [障害T1_0893]
+ *                                       ①リース法人税台帳で減価償却の計算が行われない。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -230,6 +236,11 @@ AS
 --
   -- ***リース区分
   cv_original  CONSTANT VARCHAR2(1) := '1';  -- 原契約
+--
+-- T1_0759 2009/04/23 ADD START --
+  -- ***月数
+  cv_months  CONSTANT NUMBER(2) := 12;  
+-- T1_0759 2009/04/23 ADD END   --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -654,6 +665,67 @@ AS
     -- 解約OIF登録件数カウント
     gn_retire_oif_ins_cnt := SQL%ROWCOUNT;
 --
+-- T1_0893 2009/05/19 ADD START --
+-- リース資産台帳の場合はリース法人税のデータも作成する。
+    INSERT INTO xx01_retire_oif(
+      retire_oif_id                   -- RETIRE_OIF_ID
+     ,book_type_code                  -- 台帳名
+     ,asset_number                    -- 資産番号
+     ,created_by                      -- 作成者
+     ,creation_date                   -- 作成日
+     ,last_updated_by                 -- 最終更新者
+     ,last_update_date                -- 最終更新日
+     ,last_update_login               -- 最終更新ﾛｸﾞｲﾝ
+     ,request_id                      -- ﾘｸｴｽﾄID
+     ,program_application_id          -- ｱﾌﾟﾘｹｰｼｮﾝID
+     ,program_id                      -- ﾌﾟﾛｸﾞﾗﾑID
+     ,program_update_date             -- ﾌﾟﾛｸﾞﾗﾑ最終更新日
+     ,date_retired                    -- 除･売却日
+     ,posting_flag                    -- 転記ﾁｪｯｸﾌﾗｸﾞ
+     ,status                          -- ｽﾃｰﾀｽ
+     ,cost_retired                    -- 除･売却取得価格
+     ,proceeds_of_sale                -- 売却価額
+     ,cost_of_removal                 -- 撤去費用
+     ,retirement_prorate_convention   -- 除･売却年度償却
+    )
+    SELECT
+      xx01_retire_oif_s.NEXTVAL           -- ID
+     ,xlkv.book_type_code_tax             -- 台帳
+     ,xxcff_fa_trn.asset_number           -- 資産番号
+     ,cn_created_by                       -- 作成者ID
+     ,cd_creation_date                    -- 作成日
+     ,cn_last_updated_by                  -- 最終更新者
+     ,cd_last_update_date                 -- 最終更新日
+     ,cn_last_update_login                -- 最終更新ログインID
+     ,cn_request_id                       -- リクエストID
+     ,cn_program_application_id           -- アプリケーションID
+     ,cn_program_id                       -- プログラムID
+     ,cd_program_update_date              -- プログラム最終更新日
+     ,xxcff_fa_trn.retirement_date        -- 除･売却日
+     ,'Y'                                 -- 転記チェックフラグ
+     ,'PENDING'                           -- ステータス
+     ,xxcff_fa_trn.cost_retired           -- 除･売却取得価格
+     ,0                                   -- 売却価額
+     ,0                                   -- 撤去費用
+     ,xxcff_fa_trn.ret_prorate_convention -- 除･売却年度償却
+    FROM
+          xxcff_fa_transactions  xxcff_fa_trn
+         ,xxcff_contract_lines   xxcff_co_line
+         ,xxcff_lease_kind_v     xlkv
+    WHERE
+          xxcff_fa_trn.period_name        = gv_period_name
+      AND xxcff_fa_trn.fa_if_flag         = cv_if_yet
+      AND xxcff_fa_trn.transaction_type   = 3                     -- 解約
+      AND xxcff_fa_trn.contract_header_id = xxcff_co_line.contract_header_id
+      AND xxcff_fa_trn.contract_line_id   = xxcff_co_line.contract_line_id
+      AND xxcff_co_line.lease_kind        = xlkv.lease_kind_code  -- finリース 
+      AND xlkv.lease_kind_code            = cv_lease_kind_fin     -- finリース
+    ;
+--
+    -- 解約OIF登録件数カウント
+    gn_retire_oif_ins_cnt := gn_retire_oif_ins_cnt + SQL%ROWCOUNT;
+--
+-- T1_0893 2009/05/19 ADD END   --
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -2717,6 +2789,9 @@ AS
     ,it_lease_kind         IN  xxcff_contract_histories.lease_kind%TYPE        -- 3.リース種類
     ,it_contract_date      IN  xxcff_contract_headers.contract_date%TYPE       -- 4.リース契約日
     ,ot_deprn_method       OUT fa_category_book_defaults.deprn_method%TYPE     -- 5.償却方法
+-- T1_0759 2009/04/23 ADD START --
+    ,ot_life_in_months     OUT fa_category_book_defaults.life_in_months%TYPE   -- 6.計算月数
+-- T1_0759 2009/04/23 ADD END   --
     ,ov_errbuf             OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
     ,ov_retcode            OUT VARCHAR2     --   リターン・コード             --# 固定 #
     ,ov_errmsg             OUT VARCHAR2)    --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2771,9 +2846,16 @@ AS
       SELECT
              cat_deflt.deprn_method   AS deprn_method     -- 償却方法
             ,les_kind.book_type_code  AS book_type_code   -- 資産台帳名
+-- T1_0759 2009/04/23 ADD START --
+            ,cat_deflt.life_in_months AS life_in_months   -- 計算月数
+-- T1_0759 2009/04/23 ADD END   --
       INTO
              ot_deprn_method                     -- 償却方法
             ,lt_book_type_code                   -- 資産台帳名
+-- T1_0759 2009/04/23 ADD START --
+            ,ot_life_in_months                   -- 計算月数
+-- T1_0759 2009/04/23 ADD END   --
+
       FROM
              fa_categories_b            cat       -- 資産カテゴリマスタ
             ,fa_category_book_defaults  cat_deflt -- 資産カテゴリ償却基準
@@ -2864,6 +2946,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- T1_0759 2009/04/23 ADD START --
+    ln_lease_period  NUMBER(4);
+-- T1_0759 2009/04/23 ADD END   --
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2890,11 +2975,18 @@ AS
       --==============================================================
       --資産カテゴリCCID取得 (A-5)
       --==============================================================
+-- T1_0759 2009/04/23 ADD START --
+      --リース期間を算出する
+      ln_lease_period := g_payment_frequency_tab(ln_loop_cnt)  / cv_months;
+-- T1_0759 2009/04/23 ADD END   --
       xxcff_common1_pkg.chk_fa_category(
          iv_segment1      => g_asset_category_tab(ln_loop_cnt) -- 資産種類
         ,iv_segment3      => g_les_asset_acct_tab(ln_loop_cnt) -- 資産勘定
         ,iv_segment4      => g_deprn_acct_tab(ln_loop_cnt)     -- 償却科目
-        ,iv_segment5      => g_life_in_months_tab(ln_loop_cnt) -- 耐用年数
+-- T1_0759 2009/04/23 MOD START --
+--      ,iv_segment5      => g_life_in_months_tab(ln_loop_cnt) -- 耐用年数
+        ,iv_segment5      => ln_lease_period                   -- リース期間
+-- T1_0759 2009/04/23 MOD END   --
         ,iv_segment7      => g_lease_class_tab(ln_loop_cnt)    -- リース種別
         ,on_category_id   => g_category_ccid_tab(ln_loop_cnt)  -- 資産カテゴリCCID
         ,ov_errbuf        => lv_errbuf                         -- エラー・メッセージ           --# 固定 # 
@@ -2954,11 +3046,14 @@ AS
       --償却方法取得 (A-8)
       --==============================================================
       get_deprn_method(
-         it_contract_line_id  => g_contract_line_id_tab(ln_loop_cnt) -- 契約明細内部ID
-        ,it_category_ccid     => g_category_ccid_tab(ln_loop_cnt)    -- 資産カテゴリCCID
-        ,it_lease_kind        => g_lease_kind_tab(ln_loop_cnt)       -- リース種類
-        ,it_contract_date     => g_contract_date_tab(ln_loop_cnt)    -- リース契約日
-        ,ot_deprn_method      => g_deprn_method_tab(ln_loop_cnt)     -- 償却方法
+         it_contract_line_id  => g_contract_line_id_tab(ln_loop_cnt)  -- 契約明細内部ID
+        ,it_category_ccid     => g_category_ccid_tab(ln_loop_cnt)     -- 資産カテゴリCCID
+        ,it_lease_kind        => g_lease_kind_tab(ln_loop_cnt)        -- リース種類
+        ,it_contract_date     => g_contract_date_tab(ln_loop_cnt)     -- リース契約日
+        ,ot_deprn_method      => g_deprn_method_tab(ln_loop_cnt)      -- 償却方法
+-- T1_0759 2009/04/23 ADD START --
+        ,ot_life_in_months    => g_payment_frequency_tab(ln_loop_cnt) -- 計算月数
+-- T1_0759 2009/04/23 ADD END   --
         ,ov_errbuf            => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
         ,ov_retcode           => lv_retcode                          -- リターン・コード             --# 固定 #
         ,ov_errmsg            => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
