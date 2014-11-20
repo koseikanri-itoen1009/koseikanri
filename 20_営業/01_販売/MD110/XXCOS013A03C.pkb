@@ -6,11 +6,12 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.5
+ * Version          : 1.6
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
  * ----------------------------------------------------------------------------------------
+ *  roundup                切上関数
  *  init                   初期処理(A-1)
  *  get_data               販売実績データ取得(A-2)
  *  edit_work_data         一般会計OIF集約処理(A-3)
@@ -30,6 +31,7 @@ AS
  *  2009/02/23    1.3   R.HAN            [COS_115]税コードの結合条件を追加
  *  2009/03/26    1.4   T.Kitajima       [T1_0106]警告処理対応
  *  2009/04/30    1.5   T.Miyata         [T1_0891]最終行に[/]付与
+ *  2009/05/13    1.6   T.Kitajima       [T1_0764]OIF連携不正データ修正
  *
  *****************************************************************************************/
 --
@@ -151,7 +153,7 @@ AS
   cv_tkn_segment7           CONSTANT  VARCHAR2(20) := 'SEGMENT7';        -- 事業区分コード
   cv_tkn_segment8           CONSTANT  VARCHAR2(20) := 'SEGMENT8';        -- 予備
 --******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
-  cv_tkn_segment9           CONSTANT  VARCHAR2(20) := 'SEGMENT9';        -- 
+  cv_tkn_segment9           CONSTANT  VARCHAR2(20) := 'SEGMENT9';        --
 --******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
   cv_blank                  CONSTANT VARCHAR2(1)   := '';                -- ブランク
   cv_tkn_key_data           CONSTANT VARCHAR2(20)  := 'KEY_DATA';        -- キー項目
@@ -195,6 +197,50 @@ AS
   -- ユーザー定義グローバル型
   -- ===============================
   -- 販売実績ワークテーブル定義
+--****************************** 2009/05/12 1.6 T.KItajima MOD START ******************************--
+--  TYPE gr_sales_exp_rec IS RECORD(
+--      sales_exp_header_id       xxcos_sales_exp_headers.sales_exp_header_id%TYPE    -- 販売実績ヘッダID
+--    , dlv_invoice_number        xxcos_sales_exp_headers.dlv_invoice_number%TYPE     -- 納品伝票番号
+--    , dlv_invoice_class         xxcos_sales_exp_headers.dlv_invoice_class%TYPE      -- 納品伝票区分
+--    , cust_gyotai_sho           xxcos_sales_exp_headers.cust_gyotai_sho%TYPE        -- 業態小分類
+--    , delivery_date             xxcos_sales_exp_headers.delivery_date%TYPE          -- 納品日
+--    , inspect_date              xxcos_sales_exp_headers.inspect_date%TYPE           -- 検収日
+--    , ship_to_customer_code     xxcos_sales_exp_headers.ship_to_customer_code%TYPE  -- 顧客【納品先】
+--    , tax_code                  xxcos_sales_exp_headers.tax_code%TYPE               -- 税金コード
+--    , tax_rate                  xxcos_sales_exp_headers.tax_rate%TYPE               -- 消費税率
+--    , consumption_tax_class     xxcos_sales_exp_headers.consumption_tax_class%TYPE  -- 消費区分
+--    , results_employee_code     xxcos_sales_exp_headers.results_employee_code%TYPE  -- 成績計上者コード
+--    , sales_base_code           xxcos_sales_exp_headers.sales_base_code%TYPE        -- 売上拠点コード
+--    , card_sale_class           xxcos_sales_exp_headers.card_sale_class%TYPE        -- カード売り区分
+--    , sales_class               xxcos_sales_exp_lines.sales_class%TYPE              -- 売上区分
+--    , goods_prod_cls            xxcos_good_prod_class_v.goods_prod_class_code%TYPE  -- 品目区分コード（製品・商品）
+--    , pure_amount               xxcos_sales_exp_lines.pure_amount%TYPE              -- 本体金額
+--    , tax_amount                xxcos_sales_exp_lines.tax_amount%TYPE               -- 消費税金額
+--    , cash_and_card             xxcos_sales_exp_lines.cash_and_card%TYPE            -- 現金・カード併用額
+--    , customer_cls_code         hz_cust_accounts.customer_class_code%TYPE           -- 顧客区分
+--    , gccs_segment3             gl_code_combinations.segment3%TYPE                  -- 売上勘定科目コード
+--    , gcct_segment3             gl_code_combinations.segment3%TYPE                  -- 税金勘定科目コード
+--    , bill_tax_round            xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE     -- 税金－端数処理
+--    , xseh_rowid                ROWID                                               -- ROWID
+--  );
+--  -- 仕訳パターンワークテーブル定義
+--  TYPE gr_jour_cls_rec IS RECORD(
+--      dlv_invoice_class         fnd_lookup_values.attribute1%TYPE                   -- 納品伝票区分
+--    , card_sale_class           fnd_lookup_values.attribute2%TYPE                   -- カード売り区分
+--    , goods_prod_cls            fnd_lookup_values.attribute3%TYPE                   -- 品目区分コード（製品・商品）
+--    , segment3                  fnd_lookup_values.attribute4%TYPE                   -- 勘定科目コード
+--    , line_type                 fnd_lookup_values.attribute5%TYPE                   -- ラインタイプ
+--    , jour_category             fnd_lookup_values.attribute6%TYPE                   -- 仕訳カテゴリ
+--    , segment2                  fnd_lookup_values.attribute7%TYPE                   -- 部門コード
+--    , jour_pattern              fnd_lookup_values.meaning%TYPE                      -- 仕訳パターン
+--    , gl_segment3_nm            fnd_lookup_values.description%TYPE                  -- 勘定科目名
+--    , segment4                  fnd_lookup_values.attribute8%TYPE                   -- 補助勘定科目コード
+--    , segment5                  fnd_lookup_values.attribute9%TYPE                   -- 顧客コード
+--    , segment6                  fnd_lookup_values.attribute10%TYPE                  -- 企業コード
+--    , segment7                  fnd_lookup_values.attribute11%TYPE                  -- 予備１
+--    , segment8                  fnd_lookup_values.attribute12%TYPE                  -- 予備２
+--  );
+--
   TYPE gr_sales_exp_rec IS RECORD(
       sales_exp_header_id       xxcos_sales_exp_headers.sales_exp_header_id%TYPE    -- 販売実績ヘッダID
     , dlv_invoice_number        xxcos_sales_exp_headers.dlv_invoice_number%TYPE     -- 納品伝票番号
@@ -210,12 +256,11 @@ AS
     , sales_base_code           xxcos_sales_exp_headers.sales_base_code%TYPE        -- 売上拠点コード
     , card_sale_class           xxcos_sales_exp_headers.card_sale_class%TYPE        -- カード売り区分
     , sales_class               xxcos_sales_exp_lines.sales_class%TYPE              -- 売上区分
-    , goods_prod_cls            xxcos_good_prod_class_v.goods_prod_class_code%TYPE  -- 品目区分コード（製品・商品）
     , pure_amount               xxcos_sales_exp_lines.pure_amount%TYPE              -- 本体金額
     , tax_amount                xxcos_sales_exp_lines.tax_amount%TYPE               -- 消費税金額
     , cash_and_card             xxcos_sales_exp_lines.cash_and_card%TYPE            -- 現金・カード併用額
+    , red_black_flag            xxcos_sales_exp_lines.cash_and_card%TYPE            -- 赤黒フラグ
     , customer_cls_code         hz_cust_accounts.customer_class_code%TYPE           -- 顧客区分
-    , gccs_segment3             gl_code_combinations.segment3%TYPE                  -- 売上勘定科目コード
     , gcct_segment3             gl_code_combinations.segment3%TYPE                  -- 税金勘定科目コード
     , bill_tax_round            xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE     -- 税金－端数処理
     , xseh_rowid                ROWID                                               -- ROWID
@@ -223,21 +268,22 @@ AS
 --
   -- 仕訳パターンワークテーブル定義
   TYPE gr_jour_cls_rec IS RECORD(
-      dlv_invoice_class         fnd_lookup_values.attribute1%TYPE                   -- 納品伝票区分
+      red_black_flag            fnd_lookup_values.attribute1%TYPE                   -- 赤黒フラグ
     , card_sale_class           fnd_lookup_values.attribute2%TYPE                   -- カード売り区分
-    , goods_prod_cls            fnd_lookup_values.attribute3%TYPE                   -- 品目区分コード（製品・商品）
-    , segment3                  fnd_lookup_values.attribute4%TYPE                   -- 勘定科目コード
-    , line_type                 fnd_lookup_values.attribute5%TYPE                   -- ラインタイプ
-    , jour_category             fnd_lookup_values.attribute6%TYPE                   -- 仕訳カテゴリ
-    , segment2                  fnd_lookup_values.attribute7%TYPE                   -- 部門コード
+    , segment3                  fnd_lookup_values.attribute3%TYPE                   -- 勘定科目コード
+    , line_type                 fnd_lookup_values.attribute4%TYPE                   -- ラインタイプ
+    , jour_category             fnd_lookup_values.attribute5%TYPE                   -- 仕訳カテゴリ
     , jour_pattern              fnd_lookup_values.meaning%TYPE                      -- 仕訳パターン
     , gl_segment3_nm            fnd_lookup_values.description%TYPE                  -- 勘定科目名
-    , segment4                  fnd_lookup_values.attribute8%TYPE                   -- 補助勘定科目コード
-    , segment5                  fnd_lookup_values.attribute9%TYPE                   -- 顧客コード
-    , segment6                  fnd_lookup_values.attribute10%TYPE                  -- 企業コード
-    , segment7                  fnd_lookup_values.attribute11%TYPE                  -- 予備１
-    , segment8                  fnd_lookup_values.attribute12%TYPE                  -- 予備２
+    , segment4                  fnd_lookup_values.attribute6%TYPE                   -- 補助勘定科目コード
+    , segment5                  fnd_lookup_values.attribute7%TYPE                   -- 顧客コード
+    , segment6                  fnd_lookup_values.attribute8%TYPE                   -- 企業コード
+    , segment7                  fnd_lookup_values.attribute9%TYPE                   -- 予備１
+    , segment8                  fnd_lookup_values.attribute10%TYPE                  -- 予備２
+    , segment2                  fnd_lookup_values.attribute2%TYPE                   -- 拠点コード
   );
+--
+--****************************** 2009/05/12 1.6 T.KItajima MOD  END  ******************************--
 --
   -- CCIDワークテーブル定義
   TYPE gr_select_ccid IS RECORD(
@@ -282,6 +328,24 @@ AS
   gt_card_sale_cls                    fnd_lookup_values.lookup_code%TYPE;           -- カード売り区分
   gt_no_tax_cls                       fnd_lookup_values.attribute3%TYPE;            -- 消費区分
 --
+  /**********************************************************************************
+   * Procedure Name   : roundup
+   * Description      : 切上関数
+   ***********************************************************************************/
+  FUNCTION roundup(in_number IN NUMBER, in_place IN INTEGER := 0)
+  RETURN NUMBER
+  IS
+    ln_base NUMBER;
+  BEGIN
+    IF (in_number = 0) 
+      OR (in_number IS NULL) 
+    THEN
+      RETURN 0;
+    END IF;
+--
+    ln_base := 10 ** in_place ;
+    RETURN CEIL( ABS( in_number ) * ln_base ) / ln_base * SIGN( in_number );
+  END;
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-1)
@@ -650,6 +714,115 @@ AS
     lv_table_name VARCHAR2(255);            -- テーブル名
 --
     -- *** ローカル・カーソル (販売実績データ抽出)***
+--****************************** 2009/05/13 1.6 MOD START ******************************--
+--    CURSOR sales_data_cur
+--    IS
+--      SELECT
+--             xseh.sales_exp_header_id          sales_exp_header_id      -- 販売実績ヘッダID
+--           , xseh.dlv_invoice_number           dlv_invoice_number       -- 納品伝票番号
+--           , xseh.dlv_invoice_class            dlv_invoice_class        -- 納品伝票区分
+--           , xseh.cust_gyotai_sho              cust_gyotai_sho          -- 業態小分類
+--           , xseh.delivery_date                delivery_date            -- 納品日
+--           , xseh.inspect_date                 inspect_date             -- 検収日
+--           , xseh.ship_to_customer_code        ship_to_customer_code    -- 顧客【納品先】
+--           , xseh.tax_code                     tax_code                 -- 税金コード
+--           , xseh.tax_rate                     tax_rate                 -- 消費税率
+--           , xseh.consumption_tax_class        consumption_tax_class    -- 消費区分
+--           , xseh.results_employee_code        results_employee_code    -- 成績計上者コード
+--           , xseh.sales_base_code              sales_base_code          -- 売上拠点コード
+--           , NVL( xseh.card_sale_class, cv_cash_class )
+--                                               card_sale_class          -- カード売り区分
+--           , xsel.sales_class                  sales_class              -- 売上区分
+--           , xgpc.goods_prod_class_code        goods_prod_cls           -- 品目区分コード（製品・商品）
+--           , xsel.pure_amount                  pure_amount              -- 本体金額
+--           , xsel.tax_amount                   tax_amount               -- 消費税金額
+--           , NVL( xsel.cash_and_card, 0 )      cash_and_card            -- 現金・カード併用額
+--           , hca.customer_class_code           customer_cls_code        -- 顧客区分
+--           , gcc.segment3                      gccs_segment3            -- 売上勘定科目コード
+--           , gcct.segment3                     gcct_segment3            -- 税金勘定科目コード
+--           , xchv.bill_tax_round_rule          tax_round_rule           -- 税金－端数処理
+--           , xseh.rowid                        xseh_rowid               -- ROWID
+--      FROM
+--             xxcos_sales_exp_headers           xseh                     -- 販売実績ヘッダテーブル
+--           , xxcos_sales_exp_lines             xsel                     -- 販売実績明細テーブル
+--           , mtl_system_items_b                msib                     -- 品目マスタ
+--           , gl_code_combinations              gcc                      -- 勘定科目組合せマスタ
+--           , gl_code_combinations              gcct                     -- 勘定科目組合せマスタ（TAX用）
+--           , ar_vat_tax_all_b                  avta                     -- 税金マスタ
+--           , xxcos_good_prod_class_v           xgpc                     -- 品目区分View
+--           , hz_cust_accounts                  hca                      -- 顧客区分
+--           , xxcos_cust_hierarchy_v            xchv                     -- 顧客階層ビュー
+--      WHERE
+--          xseh.sales_exp_header_id             = xsel.sales_exp_header_id
+--      AND xseh.dlv_invoice_number              = xsel.dlv_invoice_number
+--      AND xseh.gl_interface_flag               = cv_n_flag
+--      AND xseh.inspect_date                   <= gd_process_date
+--      AND xsel.item_code                      <> gv_var_elec_item_cd
+--      AND hca.account_number                   = xseh.ship_to_customer_code
+--      AND xchv.ship_account_number             = xseh.ship_to_customer_code
+--      AND ( xseh.cust_gyotai_sho                 IN (
+--            SELECT
+--                flvl.meaning                   meaning
+--            FROM
+--                fnd_lookup_values              flvl
+--            WHERE
+--                flvl.lookup_type               = ct_qct_gyotai_sho
+--            AND flvl.lookup_code               LIKE ct_qcc_code
+--            AND flvl.attribute1                = ct_attribute_y
+--            AND flvl.enabled_flag              = ct_enabled_yes
+--            AND flvl.language                  = USERENV( 'LANG' )
+--            AND gd_process_date BETWEEN        NVL( flvl.start_date_active, gd_process_date )
+--                                AND            NVL( flvl.end_date_active,   gd_process_date )
+--            )
+--            OR hca.customer_class_code          = gt_cust_cls_cd
+--          )
+--      AND xsel.sales_class                     NOT IN (
+--          SELECT
+--              flvl.meaning                     meaning
+--          FROM
+--              fnd_lookup_values                flvl
+--          WHERE
+--              flvl.lookup_type                 = ct_qct_sale_class
+--          AND flvl.lookup_code                 LIKE ct_qcc_code
+--          AND flvl.attribute1                  = ct_attribute_y
+--          AND flvl.enabled_flag                = ct_enabled_yes
+--          AND flvl.language                    = USERENV( 'LANG' )
+--          AND gd_process_date BETWEEN          NVL( flvl.start_date_active, gd_process_date )
+--                              AND              NVL( flvl.end_date_active,   gd_process_date )
+--          )
+--      AND xseh.dlv_invoice_class               IN (
+--          SELECT
+--              flvl.meaning                     meaning
+--          FROM
+--              fnd_lookup_values                flvl
+--          WHERE
+--              flvl.lookup_type                 = ct_qct_dlv_slp_cls
+--          AND flvl.lookup_code                 LIKE ct_qcc_code
+--          AND flvl.attribute1                  = ct_attribute_y
+--          AND flvl.enabled_flag                = ct_enabled_yes
+--          AND flvl.language                    = USERENV( 'LANG' )
+--          AND gd_process_date BETWEEN          NVL( flvl.start_date_active, gd_process_date )
+--                              AND              NVL( flvl.end_date_active,   gd_process_date )
+--          )
+--      AND msib.organization_id                 = gv_org_id
+--      AND xsel.item_code                       = msib.segment1
+--      AND avta.tax_code                        = xseh.tax_code
+--      AND gcct.code_combination_id             = avta.tax_account_id
+--      AND avta.set_of_books_id                 = TO_NUMBER( gv_set_bks_id )
+--      AND avta.enabled_flag                    = ct_enabled_yes
+--      AND gd_process_date BETWEEN              NVL( avta.start_date, gd_process_date )
+--                          AND                  NVL( avta.end_date,   gd_process_date )
+--      AND gcc.code_combination_id              = msib.sales_account
+--      AND xgpc.segment1                        = xsel.item_code
+--      ORDER BY xseh.dlv_invoice_number
+--             , xseh.dlv_invoice_class
+--             , NVL( xseh.card_sale_class, cv_cash_class )
+--             , xsel.item_code
+--             , gcc.segment3
+--             , xseh.tax_code
+--    FOR UPDATE OF  xseh.sales_exp_header_id
+--    NOWAIT;
+--
     CURSOR sales_data_cur
     IS
       SELECT
@@ -668,12 +841,11 @@ AS
            , NVL( xseh.card_sale_class, cv_cash_class )
                                                card_sale_class          -- カード売り区分
            , xsel.sales_class                  sales_class              -- 売上区分
-           , xgpc.goods_prod_class_code        goods_prod_cls           -- 品目区分コード（製品・商品）
            , xsel.pure_amount                  pure_amount              -- 本体金額
            , xsel.tax_amount                   tax_amount               -- 消費税金額
            , NVL( xsel.cash_and_card, 0 )      cash_and_card            -- 現金・カード併用額
+           , xsel.red_black_flag               red_black_flag           -- 赤黒フラグ
            , hca.customer_class_code           customer_cls_code        -- 顧客区分
-           , gcc.segment3                      gccs_segment3            -- 売上勘定科目コード
            , gcct.segment3                     gcct_segment3            -- 税金勘定科目コード
            , xchv.bill_tax_round_rule          tax_round_rule           -- 税金－端数処理
            , xseh.rowid                        xseh_rowid               -- ROWID
@@ -681,10 +853,8 @@ AS
              xxcos_sales_exp_headers           xseh                     -- 販売実績ヘッダテーブル
            , xxcos_sales_exp_lines             xsel                     -- 販売実績明細テーブル
            , mtl_system_items_b                msib                     -- 品目マスタ
-           , gl_code_combinations              gcc                      -- 勘定科目組合せマスタ
            , gl_code_combinations              gcct                     -- 勘定科目組合せマスタ（TAX用）
            , ar_vat_tax_all_b                  avta                     -- 税金マスタ
-           , xxcos_good_prod_class_v           xgpc                     -- 品目区分View
            , hz_cust_accounts                  hca                      -- 顧客区分
            , xxcos_cust_hierarchy_v            xchv                     -- 顧客階層ビュー
       WHERE
@@ -745,18 +915,10 @@ AS
       AND gcct.code_combination_id             = avta.tax_account_id
       AND avta.set_of_books_id                 = TO_NUMBER( gv_set_bks_id )
       AND avta.enabled_flag                    = ct_enabled_yes
-      AND gd_process_date BETWEEN              NVL( avta.start_date, gd_process_date )
-                          AND                  NVL( avta.end_date,   gd_process_date )
-      AND gcc.code_combination_id              = msib.sales_account
-      AND xgpc.segment1                        = xsel.item_code
-      ORDER BY xseh.dlv_invoice_number
-             , xseh.dlv_invoice_class
-             , NVL( xseh.card_sale_class, cv_cash_class )
-             , xsel.item_code
-             , gcc.segment3
-             , xseh.tax_code
+      ORDER BY xseh.sales_exp_header_id
     FOR UPDATE OF  xseh.sales_exp_header_id
     NOWAIT;
+--****************************** 2009/05/13 1.6 MOD  END  ******************************--
 --
     -- *** ローカル・レコード ***
 --
@@ -881,6 +1043,10 @@ AS
     lv_vd_nm                VARCHAR2(225);    -- 仕訳名
     lv_detail               VARCHAR2(225);    -- 明細摘要
     lv_om_sales             VARCHAR2(225);    -- OM連携売上
+--****************************** 209/05/13 1.6 T.Kitajima ADD START ******************************--
+    lv_section_code         VARCHAR2(225);    -- 部門コード
+    lv_category_name        VARCHAR2(225);    -- 仕訳カテゴリ名
+--****************************** 209/05/13 1.6 T.Kitajima ADD  END  ******************************--
 --
     -- *** ローカル例外 ***
     non_ccid_expt           EXCEPTION;        -- CCID取得出来ないエラー
@@ -916,73 +1082,203 @@ AS
                                 , iv_name              => cv_om_sales             -- メッセージID
                               );
 --
-    -- ３．上様の場合、仕訳名、明細摘要取得
-    IF ( iv_card_flg = cv_y_flag ) THEN
-      -- 生成したカードレコードの場合
-      IF ( gt_sales_card_tbl ( in_card_idx ).customer_cls_code = gt_cust_cls_cd ) THEN
+--****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
+--    -- ３．上様の場合、仕訳名、明細摘要取得
+--    IF ( iv_card_flg = cv_y_flag ) THEN
+--      -- 生成したカードレコードの場合
+--      IF ( gt_sales_card_tbl ( in_card_idx ).customer_cls_code = gt_cust_cls_cd ) THEN
+--        -- 仕訳名:上様現金売上
+--        lv_vd_nm             := xxccp_common_pkg.get_msg(
+--                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                  , iv_name              => cv_cust_cash_sale       -- メッセージID
+--                                );
+--        -- 明細摘要：上様現金
+--        lv_detail            := xxccp_common_pkg.get_msg(
+--                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                  , iv_name              => cv_cust_cash            -- メッセージID
+--                                );
+--      END IF;
+----
+--      -- ４．フルVD（消化）売上の場合、仕訳名、明細摘要取得
+--      IF ( gt_sales_card_tbl ( in_card_idx ).cust_gyotai_sho = ct_full_vd_cd ) THEN
+--        -- フルVD
+--        lv_vd_nm             := xxccp_common_pkg.get_msg(
+--                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                  , iv_name              => cv_full_vd              -- メッセージID
+--                                );
+--        -- フルVDカード
+--        lv_detail          := xxccp_common_pkg.get_msg(
+--                                  iv_application       => cv_xxcos_short_nm          -- アプリケーション短縮名
+--                                , iv_name              => cv_full_vd_card            -- メッセージID
+--                              );
+--      ELSIF ( gt_sales_card_tbl ( in_card_idx ).cust_gyotai_sho = ct_vd_xiaoka_cd ) THEN
+--        -- フルVD（消化）売上
+--        lv_vd_nm             := xxccp_common_pkg.get_msg(
+--                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                  , iv_name              => cv_vd_xiaoka            -- メッセージID
+--                                );
+--        -- フルVD（消化）カード
+--        lv_detail          := xxccp_common_pkg.get_msg(
+--                                  iv_application       => cv_xxcos_short_nm         -- アプリケーション短縮名
+--                                , iv_name              => cv_vd_xiaoka_card         -- メッセージID
+--                            );
+--      END IF;
+--    ELSE
+--      IF ( gt_sales_exp_tbl ( in_sale_idx ).customer_cls_code = gt_cust_cls_cd ) THEN
+--        -- 仕訳名:上様現金売上
+--        lv_vd_nm             := xxccp_common_pkg.get_msg(
+--                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                  , iv_name              => cv_cust_cash_sale       -- メッセージID
+--                                );
+--        -- 明細摘要：上様現金
+--        lv_detail            := xxccp_common_pkg.get_msg(
+--                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                  , iv_name              => cv_cust_cash            -- メッセージID
+--                                );
+--      END IF;
+----
+--      -- ４．フルVD（消化）売上の場合、仕訳名、明細摘要取得
+--      IF ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho = ct_full_vd_cd ) THEN
+--        -- フルVD
+--        lv_vd_nm             := xxccp_common_pkg.get_msg(
+--                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                  , iv_name              => cv_full_vd              -- メッセージID
+--                                );
+--        IF ( gt_sales_exp_tbl ( in_sale_idx ).card_sale_class = cv_card_class ) THEN
+--        -- カード売上の場合：フルVDカード
+--        lv_detail          := xxccp_common_pkg.get_msg(
+--                                  iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                , iv_name              => cv_full_vd_card         -- メッセージID
+--                              );
+--        ELSIF ( gt_sales_exp_tbl ( in_sale_idx ).card_sale_class = cv_cash_class ) THEN
+--          -- 現金売上の場合：フルVD現金
+--          lv_detail          := xxccp_common_pkg.get_msg(
+--                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                  , iv_name              => cv_full_vd_cash         -- メッセージID
+--                              );
+--        END IF;
+--      ELSIF ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho = ct_vd_xiaoka_cd ) THEN
+--        -- フルVD（消化）売上
+--        lv_vd_nm             := xxccp_common_pkg.get_msg(
+--                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                  , iv_name              => cv_vd_xiaoka            -- メッセージID
+--                                );
+--        IF ( gt_sales_exp_tbl ( in_sale_idx ).card_sale_class = cv_card_class ) THEN
+--          -- カード売上の場合：フルVD（消化）カード
+--          lv_detail          := xxccp_common_pkg.get_msg(
+--                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                  , iv_name              => cv_vd_xiaoka_card       -- メッセージID
+--                              );
+--        ELSIF ( gt_sales_exp_tbl ( in_sale_idx ).card_sale_class = cv_cash_class ) THEN
+--          -- 現金売上の場合：フルVD（消化）現金
+--            lv_detail          := xxccp_common_pkg.get_msg(
+--                                      iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+--                                    , iv_name              => cv_vd_xiaoka_cash       -- メッセージID
+--                                );
+--        END IF;
+--      END IF;
+--    END IF;
+--
+    --仕訳カテゴリ名
+    --上様顧客 AND 本体仕訳 AND フルVD以外 AND フルVD（消化）以外 AND 現金
+    IF ( gt_sales_exp_tbl ( in_sale_idx ).customer_cls_code = gt_cust_cls_cd  ) AND
+       ( iv_card_flg                                        = cv_n_flag       ) AND
+       ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho  != ct_full_vd_cd   ) AND
+       ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho  != ct_vd_xiaoka_cd ) AND
+       ( gt_sales_exp_tbl ( in_sale_idx ).card_sale_class   = cv_cash_class   )
+    THEN
         -- 仕訳名:上様現金売上
+      lv_category_name  := xxccp_common_pkg.get_msg(
+                              iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+                            , iv_name              => cv_cust_cash_sale       -- メッセージID
+                           );
+    --併用カード、カード、フルVD、フルVD（消化）はこちら
+    ELSE
+      lv_category_name  := gt_jour_cls_tbl( in_jcls_idx ).jour_category;
+    END IF;
+--
+    --仕訳名
+    --併用カード仕訳(併用で上様は無い前提)
+    IF ( iv_card_flg = cv_y_flag  ) THEN
+      --フルVD
+      IF ( gt_sales_card_tbl ( in_card_idx ).cust_gyotai_sho  = ct_full_vd_cd ) THEN
+        lv_vd_nm        := xxccp_common_pkg.get_msg(
+                               iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+                             , iv_name              => cv_full_vd              -- メッセージID
+                           );
+      --フルVD（消化）
+      ELSIF ( gt_sales_card_tbl ( in_card_idx ).cust_gyotai_sho  = ct_vd_xiaoka_cd ) THEN
+        lv_vd_nm        := xxccp_common_pkg.get_msg(
+                               iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+                             , iv_name              => cv_vd_xiaoka            -- メッセージID
+                           );
+      END IF;
+    --本体仕訳
+    ELSE
+      --上様顧客で現金のみ。かつフルVD、フルVD（消化）では無い。
+      --カードで上様は無い前提
+      IF ( gt_sales_exp_tbl ( in_sale_idx ).customer_cls_code = gt_cust_cls_cd  ) AND
+         ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho  != ct_full_vd_cd   ) AND
+         ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho  != ct_vd_xiaoka_cd ) AND
+         ( gt_sales_exp_tbl ( in_sale_idx ).card_sale_class   = cv_cash_class   )
+      THEN
         lv_vd_nm             := xxccp_common_pkg.get_msg(
                                     iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
                                   , iv_name              => cv_cust_cash_sale       -- メッセージID
                                 );
-        -- 明細摘要：上様現金
-        lv_detail            := xxccp_common_pkg.get_msg(
-                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
-                                  , iv_name              => cv_cust_cash            -- メッセージID
-                                );
-      END IF;
---
-      -- ４．フルVD（消化）売上の場合、仕訳名、明細摘要取得
-      IF ( gt_sales_card_tbl ( in_card_idx ).cust_gyotai_sho = ct_full_vd_cd ) THEN
-        -- フルVD
+      --フルVD
+      ELSIF ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho  = ct_full_vd_cd ) THEN
         lv_vd_nm             := xxccp_common_pkg.get_msg(
                                     iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
                                   , iv_name              => cv_full_vd              -- メッセージID
                                 );
-        -- フルVDカード
-        lv_detail          := xxccp_common_pkg.get_msg(
-                                  iv_application       => cv_xxcos_short_nm          -- アプリケーション短縮名
-                                , iv_name              => cv_full_vd_card            -- メッセージID
-                              );
-      ELSIF ( gt_sales_card_tbl ( in_card_idx ).cust_gyotai_sho = ct_vd_xiaoka_cd ) THEN
-        -- フルVD（消化）売上
+      --フルVD（消化）
+      ELSIF ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho  = ct_vd_xiaoka_cd ) THEN
         lv_vd_nm             := xxccp_common_pkg.get_msg(
                                     iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
                                   , iv_name              => cv_vd_xiaoka            -- メッセージID
                                 );
-        -- フルVD（消化）カード
-        lv_detail          := xxccp_common_pkg.get_msg(
-                                  iv_application       => cv_xxcos_short_nm         -- アプリケーション短縮名
-                                , iv_name              => cv_vd_xiaoka_card         -- メッセージID
-                            );
       END IF;
-    ELSE
-      IF ( gt_sales_exp_tbl ( in_sale_idx ).customer_cls_code = gt_cust_cls_cd ) THEN
-        -- 仕訳名:上様現金売上
-        lv_vd_nm             := xxccp_common_pkg.get_msg(
+    END IF;
+--
+    --仕訳明細摘要
+    --併用カード仕訳
+    IF ( iv_card_flg = cv_y_flag  ) THEN
+      --フルVDカード
+      IF ( gt_sales_card_tbl ( in_card_idx ).cust_gyotai_sho  = ct_full_vd_cd ) THEN
+        lv_detail            := xxccp_common_pkg.get_msg(
                                     iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
-                                  , iv_name              => cv_cust_cash_sale       -- メッセージID
+                                  , iv_name              => cv_full_vd_card         -- メッセージID
                                 );
+      --フルVD（消化）カード
+      ELSIF ( gt_sales_card_tbl ( in_card_idx ).cust_gyotai_sho  = ct_vd_xiaoka_cd ) THEN
+        lv_detail            := xxccp_common_pkg.get_msg(
+                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+                                  , iv_name              => cv_vd_xiaoka_card       -- メッセージID
+                                );
+      END IF;
+    --本体仕訳
+    ELSE
+      --上様顧客で現金のみ。かつフルVD、フルVD（消化）では無い。
+      --カードで上様は無い前提
+      IF ( gt_sales_exp_tbl ( in_sale_idx ).customer_cls_code = gt_cust_cls_cd  ) AND
+         ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho  != ct_full_vd_cd   ) AND
+         ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho  != ct_vd_xiaoka_cd ) AND
+         ( gt_sales_exp_tbl ( in_sale_idx ).card_sale_class   = cv_cash_class   )
+      THEN
         -- 明細摘要：上様現金
         lv_detail            := xxccp_common_pkg.get_msg(
                                     iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
                                   , iv_name              => cv_cust_cash            -- メッセージID
                                 );
-      END IF;
---
-      -- ４．フルVD（消化）売上の場合、仕訳名、明細摘要取得
-      IF ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho = ct_full_vd_cd ) THEN
-        -- フルVD
-        lv_vd_nm             := xxccp_common_pkg.get_msg(
-                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
-                                  , iv_name              => cv_full_vd              -- メッセージID
-                                );
+      --フルVD
+      ELSIF ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho  = ct_full_vd_cd ) THEN
         IF ( gt_sales_exp_tbl ( in_sale_idx ).card_sale_class = cv_card_class ) THEN
-        -- カード売上の場合：フルVDカード
-        lv_detail          := xxccp_common_pkg.get_msg(
-                                  iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
-                                , iv_name              => cv_full_vd_card         -- メッセージID
-                              );
+          -- カード売上の場合：フルVDカード
+          lv_detail          := xxccp_common_pkg.get_msg(
+                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
+                                  , iv_name              => cv_full_vd_card         -- メッセージID
+                                );
         ELSIF ( gt_sales_exp_tbl ( in_sale_idx ).card_sale_class = cv_cash_class ) THEN
           -- 現金売上の場合：フルVD現金
           lv_detail          := xxccp_common_pkg.get_msg(
@@ -990,12 +1286,8 @@ AS
                                   , iv_name              => cv_full_vd_cash         -- メッセージID
                               );
         END IF;
-      ELSIF ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho = ct_vd_xiaoka_cd ) THEN
-        -- フルVD（消化）売上
-        lv_vd_nm             := xxccp_common_pkg.get_msg(
-                                    iv_application       => cv_xxcos_short_nm       -- アプリケーション短縮名
-                                  , iv_name              => cv_vd_xiaoka            -- メッセージID
-                                );
+      --フルVD（消化）
+      ELSIF ( gt_sales_exp_tbl ( in_sale_idx ).cust_gyotai_sho  = ct_vd_xiaoka_cd ) THEN
         IF ( gt_sales_exp_tbl ( in_sale_idx ).card_sale_class = cv_card_class ) THEN
           -- カード売上の場合：フルVD（消化）カード
           lv_detail          := xxccp_common_pkg.get_msg(
@@ -1011,14 +1303,22 @@ AS
         END IF;
       END IF;
     END IF;
+--****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
+--****************************** 2009/05/13 1.6 T.Kitajima ADD START ******************************--
+    --拠点コード
+    lv_section_code := NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2, gt_sales_exp_tbl( in_sale_idx ).sales_base_code);
+--****************************** 2009/05/13 1.6 T.Kitajima ADD  END  ******************************--
 --
     -- 勘定科目セグメント１からセグメント８よりCCID取得
     lv_ccid_idx            :=   gv_company_code
                                                                -- セグメント１(会社コード)
-                             || NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
-                                                               -- セグメント２（部門コード）
-                                     gt_sales_exp_tbl( in_sale_idx ).sales_base_code )
-                                                               -- セグメント２(販売実績の売上拠点コード)
+--****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
+--                             || NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
+--                                                               -- セグメント２（部門コード）
+--                                     gt_sales_exp_tbl( in_sale_idx ).sales_base_code )
+--                                                               -- セグメント２(販売実績の売上拠点コード)
+                             || lv_section_code                  -- セグメント２(拠点コード)
+--****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
                              || iv_gl_segment3
                                                                -- セグメント３(勘定科目コード)
                              || gt_jour_cls_tbl( in_jcls_idx ).segment4
@@ -1040,8 +1340,11 @@ AS
       lt_ccid := xxcok_common_pkg.get_code_combination_id_f (
                      gd_process_date
                    , gv_company_code
-                   , NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
-                          gt_sales_exp_tbl( in_sale_idx ).sales_base_code )
+--****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
+--                   , NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
+--                          gt_sales_exp_tbl( in_sale_idx ).sales_base_code )
+                   , lv_section_code
+--****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
                    , iv_gl_segment3
                    , gt_jour_cls_tbl( in_jcls_idx ).segment4
                    , gt_jour_cls_tbl( in_jcls_idx ).segment5
@@ -1077,8 +1380,11 @@ AS
                         , iv_token_name2       => cv_tkn_segment2
                         , iv_token_value2      => gv_company_code
                         , iv_token_name3       => cv_tkn_segment3
-                        , iv_token_value3      => NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
-                                                       gt_sales_exp_tbl( in_sale_idx ).sales_base_code )
+--****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
+--                        , iv_token_value3      => NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
+--                                                       gt_sales_exp_tbl( in_sale_idx ).sales_base_code )
+                        , iv_token_value3      => lv_section_code
+--****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
                         , iv_token_name4       => cv_tkn_segment4
                         , iv_token_value4      => iv_gl_segment3
                         , iv_token_name5       => cv_tkn_segment5
@@ -1117,13 +1423,16 @@ AS
                                                               -- 通貨コード
     gt_gl_interface_tbl( in_gl_idx ).actual_flag           := ct_actual_flag;
                                                               -- 残高タイプ
-    IF ( gt_sales_exp_tbl ( in_sale_idx ).customer_cls_code = gt_cust_cls_cd ) THEN
-      gt_gl_interface_tbl( in_gl_idx ).user_je_category_name := lv_vd_nm;
-                                                              -- 仕訳カテゴリ名
-    ELSE
-      gt_gl_interface_tbl( in_gl_idx ).user_je_category_name := gt_jour_cls_tbl( in_jcls_idx ).jour_category;
-                                                              -- 仕訳カテゴリ名
-    END IF;
+--****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
+--    IF ( gt_sales_exp_tbl ( in_sale_idx ).customer_cls_code = gt_cust_cls_cd ) THEN
+--      gt_gl_interface_tbl( in_gl_idx ).user_je_category_name := lv_vd_nm;
+--                                                              -- 仕訳カテゴリ名
+--    ELSE
+--      gt_gl_interface_tbl( in_gl_idx ).user_je_category_name := gt_jour_cls_tbl( in_jcls_idx ).jour_category;
+--                                                              -- 仕訳カテゴリ名
+--    END IF;
+    gt_gl_interface_tbl( in_gl_idx ).user_je_category_name := lv_category_name;
+--****************************** 2009/05/13 1.6 T.Kitajima MOD  MOD  ******************************--
     gt_gl_interface_tbl( in_gl_idx ).user_je_source_name   := lv_user_je_source_name;
                                                               -- 仕訳ソース名
     gt_gl_interface_tbl( in_gl_idx ).code_combination_id   := lt_ccid;
@@ -1133,11 +1442,11 @@ AS
     gt_gl_interface_tbl( in_gl_idx ).entered_cr            := in_entered_cr;
                                                               -- 貸方金額
     gt_gl_interface_tbl( in_gl_idx ).reference1            := TO_CHAR( gd_process_date , ct_date_format_non_sep )
-                                                              || ct_underbar 
+                                                              || ct_underbar
                                                               || lv_om_sales;
                                                               -- リファレンス1（バッチ名）
     gt_gl_interface_tbl( in_gl_idx ).reference2            := TO_CHAR( gd_process_date , ct_date_format_non_sep )
-                                                              || ct_underbar 
+                                                              || ct_underbar
                                                               || lv_om_sales;
                                                               -- リファレンス2（バッチ摘要）
 --
@@ -1146,15 +1455,15 @@ AS
       gt_gl_interface_tbl( in_gl_idx ).accounting_date     := gt_sales_card_tbl ( in_card_idx ).delivery_date;
                                                               -- 記帳日
       gt_gl_interface_tbl( in_gl_idx ).reference4          :=    gt_sales_card_tbl ( in_card_idx ).sales_base_code
-                                                              || ct_underbar 
+                                                              || ct_underbar
                                                               || gt_sales_card_tbl ( in_card_idx ).dlv_invoice_number
-                                                              || ct_underbar 
+                                                              || ct_underbar
                                                               || lv_vd_nm;
                                                               -- リファレンス4（仕訳名）
       gt_gl_interface_tbl( in_gl_idx ).reference5          :=    gt_sales_card_tbl ( in_card_idx ).sales_base_code
-                                                              || ct_underbar 
+                                                              || ct_underbar
                                                               || gt_sales_card_tbl ( in_card_idx ).dlv_invoice_number
-                                                              || ct_underbar 
+                                                              || ct_underbar
                                                               || lv_vd_nm;
                                                               -- リファレンス5（仕訳名摘要）
       gt_gl_interface_tbl( in_gl_idx ).attribute1          := gt_sales_card_tbl ( in_card_idx ).tax_code;
@@ -1169,15 +1478,15 @@ AS
       gt_gl_interface_tbl( in_gl_idx ).accounting_date     := gt_sales_exp_tbl ( in_sale_idx ).delivery_date;
                                                               -- 記帳日
       gt_gl_interface_tbl( in_gl_idx ).reference4          := gt_sales_exp_tbl ( in_sale_idx ).sales_base_code
-                                                              || ct_underbar 
+                                                              || ct_underbar
                                                               || gt_sales_exp_tbl ( in_sale_idx ).dlv_invoice_number
-                                                              || ct_underbar 
+                                                              || ct_underbar
                                                               || lv_vd_nm;
                                                               -- リファレンス4（仕訳名）
       gt_gl_interface_tbl( in_gl_idx ).reference5          := gt_sales_exp_tbl ( in_sale_idx ).sales_base_code
-                                                              || ct_underbar 
+                                                              || ct_underbar
                                                               || gt_sales_exp_tbl ( in_sale_idx ).dlv_invoice_number
-                                                              || ct_underbar 
+                                                              || ct_underbar
                                                               || lv_vd_nm;
                                                               -- リファレンス5（仕訳名摘要）
       gt_gl_interface_tbl( in_gl_idx ).attribute1          := gt_sales_exp_tbl( in_sale_idx ).tax_code;
@@ -1188,8 +1497,7 @@ AS
                                                               -- 属性4（起票部門）
       gt_gl_interface_tbl( in_gl_idx ).attribute5          := gt_sales_exp_tbl( in_sale_idx ).results_employee_code;
                                                               -- 属性5（ユーザID）
-      IF ( gt_sales_exp_tbl( in_sale_idx ).card_sale_class = cv_cash_class 
-        AND gt_sales_exp_tbl( in_sale_idx ).cash_and_card  = 0 ) THEN
+      IF ( gt_sales_exp_tbl( in_sale_idx ).card_sale_class = cv_cash_class ) THEN
         gt_gl_interface_tbl( in_gl_idx ).jgzz_recon_ref    := gt_sales_exp_tbl( in_sale_idx ).ship_to_customer_code;
                                                               -- 消込参照(現金勘定のみ)
       END IF;
@@ -1290,30 +1598,43 @@ AS
     ln_card_pt         NUMBER DEFAULT 1;                                   -- カードレコードの現ポイント
     lv_ccid_idx        VARCHAR2(225);                                      -- CCID のインデックス
     ln_card_jour       NUMBER DEFAULT 1;                                   -- カードレコード仕訳用
---******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+--******************************* 2009/03/26 1.4 T.Kitajima ADD START ****************************
     ln_index_work      NUMBER;
     ln_sale_idx        NUMBER;
     ln_index           NUMBER;
     sale_idx           NUMBER;
---******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
+--******************************* 2009/03/26 1.4 T.Kitajima ADD  END  ****************************
 --
     -- 集計キー(販売実績)
-    lt_invoice_number  xxcos_sales_exp_headers.dlv_invoice_number%TYPE;    -- 集計キー：納品伝票番号
-    lt_invoice_class   xxcos_sales_exp_headers.dlv_invoice_class%TYPE;     -- 集計キー：納品伝票区分
-    lt_card_sale_class xxcos_sales_exp_headers.card_sale_class%TYPE;       -- 集計キー：カード売り区分
-    lt_goods_prod_cls  xxcos_good_prod_class_v.goods_prod_class_code%TYPE; -- 集計キー：品目区分コード（製品・商品）
-    lt_gccs_segment3   gl_code_combinations.segment3%TYPE;                 -- 集計キー：売上勘定科目コード
-    lt_tax_code        xxcos_sales_exp_headers.tax_code%TYPE;              -- 集計キー：税金コード
+--****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
+--    lt_invoice_number  xxcos_sales_exp_headers.dlv_invoice_number%TYPE;    -- 集計キー：納品伝票番号
+--    lt_invoice_class   xxcos_sales_exp_headers.dlv_invoice_class%TYPE;     -- 集計キー：納品伝票区分
+--    lt_card_sale_class xxcos_sales_exp_headers.card_sale_class%TYPE;       -- 集計キー：カード売り区分
+--    lt_goods_prod_cls  xxcos_good_prod_class_v.goods_prod_class_code%TYPE; -- 集計キー：品目区分コード（製品・商品）
+--    lt_gccs_segment3   gl_code_combinations.segment3%TYPE;                 -- 集計キー：売上勘定科目コード
+--    lt_tax_code        xxcos_sales_exp_headers.tax_code%TYPE;              -- 集計キー：税金コード
+    lt_sales_exp_header_id  xxcos_sales_exp_headers.sales_exp_header_id%TYPE; -- 集計キー：販売実績ヘッダ
+--
+    --仕訳パターン用
+    lt_card_sale_class      xxcos_sales_exp_headers.card_sale_class%TYPE;     -- カード売り区分
+    lt_red_black_flag       xxcos_sales_exp_lines.red_black_flag%TYPE;        -- 赤黒フラグ
+--****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
     lv_sum_flag        VARCHAR2(1);                                        -- 集計フラグ
     lv_sum_card_flag   VARCHAR2(1);                                        -- カード集計フラグ
 --
     -- 集計キー(生成したカードレコード)
-    lt_invoice_number_card  xxcos_sales_exp_headers.dlv_invoice_number%TYPE;-- 集計キー：納品伝票番号
-    lt_invoice_class_card   xxcos_sales_exp_headers.dlv_invoice_class%TYPE; -- 集計キー：納品伝票区分
-    lt_goods_prod_cls_card  xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
-                                                                            -- 集計キー：品目区分（製品・商品）
-    lt_gccs_segment3_card   gl_code_combinations.segment3%TYPE;             -- 集計キー：売上勘定科目コード
-    lt_tax_code_card        xxcos_sales_exp_headers.tax_code%TYPE;          -- 集計キー：税金コード
+ --****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
+--    lt_invoice_number_card  xxcos_sales_exp_headers.dlv_invoice_number%TYPE;-- 集計キー：納品伝票番号
+--    lt_invoice_class_card   xxcos_sales_exp_headers.dlv_invoice_class%TYPE; -- 集計キー：納品伝票区分
+--    lt_goods_prod_cls_card  xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
+--                                                                            -- 集計キー：品目区分（製品・商品）
+--    lt_gccs_segment3_card   gl_code_combinations.segment3%TYPE;             -- 集計キー：売上勘定科目コード
+--    lt_tax_code_card        xxcos_sales_exp_headers.tax_code%TYPE;          -- 集計キー：税金コード
+    lt_sales_exp_header_id_card  xxcos_sales_exp_headers.sales_exp_header_id%TYPE; -- 集計キー：販売実績ヘッダ
+--
+    --仕訳パターン用
+    lt_red_black_flag_card       xxcos_sales_exp_lines.red_black_flag%TYPE;        -- 赤黒フラグ
+--****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
 --
     -- GL OIFに設定する値
     lv_enter_dr_msg    VARCHAR2(225);                                      -- 借方
@@ -1323,27 +1644,56 @@ AS
     lv_tax_msg         VARCHAR2(225);                                      -- 仮受消費税等(勘定科目用)
     lv_err_code        VARCHAR2(1);
 --
-    lt_invoice_number_tmp  xxcos_sales_exp_headers.dlv_invoice_number%TYPE;-- 納品伝票番号
 --
+--****************************** 2009/05/13 1.6 T.Kitajima ADD START ******************************--
+    lnsale_idx_plus    NUMBER;                                             -- 販売実績データ次明細用
+--****************************** 2009/05/13 1.6 T.Kitajima ADD  END  ******************************--
 --
     -- *** ローカル・カーソル （仕訳パターン）***
+--****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
+--    CURSOR jour_cls_cur
+--    IS
+--      SELECT
+--             flvl.attribute1              dlv_invoice_class                -- 納品伝票区分
+--           , flvl.attribute2              card_sale_class                  -- カード売り区分
+--           , flvl.attribute3              goods_prod_cls                   -- 品目区分コード（製品・商品）
+--           , flvl.attribute4              gl_segment3                      -- 勘定科目コード
+--           , flvl.attribute5              gl_line_type                     -- ラインタイプ
+--           , flvl.attribute6              gl_jour_category                 -- 仕訳カテゴリ
+--           , flvl.attribute7              gl_segment2                      -- 部門コード
+--           , flvl.meaning                 gl_jour_pattern                  -- 仕訳パターン
+--           , flvl.description             gl_segment3_nm                   -- 勘定科目名
+--           , flvl.attribute8              gl_segment4                      -- 補助勘定科目コード
+--           , flvl.attribute9              gl_segment5                      -- 顧客コード
+--           , flvl.attribute10             gl_segment6                      -- 企業コード
+--           , flvl.attribute11             gl_segment7                      -- 予備１
+--           , flvl.attribute12             gl_segment8                      -- 予備２
+--      FROM
+--              fnd_lookup_values           flvl
+--      WHERE
+--              flvl.lookup_type            = ct_qct_jour_cls
+--        AND   flvl.lookup_code            LIKE ct_qcc_code
+--        AND   flvl.enabled_flag           = ct_enabled_yes
+--        AND   flvl.language               = USERENV( 'LANG' )
+--        AND   gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
+--                              AND         NVL( flvl.end_date_active,   gd_process_date )
+--      ;
     CURSOR jour_cls_cur
     IS
       SELECT
-             flvl.attribute1              dlv_invoice_class                -- 納品伝票区分
+             flvl.attribute1              red_black_flag                   -- 赤黒フラグ
            , flvl.attribute2              card_sale_class                  -- カード売り区分
-           , flvl.attribute3              goods_prod_cls                   -- 品目区分コード（製品・商品）
-           , flvl.attribute4              gl_segment3                      -- 勘定科目コード
-           , flvl.attribute5              gl_line_type                     -- ラインタイプ
-           , flvl.attribute6              gl_jour_category                 -- 仕訳カテゴリ
-           , flvl.attribute7              gl_segment2                      -- 部門コード
+           , flvl.attribute3              gl_segment3                      -- 勘定科目コード
+           , flvl.attribute4              gl_line_type                     -- ラインタイプ
+           , flvl.attribute5              gl_jour_category                 -- 仕訳カテゴリ
            , flvl.meaning                 gl_jour_pattern                  -- 仕訳パターン
            , flvl.description             gl_segment3_nm                   -- 勘定科目名
-           , flvl.attribute8              gl_segment4                      -- 補助勘定科目コード
-           , flvl.attribute9              gl_segment5                      -- 顧客コード
-           , flvl.attribute10             gl_segment6                      -- 企業コード
-           , flvl.attribute11             gl_segment7                      -- 予備１
-           , flvl.attribute12             gl_segment8                      -- 予備２
+           , flvl.attribute6              gl_segment4                      -- 補助勘定科目コード
+           , flvl.attribute7              gl_segment5                      -- 顧客コード
+           , flvl.attribute8              gl_segment6                      -- 企業コード
+           , flvl.attribute9              gl_segment7                      -- 予備１
+           , flvl.attribute10             gl_segment8                      -- 予備２
+           , flvl.attribute11             gl_segment2                      -- 拠点コード
       FROM
               fnd_lookup_values           flvl
       WHERE
@@ -1354,6 +1704,7 @@ AS
         AND   gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                               AND         NVL( flvl.end_date_active,   gd_process_date )
       ;
+--****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
 --
     -- *** ローカル・レコード ***
 --
@@ -1443,34 +1794,47 @@ AS
       --=====================================================================
       -- 2.現金・カード併用データを基に、カード売上データを作成する処理
       --=====================================================================
-      -- 現金・カード併用の場合-->カード売り区分=現金:0 かつ 現金カード併用額>0
+--****************************** 2009/05/13 1.6 MOD START ******************************--
+--      -- 現金・カード併用の場合-->カード売り区分=現金:0 かつ 現金カード併用額>0
+--      IF ( ( gt_sales_exp_tbl( sale_idx ).card_sale_class =  gt_card_sale_cls
+--        AND  gt_sales_exp_tbl( sale_idx ).cash_and_card > 0 ) )   THEN
+      -- 現金・カード併用の場合-->カード売り区分=現金:0 かつ 現金カード併用額!=0
       IF ( ( gt_sales_exp_tbl( sale_idx ).card_sale_class =  gt_card_sale_cls
-        AND  gt_sales_exp_tbl( sale_idx ).cash_and_card > 0 ) )   THEN
+        AND  gt_sales_exp_tbl( sale_idx ).cash_and_card != 0 ) )   THEN
+--****************************** 2009/05/13 1.6 MOD  END  ******************************--
+--
+--****************************** 2009/05/13 1.6 MOD START ******************************--
+--        -- カードレコードの本体金額
+--        ln_pure_amount := gt_sales_exp_tbl( sale_idx ).cash_and_card
+--                        / ( 1 + gt_sales_exp_tbl( sale_idx ).tax_rate/ct_percent );
+--
+--        -- 端数処理
+--        IF ( gt_sales_exp_tbl( sale_idx ).bill_tax_round = ct_round_rule_up ) THEN
+--          -- 切り上げの場合
+--          ln_pure_amount := CEIL( ln_pure_amount );
+--
+--        ELSIF ( gt_sales_exp_tbl( sale_idx ).bill_tax_round = ct_round_rule_down ) THEN
+--          -- 切り下げの場合
+--          ln_pure_amount := TRUNC( ln_pure_amount );
+--
+--        ELSIF ( gt_sales_exp_tbl( sale_idx ).bill_tax_round = ct_round_rule_nearest ) THEN
+--          -- 四捨五入の場合
+--          ln_pure_amount := ROUND( ln_pure_amount );
+--        END IF;
+--
+--        -- 課税の場合、カードレコードの消費税額を算出する
+--        IF ( gt_sales_exp_tbl( sale_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
+--          ln_tax_amount := gt_sales_exp_tbl( sale_idx ).cash_and_card - ln_pure_amount;
+--        ELSE
+--          ln_tax_amount := 0;
+--        END IF;
 --
         -- カードレコードの本体金額
-        ln_pure_amount := gt_sales_exp_tbl( sale_idx ).cash_and_card 
-                        / ( 1 + gt_sales_exp_tbl( sale_idx ).tax_rate/ct_percent );
+        ln_pure_amount := gt_sales_exp_tbl( sale_idx ).cash_and_card;
 --
-        -- 端数処理
-        IF ( gt_sales_exp_tbl( sale_idx ).bill_tax_round = ct_round_rule_up ) THEN
-          -- 切り上げの場合
-          ln_pure_amount := CEIL( ln_pure_amount );
---
-        ELSIF ( gt_sales_exp_tbl( sale_idx ).bill_tax_round = ct_round_rule_down ) THEN
-          -- 切り下げの場合
-          ln_pure_amount := FLOOR( ln_pure_amount );
---
-        ELSIF ( gt_sales_exp_tbl( sale_idx ).bill_tax_round = ct_round_rule_nearest ) THEN
-          -- 四捨五入の場合
-          ln_pure_amount := ROUND( ln_pure_amount );
-        END IF;
---
-        -- 課税の場合、カードレコードの消費税額を算出する
-        IF ( gt_sales_exp_tbl( sale_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
-          ln_tax_amount := gt_sales_exp_tbl( sale_idx ).cash_and_card - ln_pure_amount;
-        ELSE
-          ln_tax_amount := 0;
-        END IF;
+        --集計後に計算するのでとりあえず0円
+        ln_tax_amount := 0;
+--****************************** 2009/05/13 1.6 MOD  END  ******************************--
 --
         --==============================================================
         --販売実績カードワークテーブルへのカードレコード登録
@@ -1497,8 +1861,10 @@ AS
                                                                                   -- カード売り区分（１：カード）
         gt_sales_card_tbl( ln_card_idx ).dlv_invoice_class     := gt_sales_exp_tbl( sale_idx ).dlv_invoice_class;
                                                                                   -- 納品伝票区分
-        gt_sales_card_tbl( ln_card_idx ).goods_prod_cls        := gt_sales_exp_tbl( sale_idx ).goods_prod_cls;
-                                                                                  -- 品目コード
+--****************************** 2009/05/13 1.6 DEL START ******************************--
+--       gt_sales_card_tbl( ln_card_idx ).goods_prod_cls        := gt_sales_exp_tbl( sale_idx ).goods_prod_cls;
+--                                                                                  -- 品目コード
+--****************************** 2009/05/13 1.6 DEL START ******************************--
         gt_sales_card_tbl( ln_card_idx ).pure_amount           := ln_pure_amount;
                                                                                   -- 本体金額
         gt_sales_card_tbl( ln_card_idx ).tax_amount            := ln_tax_amount;
@@ -1513,313 +1879,463 @@ AS
                                                                                   -- 顧客区分
         gt_sales_card_tbl( ln_card_idx ).sales_class           := gt_sales_exp_tbl( sale_idx ).sales_class;
                                                                                   -- 売上区分
-        gt_sales_card_tbl( ln_card_idx ).gccs_segment3         := gt_sales_exp_tbl( sale_idx ). gccs_segment3;
+--****************************** 2009/05/13 1.6 DEL START ******************************--
+--        gt_sales_card_tbl( ln_card_idx ).gccs_segment3         := gt_sales_exp_tbl( sale_idx ). gccs_segment3;
                                                                                   -- 売上勘定科目コード
+--****************************** 2009/05/13 1.6 DEL START ******************************--
         gt_sales_card_tbl( ln_card_idx ).gcct_segment3         := gt_sales_exp_tbl( sale_idx ).gcct_segment3;
                                                                                   -- 税金勘定科目コード
+--****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
+        gt_sales_card_tbl( ln_card_idx ).red_black_flag        := gt_sales_exp_tbl( sale_idx ).red_black_flag;
+                                                                                  -- 赤黒フラグ
+--****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
       END IF;
 --
     END LOOP gt_sales_exp_tbl_loop;                                               -- 販売実績併用データ編集終了
 --
     -- 集約キーの値セット
-    lt_invoice_number   := gt_sales_exp_tbl( 1 ).dlv_invoice_number;
-    lt_invoice_class    := gt_sales_exp_tbl( 1 ).dlv_invoice_class;
-    lt_card_sale_class  := gt_sales_exp_tbl( 1 ).card_sale_class;
-    lt_goods_prod_cls   := gt_sales_exp_tbl( 1 ).goods_prod_cls;
-    lt_gccs_segment3    := gt_sales_exp_tbl( 1 ).gccs_segment3;
-    lt_tax_code         := gt_sales_exp_tbl( 1 ).tax_code;
---******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
-    -- 伝票No保持
-    lt_invoice_number_tmp := lt_invoice_number;
+--****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
+--    lt_invoice_number   := gt_sales_exp_tbl( 1 ).dlv_invoice_number;
+--    lt_invoice_class    := gt_sales_exp_tbl( 1 ).dlv_invoice_class;
+--    lt_card_sale_class  := gt_sales_exp_tbl( 1 ).card_sale_class;
+--    lt_goods_prod_cls   := gt_sales_exp_tbl( 1 ).goods_prod_cls;
+--    lt_gccs_segment3    := gt_sales_exp_tbl( 1 ).gccs_segment3;
+--    lt_tax_code         := gt_sales_exp_tbl( 1 ).tax_code;
+    lt_sales_exp_header_id  := gt_sales_exp_tbl( 1 ).sales_exp_header_id; --販売実績ヘッダ
+    --仕訳パターン用
+    lt_red_black_flag       := gt_sales_exp_tbl( 1 ).red_black_flag;      --赤黒フラグ
+    lt_card_sale_class      := gt_sales_exp_tbl( 1 ).card_sale_class;     --カード売り区分
+    lv_sum_flag             := cv_y_flag;                                 --OIF出力フラグ
+--****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
+--****************************** 2009/03/26 1.4 T.Kitajima ADD START ******************************--
     --スキップ件数初期化
     gn_warn_cnt := 0;
     -- INDEX保存
     ln_index_work := 1;
     ln_sale_idx   := 1;
     lv_err_code   := cv_status_normal;
-
---******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
+--
+--****************************** 2009/03/26 1.4 T.Kitajima ADD  END  ******************************--
 --
     --データの集約
     <<gt_sales_exp_tbl_loop>>
     FOR sale_idx IN 1 .. gn_target_cnt LOOP
+--******************************* 2009/05/13 1.6 T.Kitajima MOD START *******************************--
+--      --=====================================
+--      --３.GL一般会計OIFデータの集約
+--      --=====================================
+--      IF (  lt_invoice_number   = gt_sales_exp_tbl( sale_idx ).dlv_invoice_number
+--        AND lt_invoice_class    = gt_sales_exp_tbl( sale_idx ).dlv_invoice_class
+--        AND lt_card_sale_class  = gt_sales_exp_tbl( sale_idx ).card_sale_class
+--        AND lt_goods_prod_cls   = gt_sales_exp_tbl( sale_idx ).goods_prod_cls
+--        AND lt_gccs_segment3    = gt_sales_exp_tbl( sale_idx ).gccs_segment3
+--        AND lt_tax_code         = gt_sales_exp_tbl( sale_idx ).tax_code
+--         ) THEN
+----
+--        -- 集約するフラグ初期設定
+--        lv_sum_flag      := cv_y_flag;
+--        lv_sum_card_flag := cv_y_flag;
+----
+----        -- 本体金額を集約する
+--        ln_gl_amount := ln_gl_amount + gt_sales_exp_tbl( sale_idx ).pure_amount;
+----
+--        -- 課税の場合、消費税額を集約する
+--        IF ( gt_sales_exp_tbl( sale_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
+--          ln_gl_tax := ln_gl_tax + gt_sales_exp_tbl( sale_idx ).tax_amount;
+--        END IF;
+----
+--        -- カードレコードの場合、上記２で生成したカードレコードも集約
+--        IF ( lt_card_sale_class = cv_card_class ) THEN
+--          <<gt_sales_card_tbl_loop>>
+--          FOR i IN ln_card_pt .. gt_sales_card_tbl.COUNT LOOP
+--            IF (  lt_invoice_number = gt_sales_card_tbl( i ).dlv_invoice_number
+--              AND lt_invoice_class  = gt_sales_card_tbl( i ).dlv_invoice_class
+--              AND lt_goods_prod_cls = gt_sales_card_tbl( i ).goods_prod_cls
+--              AND lt_gccs_segment3  = gt_sales_card_tbl( i ).gccs_segment3
+--              AND lt_tax_code       = gt_sales_card_tbl( i ).tax_code
+--            ) THEN
+--              -- 本体金額を集約する
+--              ln_gl_amount   := ln_gl_amount + gt_sales_card_tbl( i ).pure_amount;
+--              -- 課税の場合、消費税額を集約する
+--              IF ( gt_sales_card_tbl( ln_card_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
+--                ln_gl_tax := ln_gl_tax + gt_sales_card_tbl( i ).tax_amount;
+--              END IF;
+--              ln_card_pt := ln_card_pt + 1;
+--            END IF;
+--          END LOOP gt_sales_card_tbl_loop;
+--        ELSIF ( sale_idx = gn_target_cnt AND ln_card_pt <= gt_sales_card_tbl.COUNT) THEN
+--          -- 生成したカードレコードだけの集約
+--
+--          -- 集約キーの値セット
+--          lt_invoice_number_card := gt_sales_card_tbl( ln_card_pt ).dlv_invoice_number;
+--          lt_invoice_class_card  := gt_sales_card_tbl( ln_card_pt ).dlv_invoice_class;
+--          lt_goods_prod_cls_card := gt_sales_card_tbl( ln_card_pt ).goods_prod_cls;
+--          lt_gccs_segment3_card  := gt_sales_card_tbl( ln_card_pt ).gccs_segment3;
+--          lt_tax_code_card       := gt_sales_card_tbl( ln_card_pt ).tax_code;
+----
+--          -- 生成したカードレコードだけの集約開始
+--          FOR i IN ln_card_pt .. gt_sales_card_tbl.COUNT LOOP
+--            IF (  lt_invoice_number_card = gt_sales_card_tbl( i ).dlv_invoice_number
+--              AND lt_invoice_class_card  = gt_sales_card_tbl( i ).dlv_invoice_class
+--              AND lt_goods_prod_cls_card = gt_sales_card_tbl( i ).goods_prod_cls
+--              AND lt_gccs_segment3_card  = gt_sales_card_tbl( i ).gccs_segment3
+--              AND lt_tax_code_card       = gt_sales_card_tbl( i ).tax_code
+--            ) THEN
+--              -- 本体金額を集約する
+--              ln_gl_amount_card := ln_gl_amount_card + gt_sales_card_tbl( i ).pure_amount;
+--              -- 課税の場合、消費税額を集約する
+--              IF ( gt_sales_card_tbl( ln_card_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
+--                ln_gl_tax_card  := ln_gl_tax_card + gt_sales_card_tbl( i ).tax_amount;
+--              END IF;
+--              -- カードレコードの現ポイントをカウントする
+--              ln_card_pt := ln_card_pt + 1;
+--            END IF;
+--
+--          END LOOP gt_sales_card_tbl_loop;
+----
+--          -- 集約フラグ’N'を設定
+--          lv_sum_card_flag := cv_n_flag;
+--        END IF;
+--      ELSE
+--        lv_sum_flag := cv_n_flag;
+--      END IF;
+--
+--      -- 最後のレコードになると集約フラグ’N'を設定
+--      IF ( sale_idx = gn_target_cnt ) THEN
+--        lv_sum_flag := cv_n_flag;
+--      END IF;
+--
+      -- 販売実績ヘッダ更新のため：ROWIDの設定
+      gt_sales_h_tbl( sale_idx )            := gt_sales_exp_tbl( sale_idx ).xseh_rowid;
+--
       --=====================================
       --３.GL一般会計OIFデータの集約
       --=====================================
-      IF (  lt_invoice_number   = gt_sales_exp_tbl( sale_idx ).dlv_invoice_number
-        AND lt_invoice_class    = gt_sales_exp_tbl( sale_idx ).dlv_invoice_class
-        AND lt_card_sale_class  = gt_sales_exp_tbl( sale_idx ).card_sale_class
-        AND lt_goods_prod_cls   = gt_sales_exp_tbl( sale_idx ).goods_prod_cls
-        AND lt_gccs_segment3    = gt_sales_exp_tbl( sale_idx ).gccs_segment3
-        AND lt_tax_code         = gt_sales_exp_tbl( sale_idx ).tax_code
-         ) THEN
---
-        -- 集約するフラグ初期設定
-        lv_sum_flag      := cv_y_flag;
-        lv_sum_card_flag := cv_y_flag;
---
---        -- 本体金額を集約する
-        ln_gl_amount := ln_gl_amount + gt_sales_exp_tbl( sale_idx ).pure_amount;
---
-        -- 課税の場合、消費税額を集約する
-        IF ( gt_sales_exp_tbl( sale_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
-          ln_gl_tax := ln_gl_tax + gt_sales_exp_tbl( sale_idx ).tax_amount;
-        END IF;
---
-        -- カードレコードの場合、上記２で生成したカードレコードも集約
-        IF ( lt_card_sale_class = cv_card_class ) THEN
-          <<gt_sales_card_tbl_loop>>
-          FOR i IN ln_card_pt .. gt_sales_card_tbl.COUNT LOOP
-            IF (  lt_invoice_number = gt_sales_card_tbl( i ).dlv_invoice_number
-              AND lt_invoice_class  = gt_sales_card_tbl( i ).dlv_invoice_class
-              AND lt_goods_prod_cls = gt_sales_card_tbl( i ).goods_prod_cls
-              AND lt_gccs_segment3  = gt_sales_card_tbl( i ).gccs_segment3
-              AND lt_tax_code       = gt_sales_card_tbl( i ).tax_code
-            ) THEN
-              -- 本体金額を集約する
-              ln_gl_amount   := ln_gl_amount + gt_sales_card_tbl( i ).pure_amount;
-              -- 課税の場合、消費税額を集約する
-              IF ( gt_sales_card_tbl( ln_card_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
-                ln_gl_tax := ln_gl_tax + gt_sales_card_tbl( i ).tax_amount;
-              END IF;
-              ln_card_pt := ln_card_pt + 1;
-            END IF;
-          END LOOP gt_sales_card_tbl_loop;
-        ELSIF ( sale_idx = gn_target_cnt AND ln_card_pt <= gt_sales_card_tbl.COUNT) THEN
-          -- 生成したカードレコードだけの集約
---
-          -- 集約キーの値セット
-          lt_invoice_number_card := gt_sales_card_tbl( ln_card_pt ).dlv_invoice_number;
-          lt_invoice_class_card  := gt_sales_card_tbl( ln_card_pt ).dlv_invoice_class;
-          lt_goods_prod_cls_card := gt_sales_card_tbl( ln_card_pt ).goods_prod_cls;
-          lt_gccs_segment3_card  := gt_sales_card_tbl( ln_card_pt ).gccs_segment3;
-          lt_tax_code_card       := gt_sales_card_tbl( ln_card_pt ).tax_code;
---
-          -- 生成したカードレコードだけの集約開始
-          FOR i IN ln_card_pt .. gt_sales_card_tbl.COUNT LOOP
-            IF (  lt_invoice_number_card = gt_sales_card_tbl( i ).dlv_invoice_number
-              AND lt_invoice_class_card  = gt_sales_card_tbl( i ).dlv_invoice_class
-              AND lt_goods_prod_cls_card = gt_sales_card_tbl( i ).goods_prod_cls
-              AND lt_gccs_segment3_card  = gt_sales_card_tbl( i ).gccs_segment3
-              AND lt_tax_code_card       = gt_sales_card_tbl( i ).tax_code
-            ) THEN
-              -- 本体金額を集約する
-              ln_gl_amount_card := ln_gl_amount_card + gt_sales_card_tbl( i ).pure_amount;
-              -- 課税の場合、消費税額を集約する
-              IF ( gt_sales_card_tbl( ln_card_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
-                ln_gl_tax_card  := ln_gl_tax_card + gt_sales_card_tbl( i ).tax_amount;
-              END IF;
-              -- カードレコードの現ポイントをカウントする
-              ln_card_pt := ln_card_pt + 1;
-            END IF;
---
-          END LOOP gt_sales_card_tbl_loop;
---
-          -- 集約フラグ’N'を設定
-          lv_sum_card_flag := cv_n_flag;
-        END IF;
-      ELSE
+      --次明細のインデックス値を取得
+      lnsale_idx_plus := sale_idx + 1;
+      --現在行が最後か
+      IF sale_idx = gn_target_cnt THEN
+        --OIF出力
+        lv_sum_flag := cv_n_flag;
+      --集約キーに相違あるか。
+      ELSIF  (    lt_sales_exp_header_id  <> gt_sales_exp_tbl( lnsale_idx_plus ).sales_exp_header_id ) THEN
+        --OIF出力
         lv_sum_flag := cv_n_flag;
       END IF;
 --
-      -- 最後のレコードになると集約フラグ’N'を設定
-      IF ( sale_idx = gn_target_cnt ) THEN
-        lv_sum_flag := cv_n_flag;
+      -- 本体金額を集約する
+      ln_gl_amount := ln_gl_amount + gt_sales_exp_tbl( sale_idx ).pure_amount;
+--
+      -- 課税の場合、消費税額を集約する
+      IF ( gt_sales_exp_tbl( sale_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
+        ln_gl_tax := ln_gl_tax + gt_sales_exp_tbl( sale_idx ).tax_amount;
       END IF;
+--
+      --OIF出力かつ併用カードデータがあれば、併用カード情報集約
+      IF (lv_sum_flag = cv_n_flag AND ln_card_pt <= gt_sales_card_tbl.COUNT) THEN
+        -- 生成したカードレコードだけの集約
+        lt_sales_exp_header_id_card := gt_sales_exp_tbl( sale_idx ).sales_exp_header_id;   --販売実績ヘッダID
+        --仕訳パターン用
+        lt_red_black_flag_card      := gt_sales_exp_tbl( sale_idx ).red_black_flag;        --赤黒フラグ
+--
+        -- 生成したカードレコードだけの集約開始
+        FOR i IN ln_card_pt .. gt_sales_card_tbl.COUNT LOOP
+          IF (  lt_sales_exp_header_id_card = gt_sales_card_tbl( i ).sales_exp_header_id ) THEN
+            -- 本体金額を集約する
+            ln_gl_amount_card := ln_gl_amount_card + gt_sales_card_tbl( i ).pure_amount;
+            -- カードレコードの現ポイントをカウントする
+            ln_card_pt := ln_card_pt + 1;
+          END IF;
+--
+        END LOOP gt_sales_card_tbl_loop;
+        --
+        --カード消費税額算出
+        ln_gl_tax_card   := ln_gl_amount_card * gt_sales_exp_tbl( sale_idx ).tax_rate / 
+                              ( ct_percent + gt_sales_exp_tbl( sale_idx ).tax_rate );
+       -- 端数処理
+       IF ( gt_sales_exp_tbl( sale_idx ).bill_tax_round = ct_round_rule_up ) THEN
+         -- 切り上げの場合
+         ln_gl_tax_card   := roundup( ln_gl_tax_card );
+
+       ELSIF ( gt_sales_exp_tbl( sale_idx ).bill_tax_round = ct_round_rule_down ) THEN
+         -- 切り下げの場合
+         ln_gl_tax_card   := TRUNC( ln_gl_tax_card );
+
+       ELSIF ( gt_sales_exp_tbl( sale_idx ).bill_tax_round = ct_round_rule_nearest ) THEN
+         -- 四捨五入の場合
+         ln_gl_tax_card   := ROUND( ln_gl_tax_card );
+       END IF;
+        --カード本体(税抜)金額算出
+        ln_gl_amount_card := ln_gl_amount_card - ln_gl_tax_card;
+--
+      END IF;
+--****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
 --
       -- -- 集約フラグ’N'の場合、下記OIF仕訳編集処理を行う
-      IF ( lv_sum_flag = cv_n_flag OR lv_sum_card_flag = cv_n_flag ) THEN   
+--****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
+--      IF ( lv_sum_flag = cv_n_flag OR lv_sum_card_flag = cv_n_flag ) THEN
+      IF ( lv_sum_flag = cv_n_flag) THEN
+--****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
 --
         -- 仕訳パターンよりGL OIFの仕訳を編集する
         <<gt_jour_cls_tbl_loop>>
         FOR jcls_idx IN 1 .. gt_jour_cls_tbl.COUNT LOOP
 --
-          IF ( (    gt_jour_cls_tbl( jcls_idx ).dlv_invoice_class = lt_invoice_class
-                AND gt_jour_cls_tbl( jcls_idx ).card_sale_class   = lt_card_sale_class
-                AND gt_jour_cls_tbl( jcls_idx ).goods_prod_cls    = lt_goods_prod_cls
-                )
-            OR (    gt_jour_cls_tbl( jcls_idx ).dlv_invoice_class = lt_invoice_number_card
-                AND gt_jour_cls_tbl( jcls_idx ).card_sale_class   = cv_card_class
-                AND gt_jour_cls_tbl( jcls_idx ).goods_prod_cls    = lt_goods_prod_cls_card
-                )
-              ) THEN
+--******************************* 2009/05/13 1.6 T.Kitajima MOD START *******************************--
+--          IF ( (    gt_jour_cls_tbl( jcls_idx ).dlv_invoice_class = lt_invoice_class
+--                AND gt_jour_cls_tbl( jcls_idx ).card_sale_class   = lt_card_sale_class
+--                AND gt_jour_cls_tbl( jcls_idx ).goods_prod_cls    = lt_goods_prod_cls
+--                )
+--            OR (    gt_jour_cls_tbl( jcls_idx ).dlv_invoice_class = lt_invoice_number_card
+--                AND gt_jour_cls_tbl( jcls_idx ).card_sale_class   = cv_card_class
+--                AND gt_jour_cls_tbl( jcls_idx ).goods_prod_cls    = lt_goods_prod_cls_card
+--                )
+--              ) THEN
+--            -- 現金・VD未収金仮勘定の場合
+--            IF (   gt_jour_cls_tbl( jcls_idx ).gl_segment3_nm    = lv_cash_msg
+--                OR gt_jour_cls_tbl( jcls_idx ).gl_segment3_nm    = lv_vd_msg ) THEN
+--              IF ( ln_gl_amount_card > 0 AND lv_sum_card_flag = cv_n_flag ) THEN
+--                ln_gl_total_card := ln_gl_tax_card + ln_gl_amount_card;         -- 金額
+--              END IF;
+--              ln_gl_total        := ln_gl_tax + ln_gl_amount;                   -- 金額
+--              lt_gl_segment3     := gt_jour_cls_tbl( jcls_idx ).segment3;       -- 勘定科目コード
+--            -- 仮受消費税等の場合
+--            ELSIF ( gt_jour_cls_tbl( jcls_idx ).gl_segment3_nm = lv_tax_msg ) THEN
+--              IF ( ln_gl_amount_card > 0 AND lv_sum_card_flag = cv_n_flag ) THEN
+--                ln_gl_total_card := ln_gl_tax_card;                             -- 金額
+--              END IF;
+--              ln_gl_total        := ln_gl_tax;                                  -- 金額
+--              lt_gl_segment3     := gt_sales_exp_tbl( sale_idx ).gcct_segment3; -- 勘定科目コード
+--              -- 製品売上と商品売上の場合
+--            ELSE
+--              IF ( ln_gl_amount_card > 0 AND lv_sum_card_flag = cv_n_flag ) THEN
+--                ln_gl_total_card := ln_gl_amount_card;                           -- 金額
+--              END IF;
+--              ln_gl_total        := ln_gl_amount;                               -- 金額
+--              lt_gl_segment3     := gt_sales_exp_tbl( sale_idx ).gccs_segment3; --勘定科目コード
+--            END IF;
+--
+          --現金仕分用データ
+          IF (      gt_jour_cls_tbl( jcls_idx ).red_black_flag  = lt_red_black_flag
+                AND gt_jour_cls_tbl( jcls_idx ).card_sale_class = lt_card_sale_class
+             )
+          THEN
             -- 現金・VD未収金仮勘定の場合
-            IF (   gt_jour_cls_tbl( jcls_idx ).gl_segment3_nm    = lv_cash_msg
-                OR gt_jour_cls_tbl( jcls_idx ).gl_segment3_nm    = lv_vd_msg ) THEN
-              IF ( ln_gl_amount_card > 0 AND lv_sum_card_flag = cv_n_flag ) THEN
-                ln_gl_total_card := ln_gl_tax_card + ln_gl_amount_card;         -- 金額
-              END IF;
-              ln_gl_total        := ln_gl_tax + ln_gl_amount;                   -- 金額
-              lt_gl_segment3     := gt_jour_cls_tbl( jcls_idx ).segment3;       -- 勘定科目コード
+            IF (    gt_jour_cls_tbl( jcls_idx ).gl_segment3_nm  = lv_cash_msg
+                 OR gt_jour_cls_tbl( jcls_idx ).gl_segment3_nm  = lv_vd_msg
+               )
+            THEN
+              ln_gl_total_card   := 0;                                                                          -- カード金額
+              ln_gl_total        := abs( ( ln_gl_amount + ln_gl_tax ) - (ln_gl_tax_card + ln_gl_amount_card) ); -- 現金金額
+              lt_gl_segment3     := gt_jour_cls_tbl( jcls_idx ).segment3;                                        -- 勘定科目コード
             -- 仮受消費税等の場合
             ELSIF ( gt_jour_cls_tbl( jcls_idx ).gl_segment3_nm = lv_tax_msg ) THEN
-              IF ( ln_gl_amount_card > 0 AND lv_sum_card_flag = cv_n_flag ) THEN
-                ln_gl_total_card := ln_gl_tax_card;                             -- 金額
-              END IF;
-              ln_gl_total        := ln_gl_tax;                                  -- 金額
-              lt_gl_segment3     := gt_sales_exp_tbl( sale_idx ).gcct_segment3; -- 勘定科目コード
-              -- 製品売上と商品売上の場合
+              ln_gl_total_card   := 0;                                                                      -- カード金額
+              ln_gl_total        := abs( ln_gl_tax - ln_gl_tax_card );                                      -- 現金金額
+              lt_gl_segment3     := gt_sales_exp_tbl( sale_idx ).gcct_segment3;                             -- 勘定科目コード
+            -- 製品売上と商品売上の場合
             ELSE
-              IF ( ln_gl_amount_card > 0 AND lv_sum_card_flag = cv_n_flag ) THEN
-                ln_gl_total_card := ln_gl_amount_card;                           -- 金額
+              ln_gl_total_card   := 0;                                                                      -- カード金額
+              ln_gl_total        := abs( ln_gl_amount - ln_gl_amount_card );                                -- 現金金額
+              lt_gl_segment3     := gt_jour_cls_tbl( jcls_idx ).segment3;                                   -- 勘定科目コード
+            END IF;
+          --併用カード仕分用データ
+          ELSIF  (     gt_jour_cls_tbl( jcls_idx ).red_black_flag    = lt_red_black_flag_card
+                   AND gt_jour_cls_tbl( jcls_idx ).card_sale_class   = cv_card_class
+                 )
+          THEN
+            -- 現金・VD未収金仮勘定の場合
+            IF (    gt_jour_cls_tbl( jcls_idx ).gl_segment3_nm    = lv_cash_msg
+                 OR gt_jour_cls_tbl( jcls_idx ).gl_segment3_nm    = lv_vd_msg
+               )
+            THEN
+              ln_gl_total_card   := abs( ln_gl_tax_card + ln_gl_amount_card );                              -- カード金額
+              ln_gl_total        := 0 ;                                                                     -- 現金金額
+              lt_gl_segment3     := gt_jour_cls_tbl( jcls_idx ).segment3;                                   -- 勘定科目コード
+            -- 仮受消費税等の場合
+            ELSIF ( gt_jour_cls_tbl( jcls_idx ).gl_segment3_nm = lv_tax_msg ) THEN
+              ln_gl_total_card   := abs( ln_gl_tax_card );                                                  -- カード金額
+              ln_gl_total        := 0 ;                                                                     -- 現金金額
+              lt_gl_segment3     := gt_sales_exp_tbl( sale_idx ).gcct_segment3;                             -- 勘定科目コード
+            -- 製品売上と商品売上の場合
+            ELSE
+              ln_gl_total_card   := abs( ln_gl_amount_card );                                               -- カード金額
+              ln_gl_total        := 0;                                                                      -- 現金金額
+              lt_gl_segment3     := gt_jour_cls_tbl( jcls_idx ).segment3;                                   -- 勘定科目コード
+            END IF;
+          END IF;   -- 借方・貸方行毎にGL OIFデータ作成終了
+--******************************* 2009/05/13 1.6 T.Kitajima MOD  END *******************************--
+--
+          ln_card_jour := ln_card_pt - 1;
+          IF (  gt_jour_cls_tbl( jcls_idx ).line_type = lv_enter_dr_msg ) THEN
+            -- 借方行
+--
+            --===========================================
+            --A-4.GL一般会計OIFデータ作成処理を呼び出し
+            --===========================================
+--******************************* 2009/05/13 1.6 T.Kitajima MOD START *******************************--
+--              IF ( ln_gl_total > 0 AND lv_sum_flag = cv_n_flag ) THEN
+              --金額が発生している場合出力する
+            IF ( ln_gl_total != 0) THEN
+--******************************* 2009/05/13 1.6 T.Kitajima MOD  END *******************************--
+              --販売実績元データの集約
+              ln_gl_idx := ln_gl_idx + 1;
+              edit_gl_data(
+                            ov_errbuf                 => lv_errbuf        -- エラー・メッセージ
+                          , ov_retcode                => lv_retcode       -- リターン・コード
+                          , ov_errmsg                 => lv_errmsg        -- ユーザー・エラー・メッセージ
+                          , in_gl_idx                 => ln_gl_idx        -- GL OIF データインデックス
+                          , in_sale_idx               => sale_idx         -- 販売実績データインデックス
+                          , iv_card_flg               => cv_n_flag        -- 販売実績データ仕訳
+                          , in_card_idx               => NULL             -- カードデータインデックス
+                          , in_jcls_idx               => jcls_idx         -- 仕訳パターンインデックス
+                          , iv_gl_segment3            => lt_gl_segment3   -- 勘定科目コード
+                          , in_entered_dr             => ln_gl_total      -- 借方金額
+                          , in_entered_cr             => NULL             -- 貸方金額
+                        );
+              IF ( lv_retcode = cv_status_error ) THEN
+                RAISE edit_gl_expt;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+              ELSIF ( lv_retcode = cv_status_warn ) THEN
+                lv_err_code := cv_status_warn;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
               END IF;
-              ln_gl_total        := ln_gl_amount;                               -- 金額
-              lt_gl_segment3     := gt_sales_exp_tbl( sale_idx ).gccs_segment3; --勘定科目コード
+              ln_gl_total := 0;
             END IF;
 --
-            ln_card_jour := ln_card_pt - 1;
-            IF (  gt_jour_cls_tbl( jcls_idx ).line_type = lv_enter_dr_msg ) THEN
-              -- 借方行
+--******************************* 2009/05/13 1.6 T.Kitajima MOD START *******************************--
+--              IF ( ln_gl_total_card > 0 AND lv_sum_card_flag = cv_n_flag ) THEN
+              --金額が発生している場合出力する
+            IF ( ln_gl_total_card != 0 ) THEN
+--******************************* 2009/05/13 1.6 T.Kitajima MOD  END *******************************--
+              --生成したカードレコードだけの集約データ
+              ln_gl_idx  := ln_gl_idx  + 1;
+              edit_gl_data(
+                            ov_errbuf                 => lv_errbuf        -- エラー・メッセージ
+                          , ov_retcode                => lv_retcode       -- リターン・コード
+                          , ov_errmsg                 => lv_errmsg        -- ユーザー・エラー・メッセージ
+                          , in_gl_idx                 => ln_gl_idx        -- GL OIF データインデックス
+                          , in_sale_idx               => sale_idx         -- 販売実績データインデックス
+                          , iv_card_flg               => cv_y_flag        -- 生成したカードデータ仕訳フラグ
+                          , in_card_idx               => ln_card_jour     -- カードデータインデックス
+                          , in_jcls_idx               => jcls_idx         -- 仕訳パターンインデックス
+                          , iv_gl_segment3            => lt_gl_segment3   -- 勘定科目コード
+                          , in_entered_dr             => ln_gl_total_card -- 借方金額
+                          , in_entered_cr             => NULL             -- 貸方金額
+                          );
+              IF ( lv_retcode = cv_status_error ) THEN
+                RAISE edit_gl_expt;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+              ELSIF ( lv_retcode = cv_status_warn ) THEN
+                lv_err_code := cv_status_warn;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
+              END IF;
+              ln_gl_total_card := 0;
+            END IF;
+--
+          ELSIF ( gt_jour_cls_tbl( jcls_idx ).line_type = lv_enter_cr_msg ) THEN
+            -- 貸方行
 --
               --===========================================
               --A-4.GL一般会計OIFデータ作成処理を呼び出し
               --===========================================
-              IF ( ln_gl_total > 0 AND lv_sum_flag = cv_n_flag ) THEN
-                --販売実績元データの集約
-                ln_gl_idx := ln_gl_idx + 1;
-                edit_gl_data(
-                              ov_errbuf                 => lv_errbuf        -- エラー・メッセージ
-                            , ov_retcode                => lv_retcode       -- リターン・コード
-                            , ov_errmsg                 => lv_errmsg        -- ユーザー・エラー・メッセージ
-                            , in_gl_idx                 => ln_gl_idx        -- GL OIF データインデックス
-                            , in_sale_idx               => sale_idx         -- 販売実績データインデックス
-                            , iv_card_flg               => cv_n_flag        -- 販売実績データ仕訳
-                            , in_card_idx               => NULL             -- カードデータインデックス
-                            , in_jcls_idx               => jcls_idx         -- 仕訳パターンインデックス
-                            , iv_gl_segment3            => lt_gl_segment3   -- 勘定科目コード
-                            , in_entered_dr             => ln_gl_total      -- 借方金額
-                            , in_entered_cr             => NULL             -- 貸方金額
-                          );
-                IF ( lv_retcode = cv_status_error ) THEN
-                  RAISE edit_gl_expt;
+--******************************* 2009/05/13 1.6 T.Kitajima MOD START *******************************--
+--              IF ( ln_gl_total > 0 AND lv_sum_flag = cv_n_flag ) THEN
+            --金額が発生している場合出力する
+            IF ( ln_gl_total != 0 ) THEN
+--******************************* 2009/05/13 1.6 T.Kitajima MOD  END *******************************--
+              --販売実績データの集約
+              ln_gl_idx := ln_gl_idx + 1;
+              edit_gl_data(
+                            ov_errbuf                 => lv_errbuf        -- エラー・メッセージ
+                          , ov_retcode                => lv_retcode       -- リターン・コード
+                          , ov_errmsg                 => lv_errmsg        -- ユーザー・エラー・メッセージ
+                          , in_gl_idx                 => ln_gl_idx        -- GL OIF データインデックス
+                          , in_sale_idx               => sale_idx         -- 販売実績データインデックス
+                          , iv_card_flg               => cv_n_flag        -- 販売実績データ仕訳
+                          , in_card_idx               => NULL             -- カードデータインデックス
+                          , in_jcls_idx               => jcls_idx         -- 仕訳パターンインデックス
+                          , iv_gl_segment3            => lt_gl_segment3   -- 勘定科目コード
+                          , in_entered_dr             => NULL             -- 借方金額
+                          , in_entered_cr             => ln_gl_total      -- 貸方金額
+                        );
+              IF ( lv_retcode = cv_status_error ) THEN
+                RAISE edit_gl_expt;
 --******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
-                ELSIF ( lv_retcode = cv_status_warn ) THEN
-                  lv_err_code := cv_status_warn;
+              ELSIF ( lv_retcode = cv_status_warn ) THEN
+                lv_err_code := cv_status_warn;
 --******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
-                END IF;
-                ln_gl_total := 0;
               END IF;
---
-              IF ( ln_gl_total_card > 0 AND lv_sum_card_flag = cv_n_flag ) THEN
-                --生成したカードレコードだけの集約データ
-                ln_gl_idx  := ln_gl_idx  + 1;
-                edit_gl_data(
-                              ov_errbuf                 => lv_errbuf        -- エラー・メッセージ
-                            , ov_retcode                => lv_retcode       -- リターン・コード
-                            , ov_errmsg                 => lv_errmsg        -- ユーザー・エラー・メッセージ
-                            , in_gl_idx                 => ln_gl_idx        -- GL OIF データインデックス
-                            , in_sale_idx               => sale_idx         -- 販売実績データインデックス
-                            , iv_card_flg               => cv_y_flag        -- 生成したカードデータ仕訳フラグ
-                            , in_card_idx               => ln_card_jour     -- カードデータインデックス
-                            , in_jcls_idx               => jcls_idx         -- 仕訳パターンインデックス
-                            , iv_gl_segment3            => lt_gl_segment3   -- 勘定科目コード
-                            , in_entered_dr             => ln_gl_total_card -- 借方金額
-                            , in_entered_cr             => NULL             -- 貸方金額
-                            );
-                IF ( lv_retcode = cv_status_error ) THEN
-                  RAISE edit_gl_expt;
---******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
-                ELSIF ( lv_retcode = cv_status_warn ) THEN
-                  lv_err_code := cv_status_warn;
---******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
-                END IF;
-                ln_gl_total_card := 0;
-              END IF;
---
-            ELSIF ( gt_jour_cls_tbl( jcls_idx ).line_type = lv_enter_cr_msg ) THEN
-              -- 貸方行
---
-              --===========================================
-              --A-4.GL一般会計OIFデータ作成処理を呼び出し
-              --===========================================
-              IF ( ln_gl_total > 0 AND lv_sum_flag = cv_n_flag ) THEN
-                --販売実績データの集約
-                ln_gl_idx := ln_gl_idx + 1;
-                edit_gl_data(
-                              ov_errbuf                 => lv_errbuf        -- エラー・メッセージ
-                            , ov_retcode                => lv_retcode       -- リターン・コード
-                            , ov_errmsg                 => lv_errmsg        -- ユーザー・エラー・メッセージ
-                            , in_gl_idx                 => ln_gl_idx        -- GL OIF データインデックス
-                            , in_sale_idx               => sale_idx         -- 販売実績データインデックス
-                            , iv_card_flg               => cv_n_flag        -- 販売実績データ仕訳
-                            , in_card_idx               => NULL             -- カードデータインデックス
-                            , in_jcls_idx               => jcls_idx         -- 仕訳パターンインデックス
-                            , iv_gl_segment3            => lt_gl_segment3   -- 勘定科目コード
-                            , in_entered_dr             => NULL             -- 借方金額
-                            , in_entered_cr             => ln_gl_total      -- 貸方金額
-                          );
-                IF ( lv_retcode = cv_status_error ) THEN
-                  RAISE edit_gl_expt;
---******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
-                ELSIF ( lv_retcode = cv_status_warn ) THEN
-                  lv_err_code := cv_status_warn;
---******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
-                END IF;
-                ln_gl_total := 0;
-              END IF;
---
-              IF ( ln_gl_total_card > 0 AND lv_sum_card_flag = cv_n_flag ) THEN
-                ln_gl_idx  := ln_gl_idx  + 1;
-                --生成したカードレコードだけの集約データ
-                edit_gl_data(
-                              ov_errbuf                 => lv_errbuf        -- エラー・メッセージ
-                            , ov_retcode                => lv_retcode       -- リターン・コード
-                            , ov_errmsg                 => lv_errmsg        -- ユーザー・エラー・メッセージ
-                            , in_gl_idx                 => ln_gl_idx        -- GL OIF データインデックス
-                            , in_sale_idx               => sale_idx         -- 販売実績データインデックス
-                            , iv_card_flg               => cv_y_flag        -- 生成したカードデータ仕訳フラグ
-                            , in_card_idx               => ln_card_jour     -- カードデータインデックス
-                            , in_jcls_idx               => jcls_idx         -- 仕訳パターンインデックス
-                            , iv_gl_segment3            => lt_gl_segment3   -- 勘定科目コード
-                            , in_entered_dr             => NULL             -- 借方金額
-                            , in_entered_cr             => ln_gl_total_card -- 貸方金額
-                            );
-                IF ( lv_retcode = cv_status_error ) THEN
-                  RAISE edit_gl_expt;
---******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
-                ELSIF ( lv_retcode = cv_status_warn ) THEN
-                  lv_err_code := cv_status_warn;
---******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
-                END IF;
-                ln_gl_total_card := 0;
-              END IF;
---
-            ELSE    -- 借方行と貸方行ではない場合、エラー
-              lv_errmsg    := xxccp_common_pkg.get_msg(
-                                  iv_application  => cv_xxcos_short_nm
-                                , iv_name         => cv_jour_nodata_msg
-                                , iv_token_name1  => cv_tkn_lookup_type
-                                , iv_token_value1 => ct_qct_jour_cls
-                     );
-              lv_errbuf := lv_errmsg;
-              RAISE non_jour_cls_expt;
+              ln_gl_total := 0;
             END IF;
 --
-          END IF;                                                       -- 借方・貸方行毎にGL OIFデータ作成終了
+--******************************* 2009/05/13 1.6 T.Kitajima MOD START *******************************--
+--              IF ( ln_gl_total_card > 0 AND lv_sum_card_flag = cv_n_flag ) THEN
+            --金額が発生している場合出力する
+            IF ( ln_gl_total_card != 0 ) THEN
+--******************************* 2009/05/13 1.6 T.Kitajima MOD  END *******************************--
+              ln_gl_idx  := ln_gl_idx  + 1;
+              --生成したカードレコードだけの集約データ
+              edit_gl_data(
+                            ov_errbuf                 => lv_errbuf        -- エラー・メッセージ
+                          , ov_retcode                => lv_retcode       -- リターン・コード
+                          , ov_errmsg                 => lv_errmsg        -- ユーザー・エラー・メッセージ
+                          , in_gl_idx                 => ln_gl_idx        -- GL OIF データインデックス
+                          , in_sale_idx               => sale_idx         -- 販売実績データインデックス
+                          , iv_card_flg               => cv_y_flag        -- 生成したカードデータ仕訳フラグ
+                          , in_card_idx               => ln_card_jour     -- カードデータインデックス
+                          , in_jcls_idx               => jcls_idx         -- 仕訳パターンインデックス
+                          , iv_gl_segment3            => lt_gl_segment3   -- 勘定科目コード
+                          , in_entered_dr             => NULL             -- 借方金額
+                          , in_entered_cr             => ln_gl_total_card -- 貸方金額
+                          );
+              IF ( lv_retcode = cv_status_error ) THEN
+                RAISE edit_gl_expt;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+              ELSIF ( lv_retcode = cv_status_warn ) THEN
+                lv_err_code := cv_status_warn;
+--******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
+              END IF;
+              ln_gl_total_card := 0;
+            END IF;
+--
+          ELSE    -- 借方行と貸方行ではない場合、エラー
+            lv_errmsg    := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_xxcos_short_nm
+                              , iv_name         => cv_jour_nodata_msg
+                              , iv_token_name1  => cv_tkn_lookup_type
+                              , iv_token_value1 => ct_qct_jour_cls
+                   );
+            lv_errbuf := lv_errmsg;
+            RAISE non_jour_cls_expt;
+          END IF;
+--
+--******************************* 2009/05/13 1.6 T.Kitajima DEL START *******************************--
+--          END IF;                                                       -- 借方・貸方行毎にGL OIFデータ作成終了
+--******************************* 2009/05/13 1.6 T.Kitajima DEL  END  *******************************--
         END LOOP gt_jour_cls_tbl_loop;                                  -- 仕訳パターンよりデータ作成処理終了
 --
-      END IF;                                                           -- 集約キー毎にGL OIFデータの集約終了
---
---******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
-      -- 販売実績ヘッダ更新のため：ROWIDの設定
-      gt_sales_h_tbl( sale_idx )            := gt_sales_exp_tbl( sale_idx ).xseh_rowid;
---******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
---
-      IF ( lv_sum_flag = cv_n_flag OR lv_sum_card_flag = cv_n_flag ) THEN   
-        -- 集約キーと集約金額のリセット
-        lt_invoice_number   := gt_sales_exp_tbl( sale_idx ).dlv_invoice_number;
-        lt_invoice_class    := gt_sales_exp_tbl( sale_idx ).dlv_invoice_class;
-        lt_card_sale_class  := gt_sales_exp_tbl( sale_idx ).card_sale_class;
-        lt_goods_prod_cls   := gt_sales_exp_tbl( sale_idx ).goods_prod_cls;
-        lt_gccs_segment3    := gt_sales_exp_tbl( sale_idx ).gccs_segment3;
-        lt_tax_code         := gt_sales_exp_tbl( sale_idx ).tax_code;
---
-        ln_gl_amount        := gt_sales_exp_tbl( sale_idx ).pure_amount;
-        IF ( gt_sales_exp_tbl( sale_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
-          ln_gl_tax         := gt_sales_exp_tbl( sale_idx ).tax_amount;
+        IF sale_idx < gn_target_cnt THEN
+          -- 集約キーと集約金額のリセット
+--******************************* 2009/05/13 1.6 T.Kitajima MOD START *******************************--
+--          lt_invoice_number   := gt_sales_exp_tbl( lnsale_idx_plus ).dlv_invoice_number;
+--          lt_invoice_class    := gt_sales_exp_tbl( lnsale_idx_plus ).dlv_invoice_class;
+--          lt_card_sale_class  := gt_sales_exp_tbl( lnsale_idx_plus ).card_sale_class;
+--          lt_goods_prod_cls   := gt_sales_exp_tbl( lnsale_idx_plus ).goods_prod_cls;
+--          lt_gccs_segment3    := gt_sales_exp_tbl( lnsale_idx_plus ).gccs_segment3;
+--          lt_tax_code         := gt_sales_exp_tbl( lnsale_idx_plus ).tax_code;
+          lt_sales_exp_header_id  := gt_sales_exp_tbl( lnsale_idx_plus ).sales_exp_header_id; --販売実績ヘッダ
+          --仕訳パターン用
+          lt_red_black_flag       := gt_sales_exp_tbl( lnsale_idx_plus ).red_black_flag;      --赤黒フラグ
+          lt_card_sale_class      := gt_sales_exp_tbl( lnsale_idx_plus ).card_sale_class;     --カード売り区分
+          lv_sum_flag             := cv_y_flag;                                               --OIF出力フラグ
+--******************************* 2009/05/13 1.6 T.Kitajima MOD  END  *******************************--
+          ln_gl_amount := 0;
+          ln_gl_tax    := 0;
+          ln_gl_amount_card := 0;
+          ln_gl_tax_card    := 0;
         END IF;
 --
---******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
         --ループ中にA-4処理がワーニングだった場合
         IF ( lv_err_code = cv_status_warn ) THEN
           gt_gl_interface_tbl.DELETE(ln_index_work,ln_gl_idx);
@@ -1835,9 +2351,49 @@ AS
 --
         ln_index_work := ln_gl_idx + 1;
         ln_sale_idx   := sale_idx + 1;
---******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
 --
-      END IF;
+      END IF;                                                           -- 集約キー毎にGL OIFデータの集約終了
+--
+--******************************* 2009/05/13 1.6 T.Kitajima DEL START *******************************--
+--      -- 販売実績ヘッダ更新のため：ROWIDの設定
+--      gt_sales_h_tbl( sale_idx )            := gt_sales_exp_tbl( sale_idx ).xseh_rowid;
+----******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
+--
+--      IF ( lv_sum_flag = cv_n_flag OR lv_sum_card_flag = cv_n_flag ) THEN
+--        -- 集約キーと集約金額のリセット
+--        lt_invoice_number   := gt_sales_exp_tbl( sale_idx ).dlv_invoice_number;
+--        lt_invoice_class    := gt_sales_exp_tbl( sale_idx ).dlv_invoice_class;
+--        lt_card_sale_class  := gt_sales_exp_tbl( sale_idx ).card_sale_class;
+--        lt_goods_prod_cls   := gt_sales_exp_tbl( sale_idx ).goods_prod_cls;
+--        lt_gccs_segment3    := gt_sales_exp_tbl( sale_idx ).gccs_segment3;
+--        lt_tax_code         := gt_sales_exp_tbl( sale_idx ).tax_code;
+----
+--        ln_gl_amount        := gt_sales_exp_tbl( sale_idx ).pure_amount;
+--        IF ( gt_sales_exp_tbl( sale_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
+--          ln_gl_tax         := gt_sales_exp_tbl( sale_idx ).tax_amount;
+--        END IF;
+--
+--
+----******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
+--        --ループ中にA-4処理がワーニングだった場合
+--        IF ( lv_err_code = cv_status_warn ) THEN
+--          gt_gl_interface_tbl.DELETE(ln_index_work,ln_gl_idx);
+--          gt_sales_h_tbl.DELETE(ln_sale_idx,sale_idx);
+--          IF ln_index_work = 1 THEN
+--            gn_warn_cnt := ln_gl_idx;
+--          ELSE
+--            gn_warn_cnt   := gn_warn_cnt + ( ln_gl_idx - ln_index_work ) + 1;
+--          END IF;
+--          lv_err_code   := cv_status_normal;
+--          ov_retcode    := cv_status_warn;
+--        END IF;
+----
+--        ln_index_work := ln_gl_idx + 1;
+--        ln_sale_idx   := sale_idx + 1;
+----******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
+----
+--      END IF;
+--******************************* 2009/05/13 1.6 T.Kitajima DEL  END  *******************************--
 --
 --******************************** 2009/03/26 1.4 T.Kitajima DEL START *****************************
 --      -- 販売実績ヘッダ更新のため：ROWIDの設定
@@ -2148,7 +2704,6 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : submain
-   
    * Description      : サブメイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain
