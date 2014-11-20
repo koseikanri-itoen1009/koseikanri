@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.16
+ * Version                : 1.17
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *  2008/12/02   1.14  oracle 二瓶     本番障害#251対応（条件追加) 
  *  2008/12/15   1.15  oracle 伊藤     本番障害#645対応 D4,S4 予定日でなく実績日で取得する。
  *  2008/12/18   1.16  oracle 伊藤     本番障害#648対応 I5,I6 訂正前数量 - 実績数量を返す。
+ *  2008/12/24   1.17  oracle 山本     本番障害#836対応 S3    生産入庫予定抽出条件追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1350,6 +1351,9 @@ AS
     AND     itp.completed_ind      = ln_not_yet        -- 未決定
     AND     itp.doc_type           = lv_tran_doc_type
     AND     itp.lot_id             = in_lot_id
+-- 2008/12/18 v1.17 Y.Yamamoto add start 本番障害#836
+    AND     itp.delete_mark        = 0
+-- 2008/12/18 v1.17 Y.Yamamoto add end   本番障害#836
     AND     gmd.material_detail_id = mld.mov_line_id
     AND     mld.document_type_code = cv_doc_type
     AND     mld.record_type_code   = cv_rec_type
