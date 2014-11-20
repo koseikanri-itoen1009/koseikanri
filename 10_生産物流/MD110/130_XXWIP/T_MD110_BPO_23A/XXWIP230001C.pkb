@@ -8,7 +8,7 @@ AS
  * Description      : 生産帳票機能（生産依頼書兼生産指図書）
  * MD.050/070       : 生産帳票機能（生産依頼書兼生産指図書）Issue1.0  (T_MD050_BPO_230)
  *                    生産帳票機能（生産依頼書兼生産指図書）          (T_MD070_BPO_23A)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -37,6 +37,10 @@ AS
  *  2008/06/04    1.4   Daisuke  Nihei      結合テスト不具合対応（生産指示書表示不正)
  *  2008/07/02    1.5   Satoshi  Yunba      禁則文字対応
  *  2008/07/18    1.6   Hitomi   Itou       結合テスト 指摘23対応 生産依頼書の時、保留中・手配済も対象とする
+ *  2008/10/28    1.7   Daisuke  Nihei      統合障害#183対応 入力日時の結合先を作成日から更新日に変更する
+ *                                          統合障害#196対応 一度引き当ててある品目のデフォルトロットを表示しない
+ *                                          T_TE080_BPO_230 No15対応 生産指図書の時、手配済も対象とする
+ *                                          統合障害#499対応 製造日、在庫入数の参照先変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -110,6 +114,9 @@ AS
   gv_tkn_param2                 CONSTANT VARCHAR2(100) := 'PARAM2';                                -- トークン：PARAM2
   gv_tkn_item                   CONSTANT VARCHAR2(100) := 'ITEM';                                  -- トークン：ITEM
   gv_tkn_value                  CONSTANT VARCHAR2(100) := 'VALUE';                                 -- トークン：VALUE
+-- 2008/10/28 v1.7 D.Nihei ADD START 統合障害#499
+  gv_doc_type_prod              CONSTANT VARCHAR2(4)   := 'PROD';                                  -- PROD (生産)
+-- 2008/10/28 v1.7 D.Nihei ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -127,8 +134,12 @@ AS
      ,id_tehai_no_from    gme_batch_header.batch_no%TYPE                -- 手配No(FROM)
      ,id_tehai_no_to      gme_batch_header.batch_no%TYPE                -- 手配No(TO)
      ,iv_hinmoku_cd       xxcmn_item_mst2_v.item_no%TYPE                -- 品目コード
-     ,id_input_date_from  gme_batch_header.creation_date%TYPE           -- 入力日時(FROM)
-     ,id_input_date_to    gme_batch_header.creation_date%TYPE           -- 入力日時(TO)
+-- 2008/10/28 v1.7 D.Nihei MOD START
+--     ,id_input_date_from  gme_batch_header.creation_date%TYPE           -- 入力日時(FROM)
+--     ,id_input_date_to    gme_batch_header.creation_date%TYPE           -- 入力日時(TO)
+     ,id_input_date_from  gme_batch_header.last_update_date%TYPE           -- 入力日時(FROM)
+     ,id_input_date_to    gme_batch_header.last_update_date%TYPE           -- 入力日時(TO)
+-- 2008/10/28 v1.7 D.Nihei MOD END
     ) ;
 --
   -- ヘッダーデータ格納用レコード変数
@@ -170,8 +181,12 @@ AS
      ,l_lot_no                ic_lots_mst.lot_no%TYPE                       -- ロットno
      ,l_monve_no              xxwip_material_detail.plan_number%TYPE        -- 移動番号
      ,l_souko                 xxwip_material_detail.location_code%TYPE      -- 倉庫
-     ,l_make_date             gme_material_details.attribute11%TYPE         -- 製造日
-     ,l_stock                 gme_material_details.attribute6%TYPE          -- 在庫入数
+-- 2008/10/28 v1.7 D.Nihei MOD START 統合障害#499
+--     ,l_make_date             gme_material_details.attribute11%TYPE         -- 製造日
+--     ,l_stock                 gme_material_details.attribute6%TYPE          -- 在庫入数
+     ,l_make_date             ic_lots_mst.attribute1%TYPE                   -- 製造日
+     ,l_stock                 ic_lots_mst.attribute6%TYPE                   -- 在庫入数
+-- 2008/10/28 v1.7 D.Nihei MOD END
      ,l_total                 ic_tran_pnd.trans_qty%TYPE                    -- 総数
      ,l_unit                  ic_tran_pnd.trans_um%TYPE                     -- 単位
      ,l_material_detail_id    gme_material_details.material_detail_id%TYPE  -- 生産原料詳細ID
@@ -184,7 +199,10 @@ AS
     (
       l_item_cd               xxcmn_item_mst2_v.item_no%TYPE                -- 品目コード
      ,l_item_nm               xxcmn_item_mst2_v.item_short_name%TYPE        -- 品目名称
-     ,l_stock                 gme_material_details.attribute6%TYPE          -- 在庫入数
+-- 2008/10/28 v1.7 D.Nihei MOD START 統合障害#499
+--     ,l_stock                 gme_material_details.attribute6%TYPE          -- 在庫入数
+     ,l_stock                 ic_lots_mst.attribute6%TYPE                   -- 在庫入数
+-- 2008/10/28 v1.7 D.Nihei MOD END
      ,l_total                 xxwip_material_detail.instructions_qty%TYPE   -- 総数
      ,l_unit                  xxcmn_item_mst2_v.item_um%TYPE                -- 単位
     ) ;
@@ -621,6 +639,9 @@ AS
     lv_itaku_saki             VARCHAR2(100) DEFAULT NULL;
     -- 指図総数
     ln_sasizu_total           NUMBER DEFAULT 0;
+-- 2008/10/28 v1.7 D.Nihei ADD START
+    lt_prev_item_no           xxcmn_item_mst2_v.item_no%TYPE;  -- 退避用品目コード
+-- 2008/10/28 v1.7 D.Nihei ADD END
 --
     -- *** ローカル・例外処理 ***
     no_data_expt            EXCEPTION ;           -- 取得レコードなし
@@ -835,6 +856,9 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_meisai_info';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
 --
+-- 2008/10/28 v1.7 D.Nihei ADD START
+    lt_prev_item_no := 'ZZZ';
+-- 2008/10/28 v1.7 D.Nihei ADD END
     <<tonyu_data_loop>>
     FOR i IN 1..it_tonyu_data.COUNT LOOP
 --
@@ -847,101 +871,108 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_mei_tonyu';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
       END IF;
-      -- -----------------------------------------------------
-      -- 投入Ｇデータタグ出力
-      -- -----------------------------------------------------
-      -- 行開始タグ
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'g_mei_tonyu';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
-      -- =====================================================
-      -- 明細（投入）タイトル取得処理
-      -- =====================================================
-      -- 新缶煎ラインの場合
-      IF (it_tonyu_data(i).l_shinkansen_kbn = 'Y') THEN
-        prc_get_mei_title_data
-          (
-            iv_material_detail_id  =>   it_tonyu_data(i).l_material_detail_id
-           ,ov_mei_title           =>   lv_mei_title
-           ,ov_errbuf              =>   lv_errbuf          -- エラー・メッセージ           --# 固定 #
-           ,ov_retcode             =>   lv_retcode         -- リターン・コード             --# 固定 #
-           ,ov_errmsg              =>   lv_errmsg          -- ユーザー・エラー・メッセージ  --# 固定 #
-          );
+-- 2008/10/28 v1.7 D.Nihei ADD START
+      IF ( ( lt_prev_item_no <> it_tonyu_data(i).l_item_cd ) OR ( it_tonyu_data(i).l_lot_no IS NOT NULL ) ) THEN
+-- 2008/10/28 v1.7 D.Nihei ADD END
+        -- -----------------------------------------------------
+        -- 投入Ｇデータタグ出力
+        -- -----------------------------------------------------
+        -- 行開始タグ
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'g_mei_tonyu';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
+        -- =====================================================
+        -- 明細（投入）タイトル取得処理
+        -- =====================================================
+        -- 新缶煎ラインの場合
+        IF (it_tonyu_data(i).l_shinkansen_kbn = 'Y') THEN
+          prc_get_mei_title_data
+            (
+              iv_material_detail_id  =>   it_tonyu_data(i).l_material_detail_id
+             ,ov_mei_title           =>   lv_mei_title
+             ,ov_errbuf              =>   lv_errbuf          -- エラー・メッセージ           --# 固定 #
+             ,ov_retcode             =>   lv_retcode         -- リターン・コード             --# 固定 #
+             ,ov_errmsg              =>   lv_errmsg          -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
 --
-        IF (lv_retcode = gv_status_error) THEN
-          RAISE global_process_expt ;
-        END IF ;
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE global_process_expt ;
+          END IF ;
 --
-        IF (lv_mei_title IS NULL) THEN
-          RAISE no_data_expt ;
+          IF (lv_mei_title IS NULL) THEN
+            RAISE no_data_expt ;
+          END IF;
+--
+          lv_mei_title := lv_mei_title || '投入';
+        ELSE
+          lv_mei_title := gv_tonyu_title;
         END IF;
 --
-        lv_mei_title := lv_mei_title || '投入';
-      ELSE
-        lv_mei_title := gv_tonyu_title;
-      END IF;
+        IF (lv_break_mei_title <> lv_mei_title) THEN
+          -- 明細タイトル
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_title';
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := '＜' || lv_mei_title || '＞';
 --
-      IF (lv_break_mei_title <> lv_mei_title) THEN
-        -- 明細タイトル
+          lv_break_mei_title := lv_mei_title;
+--
+        END IF;
+--
+        -- 品目コード
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_title';
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_hinmk_cd';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := '＜' || lv_mei_title || '＞';
+        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_item_cd ;
+        -- 品目名称
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_hinmk_nm';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_item_nm ;
+        -- ロットNo
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_lot_no';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_lot_no ;
+        -- 移動番号
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_move_no';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_monve_no ;
+        -- 倉庫
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_souko';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_souko ;
+        -- 製造日
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_make_day';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_make_date ;
+        -- 在庫入数
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_stock';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_stock ;
+        -- 総数
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_total';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_total * -1;
+        -- 単位
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_unit';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_unit ;
+        -- 行終了タグ
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := '/g_mei_tonyu';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
 --
-      lv_break_mei_title := lv_mei_title;
---
+-- 2008/10/28 v1.7 D.Nihei ADD START
       END IF;
---
-      -- 品目コード
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_hinmk_cd';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_item_cd ;
-      -- 品目名称
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_hinmk_nm';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_item_nm ;
-      -- ロットNo
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_lot_no';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_lot_no ;
-      -- 移動番号
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_move_no';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_monve_no ;
-      -- 倉庫
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_souko';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_souko ;
-      -- 製造日
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_make_day';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_make_date ;
-      -- 在庫入数
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_stock';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_stock ;
-      -- 総数
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_total';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_total * -1;
-      -- 単位
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_unit';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_unit ;
-      -- 行終了タグ
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := '/g_mei_tonyu';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
---
+      lt_prev_item_no := it_tonyu_data(i).l_item_cd;
+-- 2008/10/28 v1.7 D.Nihei ADD END
       -- 明細情報を出力した場合
       IF (i = it_tonyu_data.COUNT) THEN
         -- -----------------------------------------------------
@@ -954,6 +985,9 @@ AS
 --
     END LOOP tonyu_data_loop ;
 --
+-- 2008/10/28 v1.7 D.Nihei ADD START
+    lt_prev_item_no := 'ZZZ';
+-- 2008/10/28 v1.7 D.Nihei ADD END
     <<utikomi_data_loop>>
     FOR i IN 1..it_utikomi_data.COUNT LOOP
 --
@@ -965,70 +999,77 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_mei_utikomi';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
       END IF;
-      -- -----------------------------------------------------
-      -- 打込Ｇデータタグ出力
-      -- -----------------------------------------------------
-      -- 行開始タグ
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'g_mei_utikomi';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
-      -- 明細タイトル
-      IF (i = 1) THEN
+-- 2008/10/28 v1.7 D.Nihei ADD START
+      IF ( ( lt_prev_item_no <> it_utikomi_data(i).l_item_cd ) OR ( it_utikomi_data(i).l_lot_no IS NOT NULL ) ) THEN
+-- 2008/10/28 v1.7 D.Nihei ADD END
+        -- -----------------------------------------------------
+        -- 打込Ｇデータタグ出力
+        -- -----------------------------------------------------
+        -- 行開始タグ
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_title';
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'g_mei_utikomi';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
+        -- 明細タイトル
+        IF (i = 1) THEN
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_title';
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := gv_utikomi_title ;
+        END IF;
+        -- 品目コード
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_hinmk_cd';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := gv_utikomi_title ;
-      END IF;
-      -- 品目コード
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_hinmk_cd';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_item_cd;
-      -- 品目名称
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_hinmk_nm';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_item_nm;
-      -- ロットNo
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_lot_no';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_lot_no;
-      -- 移動番号
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_move_no';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_monve_no;
-      -- 倉庫
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_souko';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_souko;
-      -- 製造日
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_make_day';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_make_date;
-      -- 在庫入数
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_stock';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_stock;
-      -- 総数
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_total';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_total * -1;
-      -- 単位
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_unit';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_unit;
-      -- 行終了タグ
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := '/g_mei_utikomi';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
+        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_item_cd;
+        -- 品目名称
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_hinmk_nm';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_item_nm;
+        -- ロットNo
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_lot_no';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_lot_no;
+        -- 移動番号
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_move_no';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_monve_no;
+        -- 倉庫
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_souko';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_souko;
+        -- 製造日
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_make_day';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_make_date;
+        -- 在庫入数
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_stock';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_stock;
+        -- 総数
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_total';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_total * -1;
+        -- 単位
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_unit';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_unit;
+        -- 行終了タグ
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := '/g_mei_utikomi';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
 --
+-- 2008/10/28 v1.7 D.Nihei ADD START
+      END IF;
+      lt_prev_item_no := it_utikomi_data(i).l_item_cd;
+-- 2008/10/28 v1.7 D.Nihei ADD END
       IF (i = it_utikomi_data.COUNT) THEN
         -- -----------------------------------------------------
         -- 明細（投入）Ｇ終了タグ出力
@@ -1303,7 +1344,10 @@ AS
     IS
       SELECT ximv.item_no             AS item_no            -- 品目コード
             ,ximv.item_short_name     AS item_desc1         -- 品目名称
-            ,gmd.attribute6           AS attribute6         -- 在庫入数
+-- 2008/10/28 v1.7 D.Nihei MOD START 統合障害#499
+--            ,gmd.attribute6           AS attribute6         -- 在庫入数
+            ,ilm.attribute6           AS attribute6         -- 在庫入数
+-- 2008/10/28 v1.7 D.Nihei MOD END
 -- 2008/05/23 D.Nihei MOD START
 --            ,xmd.instructions_qty     AS trans_qty          -- 総数
             ,NVL(xmd.instructions_qty, gmd.attribute7) 
@@ -1438,8 +1482,12 @@ AS
                                       AS plan_number        -- 移動番号
 -- 2008/05/30 D.Nihei MOD END
             ,xmd.location_code        AS location_code      -- 出庫元倉庫
-            ,gmd.attribute11          AS attribute11        -- 製造日
-            ,gmd.attribute6           AS attribute6         -- 在庫入数
+-- 2008/10/28 v1.7 D.Nihei MOD START 統合障害#499
+--            ,gmd.attribute11          AS attribute11        -- 製造日
+--            ,gmd.attribute6           AS attribute6         -- 在庫入数
+            ,ilm.attribute1           AS attribute1         -- 製造日
+            ,ilm.attribute6           AS attribute6         -- 在庫入数
+-- 2008/10/28 v1.7 D.Nihei MOD END
             ,itp.trans_qty            AS trans_qty          -- 総数
             ,itp.trans_um             AS trans_um           -- 単位
             ,gmd.material_detail_id   AS material_detail_id -- 生産原料詳細ID
@@ -1486,6 +1534,9 @@ AS
       AND ABS(itp.trans_qty)      > 0
       AND itp.delete_mark         = 0
       AND gbh.batch_id            = iv_batch_id
+-- 2008/10/28 v1.7 D.Nihei ADD START 統合障害#499
+      AND itp.doc_type            = gv_doc_type_prod
+-- 2008/10/28 v1.7 D.Nihei ADD END
       ORDER BY  DECODE (iv_utikomi_kbn,
                         NULL, gmd.attribute8)
                ,xicv.item_class_code
@@ -1588,8 +1639,12 @@ AS
        ,id_tehai_no_from        gme_batch_header.batch_no%TYPE
        ,id_tehai_no_to          gme_batch_header.batch_no%TYPE
        ,iv_hinmoku_cd           ic_item_mst_vl.item_no%TYPE
-       ,id_input_date_from      gmd_routings_vl.creation_date%TYPE
-       ,id_input_date_to        gmd_routings_vl.creation_date%TYPE
+-- 2008/10/28 v1.7 D.Nihei MOD START
+--       ,id_input_date_from      gmd_routings_vl.creation_date%TYPE
+--       ,id_input_date_to        gmd_routings_vl.creation_date%TYPE
+       ,id_input_date_from      gmd_routings_vl.last_update_date%TYPE
+       ,id_input_date_to        gmd_routings_vl.last_update_date%TYPE
+-- 2008/10/28 v1.7 D.Nihei MOD END
       )
     IS
       SELECT somv.orgn_name           AS l_itaku_saki             -- 委託先
@@ -1650,8 +1705,11 @@ AS
       AND grv.attribute13             = NVL(iv_den_kbn, grv.attribute13)
       AND gbh.plant_code              = iv_plant
       AND grv.routing_no              = NVL(iv_line_no, grv.routing_no)
-      AND TRUNC(gbh.creation_date, 'MI') BETWEEN TRUNC(id_input_date_from, 'MI')
-                                         AND     TRUNC(id_input_date_to, 'MI')
+-- 2008/10/28 v1.7 D.Nihei MOD START
+--      AND TRUNC(gbh.creation_date, 'MI') BETWEEN TRUNC(id_input_date_from, 'MI')
+      AND TRUNC(gbh.last_update_date, 'MI') BETWEEN TRUNC(id_input_date_from, 'MI')
+-- 2008/10/28 v1.7 D.Nihei MOD END
+                                            AND     TRUNC(id_input_date_to, 'MI')
       AND gbh.batch_no                >= NVL(id_tehai_no_from, gbh.batch_no)
       AND gbh.batch_no                <= NVL(id_tehai_no_to, gbh.batch_no)
       AND TRUNC(gbh.plan_start_date)  >= NVL(id_make_plan_from, TRUNC(gbh.plan_start_date))
@@ -1670,6 +1728,9 @@ AS
            OR
             (    iv_chohyo_kbn        = gv_chohyo_kbn_sasizu
              AND gbh.attribute4         IN( gv_status_sasizu_zumi
+-- 2008/10/28 v1.7 D.Nihei ADD START
+                                           ,gv_status_tehai_zumi    -- 手配済
+-- 2008/10/28 v1.7 D.Nihei ADD END
                                            ,gv_status_uketuke_zumi )
             )
           )
@@ -1677,6 +1738,9 @@ AS
       AND itp.reverse_id(+)           IS NULL
       AND itp.lot_id(+)               > 0
       AND itp.delete_mark(+)          = 0
+-- 2008/10/28 v1.7 D.Nihei ADD START
+      AND itp.doc_type(+)             = gv_doc_type_prod
+-- 2008/10/28 v1.7 D.Nihei ADD END
       ORDER BY gbh.batch_no
     ;
 --

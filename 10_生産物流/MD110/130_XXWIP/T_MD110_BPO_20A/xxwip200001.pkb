@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.2
+ * Version                : 1.3
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -22,6 +22,7 @@ AS
  *  2008/08/28   1.0   D.Nihei          新規作成
  *  2008/10/07   1.1   D.Nihei          統合障害#123対応（PT 6-2_31）
  *  2008/10/22   1.2   D.Nihei          統合障害#123対応（PT 6-2_31）(ロットステータスVIEW箇所修正)
+ *  2008/10/29   1.3   D.Nihei          統合障害#481対応（ORDER BY句編集) 
  *****************************************************************************************/
 --
   -- 定数宣言
@@ -1180,7 +1181,10 @@ AS
       wk_sql2 := wk_sql2 || '      ORDER BY enable_lot.record_type             DESC ';
       wk_sql2 := wk_sql2 || '              ,enable_lot.whse_inside_outside_div DESC ';
       wk_sql2 := wk_sql2 || '              ,enable_lot.storehouse_code ';
-      wk_sql2 := wk_sql2 || '              ,TO_NUMBER( lot_no ) ';
+-- 2008/10/29 D.Nihei MOD START 統合障害#481
+--      wk_sql2 := wk_sql2 || '              ,TO_NUMBER( lot_no ) ';
+      wk_sql2 := wk_sql2 || '              ,TO_NUMBER( DECODE(lot_id ,0, NULL,lot_no) ) ';
+-- 2008/10/29 D.Nihei MOD END
 --
 -- 2008/10/07 D.Nihei DEL START
 --      EXECUTE IMMEDIATE wk_sql BULK COLLECT INTO ior_ilm_data ;

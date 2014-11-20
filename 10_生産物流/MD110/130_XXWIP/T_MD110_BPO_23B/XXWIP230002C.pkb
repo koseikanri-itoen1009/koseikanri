@@ -8,7 +8,7 @@ AS
  * Description      : 生産帳票機能（生産日報）
  * MD.050/070       : 生産帳票機能（生産日報）Issue1.0  (T_MD050_BPO_230)
  *                    生産帳票機能（生産日報）          (T_MD070_BPO_23B)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/06/04    1.3   Daisuke Nihei       結合テスト不具合対応　切／計込計算式不備対応
  *                                          結合テスト不具合対応　パーセント計算式不備対応
  *  2008/07/02    1.4   Satoshi Yunba       禁則文字対応
+ *  2008/10/28    1.5   Daisuke  Nihei      T_TE080_BPO_230 No15対応 入力日時の結合先を作成日から更新日に変更する
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -167,6 +168,9 @@ AS
   gv_min_date_char              CONSTANT VARCHAR2(10) := '1900/01/01' ;    -- 最小日付
   gv_max_date_char              CONSTANT VARCHAR2(10) := '4712/12/31' ;    -- 最大日付
 -- 追加 END 2008/05/20 YTabata
+-- 2008/10/28 v1.7 D.Nihei ADD START 統合障害#499
+  gv_doc_type_prod              CONSTANT VARCHAR2(4)   := 'PROD';                                  -- PROD (生産)
+-- 2008/10/28 v1.7 D.Nihei ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -182,8 +186,12 @@ AS
      ,id_tehai_no_from    gme_batch_header.batch_no%TYPE                -- 手配No(FROM)
      ,id_tehai_no_to      gme_batch_header.batch_no%TYPE                -- 手配No(TO)
      ,iv_hinmoku_cd       xxcmn_item_mst2_v.item_no%TYPE                -- 品目コード
-     ,id_input_date_from  gme_batch_header.creation_date%TYPE           -- 入力日時(FROM)
-     ,id_input_date_to    gme_batch_header.creation_date%TYPE           -- 入力日時(TO)
+-- 2008/10/28 v1.7 D.Nihei MOD START
+--     ,id_input_date_from  gme_batch_header.creation_date%TYPE           -- 入力日時(FROM)
+--     ,id_input_date_to    gme_batch_header.creation_date%TYPE           -- 入力日時(TO)
+     ,id_input_date_from  gme_batch_header.last_update_date%TYPE           -- 入力日時(FROM)
+     ,id_input_date_to    gme_batch_header.last_update_date%TYPE           -- 入力日時(TO)
+-- 2008/10/28 v1.7 D.Nihei MOD END
     ) ;
 --
   -- ヘッダーデータ格納用レコード変数
@@ -762,6 +770,9 @@ AS
     ln_kirikeikomi_total     NUMBER DEFAULT 0;
     -- 戻入（打込）明細サマリ用変数
     ln_reinyu_utikomi_total  NUMBER DEFAULT 0;
+-- 2008/10/28 v1.7 D.Nihei ADD START
+    ln_invest_total          NUMBER DEFAULT 0;
+-- 2008/10/28 v1.7 D.Nihei ADD END
 --
   BEGIN
 --
@@ -1269,6 +1280,9 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_type  := 'T';
 --
     END IF;
+-- 2008/10/28 v1.7 D.Nihei ADD START
+    ln_invest_total := NVL(ln_tounyu_total, 0) - NVL(ln_reinyu_tounyu_total, 0);
+-- 2008/10/28 v1.7 D.Nihei ADD END
 --
 --=========================================================================
     -- -----------------------------------------------------
@@ -1352,12 +1366,19 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_name  := 'fsanbutu_percent';
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
       -- （副産物数／総投入品数）×100（少数点第3位で四捨五入）
-      gt_xml_data_table(gl_xml_idx).tag_value :=
--- 2008/06/04 D.Nihei MOD START
---                  TO_CHAR( ROUND( ( (it_fukusanbutu_data(l_cnt).l_total / ln_tounyu_total ) * 100 ) , 2)
-                  TO_CHAR( ROUND( ( (it_fukusanbutu_data(l_cnt).l_total / (ln_tounyu_total - ln_reinyu_tounyu_total) ) * 100 ) , 2)
--- 2008/06/04 D.Nihei MOD END
-                          ,gv_num_format3);
+-- 2008/10/28 v1.7 D.Nihei ADD START
+--      gt_xml_data_table(gl_xml_idx).tag_value :=
+---- 2008/06/04 D.Nihei MOD START
+----                  TO_CHAR( ROUND( ( (it_fukusanbutu_data(l_cnt).l_total / ln_tounyu_total ) * 100 ) , 2)
+--                  TO_CHAR( ROUND( ( (it_fukusanbutu_data(l_cnt).l_total / (ln_tounyu_total - ln_reinyu_tounyu_total) ) * 100 ) , 2)
+---- 2008/06/04 D.Nihei MOD END
+--                          ,gv_num_format3);
+      IF ( ( NVL(it_fukusanbutu_data(l_cnt).l_total, 0) = 0 ) OR ( ln_invest_total = 0 ) ) THEN
+        gt_xml_data_table(gl_xml_idx).tag_value := 0;
+      ELSE
+        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR( ROUND( ( (it_fukusanbutu_data(l_cnt).l_total / ln_invest_total ) * 100 ) , 2), gv_num_format3);
+      END IF;
+-- 2008/10/28 v1.7 D.Nihei ADD END
 --
       -- 【タグ】副産物明細データ終了タグ
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
@@ -1397,12 +1418,19 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_name  := 'fsanbutu_sum_percent';
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
       -- （副産物明細合計数／総投入品数）×100（少数点第3位で四捨五入）
-      gt_xml_data_table(gl_xml_idx).tag_value :=
--- 2008/06/04 D.Nihei MOD START
---                  TO_CHAR( ROUND( ( (ln_fukusanbutu_total / ln_tounyu_total ) * 100 ) , 2)
-                  TO_CHAR( ROUND( ( (ln_fukusanbutu_total / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 ) , 2)
--- 2008/06/04 D.Nihei MOD END
-                          ,gv_num_format3);
+-- 2008/10/28 v1.7 D.Nihei ADD START
+--      gt_xml_data_table(gl_xml_idx).tag_value :=
+---- 2008/06/04 D.Nihei MOD START
+----                  TO_CHAR( ROUND( ( (ln_fukusanbutu_total / ln_tounyu_total ) * 100 ) , 2)
+--                  TO_CHAR( ROUND( ( (ln_fukusanbutu_total / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 ) , 2)
+---- 2008/06/04 D.Nihei MOD END
+--                          ,gv_num_format3);
+      IF ( ( NVL(ln_fukusanbutu_total, 0) = 0 ) OR ( ln_invest_total = 0 ) ) THEN
+        gt_xml_data_table(gl_xml_idx).tag_value := 0;
+      ELSE
+        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR( ROUND( ( (ln_fukusanbutu_total / ln_invest_total ) * 100 ) , 2), gv_num_format3);
+      END IF;
+-- 2008/10/28 v1.7 D.Nihei ADD END
 --
       -- -----------------------------------------------------
       -- 副産物明細合計データ終了タグ出力
@@ -1568,13 +1596,20 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'siagesuu_percent';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      -- （仕上数／総投入品数）×100（少数点第3位で四捨五入）
-    gt_xml_data_table(gl_xml_idx).tag_value :=
--- 2008/06/04 D.Nihei MOD START
---                TO_CHAR( ROUND(  (ln_siage_total / ln_tounyu_total) * 100 , 2)
-                TO_CHAR( ROUND(  (ln_siage_total / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 , 2)
-                        ,gv_num_format3);
--- 2008/06/04 D.Nihei MOD END
+    -- （仕上数／総投入品数）×100（少数点第3位で四捨五入）
+-- 2008/10/28 v1.7 D.Nihei ADD START
+--    gt_xml_data_table(gl_xml_idx).tag_value :=
+---- 2008/06/04 D.Nihei MOD START
+----                TO_CHAR( ROUND(  (ln_siage_total / ln_tounyu_total) * 100 , 2)
+--                TO_CHAR( ROUND(  (ln_siage_total / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 , 2)
+--                        ,gv_num_format3);
+---- 2008/06/04 D.Nihei MOD END
+      IF ( ( NVL(ln_siage_total, 0) = 0 ) OR ( ln_invest_total = 0 ) ) THEN
+        gt_xml_data_table(gl_xml_idx).tag_value := 0;
+      ELSE
+        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR( ROUND( ( (ln_siage_total / ln_invest_total ) * 100 ) , 2), gv_num_format3);
+      END IF;
+-- 2008/10/28 v1.7 D.Nihei ADD END
 --
     -- -----------------------------------------------------
     -- 仕上数データ終了タグ出力
@@ -1736,12 +1771,19 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_percent';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
       -- 切／計込明細合計　／　投入合計　＊　100（少数点第3位で四捨五入）の値を出力
-    gt_xml_data_table(gl_xml_idx).tag_value :=
--- 2008/06/04 D.Nihei MOD START
---                TO_CHAR( ROUND( (ln_kirikeikomi_total / ln_tounyu_total) * 100 , 2)
-                TO_CHAR( ROUND( (ln_kirikeikomi_total / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 , 2)
--- 2008/06/04 D.Nihei MOD END
-                        ,gv_num_format3);
+-- 2008/10/28 v1.7 D.Nihei ADD START
+--    gt_xml_data_table(gl_xml_idx).tag_value :=
+---- 2008/06/04 D.Nihei MOD START
+----                TO_CHAR( ROUND( (ln_kirikeikomi_total / ln_tounyu_total) * 100 , 2)
+--                TO_CHAR( ROUND( (ln_kirikeikomi_total / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 , 2)
+---- 2008/06/04 D.Nihei MOD END
+--                        ,gv_num_format3);
+      IF ( ( NVL(ln_kirikeikomi_total, 0) = 0 ) OR ( ln_invest_total = 0 ) ) THEN
+        gt_xml_data_table(gl_xml_idx).tag_value := 0;
+      ELSE
+        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR( ROUND( ( (ln_kirikeikomi_total / ln_invest_total ) * 100 ) , 2), gv_num_format3);
+      END IF;
+-- 2008/10/28 v1.7 D.Nihei ADD END
 --
     -- -----------------------------------------------------
     -- 切／計込明細データ終了タグ出力
@@ -1771,12 +1813,19 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_name  := 'kirikeikomi_sum_percent';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
       -- 副産物・切れ計　／　「３」の投入計　＊　100（少数点第3位で四捨五入）の値を出力
-    gt_xml_data_table(gl_xml_idx).tag_value := 
--- 2008/06/04 D.Nihei MOD START
---                TO_CHAR( ROUND(((ln_fukusanbutu_total + ln_kirikeikomi_total) / ln_tounyu_total) * 100 , 2)
-                TO_CHAR( ROUND(((ln_fukusanbutu_total + ln_kirikeikomi_total) / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 , 2)
--- 2008/06/04 D.Nihei MOD END
-                        ,gv_num_format3);
+-- 2008/10/28 v1.7 D.Nihei ADD START
+--    gt_xml_data_table(gl_xml_idx).tag_value := 
+---- 2008/06/04 D.Nihei MOD START
+----                TO_CHAR( ROUND(((ln_fukusanbutu_total + ln_kirikeikomi_total) / ln_tounyu_total) * 100 , 2)
+--                TO_CHAR( ROUND(((ln_fukusanbutu_total + ln_kirikeikomi_total) / (ln_tounyu_total - ln_reinyu_tounyu_total)) * 100 , 2)
+---- 2008/06/04 D.Nihei MOD END
+--                        ,gv_num_format3);
+      IF ( ( ln_fukusanbutu_total + ln_kirikeikomi_total = 0 ) OR ( ln_invest_total = 0 ) ) THEN
+        gt_xml_data_table(gl_xml_idx).tag_value := 0;
+      ELSE
+        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR( ROUND(((ln_fukusanbutu_total + ln_kirikeikomi_total) / ln_invest_total) * 100 , 2), gv_num_format3);
+      END IF;
+-- 2008/10/28 v1.7 D.Nihei ADD END
 --
     -- -----------------------------------------------------
     -- 切／計込合計データ終了タグ出力
@@ -2385,6 +2434,9 @@ AS
     AND   gmd.batch_id              =  itp.doc_id
     AND   gmd.material_detail_id    =  itp.line_id
     AND   gmd.line_type             =  itp.line_type
+-- 2008/10/28 v1.7 D.Nihei ADD START
+    AND itp.doc_type                = gv_doc_type_prod
+-- 2008/10/28 v1.7 D.Nihei ADD END
     -- 下記2条件でIS NULLの代替とする
     AND   NOT EXISTS (SELECT 1
                       FROM ic_tran_pnd itp2
@@ -2428,8 +2480,12 @@ AS
                                               AND NVL(ir_param.id_input_date_to
                                                     , TRUNC(gbh.creation_date , 'MI'))
 **/
-    AND   gbh.creation_date  BETWEEN NVL(ir_param.id_input_date_from, gbh.creation_date )
-                                 AND NVL(ir_param.id_input_date_to, gbh.creation_date )
+-- 2008/10/28 v1.7 D.Nihei MOD START
+--    AND   gbh.creation_date  BETWEEN NVL(ir_param.id_input_date_from, gbh.creation_date )
+--                                 AND NVL(ir_param.id_input_date_to, gbh.creation_date )
+    AND   gbh.last_update_date  BETWEEN NVL(ir_param.id_input_date_from, gbh.last_update_date )
+                                AND     NVL(ir_param.id_input_date_to,   gbh.last_update_date )
+-- 2008/10/28 v1.7 D.Nihei MOD END
     ------------------------------------------------------------------------
     -- 生産原料詳細パラメータ条件
 -- 変更 START 2008/05/20 YTabata
@@ -2810,6 +2866,9 @@ AS
                       FROM ic_tran_pnd itp3
                       WHERE itp3.trans_id = itp.reverse_id)     -- リバースidが保留トランidに存在しないもの
     AND   itp.completed_ind    =  gv_comp_flag                  -- 完了フラグ＝「完了」
+-- 2008/10/28 v1.7 D.Nihei ADD START
+    AND itp.doc_type           = gv_doc_type_prod
+-- 2008/10/28 v1.7 D.Nihei ADD END
     ------------------------------------------------------------------------
     -- OPMロットマスタ条件
     AND   itp.item_id               =  ilm.item_id
@@ -2946,6 +3005,9 @@ AS
                       FROM ic_tran_pnd itp3
                       WHERE itp3.trans_id = itp.reverse_id)     -- リバースidが保留トランidに存在しないもの
     AND   itp.completed_ind    =  gv_comp_flag                  -- 完了フラグ＝「完了」
+-- 2008/10/28 v1.7 D.Nihei ADD START
+    AND   itp.doc_type              = gv_doc_type_prod
+-- 2008/10/28 v1.7 D.Nihei ADD END
     ------------------------------------------------------------------------
     -- OPMロットマスタ条件
     AND   itp.item_id               =  ilm.item_id
@@ -3073,6 +3135,9 @@ AS
     AND   xmd.material_detail_id    =  itp.line_id
     AND   xmd.item_id               =  itp.item_id
     AND   xmd.lot_id                =  itp.lot_id
+-- 2008/10/28 v1.7 D.Nihei ADD START
+    AND itp.doc_type                = gv_doc_type_prod
+-- 2008/10/28 v1.7 D.Nihei ADD END
     --下記2条件でIS NULLの代替とする
     AND   NOT EXISTS (SELECT 1
                       FROM ic_tran_pnd itp2
