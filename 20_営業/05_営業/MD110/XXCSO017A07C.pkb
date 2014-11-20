@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO017A07C(body)
  * Description      : 見積書アップロード
  * MD.050           : 見積書アップロード MD050_CSO_017_A07
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/01/26    1.0   Y.Horikawa       新規作成
+ *  2012/06/20    1.1   K.Kiriu          [T4障害]見積区分のチェック修正
  *
  *****************************************************************************************/
 --
@@ -1769,7 +1770,6 @@ AS
     lt_business_price          xxcso_inventory_items_v2.business_price%TYPE;
     ln_margin_amt              NUMBER;
     ln_margin_rate             NUMBER;
-
 --
     CURSOR get_quote_upload_work_cur
     IS
@@ -1847,7 +1847,10 @@ AS
 --
       IF (lt_business_check_spec.cust_code_warehouse) THEN
         IF (get_quote_upload_work_rec.cust_code_warehouse <> pre_quote_upload_work_rec.cust_code_warehouse
-          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+/* 2012/06/20 Ver1.1 Mod Start */
+--          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+          OR pre_quote_upload_work_rec.cust_code_warehouse IS NULL)
+/* 2012/06/20 Ver1.1 Mod End   */
         THEN
           --顧客（帳合問屋）コード
           BEGIN
@@ -1860,6 +1863,10 @@ AS
             AND   xcav.torihiki_form = cv_torihiki_form_tonya
             AND   xrcv.employee_number = gv_emp_number
             ;
+/* 2012/06/20 Ver1.1 Add Start */
+            --チェックOKとなったデータを保持
+            pre_quote_upload_work_rec.cust_code_warehouse := get_quote_upload_work_rec.cust_code_warehouse;
+/* 2012/06/20 Ver1.1 Add End   */
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               -- 顧客コード利用不可エラーメッセージ
@@ -1891,8 +1898,15 @@ AS
 --
       IF (lt_business_check_spec.store_price_tax_type) THEN
         IF (get_quote_upload_work_rec.store_price_tax_type <> pre_quote_upload_work_rec.store_price_tax_type
-          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+/* 2012/06/20 Ver1.1 Mod Start */
+--          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+          OR pre_quote_upload_work_rec.store_price_tax_type IS NULL)
+/* 2012/06/20 Ver1.1 Mod End   */
         THEN
+/* 2012/06/20 Ver1.1 Add Start */
+          -- 初期化
+          lt_store_price_tax_type := NULL;
+/* 2012/06/20 Ver1.1 Add End   */
           -- 小売価格税区分
           FOR get_lookup_code_rec IN get_lookup_code_cur(
                                        cv_lkup_tax_type,
@@ -1927,14 +1941,26 @@ AS
 --
             gn_warn_cnt := gn_warn_cnt + 1;
             ov_retcode := cv_status_warn;
+/* 2012/06/20 Ver1.1 Add Start */
+          ELSE
+            --チェックOKとなったデータを保持
+            pre_quote_upload_work_rec.store_price_tax_type := get_quote_upload_work_rec.store_price_tax_type ;
+/* 2012/06/20 Ver1.1 Add End   */
           END IF;
         END IF;
       END IF;
 --
       IF (lt_business_check_spec.deliv_price_tax_type) THEN
         IF (get_quote_upload_work_rec.deliv_price_tax_type <> pre_quote_upload_work_rec.deliv_price_tax_type
-          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+/* 2012/06/20 Ver1.1 Mod Start */
+--          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+          OR pre_quote_upload_work_rec.deliv_price_tax_type IS NULL)
+/* 2012/06/20 Ver1.1 Mod End   */
         THEN
+/* 2012/06/20 Ver1.1 Add Start */
+          -- 初期化
+          lt_deliv_price_tax_type := NULL;
+/* 2012/06/20 Ver1.1 Add End   */
           -- 店納価格税区分
           FOR get_lookup_code_rec IN get_lookup_code_cur(
                                        cv_lkup_tax_type,
@@ -1969,6 +1995,11 @@ AS
 --
             gn_warn_cnt := gn_warn_cnt + 1;
             ov_retcode := cv_status_warn;
+/* 2012/06/20 Ver1.1 Add Start */
+          ELSE
+            --チェックOKとなったデータを保持
+            pre_quote_upload_work_rec.deliv_price_tax_type := get_quote_upload_work_rec.deliv_price_tax_type;
+/* 2012/06/20 Ver1.1 Add End   */
           END IF;
           -- 仮払税率の決定
           IF (lt_deliv_price_tax_type = cv_price_inc_tax) THEN
@@ -1981,8 +2012,15 @@ AS
 --
       IF (lt_business_check_spec.unit_type) THEN
         IF (get_quote_upload_work_rec.unit_type <> pre_quote_upload_work_rec.unit_type
-          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+/* 2012/06/20 Ver1.1 Mod Start */
+--          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+          OR pre_quote_upload_work_rec.unit_type IS NULL )
+/* 2012/06/20 Ver1.1 Mod End   */
         THEN
+/* 2012/06/20 Ver1.1 Add Start */
+          -- 初期化
+          lt_unit_type := NULL;
+/* 2012/06/20 Ver1.1 Add End   */
           -- 単価区分
           FOR get_lookup_code_rec IN get_lookup_code_cur(
                                        cv_lkup_unit_price_div,
@@ -2017,13 +2055,21 @@ AS
 --
             gn_warn_cnt := gn_warn_cnt + 1;
             ov_retcode := cv_status_warn;
+/* 2012/06/20 Ver1.1 Add Start */
+          ELSE
+            --チェックOKとなったデータを保持
+            pre_quote_upload_work_rec.unit_type := get_quote_upload_work_rec.unit_type;
+/* 2012/06/20 Ver1.1 Add End   */
           END IF;
         END IF;
       END IF;
 --
       IF (lt_business_check_spec.cust_code_sale) THEN
         IF (get_quote_upload_work_rec.cust_code_sale <> pre_quote_upload_work_rec.cust_code_sale
-          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+/* 2012/06/20 Ver1.1 Mod Start */
+--          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+          OR pre_quote_upload_work_rec.cust_code_sale IS NULL)
+/* 2012/06/20 Ver1.1 Mod End   */
         THEN
           -- 顧客（販売先）コード
           BEGIN
@@ -2045,6 +2091,10 @@ AS
             AND   xcav.customer_class_code = cv_cust_class_tonya
             AND   xcav.customer_status IN (cv_cust_stat_stop, cv_cust_stat_other)
             ;
+/* 2012/06/20 Ver1.1 Add Start */
+            --チェックOKとなったデータを保持
+            pre_quote_upload_work_rec.cust_code_sale := get_quote_upload_work_rec.cust_code_sale;
+/* 2012/06/20 Ver1.1 Add End   */
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               -- 顧客コード利用不可エラーメッセージ
@@ -2077,7 +2127,10 @@ AS
       IF (lt_business_check_spec.item_code) THEN
         IF (get_quote_upload_work_rec.item_code <> pre_quote_upload_work_rec.item_code
           OR get_quote_upload_work_rec.unit_type <> pre_quote_upload_work_rec.unit_type
-          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+/* 2012/06/20 Ver1.1 Mod Start */
+--          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+          OR pre_quote_upload_work_rec.item_code IS NULL)
+/* 2012/06/20 Ver1.1 Mod End   */
         THEN
           -- 商品コード
           BEGIN
@@ -2093,6 +2146,10 @@ AS
             WHERE xiiv.inventory_item_code = get_quote_upload_work_rec.item_code
             AND   xiiv.item_status IN (cv_item_stat_pre_input, cv_item_stat_reg, cv_item_stat_no_plan, cv_item_stat_no_rma)
             ;
+/* 2012/06/20 Ver1.1 Add Start */
+            --チェックOKとなったデータを保持
+            pre_quote_upload_work_rec.item_code := get_quote_upload_work_rec.item_code;
+/* 2012/06/20 Ver1.1 Add End   */
   --
             -- 入数チェック
             IF (get_quote_upload_work_rec.unit_type = cv_unit_type_case) THEN
@@ -2167,8 +2224,15 @@ AS
 --
       IF (lt_business_check_spec.quote_div) THEN
         IF (get_quote_upload_work_rec.quote_div <> pre_quote_upload_work_rec.quote_div
-          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+/* 2012/06/20 Ver1.1 Mod Start */
+--          OR get_quote_upload_work_cur%ROWCOUNT = 1)
+          OR pre_quote_upload_work_rec.quote_div IS NULL)
+/* 2012/06/20 Ver1.1 Mod End   */
         THEN
+/* 2012/06/20 Ver1.1 Add Start */
+          -- 初期化
+          lt_quote_div := NULL;
+/* 2012/06/20 Ver1.1 Add End   */
           -- 見積区分
           FOR get_lookup_code_rec IN get_lookup_code_cur(
                                        cv_lkup_quote_div,
@@ -2203,6 +2267,11 @@ AS
 --
             gn_warn_cnt := gn_warn_cnt + 1;
             ov_retcode := cv_status_warn;
+/* 2012/06/20 Ver1.1 Add Start */
+          ELSE
+            --チェックOKとなったデータを保持
+            pre_quote_upload_work_rec.quote_div := get_quote_upload_work_rec.quote_div;
+/* 2012/06/20 Ver1.1 Add End   */
           END IF;
         END IF;
       END IF;
@@ -2719,7 +2788,9 @@ AS
         END IF;
       END IF;
 --
-      pre_quote_upload_work_rec := get_quote_upload_work_rec;
+/* 2012/06/20 Ver1.1 Del Start */
+--      pre_quote_upload_work_rec := get_quote_upload_work_rec;
+/* 2012/06/20 Ver1.1 Del End   */
 --
       -- 見積作成用データ配列保持
       ot_for_ins_quote_data_tab(get_quote_upload_work_cur%ROWCOUNT).line_no                    := get_quote_upload_work_rec.line_no;
