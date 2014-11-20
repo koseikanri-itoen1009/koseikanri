@@ -7,7 +7,7 @@ AS
  * Description      : “ü‹àÁžˆ—iHHTj
  * MD.050           : MD050_CFR_006_A03_“ü‹àÁžˆ—iHHTj
  * MD.070           : MD050_CFR_006_A03_“ü‹àÁžˆ—iHHTj
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/02/12    1.1  SCS T.KANEDA     [áŠQCOK_003] “ü‹àŠzŽæ“¾•s‹ï‡‘Î‰ž
  *  2009/07/15    1.2  SCS M.HIROSE     [áŠQ0000511] ƒpƒtƒH[ƒ}ƒ“ƒX‰ü‘P
  *  2010/01/12    1.3  SCS ˆÀì ’q”Ž    áŠQuE_–{‰Ò“®_01136v‘Î‰ž
+ *  2011/05/17    1.4  SCS “n•Ó Šw      áŠQuE_–{‰Ò“®_07434v‘Î‰ž
  *
  *****************************************************************************************/
 --
@@ -561,25 +562,45 @@ AS
 --
     -- ‘ÎÛÂŒ ‘ŠzŽæ“¾
     SELECT 
--- Modify 2009.07.15 Ver1.2 Start
-           /*+ INDEX(rcta RA_CUSTOMER_TRX_N11)
-               INDEX(apsa AR_PAYMENT_SCHEDULES_N2)
+-- Delete 2011.05.17 Ver1.4 Start
+---- Modify 2009.07.15 Ver1.2 Start
+--           /*+ INDEX(rcta RA_CUSTOMER_TRX_N11)
+--               INDEX(apsa AR_PAYMENT_SCHEDULES_N2)
+--           */
+---- Modify 2009.07.15 Ver1.2 End
+-- Delete 2011.05.17 Ver1.4 End
+-- Add 2011.05.17 Ver1.4 Start
+           /*+
+               LEADING(XCHVG APSA RCTA RADIST)
+               USE_NL (XCHVG APSA RCTA RADIST)
+               INDEX  (XCHVG   XXCFR_CUST_HIERARCHY_MV_N01)
+               INDEX  (APSA    AR_PAYMENT_SCHEDULES_N6)
+               INDEX  (RCTA    RA_CUSTOMER_TRX_U1)
+               INDEX  (RADIST  RA_CUST_TRX_LINE_GL_DIST_N6)
            */
--- Modify 2009.07.15 Ver1.2 End
+-- Add 2011.05.17 Ver1.4 End
            SUM(apsa.amount_due_remaining) sum_amount --–¢ÁžŽc‚‘Šz
     INTO on_target_credit
     FROM ra_customer_trx_all rcta,      --ARŽæˆøƒwƒbƒ_ƒe[ƒuƒ‹
          ar_payment_schedules_all apsa, --ARŽx•¥Œv‰æƒe[ƒuƒ‹
          ( SELECT xchv.bill_account_id bill_account_id  --¿‹æŒÚ‹qID
-           FROM xxcfr_cust_hierarchy_v xchv             --ŒÚ‹qŠK‘wView
+-- Modify 2011.05.17 Ver1.4 Start
+--           FROM xxcfr_cust_hierarchy_v xchv             --ŒÚ‹qŠK‘wView
+           FROM xxcfr_cust_hierarchy_mv xchv             --ŒÚ‹qŠK‘wƒ}ƒeƒŠƒAƒ‰ƒCƒYƒhView
+-- Modify 2011.05.17 Ver1.4 End
            WHERE xchv.cash_account_id  = in_pay_from_customer  --ƒpƒ‰ƒ[ƒ^FŒÚ‹qID
-           GROUP BY xchv.bill_account_id
+-- Delete 2011.05.17 Ver1.4 Start
+--           GROUP BY xchv.bill_account_id
+-- Delete 2011.05.17 Ver1.4 End
          ) xchvg --¿‹æŒÚ‹qƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[
     WHERE rcta.org_id              = gn_org_id
       AND rcta.customer_trx_id     = apsa.customer_trx_id
       AND rcta.complete_flag       = cv_flag_y
       AND apsa.status              = cv_status_op
-      AND rcta.bill_to_customer_id = xchvg.bill_account_id
+-- Modify 2011.05.17 Ver1.4 Start
+--      AND rcta.bill_to_customer_id = xchvg.bill_account_id
+      AND xchvg.bill_account_id    = apsa.customer_id
+-- Modify 2011.05.17 Ver1.4 End
 -- Modify 2010.01.12 Ver1.3 Start
 --      AND apsa.due_date            = id_receipt_date    --ƒpƒ‰ƒ[ƒ^F“ü‹à“ú
       AND apsa.due_date            >= id_receipt_date - gn_hht_date_from
@@ -855,25 +876,45 @@ AS
       id_receipt_date      DATE)   --A-4“ü‹à“ú
     IS
       SELECT 
--- Modify 2009.07.15 Ver1.2 Start
-           /*+ INDEX(rcta RA_CUSTOMER_TRX_N11)
-               INDEX(apsa AR_PAYMENT_SCHEDULES_N2)
+-- Delete 2011.05.17 Ver1.4 Start
+---- Modify 2009.07.15 Ver1.2 Start
+--           /*+ INDEX(rcta RA_CUSTOMER_TRX_N11)
+--               INDEX(apsa AR_PAYMENT_SCHEDULES_N2)
+--           */
+---- Modify 2009.07.15 Ver1.2 End
+-- Delete 2011.05.17 Ver1.4 End
+-- Add 2011.05.17 Ver1.4 Start
+           /*+
+               LEADING(XCHVG APSA RCTA RADIST)
+               USE_NL (XCHVG APSA RCTA RADIST)
+               INDEX  (XCHVG   XXCFR_CUST_HIERARCHY_MV_N01)
+               INDEX  (APSA    AR_PAYMENT_SCHEDULES_N6)
+               INDEX  (RCTA    RA_CUSTOMER_TRX_U1)
+               INDEX  (RADIST  RA_CUST_TRX_LINE_GL_DIST_N6)
            */
--- Modify 2009.07.15 Ver1.2 End
+-- Add 2011.05.17 Ver1.4 End
              rcta.customer_trx_id customer_trx_id, --Žæˆøƒwƒbƒ_ID
              rcta.trx_number trx_number            --Žæˆø”Ô†
       FROM ra_customer_trx_all rcta,      --ARŽæˆøƒwƒbƒ_ƒe[ƒuƒ‹
            ar_payment_schedules_all apsa, --ARŽx•¥Œv‰æƒe[ƒuƒ‹
            ( SELECT xchv.bill_account_id bill_account_id  --¿‹æŒÚ‹qID
-             FROM xxcfr_cust_hierarchy_v xchv             --ŒÚ‹qŠK‘wView
+-- Modify 2011.05.17 Ver1.4 Start
+--             FROM xxcfr_cust_hierarchy_v xchv             --ŒÚ‹qŠK‘wView
+             FROM xxcfr_cust_hierarchy_mv xchv             --ŒÚ‹qŠK‘wƒ}ƒeƒŠƒAƒ‰ƒCƒYƒhView
+-- Modify 2011.05.17 Ver1.4 End
              WHERE xchv.cash_account_id  = in_pay_from_customer  --A-4ŒÚ‹qID
-             GROUP BY xchv.bill_account_id
+-- Delete 2011.05.17 Ver1.4 Start
+--             GROUP BY xchv.bill_account_id
+-- Delete 2011.05.17 Ver1.4 End
            ) xchvg --¿‹æŒÚ‹qƒCƒ“ƒ‰ƒCƒ“ƒrƒ…[
       WHERE rcta.org_id              = gn_org_id
         AND rcta.customer_trx_id     = apsa.customer_trx_id
         AND rcta.complete_flag       = cv_flag_y
         AND apsa.status              = cv_status_op
-        AND rcta.bill_to_customer_id = xchvg.bill_account_id
+-- Modify 2011.05.17 Ver1.4 Start
+--        AND rcta.bill_to_customer_id = xchvg.bill_account_id
+        AND xchvg.bill_account_id    = apsa.customer_id
+-- Modify 2011.05.17 Ver1.4 End
 -- Modify 2010.01.12 Ver1.3 Start
 --        AND apsa.due_date            = id_receipt_date  --A-4“ü‹à“ú
         AND apsa.due_date            >= id_receipt_date - gn_hht_date_from
