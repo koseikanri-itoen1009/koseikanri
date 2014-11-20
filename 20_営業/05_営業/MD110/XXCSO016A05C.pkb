@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009-04-08    1.3   K.Satomura       ＳＴ障害対応(T1_0365)
  *  2009-04-15    1.4   M.Maruyama       ＳＴ障害対応(T1_0550) メインカーソルのWHERE句を修正
  *  2009-05-01    1.5   Tomoko.Mori      T1_0897対応
+ *  2009-05-18    1.6   K.Satomura       ＳＴ障害対応(T1_1049)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1386,7 +1387,10 @@ AS
         || cv_sep_com || NVL(l_get_rec.ven_tasya_cd05,0)                                      -- 他社コード５
         || cv_sep_com || NVL(l_get_rec.ven_tasya_daisu05,0)                                   -- 他社台数５
         || cv_sep_com || cv_sep_wquot || l_get_rec.ven_haiki_flg || cv_sep_wquot              -- 廃棄フラグ
-        || cv_sep_com || l_get_rec.haikikessai_dt                                             -- 廃棄決裁日
+        /* 2009.05.18 K.Satomura T1_1049対応 START */
+        --|| cv_sep_com || l_get_rec.haikikessai_dt                                             -- 廃棄決裁日
+        || cv_sep_com || TO_CHAR(TO_DATE(l_get_rec.haikikessai_dt, 'YYYY/MM/DD'), 'YYYYMMDD')  -- 廃棄決裁日
+        /* 2009.05.18 K.Satomura T1_1049対応 END */
         || cv_sep_com || cv_sep_wquot ||l_get_rec.ven_sisan_kbn || cv_sep_wquot               -- 資産区分
         || cv_sep_com || l_get_rec.ven_kobai_ymd                                              -- 購買日付
         || cv_sep_com || NVL(l_get_rec.ven_kobai_kg,0)                                        -- 購買金額
@@ -1397,8 +1401,12 @@ AS
         || cv_sep_com || NVL(l_get_rec.den_no,0)                                              -- 最終作業伝票No.
         || cv_sep_com || NVL(l_get_rec.job_kbn,0)                                             -- 最終作業区分
         || cv_sep_com || NVL(l_get_rec.sintyoku_kbn,0)                                        -- 最終作業進捗
-        || cv_sep_com || l_get_rec.yotei_dt                                                   -- 最終作業完了予定日
-        || cv_sep_com || l_get_rec.kanryo_dt                                                  -- 最終作業完了日
+        /* 2009.05.18 K.Satomura T1_1049対応 START */
+        --|| cv_sep_com || l_get_rec.yotei_dt                                                   -- 最終作業完了予定日
+        --|| cv_sep_com || l_get_rec.kanryo_dt                                                  -- 最終作業完了日
+        || cv_sep_com || TO_CHAR(TO_DATE(l_get_rec.yotei_dt, 'YYYY/MM/DD'), 'YYYYMMDD')       -- 最終作業完了予定日
+        || cv_sep_com || TO_CHAR(TO_DATE(l_get_rec.kanryo_dt, 'YYYY/MM/DD'), 'YYYYMMDD')      -- 最終作業完了日
+        /* 2009.05.18 K.Satomura T1_1049対応 END */
         || cv_sep_com || NVL(l_get_rec.sagyo_level,0)                                         -- 最終整備内容
         || cv_sep_com || NVL(l_get_rec.den_no2,0)                                             -- 最終設置伝票No.
         || cv_sep_com || NVL(l_get_rec.job_kbn2,0)                                            -- 最終設置区分
@@ -2038,6 +2046,65 @@ AS
           lv_sub_buf  := lv_sub_msg;
           RAISE select_error_expt;
         END IF;
+        /* 2009.05.18 K.Satomura T1_1049対応 START */
+        -- 廃棄決裁日
+        lb_check_date := xxcso_util_common_pkg.check_date(
+                                      iv_date         => l_get_rec.haikikessai_dt
+                                     ,iv_date_format  => 'YYYY/MM/DD'
+        );
+        --リターンステータスが「FALSE」の場合,例外処理を行う
+        IF (lb_check_date = cb_false) THEN
+          lv_sub_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_app_name              -- アプリケーション短縮名
+                                ,iv_name         => cv_tkn_number_15         -- メッセージコード
+                                ,iv_token_name1  => cv_tkn_item              -- トークンコード1
+                                ,iv_token_value1 => cv_lst_yr_mnth_tkn       -- トークン値1項目名
+                                ,iv_token_name2  => cv_tkn_value             -- トークンコード2
+                                ,iv_token_value2 => l_get_rec.haikikessai_dt -- トークン値2値
+          );
+          lv_sub_buf  := lv_sub_msg;
+          RAISE select_error_expt;
+        END IF;
+        --
+        -- 最終作業完了予定日
+        lb_check_date := xxcso_util_common_pkg.check_date(
+                                      iv_date         => l_get_rec.yotei_dt
+                                     ,iv_date_format  => 'YYYY/MM/DD'
+        );
+        --リターンステータスが「FALSE」の場合,例外処理を行う
+        IF (lb_check_date = cb_false) THEN
+          lv_sub_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_app_name        -- アプリケーション短縮名
+                                ,iv_name         => cv_tkn_number_15   -- メッセージコード
+                                ,iv_token_name1  => cv_tkn_item        -- トークンコード1
+                                ,iv_token_value1 => cv_lst_yr_mnth_tkn -- トークン値1項目名
+                                ,iv_token_name2  => cv_tkn_value       -- トークンコード2
+                                ,iv_token_value2 => l_get_rec.yotei_dt -- トークン値2値
+          );
+          lv_sub_buf  := lv_sub_msg;
+          RAISE select_error_expt;
+        END IF;
+        --
+        -- 最終作業完了日
+        lb_check_date := xxcso_util_common_pkg.check_date(
+                                      iv_date         => l_get_rec.kanryo_dt
+                                     ,iv_date_format  => 'YYYY/MM/DD'
+        );
+        --リターンステータスが「FALSE」の場合,例外処理を行う
+        IF (lb_check_date = cb_false) THEN
+          lv_sub_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => cv_app_name         -- アプリケーション短縮名
+                                ,iv_name         => cv_tkn_number_15    -- メッセージコード
+                                ,iv_token_name1  => cv_tkn_item         -- トークンコード1
+                                ,iv_token_value1 => cv_lst_yr_mnth_tkn  -- トークン値1項目名
+                                ,iv_token_name2  => cv_tkn_value        -- トークンコード2
+                                ,iv_token_value2 => l_get_rec.kanryo_dt -- トークン値2値
+          );
+          lv_sub_buf  := lv_sub_msg;
+          RAISE select_error_expt;
+        END IF;
+        --
+        /* 2009.05.18 K.Satomura T1_1049対応 END */
 --
         -- ================================================================
         -- A-5 CSVファイルに出力する関連情報取得
