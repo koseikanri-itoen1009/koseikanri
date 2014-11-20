@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -14,6 +14,7 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  del_worktable_data     ワークテーブルデータ削除(A-9)
  *  start_svf              SVF起動(A-8)
+ *  upd_resv_payment_rec   支払ステータス「消込済」更新処理(A-11)
  *  upd_resv_payment       支払ステータス「自動繰越」更新処理(A-10)
  *  ins_worktable_data     ワークテーブルデータ登録(A-7)
  *  break_judge            ブレイク判定処理(A-6)
@@ -53,6 +54,7 @@ AS
  *  2012/07/23    1.15  SCSK K.Onotsuka  [障害E_本稼動_08365,08367] VDBM残高一覧の支払ステータスに「消込済」「自動繰越」
  *                                                              残高取消後も「前月まで未払」金額を出力
  *  2013/01/29    1.16  SCSK K.Taniguchi [障害E_本稼動_10381] 支払ステータス「自動繰越」出力条件変更
+ *  2013/04/04    1.17  SCSK K.Nakamura  [障害E_本稼動_10595,10609] 支払ステータス「保留」「消込済」出力条件変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -801,6 +803,58 @@ AS
       ov_retcode := cv_status_error;
   END start_svf;
 --
+-- 2013/04/04 Ver.1.17 [障害E_本稼動_10595,10609] SCSK K.Nakamura ADD START
+  /**********************************************************************************
+   * Procedure Name   : upd_resv_payment_rec
+   * Description      : 支払ステータス「消込済」更新処理(A-11)
+   ***********************************************************************************/
+  PROCEDURE upd_resv_payment_rec(
+    ov_errbuf                OUT VARCHAR2           -- エラー・メッセージ
+  , ov_retcode               OUT VARCHAR2           -- リターン・コード
+  , ov_errmsg                OUT VARCHAR2           -- ユーザー・エラー・メッセージ
+  )
+  IS
+    -- ===============================================
+    -- ローカル定数
+    -- ===============================================
+    cv_prg_name      CONSTANT VARCHAR2(20) := 'upd_resv_payment_rec';    -- プログラム名
+    -- ===============================================
+    -- ローカル変数
+    -- ===============================================
+    lv_errbuf                VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
+    lv_retcode               VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
+    lv_errmsg                VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+--
+  BEGIN
+    -- ===============================================
+    -- ステータス初期化
+    -- ===============================================
+    ov_retcode := cv_status_normal;
+--
+    -- ===============================================
+    -- 支払ステータス「消込済」更新処理
+    -- ===============================================
+    -- 対象の支払ステータスを「消込済」に更新する
+    UPDATE xxcok_rep_bm_balance xrbb              -- 販手残高一覧帳票ワークテーブル
+    SET    xrbb.resv_payment    = gv_pay_rec_name -- 支払ステータス("消込済")
+    WHERE  xrbb.request_id      = cn_request_id   -- 要求ID(今回実行分)
+    AND    xrbb.resv_payment    IS NULL           -- 支払保留
+    AND    xrbb.unpaid_balance  = 0               -- 未払残高
+    ;
+--
+  EXCEPTION
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END upd_resv_payment_rec;
+--
+-- 2013/04/04 Ver.1.17 [障害E_本稼動_10595,10609] SCSK K.Nakamura ADD END
+--
 -- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD START
   /**********************************************************************************
    * Procedure Name   : upd_resv_payment
@@ -1293,24 +1347,29 @@ AS
 -- 2012/07/20 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD START
 --    IF ( gt_resv_payment_bk IS NULL ) AND ( i_target_rec.resv_flag = cv_flag_y ) THEN
     IF ( i_target_rec.resv_flag = cv_flag_y ) THEN
--- 2012/07/20 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD END
--- 2012/07/11 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD START
---      gt_resv_payment_bk := gv_pay_res_name;
-      IF ( i_target_rec.proc_type = cv_proc_type0_upd ) THEN
--- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi UPD START
---      --保留フラグ='Y'且つ、処理区分が'0'の場合は「自動繰越」
---        gt_resv_payment_bk := gv_pay_auto_res_name; -- 自動繰越
-        -- [障害E_本稼動_10381] 自動繰越の条件変更（upd_resv_paymentで実施）
-        NULL;
--- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi UPD END
-      ELSIF ( i_target_rec.proc_type = cv_proc_type2_upd ) THEN
-      --保留フラグ='Y'且つ、処理区分が'2'の場合は「保留」
+-- 2013/04/04 Ver.1.17 [障害E_本稼動_10595,10609] SCSK K.Nakamura UPD START
+---- 2012/07/20 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD END
+---- 2012/07/11 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD START
+----      gt_resv_payment_bk := gv_pay_res_name;
+--      IF ( i_target_rec.proc_type = cv_proc_type0_upd ) THEN
+---- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi UPD START
+----      --保留フラグ='Y'且つ、処理区分が'0'の場合は「自動繰越」
+----        gt_resv_payment_bk := gv_pay_auto_res_name; -- 自動繰越
+--        -- [障害E_本稼動_10381] 自動繰越の条件変更（upd_resv_paymentで実施）
+--        NULL;
+---- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi UPD END
+--      ELSIF ( i_target_rec.proc_type = cv_proc_type2_upd ) THEN
+--      --保留フラグ='Y'且つ、処理区分が'2'の場合は「保留」
+--        gt_resv_payment_bk := gv_pay_res_name; -- 保留
+--      END IF;
+      --保留フラグ='Y'の場合は「保留」
         gt_resv_payment_bk := gv_pay_res_name; -- 保留
-      END IF;
-    ELSIF ( i_target_rec.resv_flag IS NULL )
-      AND ( i_target_rec.proc_type = cv_proc_type1_upd ) THEN
-        --保留フラグ=NULL且つ、処理区分が'1'の場合は「消込済」
-        gt_resv_payment_bk := gv_pay_rec_name; -- 消込済
+--    ELSIF ( i_target_rec.resv_flag IS NULL )
+--      AND ( i_target_rec.proc_type = cv_proc_type1_upd ) THEN
+--        --保留フラグ=NULL且つ、処理区分が'1'の場合は「消込済」
+--        gt_resv_payment_bk := gv_pay_rec_name; -- 消込済
+      -- [障害E_本稼動_10609] 消込済の条件変更（upd_resv_payment_recで実施）
+-- 2013/04/04 Ver.1.17 [障害E_本稼動_10595,10609] SCSK K.Nakamura UPD END
     ELSE
       -- 保留解除時の残高、残高アップロード機能以外での残高更新データの場合、何も出力しない
       gt_resv_payment_bk := NULL;
@@ -2485,6 +2544,19 @@ AS
         RAISE global_process_expt;
       END IF;
 -- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD END
+-- 2013/04/04 Ver.1.17 [障害E_本稼動_10595,10609] SCSK K.Nakamura ADD START
+      -- ===============================================
+      -- 支払ステータス「消込済」更新処理(A-11)
+      -- ===============================================
+      upd_resv_payment_rec(
+        ov_errbuf                =>  lv_errbuf                -- エラーバッファ
+      , ov_retcode               =>  lv_retcode               -- リターンコード
+      , ov_errmsg                =>  lv_errmsg                -- エラーメッセージ
+      );
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+-- 2013/04/04 Ver.1.17 [障害E_本稼動_10595,10609] SCSK K.Nakamura ADD END
     END IF;
   EXCEPTION
     -- *** 処理部共通例外 ***
