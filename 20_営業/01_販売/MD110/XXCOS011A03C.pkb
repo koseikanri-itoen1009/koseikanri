@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2009/07/21    1.11  K.Kiriu          [0000644]原価金額の端数処理対応
  *  2009/07/24    1.11  K.Kiriu          [T1_1359]レビュー指摘事項対応
  *  2009/08/10    1.11  K.Kiriu          [0000438]指摘事項対応
+ *  2009/09/03    1.12  N.Maeda          [0001065]『XXCOS_HEAD_PROD_CLASS_V』のMainSQL取込
  *
  *****************************************************************************************/
 --
@@ -139,6 +140,9 @@ AS
   cv_prf_max_date       CONSTANT VARCHAR2(50)  := 'XXCOS1_MAX_DATE';             -- XXCOS:MAX日付
   cv_prf_bks_id         CONSTANT VARCHAR2(50)  := 'GL_SET_OF_BKS_ID';            -- GL会計帳簿ID
   cv_prf_org_id         CONSTANT VARCHAR2(50)  := 'ORG_ID';                      -- MO:営業単位
+-- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
+  ct_item_div_h         CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ITEM_DIV_H'; -- XXCOS1:本社製品区分
+-- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
 -- 2009/05/22 Ver1.9 Add Start
   cv_prf_dum_stock_out  CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_DUMMY_STOCK_OUT';  -- XXCOS:EDI納品予定ダミー欠品区分
 -- 2009/05/22 Ver1.9 Add End
@@ -203,6 +207,10 @@ AS
 --****************************** 2009/06/12 1.10 T.Kitajima ADD START ******************************--
   cv_msg_slip_no_err    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12267';  -- 伝票番号数値エラー
 --****************************** 2009/06/12 1.10 T.Kitajima ADD  END  ******************************--
+-- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
+  cv_msg_category_err   CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12954';     --カテゴリセットID取得エラーメッセージ
+  cv_msg_item_div_h     CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12955';     --本社商品区分
+-- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
   -- トークンコード
   cv_tkn_in_param       CONSTANT VARCHAR2(8)   := 'IN_PARAM';          -- 入力パラメータ名
   cv_tkn_date_from      CONSTANT VARCHAR2(9)   := 'DATE_FROM';         -- 日付期間チェックの開始日
@@ -290,6 +298,9 @@ AS
   cv_y                  CONSTANT VARCHAR2(1)   := 'Y';                 -- 固定値:Y
   cv_n                  CONSTANT VARCHAR2(1)   := 'N';                 -- 固定値:N
   cv_w                  CONSTANT VARCHAR2(1)   := 'W';                 -- 固定値:W
+-- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
+  ct_user_lang                    CONSTANT mtl_category_sets_tl.language%TYPE := USERENV('LANG'); --LANG
+-- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
   -- データ編集共通関数用
   cv_medium_class             CONSTANT VARCHAR2(50)  := 'MEDIUM_CLASS';                  -- 媒体区分
   cv_data_type_code           CONSTANT VARCHAR2(50)  := 'DATA_TYPE_CODE';                -- データ種コード
@@ -690,6 +701,9 @@ AS
 -- 2009/05/22 Ver1.9 Add Start
   gn_dum_stock_out      VARCHAR2(3);                                   -- EDI納品予定ダミー欠品区分
 -- 2009/05/22 Ver1.9 Add End
+-- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
+   gt_category_set_id      mtl_category_sets_tl.category_set_id%TYPE;          --カテゴリセットID
+-- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル宣言
@@ -951,7 +965,10 @@ AS
           ,xel.case_product_code                case_product_code              -- EDI明細情報.ケース商品コード
           ,xel.ball_product_code                ball_product_code              -- EDI明細情報.ボール商品コード
           ,xel.product_code_item_type           product_code_item_type         -- EDI明細情報.商品コード品種
-          ,xhpcv.item_div_h_code                item_div_h_code                -- 本社商品区分ビュー.本社商品区分
+-- ******* 2009/09/03 1.12 N.Maeda MOD START ******* --
+--          ,xhpcv.item_div_h_code                item_div_h_code                -- 本社商品区分ビュー.本社商品区分
+          ,mcb.segment1                         item_div_h_code                -- 本社商品区分ビュー.本社商品区分
+-- ******* 2009/09/03 1.12 N.Maeda MOD  END  ******* --
           ,xel.product_name                     product_name                   -- EDI明細情報.商品名(漢字)
 /* 2009/03/04 Ver1.6 Add Start */
           ,msib.description                     item_name                      -- Disc品目.摘要
@@ -1069,7 +1086,9 @@ AS
           ,xxcmn_item_mst_b                     ximb   -- ＯＰＭ品目アドオン
           ,mtl_system_items_b                   msib   -- Disc品目マスタ
           ,xxcmm_system_items_b                 xsib   -- Disc品目アドオン
-          ,xxcos_head_prod_class_v              xhpcv  -- 本社商品区分ビュー
+-- ******* 2009/09/03 1.12 N.Maeda DEL START ******* --
+--          ,xxcos_head_prod_class_v              xhpcv  -- 本社商品区分ビュー
+-- ******* 2009/09/03 1.12 N.Maeda DEL  END  ******* --
           ,(SELECT ore1.reason_code             reason_code
                   ,ore1.entity_id               entity_id
             FROM   oe_reasons                   ore1
@@ -1088,6 +1107,10 @@ AS
             AND    ore1.creation_date = ore_max.creation_date
            )                                    ore    -- 変更事由
           ,fnd_lookup_values_vl                 flvv1  -- 事由コードマスタ
+-- ******* 2009/09/03 1.12 N.Maeda ADD START ******* --
+          ,mtl_item_categories            mic
+          ,mtl_categories_b               mcb
+-- ******* 2009/09/03 1.12 N.Maeda ADD  END  ******* --
     WHERE  xeh.edi_header_info_id         = xel.edi_header_info_id            -- EDIﾍｯﾀﾞ情報.EDIﾍｯﾀﾞ情報ID=EDI明細情報.EDIﾍｯﾀﾞ情報ID
     AND    xeh.creation_class             =                                   -- EDIﾍｯﾀﾞ情報.作成元区分='01'(受注ﾃﾞｰﾀ)
          ( SELECT flvv.meaning   creation_class
@@ -1176,7 +1199,21 @@ AS
     AND    ximb.end_date_active          >= cd_process_date                   -- OPM品目ｱﾄﾞｵﾝ.適用終了日>=業務日付
     AND    msib.organization_id           = gn_organization_id                -- Disc品目ﾏｽﾀ.組織ID=[A-2].在庫組織ID
     AND    msib.segment1                  = xsib.item_code                    -- Disc品目ﾏｽﾀ.品目ｺｰﾄﾞ=Disc品目ｱﾄﾞｵﾝ.品目ｺｰﾄﾞ
-    AND    msib.inventory_item_id         = xhpcv.inventory_item_id           -- Disc品目ﾏｽﾀ.品目ID=本社商品区分ﾋﾞｭｰ.品目ID
+-- ******* 2009/09/03 1.12 N.Maeda MOD START ******* --
+--    AND    msib.inventory_item_id         = xhpcv.inventory_item_id           -- Disc品目ﾏｽﾀ.品目ID=本社商品区分ﾋﾞｭｰ.品目ID
+    AND msib.organization_id = gn_organization_id
+    AND gn_organization_id = mic.organization_id
+    AND msib.inventory_item_id = mic.inventory_item_id
+    AND mic.category_set_id    = gt_category_set_id
+    AND mic.category_id        = mcb.category_id
+    AND ( mcb.disable_date IS NULL OR mcb.disable_date > cd_process_date )
+    AND   mcb.enabled_flag   = 'Y'      -- カテゴリ有効フラグ
+    AND   cd_process_date BETWEEN NVL(mcb.start_date_active, cd_process_date)
+                                     AND   NVL(mcb.end_date_active, cd_process_date)
+    AND   msib.enabled_flag  = 'Y'      -- 品目マスタ有効フラグ
+    AND   cd_process_date BETWEEN NVL(msib.start_date_active, cd_process_date)
+                                     AND  NVL(msib.end_date_active, cd_process_date)
+-- ******* 2009/09/03 1.12 N.Maeda MOD  END  ******* --
     AND    ore.entity_id(+)               = oola.line_id                      -- 変更事由.ID=受注明細.明細ID
     AND    flvv1.lookup_type(+)           = cv_reason_type                    -- 事由ｺｰﾄﾞﾏｽﾀ.ﾀｲﾌﾟ=変更事由
     AND    flvv1.lookup_code(+)           = ore.reason_code                   -- 事由ｺｰﾄﾞﾏｽﾀ.ｺｰﾄﾞ=変更事由.理由ｺｰﾄﾞ
@@ -1942,6 +1979,9 @@ AS
     lv_err_msg     VARCHAR2(5000);  -- エラー出力用
     lv_l_meaning   fnd_lookup_values_vl.meaning%TYPE;  -- クイックコード条件取得用
     lv_dummy       VARCHAR2(1);     -- レイアウト定義のCSVヘッダー用(ファイルタイプが固定長なので使用されない)
+-- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
+    lt_item_div_h  fnd_profile_option_values.profile_option_value%TYPE;  -- 本社製品区分
+-- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
 --
     -- *** ローカル・カーソル ***
 --
@@ -2455,6 +2495,62 @@ AS
       );
       ln_err_chk := cn_1;  -- エラー有り
     END IF;
+--
+-- ********** 2009/09/03 1.12 N.Maeda ADD START ********** --
+    -- =============================================================
+    -- プロファイル「XXCOS:本社商品区分」取得
+    -- =============================================================
+    lt_item_div_h := FND_PROFILE.VALUE(ct_item_div_h);
+--
+    IF ( lt_item_div_h IS NULL ) THEN
+--
+      -- トークン取得
+      lv_tkn_value1 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_application    -- アプリケーション
+                         ,iv_name         => cv_msg_item_div_h  -- 本社製品区分
+                       );
+      -- メッセージ取得
+      lv_err_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application  -- アプリケーション
+                      ,iv_name         => cv_msg_prf_err  -- プロファイル取得エラー
+                      ,iv_token_name1  => cv_tkn_profile  -- トークンコード１
+                      ,iv_token_value1 => lv_tkn_value1   -- プロファイル名
+                    );
+      -- メッセージに出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => lv_err_msg
+      );
+      lv_errbuf  := lv_err_msg;
+      ln_err_chk := cn_1;  -- エラー有り
+--
+    ELSE
+      -- =============================================================
+      -- カテゴリセットID取得
+      -- =============================================================
+      BEGIN
+        SELECT  mcst.category_set_id
+        INTO    gt_category_set_id
+        FROM    mtl_category_sets_tl   mcst
+        WHERE   mcst.category_set_name = lt_item_div_h
+        AND     mcst.language          = ct_user_lang;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_err_msg  :=  xxccp_common_pkg.get_msg(
+                           iv_application  =>  cv_application,
+                           iv_name         =>  cv_msg_category_err
+                           );
+          -- メッセージに出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_err_msg
+          );
+          lv_errbuf  := lv_err_msg;
+          ln_err_chk := cn_1;  -- エラー有り
+      END;
+--
+    END IF;
+-- ********** 2009/09/03 1.12 N.Maeda ADD  END  ********** --
 --
     --==============================================================
     -- エラーの場合
