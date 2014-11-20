@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2010/05/10    1.21    Y.Kuboshima      [E_本稼動_02625] 営業原価の取得基準日修正[業務日付 → 納品日]
  *  2010/09/09    1.22    H.Sasaki         [E_本稼動_02635] エラー出力の追加（汎用エラーリスト）
  *  2012/02/03    1.23    K.Kiriu          [E_本稼動_08938] 訂正時の消費税額不具合対応
+ *  2012/08/06    1.24    T.Makuta         [E_本稼動_09888] PT対応
  *
  *****************************************************************************************/
 --
@@ -3638,7 +3639,11 @@ AS
   -- VDコラム別取引情報ヘッダ情報
   CURSOR get_header_data_cur
   IS
-    SELECT vch.ROWID,                         -- 行ID
+---- ****************************** 2012/08/06 T.Makuta Var1.24 MOD START ***************************************
+----SELECT vch.ROWID,                         -- 行ID
+    SELECT /*+ INDEX(vch XXCOS_VD_COLUMN_HEADERS_N01 */
+           vch.ROWID,                         -- 行ID
+---- ****************************** 2012/08/06 T.Makuta Var1.24 MOD END   ***************************************
            vch.order_no_hht,                  -- 受注No.(HHT)
            vch.digestion_ln_number,           -- 枝番
            vch.order_no_ebs,                  -- 受注No.(EBS)
@@ -3680,6 +3685,9 @@ AS
               FROM   xxcos_vd_column_lines vcl -- VDコラム別取引情報明細情報
               WHERE  vch.order_no_hht = vcl.order_no_hht
               AND    vch.digestion_ln_number = vcl.digestion_ln_number
+---- ****************************** 2012/08/06 T.Makuta Var1.24 ADD START ***************************************
+              AND    ROWNUM = 1
+---- ****************************** 2012/08/06 T.Makuta Var1.24 ADD END   ***************************************
             )
     ORDER BY vch.order_no_hht,vch.digestion_ln_number;
 ----******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
