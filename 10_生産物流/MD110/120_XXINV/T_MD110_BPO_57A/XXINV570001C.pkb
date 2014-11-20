@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/09/26    1.5   Yuko  Kawano     統合テスト指摘#156,課題T_S_457,T_S_629対応
  *  2008/12/09    1.6   Naoki Fukuda     本番障害#470,#519(移動番号重複チェックcheck_mov_num_proc追加)
  *  2008/12/11    1.7   Yuko  Kawano     本番障害#633(移動実績訂正不具合対応)
+ *  2008/12/11    1.8   Naoki Fukuda     本番障害#441
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1210,6 +1211,7 @@ AS
     ln_exist             NUMBER;                  -- 存在チェック用フラグ
     lt_bef_mov_num       xxinv_mov_req_instr_headers.mov_num%TYPE;    -- 移動番号wk用
 --2008/09/26 Y.Kawano Add End
+    lv_whse_code_from    xxcmn_item_locations_v.whse_code%TYPE;       -- 2008/12/11 本番障害#441 Add
 --
   BEGIN
 --
@@ -1314,26 +1316,89 @@ AS
           -- 手持数量が存在しない場合
           IF ( ln_exist = 0 ) THEN
 --
-            -- 警告メッセージ
-            lv_wk_errmsg
-              := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,     -- 'XXINV'
-                                          gv_c_msg_57a_009,     -- 手持数量なしエラー
-                                          gv_c_tkn_shipped_loct,-- トークン出庫元保管倉庫
-                                          move_data_rec_tbl(gn_rec_idx).shipped_locat_code,
-                                          gv_c_tkn_item,        -- トークン品目
-                                          move_data_rec_tbl(gn_rec_idx).item_code,
-                                          gv_c_tkn_lot_num,     -- トークンロットNo
-                                          move_data_rec_tbl(gn_rec_idx).lot_no,
-                                          gv_c_tkn_mov_num,     -- トークン移動番号
-                                          move_data_rec_tbl(gn_rec_idx).mov_num
-                                         );
+            -- 2008/12/11 本番障害#441 Del Start -------------------------------------------
+            ---- 警告メッセージ
+            --lv_wk_errmsg
+            --  := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,     -- 'XXINV'
+            --                              gv_c_msg_57a_009,     -- 手持数量なしエラー
+            --                              gv_c_tkn_shipped_loct,-- トークン出庫元保管倉庫
+            --                              move_data_rec_tbl(gn_rec_idx).shipped_locat_code,
+            --                              gv_c_tkn_item,        -- トークン品目
+            --                              move_data_rec_tbl(gn_rec_idx).item_code,
+            --                              gv_c_tkn_lot_num,     -- トークンロットNo
+            --                              move_data_rec_tbl(gn_rec_idx).lot_no,
+            --                              gv_c_tkn_mov_num,     -- トークン移動番号
+            --                              move_data_rec_tbl(gn_rec_idx).mov_num
+            --                             );
+            --
+            ---- 後続処理対象外
+            --move_data_rec_tbl(gn_rec_idx).ng_flag    := 1;         -- NGフラグ
+            ---- エラー内容格納
+            --move_data_rec_tbl(gn_rec_idx).err_msg    := lv_wk_errmsg;
+            ---- 存在エラーチェックフラグ
+            --move_data_rec_tbl(gn_rec_idx).exist_flag := 1;  -- 存在チェックフラグ
+            -- 2008/12/11 本番障害#441 Del End ---------------------------------------------
 --
-            -- 後続処理対象外
-            move_data_rec_tbl(gn_rec_idx).ng_flag    := 1;         -- NGフラグ
-            -- エラー内容格納
-            move_data_rec_tbl(gn_rec_idx).err_msg    := lv_wk_errmsg;
-            -- 存在エラーチェックフラグ
-            move_data_rec_tbl(gn_rec_idx).exist_flag := 1;  -- 存在チェックフラグ
+            -- 2008/12/11 本番障害#441 Add Start -------------------------------------------
+            BEGIN
+              SELECT xilv.whse_code   -- 倉庫コード
+              INTO   lv_whse_code_from
+              FROM   xxcmn_item_locations_v  xilv
+                    ,ic_whse_mst             iwm
+                    ,sy_orgn_mst_b           somb
+              WHERE  xilv.whse_code = iwm.whse_code
+              AND    iwm.orgn_code  = somb.orgn_code
+              AND    xilv.segment1  = move_data_rec_tbl(gn_rec_idx).shipped_locat_code;  -- 出庫元保管場所コード
+            EXCEPTION
+              WHEN OTHERS THEN
+                FND_FILE.PUT_LINE(FND_FILE.LOG,
+                  'GMIPAPI.INVENTORY_POSTING 倉庫コード取得エラー：'||move_data_rec_tbl(gn_rec_idx).shipped_locat_code);
+                RAISE global_api_expt;
+            END;
+--
+            INSERT INTO ic_loct_inv
+              (item_id
+              ,whse_code
+              ,lot_id
+              ,location
+              ,loct_onhand
+              ,loct_onhand2
+              ,lot_status
+              ,qchold_res_code
+              ,delete_mark
+              ,text_code
+              ,last_updated_by
+              ,created_by
+              ,last_update_date
+              ,creation_date
+              ,last_update_login
+              ,program_application_id
+              ,program_id
+              ,program_update_date
+              ,request_id
+              )
+            VALUES
+             ( move_data_rec_tbl(gn_rec_idx).item_id             -- item_id
+              ,lv_whse_code_from                                 -- whse_code
+              ,move_data_rec_tbl(gn_rec_idx).lot_id              -- lot_id
+              ,move_data_rec_tbl(gn_rec_idx).shipped_locat_code  -- location
+              ,0                                                 -- loct_onhand
+              ,NULL                                              -- loct_onhand2
+              ,NULL                                              -- lot_status
+              ,NULL                                              -- qchold_res_code
+              ,0                                                 -- delete_mark
+              ,NULL                                              -- text_code
+              ,gn_user_id                                        -- last_updated_by
+              ,gn_user_id                                        -- created_by
+              ,gd_sysdate                                        -- last_update_date
+              ,gd_sysdate                                        -- creation_date
+              ,NULL                                              -- last_update_login
+              ,NULL                                              -- program_application_id
+              ,NULL                                              -- program_id
+              ,NULL                                              -- program_update_date
+              ,NULL                                              -- request_id
+             );
+            -- 2008/12/11 本番障害#441 Add End ----------------------------------------------
 --
           END IF;
         END IF;
