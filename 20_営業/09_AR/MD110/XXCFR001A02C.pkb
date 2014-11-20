@@ -7,7 +7,7 @@ AS
  * Description      : 売上実績データ連携
  * MD.050           : MD050_CFR_001_A02_売上実績データ連携
  * MD.070           : MD050_CFR_001_A02_売上実績データ連携
- * Version          : 1.00
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/14    1.00 SCS 中村 博      初回作成
+ *  2009/12/13    1.10 SCS 廣瀬 真佐人  障害対応[E_本稼動_00366]
  *
  *****************************************************************************************/
 --
@@ -706,7 +707,10 @@ AS
 --
         -- 出力文字列作成
         lv_csv_text := cv_enclosed || gt_sales_data(ln_loop_cnt).comp_code || cv_enclosed || cv_delimiter
-                    || TO_CHAR ( gt_sales_data(ln_loop_cnt).trx_date, cv_format_date_ymd ) || cv_delimiter
+-- Modify 2009.12.13 Ver.1.10 Start
+--                    || TO_CHAR ( gt_sales_data(ln_loop_cnt).trx_date, cv_format_date_ymd ) || cv_delimiter
+                    || TO_CHAR ( gt_sales_data(ln_loop_cnt).gl_date, cv_format_date_ymd ) || cv_delimiter  -- 納品日(GL記帳日)
+-- Modify 2009.12.13 Ver.1.10 End
                     || cv_enclosed || gt_sales_data(ln_loop_cnt).trx_number || cv_enclosed || cv_delimiter
                     || TO_CHAR ( gt_sales_data(ln_loop_cnt).line_number ) || cv_delimiter
                     || cv_enclosed || gt_sales_data(ln_loop_cnt).ship_to_account_number || cv_enclosed || cv_delimiter
@@ -724,7 +728,10 @@ AS
                     || cv_enclosed || gv_sd_sales_class || cv_enclosed || cv_delimiter
                     || cv_enclosed || gv_sd_delivery_ptn_class || cv_enclosed || cv_delimiter
                     || cv_enclosed || cv_column_no || cv_enclosed || cv_delimiter
-                    || TO_CHAR ( gt_sales_data(ln_loop_cnt).gl_date, cv_format_date_ymd ) || cv_delimiter
+-- Modify 2009.12.13 Ver.1.10 Start
+--                    || TO_CHAR ( gt_sales_data(ln_loop_cnt).gl_date, cv_format_date_ymd ) || cv_delimiter
+                    || TO_CHAR ( gt_sales_data(ln_loop_cnt).trx_date, cv_format_date_ymd ) || cv_delimiter  -- 検収予定日(取引日)
+-- Modify 2009.12.13 Ver.1.10 End
                     || cv_delimiter
                     || cv_enclosed || gt_sales_data(ln_loop_cnt).tax_code || cv_enclosed || cv_delimiter
                     || cv_enclosed || gt_sales_data(ln_loop_cnt).bill_to_account_number || cv_enclosed || cv_delimiter
