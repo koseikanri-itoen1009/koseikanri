@@ -1,0 +1,1 @@
+CREATE INDEX xxwip.xxwip_tfi_n01 ON xxwip.xxwip_transfer_fare_inf(jurisdicyional_hub,goods_classe,target_date,request_no,item_code) TABLESPACE xxidx;

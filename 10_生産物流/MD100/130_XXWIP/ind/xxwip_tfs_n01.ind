@@ -1,0 +1,1 @@
+CREATE INDEX xxwip.xxwip_tfs_n01 ON xxwip.xxwip_transfer_fare_sum(request_no,jurisdicyional_hub,goods_classe,target_date) TABLESPACE xxidx;
