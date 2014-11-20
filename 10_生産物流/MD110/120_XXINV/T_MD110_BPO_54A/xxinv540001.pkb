@@ -7,7 +7,7 @@ AS
  * Description            : 在庫照会画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_540_在庫照会Issue1.0.doc
  * MD.070                 : T_MD070_BPO_54A_在庫照会画面Draft1A.doc
- * Version                : 1.5
+ * Version                : 1.6
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/04/18   1.3   Jun.Komatsu      変更要求#43、#51対応
  *  2008/05/26   1.4   Kazuo.Kumamoto   変更要求##119対応
  *  2008/06/13   1.5   Yuko.Kawano      結合テスト不具合対応
+ *  2008/06/25   1.6   S.Takemoto       変更要求##93対応
  *
  *****************************************************************************************/
 --
@@ -100,6 +101,9 @@ AS
     ln_prof_xtt              NUMBER;                                              -- 在庫照会対象
     lv_prof_xid              VARCHAR2(8);                                         -- 品目区分
     lv_prof_xpd              VARCHAR2(8);                                         -- 商品区分
+-- 2008.06.25 add S.Takemoto start
+    lv_prof_xdfw             VARCHAR2(4);                                         -- ダミー代表倉庫
+-- 2008.06.25 add S.Takemoto end
     ld_target_date           DATE;                                                -- 対象日付
     ln_cnt                   NUMBER;                                              -- 配列の添字
     ln_num_of_cases          xxcmn_item_mst_v.num_of_cases%TYPE;                  -- ケース入数
@@ -124,7 +128,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -204,11 +211,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -260,9 +273,19 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.mtl_organization_id   = ln_organization_id
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -341,7 +364,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 mod S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -356,8 +382,12 @@ AS
              =  NVL(NVL(iv_qt_status_code, xqi.qt_effect), cn_dummy)
       -- 画面検索パターン別に異なる、カーソル毎の抽出、ソート条件
       AND    iiim.parent_item_id         = ln_parent_item_id
-      AND    iiim.frequent_whse          = lv_frequent_whse
-      AND    iiim.mtl_organization_id    = ln_organization_id
+-- 2008.06.25 add S.Takemoto start
+-- 倉庫抽出フラグ:ONのため、オルグで検索
+-- 代表倉庫に合算する場合、オルグID以外のデータも抽出するため
+--      AND    iiim.frequent_whse          = lv_frequent_whse
+--      AND    iiim.mtl_organization_id    = ln_organization_id
+-- 2008.06.25 add S.Takemoto end
       ORDER BY TO_NUMBER(iiim.item_no),
                iiim.attribute1,
                iiim.attribute2;
@@ -377,7 +407,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -457,11 +490,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -513,9 +552,19 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.mtl_organization_id   = ln_organization_id
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -594,7 +643,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 mod S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -609,8 +661,12 @@ AS
              =  NVL(NVL(iv_qt_status_code, xqi.qt_effect), cn_dummy)
       -- 画面検索パターン別に異なる、カーソル毎の抽出、ソート条件
       AND    iiim.parent_item_id        = ln_parent_item_id
-      AND    iiim.frequent_whse         = lv_frequent_whse
-      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto start
+-- 倉庫抽出フラグ:ONのため、オルグで検索
+-- 代表倉庫に合算する場合、同一オルグID以外のデータも抽出するため
+--      AND    iiim.frequent_whse         = lv_frequent_whse
+--      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto end
       ORDER BY TO_NUMBER(iiim.item_no),
                DECODE(iiim.lot_id, cn_zero, TO_NUMBER(NULL), TO_NUMBER(iiim.lot_no));
 --
@@ -629,7 +685,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -709,11 +768,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -765,9 +830,19 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.mtl_organization_id   = ln_organization_id
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -846,7 +921,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 mod S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -861,7 +939,10 @@ AS
              =  NVL(NVL(iv_qt_status_code, xqi.qt_effect), cn_dummy)
       -- 画面検索パターン別に異なる、カーソル毎の抽出、ソート条件
       AND    iiim.parent_item_id        = ln_parent_item_id
-      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、オルグID以外のデータも抽出するため
+--      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto end
       ORDER BY TO_NUMBER(NVL(iiim.frequent_whse, iiim.segment1)),
                iiim.attribute1,
                iiim.attribute2;
@@ -881,7 +962,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 add end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -961,11 +1045,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -1017,9 +1107,19 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.mtl_organization_id   = ln_organization_id
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -1098,7 +1198,11 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
+
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -1113,7 +1217,10 @@ AS
              =  NVL(NVL(iv_qt_status_code, xqi.qt_effect), cn_dummy)
       -- 画面検索パターン別に異なる、カーソル毎の抽出、ソート条件
       AND    iiim.parent_item_id        = ln_parent_item_id
-      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、同一オルグID以外のデータも抽出するため
+--      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto end
       ORDER BY TO_NUMBER(NVL(iiim.frequent_whse, iiim.segment1)),
                DECODE(iiim.lot_id, cn_zero, TO_NUMBER(NULL), TO_NUMBER(iiim.lot_no));
 --
@@ -1132,7 +1239,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -1212,11 +1322,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -1268,9 +1384,18 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -1349,7 +1474,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -1384,7 +1512,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -1464,11 +1595,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -1520,9 +1657,18 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -1601,7 +1747,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -1635,7 +1784,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -1715,11 +1867,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -1771,9 +1929,18 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -1852,7 +2019,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -1886,7 +2056,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -1966,11 +2139,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -2022,9 +2201,18 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -2103,7 +2291,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -4020,7 +4211,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -4100,11 +4294,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -4156,9 +4356,19 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.mtl_organization_id   = ln_organization_id
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -4237,7 +4447,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -4252,8 +4465,12 @@ AS
              =  NVL(NVL(iv_qt_status_code, xqi.qt_effect), cn_dummy)
       -- 画面検索パターン別に異なる、カーソル毎の抽出、ソート条件
       AND    iiim.item_id               = NVL(in_item_id, iiim.item_id)
-      AND    iiim.frequent_whse         = lv_frequent_whse
-      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto start
+-- 倉庫抽出フラグ:ONのため、オルグで検索
+-- 代表倉庫に合算する場合、同一オルグID以外のデータも抽出するため
+--      AND    iiim.frequent_whse         = lv_frequent_whse
+--      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto end
       ORDER BY TO_NUMBER(iiim.item_no),
                iiim.attribute1,
                iiim.attribute2;
@@ -4273,7 +4490,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -4353,11 +4573,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -4409,9 +4635,19 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.mtl_organization_id   = ln_organization_id
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -4490,7 +4726,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -4505,8 +4744,12 @@ AS
              =  NVL(NVL(iv_qt_status_code, xqi.qt_effect), cn_dummy)
       -- 画面検索パターン別に異なる、カーソル毎の抽出、ソート条件
       AND    iiim.item_id               = NVL(in_item_id, iiim.item_id)
-      AND    iiim.frequent_whse         = lv_frequent_whse
-      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto start
+-- 倉庫抽出フラグ:ONのため、オルグで検索
+-- 代表倉庫に合算する場合、同一オルグID以外のデータも抽出するため
+--      AND    iiim.frequent_whse         = lv_frequent_whse
+--      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto end
       ORDER BY TO_NUMBER(iiim.item_no),
                DECODE(iiim.lot_id, cn_zero, TO_NUMBER(NULL), TO_NUMBER(iiim.lot_no));
     --
@@ -4525,7 +4768,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -4605,11 +4851,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -4661,9 +4913,19 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.mtl_organization_id   = ln_organization_id
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -4742,7 +5004,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -4757,7 +5022,11 @@ AS
              =  NVL(NVL(iv_qt_status_code, xqi.qt_effect), cn_dummy)
       -- 画面検索パターン別に異なる、カーソル毎の抽出、ソート条件
       AND    iiim.item_id               = NVL(in_item_id, iiim.item_id)
-      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto start
+-- 倉庫抽出フラグ:ONのため、オルグで検索
+-- 代表倉庫に合算する場合、同一オルグID以外のデータも抽出するため
+--      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto end
       ORDER BY TO_NUMBER(NVL(iiim.frequent_whse, iiim.segment1)),
                iiim.attribute1,
                iiim.attribute2;
@@ -4777,7 +5046,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -4857,11 +5129,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -4913,9 +5191,19 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.mtl_organization_id   = ln_organization_id
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -4994,7 +5282,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -5009,7 +5300,11 @@ AS
              =  NVL(NVL(iv_qt_status_code, xqi.qt_effect), cn_dummy)
       -- 画面検索パターン別に異なる、カーソル毎の抽出、ソート条件
       AND    iiim.item_id               = NVL(in_item_id, iiim.item_id)
-      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto start
+-- 倉庫抽出フラグ:ONのため、オルグで検索
+-- 代表倉庫に合算する場合、同一オルグID以外のデータも抽出するため
+--      AND    iiim.mtl_organization_id   = ln_organization_id
+-- 2008.06.25 add S.Takemoto end
       ORDER BY TO_NUMBER(NVL(iiim.frequent_whse, iiim.segment1)),
                DECODE(iiim.lot_id, cn_zero, TO_NUMBER(NULL), TO_NUMBER(iiim.lot_no));
     --
@@ -5028,7 +5323,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -5108,11 +5406,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -5164,9 +5468,18 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -5245,7 +5558,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -5280,7 +5596,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -5360,11 +5679,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -5416,9 +5741,18 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -5497,7 +5831,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -5531,7 +5868,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -5611,11 +5951,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -5667,9 +6013,18 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -5748,7 +6103,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -5782,7 +6140,10 @@ AS
 --             WHERE  xilv_freq.segment1 = iiim.frequent_whse),          -- (代表)保管倉庫名
              NVL(iiim.fr_short_name, iiim.short_name),                 -- (代表)保管倉庫名
 --2008.06.13 mod end
-             iiim.inventory_location_id,                               -- 保管倉庫ID
+-- 2008.07.02 mod S.Takemoto start
+--             iiim.inventory_location_id,                               -- 保管倉庫ID
+             NVL(iiim.fr_location_id, iiim.inventory_location_id),     -- (代表)保管倉庫ID
+-- 2008.07.02 mod S.Takemoto end
              iiim.item_id,                                             -- 品目ID
              iiim.item_no,                                             -- 品目コード
              iiim.item_short_name,                                     -- 品目名
@@ -5862,11 +6223,17 @@ AS
                      xilv.short_name,            -- 保管倉庫名
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
-                     xilv.frequent_whse,         -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto start
+--                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv_fr.segment1   AS frequent_whse,  -- 代表倉庫
+-- 2008.06.25 mod S.Takemoto end
 --2008.06.13 mod start
                      xilv_fr.short_name AS fr_short_name,
                                                  -- 代表倉庫名
 --2008.06.13 mod end
+-- 2008.07.02 add S.Takemoto start
+                     xilv_fr.inventory_location_id   AS fr_location_id,  -- 代表倉庫ID
+-- 2008.07.02 add S.Takemoto end
                      xilv.customer_stock_whse,   -- 倉庫名義
                      ximv.item_id,               -- 品目ID
                      ximv.item_short_name,       -- 品目略称
@@ -5918,9 +6285,18 @@ AS
               AND    xicv2.item_id           = ximv.item_id
               AND    xicv2.category_set_name = lv_prof_xpd
               AND    xicv2.segment1          = NVL(iv_prod_div_code, xicv2.segment1)
---2008.06.13 add start
-              AND    xilv.frequent_whse      = xilv_fr.segment1
---2008.06.13 add end
+-- 2008.06.25 mod S.Takemoto start
+----2008.06.13 add start
+--              AND    xilv.frequent_whse      = xilv_fr.segment1
+----2008.06.13 add end
+              AND ( (xilv.frequent_whse      = xilv_fr.segment1)
+                  OR(   (xilv.frequent_whse     = lv_prof_xdfw)
+                    AND ( xilv_fr.segment1 = (SELECT xfil.frq_item_location_code
+                                              FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                              WHERE xfil.item_location_code = xilv.segment1
+                                              AND   xfil.item_id = ximv.item_id))))
+              AND xilv_fr.customer_stock_whse   = iv_register_code
+-- 2008.06.25 mod S.Takemoto end
               AND  ((ximv.lot_ctl            = cv_lot_code1
                 AND  ilm.lot_id             <> cn_zero)
                 OR   ximv.lot_ctl            = cv_lot_code0)) iiim,
@@ -5999,7 +6375,10 @@ AS
       -- 手持数量.最終更新日：在庫がない場合(EBS標準のマスタ未反映分)はシステム日付とする
       AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
       -- 抽出条件(画面検索値)
-      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto start
+-- 代表倉庫に合算する場合、名義違いのデータも抽出するため
+--      AND    iiim.customer_stock_whse    = iv_register_code
+-- 2008.06.25 add S.Takemoto end
       AND    NVL(iiim.attribute3, cv_min_date)
              >= NVL(TO_CHAR(id_consume_from, cv_date_format), cv_min_date)
       AND    NVL(iiim.attribute3, cv_max_date)
@@ -7907,6 +8286,9 @@ AS
     ln_prof_xtt := FND_PROFILE.VALUE('XXINV_TARGET_TERM');
     lv_prof_xid := FND_PROFILE.VALUE('XXCMN_ARTICLE_DIV');
     lv_prof_xpd := FND_PROFILE.VALUE('XXCMN_ITEM_DIV');
+-- 2008.06.25 add S.Takemoto start
+    lv_prof_xdfw := FND_PROFILE.VALUE('XXCMN_DUMMY_FREQUENT_WHSE');
+-- 2008.06.25 add S.Takemoto end
 --
     -- プロファイルより取得した日数から、在庫照会対象日付を算出
     ld_target_date := TRUNC(SYSDATE) - ln_prof_xtt;
@@ -7937,6 +8319,10 @@ AS
     IF ((NVL(iv_parent_div, cv_no) = cv_yes)
       AND (NVL(iv_deleg_house, cv_no) = cv_yes)
         AND (NVL(iv_ext_warehouse, cv_no) = cv_yes)
+-- 2008.06.25 add S.Takemoto start
+-- 保管倉庫必須のため、代表倉庫が設定されている場合のみ検索
+        AND (lv_frequent_whse IS NOT NULL)
+-- 2008.06.25 add S.Takemoto end
           AND (NOT ((in_item_id IS NOT NULL)
             AND (in_inventory_location_id IS NULL)))
               AND (iv_item_div_code = cv_lot_seihin))
@@ -8027,7 +8413,10 @@ AS
 --
           <<calculation_a1>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -8076,6 +8465,10 @@ AS
     ELSIF ((NVL(iv_parent_div, cv_no) = cv_yes)
       AND (NVL(iv_deleg_house, cv_no) = cv_yes)
         AND (NVL(iv_ext_warehouse, cv_no) = cv_yes)
+-- 2008.06.25 add S.Takemoto start
+-- 保管倉庫必須のため、代表倉庫が設定されている場合のみ検索
+        AND (lv_frequent_whse IS NOT NULL)
+-- 2008.06.25 add S.Takemoto end
           AND (NOT ((in_item_id IS NOT NULL)
             AND (in_inventory_location_id IS NULL)))
               AND (iv_item_div_code <> cv_lot_seihin))
@@ -8167,7 +8560,10 @@ AS
 --
           <<calculation_a2>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -8304,7 +8700,10 @@ AS
 --
           <<calculation_a3>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -8441,7 +8840,10 @@ AS
           END IF;
           <<calculation_a4>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -8578,7 +8980,10 @@ AS
 --
           <<calculation_a5>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -8715,7 +9120,10 @@ AS
 --
           <<calculation_a6>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -8853,7 +9261,10 @@ AS
           <<calculation_a7>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
             IF (ior_ilm_data.EXISTS(ln_cnt_work)) THEN
-              IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--              IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+              IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
                 AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                   AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
               THEN
@@ -9015,8 +9426,10 @@ AS
           <<calculation_a8>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
             IF (ior_ilm_data.EXISTS(ln_cnt_work)) THEN
-              IF ((ior_ilm_data(ln_cnt_work).xilv_segment1
-                                                           = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--              IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+              IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
                 AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                   AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
               THEN
@@ -9839,6 +10252,10 @@ AS
     ELSIF ((NVL(iv_parent_div, cv_no) = cv_no)
       AND (NVL(iv_deleg_house, cv_no) = cv_yes)
         AND (NVL(iv_ext_warehouse, cv_no) = cv_yes)
+-- 2008.06.25 add S.Takemoto start
+-- 保管倉庫必須のため、代表倉庫が設定されている場合のみ検索
+        AND (lv_frequent_whse IS NOT NULL)
+-- 2008.06.25 add S.Takemoto end
           AND (NOT ((in_item_id IS NOT NULL)
             AND (in_inventory_location_id IS NULL)))
               AND (iv_item_div_code = cv_lot_seihin))
@@ -9929,7 +10346,10 @@ AS
 --
           <<calculation_b8>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -9976,6 +10396,10 @@ AS
     ELSIF ((NVL(iv_parent_div, cv_no) = cv_no)
       AND (NVL(iv_deleg_house, cv_no) = cv_yes)
         AND (NVL(iv_ext_warehouse, cv_no) = cv_yes)
+-- 2008.06.25 add S.Takemoto start
+-- 保管倉庫必須のため、代表倉庫が設定されている場合のみ検索
+        AND (lv_frequent_whse IS NOT NULL)
+-- 2008.06.25 add S.Takemoto end
           AND (NOT ((in_item_id IS NOT NULL)
             AND (in_inventory_location_id IS NULL)))
               AND (iv_item_div_code <> cv_lot_seihin))
@@ -10066,7 +10490,10 @@ AS
 --
           <<calculation_b9>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -10203,7 +10630,10 @@ AS
 --
           <<calculation_c1>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -10340,7 +10770,10 @@ AS
 --
           <<calculation_c2>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -10477,7 +10910,10 @@ AS
 --
           <<calculation_c3>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -10614,7 +11050,10 @@ AS
 --
           <<calculation_c4>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
-            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--            IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+            IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
               AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                 AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
             THEN
@@ -10752,7 +11191,10 @@ AS
           <<calculation_c5>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
             IF (ior_ilm_data.EXISTS(ln_cnt_work)) THEN
-              IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--              IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+              IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
                 AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                   AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
               THEN
@@ -10914,7 +11356,10 @@ AS
           <<calculation_c6>>
           FOR ln_cnt_work IN 1 .. (ln_cnt - 1) LOOP
             IF (ior_ilm_data.EXISTS(ln_cnt_work)) THEN
-              IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+-- 2008.06.25 mod S.Takemoto start
+--              IF ((ior_ilm_data(ln_cnt_work).xilv_segment1 = ior_ilm_data(ln_cnt).xilv_segment1)
+              IF ((ior_ilm_data(ln_cnt_work).xilv_frequent_whse = ior_ilm_data(ln_cnt).xilv_frequent_whse)
+-- 2008.06.25 mod S.Takemoto end
                 AND (ior_ilm_data(ln_cnt_work).ximv_item_id = ior_ilm_data(ln_cnt).ximv_item_id)
                   AND (ior_ilm_data(ln_cnt_work).ilm_lot_id = ior_ilm_data(ln_cnt).ilm_lot_id))
               THEN
