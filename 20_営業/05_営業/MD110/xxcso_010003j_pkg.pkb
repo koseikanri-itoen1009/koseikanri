@@ -31,6 +31,7 @@ AS
  *  2009/02/17    1.1   N.Yanagitaira    [CT1-012]decode_cont_manage_infoí«â¡
  *  2009/02/23    1.1   N.Yanagitaira    [ì‡ïîè·äQ-028]ëSäpÉJÉiÉ`ÉFÉbÉNèàóùïsê≥èCê≥
  *  2009/03/12    1.1   N.Yanagitaira    [CT2-058]get_sales_chargeí«â¡
+ *  2009/04/03    1.2   N.Yanagitaira    [è·äQT1_0223]chk_duplicate_vendor_nameèCê≥
  *****************************************************************************************/
 --
   -- ===============================
@@ -441,16 +442,37 @@ AS
       INTO      ln_cnt
       FROM      xxcso_destinations xd
       WHERE     xd.payment_name IN (iv_dm1_vendor_name, iv_dm2_vendor_name, iv_dm3_vendor_name)
-        AND     xd.supplier_id NOT IN (in_dm1_supplier_id, in_dm2_supplier_id, in_dm3_supplier_id)
-        AND     (
-                  (
-                    ( in_contract_management_id IS NOT NULL ) AND (xd.contract_management_id <> in_contract_management_id)
-                  )
-                  OR
-                  (
-                    ( in_contract_management_id IS NULL) AND (1 = 1)
-                  )
+-- 20090403_N.Yanagitaira T1_0223 Mod START
+--        AND     xd.supplier_id NOT IN (in_dm1_supplier_id, in_dm2_supplier_id, in_dm3_supplier_id)
+--        AND     (
+--                  (
+--                    ( in_contract_management_id IS NOT NULL ) AND (xd.contract_management_id <> in_contract_management_id)
+--                  )
+--                  OR
+--                  (
+--                    ( in_contract_management_id IS NULL) AND (1 = 1)
+--                  )
+--                )
+        AND     NOT EXISTS
+                (
+                  SELECT  1
+                  FROM    xxcso_destinations xd2
+                  WHERE   xd2.contract_management_id = xd.contract_management_id
+                    AND   xd2.contract_management_id = NVL(in_contract_management_id, fnd_api.g_miss_num)
                 )
+        AND     NOT EXISTS
+                (
+                  SELECT  1
+                  FROM    xxcso_destinations xd2
+                  WHERE   xd2.contract_management_id = xd.contract_management_id
+                    AND   xd2.supplier_id IN
+                            (
+                              NVL(in_dm1_supplier_id, fnd_api.g_miss_num)
+                             ,NVL(in_dm2_supplier_id, fnd_api.g_miss_num)
+                             ,NVL(in_dm3_supplier_id, fnd_api.g_miss_num)
+                            )
+                )
+-- 20090403_N.Yanagitaira T1_0223 Mod END
         AND      ROWNUM = 1
       ;
 --
@@ -470,7 +492,21 @@ AS
       INTO      ln_cnt
       FROM      po_vendors pv
       WHERE     pv.vendor_name IN (iv_dm1_vendor_name, iv_dm2_vendor_name, iv_dm3_vendor_name)
-        AND     pv.vendor_id NOT IN (in_dm1_supplier_id, in_dm2_supplier_id, in_dm3_supplier_id)
+-- 20090403_N.Yanagitaira T1_0223 Mod START
+--        AND     pv.vendor_id NOT IN (in_dm1_supplier_id, in_dm2_supplier_id, in_dm3_supplier_id)
+        AND     NOT EXISTS
+                (
+                  SELECT  1
+                  FROM    po_vendors pv2
+                  WHERE   pv2.vendor_id = pv.vendor_id
+                    AND   pv2.vendor_id IN
+                            (
+                              NVL(in_dm1_supplier_id, fnd_api.g_miss_num)
+                             ,NVL(in_dm2_supplier_id, fnd_api.g_miss_num)
+                             ,NVL(in_dm3_supplier_id, fnd_api.g_miss_num)
+                            )
+                )
+-- 20090403_N.Yanagitaira T1_0223 Mod END
         AND     ROWNUM = 1
       ;
 --
