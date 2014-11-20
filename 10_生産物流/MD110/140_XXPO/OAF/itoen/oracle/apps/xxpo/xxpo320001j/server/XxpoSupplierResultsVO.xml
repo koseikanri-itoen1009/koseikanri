@@ -34,6 +34,9 @@ SELECT pha.po_header_id header_id          -- 発注ヘッダID
       ,xpha.purchase_approved_flg purchaseapproved_flag -- 仕入承諾フラグ
 FROM po_headers_all pha           -- 発注ヘッダ
     ,xxpo_headers_all xpha        -- 発注ヘッダ(アドオン)
+-- 2009/08/24 T.Yoshimoto Add Start 本番障害#1618
+    ,xxwsh_order_headers_all xoha -- 受注ヘッダ(アドオン)
+-- 2009/08/24 T.Yoshimoto Add End 本番障害#1618
     ,xxcmn_item_locations_v cilv  -- opm保管場所VIEW
     ,xxcmn_vendors_v cvv1         -- 仕入先情報VIEW1
     ,xxcmn_vendors_v cvv2         -- 仕入先情報VIEW2
@@ -46,6 +49,10 @@ WHERE pha.vendor_id        = cvv1.vendor_id
 -- 2009/03/30 H.Itou Add Start 本番障害#1346
   AND pha.org_id           = FND_PROFILE.VALUE('ORG_ID')
 -- 2009/03/30 H.Itou Add End
+-- 2009/08/24 T.Yoshimoto Add Start 本番障害#1618
+  AND pha.segment1         = xoha.po_no(+)
+  AND NVL(xoha.notif_status, '40') = '40'      
+-- 2009/08/24 T.Yoshimoto Add End 本番障害#1618
   AND clvv1.lookup_type    = 'XXPO_PO_ADD_STATUS'
   AND pha.attribute1       = clvv1.lookup_code
   AND clvv1.lookup_code   >= '20'
