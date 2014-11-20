@@ -11,6 +11,9 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   U.Sai            新規作成
  *  2009/04/30    1.1   T.Nakamura       カラムコメント、バックスラッシュを追加
+ *  2009/08/20    1.2   T.Murakami       以下のカラムコメントを修正
+ *                                       1.受払年月日の「BASE_CODE」→「PRACTICE_DATE」
+ *                                       2.棚卸区分の「BASE_SHORT_NAME」→「INVENTORY_KBN」
  *
  ************************************************************************/
 
@@ -39,7 +42,7 @@ ORDER BY MD.PRACTICE_DATE
 /
 COMMENT ON TABLE  XXCOI_REC_DAILY_MONTHLY_V                   IS '受払年月日ビュー';
 /
-COMMENT ON COLUMN XXCOI_REC_DAILY_MONTHLY_V.BASE_CODE         IS '受払年月日';
+COMMENT ON COLUMN XXCOI_REC_DAILY_MONTHLY_V.PRACTICE_DATE     IS '受払年月日';
 /
-COMMENT ON COLUMN XXCOI_REC_DAILY_MONTHLY_V.BASE_SHORT_NAME   IS '棚卸区分';
+COMMENT ON COLUMN XXCOI_REC_DAILY_MONTHLY_V.INVENTORY_KBN     IS '棚卸区分';
 /
