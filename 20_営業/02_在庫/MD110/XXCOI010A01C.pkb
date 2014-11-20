@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A01C(body)
  * Description      : 営業員在庫IF出力
  * MD.050           : 営業員在庫IF出力 MD050_COI_010_A01
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/18    1.0   T.Nakamura       新規作成
+ *  2009/05/12    1.1   T.Nakamura       [障害T1_0813]容器群コードNULLチェックを削除
  *
  *****************************************************************************************/
 --
@@ -677,30 +678,32 @@ AS
         ov_retcode    := cv_status_warn;
       END IF;
 --
-      -- 容器群コードNULLチェック
-      IF ( g_get_sal_stf_inv_tab(i).vessel_group_code IS NULL ) THEN
-        gv_out_msg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_appl_short_name_xxcoi
-                        , iv_name         => cv_vg_code_chk_err_msg
-                        , iv_token_name1  => cv_tkn_base_code_tok
-                        , iv_token_value1 => g_get_sal_stf_inv_tab(i).sale_base_code
-                        , iv_token_name2  => cv_tkn_inv_code_tok
-                        , iv_token_value2 => g_get_sal_stf_inv_tab(i).inv_code
-                        , iv_token_name3  => cv_tkn_item_code_tok
-                        , iv_token_value3 => g_get_sal_stf_inv_tab(i).item_code
-                      );
-        -- メッセージ出力
-        FND_FILE.PUT_LINE(
-            which  => FND_FILE.OUTPUT
-          , buff   => gv_out_msg
-        );
-        FND_FILE.PUT_LINE(
-            which  => FND_FILE.LOG
-          , buff   => SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||gv_out_msg,1,5000 )
-        );
-        lv_chk_status := FALSE;
-        ov_retcode    := cv_status_warn;
-      END IF;
+-- == 2009/05/12 V1.1 Deleted START ================================================================
+--      -- 容器群コードNULLチェック
+--      IF ( g_get_sal_stf_inv_tab(i).vessel_group_code IS NULL ) THEN
+--        gv_out_msg := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_appl_short_name_xxcoi
+--                        , iv_name         => cv_vg_code_chk_err_msg
+--                        , iv_token_name1  => cv_tkn_base_code_tok
+--                        , iv_token_value1 => g_get_sal_stf_inv_tab(i).sale_base_code
+--                        , iv_token_name2  => cv_tkn_inv_code_tok
+--                        , iv_token_value2 => g_get_sal_stf_inv_tab(i).inv_code
+--                        , iv_token_name3  => cv_tkn_item_code_tok
+--                        , iv_token_value3 => g_get_sal_stf_inv_tab(i).item_code
+--                      );
+--        -- メッセージ出力
+--        FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--          , buff   => gv_out_msg
+--        );
+--        FND_FILE.PUT_LINE(
+--            which  => FND_FILE.LOG
+--          , buff   => SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||gv_out_msg,1,5000 )
+--        );
+--        lv_chk_status := FALSE;
+--        ov_retcode    := cv_status_warn;
+--      END IF;
+-- == 2009/05/12 V1.1 Deleted END   ================================================================
 --
       -- 必須チェックステータスがFALSEの場合
       IF ( lv_chk_status = FALSE ) THEN
