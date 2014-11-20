@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP001A02C(body)
  * Description      : äÓèÄåvâÊÇÃéÊçû
  * MD.050           : äÓèÄåvâÊÇÃéÊçû MD050_COP_001_A02
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/16    1.0   Y.Goto           êVãKçÏê¨
+ *  2009/08/21    1.1   S.Moriyama       0001134ëŒâû
  *
  *****************************************************************************************/
 --
@@ -606,6 +607,10 @@ AS
         ,attribute2
         ,attribute3
         ,attribute4
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_START
+        ,attribute5
+        ,attribute6
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_END
         ,action
       )
       SELECT inventory_item_id                 inventory_item_id
@@ -627,6 +632,10 @@ AS
             ,attribute2                        attribute2
             ,attribute3                        attribute3
             ,in_file_id                        attribute4
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_START
+            ,attribute5                        attribute5
+            ,attribute6                        attribute6
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_END
             ,action                            action
       FROM (
         WITH xmsi_vw AS (
@@ -640,6 +649,11 @@ AS
                 ,xmsi.schedule_prod_flg        schedule_prod_flg
                 ,xmsi.deliver_from             deliver_from
                 ,xmsi.shipment_date            shipment_date
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_START
+                ,xmsi.schedule_type            schedule_type
+                ,xmsi.schedule_prod_date       schedule_prod_date
+                ,xmsi.prod_purchase_flg        prod_purchase_flg
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_END
           FROM   xxcop_mrp_schedule_interface  xmsi
                 ,mrp_schedule_designators      msd
                 ,mtl_system_items_b            msib
@@ -668,12 +682,20 @@ AS
               SELECT 'x'
               FROM   xmsi_vw                   xmsiv
               WHERE msds.schedule_designator = xmsiv.schedule_designator
-                AND msds.organization_id     = xmsiv.organization_id
-                AND msds.inventory_item_id   = xmsiv.inventory_item_id
-                --ÅöÅ´2009/01/21 í«â¡
-                AND ( ( msds.attribute2 IS NULL AND xmsiv.deliver_from IS NULL)
-                   OR ( msds.attribute2 = xmsiv.deliver_from ) )
-                --ÅöÅ™2009/01/21 í«â¡
+--20090821_Ver1.1_0001134_SCS.Moriyama_MOD_START
+--                AND msds.organization_id     = xmsiv.organization_id
+--                AND msds.inventory_item_id   = xmsiv.inventory_item_id
+--                --ÅöÅ´2009/01/21 í«â¡
+--                AND ( ( msds.attribute2 IS NULL AND xmsiv.deliver_from IS NULL)
+--                   OR ( msds.attribute2 = xmsiv.deliver_from ) )
+--                --ÅöÅ™2009/01/21 í«â¡
+--                AND msds.inventory_item_id   = xmsiv.inventory_item_id
+                AND(( xmsiv.schedule_type = 2
+                    AND msds.attribute2 = xmsiv.deliver_from)
+                OR  (xmsiv.schedule_type != 2
+                    AND msds.organization_id = xmsiv.organization_id )
+                )
+--20090821_Ver1.1_0001134_SCS.Moriyama_MOD_END
             )
         )
         SELECT NVL( xmsiv.inventory_item_id  , msdsv.inventory_item_id )   inventory_item_id
@@ -685,6 +707,10 @@ AS
               ,xmsiv.schedule_prod_flg                                     attribute1
               ,xmsiv.deliver_from                                          attribute2
               ,TO_CHAR( xmsiv.shipment_date  , gv_date_format )            attribute3
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_START
+              ,TO_CHAR( xmsiv.schedule_prod_date , gv_date_format )        attribute5
+              ,xmsiv.prod_purchase_flg                                     attribute6
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_END
               ,CASE
                   WHEN msdsv.mps_transaction_id IS NULL THEN cv_insert_action
                   WHEN xmsiv.row_no IS NULL THEN cv_delete_action

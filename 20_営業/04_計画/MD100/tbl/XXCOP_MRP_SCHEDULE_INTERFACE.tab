@@ -3,13 +3,14 @@
  *
  * View Name       : XXCOP_MRP_SCHEDULE_INTERFACE
  * Description     : 基準計画IF表
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009-1-26     1.0   SCS.Uchida       新規作成
+ *  2009-8-21     1.1   SCS.Moriyama     新規作成
  *
  ************************************************************************/
 CREATE TABLE XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE
@@ -28,6 +29,10 @@ CREATE TABLE XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE
   deliver_from                   VARCHAR2(3)           ,
   shipment_date                  DATE                  ,
   schedule_prod_flg              NUMBER(1)             ,
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_START
+  schedule_prod_date             DATE                  ,
+  prod_purchase_flg              VARCHAR2(1)           ,
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_END
   created_by                     NUMBER(15)    NOT NULL,
   creation_date                  DATE          NOT NULL,
   last_updated_by                NUMBER(15)    NOT NULL,
@@ -53,6 +58,10 @@ COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.SCHEDULE_QUANTITY          
 COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.DELIVER_FROM                      IS '出荷元倉庫コード';
 COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.SHIPMENT_DATE                     IS '出荷日';
 COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.SCHEDULE_PROD_FLG                 IS '計画商品フラグ';
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_START
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.SCHEDULE_PROD_DATE                IS '生産予定日';
+COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.PROD_PURCHASE_FLG                 IS '製造/購入品フラグ';
+--20090821_Ver1.1_0001134_SCS.Moriyama_ADD_END
 COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.CREATED_BY                        IS '作成者';
 COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.CREATION_DATE                     IS '作成日';
 COMMENT ON COLUMN XXCOP.XXCOP_MRP_SCHEDULE_INTERFACE.LAST_UPDATED_BY                   IS '最終更新者';

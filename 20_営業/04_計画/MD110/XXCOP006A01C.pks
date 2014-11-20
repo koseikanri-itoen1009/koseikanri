@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE APPS.XXCOP006A01C
+CREATE OR REPLACE PACKAGE XXCOP006A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A01C(spec)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 1.4
+ * Version          : 2.0
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -23,17 +23,22 @@ AS
  *  2009/04/14    1.2   Y.Goto           T1_0539,T1_0541対応
  *  2009/04/28    1.3   Y.Goto           T1_0846,T1_0920対応
  *  2009/06/12    1.4   Y.Goto           T1_1394対応
+ *  2009/07/13    2.0   Y.Goto           0000669対応(共通課題IE479)
  *
  *****************************************************************************************/
 --
   --コンカレント実行ファイル登録プロシージャ
   PROCEDURE main(
-    errbuf           OUT    VARCHAR2,   --   エラーメッセージ #固定#
-    retcode          OUT    VARCHAR2,   --   エラーコード     #固定#
-    iv_plan_type     IN     VARCHAR2,   -- 1.計画区分
-    iv_shipment_from IN     VARCHAR2,   -- 2.出荷ペース計画期間(FROM)
-    iv_shipment_to   IN     VARCHAR2,   -- 3.出荷ペース計画期間(TO)
-    iv_forcast_type  IN     VARCHAR2    -- 4.出荷予測区分
+     errbuf                 OUT    VARCHAR2                 --   エラーメッセージ #固定#
+    ,retcode                OUT    VARCHAR2                 --   エラーコード     #固定#
+    ,iv_planning_date_from  IN     VARCHAR2                 -- 1.計画立案期間(FROM)
+    ,iv_planning_date_to    IN     VARCHAR2                 -- 2.計画立案期間(TO)
+    ,iv_plan_type           IN     VARCHAR2                 -- 3.出荷計画区分
+    ,iv_shipment_date_from  IN     VARCHAR2                 -- 4.出荷ペース計画期間(FROM)
+    ,iv_shipment_date_to    IN     VARCHAR2                 -- 5.出荷ペース計画期間(TO)
+    ,iv_forecast_date_from  IN     VARCHAR2                 -- 6.出荷予測期間(FROM)
+    ,iv_forecast_date_to    IN     VARCHAR2                 -- 7.出荷予測期間(TO)
+    ,iv_allocated_date      IN     VARCHAR2                 -- 8.出荷引当済日
   );
 END XXCOP006A01C;
 /

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP002A01C(body)
  * Description      : アップロードファイルからの取込（物流構成表）
  * MD.050           : アップロードファイルからの取込（物流構成表） MD050_COP_002_A01
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/21    1.0   Y.Goto           新規作成
  *  2009/04/10    1.1   SCS.Uda          T1_0464対応
+ *  2009/11/19    1.2   SCS.Kikuchi      I_E_479_016対応
  *
  *****************************************************************************************/
 --
@@ -1658,7 +1659,10 @@ AS
         END IF;
         --ソースルール受入組織表チェック
         IF ( o_srd_tab(ln_srd_idx).effective_date IS NOT NULL ) THEN
-          IF ( o_srd_tab(ln_srd_idx).effective_date > gd_sysdate ) THEN
+--20091119_Ver1.2_I_E_479_016_SCS.Kikuchi_MOD_START
+--          IF ( o_srd_tab(ln_srd_idx).effective_date > gd_sysdate ) THEN
+          IF ( o_srd_tab(ln_srd_idx).effective_date >= gd_sysdate ) THEN
+--20091119_Ver1.2_I_E_479_016_SCS.Kikuchi_MOD_END
             --未来日の場合
             SELECT COUNT('x')   row_count
             INTO   ln_exists

@@ -12,6 +12,7 @@
  *  2009-02-23    1.0   SCS.Uchida      新規作成
  *  2009-03-19    1.1   SCS.Kayahara    コメント作成文にスキーマ追加
  *  2009-04-15    1.2   SCS.Goto        T1_0565対応
+ *  2009-09-04    1.3   SCS.Tsukino     COP005A01修正に伴う構成列の修正
  *
  ************************************************************************/
 CREATE TABLE XXCOP.XXCOP_WK_SHIP_PLANNING_OUTPUT
@@ -22,9 +23,17 @@ CREATE TABLE XXCOP.XXCOP_WK_SHIP_PLANNING_OUTPUT
 --20090415_Ver1.2_T1_0565_SCS.Goto_MOD_END
   ,shipping_date                  DATE
   ,receipt_date                   DATE
-  ,ship_org_code                  VARCHAR2(4)
+--20090904_Ver1.3_SCS.Tsukino_MOD_START
+--  ,ship_org_code                  VARCHAR2(4)
+  ,ship_org_code                  VARCHAR2(3)
+  ,ship_lct_code                  VARCHAR2(4)
+--20090904_Ver1.3_SCS.Tsukino_MOD_END  
   ,ship_org_name                  VARCHAR2(50)
-  ,receipt_org_code               VARCHAR2(4)
+--20090904_Ver1.3_SCS.Tsukino_MOD_START
+--  ,receipt_org_code               VARCHAR2(4)
+  ,receipt_org_code               VARCHAR2(3)  
+  ,receipt_lct_code               VARCHAR2(4)
+--20090904_Ver1.3_SCS.Tsukino_MOD_END
   ,receipt_org_name               VARCHAR2(50)
   ,item_no                        VARCHAR2(7)
   ,item_name                      VARCHAR2(50)
@@ -49,9 +58,17 @@ CREATE TABLE XXCOP.XXCOP_WK_SHIP_PLANNING_OUTPUT
 COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.transaction_id                   IS '出力ワークテーブルID';
 COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.shipping_date                    IS '出荷日';
 COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.receipt_date                     IS '着日';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.ship_org_code                    IS '移動元倉庫ＣＤ';
+--20090904_Ver1.3_SCS.Tsukino_MOD_START
+--COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.ship_org_code                    IS '移動元倉庫ＣＤ';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.ship_org_code                    IS '移動元組織ＣＤ';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.ship_lct_code                    IS '移動元保管場所ＣＤ';
+--20090904_Ver1.3_SCS.Tsukino_MOD_END
 COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.ship_org_name                    IS '移動元倉庫名';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.receipt_org_code                 IS '移動先倉庫ＣＤ';
+--20090904_Ver1.3_SCS.Tsukino_MOD_START
+--COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.receipt_org_code                 IS '移動先倉庫ＣＤ';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.receipt_org_code                 IS '移動先組織ＣＤ';
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.receipt_lct_code                 IS '移動先保管場所ＣＤ';
+--20090904_Ver1.3_SCS.Tsukino_MOD_END
 COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.receipt_org_name                 IS '移動先倉庫名';
 COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.item_no                          IS '品目ＣＤ';
 COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning_output.item_name                        IS '品目名';

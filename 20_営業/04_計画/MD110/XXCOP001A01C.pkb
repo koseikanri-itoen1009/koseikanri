@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP001A01C(body)
  * Description      : アップロードファイルからの登録（基準計画）
  * MD.050           : アップロードファイルからの登録（基準計画） MD050_COP_001_A01
- * Version          : ver1.1
+ * Version          : ver1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/21    1.0  SCS.Uchida       新規作成
  *  2009/04/03    1.1  SCS.Goto         T1_0237、T1_0270対応
+ *  2009/08/21    1.2  SCS.Moriyama     0001134対応
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -115,6 +116,9 @@ AS
   gv_m_n_skip_rec     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10033';   -- 基準計画確定日以前データスキップメッセージ
   gv_m_e_unmatch      CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10034';   -- 基準計画名未登録エラー
   gv_m_e_calendar_err CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10037';   -- 稼働日チェックエラー
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_START
+  gv_m_e_prod_err     CONSTANT VARCHAR2(100) := 'APP-XXCOP1-10044';   -- 製造/購入品フラグ不正チェックエラー
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_END
   --トークン設定
   gv_t_prof_name      CONSTANT VARCHAR2(100) := 'PROF_NAME';
   gv_t_parameter      CONSTANT VARCHAR2(100) := 'PARAMETER';
@@ -156,7 +160,10 @@ AS
   gv_blank            CONSTANT VARCHAR2(5)   := 'BLANK';              -- 空白行
   --ファイルアップロードI/Fテーブル
   gv_delim            CONSTANT VARCHAR2(1)   := ',';                  -- デリミタ文字
-  gn_column_num       CONSTANT NUMBER        := 10;                   -- 項目数
+--20090821_Ver1.2_0001134_SCS.Moriyama_MOD_START
+--  gn_column_num       CONSTANT NUMBER        := 10;                   -- 項目数
+  gn_column_num       CONSTANT NUMBER        := 13;                   -- 項目数
+--20090821_Ver1.2_0001134_SCS.Moriyama_MOD_END
   gn_header_row_num   CONSTANT NUMBER        := 1;                    -- ヘッダー行数
   --項目の日本語名称
   gv_column_name_01   CONSTANT VARCHAR2(100) := 'MDS/MPS名';
@@ -169,6 +176,11 @@ AS
   gv_column_name_08   CONSTANT VARCHAR2(100) := '出荷元倉庫コード';
   gv_column_name_09   CONSTANT VARCHAR2(100) := '出荷日';
   gv_column_name_10   CONSTANT VARCHAR2(100) := '計画商品フラグ';
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_START
+  gv_column_name_11   CONSTANT VARCHAR2(100) := '生産予定日';
+  gv_column_name_12   CONSTANT VARCHAR2(100) := '製造/購入品フラグ';
+  gv_column_name_13   CONSTANT VARCHAR2(100) := 'アップロード日付';
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_END
   --項目のサイズ
   gv_column_len_01    CONSTANT NUMBER := 10;                          -- MDS/MPS名
   gv_column_len_02    CONSTANT NUMBER := 50;                          -- MDS/MPS摘要
@@ -178,6 +190,9 @@ AS
   gv_column_len_07    CONSTANT NUMBER := 8;                           -- 計画数量
   gv_column_len_08    CONSTANT NUMBER := 3;                           -- 出荷元倉庫コード
   gv_column_len_10    CONSTANT NUMBER := 1;                           -- 計画商品フラグ
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_START
+  gv_column_len_12    CONSTANT NUMBER := 1;                           -- 製造/購入品フラグ
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_END
   --必須判定
   gv_must_item        CONSTANT VARCHAR2(4) := 'MUST';                 -- 必須項目
   gv_null_item        CONSTANT VARCHAR2(4) := 'NULL';                 -- NULL項目
@@ -185,6 +200,10 @@ AS
   --日付型フォーマット
   gv_ymd_format       CONSTANT VARCHAR2(8)   := 'YYYYMMDD';           -- 年月日
   gv_ymd_out_format   CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';         -- 年月日（出力用）
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_START
+  gn_product_flg      CONSTANT NUMBER := 1;                           -- 製造/購入品フラグ:製造品
+  gn_purchase_flg     CONSTANT NUMBER := 2;                           -- 製造/購入品フラグ:購入品
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_END
   --基準計画レコード型
   TYPE xm_schedule_if_rtype IS RECORD (
 --20090403_Ver1.1_T1_0237_SCS.Goto_MOD_START
@@ -209,6 +228,11 @@ AS
   , shipment_date           xxcop_mrp_schedule_interface.shipment_date%TYPE
   , schedule_prod_flg       xxcop_mrp_schedule_interface.schedule_prod_flg%TYPE
   , num_of_cases            NUMBER
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_START
+  , schedule_prod_date      xxcop_mrp_schedule_interface.schedule_prod_date%TYPE
+  , prod_purchase_flg       xxcop_mrp_schedule_interface.prod_purchase_flg%TYPE
+  , upload_date             DATE
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_END
 --20090403_Ver1.1_T1_0237_SCS.Goto_MOD_END
   );
   --基準計画コレクション型
@@ -828,6 +852,7 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_quick_type     CONSTANT VARCHAR2(100) := 'XXCOP1_SCHEDULE_TYPE';          -- タイプ
+    cv_prod_type      CONSTANT VARCHAR2(100) := 'XXCOP1_PROD_PURCHASE_FLG';      -- タイプ
     cv_quick_lang     CONSTANT VARCHAR2(100) := USERENV('LANG');                 -- 言語
     cv_quick_enable   CONSTANT VARCHAR2(1)   := 'Y';                             -- 有効フラグ
     cd_quick_sysdate  CONSTANT DATE          := TRUNC(SYSDATE);                  -- システム日付（年月日）
@@ -885,6 +910,11 @@ AS
       o_scdl_tab(ln_srd_idx).deliver_from         := '';
       o_scdl_tab(ln_srd_idx).shipment_date        := '';
       o_scdl_tab(ln_srd_idx).schedule_prod_flg    := '';
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_START
+      o_scdl_tab(ln_srd_idx).schedule_prod_date   := '';
+      o_scdl_tab(ln_srd_idx).prod_purchase_flg    := '';
+      o_scdl_tab(ln_srd_idx).upload_date          := '';
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_END
       --
       --CSV文字分割
       xxcop_common_pkg.char_delim_partition(
@@ -1195,6 +1225,109 @@ AS
         ELSE
           RAISE global_api_expt;
         END IF;
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_START
+        --
+        -- -------------------------------
+        -- ● FLD11 : 生産予定日
+        --     必須　  ： 
+        --     タイプ  : 日付
+        --     サイズ  :  -
+        -- -------------------------------
+        --条件付必須判別
+        IF ( iv_format = gv_format_mds_o ) THEN
+          lv_case_flg := gv_null_item;
+        ELSE
+          lv_case_flg := gv_any_item;
+        END IF;
+        --
+        check_validate_item(
+           iv_item_name   => gv_column_name_11
+          ,iv_item_value  => l_csv_tab(11)
+          ,iv_null        => lv_case_flg
+          ,iv_number      => NULL
+          ,iv_date        => gv_ymd_format
+          ,in_item_size   => NULL
+          ,in_row_num     => ln_srd_idx
+          ,iv_file_data   => i_fuid_tab(ln_row_idx)
+          ,ov_errbuf      => lv_errbuf
+          ,ov_retcode     => lv_retcode
+          ,ov_errmsg      => lv_errmsg
+        );
+        IF ( lv_retcode = gv_status_normal ) THEN
+          o_scdl_tab(ln_srd_idx).schedule_prod_date := TO_DATE(l_csv_tab(11),gv_ymd_out_format);
+        ELSIF ( lv_retcode = gv_status_warn ) THEN
+          lv_invalid_flag := gv_status_error;
+        ELSE
+          RAISE global_api_expt;
+        END IF;
+        --
+        -- -------------------------------
+        -- ● FLD12: 製造/購入品フラグ
+        --     必須　  ： 
+        --     タイプ  : 数字
+        --     サイズ  : 1byte
+        -- -------------------------------
+        --条件付必須判別
+        IF ( iv_format = gv_format_mps_i ) THEN
+          lv_case_flg := gv_must_item;
+        ELSE
+          lv_case_flg := gv_null_item;
+        END IF;
+        --
+        check_validate_item(
+           iv_item_name   => gv_column_name_12
+          ,iv_item_value  => l_csv_tab(12)
+          ,iv_null        => lv_case_flg
+          ,iv_number      => gv_any_item
+          ,iv_date        => NULL
+          ,in_item_size   => gv_column_len_12
+          ,in_row_num     => ln_srd_idx
+          ,iv_file_data   => i_fuid_tab(ln_row_idx)
+          ,ov_errbuf      => lv_errbuf
+          ,ov_retcode     => lv_retcode
+          ,ov_errmsg      => lv_errmsg
+        );
+        IF ( lv_retcode = gv_status_normal ) THEN
+          o_scdl_tab(ln_srd_idx).prod_purchase_flg := TO_NUMBER(l_csv_tab(12));
+        ELSIF ( lv_retcode = gv_status_warn ) THEN
+          lv_invalid_flag := gv_status_error;
+        ELSE
+          RAISE global_api_expt;
+        END IF;
+--
+        -- ===============================
+        -- 5.製造品/購入品存在チェック
+        -- ===============================
+        IF (iv_format = gv_format_mps_i
+           AND o_scdl_tab(ln_srd_idx).prod_purchase_flg IS NOT NULL)
+        THEN
+          SELECT count(flv.enabled_flag)
+          INTO   ln_quick_rec_cnt
+          FROM   fnd_lookup_values flv
+          WHERE  flv.lookup_type   = cv_prod_type
+          AND    flv.language      = cv_quick_lang
+          AND    flv.lookup_code   = o_scdl_tab(ln_srd_idx).prod_purchase_flg
+          AND    flv.enabled_flag  = cv_quick_enable
+          AND    cd_quick_sysdate BETWEEN NVL(flv.start_date_active,cd_quick_sysdate)
+                                      AND NVL(flv.end_date_active  ,cd_quick_sysdate)
+          ;
+          IF ( ln_quick_rec_cnt = 0 ) THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => gv_xxcop
+                           ,iv_name         => gv_m_e_prod_err
+                           ,iv_token_name1  => gv_t_row_num
+                           ,iv_token_value1 => ln_srd_idx
+                           ,iv_token_name2  => gv_t_item
+                           ,iv_token_value2 => i_fuid_tab(ln_row_idx)
+                         );
+            output_disp(
+               iv_errmsg  => lv_errmsg
+              ,iv_errbuf  => lv_errbuf
+            );
+            lv_invalid_flag := gv_status_error;
+          END IF;
+        END IF;
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_END
       --★デバッグログ（開発用）
       xxcop_common_pkg.put_debug_message(ln_srd_idx || '行目' || ':1-fld10:' || 'b',gv_debug_mode);
       --
@@ -1890,6 +2023,10 @@ AS
               ,deliver_from
               ,shipment_date
               ,schedule_prod_flg
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_START
+              ,schedule_prod_date
+              ,prod_purchase_flg
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_END
               --以下WHOカラム
               ,created_by
               ,creation_date
@@ -1926,6 +2063,10 @@ AS
               ,i_scdl_tab(ln_row_idx).deliver_from          -- 出荷元倉庫コード
               ,i_scdl_tab(ln_row_idx).shipment_date         -- 出荷日
               ,i_scdl_tab(ln_row_idx).schedule_prod_flg     -- 計画商品フラグ
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_START
+              ,i_scdl_tab(ln_row_idx).schedule_prod_date    -- 生産予定日
+              ,i_scdl_tab(ln_row_idx).prod_purchase_flg     -- 製造/購入品フラグ
+--20090821_Ver1.2_0001134_SCS.Moriyama_ADD_END
                --以下WHOカラム
               ,gn_created_by                                -- CREATED_BY
               ,gd_creation_date                             -- CREATION_DATE

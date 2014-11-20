@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOP_WK_SHIP_PLANNING
  * Description     : 物流計画ワークテーブル
- * Version         : 1.2
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,134 +12,180 @@
  *  2009-02-23    1.0   SCS.Uchida      新規作成
  *  2009-03-19    1.1   SCS.Kayahara    コメント作成文の列名にスキーマ追加
  *  2009-04-15    1.2   SCS.Goto        T1_0565対応
+ *  2009-09-02    1.3   SCS.Tsukino     COP005A01修正に伴う構成列の修正
  *
  ************************************************************************/
-CREATE TABLE XXCOP.XXCOP_WK_SHIP_PLANNING
-(
---20090415_Ver1.2_T1_0565_SCS.Goto_MOD_START
---   transaction_id                 NUMBER(6)
-   transaction_id                 NUMBER(15)
---20090415_Ver1.2_T1_0565_SCS.Goto_MOD_END
-  ,org_data_lvl                   NUMBER(6)
-  ,plant_org_id                   NUMBER
-  ,plant_org_code                 VARCHAR2(4)
-  ,plant_org_name                 VARCHAR2(50)
-  ,plant_mark                     VARCHAR2(6)
-  ,own_flg                        VARCHAR2(1)
-  ,inventory_item_id              NUMBER
-  ,item_id                        NUMBER(10)
-  ,item_no                        VARCHAR2(7)
-  ,item_name                      VARCHAR2(50)
-  ,prod_class_code                VARCHAR2(40)
-  ,num_of_case                    NUMBER
-  ,palette_max_cs_qty             NUMBER
-  ,palette_max_step_qty           NUMBER
-  ,product_schedule_date          DATE
-  ,product_schedule_qty           NUMBER
-  ,ship_org_id                    NUMBER
-  ,ship_org_code                  VARCHAR2(4)
-  ,ship_org_name                  VARCHAR2(50)
-  ,ship_org_forcast_stock         NUMBER
-  ,ship_org_onhand_qty            NUMBER
-  ,receipt_org_id                 NUMBER
-  ,receipt_org_code               VARCHAR2(4)
-  ,receipt_org_name               VARCHAR2(50)
-  ,receipt_org_forcast_stock      NUMBER
-  ,receipt_org_onhand_qty         NUMBER
-  ,cnt_ship_org                   NUMBER
-  ,shipping_date                  DATE
-  ,receipt_date                   DATE
-  ,delivery_lead_time             NUMBER
-  ,shipping_pace                  NUMBER
-  ,under_lvl_pace                 NUMBER
-  ,schedule_qty                   NUMBER
-  ,before_stock                   NUMBER
-  ,after_stock                    NUMBER
-  ,stock_days                     NUMBER
-  ,assignment_set_type            VARCHAR2(1)
-  ,assignment_type                NUMBER(1)
-  ,sourcing_rule_type             NUMBER(1)
-  ,sourcing_rule_name             VARCHAR2(50)
-  ,shipping_type                  VARCHAR2(1)
-  ,freshness_priority             NUMBER(1)
-  ,freshness_condition            VARCHAR2(2)
-  ,stock_maintenance_days         NUMBER
-  ,max_stock_days                 NUMBER
-  ,manufacture_date               DATE
-  ,start_date_active              DATE
-  ,end_date_active                DATE
-  ,set_qty                        NUMBER
-  ,movement_qty                   NUMBER
-  ,created_by                     NUMBER(15)    NOT NULL
-  ,creation_date                  DATE          NOT NULL
-  ,last_updated_by                NUMBER(15)    NOT NULL
-  ,last_update_date               DATE          NOT NULL
-  ,last_update_login              NUMBER(15)
-  ,request_id                     NUMBER(15)
-  ,program_application_id         NUMBER(15)
-  ,program_id                     NUMBER(15)
-  ,program_update_date            DATE
-);
---
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.transaction_id                          IS '工場出荷計画WorkテーブルID';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.org_data_lvl                            IS '組織データレベル';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.plant_org_id                            IS '工場倉庫ID';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.plant_org_code                          IS '工場倉庫コード';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.plant_org_name                          IS '工場倉庫名';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.plant_mark                              IS '工場固有記号';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.own_flg                                 IS '自工場対象フラグ';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.inventory_item_id                       IS '在庫品目ID';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.item_id                                 IS 'OPM品目ID';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.item_no                                 IS '品目コード';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.item_name                               IS '品目名称';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.prod_class_code                         IS '商品区分';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.num_of_case                             IS 'ケース入数';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.palette_max_cs_qty                      IS '配数';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.palette_max_step_qty                    IS '段数';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.product_schedule_date                   IS '生産予定日';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.product_schedule_qty                    IS '生産計画数';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_org_id                             IS '移動元倉庫ID';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_org_code                           IS '移動元倉庫コード';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_org_name                           IS '移動元倉庫名';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_org_forcast_stock                  IS '移動元倉庫予測在庫';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_org_onhand_qty                     IS '移動元倉庫手持在庫';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_org_id                          IS '移動先倉庫ID';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_org_code                        IS '移動先倉庫コード';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_org_name                        IS '移動先倉庫名';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_org_forcast_stock               IS '移動先倉庫予測在庫';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_org_onhand_qty                  IS '移動先倉庫手持在庫';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.cnt_ship_org                            IS '親倉庫件数';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.shipping_date                           IS '出荷日';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_date                            IS '着荷日';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.delivery_lead_time                      IS '配送リードタイム';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.shipping_pace                           IS '出荷ペース';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.under_lvl_pace                          IS '下位倉庫出荷ペース';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.schedule_qty                            IS '計画数';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.before_stock                            IS '前在庫';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.after_stock                             IS '後在庫';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.stock_days                              IS '在庫日数';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.assignment_set_type                     IS '割当セット区分';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.assignment_type                         IS '割当先タイプ';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.sourcing_rule_type                      IS 'ソースルールタイプ';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.sourcing_rule_name                      IS 'ソースルール名';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.shipping_type                           IS '出荷計画区分';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.freshness_priority                      IS '優先順位';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.freshness_condition                     IS '鮮度条件';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.stock_maintenance_days                  IS '在庫維持日数';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.max_stock_days                          IS '最大在庫日数';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.manufacture_date                        IS '開始製造年月日';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.start_date_active                       IS '有効開始日';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.end_date_active                         IS '有効終了日';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.set_qty                                 IS '設定数量';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.movement_qty                            IS '移動数';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.created_by                              IS '作成者';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.creation_date                           IS '作成日';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.last_updated_by                         IS '最終更新者';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.last_update_date                        IS '最終更新日';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.last_update_login                       IS '最終更新ログイン';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.request_id                              IS '要求ID';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.program_id                              IS 'コンカレント・プログラムID';
-COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.program_update_date                     IS 'プログラム更新日';
---
-COMMENT ON TABLE xxcop.xxcop_wk_ship_planning IS '物流計画ワークテーブル';
+CREATE TABLE xxcop.xxcop_wk_ship_planning (
+     transaction_id                 NUMBER(15)
+    ,org_data_lvl                   NUMBER(6)
+    ,plant_org_id                   NUMBER
+    ,plant_org_code                 VARCHAR2(4)
+    ,plant_org_name                 VARCHAR2(50)
+    ,plant_mark                     VARCHAR2(6)
+    ,own_flg                        VARCHAR2(1)
+    ,inventory_item_id              NUMBER
+    ,item_id                        NUMBER(10)
+    ,item_no                        VARCHAR2(7)
+    ,item_name                      VARCHAR2(50)
+    ,num_of_case                    NUMBER
+    ,palette_max_cs_qty             NUMBER
+    ,palette_max_step_qty           NUMBER
+    ,product_schedule_date          DATE
+    ,product_schedule_qty           NUMBER
+    ,ship_org_id                    NUMBER
+    ,ship_org_code                  VARCHAR2(4)
+    ,ship_org_name                  VARCHAR2(50)
+    ,ship_lct_id                    NUMBER
+    ,ship_lct_code                  VARCHAR2(4)
+    ,ship_lct_name                  VARCHAR2(50)
+    ,ship_calendar_code             VARCHAR2(150)
+    ,receipt_org_id                 NUMBER
+    ,receipt_org_code               VARCHAR2(4)
+    ,receipt_org_name               VARCHAR2(50)
+    ,receipt_lct_id                 NUMBER
+    ,receipt_lct_code               VARCHAR2(4)
+    ,receipt_lct_name               VARCHAR2(50)
+    ,receipt_calendar_code          VARCHAR2(150)
+    ,cnt_ship_org                   NUMBER
+    ,shipping_date                  DATE
+    ,receipt_date                   DATE
+    ,delivery_lead_time             NUMBER
+    ,shipping_pace                  NUMBER
+    ,under_lvl_pace                 NUMBER
+    ,schedule_qty                   NUMBER
+    ,before_stock                   NUMBER
+    ,after_stock                    NUMBER
+    ,stock_days                     NUMBER
+    ,assignment_set_type            VARCHAR2(1)
+    ,assignment_type                NUMBER(1)
+    ,sourcing_rule_type             NUMBER(1)
+    ,sourcing_rule_name             VARCHAR2(50)
+    ,shipping_type                  VARCHAR2(1)
+    ,minus_flg                      VARCHAR2(2)
+    ,frq_location_id                VARCHAR2(4)
+    ,created_by                     NUMBER(15)  NOT NULL
+    ,creation_date                  DATE        NOT NULL 
+    ,last_updated_by                NUMBER(15)  NOT NULL
+    ,last_update_date               DATE        NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    )
+ PCTFREE 10 PCTUSED 50 INITRANS 8
+/
+COMMENT ON TABLE xxcop.xxcop_wk_ship_planning IS '物流計画ワークテーブル'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.transaction_id                          IS '工場出荷計画WorkテーブルID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.org_data_lvl                            IS '組織データレベル'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.plant_org_id                            IS '工場倉庫ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.plant_org_code                          IS '工場倉庫コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.plant_org_name                          IS '工場倉庫名'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.plant_mark                              IS '工場固有記号'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.own_flg                                 IS '自工場対象フラグ'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.inventory_item_id                       IS '在庫品目ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.item_id                                 IS 'OPM品目ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.item_no                                 IS '品目コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.item_name                               IS '品目名称'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.num_of_case                             IS 'ケース入数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.palette_max_cs_qty                      IS '配数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.palette_max_step_qty                    IS '段数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.product_schedule_date                   IS '生産予定日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.product_schedule_qty                    IS '生産計画数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_org_id                             IS '移動元組織ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_org_code                           IS '移動元組織コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_org_name                           IS '移動元組織名'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_lct_id                             IS '移動元保管場所ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_lct_code                           IS '移動元保管場所コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_lct_name                           IS '移動元保管場所名'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.ship_calendar_code                      IS '移動元カレンダコード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_org_id                          IS '移動先組織ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_org_code                        IS '移動先組織コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_org_name                        IS '移動先組織名'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_lct_id                          IS '移動先保管場所ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_lct_code                        IS '移動先保管場所コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_lct_name                        IS '移動先保管場所名'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_calendar_code                   IS '移動先カレンダコード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.cnt_ship_org                            IS '親倉庫件数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.shipping_date                           IS '出荷日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.receipt_date                            IS '着荷日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.delivery_lead_time                      IS '配送リードタイム'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.shipping_pace                           IS '出荷実績ペース'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.under_lvl_pace                          IS '下位倉庫出荷ペース'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.schedule_qty                            IS '計画数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.before_stock                            IS '前在庫'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.after_stock                             IS '後在庫'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.stock_days                              IS '在庫日数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.assignment_set_type                     IS '割当セット区分'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.assignment_type                         IS '割当先タイプ'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.sourcing_rule_type                      IS 'ソースルールタイプ'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.sourcing_rule_name                      IS 'ソースルール名'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.shipping_type                           IS '出荷計画区分'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.minus_flg                               IS '移動数マイナスフラグ'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.frq_location_id                         IS '代表倉庫存在フラグID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.created_by                              IS '作成者'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.creation_date                           IS '作成日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.last_updated_by                         IS '最終更新者'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.last_update_date                        IS '最終更新日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.last_update_login                       IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.request_id                              IS '要求ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.program_id                              IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_ship_planning.program_update_date                     IS 'プログラム更新日'
+/
