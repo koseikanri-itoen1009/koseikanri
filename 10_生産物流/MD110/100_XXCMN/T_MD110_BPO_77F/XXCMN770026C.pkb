@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *                                                       「xxcmn_rcv_pay_mst_porc_rma26_v」
  *  2008/09/02    1.8   A.Shiina         仕様不備障害#T_S_475対応
  *  2008/09/22    1.9   A.Shiina         内部変更要求#236対応
+ *  2008/10/15    1.10  A.Shiina         T_S_524対応
  *
  *****************************************************************************************/
 --
@@ -580,6 +581,8 @@ AS
       lv_crowd_c_name := 'acnt_crowd_code';
     END IF;
 --
+-- 2008/10/15 v1.10 UPDATE START
+/*
     -- ----------------------------------------------------
     -- ＳＥＬＥＣＴ句生成
     -- ----------------------------------------------------
@@ -1148,11 +1151,545 @@ AS
            || lv_order_by
            ;
 --
+*/
+    -- ----------------------------------------------------
+    -- ＳＥＬＥＣＴ句生成
+    -- ----------------------------------------------------
+    lv_select := 'SELECT '
+      || '     xrpm.request_item_code       AS request_item_code ' -- 出荷品目コード
+      || '    ,ximv.item_short_name         AS request_item_name ' -- 出荷品目名称
+      || '    ,xleiv.item_code              AS item_code '         -- 品目コード
+      || '    ,xleiv.item_short_name        AS item_name '         -- 品目名称
+      || '    ,itp.trans_um                 AS trans_um '          -- 取引単位
+      || '    , itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) '
+      || '                                      AS trans_qty '         -- 取引数量
+      || '    ,( '
+      || '      (CASE ximv.cost_manage_code '
+                  -- 原価管理区分=1:標準 標準原価マスタの実際原価
+      || '        WHEN   ''1''   THEN xsupv.stnd_unit_price '
+      || '        ELSE '
+                    -- 原価管理区分=0:実際
+                    -- ロット管理=1:する   ロット別原価テーブルの実際原価
+                    -- ロット管理=0:しない 標準原価マスタの実際原価
+      || '          DECODE(ximv.lot_ctl,1, '
+      || '            (SELECT DECODE( '
+      || '               SUM(NVL(xlc.trans_qty,0)),0,0, '
+      || '               SUM(xlc.trans_qty * xlc.unit_ploce) '
+      || '                 / SUM(NVL(xlc.trans_qty,0))) '
+      || '             FROM  xxcmn_lot_cost xlc '
+      || '             WHERE xlc.item_id = ximv.item_id ) '
+      || '          ,xsupv.stnd_unit_price) '
+      || '       END) '
+      || '        * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) '
+      || '     )                            AS actual_price '       -- 実際金額
+      || '    ,(xsupv.stnd_unit_price '
+      || '        * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) '
+      || '     )                            AS stnd_price '         -- 標準金額
+      || '    ,( CASE xleiv.lot_ctl '
+      || '            WHEN  0 THEN ( xrpm.unit_price '
+      || '                   * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) '
+      || '                          ) '
+      || '            ELSE '
+      || '                 ( '
+      || '                   (SELECT DECODE( '
+      || '                                   SUM(NVL(xlc.trans_qty,0)),0,0, '
+      || '                                   SUM(xlc.trans_qty * xlc.unit_ploce) '
+      || '                                    / SUM(NVL(xlc.trans_qty,0)) '
+      || '                                 ) '
+      || '                   FROM  xxcmn_lot_cost xlc '
+      || '                   WHERE xlc.item_id = itp.item_id ) '
+      || '                   * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) '
+      || '                 ) '
+      || '        END )                     AS price '       -- 有償金額
+      || '    ,xlvv2.lookup_code            AS tax '         -- 消費税率
+      ;
+--
+    -- ----------------------------------------------------
+    -- 集計パターン別による、スクリプト生成
+    -- ----------------------------------------------------
+    -- 集計パターン１設定 (集計：1.成績部署、2.品目区分、3.倉庫、4.出荷先)
+    IF  ( ir_param.result_post IS NULL )
+    AND ( ir_param.whse_code   IS NULL )
+    AND ( ir_param.party_code  IS NULL )
+    THEN
+      lv_select := lv_select
+        || ' ,xrpm.result_post'          || ' AS group1_code ' -- 成績部署
+        || ' ,xrpm.item_div'             || ' AS group2_code ' -- 品目区分
+        || ' ,itp.whse_code'             || ' AS group3_code ' -- 倉庫
+        || ' ,xpv.party_number'          || ' AS group4_code ' -- 出荷先
+        || ' ,xrpm.' || lv_crowd_c_name  || ' AS group5_code ' -- 郡コード or 経理郡コード
+        ;
+--
+      -- 集計名称格納
+      gv_gr1_sum_desc := gc_result_post_sum_name;                     -- 成績部署計
+      gv_gr2_sum_desc := gc_article_div_sum_name;                     -- 品目区分総計
+      gv_gr3_sum_desc := gc_whse_sum_desc;                            -- 倉庫計
+      gv_gr4_sum_desc := gc_party_sum_desc;                           -- 出荷先計
+--
+    -- 集計パターン２設定 (集計：1.成績部署、2.品目区分、3.倉庫)
+    ELSIF ( ir_param.result_post IS NULL )
+    AND   ( ir_param.whse_code   IS NULL )
+    AND   ( ir_param.party_code  IS NOT NULL )
+    THEN
+      lv_select := lv_select
+        || ' ,xrpm.result_post'          || ' AS group1_code ' -- 成績部署
+        || ' ,xrpm.item_div'             || ' AS group2_code ' -- 品目区分
+        || ' ,itp.whse_code'             || ' AS group3_code ' -- 倉庫
+        || ' ,NULL'                      || ' AS group4_code ' -- (NULL)
+        || ' ,xrpm.' || lv_crowd_c_name  || ' AS group5_code ' -- 郡コード or 経理郡コード
+        ;
+--
+      -- 集計名称格納
+      gv_gr1_sum_desc := gc_result_post_sum_name;                     -- 成績部署計
+      gv_gr2_sum_desc := gc_article_div_sum_name;                     -- 品目区分総計
+      gv_gr3_sum_desc := gc_whse_sum_desc;                            -- 倉庫計
+      gv_gr4_sum_desc := NULL;                                        -- (NULL)
+--
+    -- 集計パターン３設定 (集計：1.成績部署、2.品目区分、3.出荷先)
+    ELSIF ( ir_param.result_post IS NULL )
+    AND   ( ir_param.whse_code   IS NOT NULL )
+    AND   ( ir_param.party_code  IS NULL )
+    THEN
+      lv_select := lv_select
+        || ' ,xrpm.result_post'          || ' AS group1_code ' -- 成績部署
+        || ' ,xrpm.item_div'             || ' AS group2_code ' -- 品目区分
+        || ' ,xpv.party_number'          || ' AS group3_code ' -- 出荷先
+        || ' ,NULL'                      || ' AS group4_code ' -- (NULL)
+        || ' ,xrpm.' || lv_crowd_c_name  || ' AS group5_code ' -- 郡コード or 経理郡コード
+        ;
+--
+      -- 集計名称格納
+      gv_gr1_sum_desc := gc_result_post_sum_name;                     -- 成績部署計
+      gv_gr2_sum_desc := gc_article_div_sum_name;                     -- 品目区分総計
+      gv_gr3_sum_desc := gc_party_sum_desc;                           -- 出荷先計
+      gv_gr4_sum_desc := NULL;                                        -- (NULL)
+--
+      -- 集計パターン４設定 (集計：1.成績部署、2.品目区分)
+    ELSIF ( ir_param.result_post IS NULL )
+    AND   ( ir_param.whse_code   IS NOT NULL )
+    AND   ( ir_param.party_code  IS NOT NULL )
+    THEN
+      lv_select := lv_select
+        || ' ,xrpm.result_post'          || ' AS group1_code ' -- 成績部署
+        || ' ,xrpm.item_div'             || ' AS group2_code ' -- 品目区分
+        || ' ,NULL'                      || ' AS group3_code ' -- (NULL)
+        || ' ,NULL'                      || ' AS group4_code ' -- (NULL)
+        || ' ,xrpm.' || lv_crowd_c_name  || ' AS group5_code ' -- 郡コード or 経理郡コード
+        ;
+--
+      -- 集計名称格納
+      gv_gr1_sum_desc := gc_result_post_sum_name;                     -- 成績部署計
+      gv_gr2_sum_desc := gc_article_div_sum_name;                     -- 品目区分総計
+      gv_gr3_sum_desc := NULL;                                        -- (NULL)
+      gv_gr4_sum_desc := NULL;                                        -- (NULL)
+--
+    -- 集計パターン５設定 (集計：1.品目区分、2.倉庫、3.出荷先)
+    ELSIF ( ir_param.result_post IS NOT NULL )
+    AND   ( ir_param.whse_code   IS NULL )
+    AND   ( ir_param.party_code  IS NULL )
+    THEN
+      lv_select := lv_select
+        || ' ,xrpm.item_div'             || ' AS group1_code ' -- 品目区分
+        || ' ,itp.whse_code'             || ' AS group2_code ' -- 倉庫
+        || ' ,xpv.party_number'          || ' AS group3_code ' -- 出荷先
+        || ' ,NULL'                      || ' AS group4_code ' -- (NULL)
+        || ' ,xrpm.' || lv_crowd_c_name  || ' AS group5_code ' -- 郡コード or 経理郡コード
+        ;
+--
+      -- 集計名称格納
+      gv_gr1_sum_desc := gc_article_div_sum_name;                     -- 品目区分総計
+      gv_gr2_sum_desc := gc_whse_sum_desc;                            -- 倉庫計
+      gv_gr3_sum_desc := gc_party_sum_desc;                           -- 出荷先計
+      gv_gr4_sum_desc := NULL;                                        -- (NULL)
+--
+    -- 集計パターン６設定 (集計：1.品目区分、2.倉庫)
+    ELSIF ( ir_param.result_post IS NOT NULL )
+    AND   ( ir_param.whse_code   IS NULL )
+    AND   ( ir_param.party_code  IS NOT NULL )
+    THEN
+      lv_select := lv_select
+        || ' ,xrpm.item_div'             || ' AS group1_code ' -- 品目区分
+        || ' ,itp.whse_code'             || ' AS group2_code ' -- 倉庫
+        || ' ,NULL'                      || ' AS group3_code ' -- (NULL)
+        || ' ,NULL'                      || ' AS group4_code ' -- (NULL)
+        || ' ,xrpm.' || lv_crowd_c_name  || ' AS group5_code ' -- 郡コード or 経理郡コード
+        ;
+--
+      -- 集計名称格納
+      gv_gr1_sum_desc := gc_article_div_sum_name;                     -- 品目区分総計
+      gv_gr2_sum_desc := gc_whse_sum_desc;                            -- 倉庫計
+      gv_gr3_sum_desc := NULL;                                        -- (NULL)
+      gv_gr4_sum_desc := NULL;                                        -- (NULL)
+--
+    -- 集計パターン７設定 (集計：1.品目区分、2.出荷先)
+    ELSIF ( ir_param.result_post IS NOT NULL )
+    AND   ( ir_param.whse_code   IS NOT NULL )
+    AND   ( ir_param.party_code  IS NULL )
+    THEN
+      lv_select := lv_select
+        || ' ,xrpm.item_div'             || ' AS group1_code ' -- 品目区分
+        || ' ,xpv.party_number'          || ' AS group2_code ' -- 出荷先
+        || ' ,NULL'                      || ' AS group3_code ' -- (NULL)
+        || ' ,NULL'                      || ' AS group4_code ' -- (NULL)
+        || ' ,xrpm.' || lv_crowd_c_name  || ' AS group5_code ' -- 郡コード or 経理郡コード
+        ;
+--
+      -- 集計名称格納
+      gv_gr1_sum_desc := gc_article_div_sum_name;                     -- 品目区分総計
+      gv_gr2_sum_desc := gc_party_sum_desc;                           -- 出荷先計
+      gv_gr3_sum_desc := NULL;                                        -- (NULL)
+      gv_gr4_sum_desc := NULL;                                        -- (NULL)
+--
+    -- 集計パターン８設定 (集計：1.品目区分)
+    ELSE
+--
+      lv_select := lv_select
+        || ' ,xrpm.item_div'             || ' AS group1_code ' -- 品目区分
+        || ' ,NULL'                      || ' AS group2_code ' -- (NULL)
+        || ' ,NULL'                      || ' AS group3_code ' -- (NULL)
+        || ' ,NULL'                      || ' AS group4_code ' -- (NULL)
+        || ' ,xrpm.' || lv_crowd_c_name  || ' AS group5_code ' -- 郡コード／経理郡コード
+        ;
+      -- 集計名称格納
+      gv_gr1_sum_desc := gc_article_div_sum_name;                     -- 品目区分総計
+      gv_gr2_sum_desc := NULL;                                        -- (NULL)
+      gv_gr3_sum_desc := NULL;                                        -- (NULL)
+      gv_gr4_sum_desc := NULL;                                        -- (NULL)
+    END IF;
+--
+    -- ----------------------------------------------------
+    -- ＦＲＯＭ句生成（ＰＯＲＣ）
+    -- ----------------------------------------------------
+    lv_from_porc := 'FROM '
+      || '     ic_tran_pnd                    itp '   -- 保留在庫トラン
+      || '    ,xxcmn_rcv_pay_mst_porc_rma26_v xrpm '  -- 受払VIEW(購買関連)
+      || '    ,xxcmn_lookup_values2_v         xlvv '  -- クイックコード
+      || '    ,xxcmn_lot_each_item_v          xleiv ' -- ロット別品目情報
+      || '    ,xxcmn_stnd_unit_price_v        xsupv ' -- 標準原価情報View
+      || '    ,xxcmn_item_mst2_v              ximv '  -- OPM品目情報View2
+      || '    ,xxcmn_party_sites2_v           xpsv '  -- パーティサイト情報View2
+      || '    ,xxcmn_parties2_v               xpv '   -- パーティ情報View2
+      || '    ,xxcmn_lookup_values2_v         xlvv2 ' -- クイックコード
+      ;
+--
+    -- ----------------------------------------------------
+    -- ＦＲＯＭ句生成（ＰＲＯＣ＿ＣＨＡＲＧＥ）
+    -- ----------------------------------------------------
+    lv_from_porc_charge := 'FROM '
+      || '     ic_tran_pnd                    itp '   -- 保留在庫トラン
+      || '    ,xxcmn_rcv_pay_mst_porc_rma26_v xrpm '  -- 受払VIEW(購買関連)
+      || '    ,xxcmn_lookup_values2_v         xlvv '  -- クイックコード
+      || '    ,xxcmn_lot_each_item_v          xleiv ' -- ロット別品目情報
+      || '    ,xxcmn_stnd_unit_price_v        xsupv ' -- 標準原価情報View
+      || '    ,xxcmn_item_mst2_v              ximv '  -- OPM品目情報View2
+      || '    ,po_vendor_sites_all            pvsa '  -- 仕入先サイトマスタ
+      || '    ,po_vendors                     pv '    -- 仕入先マスタ
+      || '    ,xxcmn_parties2_v               xpv '   -- パーティ情報View2
+      || '    ,xxcmn_lookup_values2_v         xlvv2 ' -- クイックコード
+      ;
+--
+    -- ----------------------------------------------------
+    -- ＦＲＯＭ句生成（ＯＭＳＯ）
+    -- ----------------------------------------------------
+    lv_from_omso := 'FROM '
+      || '     ic_tran_pnd                    itp '   -- 保留在庫トラン
+      || '    ,xxcmn_rcv_pay_mst_omso_v       xrpm '  -- 受払VIEW(受注関連)
+      || '    ,xxcmn_lookup_values2_v         xlvv '  -- クイックコード
+      || '    ,xxcmn_lot_each_item_v          xleiv ' -- ロット別品目情報
+      || '    ,xxcmn_stnd_unit_price_v        xsupv ' -- 標準原価情報View
+      || '    ,xxcmn_item_mst2_v              ximv '  -- OPM品目情報View2
+      || '    ,xxcmn_party_sites2_v           xpsv '  -- パーティサイト情報View2
+      || '    ,xxcmn_parties2_v               xpv '   -- パーティ情報View2
+      || '    ,xxcmn_lookup_values2_v         xlvv2 ' -- クイックコード
+      ;
+--
+    -- ----------------------------------------------------
+    -- ＦＲＯＭ句生成（ＯＭＳＯ＿ＣＨＡＲＧＥ）
+    -- ----------------------------------------------------
+    lv_from_omso_charge := 'FROM '
+      || '     ic_tran_pnd                    itp '   -- 保留在庫トラン
+      || '    ,xxcmn_rcv_pay_mst_omso_v       xrpm '  -- 受払VIEW(受注関連)
+      || '    ,xxcmn_lookup_values2_v         xlvv '  -- クイックコード
+      || '    ,xxcmn_lot_each_item_v          xleiv ' -- ロット別品目情報
+      || '    ,xxcmn_stnd_unit_price_v        xsupv ' -- 標準原価情報View
+      || '    ,xxcmn_item_mst2_v              ximv '  -- OPM品目情報View2
+      || '    ,po_vendor_sites_all            pvsa '  -- 仕入先サイトマスタ
+      || '    ,po_vendors                     pv '    -- 仕入先マスタ
+      || '    ,xxcmn_parties2_v               xpv '   -- パーティ情報View2
+      || '    ,xxcmn_lookup_values2_v         xlvv2 ' -- クイックコード
+      ;
+--
+    -- ----------------------------------------------------
+    -- ＷＨＥＲＥ句生成（ＰＯＲＣ）
+    -- ----------------------------------------------------
+    lv_from_porc_where := 'WHERE '
+      || '     itp.doc_type           = ''PORC'' '        -- 文書タイプ(PORC)
+      || ' AND itp.completed_ind      = 1 '             -- 完了フラグ
+      || ' AND itp.doc_type           = xrpm.doc_type ' -- 文書タイプ(PORC)
+      || ' AND itp.doc_id             = xrpm.doc_id '   -- 文書ID
+      || ' AND itp.doc_line           = xrpm.doc_line ' -- 取引明細番号
+      ;
+--
+    -- ----------------------------------------------------
+    -- ＷＨＥＲＥ句生成（ＯＭＳＯ）
+    -- ----------------------------------------------------
+    lv_from_omso_where := 'WHERE '
+      || '       itp.doc_type           = ''OMSO'' '        -- 文書タイプ(OMSO)
+      || ' AND   itp.completed_ind      = 1 '             -- 完了フラグ
+      || ' AND   itp.doc_type           = xrpm.doc_type ' -- 文書タイプ(OMSO)
+      || ' AND   itp.line_detail_id     = xrpm.doc_line ' -- 取引明細番号
+      ;
+--
+    -- ----------------------------------------------------
+    -- ＷＨＥＲＥ句生成
+    -- ----------------------------------------------------
+    lv_where := 'AND '
+      || '     itp.trans_date >= '
+      || '     FND_DATE.STRING_TO_DATE(  :ir_param_proc_from  ,''yyyymm'') '
+      || ' AND itp.trans_date < '
+      || '     ADD_MONTHS( FND_DATE.STRING_TO_DATE( '
+      || '                                     :ir_param_proc_to  ,''yyyymm''),1) '
+      || ' AND   xlvv.lookup_type     = ''XXCMN_MONTH_TRANS_OUTPUT_FLAG'' '
+      || ' AND   xrpm.dealings_div    = xlvv.meaning '
+      || ' AND   (xlvv.start_date_active IS NULL '
+      || '           OR xlvv.start_date_active <= TRUNC(itp.trans_date) ) '
+      || ' AND   (xlvv.end_date_active IS NULL '
+      || '           OR xlvv.end_date_active >= TRUNC(itp.trans_date) ) '
+      || ' AND   xlvv.language        = ''JA'' '
+      || ' AND   xlvv.source_lang     = ''JA'' '
+      || ' AND   xlvv.attribute6      IS NOT NULL '
+      || ' AND   itp.item_id          = xleiv.item_id '       -- 品目ID
+      || ' AND   itp.lot_id           = xleiv.lot_id '         -- ロットID
+      || ' AND   (xleiv.start_date_active IS NULL '
+      || '           OR xleiv.start_date_active <= TRUNC(itp.trans_date) ) '
+      || ' AND   (xleiv.end_date_active IS NULL '
+      || '           OR xleiv.end_date_active >= TRUNC(itp.trans_date) ) '
+      || ' AND xrpm.prod_div =          :ir_param_prod_div '
+      || ' AND   NVL(xrpm.item_id, itp.item_id)   = xsupv.item_id ' -- 品目ID
+      || ' AND   (xsupv.start_date_active IS NULL '
+      || '           OR xsupv.start_date_active <= TRUNC(itp.trans_date) ) '
+      || ' AND   (xsupv.end_date_active IS NULL '
+      || '           OR xsupv.end_date_active >= TRUNC(itp.trans_date) ) '
+      || ' AND   xrpm.request_item_code   = ximv.item_no(+) '     -- 製品受払品目ID
+      || ' AND   (ximv.start_date_active IS NULL '
+      || '           OR ximv.start_date_active <= TRUNC(itp.trans_date) ) '
+      || ' AND   (ximv.end_date_active IS NULL '
+      || '           OR ximv.end_date_active >= TRUNC(itp.trans_date) ) '
+      || ' AND   xlvv2.lookup_type      = ''XXCMN_CONSUMPTION_TAX_RATE'' '
+      || ' AND   (xlvv2.start_date_active IS NULL '
+      || '           OR xlvv2.start_date_active <= TRUNC(itp.trans_date) ) '
+      || ' AND   (xlvv2.end_date_active IS NULL '
+      || '           OR xlvv2.end_date_active >= TRUNC(itp.trans_date) ) '
+      || ' AND   xlvv2.language         = ''JA'' '
+      || ' AND   xlvv2.source_lang      = ''JA'' '
+      ;
+--
+    -- 「受払区分」を抽出条件に設定
+    IF  ( ir_param.rcv_pay_div IS NOT NULL ) THEN
+      lv_where := lv_where
+        || ' AND xrpm.new_div_account = ''' || ir_param.rcv_pay_div || ''''
+        ;
+    END IF;
+--
+    -- 「倉庫コード」が個別選択されている場合(*ALLを除く)、抽出条件に設定
+    IF  ( ir_param.whse_code IS NOT NULL )
+    AND ( ir_param.whse_code != gc_param_all_code )
+    THEN
+      lv_where := lv_where
+        || ' AND itp.whse_code = '''        || ir_param.whse_code || ''''
+        ;
+    END IF;
+--
+    -- 「成績部署」が個別選択されている場合(*ALLを除く)、抽出条件に設定
+    IF  ( ir_param.result_post IS NOT NULL )
+    AND ( ir_param.result_post != gc_param_all_code )
+    THEN
+      lv_where := lv_where
+        || ' AND xrpm.result_post = '''     || ir_param.result_post || ''''
+        ;
+    END IF;
+--
+    -- 「郡種別」が「3:郡コード」で、かつ、「郡コード」が入力されている場合、抽出条件に設定
+    IF    ( ir_param.crowd_type = gc_crowd_type_3 )
+    AND   ( ir_param.crowd_code IS NOT NULL )
+    THEN
+      lv_where := lv_where
+        || ' AND xrpm.crowd_code = '''      || ir_param.crowd_code || ''''
+        ;
+    -- 「郡種別」が「4:経理郡コード」で、かつ、「経理郡コード」が入力されている場合、抽出条件に設定
+    ELSIF ( ir_param.crowd_type =  '4' )
+    AND   ( ir_param.acnt_crowd_code IS NOT NULL )
+    THEN
+      lv_where := lv_where
+        || ' AND xrpm.acnt_crowd_code = ''' || ir_param.acnt_crowd_code || ''''
+        ;
+    END IF;
+--
+    -- 「品目区分」が個別選択されている場合、抽出条件に設定
+    IF  ( ir_param.item_div IS NOT NULL ) THEN
+      lv_where := lv_where
+        || ' AND xrpm.item_div = '''        || ir_param.item_div || ''''
+        ;
+    END IF;
+--
+    -- 「出荷先コード」が個別選択されている場合(*ALLを除く)、抽出条件に設定
+    IF  ( ir_param.party_code IS NOT NULL )
+    AND ( ir_param.party_code != gc_param_all_code )
+    THEN
+      lv_where := lv_where
+        || ' AND xpv.party_number = '''    || ir_param.party_code || ''''
+               ;
+    END IF;
+--
+    -- ------------------------------------------
+    --＜有償支給・返品以外＞
+    -- ------------------------------------------
+    -- パーティサイト情報View2(xxcmn_party_sites2_v)連結
+    lv_where_no_charge := 'AND '
+      || '       xrpm.deliver_to_id     = xpsv.party_site_id '    -- 出荷先ID
+      || ' AND   (xpsv.start_date_active IS NULL '
+      || '           OR xpsv.start_date_active <= TRUNC(itp.trans_date) ) '
+      || ' AND   (xpsv.end_date_active IS NULL '
+      || '           OR xpsv.end_date_active >= TRUNC(itp.trans_date) ) '
+      || ' AND   xpsv.party_id          = xpv.party_id '          -- パーティID
+      || ' AND   (xpv.start_date_active IS NULL '
+      || '           OR xpv.start_date_active <= TRUNC(itp.trans_date) ) '
+      || ' AND   (xpv.end_date_active IS NULL '
+      || '           OR xpv.end_date_active >= TRUNC(itp.trans_date) ) '
+      || ' AND   xrpm.dealings_div <>   :gv_charge '       --'103'
+      || ' AND   xrpm.dealings_div <>   :gv_trans_charge ' --'105'
+      || ' AND   xrpm.dealings_div <>   :gv_item_charge '  --'108'
+      ;
+--
+    -- ------------------------------------------
+    --＜有償支給・返品＞
+    -- ------------------------------------------
+    lv_where_charge := 'AND '
+      || '       xrpm.vendor_site_id    = pvsa.vendor_site_id ' -- 仕入先サイトID
+      || ' AND   pvsa.vendor_id         = pv.vendor_id '        -- 仕入先ID
+      || ' AND   (pv.start_date_active IS NULL '
+      || '           OR pv.start_date_active <= TRUNC(itp.trans_date) ) '
+      || ' AND   (pv.end_date_active IS NULL '
+      || '           OR pv.end_date_active >= TRUNC(itp.trans_date) ) '
+      || ' AND   pv.customer_num        = xpv.account_number '   -- 顧客番号
+      || ' AND   (xpv.start_date_active IS NULL '
+      || '           OR xpv.start_date_active <= TRUNC(itp.trans_date) ) '
+      || ' AND   (xpv.end_date_active IS NULL '
+      || '           OR xpv.end_date_active >= TRUNC(itp.trans_date) ) '
+      || ' AND   xrpm.dealings_div IN( '
+      || '                            :gv_charge '           -- 有償
+      || '                           ,:gv_trans_charge '     -- 振替有償_出荷
+      || '                           ,:gv_item_charge   ) '  -- 商品振替有償_出荷
+      ;
+--
+    -- ----------------------------------------------------
+    -- ＧＲＯＵＰ句生成
+    -- ----------------------------------------------------
+    lv_group_by := 'GROUP BY '
+      || '     mst.group1_code '           -- [集計1]コード
+      || '    ,mst.group2_code '           -- [集計2]コード
+      || '    ,mst.group3_code '           -- [集計3]コード
+      || '    ,mst.group4_code '           -- [集計4]コード
+      || '    ,mst.group5_code '           -- [集計5]コード
+      || '    ,mst.request_item_code '     -- 出荷品目コード
+      || '    ,mst.item_code '             -- 品目コード
+      ;
+--
+    -- ----------------------------------------------------
+    -- ＯＲＤＥＲ句生成
+    -- ----------------------------------------------------
+    lv_order_by := 'ORDER BY '
+      || '     mst.group1_code '           -- [集計1]コード
+      || '    ,mst.group2_code '           -- [集計2]コード
+      || '    ,mst.group3_code '           -- [集計3]コード
+      || '    ,mst.group4_code '           -- [集計4]コード
+      || '    ,mst.group5_code '           -- [集計5]コード
+      || '    ,mst.request_item_code '     -- 出荷品目コード
+      || '    ,mst.item_code '             -- 品目コード
+      ;
+--
+    -- ====================================================
+    -- ＳＱＬ生成
+    -- ====================================================
+    lv_sql := 'SELECT '
+      || '     mst.group1_code              AS group1_code '        -- [集計1]コード
+      || '    ,mst.group2_code              AS group2_code '        -- [集計2]コード
+      || '    ,mst.group3_code              AS group3_code '        -- [集計3]コード
+      || '    ,mst.group4_code              AS group4_code '        -- [集計4]コード
+      || '    ,mst.group5_code              AS group5_code '        -- [集計5]コード
+      || '    ,mst.request_item_code        AS request_item_code '  -- 出荷品目コード
+      || '    ,mst.item_code                AS item_code '          -- 品目コード
+      || '    ,MAX(mst.request_item_name)   AS request_item_name '  -- 出荷品目名称
+      || '    ,MAX(mst.item_name)           AS item_name '          -- 取引単位
+      || '    ,MAX(mst.trans_um)            AS trans_um '           -- 取引数量
+      || '    ,SUM(mst.trans_qty)           AS trans_qty '          -- 取引数量
+      || '    ,SUM(mst.actual_price)        AS actual_price '       -- 実際金額
+      || '    ,SUM(mst.stnd_price)          AS stnd_price '         -- 標準金額
+      || '    ,SUM(mst.price)               AS price '              -- 有償金額
+      || '    ,SUM(mst.price * DECODE( NVL(mst.tax,0),0,0,(mst.tax/100) ) ) '
+      || '                                  AS tax '                -- 消費税率
+      ;
+--
+    lv_sql := lv_sql 
+      || 'FROM ( '
+           -- ＜受払VIEW(購買関連)＞
+           -- 有償支給・返品以外(xxcmn_rcv_pay_mst_porc_rma26_v)
+      ||   lv_select || lv_from_porc || lv_from_porc_where || lv_where || lv_where_no_charge
+--
+      || 'UNION ALL '
+--
+           -- 有償支給・返品(xxcmn_rcv_pay_mst_porc_rma26_v)
+      ||   lv_select || lv_from_porc_charge || lv_from_porc_where || lv_where || lv_where_charge
+--
+      || 'UNION ALL '
+--
+           -- ＜受払VIEW(受注関連)＞
+           -- 有償支給・返品以外(xxcmn_rcv_pay_mst_omso_v)
+      ||   lv_select || lv_from_omso || lv_from_omso_where || lv_where || lv_where_no_charge
+--
+      || 'UNION ALL '
+--
+           -- 有償支給・返品(xxcmn_rcv_pay_mst_omso_v)
+      ||   lv_select || lv_from_omso_charge || lv_from_omso_where || lv_where || lv_where_charge
+--
+      || ') mst '
+--
+      ||   lv_group_by
+      ||   lv_order_by
+      ;
+--
+-- 2008/10/15 v1.10 UPDATE END
     -- ====================================================
     -- データ抽出
     -- ====================================================
     -- オープン
-    OPEN lc_ref FOR lv_sql ;
+-- 2008/10/15 v1.10 UPDATE START
+--    OPEN lc_ref FOR lv_sql ;
+    OPEN lc_ref FOR lv_sql USING ir_param.proc_from
+                                ,ir_param.proc_to
+                                ,ir_param.prod_div
+                                ,gv_charge
+                                ,gv_trans_charge
+                                ,gv_item_charge
+                                ,ir_param.proc_from
+                                ,ir_param.proc_to
+                                ,ir_param.prod_div
+                                ,gv_charge
+                                ,gv_trans_charge
+                                ,gv_item_charge
+                                ,ir_param.proc_from
+                                ,ir_param.proc_to
+                                ,ir_param.prod_div
+                                ,gv_charge
+                                ,gv_trans_charge
+                                ,gv_item_charge
+                                ,ir_param.proc_from
+                                ,ir_param.proc_to
+                                ,ir_param.prod_div
+                                ,gv_charge
+                                ,gv_trans_charge
+                                ,gv_item_charge;
+-- 2008/10/15 v1.10 UPDATE END
     -- バルクフェッチ
     FETCH lc_ref BULK COLLECT INTO ot_data_rec ;
     -- カーソルクローズ
