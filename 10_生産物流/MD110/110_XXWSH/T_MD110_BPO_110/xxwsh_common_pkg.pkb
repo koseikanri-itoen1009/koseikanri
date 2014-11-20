@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.33
+ * Version                : 1.34
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -85,6 +85,7 @@ AS
  *  2008/11/27   1.31  Oracle 椎名昭圭  [依頼Noコンバート関数] 本番障害#179対応
  *  2008/12/02   1.32  Oracle 野村正幸  本番#318対応
  *  2008/12/13   1.33  Oracle 二瓶大輔  本番#568対応(配車解除関数ログ出力追加)
+ *  2008/12/15   1.34  Oracle 伊藤ひとみ[重量容積小口個数関数]メッセージ格納変数の桁を増やす対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1131,7 +1132,10 @@ AS
     cv_cancel           CONSTANT VARCHAR2(2)   := '99';                    --取消
 --
 -- ##### 20081202 Ver.1.32 本番#318対応 START #####
-    lv_except_msg                    VARCHAR2(200);                          -- エラーメッセージ
+-- 2008/12/15 H.Itou Mod Start
+--    lv_except_msg                    VARCHAR2(200);                          -- エラーメッセージ
+    lv_except_msg                    VARCHAR2(32767);                        -- エラーメッセージ
+-- 2008/12/15 H.Itou Mod End
     cv_get_err              CONSTANT VARCHAR2(100) := 'APP-XXWSH-10013';     -- 取得エラー
     cv_msg_kbn              CONSTANT VARCHAR2(5)   := 'XXWSH';               -- 出荷
     cv_tkn_table            CONSTANT VARCHAR2(20)  := 'TABLE';               -- TABLE
@@ -2228,7 +2232,10 @@ AS
     lv_small_sum_class              VARCHAR2(1);                -- 小口区分
     ld_date                         DATE;                       -- 基準日
     lv_syohin_class                 VARCHAR2(2);                -- 商品区分
-    lv_except_msg                   VARCHAR2(200);              -- エラーメッセージ
+-- 2008/12/15 H.Itou Mod Start
+--    lv_except_msg                   VARCHAR2(200);              -- エラーメッセージ
+    lv_except_msg                   VARCHAR2(32767);            -- エラーメッセージ
+-- 2008/12/15 H.Itou Mod End
     ln_counter                      NUMBER;                     -- カウント変数
     lv_tkn_biz_type                 VARCHAR2(100);              -- トークン_業務種別
     lv_tkn_request_no               VARCHAR2(100);              -- トークン_依頼No/移動番号
