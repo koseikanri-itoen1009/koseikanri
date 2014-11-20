@@ -12,7 +12,9 @@ CREATE TABLE xxwsh.xxwsh_reserve_interface
   recorded_date             DATE,
   ship_to_code              VARCHAR2(9),
   customer_code             VARCHAR2(9),
-  invoice_no                VARCHAR2(9),
+--2009/4/28 Y.Kawano ‰c‹Æ‰Ò“®Žx‰‡
+  invoice_no                VARCHAR2(12),
+--2009/4/28 Y.Kawano ‰c‹Æ‰Ò“®Žx‰‡
   item_code                 VARCHAR2(7),
   parent_item_code          VARCHAR2(7),
   crowd_code                VARCHAR2(4),
