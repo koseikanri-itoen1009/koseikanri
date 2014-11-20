@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.17
+ * Version                : 11.5.10.2.18
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2011/11/29   11.5.10.2.15   障害「E_本稼動_07768」対応
  *  2012/01/10   11.5.10.2.16   障害「E_本稼動_08887」対応
  *  2012/03/27   11.5.10.2.17   障害「E_本稼動_09336」対応
+ *  2013/09/19   11.5.10.2.18   障害「E_本稼動_10999」対応
  *
  *****************************************************************************************/
 --
@@ -975,6 +976,89 @@ AS
        ORDER BY xei.line_number;
 -- ver11.5.10.1.6D Add End
 --
+-- 2013/09/19 ver 11.5.10.2.18 ADD START
+    -- 項目整合性チェックカーソル
+    CURSOR xx03_save_code_chk_cur(
+      in_org_id          IN  NUMBER  -- 営業単位ID
+    , in_set_of_books_id IN  NUMBER  -- 会計帳簿ID
+    )
+    IS
+      SELECT /*+ LEADING(xrs xrsl) */
+             COUNT(1)                AS exist_check
+      FROM   xx03_receivable_slips      xrs  -- AR部門入力ヘッダ
+           , xx03_receivable_slips_line xrsl -- AR部門入力明細
+      WHERE  xrs.receivable_id    = in_receivable_id   -- 伝票ID（プロシージャの入力パラメータ）
+      AND    xrs.org_id           = in_org_id          -- 営業単位ID
+      AND    xrs.set_of_books_id  = in_set_of_books_id -- 会計帳簿ID
+      AND    xrs.receivable_id    = xrsl.receivable_id -- 伝票ID
+      AND (
+           ( SUBSTRB( xrs.requestor_person_name, 1, 5 ) <> ( SELECT papf.employee_number  AS employee_number -- 申請者名
+                                                             FROM   per_all_people_f      papf
+                                                             WHERE  papf.person_id = xrs.requestor_person_id
+                                                             AND    TRUNC(SYSDATE) BETWEEN papf.effective_start_date
+                                                                                   AND     papf.effective_end_date ) )
+        OR ( SUBSTRB( xrs.approver_person_name, 1, 5 )  <> ( SELECT papf.employee_number  AS employee_number -- 承認者名
+                                                             FROM   per_all_people_f      papf
+                                                             WHERE  papf.person_id = xrs.approver_person_id
+                                                             AND    TRUNC(SYSDATE) BETWEEN papf.effective_start_date
+                                                                                   AND     papf.effective_end_date ) )
+        OR ( xrs.trans_type_name                        <> ( SELECT rctt.name             AS name            -- 取引タイプ名
+                                                             FROM   ra_cust_trx_types_all rctt
+                                                             WHERE  rctt.cust_trx_type_id = xrs.trans_type_id
+                                                             AND    rctt.org_id           = xrs.org_id ) )
+        OR ( SUBSTRB( xrs.customer_name, 1, 9 )         <> ( SELECT hca.account_number    AS account_number  -- 顧客名
+                                                             FROM   hz_cust_accounts      hca
+                                                             WHERE  hca.cust_account_id = xrs.customer_id ) )
+        OR ( ( SELECT SUBSTRB( xrs.customer_office_name, 1, LENGTHB(hcsua.location) ) AS customer_office_name
+               FROM   hz_cust_site_uses_all                                           hcsua
+               WHERE  hcsua.status            = 'A'
+               AND    hcsua.site_use_code     = 'BILL_TO'
+               AND    hcsua.org_id            = xrs.org_id
+               AND    hcsua.cust_acct_site_id = xrs.customer_office_id )
+                                                        <> ( SELECT hcsua.location        AS location        -- 顧客事業所名
+                                                             FROM   hz_cust_site_uses_all hcsua
+                                                             WHERE  hcsua.status            = 'A'
+                                                             AND    hcsua.site_use_code     = 'BILL_TO'
+                                                             AND    hcsua.org_id            = xrs.org_id
+                                                             AND    hcsua.cust_acct_site_id = xrs.customer_office_id ) )
+        OR ( ( xrs.receipt_method_id IS NULL )     AND ( xrs.receipt_method_name IS NOT NULL ) )             -- 支払方法名
+        OR ( ( xrs.receipt_method_id IS NOT NULL ) AND ( xrs.receipt_method_name IS NULL ) )                 -- 支払方法名
+        OR ( xrs.receipt_method_name                    <> ( SELECT arm.name              AS name            -- 支払方法名
+                                                             FROM   ar_receipt_methods    arm
+                                                             WHERE  arm.receipt_method_id = xrs.receipt_method_id ) )
+        OR ( xrs.terms_name                             <> ( SELECT rtt.name              AS name            -- 支払条件名
+                                                             FROM   ra_terms_tl           rtt
+                                                                  , ra_terms_b            rtb
+                                                             WHERE  rtt.term_id  = rtb.term_id
+                                                             AND    rtt.LANGUAGE = USERENV('LANG')
+                                                             AND    xrs.invoice_date BETWEEN rtb.start_date_active
+                                                                                     AND NVL( rtb.end_date_active, TO_DATE('4712/12/31','YYYY/MM/DD') )
+                                                             AND    rtt.term_id  = xrs.terms_id ) )
+        OR (  ( xrsl.slip_line_type IS NOT NULL )
+          AND ( xrsl.slip_line_type_name                <> ( SELECT amlat.name            AS name            -- 請求内容
+                                                             FROM   ar_memo_lines_all_tl  amlat
+                                                                  , ar_memo_lines_all_b   amlab
+                                                             WHERE  amlat.memo_line_id    = amlab.memo_line_id
+                                                             AND    amlat.org_id          = amlab.org_id
+                                                             AND    amlat.language        = USERENV('LANG')
+                                                             AND    xrs.invoice_date BETWEEN amlab.start_date
+                                                                                     AND     NVL( amlab.end_date, TO_DATE('4712/12/31','YYYY/MM/DD') )
+                                                             AND    amlab.org_id          = xrs.org_id
+                                                             AND    amlab.set_of_books_id = xrs.set_of_books_id
+                                                             AND    amlab.memo_line_id    = xrsl.slip_line_type ) ) )
+        OR ( xrsl.tax_code <> SUBSTRB( xrsl.tax_name, 1, LENGTHB(xrsl.tax_code) ) )                          -- 税区分名
+        OR ( xrsl.segment1 <> SUBSTRB( xrsl.segment1_name, 1, LENGTHB(xrsl.segment1) ) )                     -- AFF 会社
+        OR ( xrsl.segment2 <> SUBSTRB( xrsl.segment2_name, 1, LENGTHB(xrsl.segment2) ) )                     -- AFF 部門
+        OR ( xrsl.segment3 <> SUBSTRB( xrsl.segment3_name, 1, LENGTHB(xrsl.segment3) ) )                     -- AFF 勘定科目
+        OR ( xrsl.segment4 <> SUBSTRB( xrsl.segment4_name, 1, LENGTHB(xrsl.segment4) ) )                     -- AFF 補助科目
+        OR ( xrsl.segment5 <> SUBSTRB( xrsl.segment5_name, 1, LENGTHB(xrsl.segment5) ) )                     -- AFF 顧客
+        OR ( xrsl.segment6 <> SUBSTRB( xrsl.segment6_name, 1, LENGTHB(xrsl.segment6) ) )                     -- AFF 企業
+        OR ( xrsl.segment7 <> SUBSTRB( xrsl.segment7_name, 1, LENGTHB(xrsl.segment7) ) )                     -- AFF 予備１
+        OR ( xrsl.segment8 <> SUBSTRB( xrsl.segment8_name, 1, LENGTHB(xrsl.segment8) ) )                     -- AFF 予備２
+          )
+      ;
+-- 2013/09/19 ver 11.5.10.2.18 ADD END
+--
     -- *** ローカル・レコード ***
     xx03_xrsjlv_rec            xx03_xrsjlv_cur          %ROWTYPE;       -- 処理対象データ取得カーソルレコード型
     xx03_rate_rec              xx03_rate_cur            %ROWTYPE;       -- レートカーソルレコード型
@@ -1044,6 +1128,10 @@ AS
     -- 文字列バイトチェックレコード型
     xx03_length_chk_rec xx03_length_chk_cur%ROWTYPE;
 -- ver 11.5.10.2.12 Modify End
+-- 2013/09/19 ver 11.5.10.2.18 ADD START
+    -- 項目整合性チェックカーソルレコード型
+    xx03_save_code_chk_rec       xx03_save_code_chk_cur%ROWTYPE;
+-- 2013/09/19 ver 11.5.10.2.18 ADD END
 --
     -- 相互検証用パラメータ
     lb_retcode          BOOLEAN;
@@ -1962,6 +2050,23 @@ AS
       END IF;
 --
 -- 2006/02/18 Ver11.5.10.1.6E add END
+--
+-- 2013/09/19 ver 11.5.10.2.18 ADD START
+      -- 項目整合性チェック
+      OPEN  xx03_save_code_chk_cur(
+               in_org_id          => ln_org_id    -- 営業単位ID
+             , in_set_of_books_id => ln_books_id  -- 会計帳簿ID
+            );
+      FETCH xx03_save_code_chk_cur INTO xx03_save_code_chk_rec;
+      -- 存在チェック件数が1件でも存在する場合
+      IF ( xx03_save_code_chk_rec.exist_check <> 0 ) THEN
+        -- 項目相違エラー
+        errflg_tbl(ln_err_cnt) := 'E';
+        errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR', 'APP-XXCFR1-00150');
+        ln_err_cnt := ln_err_cnt + 1;
+      END IF;
+      CLOSE xx03_save_code_chk_cur;
+-- 2013/09/19 ver 11.5.10.2.18 ADD END
 --
       -- 部門入力エラーチェックでエラーがあった場合はその時点でループ終了
       IF ( ln_err_cnt > 0 ) THEN
