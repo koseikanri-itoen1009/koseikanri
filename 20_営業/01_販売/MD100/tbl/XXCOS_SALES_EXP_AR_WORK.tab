@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_SALES_EXP_AR_WORK
  * Description : ”Ì”„ŽÀÑAR—pƒ[ƒNƒe[ƒuƒ‹
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/10/02    1.0   K.Kiriu          V‹Kì¬
  *  2010/07/12    1.1   S.Miyakoshi      E_–{‰Ò“®_02000‘Î‰ž
+ *  2010/10/25    1.2   SCS K.Kiriu      [E_–{‰Ò“®_05091] •i–Ú‹æ•ª’Ç‰Á
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_SALES_EXP_AR_WORK(
@@ -53,11 +54,16 @@ CREATE TABLE XXCOS.XXCOS_SALES_EXP_AR_WORK(
  ,OIF_TRX_NUMBER                   VARCHAR2(20)                    -- ARŽæˆø”Ô†
  ,OIF_DFF4                         VARCHAR2(30)                    -- DFF4F“`•[No{ƒV[ƒPƒ“ƒX
  ,OIF_TAX_DFF4                     VARCHAR2(30)                    -- DFF4Å‹à—pF“`•[No{ƒV[ƒPƒ“ƒX
- ,LINE_ID                          NUMBER                          -- ”Ì”„ŽÀÑ–¾×”Ô†
+/* 2010/10/25 Ver1.2 Del Start */
+-- ,LINE_ID                          NUMBER                          -- ”Ì”„ŽÀÑ–¾×”Ô†
+/* 2010/10/25 Ver1.2 Del End   */
  ,CARD_RECEIV_BASE                 VARCHAR2(4)                     -- ƒJ[ƒhVD“ü‹à‹’“_ƒR[ƒh
  ,PAY_CUST_NUMBER                  VARCHAR2(30)                    -- Žx•¥ðŒ—p¿‹æŒÚ‹qƒR[ƒh
  ,REQUEST_ID                       NUMBER(15)                      -- —v‹ID
  ,SHIP_TO_CUSTOMER_NAME            VARCHAR2(150)                   -- ŒÚ‹q–¼Ìy”[•iæz
+/* 2010/10/25 Ver1.2 Add Start */
+ ,XSEL_ROWID                       ROWID                           -- ”Ì”„ŽÀÑ–¾×ROWID
+/* 2010/10/25 Ver1.2 Add End   */
 );
 --
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.SALES_EXP_HEADER_ID        IS '”Ì”„ŽÀÑƒwƒbƒ_ID';
@@ -99,10 +105,15 @@ COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.XSEH_ROWID                 IS '”
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.OIF_TRX_NUMBER             IS 'ARŽæˆø”Ô†';
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.OIF_DFF4                   IS 'DFF4F“`•[No{ƒV[ƒPƒ“ƒX';
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.OIF_TAX_DFF4               IS 'DFF4Å‹à—pF“`•[No{ƒV[ƒPƒ“ƒX';
-COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.LINE_ID                    IS '”Ì”„ŽÀÑ–¾×”Ô†';
+/* 2010/10/25 Ver1.2 Del Start */
+--COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.LINE_ID                    IS '”Ì”„ŽÀÑ–¾×”Ô†';
+/* 2010/10/25 Ver1.2 Del End   */
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.CARD_RECEIV_BASE           IS 'ƒJ[ƒhVD“ü‹à‹’“_ƒR[ƒh';
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.PAY_CUST_NUMBER            IS 'Žx•¥ðŒ—p¿‹æŒÚ‹qƒR[ƒh';
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.REQUEST_ID                 IS '—v‹ID';
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.SHIP_TO_CUSTOMER_NAME      IS  'ŒÚ‹q–¼Ìy”[•iæz';
+/* 2010/10/25 Ver1.2 Add Start */
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_AR_WORK.XSEL_ROWID                 IS '”Ì”„ŽÀÑ–¾×ROWID';
+/* 2010/10/25 Ver1.2 Add End   */
 --
 COMMENT ON TABLE  XXCOS.XXCOS_SALES_EXP_AR_WORK                            IS  '”Ì”„ŽÀÑAR—pƒ[ƒNƒe[ƒuƒ‹';

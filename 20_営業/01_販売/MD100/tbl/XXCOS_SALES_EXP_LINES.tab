@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_SALES_EXP_LINES
  * Description : 販売実績明細テーブル
- * Version     : 1.0
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Okaguchi   新規作成
  *  2009/07/29    1.1   SCS K.Kakishita  [T3_0000880] NotNull制約付与
+ *  2010/10/21    1.2   SCS K.Kiriu      [E_本稼動_05091] 品目区分追加
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_SALES_EXP_LINES
@@ -45,6 +46,9 @@ CREATE TABLE XXCOS.XXCOS_SALES_EXP_LINES
   TO_CALCULATE_FEES_FLAG         VARCHAR2(1)   NOT NULL       ,                 --  手数料計算インタフェース済フラグ
   UNIT_PRICE_MST_FLAG            VARCHAR2(1)   NOT NULL       ,                 --  単価マスタ作成済フラグ
   INV_INTERFACE_FLAG             VARCHAR2(1)   NOT NULL       ,                 --  INVインタフェース済フラグ
+/* 2010/10/21 Ver1.2 Add Start */
+  GOODS_PROD_CLS                 VARCHAR2(40)                 ,                 -- 品目区分
+/* 2010/10/21 Ver1.2 Add End   */
   CREATED_BY                     NUMBER(15)    NOT NULL       ,                 --  作成者
   CREATION_DATE                  DATE          NOT NULL       ,                 --  作成日
   LAST_UPDATED_BY                NUMBER(15)    NOT NULL       ,                 --  最終更新者
@@ -88,6 +92,9 @@ COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_LINES.SOLD_OUT_TIME                     
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_LINES.TO_CALCULATE_FEES_FLAG            IS  '手数料計算インタフェース済フラグ'  ;
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_LINES.UNIT_PRICE_MST_FLAG               IS  '単価マスタ作成済フラグ'            ;
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_LINES.INV_INTERFACE_FLAG                IS  'INVインタフェース済フラグ'         ;
+/* 2010/10/21 Ver1.2 Add Start */
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_LINES.GOODS_PROD_CLS                    IS  '品目区分'                          ;
+/* 2010/10/21 Ver1.2 Add End   */
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_LINES.CREATED_BY                        IS  '作成者'                            ;
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_LINES.CREATION_DATE                     IS  '作成日'                            ;
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_LINES.LAST_UPDATED_BY                   IS  '最終更新者'                        ;

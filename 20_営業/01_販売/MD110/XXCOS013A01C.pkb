@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.30
+ * Version          : 1.31
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -23,8 +23,9 @@ AS
  *  upd_data               販売実績ヘッダ更新処理(A-9)
  *  del_data               販売実績AR用ワーク削除処理(A-10)
  *  proc_ins_gen_err_list  汎用エラーリスト作成(A-12)
+ *  upd_sales_exp_lines    販売実績更新処理(A-13)
  *  submain                メイン処理プロシージャ(A-2-2を含む)
- *  main                   コンカレント実行ファイル登録プロシージャ(終了処理A-10を含む)
+ *  main                   コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
  * ------------- -------------------------------------------------------------------------
@@ -72,6 +73,7 @@ AS
  *                                       [E_本稼動_02000]請求OIFへの項目追加
  *  2010/08/11    1.29  M.Hirose         [E_本稼動_02863]内税顧客の売上値引
  *  2010/09/17    1.30  K.Kiriu          [E_本稼動_02635] 汎用エラーリスト出力対応
+ *  2010/10/20    1.31  K.Kiriu          [E_本稼動_05091]請求書金額重複障害対応
  *
  *****************************************************************************************/
 --
@@ -160,6 +162,9 @@ AS
 /* 2009/10/02 Ver1.24 Add End   */
 --
   cv_tkn_sales_msg          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12751'; -- 販売実績ヘッダ
+/* 2010/10/20 Ver1.31 Add Start */
+  cv_tkn_sales_line_msg     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00087'; -- 販売実績明細
+/* 2010/10/20 Ver1.31 Add End   */
   cv_tkn_aroif_msg          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12752'; -- AR請求取引OIF
   cv_tkn_ardis_msg          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12753'; -- AR会計配分OIF
   cv_sales_nm_msg           CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12754'; -- 販売実績
@@ -286,6 +291,9 @@ AS
   cn_max_day                CONSTANT  NUMBER       := 32;                -- 支払条件マスタの最大日
   cv_goods_prod_syo         CONSTANT  VARCHAR2(1)  := '1';               -- 品目区分：商品= 1
   cv_goods_prod_sei         CONSTANT  VARCHAR2(1)  := '2';               -- 品目区分：製品= 2
+/* 2010/10/20 Ver1.31 Add Start */
+  cv_goods_prod_out         CONSTANT  VARCHAR2(1)  := 'O';               -- 品目区分：内税以外 = O
+/* 2010/10/20 Ver1.31 Add End   */
   cv_site_code              CONSTANT  VARCHAR2(10) := 'BILL_TO';         -- サイトコード
   cn_ship_flg_on            CONSTANT  NUMBER       := 1;                 -- 出荷先顧客フラグがON
   cn_ship_flg_off           CONSTANT  NUMBER       := 0;                 -- 出荷先顧客フラグがOFF
@@ -411,7 +419,9 @@ AS
     , oif_trx_number            ra_interface_lines_all.trx_number%TYPE              -- AR取引番号
     , oif_dff4                  ra_interface_lines_all.interface_line_attribute4%TYPE -- DFF4：伝票No＋シーケンス
     , oif_tax_dff4              ra_interface_lines_all.interface_line_attribute4%TYPE -- DFF4税金用：伝票No＋シーケンス
-    , line_id                   xxcos_sales_exp_lines.sales_exp_line_id%TYPE          -- 販売実績明細番号
+/* 2010/10/20 Ver1.31 Del Start */
+--    , line_id                   xxcos_sales_exp_lines.sales_exp_line_id%TYPE          -- 販売実績明細番号
+/* 2010/10/20 Ver1.31 Del End   */
     , card_receiv_base          xxcos_sales_exp_headers.receiv_base_code%TYPE         -- カードVD入金拠点コード
     , pay_cust_number           xxcos_cust_hierarchy_v.bill_account_number%TYPE       -- 支払条件用請求先顧客コード
 /* 2009/10/02 Ver1.24 Add Start */
@@ -420,6 +430,9 @@ AS
 /* 2010/07/12 Ver1.28 Add Start */
     , ship_to_customer_name     xxcos_sales_exp_ar_work.ship_to_customer_name%TYPE    -- 顧客名称【納品先】
 /* 2010/07/12 Ver1.28 Add End */
+/* 2010/10/20 Ver1.31 Add Start */
+    , xsel_rowid                ROWID                                               -- ROWID(販売実績明細)
+/* 2010/10/20 Ver1.31 Add End   */
   );
 --
   -- 仕訳パターンワークテーブル定義
@@ -547,10 +560,24 @@ AS
   TYPE g_discount_item_ttype   IS TABLE OF VARCHAR2(9) INDEX BY VARCHAR2( 9 );
   gt_discount_item_tbl            g_discount_item_ttype;                               -- 値引品目
 /* 2010/03/08 Ver1.27 Add End   */
+/* 2010/10/20 Ver1.31 Add Start */
+  TYPE g_dc_item_div_ttype     IS TABLE OF VARCHAR2(40) INDEX BY VARCHAR2( 9 );
+  gt_dc_item_div_tbl              g_dc_item_div_ttype;                               -- 値引品目区分
+/* 2010/10/20 Ver1.31 Add End   */
 /* 2010/09/17 Ver1.30 Add Start */
   TYPE g_gen_err_list_ttype IS TABLE OF xxcos_gen_err_list%ROWTYPE INDEX BY BINARY_INTEGER;   -- 汎用エラーリスト用
   gt_gen_err_list_tab             g_gen_err_list_ttype;           -- 汎用エラーリスト
 /* 2010/09/17 Ver1.30 Add End   */
+/* 2010/10/20 Var1.31 Add Start */
+  TYPE g_sales_l_ttype   IS TABLE OF ROWID INDEX BY BINARY_INTEGER;                                        --品目区分更新用(明細更新キー)
+  gt_sales_l_tab                     g_sales_l_ttype;
+--
+  TYPE g_goods_p_ttyep   IS TABLE OF xxcos_sales_exp_ar_work.goods_prod_cls%TYPE INDEX BY BINARY_INTEGER;  --品目区分更新用(品目区分)
+  gt_goods_p_tab                     g_goods_p_ttyep;
+--
+  TYPE g_tax_c_ttyep     IS TABLE OF xxcos_sales_exp_ar_work.tax_code%TYPE INDEX BY BINARY_INTEGER;        --品目区分更新用(税金コード)
+  gt_tax_c_tab                       g_tax_c_ttyep;
+/* 2010/10/20 Var1.31 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバルレコード
@@ -632,7 +659,9 @@ AS
   gn_term_amount                      NUMBER    DEFAULT 0;                              -- 本体金額(同一品目区分の合計計算用)
   gn_max_amount                       NUMBER    DEFAULT 0;                              -- 本体金額(品目区分の金額合計保持用)
   gt_goods_prod_class                 xxcos_good_prod_class_v.goods_prod_class_code%TYPE;  --品目区分
-  gt_goods_item_code                  xxcos_sales_exp_lines.item_code%TYPE;                --品目コード
+/* 2010/10/20 Ver1.31 Del Start */
+--  gt_goods_item_code                  xxcos_sales_exp_lines.item_code%TYPE;                --品目コード
+/* 2010/10/20 Ver1.31 Del End   */
   --AR会計配分集約処理用
   gv_sum_flag_ar                      VARCHAR2(1);                                      -- 集約フラグ Y:集約 N:作成
   gt_invoice_number_ar_brk            xxcos_sales_exp_headers.dlv_invoice_number%TYPE;  -- 納品伝票番号(ブレーク処理用)
@@ -729,13 +758,18 @@ AS
             ,xseaw.oif_trx_number          oif_trx_number           --AR取引番号
             ,xseaw.oif_dff4                oif_dff4                 --DFF4：伝票No＋シーケンス
             ,xseaw.oif_tax_dff4            oif_tax_dff4             --DFF4税金用：伝票No＋シーケンス
-            ,xseaw.line_id                 line_id                  --販売実績明細番号
+/* 2010/10/20 Ver1.31 Del Start */
+--            ,xseaw.line_id                 line_id                  --販売実績明細番号
+/* 2010/10/20 Ver1.31 Del End   */
             ,xseaw.card_receiv_base        card_receiv_base         --カードVD入金拠点コード
             ,xseaw.pay_cust_number         pay_cust_number          --支払条件用請求先顧客コード
             ,xseaw.request_id              request_id               --要求ID
 /* 2010/07/12 Ver1.28 Add Start */
             ,xseaw.ship_to_customer_name   ship_to_customer_name    --顧客名称【納品先】
 /* 2010/07/12 Ver1.28 Add End */
+/* 2010/10/20 Ver1.31 Add Start */
+            ,xseaw.xsel_rowid              xsel_rowid               --販売実績明細ROWID
+/* 2010/10/20 Ver1.31 Add End   */
     FROM     xxcos_sales_exp_ar_work xseaw
     WHERE    xseaw.request_id = cn_request_id
     ORDER BY
@@ -1104,6 +1138,9 @@ AS
   CURSOR discount_item_cur
   IS
     SELECT  flv.lookup_code     item_code
+/* 2010/10/20 Ver1.31 Add Start */
+           ,flv.attribute1      discount_item_div
+/* 2010/10/20 Ver1.31 Add End   */
     FROM    fnd_lookup_values  flv
     WHERE   flv.lookup_type      = ct_dis_item_cd
     AND     flv.language         = ct_lang
@@ -1880,6 +1917,9 @@ AS
         EXIT WHEN discount_item_cur%NOTFOUND;
         --
         gt_discount_item_tbl(discount_item_rec.item_code) := discount_item_rec.item_code;
+/* 2010/10/20 Ver1.31 Add Start */
+        gt_dc_item_div_tbl(discount_item_rec.item_code)   := discount_item_rec.discount_item_div;
+/* 2010/10/20 Ver1.31 Add End   */
         --
       END LOOP discount_item_loop;
       --
@@ -1972,6 +2012,9 @@ AS
 --
     -- *** ローカル変数 ***
     lv_table_name   VARCHAR2(255);                                     -- テーブル名
+/* 2010/10/20 Ver1.31 Add Start */
+    lv_table_name2  VARCHAR2(255);                                     -- テーブル名
+/* 2010/10/20 Ver1.31 Add End   */
 /* 2009/10/02 Ver1.24 Del Start */
 --    ln_bulk_idx     NUMBER DEFAULT 0;                                  -- 非大手量販店インデックス
 --    ln_norm_idx     NUMBER DEFAULT 0;                                  -- 大手量販店インデックス
@@ -2156,7 +2199,9 @@ AS
            , NULL                              oif_trx_number          -- AR取引番号
            , NULL                              oif_dff4                -- DFF4：伝票No＋シーケンス
            , NULL                              oif_tax_dff4            -- DFF4税金用：伝票No＋シーケンス
-           , xsel.sales_exp_line_id            line_id                 -- 販売実績明細番号
+/* 2010/10/20 Ver1.31 Del Start */
+--           , xsel.sales_exp_line_id            line_id                 -- 販売実績明細番号
+/* 2010/10/20 Ver1.31 Del End   */
 /* 2009/07/27 Ver1.21 Mod Start */
 --           , xseh.receiv_base_code             card_receiv_base        -- カード入金拠点コード
 --           , xchv.bill_account_number          pay_cust_number         -- 支払条件用請求先顧客コード
@@ -2171,6 +2216,9 @@ AS
                  ,1
                  ,cn_cust_name_length)         ship_to_customer_name   --顧客名称【納品先】
 /* 2010/07/12 Ver1.28 Add End */
+/* 2010/10/20 Ver1.31 Add Start */
+           ,xsel.rowid                         xsel_rowid              --ROWID(販売実績明細)
+/* 2010/10/20 Ver1.31 Add End   */
       FROM
              xxcos_sales_exp_headers           xseh                    -- 販売実績ヘッダテーブル(ロック用)
 /* 2009/07/27 Ver1.21 Add Start */
@@ -2897,6 +2945,9 @@ AS
         xseh.sales_exp_header_id
 /* 2009/10/02 Ver1.24 Mod End   */
     FOR UPDATE OF  xseh.sales_exp_header_id
+/* 2010/10/20 Ver1.31 Add Start */
+                  ,xsel.sales_exp_line_id
+/* 2010/10/20 Ver1.31 Add End   */
     NOWAIT;
 --
     -- *** ローカル・レコード ***
@@ -2945,9 +2996,12 @@ AS
         --ブレーク用変数(支払条件)初期化
         lv_break_flag := cv_n_flag;
 /* 2010/03/08 Ver1.27 Add Start   */
-        -- 品目が値引品目の場合、製品商品区分をNULLにする
+        -- 品目が値引品目の場合、値引品目クイックコードの値引品目区分を設定する
         IF ( gt_discount_item_tbl.EXISTS(gt_sales_exp_tbl2(sale_idx).item_code) = TRUE ) THEN
-          gt_sales_exp_tbl2(sale_idx).goods_prod_cls := NULL;
+/* 2010/10/20 Ver1.31 Mod Start */
+--          gt_sales_exp_tbl2(sale_idx).goods_prod_cls := NULL;
+          gt_sales_exp_tbl2(sale_idx).goods_prod_cls := gt_dc_item_div_tbl(gt_sales_exp_tbl2(sale_idx).item_code);
+/* 2010/10/20 Ver1.31 Mod End   */
         END IF;
 /* 2010/03/08 Ver1.27 Add End   */
         --ヘッダ単位の処理の為のブレーク処理
@@ -3565,11 +3619,20 @@ AS
                            iv_application  => cv_xxcos_short_nm        -- アプリケーション短縮名
                          , iv_name         => cv_tkn_sales_msg         -- メッセージID
                        );
+/* 2010/10/20 Ver1.31 Add Start */
+      lv_table_name2 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_xxcos_short_nm        -- アプリケーション短縮名
+                          , iv_name         => cv_tkn_sales_line_msg    -- メッセージID
+                        );
+/* 2010/10/20 Ver1.31 Add End   */
       lv_errmsg     := xxccp_common_pkg.get_msg(
                            iv_application  => cv_xxcos_short_nm
                          , iv_name         => cv_table_lock_msg
                          , iv_token_name1  => cv_tkn_tbl
-                         , iv_token_value1 => lv_table_name
+/* 2010/10/20 Ver1.31 Mod Start */
+--                         , iv_token_value1 => lv_table_name
+                         , iv_token_value1 => lv_table_name || cv_msg_cont || lv_table_name2
+/* 2010/10/20 Ver1.31 Mod End   */
                        );
       lv_errbuf     := lv_errmsg;
       ov_errmsg     := lv_errmsg;
@@ -3881,13 +3944,40 @@ AS
       -- 納品伝票番号＋シーケンスの採番
       IF (   NVL( gv_trx_number_brk , 'X' )  <> gv_trx_number                                           -- AR取引番号
          OR  gt_header_id_brk                <> gt_sales_norm_tbl( sale_norm_idx ).sales_exp_header_id  -- 販売実績ヘッダID
---**/* 2010/08/11 Ver1.29 Mod Start */
-         -- 内税顧客で、品目区分(製品、商品、売上値引)が変化したときは採番しなおす
-         OR (  NVL( gt_prod_cls_ar_brk3, 'X' ) <> NVL( gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls, 'X' )  -- 品目区分が前回と一緒
-           AND gt_sales_norm_tbl( sale_norm_idx ).tax_code = gt_in_tax_cls  -- 消費税コードが内税
+/* 2010/10/20 Ver1.31 Mod Start */
+----**/* 2010/08/11 Ver1.29 Mod Start */
+--         -- 内税顧客で、品目区分(製品、商品、売上値引)が変化したときは採番しなおす
+--         OR (  NVL( gt_prod_cls_ar_brk3, 'X' ) <> NVL( gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls, 'X' )  -- 品目区分が前回と一緒
+--           AND gt_sales_norm_tbl( sale_norm_idx ).tax_code = gt_in_tax_cls  -- 消費税コードが内税
+--            )
+----**/* 2010/08/11 Ver1.29 Mod End   */
+--         )
+         -- 消費税コードが内税のときは品目区分（製品・商品・値引品目）を集約キーとして考慮する。
+         OR (
+              ( gt_sales_norm_tbl( sale_norm_idx ).tax_code = gt_in_tax_cls )  -- 消費税区コードが内税
+              AND
+              (
+                -- 前回が商品か製品だったとき
+                (
+                  (  NVL( gt_prod_cls_ar_brk3, 'X' ) = cv_goods_prod_syo  -- 品目区分：商品= 1
+                  OR NVL( gt_prod_cls_ar_brk3, 'X' ) = cv_goods_prod_sei  -- 品目区分：製品= 2
+                  )
+                  -- 内税顧客で、品目区分(製品、商品)が変化したときは採番しなおす
+                  AND NVL( gt_prod_cls_ar_brk3, 'X' ) <> NVL( gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls, 'X' )
+                )
+                  -- 前回が商品、製品以外だったとき(売上値引)
+                OR
+                (
+                  (   NVL( gt_prod_cls_ar_brk3, 'X' ) <> cv_goods_prod_syo  -- 品目区分：商品= 1
+                  AND NVL( gt_prod_cls_ar_brk3, 'X' ) <> cv_goods_prod_sei  -- 品目区分：製品= 2
+                  )
+                  -- 内税顧客で、品目コードが変化したときは採番しなおす
+                  AND gt_item_code_ar_brk3 <> gt_sales_norm_tbl( sale_norm_idx ).item_code  -- 品目コード
+                )
+              )
             )
---**/* 2010/08/11 Ver1.29 Mod End   */
          )
+/* 2010/10/20 Ver1.31 Mod End   */
 /* 2009/10/02 Ver1.24 Mod End   */
       THEN
           -- 取引明細DFF4用:自動採番番号
@@ -4121,7 +4211,7 @@ AS
                      (  NVL( gt_prod_cls_brk2, 'X' ) = cv_goods_prod_syo  -- 品目区分：商品= 1
                      OR NVL( gt_prod_cls_brk2, 'X' ) = cv_goods_prod_sei  -- 品目区分：製品= 2
                      )
-                   -- 前回の品目区分（製品・商品）と同じであること
+                  -- 前回の品目区分（製品・商品）と同じであること
                    AND NVL( gt_prod_cls_brk2, 'X' ) = NVL( gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls, 'X' )
                    )
                    -- 前回が商品、製品以外だったとき(売上値引)
@@ -4178,7 +4268,9 @@ AS
           gn_max_amount       := gn_term_amount;                                  -- 最大の金額を保持
           gn_term_amount      := gt_sales_norm_tbl( sale_norm_idx ).pure_amount;  -- 品目区分単位の合計金額初期化
           gt_goods_prod_class := gt_prod_cls_brk2;                                 -- 最大金額の品目区分を設定
-          gt_goods_item_code  := gt_item_code_brk2;                                -- 最大金額の品目コードを設定
+/* 2010/10/20 Ver1.31 Del Start */
+--          gt_goods_item_code  := gt_item_code_brk2;                                -- 最大金額の品目コードを設定
+/* 2010/10/20 Ver1.31 Del End   */
         END IF;
 --
         gt_item_code_brk2 := gt_sales_norm_tbl( sale_norm_idx ).item_code;
@@ -4193,7 +4285,9 @@ AS
 --
         IF ( ABS( gn_term_amount ) >= ABS( gn_max_amount ) ) THEN
           gt_goods_prod_class := gt_prod_cls_brk2;
-          gt_goods_item_code  := gt_item_code_brk2;
+/* 2010/10/20 Ver1.31 Del Start */
+--          gt_goods_item_code  := gt_item_code_brk2;
+/* 2010/10/20 Ver1.31 Del End   */
         END IF;
         gn_max_amount       := 0;
 /* 2009/11/15 Ver1.26 Mod Start */
@@ -4591,23 +4685,27 @@ AS
         -- ３．品目明細摘要の取得(「仮受消費税等」以外)
         --=====================================================================
 --
-        -- 品目明細摘要の存在チェック-->存在している場合、取得必要がない
+        -- 品目明細摘要の存在チェック-->存在している場合、取得必要がない(SQLを発行しない)
+/* 2010/10/20 Ver1.31 Del Start */
 /* 2009/10/02 Ver1.24 Mod Start */
 --        IF ( lt_goods_prod_class IS NULL ) THEN
-        IF ( gt_goods_prod_class IS NULL ) THEN
+--        IF ( gt_goods_prod_class IS NULL ) THEN
 /* 2009/10/02 Ver1.24 Mod End   */
-          lv_item_idx := gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class
+--          lv_item_idx := gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class
 /* 2009/10/02 Ver1.24 Mod Start */
 --                      || lt_goods_item_code;
-                      || gt_goods_item_code;
+--                      || gt_goods_item_code;
 /* 2009/10/02 Ver1.24 Mod End   */
-        ELSE
+--        ELSE
+/* 2010/10/20 Ver1.31 Del End   */
           lv_item_idx := gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class
 /* 2009/10/02 Ver1.24 Mod Start */
 --                      || lt_goods_prod_class;
                       || gt_goods_prod_class;
 /* 2009/10/02 Ver1.24 Mod End   */
-        END IF;
+/* 2010/10/20 Ver1.31 Del Start */
+--        END IF;
+/* 2010/10/20 Ver1.31 Del End   */
 --
         IF ( gt_sel_item_desp_tbl.EXISTS( lv_item_idx ) ) THEN
           lv_item_desp := gt_sel_item_desp_tbl( lv_item_idx ).description;
@@ -4622,8 +4720,11 @@ AS
 /* 2009/10/02 Ver1.24 Mod Start */
 --              AND  flvi.attribute2                = NVL( lt_goods_prod_class,
 --                                                         lt_goods_item_code )
-              AND  flvi.attribute2                = NVL( gt_goods_prod_class,
-                                                         gt_goods_item_code )
+/* 2010/10/20 Ver1.31 Mod Start */
+--              AND  flvi.attribute2                = NVL( gt_goods_prod_class,
+--                                                         gt_goods_item_code )
+              AND  flvi.attribute2                = gt_goods_prod_class
+/* 2010/10/20 Ver1.31 Mod End   */
 /* 2009/10/02 Ver1.24 Mod End   */
               AND  flvi.enabled_flag              = cv_enabled_yes
 /* 2009/07/27 Ver1.21 Mod Start */
@@ -4843,6 +4944,19 @@ AS
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute7
                                                         := gt_sales_norm_tbl2( ln_trx_idx ).sales_exp_header_id;
                                                         -- 取引明細DFF7
+/* 2010/10/20 Ver1.31 Add Start */
+        IF ( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
+          --内税時
+          gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute8
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).goods_prod_cls;
+                                                        -- 集約単位の品目区分(製品・商品・値引品目)
+        ELSE
+          --その他
+          gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute8
+                                                          := cv_goods_prod_out;
+                                                          -- 固定値'O'
+        END IF;
+/* 2010/10/20 Ver1.31 Add End   */
         gt_ar_interface_tbl( ln_ar_idx ).batch_source_name  := gv_sales_nm;
                                                         -- 取引ソース:「販売実績」を設定
         gt_ar_interface_tbl( ln_ar_idx ).set_of_books_id
@@ -5010,6 +5124,19 @@ AS
         gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute7
                                                         := gt_sales_norm_tbl2( ln_trx_idx ).sales_exp_header_id;
                                                         -- 取引明細DFF7
+/* 2010/10/20 Ver1.31 Add Start */
+        IF ( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
+          --内税時
+          gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute8
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).goods_prod_cls;
+                                                        -- 集約単位の品目区分(製品・商品・値引品目)
+        ELSE
+          --その他
+          gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute8
+                                                          := cv_goods_prod_out;
+                                                          -- 固定値'O'
+        END IF;
+/* 2010/10/20 Ver1.31 Add End   */
         gt_ar_interface_tbl( ln_ar_idx ).batch_source_name
                                                         := gv_sales_nm;
                                                         -- 取引ソース:「販売実績」を設定
@@ -5074,6 +5201,19 @@ AS
         gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute7
                                                         := gt_sales_norm_tbl2( ln_trx_idx ).sales_exp_header_id;
                                                         -- リンク先明細DFF7
+/* 2010/10/20 Ver1.31 Add Start */
+        IF ( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_in_tax_cls ) THEN
+          --内税時
+          gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute8
+                                                        := gt_sales_norm_tbl2( ln_trx_idx ).goods_prod_cls;
+                                                        -- リンク先明細DFF8：集約単位の品目区分(製品・商品・値引品目)
+        ELSE
+          --その他
+          gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute8
+                                                        := cv_goods_prod_out;
+                                                        -- リンク先明細DFF8：固定値'O'
+        END IF;
+/* 2010/10/20 Ver1.31 Add End   */
         gt_ar_interface_tbl( ln_ar_idx ).receipt_method_id
                                                         := gt_sales_norm_tbl2( ln_trx_idx ).rcrm_receipt_id;
                                                         -- 支払方法ID
@@ -5742,6 +5882,19 @@ AS
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute7
                                                           := gt_sales_norm_tbl2( ln_dis_idx ).sales_exp_header_id;
                                                           -- 取引明細DFF7：販売実績ヘッダID
+/* 2010/10/20 Ver1.31 Add Start */
+              IF ( gt_sales_norm_tbl2( ln_dis_idx ).tax_code = gt_in_tax_cls ) THEN
+                --内税時
+                gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute8
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).goods_prod_cls;
+                                                          -- 集約単位の品目区分(製品・商品・値引品目)
+              ELSE
+                --その他
+                gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute8
+                                                            := cv_goods_prod_out;
+                                                            -- 固定値'O'
+              END IF;
+/* 2010/10/20 Ver1.31 Add End   */
               gt_ar_dis_tbl( ln_ar_dis_idx ).account_class
                                                           := cv_acct_rev;
                                                           -- 勘定科目区分(配分タイプ)
@@ -5806,6 +5959,19 @@ AS
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute7
                                                           := gt_sales_norm_tbl2( ln_dis_idx ).sales_exp_header_id;
                                                           -- 取引明細DFF7：販売実績ヘッダID
+/* 2010/10/20 Ver1.31 Add Start */
+              IF ( gt_sales_norm_tbl2( ln_dis_idx ).tax_code = gt_in_tax_cls ) THEN
+                --内税時
+                gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute8
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).goods_prod_cls;
+                                                          -- 集約単位の品目区分(製品・商品・値引品目)
+              ELSE
+                --その他
+                gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute8
+                                                            := cv_goods_prod_out;
+                                                            -- 固定値'O'
+              END IF;
+/* 2010/10/20 Ver1.31 Add End   */
               gt_ar_dis_tbl( ln_ar_dis_idx ).account_class
                                                           := cv_acct_rec;
                                                           -- 勘定科目区分(配分タイプ)
@@ -5847,6 +6013,19 @@ AS
               gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute7
                                                           := gt_sales_norm_tbl2( ln_dis_idx ).sales_exp_header_id;
                                                           -- 取引明細DFF7：販売実績ヘッダID
+/* 2010/10/20 Ver1.31 Add Start */
+              IF ( gt_sales_norm_tbl2( ln_dis_idx ).tax_code = gt_in_tax_cls ) THEN
+                --内税時
+                gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute8
+                                                          := gt_sales_norm_tbl2( ln_dis_idx ).goods_prod_cls;
+                                                          -- 集約単位の品目区分(製品・商品・値引品目)
+              ELSE
+                --その他
+                gt_ar_dis_tbl( ln_ar_dis_idx ).interface_line_attribute8
+                                                            := cv_goods_prod_out;
+                                                            -- 固定値'O'
+              END IF;
+/* 2010/10/20 Ver1.31 Add End   */
               gt_ar_dis_tbl( ln_ar_dis_idx ).account_class
                                                           := cv_acct_tax;
                                                           -- 勘定科目区分(配分タイプ)
@@ -9549,6 +9728,129 @@ AS
   END proc_ins_gen_err_list;
 --
 /* 2010/09/17 Ver1.30 Add End   */
+/* 2010/10/20 Ver1.31 Add Start */
+--
+  /***********************************************************************************
+   * Procedure Name   : upd_sales_exp_lines
+   * Description      : 販売実績明細更新処理(A-13)
+   ***********************************************************************************/
+  PROCEDURE upd_sales_exp_lines(
+    ov_errbuf         OUT VARCHAR2,         --   エラー・メッセージ           --# 固定 #
+    ov_retcode        OUT VARCHAR2,         --   リターン・コード             --# 固定 #
+    ov_errmsg         OUT VARCHAR2 )        --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_sales_exp_lines'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);              -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);                 -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);              -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_tbl_nm     VARCHAR2(255);                -- テーブル名
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==============================================================
+    -- 販売実績明細更新対象データ設定
+    --==============================================================
+    << value_set_loop >>
+    FOR i IN 1..gt_sales_norm_tbl.COUNT LOOP
+      --処理対象データを更新用の配列に設定する
+      gt_sales_l_tab(i)  := gt_sales_norm_tbl(i).xsel_rowid;     --更新キー
+      gt_tax_c_tab(i)    := gt_sales_norm_tbl(i).tax_code;       --税金コード
+      gt_goods_p_tab(i)  := gt_sales_norm_tbl(i).goods_prod_cls; --品目区分
+    END LOOP value_set_loop;
+    --==============================================================
+    -- 販売実績明細更新(品目区分)
+    --==============================================================
+    BEGIN
+      FORALL i IN 1..gt_sales_l_tab.COUNT
+        UPDATE 
+          xxcos_sales_exp_lines xsel
+        SET
+          xsel.goods_prod_cls         = DECODE( gt_tax_c_tab(i)
+                                               ,gt_in_tax_cls, gt_goods_p_tab(i)
+                                               ,cv_goods_prod_out
+                                        ),                             -- 品目区分
+          xsel.last_updated_by        = cn_last_updated_by,            -- 最終更新者
+          xsel.last_update_date       = cd_last_update_date,           -- 最終更新日
+          xsel.last_update_login      = cn_last_update_login,          -- 最終更新ログイン
+          xsel.request_id             = cn_request_id,                 -- 要求ID
+          xsel.program_application_id = cn_program_application_id,     -- コンカレント・プログラム・アプリID
+          xsel.program_id             = cn_program_id,                 -- コンカレント・プログラムID
+          xsel.program_update_date    = cd_program_update_date         -- プログラム更新日
+        WHERE
+          xsel.rowid = gt_sales_l_tab(i)
+        ;
+    EXCEPTION
+      WHEN OTHERS THEN
+         RAISE global_update_data_expt;
+    END;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    WHEN global_update_data_expt THEN
+      -- 更新に失敗した場合
+      lv_tbl_nm  := xxccp_common_pkg.get_msg(
+                        iv_application       => cv_xxcos_short_nm      -- アプリ短縮名
+                      , iv_name              => cv_tkn_sales_line_msg  -- メッセージID
+                    );
+      ov_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application       => cv_xxcos_short_nm
+                      , iv_name              => cv_data_update_msg
+                      , iv_token_name1       => cv_tkn_tbl_nm
+                      , iv_token_value1      => lv_tbl_nm
+                      , iv_token_name2       => cv_tkn_key_data
+                      , iv_token_value2      => cv_blank
+                    );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_sales_exp_lines;
+/* 2010/10/20 Ver1.31 Add End   */
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -9810,6 +10112,11 @@ AS
           gt_sales_norm_tbl.DELETE;    -- メインSQL用配列
           gt_ar_interface_tbl1.DELETE; -- AR請求取引OIFインサート用配列
           gt_ar_dis_tbl1.DELETE;       -- AR会計配分OIFインサート用配列
+/* 2010/10/20 Ver1.31 Add Start */
+          gt_sales_l_tab.DELETE;  --品目区分更新用配列(更新キー)
+          gt_goods_p_tab.DELETE;  --品目区分更新用配列(品目区分)
+          gt_tax_c_tab.DELETE;    --品目区分更新用配列(税金コード)
+/* 2010/10/20 Ver1.31 Add End   */
 --
           --リミット毎に処理する
           FETCH bulk_data_cur BULK COLLECT INTO gt_sales_norm_tbl LIMIT gn_ar_bulk_collect_cnt;
@@ -9877,6 +10184,21 @@ AS
             RAISE global_insert_data_expt;
           END IF;
 --
+/* 2010/10/20 Ver1.31 Add Start */
+          -- ===============================
+          -- A-13.販売実績明細更新処理
+          -- ===============================
+          upd_sales_exp_lines(
+              ov_errbuf       => lv_errbuf           -- エラー・メッセージ
+            , ov_retcode      => lv_retcode          -- リターン・コード
+            , ov_errmsg       => lv_errmsg           -- ユーザー・エラー・メッセージ
+            );
+          IF ( lv_retcode = cv_status_error ) THEN
+            gn_error_cnt := gn_target_cnt;
+            RAISE global_update_data_expt;
+          END IF;
+/* 2010/10/20 Ver1.31 Add End  */
+
           --2回目以降のBUKL処理で初期処理をさせない
           gn_fetch_first_flag := 1;
 --
@@ -10262,7 +10584,7 @@ AS
     END IF;
 --
     -- ===============================
-    -- A-7.終了処理
+    -- A-14.終了処理
     -- ===============================
     --空行挿入
     FND_FILE.PUT_LINE(
