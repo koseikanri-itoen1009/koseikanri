@@ -7,7 +7,7 @@ AS
  * Description      : ロット引当情報取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : ロット引当情報取込処理 T_MD070_BPO_94H
- * Version          : 1.2
+ * Version          : 1.3
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -35,6 +35,7 @@ AS
  *  2008/06/19    1.0  Oracle 吉田夏樹   初回作成
  *  2008/07/22    1.1  Oracle 吉田夏樹   内部課題#32、#66、内部変更#166対応
  *  2008/07/29    1.2  Oracle 吉田夏樹   ST不具合対応(採番なし)
+ *  2008/08/22    1.3  Oracle 山根一浩   T_TE080_BPO_940 指摘4,指摘5,指摘17対応
  *
  *****************************************************************************************/
 --
@@ -119,6 +120,7 @@ AS
   gv_msg_xxpo30051        CONSTANT VARCHAR2(100) := 'APP-XXPO-30051';  -- メッセージ:APP-XXPO-30051  入力パラメータ(見出し)
   gv_msg_xxpo10262        CONSTANT VARCHAR2(100) := 'APP-XXPO-10262';  -- メッセージ:APP-XXPO-10262  引当情報不足エラー
   gv_msg_xxcmn10604       CONSTANT VARCHAR2(100) := 'APP-XXCMN-10604'; -- メッセージ:APP-XXCMN-10604 ケース入数エラー
+  gv_msg_xxpo10267        CONSTANT VARCHAR2(100) := 'APP-XXPO-10267';  -- メッセージ:APP-XXPO-10267  ロットステータスエラー 2008/08/22 Add
 --
   -- トークン
   gv_tkn_ng_profile       CONSTANT VARCHAR2(100) := 'NG_PROFILE';
@@ -139,7 +141,7 @@ AS
   gv_tkn_date_item2       CONSTANT VARCHAR2(100) := 'ITEM2';
   gv_tkn_request_no       CONSTANT VARCHAR2(100) := 'REQUEST_NO';
   gv_tkn_item_no          CONSTANT VARCHAR2(100) := 'ITEM_NO';
-
+  gv_tkn_lot_no           CONSTANT VARCHAR2(100) := 'LOT_NO';             -- 2008/08/22 Add
 -- 
   -- トークン名称
   gv_tkn_prod_class_code     CONSTANT VARCHAR2(100) := 'XXCMN:商品区分(セキュリティ)';
@@ -169,7 +171,7 @@ AS
   -- セキュリティ区分
   gv_security_kbn_in         CONSTANT VARCHAR2(1) := '1'; -- セキュリティ区分 伊藤園ユーザー
   gv_security_kbn_out        CONSTANT VARCHAR2(1) := '4'; -- セキュリティ区分 東洋埠頭ユーザー
-
+--
   -- 日付書式
   gv_yyyymmdd                CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';
   gv_yyyymmddhh24miss        CONSTANT VARCHAR2(21) := 'YYYY/MM/DD HH24:MI:SS';
@@ -325,6 +327,11 @@ AS
   TYPE lr_freight_charge_class_tbl IS TABLE OF
     xxwsh_order_headers_all.freight_charge_class%TYPE INDEX BY BINARY_INTEGER;
 -- ST不具合対応 modify 2008/07/29 end
+-- 2008/08/22 Add ↓
+  -- ロット
+  TYPE lr_lot_ctl_tbl IS TABLE OF
+    xxcmn_item_mst2_v.lot_ctl%TYPE INDEX BY BINARY_INTEGER;
+-- 2008/08/22 Add ↑
 --
   ---------------------------------------------
   -- 移動ロット詳細アドオン取得              --
@@ -375,6 +382,17 @@ AS
   -- 最終更新ログイン
   TYPE ph_last_update_login_tbl IS TABLE OF
     xxwsh_order_headers_all.last_update_login%TYPE INDEX BY BINARY_INTEGER;
+-- 2008/08/22 Add ↓
+  -- 基本重量
+  TYPE ph_based_weight_tbl IS TABLE OF
+    xxwsh_order_headers_all.based_weight%TYPE INDEX BY BINARY_INTEGER;
+  -- 基本容積
+  TYPE ph_based_capacity_tbl IS TABLE OF
+    xxwsh_order_headers_all.based_capacity%TYPE INDEX BY BINARY_INTEGER;
+  -- 配送区分
+  TYPE ph_shipping_method_cd_tbl IS TABLE OF
+    xxwsh_order_headers_all.shipping_method_code%TYPE INDEX BY BINARY_INTEGER;
+-- 2008/08/22 Add ↑
 --
   ---------------------------------------------
   -- 受注明細アドオン更新                    --
@@ -508,6 +526,9 @@ AS
 -- ST不具合対応 modify 2008/07/29 start
   gt_lr_freight_charge_class_tbl      lr_freight_charge_class_tbl;
 -- ST不具合対応 modify 2008/07/29 end
+-- 2008/08/22 Add ↓
+  gt_lr_lot_ctl_tbl                   lr_lot_ctl_tbl;
+-- 2008/08/22 Add ↑
 --
   -- 移動ロット詳細取得用
   gt_mr_mov_lot_dtl_id_tbl            mr_mov_lot_dtl_id_tbl;
@@ -1136,6 +1157,9 @@ AS
 -- ST不具合対応 modify 2008/07/29 start
           ,xoha.freight_charge_class         -- 運賃区分
 -- ST不具合対応 modify 2008/07/29 end
+-- 2008/08/22 Add ↓
+          ,ximv.lot_ctl                      -- ロット
+-- 2008/08/22 Add ↑
           ,xlri.corporation_name                || gv_msg_comma ||
            xlri.data_class                      || gv_msg_comma ||
            xlri.transfer_branch_no              || gv_msg_comma ||
@@ -1171,6 +1195,9 @@ AS
 -- ST不具合対応 modify 2008/07/29 start
             gt_lr_freight_charge_class_tbl,
 -- ST不具合対応 modify 2008/07/29 end
+-- 2008/08/22 Add ↓
+            gt_lr_lot_ctl_tbl,
+-- 2008/08/22 Add ↑
             gt_lr_data_dump_tbl
     FROM   xxpo_lot_reserve_if         xlri                  -- ロット引当情報インタフェース
           ,xxwsh_order_headers_all     xoha                  -- 受注ヘッダアドオン
@@ -1181,6 +1208,8 @@ AS
           ,xxcmn_item_locations2_v     xilv                  -- OPM保管場所情報VIEW2
           ,xxcmn_item_locations2_v     xilv2                 -- OPM保管場所情報VIEW2
           ,ic_lots_mst                 ilm                   -- OPMロットマスタ
+-- 2008/08/22 Mod ↓
+/*
     WHERE
     -- ** 結合条件 ** --
            xlri.request_no            = xola.request_no(+)
@@ -1247,6 +1276,87 @@ AS
               AND    papf.attribute4            = xilv3.purchase_code)))))) 
     AND    xoha.req_status            >= gv_transaction_status_07
     AND    xoha.req_status            < gv_transaction_status_08
+*/
+    WHERE
+    -- ** 結合条件 ** --
+           xlri.request_no            = xola.request_no(+)
+    AND    xlri.item_code             = xola.shipping_item_code(+)
+    AND    xlri.item_code             = ximv.item_no(+)
+    AND    xola.order_header_id       = xoha.order_header_id(+)
+    AND    xoha.deliver_from          = xilv.segment1(+)
+    AND    xilv.frequent_whse         = xilv2.segment1(+)
+    AND    xola.shipping_inventory_item_id = ximv2.inventory_item_id(+)
+    AND    ximv.item_id               = xicv.item_id
+    AND    xlri.lot_no                = ilm.lot_no
+    AND    ilm.item_id                = ximv.item_id
+    AND   (xola.request_no IS NULL
+     OR    (ximv.start_date_active    <= NVL(xoha.shipped_date, xoha.schedule_ship_date)
+    AND     ximv.end_date_active      >= NVL(xoha.shipped_date, xoha.schedule_ship_date)))
+    AND   (xola.request_no IS NULL
+     OR    (ximv2.start_date_active   <= NVL(xoha.shipped_date, xoha.schedule_ship_date)
+    AND     ximv2.end_date_active     >= NVL(xoha.shipped_date, xoha.schedule_ship_date)))
+    AND   (xola.request_no IS NULL
+     OR    (xilv.date_from            <= NVL(xoha.shipped_date, xoha.schedule_ship_date)
+    AND     (xilv.date_to             >= NVL(xoha.shipped_date, xoha.schedule_ship_date)
+      OR    xilv.date_to IS NULL)
+    AND     xilv.disable_date IS NULL))
+    AND   (xola.request_no IS NULL
+     OR    (xilv2.date_from           <= NVL(xoha.shipped_date, xoha.schedule_ship_date)
+    AND     (xilv2.date_to            >= NVL(xoha.shipped_date, xoha.schedule_ship_date)
+      OR    xilv2.date_to IS NULL)
+    AND     xilv2.disable_date IS NULL))
+    -- ** 抽出条件 ** --
+    AND   (xola.request_no IS NULL
+     OR    xola.delete_flag           = gv_flg_n)
+    AND   (xola.request_no IS NULL
+     OR    xoha.latest_external_flag  = gv_flg_y)
+    AND    xlri.data_class            = iv_data_class
+    AND   (xola.request_no IS NULL
+     OR    xilv.segment1              = iv_deliver_from)
+    AND   (xola.request_no IS NULL
+     OR    NVL(xoha.shipped_date, xoha.schedule_ship_date) >= FND_DATE.STRING_TO_DATE(iv_shipped_date_from, gv_yyyymmddhh24miss))
+    AND   (xola.request_no IS NULL
+     OR    NVL(xoha.shipped_date, xoha.schedule_ship_date) <= FND_DATE.STRING_TO_DATE(iv_shipped_date_to, gv_yyyymmddhh24miss))
+    AND   (xola.request_no IS NULL
+     OR    xoha.instruction_dept      = iv_instruction_dept)
+    AND   (xola.request_no IS NULL
+     OR   ((iv_security_kbn        = gv_security_kbn_in)   -- セキュリティ区分 1:伊藤園ユーザー
+      OR  (((iv_security_kbn       = gv_security_kbn_out)  -- セキュリティ区分 4:東洋埠頭ユーザー
+        AND ((xilv.segment1 IN (             -- ログインユーザーの保管場所と同じ保管場所
+              SELECT xilv3.segment1    segment1                      -- 取引先コード(仕入先コード)
+              FROM   fnd_user           fu                           -- ユーザーマスタ
+                    ,per_all_people_f   papf                         -- 従業員マスタ
+                    ,xxcmn_item_locations2_v xilv3                   -- OPM保管場所情報VIEW2
+              WHERE  -- ** 結合条件 ** --
+                     fu.employee_id   = papf.person_id               -- 従業員ID
+                     -- ** 抽出条件 ** --
+              AND    papf.effective_start_date <= TRUNC(SYSDATE)     -- 適用開始日
+              AND    papf.effective_end_date   >= TRUNC(SYSDATE)     -- 適用終了日
+              AND    fu.start_date             <= TRUNC(SYSDATE)     -- 適用開始日
+              AND  ((fu.end_date               IS NULL)              -- 適用終了日
+                OR  (fu.end_date               >= TRUNC(SYSDATE)))
+              AND    fu.user_id                 = FND_GLOBAL.USER_ID -- ユーザーID
+              AND    papf.attribute4            = xilv3.purchase_code))
+          OR (xilv.frequent_whse_code IN (   -- ログインユーザーの保管場所を主管倉庫とする保管場所
+              SELECT xilv3.segment1    segment1                      -- 取引先コード(仕入先コード)
+              FROM   fnd_user           fu                           -- ユーザーマスタ
+                    ,per_all_people_f   papf                         -- 従業員マスタ
+                    ,xxcmn_item_locations2_v xilv3                   -- OPM保管場所情報VIEW2
+              WHERE  -- ** 結合条件 ** --
+                     fu.employee_id   = papf.person_id               -- 従業員ID
+                     -- ** 抽出条件 ** --
+              AND    papf.effective_start_date <= TRUNC(SYSDATE)     -- 適用開始日
+              AND    papf.effective_end_date   >= TRUNC(SYSDATE)     -- 適用終了日
+              AND    fu.start_date             <= TRUNC(SYSDATE)     -- 適用開始日
+              AND  ((fu.end_date               IS NULL)              -- 適用終了日
+                OR  (fu.end_date               >= TRUNC(SYSDATE)))
+              AND    fu.user_id                 = FND_GLOBAL.USER_ID -- ユーザーID
+              AND    papf.attribute4            = xilv3.purchase_code)))))))
+    AND   (xola.request_no IS NULL
+     OR    xoha.req_status  >= gv_transaction_status_07)
+    AND   (xola.request_no IS NULL
+     OR    xoha.req_status  < gv_transaction_status_08)
+-- 2008/08/22 Mod ↑
     ORDER BY xoha.order_header_id, xola.order_line_id, xlri.lot_no
     FOR UPDATE OF xoha.order_header_id, xola.order_line_id, xlri.lot_reserve_if_id NOWAIT;
 --
@@ -1413,6 +1523,8 @@ AS
     -- ユーザー宣言部
     -- ===============================
 --
+    -- *** ローカル定数 ***
+--
     -- *** ローカル変数 ***
     ln_cnt NUMBER;
 --
@@ -1427,6 +1539,8 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2008/08/22 Del ↓
+/*
     -- ===========================
     -- 引当情報不足チェック
     -- ===========================
@@ -1460,7 +1574,8 @@ AS
       RAISE global_api_expt;
 --
     END IF;
---
+*/
+-- 2008/08/22 Del ↑
     -- ===========================
     -- 受注ヘッダアドオン存在チェック
     -- ===========================
@@ -1507,6 +1622,72 @@ AS
       RAISE global_api_expt;
 --
     END IF;
+--
+-- 2008/08/22 Add ↓
+    -- ===========================
+    -- 引当情報不足チェック
+    -- ===========================
+    -- 本来必須であるロットNoが、依頼No.、品目コードの紐付きでとれなかった場合、
+    -- ロット引当情報IFテーブルに受注明細の全ての情報が設定されていないと判断し、エラーとする。
+    SELECT COUNT(1)
+    INTO   ln_cnt
+    FROM   xxwsh_order_headers_all xoha
+          ,xxwsh_order_lines_all   xola
+          ,xxpo_lot_reserve_if     xlri
+    WHERE  xoha.request_no         = gt_lr_request_no_tbl(gn_i)  -- 依頼No.
+    AND    xoha.order_header_id    = xola.order_header_id        -- 受注ヘッダID
+    AND    xola.request_no         = xlri.request_no(+)          -- 依頼No.
+    AND    xola.shipping_item_code = xlri.item_code(+)           -- 品目コード
+    AND    xlri.lot_no             IS NULL                       -- ロットNo
+    AND    xola.delete_flag           = gv_flg_n
+    AND    xoha.latest_external_flag  = gv_flg_y
+    AND    ROWNUM                  = 1
+    ;
+--
+    -- 1件以上の場合、エラー
+    IF (ln_cnt > 0) THEN
+      lv_errmsg  := SUBSTRB(
+                      xxcmn_common_pkg.get_msg(
+                        gv_xxpo               -- モジュール名略称:XXPO
+                       ,gv_msg_xxpo10262     -- メッセージ:APP-XXPO-10234 引当情報不足エラー
+                       ,gv_tkn_item          -- トークン:ITEM
+                       ,gt_lr_request_no_tbl(gn_i))    -- 受注ヘッダアドオン
+                       ,1,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+--
+    END IF;
+-- 2008/08/22 Add ↑
+--
+-- 2008/08/22 Add ↓
+    -- ロット管理品の場合
+    IF (gt_lr_lot_ctl_tbl(gn_i) = gv_flg_on) THEN
+      -- ===========================
+      -- ロットステータスチェック
+      -- ===========================
+      SELECT COUNT(1)
+      INTO   ln_cnt
+      FROM   ic_lots_mst           ilm,     -- ロットマスタ
+             xxcmn_lot_status_v    xlsv     -- ロットステータスビュー
+      WHERE  xlsv.lot_status(+)           = ilm.attribute23
+      AND    ilm.lot_id                   = gt_lr_lot_id_tbl(gn_i)
+      AND    ilm.attribute1              >= gt_lr_lot_date_tbl(gn_i)   -- 指定製造日
+      AND    xlsv.pay_provision_m_reserve = gv_flg_y                   -- 有償支給(手動引当)
+      AND    ROWNUM         = 1
+      ;
+      -- 0件の場合、エラー
+      IF (ln_cnt = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(
+                        gv_xxpo                  -- モジュール名略称:XXPO
+                       ,gv_msg_xxpo10267         -- メッセージ:APP-XXPO-10267 ロットステータスエラー
+                       ,gv_tkn_lot_no            -- トークン:LOT_NO
+                       ,gt_lr_lot_no_tbl(gn_i)); -- ロットNo
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+--
+      END IF;
+    END IF;
+-- 2008/08/22 Add ↑
 --
     -- ===========================
     -- 引当数量チェック(0、マイナスチェック)

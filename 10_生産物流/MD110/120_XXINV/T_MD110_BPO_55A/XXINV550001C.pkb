@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2008/07/02    1.13  Satoshi Yunba      禁則文字対応
  *  2008/07/08    1.14  Yasuhisa Yamamoto  結合テスト障害対応(ADJI文書IDのNULL対応、入出庫数量0の出力対応)
  *  2008/08/28    1.15  Oracle 山根 一浩   PT 2_1_12 #33,T_S_503対応
+ *  2008/09/05    1.16  Yasuhisa Yamamoto  PT 2_1_12 再改修
  *
  *****************************************************************************************/
 --
@@ -1027,6 +1028,10 @@ AS
                            ) xx_data                                    -- 各アドオンに存在するデータ
                     WHERE  itc_adji.doc_type                 = gc_doc_type_adji
                     AND    xrpm6v.use_div_invent             = gc_use_div_invent_y
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itc_adji.trans_date         BETWEEN gd_date_ym_first
+                                                           AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    iaj_adji.journal_id               = ijm_adji.journal_id
 -- 08/07/22 Y.Yamamoto Update v1.14 Start
 --                    AND    itc_adji.reason_code              = xx_data.reason_code
@@ -1086,6 +1091,10 @@ AS
                     WHERE  itc_trni.doc_type                = gc_doc_type_trni
                     AND    xrpm9v.doc_type                  = gc_doc_type_trni
                     AND    xrpm9v.use_div_invent            = gc_use_div_invent_y
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itc_trni.trans_date        BETWEEN gd_date_ym_first
+                                                          AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    iaj_trni.journal_id              = ijm_trni.journal_id
                     AND    TO_NUMBER( ijm_trni.attribute1 ) = xmril_trni.mov_line_id
                     AND    itc_trni.doc_type                = iaj_trni.trans_type
@@ -1139,6 +1148,10 @@ AS
                     AND    itp_xfer.completed_ind           = gc_completed_ind_1
                     AND    xrpm9v.doc_type                  = gc_doc_type_xfer
                     AND    xrpm9v.use_div_invent            = gc_use_div_invent_y
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itp_xfer.trans_date        BETWEEN gd_date_ym_first
+                                                          AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    TO_NUMBER( ixm_xfer.attribute1 ) = xmril_xfer.mov_line_id
                     AND    itp_xfer.doc_id                  = ixm_xfer.transfer_id
                     AND    xrpm9v.doc_type                  = itp_xfer.doc_type
@@ -1179,6 +1192,10 @@ AS
 -- 08/07/08 Y.Yamamoto ADD v1.14 End
                     WHERE  itp_omso.doc_type                = gc_doc_type_omso
                     AND    itp_omso.completed_ind           = gc_completed_ind_1
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itp_omso.trans_date        BETWEEN gd_date_ym_first
+                                                          AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    xrpm7v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm7v.doc_type                  = itp_omso.doc_type
                     AND    xrpm7v.line_id                   = itp_omso.line_id
@@ -1213,6 +1230,10 @@ AS
                           ,ic_tran_pnd               itp_prod   -- OPM保留在庫トランザクション
                     WHERE  itp_prod.doc_type                = gc_doc_type_prod
                     AND    itp_prod.completed_ind           = gc_completed_ind_1
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itp_prod.trans_date        BETWEEN gd_date_ym_first
+                                                          AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    xrpm2v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm2v.doc_type                  = itp_prod.doc_type
                     AND    xrpm2v.doc_id                    = itp_prod.doc_id
@@ -1244,6 +1265,10 @@ AS
                           ,ic_tran_pnd               itp_porc   -- OPM保留在庫トランザクション
                     WHERE  itp_porc.doc_type                = gc_doc_type_porc
                     AND    itp_porc.completed_ind           = gc_completed_ind_1
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itp_porc.trans_date        BETWEEN gd_date_ym_first
+                                                          AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    xrpm8v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm8v.doc_type                  = itp_porc.doc_type
                     AND    xrpm8v.doc_id                    = itp_porc.doc_id
@@ -1276,6 +1301,11 @@ AS
                     AND    xilv_be.segment1 = ( SELECT MIN( x.segment1 )
                                                 FROM   xxcmn_item_locations_v x
                                                 WHERE  x.whse_code = xsims_be.whse_code )
+-- 08/09/10 Y.Yamamoto ADD v1.16 Start
+                    HAVING NOT (    SUM( NVL( xsims_be.monthly_stock,0 )) = 0         -- 月末在庫数
+                                AND SUM( NVL( xsims_be.cargo_stock,0   )) = 0         -- 積送中在庫数
+                               )
+-- 08/09/10 Y.Yamamoto ADD v1.16 End
                     GROUP BY xsims_be.whse_code                      -- 倉庫コード
                             ,xilv_be.segment1
                             ,xsims_be.item_id                        -- 品目ID
@@ -1307,6 +1337,11 @@ AS
                     AND    xilv_nw.segment1 = ( SELECT MIN( y.segment1 )
                                                 FROM   xxcmn_item_locations_v y
                                                 WHERE  y.whse_code = xsims_nw.whse_code )
+-- 08/09/10 Y.Yamamoto ADD v1.16 Start
+                    HAVING NOT (    SUM( NVL( xsims_nw.monthly_stock,0 )) = 0         -- 当月末在庫数
+                                AND SUM( NVL( xsims_nw.cargo_stock,0   )) = 0         -- 当月積送中在庫数
+                               )
+-- 08/09/10 Y.Yamamoto ADD v1.16 End
                     GROUP BY xsims_nw.whse_code                      -- 倉庫コード
                             ,xilv_nw.segment1
                             ,xsims_nw.item_id                        -- 品目ID
@@ -1342,6 +1377,11 @@ AS
                     AND    xilv_sir.segment1 = ( SELECT MIN( z.segment1 )
                                                  FROM   xxcmn_item_locations_v z
                                                  WHERE  z.whse_code = xsir.invent_whse_code )
+-- 08/09/10 Y.Yamamoto ADD v1.16 Start
+                    HAVING NOT (    SUM( xsir.case_amt  ) = 0        -- 棚卸ケース数
+                                AND SUM( xsir.loose_amt ) = 0        -- 棚卸バラ
+                               )
+-- 08/09/10 Y.Yamamoto ADD v1.16 End
                     GROUP BY xsir.invent_whse_code                             -- 棚卸倉庫
                             ,xilv_sir.segment1
                             ,xsir.item_id                                      -- 品目ID
@@ -1384,13 +1424,18 @@ AS
            WHERE  NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = gc_cost_manage_code_hyozyun
            AND    ccd.item_id = ximv2.item_id
            AND    ximv.item_id = ccd.item_id
-           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+-- 08/09/05 Y.Yamamoto Delete v1.16 Start
+--           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+-- 08/09/05 Y.Yamamoto Delete v1.16 End
            --標準以外
            UNION ALL
            SELECT ximv2.item_id
            FROM   xxcmn_item_mst2_v ximv2
            WHERE  NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) != gc_cost_manage_code_hyozyun
-           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+-- 08/09/05 Y.Yamamoto Update v1.16 Start
+--           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+           AND    ximv2.item_id = ximv.item_id
+-- 08/09/05 Y.Yamamoto Update v1.16 End
     )
 -- 2008/08/28 Mod ↑
     AND    xicv.item_id                 = ximv.item_id
@@ -1413,8 +1458,10 @@ AS
 -- 08/05/08 Y.Yamamoto Update v1.1 End
     AND    xrpm.item_id                 = ximv.item_id
     AND    xrpm.lot_id                  = ilm.lot_id
-    AND    xrpm.trans_date        BETWEEN gd_date_ym_first
-                                      AND gd_date_ym_last
+-- 08/09/10 Y.Yamamoto Delete v1.16 Start
+--    AND    xrpm.trans_date        BETWEEN gd_date_ym_first
+--                                      AND gd_date_ym_last
+-- 08/09/10 Y.Yamamoto Delete v1.16 End
     -- ここからパラメータ条件との結合
 --mod start 2.2
 /*
@@ -1513,18 +1560,20 @@ AS
              ,ximv.item_um                                                   -- 単位
              ,ximv.conv_unit                                                 -- 入出庫換算単位
 -- 08/05/21 v1.7 start
-    HAVING NOT (     SUM( NVL(xrpm.month_stock_be,0 )) = 0                   -- 前月末在庫数
-                 AND SUM( NVL(xrpm.cargo_stock_be,0 )) = 0                   -- 前月積送中在庫数
-                 AND SUM( NVL(xrpm.month_stock_nw,0 )) = 0                   -- 当月末在庫数
-                 AND SUM( NVL(xrpm.cargo_stock_nw,0 )) = 0                   -- 当月積送中在庫数
-                 AND SUM( NVL(xrpm.case_amt,0  )) = 0                        -- 棚卸ケース数
-                 AND SUM( NVL(xrpm.loose_amt,0 )) = 0                        -- 棚卸バラ
+-- 08/09/10 Y.Yamamoto Delete v1.16 Start
+--    HAVING NOT (     SUM( NVL(xrpm.month_stock_be,0 )) = 0                   -- 前月末在庫数
+--                 AND SUM( NVL(xrpm.cargo_stock_be,0 )) = 0                   -- 前月積送中在庫数
+--                 AND SUM( NVL(xrpm.month_stock_nw,0 )) = 0                   -- 当月末在庫数
+--                 AND SUM( NVL(xrpm.cargo_stock_nw,0 )) = 0                   -- 当月積送中在庫数
+--                 AND SUM( NVL(xrpm.case_amt,0  )) = 0                        -- 棚卸ケース数
+--                 AND SUM( NVL(xrpm.loose_amt,0 )) = 0                        -- 棚卸バラ
 -- 08/07/08 Y.Yamamoto Update v1.14 Start
 --                 AND SUM( NVL(xrpm.stock_quantity,0)) = 0                    -- 取引数量（入庫数）
 --                 AND SUM( NVL(xrpm.leaving_quantity,0)) = 0                  -- 取引数量（出庫数）
 --               )
-               )
-               OR SUM( NVL(xrpm.trans_cnt,0)) > 0                            -- トラン系のデータがあるときは0より大
+--              )
+--               OR SUM( NVL(xrpm.trans_cnt,0)) > 0                            -- トラン系のデータがあるときは0より大
+-- 08/09/10 Y.Yamamoto Delete v1.16 End
 -- 08/07/08 Y.Yamamoto Update v1.14 End
 -- 08/05/21 v1.7 end
     ORDER BY xilv.whse_code                                                  -- 倉庫コード
@@ -1676,6 +1725,10 @@ AS
                            ) xx_data                                    -- 各アドオンに存在するデータ
                     WHERE  itc_adji.doc_type                 = gc_doc_type_adji
                     AND    xrpm6v.use_div_invent             = gc_use_div_invent_y
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itc_adji.trans_date         BETWEEN gd_date_ym_first
+                                                           AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    iaj_adji.journal_id               = ijm_adji.journal_id
 -- 08/07/22 Y.Yamamoto Update v1.14 Start
 --                    AND    itc_adji.reason_code              = xx_data.reason_code
@@ -1735,6 +1788,10 @@ AS
                     WHERE  itc_trni.doc_type                = gc_doc_type_trni
                     AND    xrpm9v.doc_type                  = gc_doc_type_trni
                     AND    xrpm9v.use_div_invent            = gc_use_div_invent_y
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itc_trni.trans_date        BETWEEN gd_date_ym_first
+                                                          AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    iaj_trni.journal_id              = ijm_trni.journal_id
                     AND    TO_NUMBER( ijm_trni.attribute1 ) = xmril_trni.mov_line_id
                     AND    itc_trni.doc_type                = iaj_trni.trans_type
@@ -1788,6 +1845,10 @@ AS
                     AND    itp_xfer.completed_ind           = gc_completed_ind_1
                     AND    xrpm9v.doc_type                  = gc_doc_type_xfer
                     AND    xrpm9v.use_div_invent            = gc_use_div_invent_y
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itp_xfer.trans_date        BETWEEN gd_date_ym_first
+                                                          AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    TO_NUMBER( ixm_xfer.attribute1 ) = xmril_xfer.mov_line_id
                     AND    itp_xfer.doc_id                  = ixm_xfer.transfer_id
                     AND    xrpm9v.doc_type                  = itp_xfer.doc_type
@@ -1828,6 +1889,10 @@ AS
 -- 08/07/08 Y.Yamamoto ADD v1.14 End
                     WHERE  itp_omso.doc_type                = gc_doc_type_omso
                     AND    itp_omso.completed_ind           = gc_completed_ind_1
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itp_omso.trans_date        BETWEEN gd_date_ym_first
+                                                          AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    xrpm7v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm7v.doc_type                  = itp_omso.doc_type
                     AND    xrpm7v.line_id                   = itp_omso.line_id
@@ -1862,6 +1927,10 @@ AS
                           ,ic_tran_pnd               itp_prod   -- OPM保留在庫トランザクション
                     WHERE  itp_prod.doc_type                = gc_doc_type_prod
                     AND    itp_prod.completed_ind           = gc_completed_ind_1
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itp_prod.trans_date        BETWEEN gd_date_ym_first
+                                                          AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    xrpm2v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm2v.doc_type                  = itp_prod.doc_type
                     AND    xrpm2v.doc_id                    = itp_prod.doc_id
@@ -1893,6 +1962,10 @@ AS
                           ,ic_tran_pnd               itp_porc   -- OPM保留在庫トランザクション
                     WHERE  itp_porc.doc_type                = gc_doc_type_porc
                     AND    itp_porc.completed_ind           = gc_completed_ind_1
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
+                    AND    itp_porc.trans_date        BETWEEN gd_date_ym_first
+                                                          AND gd_date_ym_last
+-- 08/09/05 Y.Yamamoto ADD v1.16 End
                     AND    xrpm8v.use_div_invent            = gc_use_div_invent_y
                     AND    xrpm8v.doc_type                  = itp_porc.doc_type
                     AND    xrpm8v.doc_id                    = itp_porc.doc_id
@@ -1925,6 +1998,11 @@ AS
                     AND    xilv_be.segment1 = ( SELECT MIN( x.segment1 )
                                                 FROM   xxcmn_item_locations_v x
                                                 WHERE  x.whse_code = xsims_be.whse_code )
+-- 08/09/10 Y.Yamamoto ADD v1.16 Start
+                    HAVING NOT (    SUM( NVL( xsims_be.monthly_stock,0 )) = 0         -- 月末在庫数
+                                AND SUM( NVL( xsims_be.cargo_stock,0   )) = 0         -- 積送中在庫数
+                               )
+-- 08/09/10 Y.Yamamoto ADD v1.16 End
                     GROUP BY xsims_be.whse_code                      -- 倉庫コード
                             ,xilv_be.segment1
                             ,xsims_be.item_id                        -- 品目ID
@@ -1956,6 +2034,11 @@ AS
                     AND    xilv_nw.segment1 = ( SELECT MIN( y.segment1 )
                                                 FROM   xxcmn_item_locations_v y
                                                 WHERE  y.whse_code = xsims_nw.whse_code )
+-- 08/09/10 Y.Yamamoto ADD v1.16 Start
+                    HAVING NOT (    SUM( NVL( xsims_nw.monthly_stock,0 )) = 0         -- 当月末在庫数
+                                AND SUM( NVL( xsims_nw.cargo_stock,0   )) = 0         -- 当月積送中在庫数
+                               )
+-- 08/09/10 Y.Yamamoto ADD v1.16 End
                     GROUP BY xsims_nw.whse_code                      -- 倉庫コード
                             ,xilv_nw.segment1
                             ,xsims_nw.item_id                        -- 品目ID
@@ -1991,6 +2074,11 @@ AS
                     AND    xilv_sir.segment1 = ( SELECT MIN( z.segment1 )
                                                  FROM   xxcmn_item_locations_v z
                                                  WHERE  z.whse_code = xsir.invent_whse_code )
+-- 08/09/10 Y.Yamamoto ADD v1.16 Start
+                    HAVING NOT (    SUM( xsir.case_amt  ) = 0        -- 棚卸ケース数
+                                AND SUM( xsir.loose_amt ) = 0        -- 棚卸バラ
+                               )
+-- 08/09/10 Y.Yamamoto ADD v1.16 End
                     GROUP BY xsir.invent_whse_code                             -- 棚卸倉庫
                             ,xilv_sir.segment1
                             ,xsir.item_id                                      -- 品目ID
@@ -2033,13 +2121,18 @@ AS
            WHERE  NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = gc_cost_manage_code_hyozyun
            AND    ccd.item_id = ximv2.item_id
            AND    ximv.item_id = ccd.item_id
-           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+-- 08/09/05 Y.Yamamoto Delete v1.16 Start
+--           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+-- 08/09/05 Y.Yamamoto Delete v1.16 End
            --標準以外
            UNION ALL
            SELECT ximv2.item_id
            FROM   xxcmn_item_mst2_v ximv2
            WHERE  NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) != gc_cost_manage_code_hyozyun
-           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+-- 08/09/05 Y.Yamamoto Update v1.16 Start
+--           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+           AND    ximv2.item_id = ximv.item_id
+-- 08/09/05 Y.Yamamoto Update v1.16 End
     )
 -- 2008/08/28 Mod ↑
     AND    xicv.item_id                 = ximv.item_id
@@ -2062,8 +2155,10 @@ AS
 -- 08/05/08 Y.Yamamoto Update v1.1 End
     AND    xrpm.item_id                 = ximv.item_id
     AND    xrpm.lot_id                  = ilm.lot_id
-    AND    xrpm.trans_date        BETWEEN gd_date_ym_first
-                                      AND gd_date_ym_last
+-- 08/09/10 Y.Yamamoto Delete v1.16 Start
+--    AND    xrpm.trans_date        BETWEEN gd_date_ym_first
+--                                      AND gd_date_ym_last
+-- 08/09/10 Y.Yamamoto Delete v1.16 End
     -- ここからパラメータ条件との結合
 --mod start 2.2
 /*
@@ -2162,18 +2257,20 @@ AS
              ,ximv.item_um                                                   -- 単位
              ,ximv.conv_unit                                                 -- 入出庫換算単位
 -- 08/05/21 v1.7 start
-    HAVING NOT (     SUM( NVL(xrpm.month_stock_be,0 )) = 0                   -- 前月末在庫数
-                 AND SUM( NVL(xrpm.cargo_stock_be,0 )) = 0                   -- 前月積送中在庫数
-                 AND SUM( NVL(xrpm.month_stock_nw,0 )) = 0                   -- 当月末在庫数
-                 AND SUM( NVL(xrpm.cargo_stock_nw,0 )) = 0                   -- 当月積送中在庫数
-                 AND SUM( NVL(xrpm.case_amt,0  )) = 0                        -- 棚卸ケース数
-                 AND SUM( NVL(xrpm.loose_amt,0 )) = 0                        -- 棚卸バラ
+-- 08/09/10 Y.Yamamoto Delete v1.16 Start
+--    HAVING NOT (     SUM( NVL(xrpm.month_stock_be,0 )) = 0                   -- 前月末在庫数
+--                 AND SUM( NVL(xrpm.cargo_stock_be,0 )) = 0                   -- 前月積送中在庫数
+--                 AND SUM( NVL(xrpm.month_stock_nw,0 )) = 0                   -- 当月末在庫数
+--                 AND SUM( NVL(xrpm.cargo_stock_nw,0 )) = 0                   -- 当月積送中在庫数
+--                 AND SUM( NVL(xrpm.case_amt,0  )) = 0                        -- 棚卸ケース数
+--                 AND SUM( NVL(xrpm.loose_amt,0 )) = 0                        -- 棚卸バラ
 -- 08/07/08 Y.Yamamoto Update v1.14 Start
 --                 AND SUM( NVL(xrpm.stock_quantity,0)) = 0                    -- 取引数量（入庫数）
 --                 AND SUM( NVL(xrpm.leaving_quantity,0)) = 0                  -- 取引数量（出庫数）
 --               )
-               )
-               OR SUM( NVL(xrpm.trans_cnt,0)) > 0                            -- トラン系のデータがあるときは0より大
+--              )
+--               OR SUM( NVL(xrpm.trans_cnt,0)) > 0                            -- トラン系のデータがあるときは0より大
+-- 08/09/10 Y.Yamamoto Delete v1.16 End
 -- 08/07/08 Y.Yamamoto Update v1.14 End
 -- 08/05/21 v1.7 end
     ORDER BY xilv.whse_code                                                  -- 倉庫コード
