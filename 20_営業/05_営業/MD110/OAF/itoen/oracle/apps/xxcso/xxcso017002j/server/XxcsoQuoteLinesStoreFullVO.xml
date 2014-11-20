@@ -301,4 +301,14 @@ WHERE  xiiv.inventory_item_id = XxcsoQuoteLinesStoreVEO.INVENTORY_ITEM_ID
       Expression="BOWL_INC_NUM"
       SQLType="NUMERIC" >
    </ViewAttribute>
+   <ViewAttribute
+      Name="ThisTimeDelivReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      Passivate="true"
+      SQLType="BIT" >
+   </ViewAttribute>
 </ViewObject>
