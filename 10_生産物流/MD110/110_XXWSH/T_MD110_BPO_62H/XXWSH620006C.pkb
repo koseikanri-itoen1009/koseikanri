@@ -7,7 +7,7 @@ AS
  * Description      : 出庫調整表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫調整表 T_MD070_BPO_62H
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/07/16    1.5   Kazuo Kumamoto   結合テスト障害対応(配送No未設定時は依頼No毎に運送業者情報を出力)
  *  2008/10/22    1.6   Yuko  Kawano     課題#62対応(指示なし実績情報を対象外とする)
  *  2008/10/31    1.7   Hitomi Itou      課題#32対応(単位条件にケース入数 > 0を追加)
+ *  2008/11/26    1.8   Naoki Fukuda     本番障害#141対応(確定通知済は出力しないようにする)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -127,6 +128,10 @@ AS
   -- 出荷依頼ステータス
   gc_ship_status_close       CONSTANT  VARCHAR2(2)  := '03' ;       -- 締め済み
   gc_ship_status_delete      CONSTANT  VARCHAR2(2)  := '99' ;       -- 取消
+  -- 2008/11/26 本番障害#141 Add Start
+  -- 通知ステータス
+  gc_notif_status_40         CONSTANT VARCHAR2(2)   := '40' ;       -- 確定通知済
+  -- 2008/11/26 本番障害#141 Add End
   ------------------------------
   -- 移動関連
   ------------------------------
@@ -650,6 +655,11 @@ AS
         AND  xoha.order_type_id           = NVL(gt_param.shiped_form, xoha.order_type_id)
         AND  xoha.req_status             >= gc_ship_status_close    -- ステータス:締め済み
         AND  xoha.req_status             <> gc_ship_status_delete   -- ステータス:取消
+        -- 2008/11/26 本番障害#141 Add Start
+        AND  (xoha.notif_status  IS NULL
+          OR  xoha.notif_status <> gc_notif_status_40               -- 通知ステータス:確定通知済以外
+        )
+        -- 2008/11/26 本番障害#141 Add End
         AND  xoha.latest_external_flag    = gc_new_flg              -- 最新フラグ
         AND  (gt_param.confirm_request IS NULL
           OR  xoha.confirm_request_class  = gt_param.confirm_request
@@ -919,6 +929,11 @@ AS
              xmrih.mov_type   <>  gc_mov_type_not_ship   --移動タイプ:積送なし
         AND  xmrih.status     >=  gc_move_status_ordered --ステータス:依頼済
         AND  xmrih.status     <>  gc_move_status_not     --ステータス:取消
+        -- 2008/11/26 本番障害#141 Add Start
+        AND  (xmrih.notif_status  IS NULL
+          OR  xmrih.notif_status <> gc_notif_status_40               -- 通知ステータス:確定通知済以外
+        )
+        -- 2008/11/26 本番障害#141 Add End
 -- 2008/10/22 Y.Kawano Add Start
         AND ((xmrih.no_instr_actual_class IS NULL)
          OR  (xmrih.no_instr_actual_class <>  gc_class_y)) -- 指示なし実績は対象外

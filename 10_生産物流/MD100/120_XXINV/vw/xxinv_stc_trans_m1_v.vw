@@ -62,7 +62,9 @@ AS
           AND    xrpm_in_po.transaction_type     = 'DELIVER'
          ) xrpm
   WHERE  pha_in_po.po_header_id         = pla_in_po.po_header_id
-  AND    pha_in_po.attribute4          <= TO_CHAR( TRUNC( SYSDATE ), 'YYYY/MM/DD' )
+-- 2008/11/26 Upd Y.Kawano Start
+--  AND    pha_in_po.attribute4          <= TO_CHAR( TRUNC( SYSDATE ), 'YYYY/MM/DD' )
+-- 2008/11/26 Upd Y.Kawano Edn
   AND    pha_in_po.attribute1          IN ( '20'                 -- 発注作成済
                                            ,'25' )               -- 受入あり
   AND    pla_in_po.attribute13          = 'N'                    -- 未承諾
@@ -125,7 +127,9 @@ AS
   AND    xmld_in_xf.lot_id                  = ilm_in_xf.lot_id
   AND    xmld_in_xf.document_type_code      = '20'                 -- 移動
   AND    xmld_in_xf.record_type_code        = '10'                 -- 指示
-  AND    xmrih_in_xf.schedule_arrival_date <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano Start
+--  AND    xmrih_in_xf.schedule_arrival_date <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano End
   AND    xmrih_in_xf.mov_type               = '1'
   AND    xmrih_in_xf.comp_actual_flg        = 'N'                  -- 実績未計上
   AND    xmrih_in_xf.status                IN ( '02'               -- 依頼済
@@ -177,7 +181,9 @@ AS
   AND    xmld_in_tr.lot_id                  = ilm_in_tr.lot_id
   AND    xmld_in_tr.document_type_code      = '20'              -- 移動
   AND    xmld_in_tr.record_type_code        = '10'              -- 指示
-  AND    xmrih_in_tr.schedule_arrival_date <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano Start
+--  AND    xmrih_in_tr.schedule_arrival_date <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano End
   AND    xmrih_in_tr.mov_type               = '2'
   AND    xmrih_in_tr.comp_actual_flg        = 'N'               -- 実績未計上
   AND    xmrih_in_tr.status                IN ( '02'            -- 依頼済
@@ -229,7 +235,9 @@ AS
   AND    xmld_in_xf20.lot_id                  = ilm_in_xf20.lot_id
   AND    xmld_in_xf20.document_type_code      = '20'               -- 移動
   AND    xmld_in_xf20.record_type_code        = '20'               -- 出庫実績
-  AND    xmrih_in_xf20.schedule_arrival_date <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano Start
+--  AND    xmrih_in_xf20.schedule_arrival_date <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano End
   AND    xmrih_in_xf20.mov_type               = '1'  -- 積送あり
   AND    xmrih_in_xf20.comp_actual_flg        = 'N'                -- 実績未計上
   AND    xmrih_in_xf20.status                 = '04'               -- 出庫報告有
@@ -317,7 +325,9 @@ AS
   AND    gbh_in_pr.batch_status            IN ( 1                  -- 保留
                                                ,2 )                -- WIP
 -- 2008/11/19 Y.Yamamoto v1.2 update end
-  AND    gbh_in_pr.plan_start_date         <= TRUNC( SYSDATE )
+-- 2008/11/26 Y.Kawano Upd Start
+--  AND    gbh_in_pr.plan_start_date         <= TRUNC( SYSDATE )
+-- 2008/11/26 Y.Kawano Upd End
   AND    grb_in_pr.routing_id               = gbh_in_pr.routing_id
   AND    xrpm.routing_class                 = grb_in_pr.routing_class
   AND    xrpm.line_type                     = gmd_in_pr.line_type
@@ -377,7 +387,9 @@ AS
   AND    xmld_out_xf.lot_id                  = ilm_out_xf.lot_id
   AND    xmld_out_xf.document_type_code      = '20'                -- 移動
   AND    xmld_out_xf.record_type_code        = '10'                -- 指示
-  AND    xmrih_out_xf.schedule_ship_date    <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano Start
+--  AND    xmrih_out_xf.schedule_ship_date    <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano End
   AND    xmrih_out_xf.mov_type               = '1'
   AND    xmrih_out_xf.comp_actual_flg        = 'N'                 -- 実績未計上
   AND    xmrih_out_xf.status                IN ( '02'              -- 依頼済
@@ -429,7 +441,9 @@ AS
   AND    xmld_out_tr.lot_id                  = ilm_out_tr.lot_id
   AND    xmld_out_tr.document_type_code      = '20'              -- 移動
   AND    xmld_out_tr.record_type_code        = '10'             -- 指示
-  AND    xmrih_out_tr.schedule_ship_date    <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano Start
+--  AND    xmrih_out_tr.schedule_ship_date    <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano End
   AND    xmrih_out_tr.mov_type               = '2'
   AND    xmrih_out_tr.comp_actual_flg        = 'N'               -- 実績未計上
   AND    xmrih_out_tr.status                IN ( '02'            -- 依頼済
@@ -481,7 +495,9 @@ AS
   AND    xmld_out_xf20.lot_id                  = ilm_out_xf20.lot_id
   AND    xmld_out_xf20.document_type_code      = '20'               -- 移動
   AND    xmld_out_xf20.record_type_code        = '30'               -- 入庫実績
-  AND    xmrih_out_xf20.schedule_ship_date    <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano Start
+--  AND    xmrih_out_xf20.schedule_ship_date    <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano End
   AND    xmrih_out_xf20.mov_type               = '1'  -- 積送あり
   AND    xmrih_out_xf20.comp_actual_flg        = 'N'                -- 実績未計上
   AND    xmrih_out_xf20.status                 = '05'               -- 入庫報告有
@@ -550,7 +566,9 @@ AS
   AND    NVL( xoha_out_om.actual_confirm_class, 'N' ) = 'N'       -- 実績未計上
   AND    xoha_out_om.latest_external_flag             = 'Y'       -- ON
   AND    xola_out_om.delete_flag                      = 'N'       -- OFF
-  AND    xoha_out_om.schedule_ship_date              <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano Start
+--  AND    xoha_out_om.schedule_ship_date              <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano End
   AND    xoha_out_om.order_type_id                    = otta_out_om.transaction_type_id
   AND    xrpm.shipment_provision_div                  = otta_out_om.attribute1
   AND    gic_out_om.item_id                           = iimb2_out_om.item_id
@@ -663,7 +681,9 @@ AS
   AND    NVL( xoha_out_om2.actual_confirm_class, 'N' ) = 'N'       -- 実績未計上
   AND    xoha_out_om2.latest_external_flag             = 'Y'       -- ON
   AND    xola_out_om2.delete_flag                      = 'N'       -- OFF
-  AND    xoha_out_om2.schedule_ship_date              <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano Start
+--  AND    xoha_out_om2.schedule_ship_date              <= TRUNC( SYSDATE )
+-- 2008/11/26 Upd Y.Kawano End
   AND    xoha_out_om2.order_type_id                    = otta_out_om2.transaction_type_id
   AND    xrpm.shipment_provision_div                   = otta_out_om2.attribute1
   AND    gic_out_om2.item_id                           = iimb_out_om2.item_id
@@ -854,7 +874,9 @@ AS
   AND    gbh_out_pr.batch_status            IN ( 1                  -- 保留
                                                 ,2 )                -- WIP
 -- 2008/11/19 Y.Yamamoto v1.2 update end
-  AND    gbh_out_pr.plan_start_date         <= TRUNC( SYSDATE )
+-- 2008/11/26 Y.Kawano Upd Start
+--  AND    gbh_out_pr.plan_start_date         <= TRUNC( SYSDATE )
+-- 2008/11/26 Y.Kawano Upd End
   AND    grb_out_pr.routing_id               = gbh_out_pr.routing_id
   AND    xrpm.routing_class                  = grb_out_pr.routing_class
   AND    xrpm.line_type                      = gmd_out_pr.line_type
@@ -920,7 +942,9 @@ AS
   AND    xmld_out_ad.record_type_code     = '10'
   AND    pla_out_ad.attribute12           = mil_out_ad.segment1
   AND    iwm_out_ad.mtl_organization_id   = mil_out_ad.organization_id
-  AND    pha_out_ad.attribute4           <= TO_CHAR( SYSDATE, 'YYYY/MM/DD' )
+-- 2008/11/26 Upd Y.Kawano Start
+--  AND    pha_out_ad.attribute4           <= TO_CHAR( SYSDATE, 'YYYY/MM/DD' )
+-- 2008/11/26 Upd Y.Kawano End
   AND    pha_out_ad.vendor_id             = xv_out_ad.vendor_id   -- 仕入先情報VIEW
   AND    pv_out_ad.vendor_id              = xv_out_ad.vendor_id
   AND    pv_out_ad.end_date_active       IS NULL
