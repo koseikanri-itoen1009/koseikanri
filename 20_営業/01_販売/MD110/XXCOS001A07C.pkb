@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/04/15    1.4   N.Maeda          [T1_0576]補充数ケース数に対する伝票区分別処理の追加
  *  2009/04/16    1.5   N.Maeda          [T1_0621]従業員絞込み条件の変更、出力ケース数の修正
  *  2009/04/17    1.6   T.Kitajima       [T1_0601]入出庫データ更新処理修正
+ *  2009/04/22    1.7   T.Kitajima       [T1_0728]入力区分対応
  *
  *****************************************************************************************/
 --
@@ -137,6 +138,7 @@ AS
   cv_msg_dlv_cnt_l   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10364';       -- 納品明細情報抽出件数
   cv_msg_h_nor_cnt   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10365';       -- ヘッダ成功件数
   cv_msg_l_nor_cnt   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10366';       -- 明細成功件数
+  cv_msg_input       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10043';       -- 入力区分
   -- トークン
   cv_tkn_table       CONSTANT VARCHAR2(20)  := 'TABLE_NAME';             -- テーブル名
   cv_tkn_tab         CONSTANT VARCHAR2(20)  := 'TABLE';                  -- テーブル名
@@ -160,6 +162,9 @@ AS
   -- クイックコードタイプ
   cv_qck_typ_tax     CONSTANT VARCHAR2(30)  := 'XXCOS1_CONSUMPTION_TAX_CLASS';    -- 消費税区分
   cv_qck_invo_type   CONSTANT VARCHAR2(30)  := 'XXCOS1_INVOICE_TYPE';             -- 伝票区分
+--****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
+  cv_qck_input_type  CONSTANT VARCHAR2(30)  := 'XXCOS1_VD_COL_INPUT_CLASS';       -- 入力区分
+--****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
 --
   --フォーマット
   cv_fmt_date        CONSTANT VARCHAR2(10)  := 'RRRR/MM/DD';                      -- DATE形式
@@ -184,6 +189,15 @@ AS
       change              VARCHAR(1)                                          -- 数量加工判定
     );
   TYPE g_tab_qck_invoice_type IS TABLE OF g_rec_qck_invoice_type INDEX BY PLS_INTEGER;
+--****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
+  -- 入力区分格納用変数
+  TYPE g_rec_qck_input_type IS RECORD
+    (
+      slip_class          VARCHAR(1),                                         -- 伝票区分
+      input_class         VARCHAR(1)                                          -- 入力区分
+    );
+  TYPE g_tab_qck_input_type IS TABLE OF g_rec_qck_input_type INDEX BY PLS_INTEGER;
+--****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
 --
   -- 入出庫一時表データ格納用変数
   TYPE g_rec_inv_data IS RECORD
@@ -253,6 +267,10 @@ AS
     INDEX BY PLS_INTEGER;   -- 赤黒フラグ
   TYPE g_tab_cancel_correct_class  IS TABLE OF xxcos_vd_column_headers.cancel_correct_class%TYPE
     INDEX BY PLS_INTEGER;   -- 取消・訂正区分
+--****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
+  TYPE g_tab_gt_input_class        IS TABLE OF xxcos_vd_column_headers.input_class%TYPE
+    INDEX BY PLS_INTEGER;   -- 入力区分
+--****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
 --
   -- VDコラム別取引明細テーブル登録用変数
   TYPE g_tab_order_nol_hht         IS TABLE OF xxcos_vd_column_lines.order_no_hht%TYPE
@@ -321,8 +339,11 @@ AS
   gt_replenish_num      g_tab_replenish_number;         -- 補充数
 --
 --****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
-  gt_transaction_id     g_tab_transaction_id;         --  入出庫一時表ID
+  gt_transaction_id     g_tab_transaction_id;           --  入出庫一時表ID
 --****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
+  gt_input_class        g_tab_gt_input_class;           --  入力区分
+--****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
 --
   gn_inv_target_cnt     NUMBER;                         -- 入出庫情報抽出件数
   gn_dlv_h_target_cnt   NUMBER;                         -- 納品ヘッダ情報抽出件数
@@ -333,6 +354,7 @@ AS
   gn_dlv_l_nor_cnt      NUMBER;                         -- 納品明細情報成功件数
   gt_tax_rate           g_tab_tax_rate;                 -- 消費税率
   gt_qck_invoice_type   g_tab_qck_invoice_type;         -- 伝票区分
+  gt_qck_input_type     g_tab_qck_input_type;           -- 入力区分
   gt_inv_data           g_tab_inv_data;                 -- 入出庫一時表抽出データ
   gd_process_date       DATE;                           -- 業務処理日
   gd_max_date           DATE;                           -- MAX日付
@@ -579,6 +601,33 @@ AS
       AND     types.lookup_type     = types_tl.lookup_type
       AND     types.security_group_id   = types_tl.security_group_id
       AND     types.view_application_id = types_tl.view_application_id;
+--
+--****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
+    -- クイックコード：入力区分
+    CURSOR get_input_type_cur
+    IS
+      SELECT  look_val.meaning      slip_class,         -- 伝票区分
+              look_val.attribute1   input_class         -- 伝票区分による形態
+      FROM    fnd_lookup_values     look_val
+             ,fnd_lookup_types_tl   types_tl
+             ,fnd_lookup_types      types
+             ,fnd_application_tl    appl
+             ,fnd_application       app
+      WHERE   app.application_short_name = cv_application
+      AND     look_val.lookup_type  = cv_qck_input_type
+      AND     look_val.enabled_flag = cv_tkn_yes
+      AND     gd_process_date      >= NVL(look_val.start_date_active, gd_process_date)
+      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
+      AND     types_tl.language     = USERENV( 'LANG' )
+      AND     look_val.language     = USERENV( 'LANG' )
+      AND     appl.language         = USERENV( 'LANG' )
+      AND     appl.application_id   = types.application_id
+      AND     app.application_id    = appl.application_id
+      AND     types_tl.lookup_type  = look_val.lookup_type
+      AND     types.lookup_type     = types_tl.lookup_type
+      AND     types.security_group_id   = types_tl.security_group_id
+      AND     types.view_application_id = types_tl.view_application_id;
+--****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
 --
     -- 入出庫一時表対象レコードロック
     CURSOR get_inv_lock_cur
@@ -932,6 +981,30 @@ AS
         RAISE lookup_types_expt;
     END;
 --
+--****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
+    -- 入力区分取得
+    BEGIN
+      -- カーソルOPEN
+      OPEN  get_input_type_cur;
+      -- バルクフェッチ
+      FETCH get_input_type_cur BULK COLLECT INTO gt_qck_input_type;
+      -- カーソルCLOSE
+      CLOSE get_input_type_cur;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- カーソルCLOSE：伝票区分取得
+        IF ( get_input_type_cur%ISOPEN ) THEN
+          CLOSE get_input_type_cur;
+        END IF;
+--
+        gv_tkn2 := xxccp_common_pkg.get_msg( cv_application, cv_qck_input_type );
+        gv_tkn3 := xxccp_common_pkg.get_msg( cv_application, cv_msg_input );
+--
+        RAISE lookup_types_expt;
+    END;
+--****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
+--
     -- 入出庫データ取得
     BEGIN
       -- カーソルOPEN
@@ -1081,6 +1154,9 @@ AS
 --****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
     lt_transaction_id      xxcoi_hht_inv_transactions.transaction_id%TYPE;             -- 入出庫一時表ID
 --****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
+    lt_input_class         xxcos_vd_column_headers.input_class%TYPE;                   -- 入力区分
+--****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
     ln_inv_header_num      NUMBER DEFAULT  '1';                                        -- 入出庫ヘッダ件数ナンバー
     ln_inv_lines_num       NUMBER DEFAULT  '1';                                        -- 入出庫明細件数ナンバー
     ln_line_no             NUMBER DEFAULT  '1';                                        -- 行No.(HHT)
@@ -1227,6 +1303,19 @@ AS
 --************************* 2009/04/15 N.Maeda Var1.4 ADD END ******************************************************
       END IF;
 --
+--****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
+      --入力区分
+      --初期化
+      lt_input_class := NULL;
+      FOR i IN 1..gt_qck_input_type.COUNT LOOP
+--
+        IF ( gt_qck_input_type(i).slip_class = lt_invoice_type ) THEN
+          lt_input_class   := gt_qck_input_type(i).input_class;     -- 伝票区分による入力区分をセット
+          EXIT;
+        END IF;
+--
+      END LOOP;
+--****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
       --== 税率の算出 ==--
       FOR i IN 1..gt_tax_rate.COUNT LOOP
 --
@@ -1309,8 +1398,11 @@ AS
       gt_replenish_num(ln_inv_lines_num)  := lt_vd_replenish_number;  -- 補充数
 --************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
 --****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
-      gt_transaction_id(ln_inv_lines_num)   := lt_transaction_id;     -- 入出庫一時表ID
+      gt_transaction_id(ln_inv_lines_num) := lt_transaction_id;     -- 入出庫一時表ID
 --****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
+      gt_input_class(ln_inv_lines_num)    := lt_input_class;        -- 入力区分
+--****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
       ln_line_no := ln_line_no + 1;                                -- 行No.(HHT)更新
       ln_inv_lines_num := ln_inv_lines_num + 1;                    -- 入出庫明細件数ナンバー更新
 --
@@ -1507,7 +1599,10 @@ AS
             NULL,                           -- 納品形態
             gt_system_class(i),             -- 業態区分
             gt_invoice_type(i),             -- 伝票区分
-            NULL,                           -- 入力区分
+--****************************** 2009/04/22 1.7 T.Kitajima MOD START ******************************--
+--            NULL,                           -- 入力区分
+            gt_input_class(i),              -- 入力区分
+--****************************** 2009/04/22 1.7 T.Kitajima MOD  END  ******************************--
             gt_tax_class(i),                -- 消費税区分
             gt_total_amount(i),             -- 合計金額
             NULL,                           -- 売上値引額

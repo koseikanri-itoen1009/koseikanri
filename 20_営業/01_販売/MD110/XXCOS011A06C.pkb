@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/09    1.0   K.Watanabe      新規作成
  *  2009/03/10    1.1   K.Kiriu         [COS_157]請求開始日NULL考慮の修正、届け先住所不正修正
+ *  2009/04/15    1.2   K.Kiriu         [T1_0495]JP1起動の為パラメータの追加
  *
  *****************************************************************************************/
 --
@@ -677,6 +678,9 @@ AS
     iv_run_class        IN  VARCHAR2,  --   実行区分：「0:作成」「1:解除」
     iv_inv_cust_code    IN  VARCHAR2,  --   請求先顧客コード
     iv_send_date        IN  VARCHAR2,  --   送信日(YYYYMMDD)
+/* 2009/04/15 Add Start */
+    iv_sales_exp_ptn    IN VARCHAR2,   --   EDI販売実績処理パターン
+/* 2009/04/15 Add End   */
     ov_errbuf           OUT VARCHAR2,  --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,  --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)  --   ユーザー・エラー・メッセージ --# 固定 #
@@ -735,7 +739,10 @@ AS
                         ,iv_token_name1  => cv_tkn_parame1       --トークンコード１
                         ,iv_token_value1 => iv_run_class         --実行区分
                         ,iv_token_name2  => cv_tkn_parame2       --トークンコード２
-                        ,iv_token_value2 => iv_inv_cust_code     --請求先顧客コード
+/* 2009/04/15 Mod Start */
+--                        ,iv_token_value2 => iv_inv_cust_code     --請求先顧客コード
+                        ,iv_token_value2 => iv_sales_exp_ptn     --EDI販売実績処理パターン
+/* 2009/04/15 Mod Start */
                       );
     ELSIF ( iv_run_class = cv_1 ) THEN
       --* -------------------------------------------------------------
@@ -971,6 +978,9 @@ AS
    ***********************************************************************************/
   PROCEDURE get_custom_data(
     iv_inv_cust_code    IN  VARCHAR2,     --   請求先顧客コード
+/* 2009/04/15 Add Start */
+    iv_sales_exp_ptn    IN  VARCHAR2,     --   EDI販売実績処理パターン
+/* 2009/04/15 Add End   */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1022,6 +1032,13 @@ AS
                 OR
                 ( iv_inv_cust_code IS NULL )
               )  --パラメータの請求先顧客がある場合はクイックコードと同じ値のみ
+/* 2009/04/15 Add Start */
+      AND     (
+                ( iv_sales_exp_ptn IS NOT NULL AND xlvv.attribute1 = iv_sales_exp_ptn )
+                OR
+                ( iv_sales_exp_ptn IS NULL )
+              )  --パラメータのEDI販売実績処理パターンがある場合は同一チェーン店のみ(作成)
+/* 2009/04/15 Add End   */
       GROUP BY
               xlvv.description
       ;
@@ -1845,7 +1862,9 @@ AS
    ***********************************************************************************/
   PROCEDURE get_sale_data(
     iv_chain_store_code  IN  fnd_lookup_values.description%TYPE,  --処理対象顧客のチェーン店コード
-    iv_inv_cust_code     IN  VARCHAR2,                            --請求先顧客コード
+/* 2009/04/15 Del Start */
+--    iv_inv_cust_code     IN  VARCHAR2,                            --請求先顧客コード
+/* 2009/04/15 Del End   */
     ov_errbuf            OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode           OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg            OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1991,11 +2010,13 @@ AS
       AND     xlvv.lookup_code           = xcchv.bill_account_number   --結合(ルックアップ=顧客階層)
       AND     xlvv.lookup_type           = cv_lkt_sales_edi_cust       --クイックコードの請求先顧客コード
       AND     xlvv.description           = iv_chain_store_code         --パラメータのチェーン店コード
-      AND     (
-                ( iv_inv_cust_code IS NULL )
-                OR
-                ( iv_inv_cust_code IS NOT NULL AND iv_inv_cust_code = xlvv.lookup_code )
-              )                                                        --パラメータの請求顧客がある場合は指定された請求顧客のみ
+/* 2009/04/15 Del Start */
+--      AND     (
+--                ( iv_inv_cust_code IS NULL )
+--                OR
+--                ( iv_inv_cust_code IS NOT NULL AND iv_inv_cust_code = xlvv.lookup_code )
+--              )                                                        --パラメータの請求顧客がある場合は指定された請求顧客のみ
+/* 2009/04/15 Del End   */
       ORDER BY
               xseh.ship_to_customer_code
              ,xseh.dlv_invoice_number
@@ -3156,6 +3177,9 @@ AS
     iv_run_class      IN VARCHAR2,   -- 実行区分：「0:作成」「1:解除」
     iv_inv_cust_code  IN VARCHAR2,   -- 請求先顧客コード
     iv_send_date      IN VARCHAR2,   -- 送信日(YYYYMMDD)
+/* 2009/04/15 Add Start */
+    iv_sales_exp_ptn  IN VARCHAR2,   -- EDI販売実績処理パターン
+/* 2009/04/15 Add End   */
     ov_errbuf         OUT VARCHAR2,  -- エラー・メッセージ           --# 固定 #
     ov_retcode        OUT VARCHAR2,  -- リターン・コード             --# 固定 #
     ov_errmsg         OUT VARCHAR2)  -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3211,6 +3235,9 @@ AS
       iv_run_class     -- 実行区分：「0:作成」「1:解除」
      ,iv_inv_cust_code -- 請求先顧客コード
      ,iv_send_date     -- 送信日(YYYYMMDD)
+/* 2009/04/15 Add Start */
+     ,iv_sales_exp_ptn -- EDI販売実績処理パターン
+/* 2009/04/15 Add End   */
      ,lv_errbuf        -- エラー・メッセージ           --# 固定 #
      ,lv_retcode       -- リターン・コード             --# 固定 #
      ,lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3223,6 +3250,9 @@ AS
     -- ===============================
     get_custom_data(
       iv_inv_cust_code -- 請求先顧客コード
+/* 2009/04/15 Add Start */
+     ,iv_sales_exp_ptn -- EDI販売実績処理パターン
+/* 2009/04/15 Add End   */
      ,lv_errbuf        -- エラー・メッセージ           --# 固定 #
      ,lv_retcode       -- リターン・コード             --# 固定 #
      ,lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3276,7 +3306,9 @@ AS
         -- ===============================
         get_sale_data(
           gt_chain_store(i).chain_store_code  -- 処理対象顧客のチェーン店
-         ,iv_inv_cust_code                    -- パラメータの請求先顧客コード
+/* 2009/04/15 Del Start */
+--         ,iv_inv_cust_code                    -- パラメータの請求先顧客コード
+/* 2009/04/15 Del End   */
          ,lv_errbuf        -- エラー・メッセージ           --# 固定 #
          ,lv_retcode       -- リターン・コード             --# 固定 #
          ,lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3450,7 +3482,11 @@ AS
     retcode           OUT  VARCHAR2,     --   リターン・コード    --# 固定 #
     iv_run_class      IN   VARCHAR2,     --   実行区分：「0:作成」「1:解除」
     iv_inv_cust_code  IN   VARCHAR2,     --   請求先顧客コード
-    iv_send_date      IN   VARCHAR2      --   送信日(YYYYMMDD)
+/* 2009/04/15 Mod Start */
+--    iv_send_date      IN   VARCHAR2      --   送信日(YYYYMMDD)
+    iv_send_date      IN   VARCHAR2,     --   送信日(YYYYMMDD)
+    iv_sales_exp_ptn  IN   VARCHAR2      --   EDI販売実績処理パターン
+/* 2009/04/15 Mod End   */
   )
 --
 --
@@ -3508,6 +3544,9 @@ AS
        iv_run_class     -- 実行区分：「0:作成」「1:解除」
       ,iv_inv_cust_code -- 請求先顧客コード
       ,iv_send_date     -- 送信日(YYYYMMDD)
+/* 2009/04/15 Add Start */
+      ,iv_sales_exp_ptn -- EDI販売実績処理パターン
+/* 2009/04/15 Add End   */
       ,lv_errbuf        -- エラー・メッセージ           --# 固定 #
       ,lv_retcode       -- リターン・コード             --# 固定 #
       ,lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #

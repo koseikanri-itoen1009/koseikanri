@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/04/07    1.9   N.Maeda          [T1_0248] HHT百貨店入力区分がnullでない時の判定内容を変更
  *  2009/04/09    1.10  N.Maeda          [T1_0401] 外税、内税(伝票課税)時の売上金額の計算方法修正
  *                                                 外税時の売上金額合計の計算方法修正
+ *  2009/04/15    1.11  N.Maeda          [T1_0558] 百貨店預け先保管場所取得条件の変更
  *
  *****************************************************************************************/
 --
@@ -1353,13 +1354,14 @@ AS
 --
         --保管場所マスタデータ取得
         BEGIN
-          SELECT msi.secondary_inventory_name     -- 保管場所コード
+          SELECT msi.secondary_inventory_name           -- 保管場所名称
           INTO   lt_secondary_inventory_name
-          FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
-          WHERE  msi.attribute7 = lt_base_code
-          AND    msi.attribute13 = lt_depart_location_type_code
-          AND    msi.attribute4 = lt_keep_in_code;
---          AND    msi.attribute4 = lt_customer_number;
+          FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+                 mtl_parameters mp                      -- 組織パラメータ
+          WHERE  msi.organization_id=mp.organization_id
+          AND    mp.organization_code = gv_orga_code
+          AND    msi.attribute4       = lt_keep_in_code
+          AND    msi.attribute13      = lt_depart_location_type_code;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力          
@@ -2970,13 +2972,14 @@ AS
 --
         --保管場所マスタデータ取得
         BEGIN
-          SELECT msi.secondary_inventory_name     -- 保管場所コード
+          SELECT msi.secondary_inventory_name           -- 保管場所名称
           INTO   lt_secondary_inventory_name
-          FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
-          WHERE  msi.attribute7 = lt_base_code
-          AND    msi.attribute13 = lt_depart_location_type_code
-          AND    msi.attribute4 = lt_keep_in_code;
---          AND    msi.attribute4 = lt_customer_number;
+          FROM   mtl_secondary_inventories msi,         -- 保管場所マスタ
+                 mtl_parameters mp                      -- 組織パラメータ
+          WHERE  msi.organization_id=mp.organization_id
+          AND    mp.organization_code = gv_orga_code
+          AND    msi.attribute4       = lt_keep_in_code
+          AND    msi.attribute13      = lt_depart_location_type_code;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力          
