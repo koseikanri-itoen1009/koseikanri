@@ -1,0 +1,132 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * View Name   : XXCOI_REP_BASE_DETAIL_RCPT
+ * Description : 受払残高票（拠点別・合計）帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2008/12/11    1.0   H.Sasaki         新規作成
+ *
+ ************************************************************************/
+ CREATE TABLE xxcoi.xxcoi_rep_base_detail_rcpt (
+     slit_id                        NUMBER        NOT NULL
+    ,output_kbn                     VARCHAR2(8)
+    ,in_out_year                    VARCHAR2(2)
+    ,in_out_month                   VARCHAR2(2)
+    ,base_code                      VARCHAR2(4)
+    ,base_name                      VARCHAR2(8)
+    ,cost_kbn                       VARCHAR2(8)
+    ,item_kbn                       VARCHAR2(1)
+    ,gun_code                       VARCHAR2(3)
+    ,item_code                      VARCHAR2(7)
+    ,item_name                      VARCHAR2(20)
+    ,first_inventory_qty            NUMBER
+    ,factry_in_qty                  NUMBER
+    ,kuragae_in_qty                 NUMBER
+    ,hurikae_in_qty                 NUMBER
+    ,payment_total_qty              NUMBER
+    ,inventory_total_qty            NUMBER
+    ,inferior_goods_qty             NUMBER
+    ,genmou_qty                     NUMBER
+    ,first_inventory_money          NUMBER
+    ,factry_in_money                NUMBER
+    ,kuragae_in_money               NUMBER
+    ,hurikae_in_money               NUMBER
+    ,payment_total_money            NUMBER
+    ,inventory_total_money          NUMBER
+    ,inferior_goods_money           NUMBER
+    ,genmou_money                   NUMBER
+    ,message                        VARCHAR2(200)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)    NOT NULL
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcoi_rep_base_detail_rcpt_pk PRIMARY KEY (slit_id, request_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_rep_base_detail_rcpt IS '受払残高表（拠点別・合計）帳票ワークテーブル'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.slit_id                       IS '受払残高情報ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.output_kbn                    IS '出力区分'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.in_out_year                   IS '年'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.in_out_month                  IS '月'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.base_code                     IS '拠点コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.base_name                     IS '拠点名称'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.cost_kbn                      IS '原価区分'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.item_kbn                      IS '商品区分'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.gun_code                      IS '群コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.item_code                     IS '商品コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.item_name                     IS '商品名称'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.first_inventory_qty           IS '月首棚卸高(数量)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.factry_in_qty                 IS '工場入庫(数量)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.kuragae_in_qty                IS '倉替入庫(数量)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.hurikae_in_qty                IS '振替入庫(数量)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.payment_total_qty             IS '払出合計(数量)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.inventory_total_qty           IS '棚卸高計(数量)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.inferior_goods_qty            IS '(不良品棚卸高)(数量)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.genmou_qty                    IS '棚卸減耗(数量)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.first_inventory_money         IS '月首棚卸高(金額)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.factry_in_money               IS '工場入庫(金額)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.kuragae_in_money              IS '倉替入庫(金額)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.hurikae_in_money              IS '振替入庫(金額)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.payment_total_money           IS '払出合計(金額)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.inventory_total_money         IS '棚卸高計(金額)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.inferior_goods_money          IS '(不良品棚卸高)(金額)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.genmou_money                  IS '棚卸減耗(金額)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.message                       IS 'メッセージ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.created_by                    IS '作成者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.creation_date                 IS '作成日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.last_updated_by               IS '最終更新者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.last_update_date              IS '最終更新日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.last_update_login             IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.request_id                    IS '要求ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.program_application_id        IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.program_id                    IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_detail_rcpt.program_update_date           IS 'プログラム更新日'
+/

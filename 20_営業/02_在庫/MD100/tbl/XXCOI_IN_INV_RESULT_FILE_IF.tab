@@ -1,0 +1,96 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * View Name   : XXCOI_IN_INV_RESULT_FILE_IF
+ * Description : 棚卸結果ファイルIF
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/02/12    1.0   N.Abe            新規作成
+ *
+ ************************************************************************/
+ CREATE TABLE xxcoi.xxcoi_in_inv_result_file_if (
+     interface_id                   NUMBER(10)    NOT NULL
+    ,input_order                    NUMBER
+    ,base_code                      VARCHAR2(4)
+    ,inventory_kbn                  VARCHAR2(1)
+    ,inventory_date                 DATE
+    ,warehouse_kbn                  VARCHAR2(1)
+    ,warehouse_kbn_name             VARCHAR2(10)
+    ,inventory_place                VARCHAR2(9)
+    ,item_code                      VARCHAR2(7)
+    ,case_qty                       NUMBER(7)
+    ,case_in_qty                    NUMBER(5)
+    ,quantity                       NUMBER(9,2)
+    ,slip_no                        VARCHAR2(9)
+    ,quality_goods_kbn              VARCHAR2(1)
+    ,quality_goods_kbn_name         VARCHAR2(10)
+    ,receive_date                   DATE
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcoi_in_inv_result_file_if_pk PRIMARY KEY (interface_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_in_inv_result_file_if IS '棚卸結果ファイルIF'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.interface_id                 IS 'インターフェースID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.input_order                  IS '取込み順'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.base_code                    IS '拠点コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.inventory_kbn                IS '棚卸区分'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.inventory_date               IS '棚卸日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.warehouse_kbn                IS '倉庫区分'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.warehouse_kbn_name           IS '倉庫区分名称'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.inventory_place              IS '棚卸場所'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.item_code                    IS '品目コード（品名コード）'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.case_qty                     IS 'ケース数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.case_in_qty                  IS '入数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.quantity                     IS '本数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.slip_no                      IS '伝票№'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.quality_goods_kbn            IS '良品区分'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.quality_goods_kbn_name       IS '良品区分名称'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.receive_date                 IS '受信日時'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.created_by                   IS '作成者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.creation_date                IS '作成日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.last_updated_by              IS '最終更新者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.last_update_date             IS '最終更新日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.last_update_login            IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.request_id                   IS '要求ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.program_application_id       IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.program_id                   IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_in_inv_result_file_if.program_update_date          IS 'プログラム更新日'
+/

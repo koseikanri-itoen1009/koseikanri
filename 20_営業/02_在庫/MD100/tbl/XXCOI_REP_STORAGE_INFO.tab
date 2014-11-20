@@ -1,0 +1,97 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name      : XXCOI_REP_STORAGE_INFO
+ * Description     : 入庫未確認リスト帳票ワークテーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2008-12-08    1.0   SCS S.Moriyama   新規作成
+ *
+ ************************************************************************/
+CREATE TABLE XXCOI.XXCOI_REP_STORAGE_INFO
+(
+  UNCONFIRMED_STORAGE_ID                NUMBER,                       -- 入庫未確認情報ID
+  PRM_OUTPUT_KBN                        VARCHAR2(20),                 -- パラメータ出力区分
+  PRM_BASE_CODE                         VARCHAR2(4),                  -- パラメータ拠点コード
+  PRM_BASE_NAME                         VARCHAR2(8),                  -- パラメータ拠点名
+  PRM_DATE_FROM                         VARCHAR2(10),                 -- パラメータ日付(From)
+  PRM_DATE_TO                           VARCHAR2(10),                 -- パラメータ日付(To)
+  BASE_CODE                             VARCHAR2(4),                  -- 拠点コード
+  BASE_NAME                             VARCHAR2(10),                 -- 拠点名
+  SLIP_DATE                             DATE,                         -- 伝票日付
+  SLIP_NUM                              VARCHAR2(12),                 -- 伝票No
+  WAREHOUSE_CODE                        VARCHAR2(2),                  -- 倉庫コード
+  ITEM_CODE                             VARCHAR2(7),                  -- 商品コード
+  ITEM_NAME                             VARCHAR2(20),                 -- 商品名
+  TASTE_TERM                            VARCHAR2(10),                 -- 賞味期限
+  FACTORY_UNIQUE_MARK                   VARCHAR2(3),                  -- 工場固有記号
+  CASE_IN_QTY                           NUMBER,                       -- 入数
+  SHIP_CASE_QTY                         NUMBER,                       -- 出庫数量ケース数
+  SHIP_SINGLY_QTY                       NUMBER,                       -- 出庫数量バラ数
+  SHIP_QTY                              NUMBER,                       -- 出庫数量本数
+  CHECK_CASE_QTY                        NUMBER,                       -- 確認数量ケース数
+  CHECK_SINGLY_QTY                      NUMBER,                       -- 確認数量バラ数
+  CHECK_QTY                             NUMBER,                       -- 確認数量本数
+  DIFFERENCE_SUMMARY_QTY                NUMBER,                       -- 差引合計数量
+  SLIP_TYPE                             VARCHAR2(20),                 -- 伝票区分
+  SHIP_BASE_CODE                        VARCHAR2(4),                  -- 出庫拠点コード
+  SHIP_BASE_NAME                        VARCHAR2(10),                 -- 出庫拠点名
+  DATA_TYPE                             VARCHAR2(1),                  -- データ種別
+  NO_DATA_MSG                           VARCHAR2(50),                 -- 0件メッセージ格納エリア
+  LAST_UPDATE_DATE                      DATE,                         -- 最終更新日
+  LAST_UPDATED_BY                       NUMBER,                       -- 最終更新者
+  CREATION_DATE                         DATE,                         -- 作成日
+  CREATED_BY                            NUMBER,                       -- 作成者
+  LAST_UPDATE_LOGIN                     NUMBER,                       -- 最終更新ユーザ
+  REQUEST_ID                            NUMBER,                       -- 要求ID
+  PROGRAM_APPLICATION_ID                NUMBER,                       -- プログラムアプリケーションID
+  PROGRAM_ID                            NUMBER,                       -- プログラムID
+  PROGRAM_UPDATE_DATE                   DATE,                         -- プログラム更新日
+  CONSTRAINT xxcoi_rep_storage_info_pk PRIMARY KEY (unconfirmed_storage_id)
+  USING INDEX TABLESPACE xxidx2
+  );
+/
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.UNCONFIRMED_STORAGE_ID   IS '入庫未確認情報ID';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.PRM_OUTPUT_KBN           IS 'パラメータ出力区分';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.PRM_BASE_CODE            IS 'パラメータ拠点コード';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.PRM_BASE_NAME            IS 'パラメータ拠点名';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.PRM_DATE_FROM            IS 'パラメータ日付(From)';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.PRM_DATE_TO              IS 'パラメータ日付(To)';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.BASE_CODE                IS '拠点コード';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.BASE_NAME                IS '拠点名';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.SLIP_DATE                IS '伝票日付';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.SLIP_NUM                 IS '伝票No';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.WAREHOUSE_CODE           IS '倉庫コード';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.ITEM_CODE                IS '商品コード';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.ITEM_NAME                IS '商品名';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.TASTE_TERM               IS '賞味期限';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.FACTORY_UNIQUE_MARK      IS '工場固有記号';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.CASE_IN_QTY              IS '入数 ';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.SHIP_CASE_QTY            IS '出庫数量ケース数';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.SHIP_SINGLY_QTY          IS '出庫数量バラ数';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.SHIP_QTY                 IS '出庫数量本数';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.CHECK_CASE_QTY           IS '確認数量ケース数';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.CHECK_SINGLY_QTY         IS '確認数量バラ数';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.CHECK_QTY                IS '確認数量本数';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.DIFFERENCE_SUMMARY_QTY   IS '差引合計数量';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.SLIP_TYPE                IS '伝票区分';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.SHIP_BASE_CODE           IS '出庫元拠点コード';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.SHIP_BASE_NAME           IS '出庫元拠点名称';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.DATA_TYPE                IS 'データ種別';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.NO_DATA_MSG              IS '0件メッセージ格納エリア';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.LAST_UPDATE_DATE         IS '最終更新日';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.LAST_UPDATED_BY          IS '最終更新者';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.CREATION_DATE            IS '作成日';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.CREATED_BY               IS '作成者';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.LAST_UPDATE_LOGIN        IS '最終更新ユーザ';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.REQUEST_ID               IS '要求ID';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.PROGRAM_APPLICATION_ID   IS 'プログラムアプリケーションID';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.PROGRAM_ID               IS 'プログラムID';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_STORAGE_INFO.PROGRAM_UPDATE_DATE      IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOI.XXCOI_REP_STORAGE_INFO IS '入庫未確認リスト帳票ワークテーブル';
+

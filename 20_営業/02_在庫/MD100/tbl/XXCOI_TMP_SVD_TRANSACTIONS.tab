@@ -1,0 +1,39 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOI_TMP_SVD_TRANSACTIONS
+ * Description : 消化VD補充ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/21    1.0   H.Nakajima       新規作成
+ *
+ **************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE XXCOI.XXCOI_TMP_SVD_TRANSACTIONS
+(
+  ITEM_ID              NUMBER
+ ,PRIMARY_UOM_CODE     VARCHAR2(3)
+ ,INVOICE_DATE         DATE
+ ,OUTSIDE_SUBINV_CODE  VARCHAR2(10)
+ ,INSIDE_SUBINV_CODE   VARCHAR2(10)
+ ,TOTAL_QUANTITY       NUMBER
+)
+ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE  XXCOI.XXCOI_TMP_SVD_TRANSACTIONS                         IS '消化VD補充ワークテーブル'
+/
+COMMENT ON COLUMN XXCOI.XXCOI_TMP_SVD_TRANSACTIONS.ITEM_ID                 IS '品目ID'
+/
+COMMENT ON COLUMN XXCOI.XXCOI_TMP_SVD_TRANSACTIONS.PRIMARY_UOM_CODE        IS '基準単位'
+/
+COMMENT ON COLUMN XXCOI.XXCOI_TMP_SVD_TRANSACTIONS.INVOICE_DATE            IS '伝票日付'
+/
+COMMENT ON COLUMN XXCOI.XXCOI_TMP_SVD_TRANSACTIONS.OUTSIDE_SUBINV_CODE     IS '出庫側保管場所'
+/
+COMMENT ON COLUMN XXCOI.XXCOI_TMP_SVD_TRANSACTIONS.INSIDE_SUBINV_CODE      IS '入庫側保管場所'
+/
+COMMENT ON COLUMN XXCOI.XXCOI_TMP_SVD_TRANSACTIONS.TOTAL_QUANTITY          IS '総数量'
+/

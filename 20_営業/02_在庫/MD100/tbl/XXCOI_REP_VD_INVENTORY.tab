@@ -1,0 +1,730 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name      : XXCOI_REP_VD_INVENTORY
+ * Description     : VD機内在庫表ワークテーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009-01-07    1.0   SCS H.Wada       新規作成
+ *
+ ************************************************************************/
+CREATE TABLE XXCOI.XXCOI_REP_VD_INVENTORY
+(
+  VD_INV_WK_ID                  NUMBER            -- 1.ベンダ機内在庫表ワークID
+ ,BASE_CODE                     VARCHAR2(4)       -- 2.拠点コード
+ ,BASE_NAME                     VARCHAR2(240)     -- 3.拠点名
+ ,CUSTOMER_CODE                 VARCHAR2(30)      -- 4.顧客コード
+ ,CUSTOMER_NAME                 VARCHAR2(240)     -- 5.顧客名
+ ,MODEL_CODE                    VARCHAR2(25)      -- 6.機種コード
+ ,SELE_QNT                      NUMBER            -- 7.セレ数
+ ,CHARGE_BUSINESS_MEMBER_CODE   VARCHAR2(30)      -- 8.営業担当者コード
+ ,CHARGE_BUSINESS_MEMBER_NAME   VARCHAR2(360)     -- 9.営業担当者名
+ ,COLUMN_NO1                    NUMBER            -- 10.コラム№1
+ ,COLUMN_NO2                    NUMBER            -- 11.コラム№2
+ ,COLUMN_NO3                    NUMBER            -- 12.コラム№3
+ ,COLUMN_NO4                    NUMBER            -- 13.コラム№4
+ ,COLUMN_NO5                    NUMBER            -- 14.コラム№5
+ ,COLUMN_NO6                    NUMBER            -- 15.コラム№6
+ ,COLUMN_NO7                    NUMBER            -- 16.コラム№7
+ ,COLUMN_NO8                    NUMBER            -- 17.コラム№8
+ ,COLUMN_NO9                    NUMBER            -- 18.コラム№9
+ ,COLUMN_NO10                   NUMBER            -- 19.コラム№10
+ ,COLUMN_NO11                   NUMBER            -- 20.コラム№11
+ ,COLUMN_NO12                   NUMBER            -- 21.コラム№12
+ ,COLUMN_NO13                   NUMBER            -- 22.コラム№13
+ ,COLUMN_NO14                   NUMBER            -- 23.コラム№14
+ ,COLUMN_NO15                   NUMBER            -- 24.コラム№15
+ ,COLUMN_NO16                   NUMBER            -- 25.コラム№16
+ ,COLUMN_NO17                   NUMBER            -- 26.コラム№17
+ ,COLUMN_NO18                   NUMBER            -- 27.コラム№18
+ ,COLUMN_NO19                   NUMBER            -- 28.コラム№19
+ ,COLUMN_NO20                   NUMBER            -- 29.コラム№20
+ ,COLUMN_NO21                   NUMBER            -- 30.コラム№21
+ ,COLUMN_NO22                   NUMBER            -- 31.コラム№22
+ ,COLUMN_NO23                   NUMBER            -- 32.コラム№23
+ ,COLUMN_NO24                   NUMBER            -- 33.コラム№24
+ ,COLUMN_NO25                   NUMBER            -- 34.コラム№25
+ ,COLUMN_NO26                   NUMBER            -- 35.コラム№26
+ ,COLUMN_NO27                   NUMBER            -- 36.コラム№27
+ ,COLUMN_NO28                   NUMBER            -- 37.コラム№28
+ ,COLUMN_NO29                   NUMBER            -- 38.コラム№29
+ ,COLUMN_NO30                   NUMBER            -- 39.コラム№30
+ ,COLUMN_NO31                   NUMBER            -- 40.コラム№31
+ ,COLUMN_NO32                   NUMBER            -- 41.コラム№32
+ ,COLUMN_NO33                   NUMBER            -- 42.コラム№33
+ ,COLUMN_NO34                   NUMBER            -- 43.コラム№34
+ ,COLUMN_NO35                   NUMBER            -- 44.コラム№35
+ ,COLUMN_NO36                   NUMBER            -- 45.コラム№36
+ ,COLUMN_NO37                   NUMBER            -- 46.コラム№37
+ ,COLUMN_NO38                   NUMBER            -- 47.コラム№38
+ ,COLUMN_NO39                   NUMBER            -- 48.コラム№39
+ ,COLUMN_NO40                   NUMBER            -- 49.コラム№40
+ ,COLUMN_NO41                   NUMBER            -- 50.コラム№41
+ ,COLUMN_NO42                   NUMBER            -- 51.コラム№42
+ ,COLUMN_NO43                   NUMBER            -- 52.コラム№43
+ ,COLUMN_NO44                   NUMBER            -- 53.コラム№44
+ ,COLUMN_NO45                   NUMBER            -- 54.コラム№45
+ ,COLUMN_NO46                   NUMBER            -- 55.コラム№46
+ ,COLUMN_NO47                   NUMBER            -- 56.コラム№47
+ ,COLUMN_NO48                   NUMBER            -- 57.コラム№48
+ ,COLUMN_NO49                   NUMBER            -- 58.コラム№49
+ ,COLUMN_NO50                   NUMBER            -- 59.コラム№50
+ ,COLUMN_NO51                   NUMBER            -- 60.コラム№51
+ ,COLUMN_NO52                   NUMBER            -- 61.コラム№52
+ ,COLUMN_NO53                   NUMBER            -- 62.コラム№53
+ ,COLUMN_NO54                   NUMBER            -- 63.コラム№54
+ ,COLUMN_NO55                   NUMBER            -- 64.コラム№55
+ ,COLUMN_NO56                   NUMBER            -- 65.コラム№56
+ ,ITEM_CODE1                    VARCHAR2(7)       -- 66.品目コード1
+ ,ITEM_CODE2                    VARCHAR2(7)       -- 67.品目コード2
+ ,ITEM_CODE3                    VARCHAR2(7)       -- 68.品目コード3
+ ,ITEM_CODE4                    VARCHAR2(7)       -- 69.品目コード4
+ ,ITEM_CODE5                    VARCHAR2(7)       -- 70.品目コード5
+ ,ITEM_CODE6                    VARCHAR2(7)       -- 71.品目コード6
+ ,ITEM_CODE7                    VARCHAR2(7)       -- 72.品目コード7
+ ,ITEM_CODE8                    VARCHAR2(7)       -- 73.品目コード8
+ ,ITEM_CODE9                    VARCHAR2(7)       -- 74.品目コード9
+ ,ITEM_CODE10                   VARCHAR2(7)       -- 75.品目コード10
+ ,ITEM_CODE11                   VARCHAR2(7)       -- 76.品目コード11
+ ,ITEM_CODE12                   VARCHAR2(7)       -- 77.品目コード12
+ ,ITEM_CODE13                   VARCHAR2(7)       -- 78.品目コード13
+ ,ITEM_CODE14                   VARCHAR2(7)       -- 79.品目コード14
+ ,ITEM_CODE15                   VARCHAR2(7)       -- 80.品目コード15
+ ,ITEM_CODE16                   VARCHAR2(7)       -- 81.品目コード16
+ ,ITEM_CODE17                   VARCHAR2(7)       -- 82.品目コード17
+ ,ITEM_CODE18                   VARCHAR2(7)       -- 83.品目コード18
+ ,ITEM_CODE19                   VARCHAR2(7)       -- 84.品目コード19
+ ,ITEM_CODE20                   VARCHAR2(7)       -- 85.品目コード20
+ ,ITEM_CODE21                   VARCHAR2(7)       -- 86.品目コード21
+ ,ITEM_CODE22                   VARCHAR2(7)       -- 87.品目コード22
+ ,ITEM_CODE23                   VARCHAR2(7)       -- 88.品目コード23
+ ,ITEM_CODE24                   VARCHAR2(7)       -- 89.品目コード24
+ ,ITEM_CODE25                   VARCHAR2(7)       -- 90.品目コード25
+ ,ITEM_CODE26                   VARCHAR2(7)       -- 91.品目コード26
+ ,ITEM_CODE27                   VARCHAR2(7)       -- 92.品目コード27
+ ,ITEM_CODE28                   VARCHAR2(7)       -- 93.品目コード28
+ ,ITEM_CODE29                   VARCHAR2(7)       -- 94.品目コード29
+ ,ITEM_CODE30                   VARCHAR2(7)       -- 95.品目コード30
+ ,ITEM_CODE31                   VARCHAR2(7)       -- 96.品目コード31
+ ,ITEM_CODE32                   VARCHAR2(7)       -- 97.品目コード32
+ ,ITEM_CODE33                   VARCHAR2(7)       -- 98.品目コード33
+ ,ITEM_CODE34                   VARCHAR2(7)       -- 99.品目コード34
+ ,ITEM_CODE35                   VARCHAR2(7)       -- 100.品目コード35
+ ,ITEM_CODE36                   VARCHAR2(7)       -- 101.品目コード36
+ ,ITEM_CODE37                   VARCHAR2(7)       -- 102.品目コード37
+ ,ITEM_CODE38                   VARCHAR2(7)       -- 103.品目コード38
+ ,ITEM_CODE39                   VARCHAR2(7)       -- 104.品目コード39
+ ,ITEM_CODE40                   VARCHAR2(7)       -- 105.品目コード40
+ ,ITEM_CODE41                   VARCHAR2(7)       -- 106.品目コード41
+ ,ITEM_CODE42                   VARCHAR2(7)       -- 107.品目コード42
+ ,ITEM_CODE43                   VARCHAR2(7)       -- 108.品目コード43
+ ,ITEM_CODE44                   VARCHAR2(7)       -- 109.品目コード44
+ ,ITEM_CODE45                   VARCHAR2(7)       -- 110.品目コード45
+ ,ITEM_CODE46                   VARCHAR2(7)       -- 110.品目コード46
+ ,ITEM_CODE47                   VARCHAR2(7)       -- 110.品目コード47
+ ,ITEM_CODE48                   VARCHAR2(7)       -- 110.品目コード48
+ ,ITEM_CODE49                   VARCHAR2(7)       -- 110.品目コード49
+ ,ITEM_CODE50                   VARCHAR2(7)       -- 110.品目コード50
+ ,ITEM_CODE51                   VARCHAR2(7)       -- 110.品目コード51
+ ,ITEM_CODE52                   VARCHAR2(7)       -- 111.品目コード52
+ ,ITEM_CODE53                   VARCHAR2(7)       -- 112.品目コード53
+ ,ITEM_CODE54                   VARCHAR2(7)       -- 113.品目コード54
+ ,ITEM_CODE55                   VARCHAR2(7)       -- 114.品目コード55
+ ,ITEM_CODE56                   VARCHAR2(7)       -- 115.品目コード56
+ ,ITEM_NAME1                    VARCHAR2(20)      -- 116.品目名1
+ ,ITEM_NAME2                    VARCHAR2(20)      -- 117.品目名2
+ ,ITEM_NAME3                    VARCHAR2(20)      -- 118.品目名3
+ ,ITEM_NAME4                    VARCHAR2(20)      -- 119.品目名4
+ ,ITEM_NAME5                    VARCHAR2(20)      -- 120.品目名5
+ ,ITEM_NAME6                    VARCHAR2(20)      -- 121.品目名6
+ ,ITEM_NAME7                    VARCHAR2(20)      -- 122.品目名7
+ ,ITEM_NAME8                    VARCHAR2(20)      -- 123.品目名8
+ ,ITEM_NAME9                    VARCHAR2(20)      -- 124.品目名9
+ ,ITEM_NAME10                   VARCHAR2(20)      -- 125.品目名10
+ ,ITEM_NAME11                   VARCHAR2(20)      -- 126.品目名11
+ ,ITEM_NAME12                   VARCHAR2(20)      -- 127.品目名12
+ ,ITEM_NAME13                   VARCHAR2(20)      -- 128.品目名13
+ ,ITEM_NAME14                   VARCHAR2(20)      -- 129.品目名14
+ ,ITEM_NAME15                   VARCHAR2(20)      -- 130.品目名15
+ ,ITEM_NAME16                   VARCHAR2(20)      -- 131.品目名16
+ ,ITEM_NAME17                   VARCHAR2(20)      -- 132.品目名17
+ ,ITEM_NAME18                   VARCHAR2(20)      -- 133.品目名18
+ ,ITEM_NAME19                   VARCHAR2(20)      -- 134.品目名19
+ ,ITEM_NAME20                   VARCHAR2(20)      -- 135.品目名20
+ ,ITEM_NAME21                   VARCHAR2(20)      -- 136.品目名21
+ ,ITEM_NAME22                   VARCHAR2(20)      -- 137.品目名22
+ ,ITEM_NAME23                   VARCHAR2(20)      -- 138.品目名23
+ ,ITEM_NAME24                   VARCHAR2(20)      -- 139.品目名24
+ ,ITEM_NAME25                   VARCHAR2(20)      -- 140.品目名25
+ ,ITEM_NAME26                   VARCHAR2(20)      -- 141.品目名26
+ ,ITEM_NAME27                   VARCHAR2(20)      -- 142.品目名27
+ ,ITEM_NAME28                   VARCHAR2(20)      -- 143.品目名28
+ ,ITEM_NAME29                   VARCHAR2(20)      -- 144.品目名29
+ ,ITEM_NAME30                   VARCHAR2(20)      -- 145.品目名30
+ ,ITEM_NAME31                   VARCHAR2(20)      -- 146.品目名31
+ ,ITEM_NAME32                   VARCHAR2(20)      -- 147.品目名32
+ ,ITEM_NAME33                   VARCHAR2(20)      -- 148.品目名33
+ ,ITEM_NAME34                   VARCHAR2(20)      -- 149.品目名34
+ ,ITEM_NAME35                   VARCHAR2(20)      -- 150.品目名35
+ ,ITEM_NAME36                   VARCHAR2(20)      -- 151.品目名36
+ ,ITEM_NAME37                   VARCHAR2(20)      -- 152.品目名37
+ ,ITEM_NAME38                   VARCHAR2(20)      -- 153.品目名38
+ ,ITEM_NAME39                   VARCHAR2(20)      -- 154.品目名39
+ ,ITEM_NAME40                   VARCHAR2(20)      -- 155.品目名40
+ ,ITEM_NAME41                   VARCHAR2(20)      -- 156.品目名41
+ ,ITEM_NAME42                   VARCHAR2(20)      -- 157.品目名42
+ ,ITEM_NAME43                   VARCHAR2(20)      -- 158.品目名43
+ ,ITEM_NAME44                   VARCHAR2(20)      -- 159.品目名44
+ ,ITEM_NAME45                   VARCHAR2(20)      -- 161.品目名45
+ ,ITEM_NAME46                   VARCHAR2(20)      -- 161.品目名46
+ ,ITEM_NAME47                   VARCHAR2(20)      -- 161.品目名47
+ ,ITEM_NAME48                   VARCHAR2(20)      -- 161.品目名48
+ ,ITEM_NAME49                   VARCHAR2(20)      -- 161.品目名49
+ ,ITEM_NAME50                   VARCHAR2(20)      -- 161.品目名50
+ ,ITEM_NAME51                   VARCHAR2(20)      -- 161.品目名51
+ ,ITEM_NAME52                   VARCHAR2(20)      -- 162.品目名52
+ ,ITEM_NAME53                   VARCHAR2(20)      -- 163.品目名53
+ ,ITEM_NAME54                   VARCHAR2(20)      -- 164.品目名54
+ ,ITEM_NAME55                   VARCHAR2(20)      -- 165.品目名55
+ ,ITEM_NAME56                   VARCHAR2(20)      -- 166.品目名56
+ ,PRICE1                        NUMBER            -- 167.単価1
+ ,PRICE2                        NUMBER            -- 168.単価2
+ ,PRICE3                        NUMBER            -- 169.単価3
+ ,PRICE4                        NUMBER            -- 170.単価4
+ ,PRICE5                        NUMBER            -- 171.単価5
+ ,PRICE6                        NUMBER            -- 172.単価6
+ ,PRICE7                        NUMBER            -- 173.単価7
+ ,PRICE8                        NUMBER            -- 174.単価8
+ ,PRICE9                        NUMBER            -- 175.単価9
+ ,PRICE10                       NUMBER            -- 176.単価10
+ ,PRICE11                       NUMBER            -- 177.単価11
+ ,PRICE12                       NUMBER            -- 178.単価12
+ ,PRICE13                       NUMBER            -- 179.単価13
+ ,PRICE14                       NUMBER            -- 180.単価14
+ ,PRICE15                       NUMBER            -- 181.単価15
+ ,PRICE16                       NUMBER            -- 182.単価16
+ ,PRICE17                       NUMBER            -- 183.単価17
+ ,PRICE18                       NUMBER            -- 184.単価18
+ ,PRICE19                       NUMBER            -- 185.単価19
+ ,PRICE20                       NUMBER            -- 186.単価20
+ ,PRICE21                       NUMBER            -- 187.単価21
+ ,PRICE22                       NUMBER            -- 188.単価22
+ ,PRICE23                       NUMBER            -- 189.単価23
+ ,PRICE24                       NUMBER            -- 190.単価24
+ ,PRICE25                       NUMBER            -- 191.単価25
+ ,PRICE26                       NUMBER            -- 192.単価26
+ ,PRICE27                       NUMBER            -- 193.単価27
+ ,PRICE28                       NUMBER            -- 194.単価28
+ ,PRICE29                       NUMBER            -- 195.単価29
+ ,PRICE30                       NUMBER            -- 196.単価30
+ ,PRICE31                       NUMBER            -- 197.単価31
+ ,PRICE32                       NUMBER            -- 198.単価32
+ ,PRICE33                       NUMBER            -- 199.単価33
+ ,PRICE34                       NUMBER            -- 200.単価34
+ ,PRICE35                       NUMBER            -- 201.単価35
+ ,PRICE36                       NUMBER            -- 202.単価36
+ ,PRICE37                       NUMBER            -- 203.単価37
+ ,PRICE38                       NUMBER            -- 204.単価38
+ ,PRICE39                       NUMBER            -- 205.単価39
+ ,PRICE40                       NUMBER            -- 206.単価40
+ ,PRICE41                       NUMBER            -- 207.単価41
+ ,PRICE42                       NUMBER            -- 208.単価42
+ ,PRICE43                       NUMBER            -- 209.単価43
+ ,PRICE44                       NUMBER            -- 210.単価44
+ ,PRICE45                       NUMBER            -- 211.単価45
+ ,PRICE46                       NUMBER            -- 211.単価46
+ ,PRICE47                       NUMBER            -- 211.単価47
+ ,PRICE48                       NUMBER            -- 211.単価48
+ ,PRICE49                       NUMBER            -- 211.単価49
+ ,PRICE50                       NUMBER            -- 211.単価50
+ ,PRICE51                       NUMBER            -- 211.単価51
+ ,PRICE52                       NUMBER            -- 212.単価52
+ ,PRICE53                       NUMBER            -- 213.単価53
+ ,PRICE54                       NUMBER            -- 214.単価54
+ ,PRICE55                       NUMBER            -- 215.単価55
+ ,PRICE56                       NUMBER            -- 216.単価56
+ ,HOT_COLD1                     VARCHAR2(1)       -- 217.H/C1
+ ,HOT_COLD2                     VARCHAR2(1)       -- 218.H/C2
+ ,HOT_COLD3                     VARCHAR2(1)       -- 219.H/C3
+ ,HOT_COLD4                     VARCHAR2(1)       -- 220.H/C4
+ ,HOT_COLD5                     VARCHAR2(1)       -- 221.H/C5
+ ,HOT_COLD6                     VARCHAR2(1)       -- 222.H/C6
+ ,HOT_COLD7                     VARCHAR2(1)       -- 223.H/C7
+ ,HOT_COLD8                     VARCHAR2(1)       -- 224.H/C8
+ ,HOT_COLD9                     VARCHAR2(1)       -- 225.H/C9
+ ,HOT_COLD10                    VARCHAR2(1)       -- 226.H/C10
+ ,HOT_COLD11                    VARCHAR2(1)       -- 227.H/C11
+ ,HOT_COLD12                    VARCHAR2(1)       -- 228.H/C12
+ ,HOT_COLD13                    VARCHAR2(1)       -- 229.H/C13
+ ,HOT_COLD14                    VARCHAR2(1)       -- 230.H/C14
+ ,HOT_COLD15                    VARCHAR2(1)       -- 231.H/C15
+ ,HOT_COLD16                    VARCHAR2(1)       -- 232.H/C16
+ ,HOT_COLD17                    VARCHAR2(1)       -- 233.H/C17
+ ,HOT_COLD18                    VARCHAR2(1)       -- 234.H/C18
+ ,HOT_COLD19                    VARCHAR2(1)       -- 235.H/C19
+ ,HOT_COLD20                    VARCHAR2(1)       -- 236.H/C20
+ ,HOT_COLD21                    VARCHAR2(1)       -- 237.H/C21
+ ,HOT_COLD22                    VARCHAR2(1)       -- 238.H/C22
+ ,HOT_COLD23                    VARCHAR2(1)       -- 239.H/C23
+ ,HOT_COLD24                    VARCHAR2(1)       -- 240.H/C24
+ ,HOT_COLD25                    VARCHAR2(1)       -- 241.H/C25
+ ,HOT_COLD26                    VARCHAR2(1)       -- 242.H/C26
+ ,HOT_COLD27                    VARCHAR2(1)       -- 243.H/C27
+ ,HOT_COLD28                    VARCHAR2(1)       -- 244.H/C28
+ ,HOT_COLD29                    VARCHAR2(1)       -- 245.H/C29
+ ,HOT_COLD30                    VARCHAR2(1)       -- 246.H/C30
+ ,HOT_COLD31                    VARCHAR2(1)       -- 247.H/C31
+ ,HOT_COLD32                    VARCHAR2(1)       -- 248.H/C32
+ ,HOT_COLD33                    VARCHAR2(1)       -- 249.H/C33
+ ,HOT_COLD34                    VARCHAR2(1)       -- 250.H/C34
+ ,HOT_COLD35                    VARCHAR2(1)       -- 251.H/C35
+ ,HOT_COLD36                    VARCHAR2(1)       -- 252.H/C36
+ ,HOT_COLD37                    VARCHAR2(1)       -- 253.H/C37
+ ,HOT_COLD38                    VARCHAR2(1)       -- 254.H/C38
+ ,HOT_COLD39                    VARCHAR2(1)       -- 255.H/C39
+ ,HOT_COLD40                    VARCHAR2(1)       -- 256.H/C40
+ ,HOT_COLD41                    VARCHAR2(1)       -- 257.H/C41
+ ,HOT_COLD42                    VARCHAR2(1)       -- 258.H/C42
+ ,HOT_COLD43                    VARCHAR2(1)       -- 259.H/C43
+ ,HOT_COLD44                    VARCHAR2(1)       -- 261.H/C44
+ ,HOT_COLD45                    VARCHAR2(1)       -- 262.H/C45
+ ,HOT_COLD46                    VARCHAR2(1)       -- 262.H/C46
+ ,HOT_COLD47                    VARCHAR2(1)       -- 262.H/C47
+ ,HOT_COLD48                    VARCHAR2(1)       -- 262.H/C48
+ ,HOT_COLD49                    VARCHAR2(1)       -- 262.H/C49
+ ,HOT_COLD50                    VARCHAR2(1)       -- 262.H/C50
+ ,HOT_COLD51                    VARCHAR2(1)       -- 262.H/C51
+ ,HOT_COLD52                    VARCHAR2(1)       -- 263.H/C52
+ ,HOT_COLD53                    VARCHAR2(1)       -- 264.H/C53
+ ,HOT_COLD54                    VARCHAR2(1)       -- 265.H/C54
+ ,HOT_COLD55                    VARCHAR2(1)       -- 266.H/C55
+ ,HOT_COLD56                    VARCHAR2(1)       -- 267.H/C56
+ ,INVENTORY_QUANTITY1           NUMBER            -- 268.数量1
+ ,INVENTORY_QUANTITY2           NUMBER            -- 269.数量2
+ ,INVENTORY_QUANTITY3           NUMBER            -- 270.数量3
+ ,INVENTORY_QUANTITY4           NUMBER            -- 271.数量4
+ ,INVENTORY_QUANTITY5           NUMBER            -- 272.数量5
+ ,INVENTORY_QUANTITY6           NUMBER            -- 273.数量6
+ ,INVENTORY_QUANTITY7           NUMBER            -- 274.数量7
+ ,INVENTORY_QUANTITY8           NUMBER            -- 275.数量8
+ ,INVENTORY_QUANTITY9           NUMBER            -- 276.数量9
+ ,INVENTORY_QUANTITY10          NUMBER            -- 277.数量10
+ ,INVENTORY_QUANTITY11          NUMBER            -- 278.数量11
+ ,INVENTORY_QUANTITY12          NUMBER            -- 279.数量12
+ ,INVENTORY_QUANTITY13          NUMBER            -- 280.数量13
+ ,INVENTORY_QUANTITY14          NUMBER            -- 281.数量14
+ ,INVENTORY_QUANTITY15          NUMBER            -- 282.数量15
+ ,INVENTORY_QUANTITY16          NUMBER            -- 283.数量16
+ ,INVENTORY_QUANTITY17          NUMBER            -- 284.数量17
+ ,INVENTORY_QUANTITY18          NUMBER            -- 285.数量18
+ ,INVENTORY_QUANTITY19          NUMBER            -- 286.数量19
+ ,INVENTORY_QUANTITY20          NUMBER            -- 287.数量20
+ ,INVENTORY_QUANTITY21          NUMBER            -- 288.数量21
+ ,INVENTORY_QUANTITY22          NUMBER            -- 289.数量22
+ ,INVENTORY_QUANTITY23          NUMBER            -- 290.数量23
+ ,INVENTORY_QUANTITY24          NUMBER            -- 291.数量24
+ ,INVENTORY_QUANTITY25          NUMBER            -- 292.数量25
+ ,INVENTORY_QUANTITY26          NUMBER            -- 293.数量26
+ ,INVENTORY_QUANTITY27          NUMBER            -- 294.数量27
+ ,INVENTORY_QUANTITY28          NUMBER            -- 295.数量28
+ ,INVENTORY_QUANTITY29          NUMBER            -- 296.数量29
+ ,INVENTORY_QUANTITY30          NUMBER            -- 297.数量30
+ ,INVENTORY_QUANTITY31          NUMBER            -- 298.数量31
+ ,INVENTORY_QUANTITY32          NUMBER            -- 299.数量32
+ ,INVENTORY_QUANTITY33          NUMBER            -- 300.数量33
+ ,INVENTORY_QUANTITY34          NUMBER            -- 301.数量34
+ ,INVENTORY_QUANTITY35          NUMBER            -- 302.数量35
+ ,INVENTORY_QUANTITY36          NUMBER            -- 303.数量36
+ ,INVENTORY_QUANTITY37          NUMBER            -- 304.数量37
+ ,INVENTORY_QUANTITY38          NUMBER            -- 305.数量38
+ ,INVENTORY_QUANTITY39          NUMBER            -- 306.数量39
+ ,INVENTORY_QUANTITY40          NUMBER            -- 307.数量40
+ ,INVENTORY_QUANTITY41          NUMBER            -- 308.数量41
+ ,INVENTORY_QUANTITY42          NUMBER            -- 309.数量42
+ ,INVENTORY_QUANTITY43          NUMBER            -- 310.数量43
+ ,INVENTORY_QUANTITY44          NUMBER            -- 311.数量44
+ ,INVENTORY_QUANTITY45          NUMBER            -- 312.数量45
+ ,INVENTORY_QUANTITY46          NUMBER            -- 312.数量46
+ ,INVENTORY_QUANTITY47          NUMBER            -- 312.数量47
+ ,INVENTORY_QUANTITY48          NUMBER            -- 312.数量48
+ ,INVENTORY_QUANTITY49          NUMBER            -- 312.数量49
+ ,INVENTORY_QUANTITY50          NUMBER            -- 312.数量50
+ ,INVENTORY_QUANTITY51          NUMBER            -- 312.数量51
+ ,INVENTORY_QUANTITY52          NUMBER            -- 313.数量52
+ ,INVENTORY_QUANTITY53          NUMBER            -- 314.数量53
+ ,INVENTORY_QUANTITY54          NUMBER            -- 315.数量54
+ ,INVENTORY_QUANTITY55          NUMBER            -- 316.数量55
+ ,INVENTORY_QUANTITY56          NUMBER            -- 317.数量56
+ ,CREATED_BY                    NUMBER            -- 318.作成者
+ ,CREATION_DATE                 DATE              -- 319.作成日
+ ,LAST_UPDATED_BY               NUMBER            -- 320.最終更新者
+ ,LAST_UPDATE_DATE              DATE              -- 321.最終更新日
+ ,LAST_UPDATE_LOGIN             NUMBER            -- 322.最終更新ユーザ
+ ,REQUEST_ID                    NUMBER            -- 323.要求ID
+ ,PROGRAM_APPLICATION_ID        NUMBER            -- 324.プログラムアプリケーションID
+ ,PROGRAM_ID                    NUMBER            -- 325.プログラムID
+ ,PROGRAM_UPDATE_DATE           DATE              -- 326.プログラム更新日
+ ,CONSTRAINT XXCOI_REP_VD_INVENTORY_PK PRIMARY KEY ( VD_INV_WK_ID )
+  USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.VD_INV_WK_ID                  IS 'ベンダ機内在庫表ワークID';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.BASE_CODE                     IS '拠点コード';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.BASE_NAME                     IS '拠点名';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.CUSTOMER_CODE                 IS '顧客コード';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.CUSTOMER_NAME                 IS '顧客名';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.MODEL_CODE                    IS '機種コード';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.SELE_QNT                      IS 'セレ数';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.CHARGE_BUSINESS_MEMBER_CODE   IS '営業担当者コード';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.CHARGE_BUSINESS_MEMBER_NAME   IS '営業担当者名';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO1                    IS 'コラム№1';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO2                    IS 'コラム№2';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO3                    IS 'コラム№3';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO4                    IS 'コラム№4';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO5                    IS 'コラム№5';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO6                    IS 'コラム№6';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO7                    IS 'コラム№7';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO8                    IS 'コラム№8';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO9                    IS 'コラム№9';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO10                   IS 'コラム№10';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO11                   IS 'コラム№11';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO12                   IS 'コラム№12';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO13                   IS 'コラム№13';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO14                   IS 'コラム№14';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO15                   IS 'コラム№15';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO16                   IS 'コラム№16';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO17                   IS 'コラム№17';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO18                   IS 'コラム№18';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO19                   IS 'コラム№19';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO20                   IS 'コラム№20';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO21                   IS 'コラム№21';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO22                   IS 'コラム№22';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO23                   IS 'コラム№23';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO24                   IS 'コラム№24';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO25                   IS 'コラム№25';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO26                   IS 'コラム№26';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO27                   IS 'コラム№27';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO28                   IS 'コラム№28';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO29                   IS 'コラム№29';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO30                   IS 'コラム№30';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO31                   IS 'コラム№31';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO32                   IS 'コラム№32';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO33                   IS 'コラム№33';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO34                   IS 'コラム№34';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO35                   IS 'コラム№35';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO36                   IS 'コラム№36';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO37                   IS 'コラム№37';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO38                   IS 'コラム№38';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO39                   IS 'コラム№39';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO40                   IS 'コラム№40';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO41                   IS 'コラム№41';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO42                   IS 'コラム№42';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO43                   IS 'コラム№43';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO44                   IS 'コラム№44';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO45                   IS 'コラム№45';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO46                   IS 'コラム№46';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO47                   IS 'コラム№47';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO48                   IS 'コラム№48';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO49                   IS 'コラム№49';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO50                   IS 'コラム№50';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO51                   IS 'コラム№51';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO52                   IS 'コラム№52';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO53                   IS 'コラム№53';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO54                   IS 'コラム№54';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO55                   IS 'コラム№55';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.COLUMN_NO56                   IS 'コラム№56';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE1                    IS '品目コード1';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE2                    IS '品目コード2';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE3                    IS '品目コード3';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE4                    IS '品目コード4';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE5                    IS '品目コード5';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE6                    IS '品目コード6';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE7                    IS '品目コード7';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE8                    IS '品目コード8';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE9                    IS '品目コード9';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE10                   IS '品目コード10';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE11                   IS '品目コード11';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE12                   IS '品目コード12';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE13                   IS '品目コード13';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE14                   IS '品目コード14';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE15                   IS '品目コード15';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE16                   IS '品目コード16';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE17                   IS '品目コード17';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE18                   IS '品目コード18';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE19                   IS '品目コード19';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE20                   IS '品目コード20';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE21                   IS '品目コード21';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE22                   IS '品目コード22';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE23                   IS '品目コード23';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE24                   IS '品目コード24';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE25                   IS '品目コード25';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE26                   IS '品目コード26';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE27                   IS '品目コード27';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE28                   IS '品目コード28';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE29                   IS '品目コード29';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE30                   IS '品目コード30';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE31                   IS '品目コード31';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE32                   IS '品目コード32';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE33                   IS '品目コード33';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE34                   IS '品目コード34';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE35                   IS '品目コード35';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE36                   IS '品目コード36';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE37                   IS '品目コード37';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE38                   IS '品目コード38';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE39                   IS '品目コード39';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE40                   IS '品目コード40';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE41                   IS '品目コード41';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE42                   IS '品目コード42';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE43                   IS '品目コード43';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE44                   IS '品目コード44';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE45                   IS '品目コード45';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE46                   IS '品目コード46';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE47                   IS '品目コード47';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE48                   IS '品目コード48';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE49                   IS '品目コード49';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE50                   IS '品目コード50';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE51                   IS '品目コード51';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE52                   IS '品目コード52';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE53                   IS '品目コード53';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE54                   IS '品目コード54';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE55                   IS '品目コード55';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_CODE56                   IS '品目コード56';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME1                    IS '品目名1';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME2                    IS '品目名2';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME3                    IS '品目名3';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME4                    IS '品目名4';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME5                    IS '品目名5';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME6                    IS '品目名6';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME7                    IS '品目名7';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME8                    IS '品目名8';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME9                    IS '品目名9';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME10                   IS '品目名10';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME11                   IS '品目名11';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME12                   IS '品目名12';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME13                   IS '品目名13';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME14                   IS '品目名14';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME15                   IS '品目名15';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME16                   IS '品目名16';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME17                   IS '品目名17';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME18                   IS '品目名18';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME19                   IS '品目名19';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME20                   IS '品目名20';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME21                   IS '品目名21';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME22                   IS '品目名22';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME23                   IS '品目名23';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME24                   IS '品目名24';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME25                   IS '品目名25';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME26                   IS '品目名26';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME27                   IS '品目名27';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME28                   IS '品目名28';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME29                   IS '品目名29';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME30                   IS '品目名30';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME31                   IS '品目名31';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME32                   IS '品目名32';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME33                   IS '品目名33';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME34                   IS '品目名34';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME35                   IS '品目名35';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME36                   IS '品目名36';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME37                   IS '品目名37';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME38                   IS '品目名38';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME39                   IS '品目名39';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME40                   IS '品目名40';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME41                   IS '品目名41';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME42                   IS '品目名42';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME43                   IS '品目名43';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME44                   IS '品目名44';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME45                   IS '品目名45';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME46                   IS '品目名46';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME47                   IS '品目名47';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME48                   IS '品目名48';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME49                   IS '品目名49';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME50                   IS '品目名50';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME51                   IS '品目名51';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME52                   IS '品目名52';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME53                   IS '品目名53';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME54                   IS '品目名54';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME55                   IS '品目名55';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.ITEM_NAME56                   IS '品目名56';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE1                        IS '単価1';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE2                        IS '単価2';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE3                        IS '単価3';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE4                        IS '単価4';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE5                        IS '単価5';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE6                        IS '単価6';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE7                        IS '単価7';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE8                        IS '単価8';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE9                        IS '単価9';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE10                       IS '単価10';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE11                       IS '単価11';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE12                       IS '単価12';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE13                       IS '単価13';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE14                       IS '単価14';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE15                       IS '単価15';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE16                       IS '単価16';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE17                       IS '単価17';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE18                       IS '単価18';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE19                       IS '単価19';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE20                       IS '単価20';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE21                       IS '単価21';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE22                       IS '単価22';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE23                       IS '単価23';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE24                       IS '単価24';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE25                       IS '単価25';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE26                       IS '単価26';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE27                       IS '単価27';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE28                       IS '単価28';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE29                       IS '単価29';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE30                       IS '単価30';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE31                       IS '単価31';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE32                       IS '単価32';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE33                       IS '単価33';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE34                       IS '単価34';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE35                       IS '単価35';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE36                       IS '単価36';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE37                       IS '単価37';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE38                       IS '単価38';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE39                       IS '単価39';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE40                       IS '単価40';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE41                       IS '単価41';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE42                       IS '単価42';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE43                       IS '単価43';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE44                       IS '単価44';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE45                       IS '単価45';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE46                       IS '単価46';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE47                       IS '単価47';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE48                       IS '単価48';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE49                       IS '単価49';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE50                       IS '単価50';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE51                       IS '単価51';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE52                       IS '単価52';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE53                       IS '単価53';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE54                       IS '単価54';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE55                       IS '単価55';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PRICE56                       IS '単価56';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD1                     IS 'H/C1';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD2                     IS 'H/C2';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD3                     IS 'H/C3';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD4                     IS 'H/C4';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD5                     IS 'H/C5';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD6                     IS 'H/C6';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD7                     IS 'H/C7';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD8                     IS 'H/C8';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD9                     IS 'H/C9';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD10                    IS 'H/C10';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD11                    IS 'H/C11';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD12                    IS 'H/C12';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD13                    IS 'H/C13';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD14                    IS 'H/C14';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD15                    IS 'H/C15';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD16                    IS 'H/C16';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD17                    IS 'H/C17';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD18                    IS 'H/C18';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD19                    IS 'H/C19';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD20                    IS 'H/C20';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD21                    IS 'H/C21';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD22                    IS 'H/C22';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD23                    IS 'H/C23';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD24                    IS 'H/C24';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD25                    IS 'H/C25';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD26                    IS 'H/C26';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD27                    IS 'H/C27';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD28                    IS 'H/C28';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD29                    IS 'H/C29';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD30                    IS 'H/C30';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD31                    IS 'H/C31';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD32                    IS 'H/C32';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD33                    IS 'H/C33';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD34                    IS 'H/C34';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD35                    IS 'H/C35';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD36                    IS 'H/C36';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD37                    IS 'H/C37';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD38                    IS 'H/C38';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD39                    IS 'H/C39';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD40                    IS 'H/C40';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD41                    IS 'H/C41';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD42                    IS 'H/C42';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD43                    IS 'H/C43';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD44                    IS 'H/C44';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD45                    IS 'H/C45';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD46                    IS 'H/C46';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD47                    IS 'H/C47';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD48                    IS 'H/C48';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD49                    IS 'H/C49';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD50                    IS 'H/C50';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD51                    IS 'H/C51';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD52                    IS 'H/C52';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD53                    IS 'H/C53';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD54                    IS 'H/C54';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD55                    IS 'H/C55';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.HOT_COLD56                    IS 'H/C56';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY1           IS '数量1';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY2           IS '数量2';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY3           IS '数量3';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY4           IS '数量4';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY5           IS '数量5';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY6           IS '数量6';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY7           IS '数量7';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY8           IS '数量8';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY9           IS '数量9';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY10          IS '数量10';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY11          IS '数量11';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY12          IS '数量12';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY13          IS '数量13';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY14          IS '数量14';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY15          IS '数量15';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY16          IS '数量16';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY17          IS '数量17';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY18          IS '数量18';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY19          IS '数量19';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY20          IS '数量20';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY21          IS '数量21';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY22          IS '数量22';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY23          IS '数量23';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY24          IS '数量24';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY25          IS '数量25';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY26          IS '数量26';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY27          IS '数量27';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY28          IS '数量28';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY29          IS '数量29';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY30          IS '数量30';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY31          IS '数量31';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY32          IS '数量32';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY33          IS '数量33';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY34          IS '数量34';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY35          IS '数量35';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY36          IS '数量36';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY37          IS '数量37';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY38          IS '数量38';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY39          IS '数量39';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY40          IS '数量40';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY41          IS '数量41';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY42          IS '数量42';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY43          IS '数量43';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY44          IS '数量44';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY45          IS '数量45';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY46          IS '数量46';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY47          IS '数量47';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY48          IS '数量48';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY49          IS '数量49';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY50          IS '数量50';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY51          IS '数量51';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY52          IS '数量52';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY53          IS '数量53';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY54          IS '数量54';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY55          IS '数量55';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.INVENTORY_QUANTITY56          IS '数量56';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.CREATED_BY                    IS '作成者';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.CREATION_DATE                 IS '作成日';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.LAST_UPDATED_BY               IS '最終更新者';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.LAST_UPDATE_DATE              IS '最終更新日';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.LAST_UPDATE_LOGIN             IS '最終更新ユーザ';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.REQUEST_ID                    IS '要求ID';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PROGRAM_APPLICATION_ID        IS 'プログラムアプリケーションID';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PROGRAM_ID                    IS 'プログラムID';
+COMMENT ON COLUMN XXCOI.XXCOI_REP_VD_INVENTORY.PROGRAM_UPDATE_DATE           IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOI.XXCOI_REP_VD_INVENTORY IS 'VD機内在庫表ワークテーブル' ;
