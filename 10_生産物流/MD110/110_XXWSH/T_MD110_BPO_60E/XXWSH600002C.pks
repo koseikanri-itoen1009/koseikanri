@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.10
+ * Version          : 1.13
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -34,6 +34,9 @@ AS
  *  2008/06/16    1.8   M.NOMURA         結合テスト 440 不具合対応#64
  *  2008/06/18    1.9   M.HOKKANJI       システムテスト不具合対応#147,#187
  *  2008/06/23    1.10  M.NOMURA         システムテスト不具合対応#217
+ *  2008/06/27    1.11  M.NOMURA         システムテスト不具合対応#303
+ *  2008/07/04    1.12  M.NOMURA         システムテスト不具合対応#390
+ *  2008/07/16    1.13  Oracle 山根 一浩 I_S_192,T_S_443,指摘240対応
  *
  *****************************************************************************************/
 --
@@ -42,14 +45,23 @@ AS
     (
       errbuf              OUT NOCOPY  VARCHAR2    -- エラーメッセージ #固定#
      ,retcode             OUT NOCOPY  VARCHAR2    -- エラーコード     #固定#
-     ,iv_dept_code        IN  VARCHAR2            -- 01 : 部署
-     ,iv_fix_class        IN  VARCHAR2            -- 02 : 予定確定区分
-     ,iv_date_cutoff      IN  VARCHAR2            -- 03 : 締め実施日
-     ,iv_cutoff_from      IN  VARCHAR2            -- 04 : 締め実施時間From
-     ,iv_cutoff_to        IN  VARCHAR2            -- 05 : 締め実施時間To
-     ,iv_date_fix         IN  VARCHAR2            -- 06 : 確定通知実施日
-     ,iv_fix_from         IN  VARCHAR2            -- 07 : 確定通知実施時間From
-     ,iv_fix_to           IN  VARCHAR2            -- 08 : 確定通知実施時間To
+     ,iv_dept_code_01     IN  VARCHAR2            -- 01 : 部署_01
+     ,iv_dept_code_02     IN  VARCHAR2            -- 02 : 部署_02
+     ,iv_dept_code_03     IN  VARCHAR2            -- 03 : 部署_03
+     ,iv_dept_code_04     IN  VARCHAR2            -- 04 : 部署_04
+     ,iv_dept_code_05     IN  VARCHAR2            -- 05 : 部署_05
+     ,iv_dept_code_06     IN  VARCHAR2            -- 06 : 部署_06
+     ,iv_dept_code_07     IN  VARCHAR2            -- 07 : 部署_07
+     ,iv_dept_code_08     IN  VARCHAR2            -- 08 : 部署_08
+     ,iv_dept_code_09     IN  VARCHAR2            -- 09 : 部署_09
+     ,iv_dept_code_10     IN  VARCHAR2            -- 10 : 部署_10
+     ,iv_fix_class        IN  VARCHAR2            -- 11 : 予定確定区分
+     ,iv_date_cutoff      IN  VARCHAR2            -- 12 : 締め実施日
+     ,iv_cutoff_from      IN  VARCHAR2            -- 13 : 締め実施時間From
+     ,iv_cutoff_to        IN  VARCHAR2            -- 14 : 締め実施時間To
+     ,iv_date_fix         IN  VARCHAR2            -- 15 : 確定通知実施日
+     ,iv_fix_from         IN  VARCHAR2            -- 16 : 確定通知実施時間From
+     ,iv_fix_to           IN  VARCHAR2            -- 17 : 確定通知実施時間To
     ) ;
 --
 END xxwsh600002c ;

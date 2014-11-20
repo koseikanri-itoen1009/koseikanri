@@ -1,5 +1,4 @@
-create or replace
-PACKAGE BODY xxwsh600002c
+create or replace PACKAGE BODY xxwsh600002c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -8,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +49,7 @@ AS
  *  2008/06/23    1.10  M.NOMURA         システムテスト不具合対応#217
  *  2008/06/27    1.11  M.NOMURA         システムテスト不具合対応#303
  *  2008/07/04    1.12  M.NOMURA         システムテスト不具合対応#390
+ *  2008/07/16    1.13  Oracle 山根 一浩 I_S_192,T_S_443,指摘240対応
  *
  *****************************************************************************************/
 --
@@ -94,16 +94,16 @@ AS
 --
 --################################  固定部 END   ##################################
 --
-  -- ===============================================================================================
+  -- ==============================================================================================
   -- ユーザー定義例外
-  -- ===============================================================================================
+  -- ==============================================================================================
   -- ロック取得例外
   ex_lock_error    EXCEPTION ;
   PRAGMA EXCEPTION_INIT( ex_lock_error, -54 ) ;
 --
-  -- ===============================================================================================
+  -- ==============================================================================================
   -- グローバル定数
-  -- ===============================================================================================
+  -- ==============================================================================================
   --------------------------------------------------
   -- パッケージ名
   --------------------------------------------------
@@ -258,9 +258,9 @@ AS
   gc_wf_ope_div             CONSTANT VARCHAR2(2) := '09'; -- Workflow通知先（09:外部倉庫入出庫）
 -- ##### 20080611 Ver.1.6 WF対応 END   #####
 --
-  -- ===============================================================================================
+  -- ==============================================================================================
   -- グローバル変数
-  -- ===============================================================================================
+  -- ==============================================================================================
   gd_effective_date   DATE ;    -- マスタ絞込み日付
   gd_date_from        DATE ;    -- 基準日付From
   gd_date_to          DATE ;    -- 基準日付To
@@ -291,15 +291,24 @@ AS
   gv_debug_txt                VARCHAR2(1000) ;
   gv_debug_cnt                NUMBER := 0 ;
 --
-  -- ===============================================================================================
+  -- ==============================================================================================
   -- レコード型宣言
-  -- ===============================================================================================
+  -- ==============================================================================================
   --------------------------------------------------
   -- 入力パラメータ格納用
   --------------------------------------------------
   TYPE rec_param_data  IS RECORD
     (
-      dept_code         VARCHAR2(4)   -- 01 : 部署
+      dept_code_01      VARCHAR2(4)   -- 01 : 部署_01
+     ,dept_code_02      VARCHAR2(4)   -- 02 : 部署_02(2008/07/16 Add)
+     ,dept_code_03      VARCHAR2(4)   -- 03 : 部署_03(2008/07/16 Add)
+     ,dept_code_04      VARCHAR2(4)   -- 04 : 部署_04(2008/07/16 Add)
+     ,dept_code_05      VARCHAR2(4)   -- 05 : 部署_05(2008/07/16 Add)
+     ,dept_code_06      VARCHAR2(4)   -- 06 : 部署_06(2008/07/16 Add)
+     ,dept_code_07      VARCHAR2(4)   -- 07 : 部署_07(2008/07/16 Add)
+     ,dept_code_08      VARCHAR2(4)   -- 08 : 部署_08(2008/07/16 Add)
+     ,dept_code_09      VARCHAR2(4)   -- 09 : 部署_09(2008/07/16 Add)
+     ,dept_code_10      VARCHAR2(4)   -- 10 : 部署_10(2008/07/16 Add)
      ,fix_class         VARCHAR2(1)   -- 02 : 予定確定区分
      ,date_cutoff       VARCHAR2(20)  -- 03 : 締め実施日
      ,cutoff_from       VARCHAR2(10)  -- 04 : 締め実施時間From
@@ -526,10 +535,10 @@ AS
   gt_worm_msg     t_worm_msg ;
   gn_wrm_idx      NUMBER := 0 ;
 --
-  /************************************************************************************************
+  /***********************************************************************************************
    * Procedure Name   : prc_chk_param
    * Description      : パラメータチェック(E-01)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_chk_param
     (
       ov_errbuf   OUT NOCOPY VARCHAR2   -- エラー・メッセージ
@@ -629,9 +638,9 @@ AS
     END IF ;
 --
   EXCEPTION
-    -- =============================================================================================
+    -- ============================================================================================
     -- パラメータエラー
-    -- =============================================================================================
+    -- ============================================================================================
     WHEN ex_param_error THEN
       lv_errmsg := xxcmn_common_pkg.get_msg
                     ( iv_application    => gc_appl_sname_wsh
@@ -642,7 +651,7 @@ AS
       ov_errmsg  := lv_errmsg ;
       ov_errbuf  := lv_errmsg ;
       ov_retcode := gv_status_error ;
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -658,13 +667,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_chk_param ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_get_profile
    * Description      : プロファイル取得(E-02)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_get_profile
     (
       ov_errbuf   OUT NOCOPY VARCHAR2   -- エラー・メッセージ
@@ -734,9 +743,9 @@ AS
 -- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
 --
   EXCEPTION
-    -- =============================================================================================
+    -- ============================================================================================
     -- プロファイル取得エラー
-    -- =============================================================================================
+    -- ============================================================================================
     WHEN ex_prof_error THEN
       lv_errmsg := xxcmn_common_pkg.get_msg
                     ( iv_application    => gc_appl_sname_wsh
@@ -749,7 +758,7 @@ AS
       ov_errmsg  := lv_errmsg ;
       ov_errbuf  := lv_errmsg ;
       ov_retcode := gv_status_error ;
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1597,9 +1606,49 @@ AS
     -------------------------------------------------------
     -- パラメータ．部署
     -------------------------------------------------------
+-- 2008/07/16 Add ↓
     lv_where := lv_where
-             || ' AND wsdit2.report_dept = ''' || gr_param.dept_code || ''''
-             ;
+             || ' AND ((wsdit2.report_dept = ''' || gr_param.dept_code_01 || ''')';
+--
+    IF (gr_param.dept_code_02 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_02 || ''')';
+    END IF;
+    IF (gr_param.dept_code_03 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_03 || ''')';
+    END IF;
+    IF (gr_param.dept_code_04 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_04 || ''')';
+    END IF;
+    IF (gr_param.dept_code_05 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_05 || ''')';
+    END IF;
+    IF (gr_param.dept_code_06 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_06 || ''')';
+    END IF;
+    IF (gr_param.dept_code_07 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_07 || ''')';
+    END IF;
+    IF (gr_param.dept_code_08 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_08 || ''')';
+    END IF;
+    IF (gr_param.dept_code_09 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_09 || ''')';
+    END IF;
+    IF (gr_param.dept_code_10 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_10 || ''')';
+    END IF;
+--
+    lv_where := lv_where || ')';
+-- 2008/07/16 Add ↑
 --
     -- ====================================================
     -- ＯＲＤＥＲ ＢＹ句
@@ -2056,6 +2105,8 @@ AS
     lv_item_uom_code        xxwsh_stock_delivery_info_tmp.item_uom_code%TYPE ;
     lv_item_quantity        xxwsh_stock_delivery_info_tmp.item_quantity%TYPE ;
 --
+    lv_eos_wrk              xxwsh_stock_delivery_info_tmp.eos_csv_output%TYPE;
+--
     lv_tok_val              VARCHAR2(50) ;
 --
     -- ==================================================
@@ -2135,9 +2186,9 @@ AS
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
     END IF ;
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- 出荷依頼データ作成
-    -- =============================================================================================
+    -- ============================================================================================
     lv_eos_csv_output := lv_eos_shipped_locat ;   -- ＥＯＳ宛先（ＣＳＶ）
     -------------------------------------------------------
     -- データタイプ：出荷
@@ -2344,9 +2395,17 @@ AS
         -- 移動入庫の作成
         -------------------------------------------------------
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-        -- EOS宛先（入庫倉庫）が設定されている場合
-        IF (gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL) THEN
-          lv_eos_csv_output := lv_eos_shipped_to_locat ;   -- ＥＯＳ宛先（ＣＳＶ）
+        -- EOS宛先（入庫倉庫）が設定されている場合、またはEOS宛先（運送業者）が設定されている場合
+        IF ((gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL)
+         OR (gt_main_data(in_idx).eos_freight_carrier IS NOT NULL)) THEN   -- 2008/07/16 Add
+--
+          -- 2008/07/16 Add
+          IF (gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL) THEN
+            lv_eos_csv_output := lv_eos_shipped_to_locat ;   -- ＥＯＳ宛先（ＣＳＶ）
+          ELSE
+            lv_eos_csv_output := lv_eos_freight_carrier ;    -- ＥＯＳ宛先（ＣＳＶ）
+          END IF;
+          lv_eos_wrk := lv_eos_csv_output;
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
           lv_pallet_sum_quantity := gt_main_data(in_idx).pallet_sum_quantity_in ;
           prc_cre_head_data
@@ -2355,7 +2414,7 @@ AS
              ,iv_data_class           => gc_data_class_mov_n      -- データ種別
              ,iv_pallet_sum_quantity  => lv_pallet_sum_quantity   -- パレット使用枚数
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-             ,iv_eos_shipped_locat    => lv_eos_shipped_to_locat  -- EOS宛先
+             ,iv_eos_shipped_locat    => lv_eos_wrk               -- EOS宛先
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
              ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
              ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
@@ -2387,7 +2446,7 @@ AS
              ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
              ,iv_item_quantity        => lv_item_quantity         -- 品目数量
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-             ,iv_eos_shipped_locat      => lv_eos_shipped_locat     -- EOS宛先
+             ,iv_eos_shipped_locat    => lv_eos_shipped_locat     -- EOS宛先
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
              ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
              ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
@@ -2404,9 +2463,16 @@ AS
         -- 明細データの作成（移動入庫）
         -------------------------------------------------------
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-        -- EOS宛先（入庫倉庫）が設定されている場合
-        IF (gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL) THEN
-          lv_eos_csv_output := lv_eos_shipped_to_locat ;   -- ＥＯＳ宛先（ＣＳＶ）
+        -- EOS宛先（入庫倉庫）が設定されている場合、またはEOS宛先（運送業者）が設定されている場合
+        IF ((gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL)
+         OR (gt_main_data(in_idx).eos_freight_carrier IS NOT NULL)) THEN     -- 2008/07/16 Add
+--
+          IF (gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL) THEN
+            lv_eos_csv_output := lv_eos_shipped_to_locat ;   -- ＥＯＳ宛先（ＣＳＶ）
+          ELSE
+            lv_eos_csv_output := lv_eos_freight_carrier ;    -- ＥＯＳ宛先（ＣＳＶ）
+          END IF;
+          lv_eos_wrk := lv_eos_csv_output;
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
           prc_cre_dtl_data
             (
@@ -2415,7 +2481,7 @@ AS
              ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
              ,iv_item_quantity        => lv_item_quantity         -- 品目数量
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-             ,iv_eos_shipped_locat    => lv_eos_shipped_to_locat  -- EOS宛先
+             ,iv_eos_shipped_locat    => lv_eos_wrk               -- EOS宛先
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
              ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
              ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
@@ -2432,9 +2498,9 @@ AS
 --
     END IF ;
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- 配送依頼データ作成
-    -- =============================================================================================
+    -- ============================================================================================
     lv_eos_csv_output := lv_eos_freight_carrier ;   -- ＥＯＳ宛先（ＣＳＶ）
     IF (   ( lv_eos_freight_carrier IS NOT NULL             )
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
@@ -2443,7 +2509,6 @@ AS
 ***/
        AND ( lv_eos_freight_carrier <> NVL(lv_eos_shipped_locat   ,lv_eos_shipped_to_locat))
        AND ( lv_eos_freight_carrier <> NVL(lv_eos_shipped_to_locat, lv_eos_shipped_locat))) THEN
-
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
       -------------------------------------------------------
       -- データタイプ：出荷
@@ -2459,18 +2524,18 @@ AS
                                 ,gt_main_data(in_idx).item_uom_code ) ;
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
 --
-      -- 入出庫換算単位≠NULLの場合
-      IF (gt_main_data(in_idx).conv_unit IS NOT NULL) THEN
+        -- 入出庫換算単位≠NULLの場合
+        IF (gt_main_data(in_idx).conv_unit IS NOT NULL) THEN
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
-        lv_item_quantity := gt_main_data(in_idx).item_quantity
-                          / gt_main_data(in_idx).case_quantity ;
-        lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+          lv_item_quantity := gt_main_data(in_idx).item_quantity
+                            / gt_main_data(in_idx).case_quantity ;
+          lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
 --
-      -- 入出庫換算単位＝NULLの場合
-      ELSE
-        lv_item_quantity       := gt_main_data(in_idx).item_quantity ;  -- 品目数量
-      END IF;
+        -- 入出庫換算単位＝NULLの場合
+        ELSE
+          lv_item_quantity       := gt_main_data(in_idx).item_quantity ;  -- 品目数量
+        END IF;
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
 --
         -------------------------------------------------------
@@ -3359,15 +3424,15 @@ AS
                     || re_out_data.request_no               || ','    -- 依頼No
                     || re_out_data.reserve                  || ','    -- 予備
                     || re_out_data.head_sales_branch        || ','    -- 拠点コード
-                    || re_out_data.head_sales_branch_name   || ','    -- 管轄拠点名称
+                    || REPLACE(re_out_data.head_sales_branch_name,',') || ','    -- 管轄拠点名称
                     || re_out_data.shipped_locat_code       || ','    -- 出庫倉庫コード
-                    || re_out_data.shipped_locat_name       || ','    -- 出庫倉庫名称
+                    || REPLACE(re_out_data.shipped_locat_name,',')     || ','    -- 出庫倉庫名称
                     || re_out_data.ship_to_locat_code       || ','    -- 入庫倉庫コード
-                    || re_out_data.ship_to_locat_name       || ','    -- 入庫倉庫名称
+                    || REPLACE(re_out_data.ship_to_locat_name,',')     || ','    -- 入庫倉庫名称
                     || re_out_data.freight_carrier_code     || ','    -- 運送業者コード
-                    || re_out_data.freight_carrier_name     || ','    -- 運送業者名
+                    || REPLACE(re_out_data.freight_carrier_name,',')   || ','    -- 運送業者名
                     || re_out_data.deliver_to               || ','    -- 配送先コード
-                    || re_out_data.deliver_to_name          || ','    -- 配送先名
+                    || REPLACE(re_out_data.deliver_to_name,',')        || ','    -- 配送先名
                     || TO_CHAR( re_out_data.schedule_ship_date   , 'YYYY/MM/DD' ) || ','
                     || TO_CHAR( re_out_data.schedule_arrival_date, 'YYYY/MM/DD' ) || ','
                     || re_out_data.shipping_method_code     || ','    -- 配送区分
@@ -3377,7 +3442,7 @@ AS
                     || re_out_data.arrival_time_from        || ','    -- 着荷時間指定(FROM)
                     || re_out_data.arrival_time_to          || ','    -- 着荷時間指定(TO)
                     || re_out_data.cust_po_number           || ','    -- 顧客発注番号
-                    || re_out_data.description              || ','    -- 摘要
+                    || REPLACE(re_out_data.description,',')            || ','    -- 摘要
                     || re_out_data.status                   || ','    -- ステータス
                     || re_out_data.freight_charge_class     || ','    -- 運賃区分
                     || re_out_data.pallet_sum_quantity      || ','    -- パレット使用枚数
@@ -3387,7 +3452,7 @@ AS
                     || re_out_data.reserve4                 || ','    -- 予備４
                     || re_out_data.report_dept              || ','    -- 報告部署
                     || re_out_data.item_code                || ','    -- 品目コード
-                    || re_out_data.item_name                || ','    -- 品目名
+                    || REPLACE(re_out_data.item_name,',')              || ','    -- 品目名
                     || re_out_data.item_uom_code            || ','    -- 品目単位
                     || re_out_data.item_quantity            || ','    -- 品目数量
                     || re_out_data.lot_no                   || ','    -- ロット番号
@@ -3674,14 +3739,23 @@ AS
    **********************************************************************************/
   PROCEDURE submain
     (
-      iv_dept_code        IN  VARCHAR2          -- 01 : 部署
-     ,iv_fix_class        IN  VARCHAR2          -- 02 : 予定確定区分
-     ,iv_date_cutoff      IN  VARCHAR2          -- 03 : 締め実施日
-     ,iv_cutoff_from      IN  VARCHAR2          -- 04 : 締め実施時間From
-     ,iv_cutoff_to        IN  VARCHAR2          -- 05 : 締め実施時間To
-     ,iv_date_fix         IN  VARCHAR2          -- 06 : 確定通知実施日
-     ,iv_fix_from         IN  VARCHAR2          -- 07 : 確定通知実施時間From
-     ,iv_fix_to           IN  VARCHAR2          -- 08 : 確定通知実施時間To
+      iv_dept_code_01     IN  VARCHAR2          -- 01 : 部署_01
+     ,iv_dept_code_02     IN  VARCHAR2          -- 02 : 部署_02(2008/07/16 Add)
+     ,iv_dept_code_03     IN  VARCHAR2          -- 03 : 部署_03(2008/07/16 Add)
+     ,iv_dept_code_04     IN  VARCHAR2          -- 04 : 部署_04(2008/07/16 Add)
+     ,iv_dept_code_05     IN  VARCHAR2          -- 05 : 部署_05(2008/07/16 Add)
+     ,iv_dept_code_06     IN  VARCHAR2          -- 06 : 部署_06(2008/07/16 Add)
+     ,iv_dept_code_07     IN  VARCHAR2          -- 07 : 部署_07(2008/07/16 Add)
+     ,iv_dept_code_08     IN  VARCHAR2          -- 08 : 部署_08(2008/07/16 Add)
+     ,iv_dept_code_09     IN  VARCHAR2          -- 09 : 部署_09(2008/07/16 Add)
+     ,iv_dept_code_10     IN  VARCHAR2          -- 10 : 部署_10(2008/07/16 Add)
+     ,iv_fix_class        IN  VARCHAR2          -- 11 : 予定確定区分
+     ,iv_date_cutoff      IN  VARCHAR2          -- 12 : 締め実施日
+     ,iv_cutoff_from      IN  VARCHAR2          -- 13 : 締め実施時間From
+     ,iv_cutoff_to        IN  VARCHAR2          -- 14 : 締め実施時間To
+     ,iv_date_fix         IN  VARCHAR2          -- 15 : 確定通知実施日
+     ,iv_fix_from         IN  VARCHAR2          -- 16 : 確定通知実施時間From
+     ,iv_fix_to           IN  VARCHAR2          -- 17 : 確定通知実施時間To
      ,ov_errbuf           OUT NOCOPY VARCHAR2   -- エラー・メッセージ
      ,ov_retcode          OUT NOCOPY VARCHAR2   -- リターン・コード
      ,ov_errmsg           OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ
@@ -3732,14 +3806,23 @@ AS
     --------------------------------------------------
     -- パラメータ格納
     --------------------------------------------------
-    gr_param.dept_code   := iv_dept_code ;                          -- 01 : 部署
-    gr_param.fix_class   := iv_fix_class ;                          -- 02 : 予定確定区分
-    gr_param.date_cutoff := SUBSTR( iv_date_cutoff, 1, 10 ) ;       -- 03 : 締め実施日
-    gr_param.cutoff_from := NVL( iv_cutoff_from, gc_time_min ) ;    -- 04 : 締め実施時間From
-    gr_param.cutoff_to   := NVL( iv_cutoff_to  , gc_time_max ) ;    -- 05 : 締め実施時間To
-    gr_param.date_fix    := SUBSTR( iv_date_fix   , 1, 10 ) ;       -- 06 : 確定通知実施日
-    gr_param.fix_from    := NVL( iv_fix_from, gc_time_min ) ;       -- 07 : 確定通知実施時間From
-    gr_param.fix_to      := NVL( iv_fix_to  , gc_time_max ) ;       -- 08 : 確定通知実施時間To
+    gr_param.dept_code_01 := iv_dept_code_01 ;                      -- 01 : 部署_01
+    gr_param.dept_code_02 := iv_dept_code_02 ;                      -- 02 : 部署_02(2008/07/16 Add)
+    gr_param.dept_code_03 := iv_dept_code_03 ;                      -- 03 : 部署_03(2008/07/16 Add)
+    gr_param.dept_code_04 := iv_dept_code_04 ;                      -- 04 : 部署_04(2008/07/16 Add)
+    gr_param.dept_code_05 := iv_dept_code_05 ;                      -- 05 : 部署_05(2008/07/16 Add)
+    gr_param.dept_code_06 := iv_dept_code_06 ;                      -- 06 : 部署_06(2008/07/16 Add)
+    gr_param.dept_code_07 := iv_dept_code_07 ;                      -- 07 : 部署_07(2008/07/16 Add)
+    gr_param.dept_code_08 := iv_dept_code_08 ;                      -- 08 : 部署_08(2008/07/16 Add)
+    gr_param.dept_code_09 := iv_dept_code_09 ;                      -- 09 : 部署_09(2008/07/16 Add)
+    gr_param.dept_code_10 := iv_dept_code_10 ;                      -- 10 : 部署_10(2008/07/16 Add)
+    gr_param.fix_class   := iv_fix_class ;                          -- 11 : 予定確定区分
+    gr_param.date_cutoff := SUBSTR( iv_date_cutoff, 1, 10 ) ;       -- 12 : 締め実施日
+    gr_param.cutoff_from := NVL( iv_cutoff_from, gc_time_min ) ;    -- 13 : 締め実施時間From
+    gr_param.cutoff_to   := NVL( iv_cutoff_to  , gc_time_max ) ;    -- 14 : 締め実施時間To
+    gr_param.date_fix    := SUBSTR( iv_date_fix   , 1, 10 ) ;       -- 15 : 確定通知実施日
+    gr_param.fix_from    := NVL( iv_fix_from, gc_time_min ) ;       -- 16 : 確定通知実施時間From
+    gr_param.fix_to      := NVL( iv_fix_to  , gc_time_max ) ;       -- 17 : 確定通知実施時間To
 --
     gr_param.cutoff_from := ' ' || gr_param.cutoff_from || ':00' ;
     gr_param.cutoff_to   := ' ' || gr_param.cutoff_to   || ':00' ;
@@ -3990,14 +4073,23 @@ AS
     (
       errbuf              OUT NOCOPY VARCHAR2   -- エラー・メッセージ  --# 固定 #
      ,retcode             OUT NOCOPY VARCHAR2   -- リターン・コード    --# 固定 #
-     ,iv_dept_code        IN  VARCHAR2          -- 01 : 部署
-     ,iv_fix_class        IN  VARCHAR2          -- 02 : 予定確定区分
-     ,iv_date_cutoff      IN  VARCHAR2          -- 03 : 締め実施日
-     ,iv_cutoff_from      IN  VARCHAR2          -- 04 : 締め実施時間From
-     ,iv_cutoff_to        IN  VARCHAR2          -- 05 : 締め実施時間To
-     ,iv_date_fix         IN  VARCHAR2          -- 06 : 確定通知実施日
-     ,iv_fix_from         IN  VARCHAR2          -- 07 : 確定通知実施時間From
-     ,iv_fix_to           IN  VARCHAR2          -- 08 : 確定通知実施時間To
+     ,iv_dept_code_01     IN  VARCHAR2          -- 01 : 部署_01
+     ,iv_dept_code_02     IN  VARCHAR2          -- 02 : 部署_02(2008/07/16 Add)
+     ,iv_dept_code_03     IN  VARCHAR2          -- 03 : 部署_03(2008/07/16 Add)
+     ,iv_dept_code_04     IN  VARCHAR2          -- 04 : 部署_04(2008/07/16 Add)
+     ,iv_dept_code_05     IN  VARCHAR2          -- 05 : 部署_05(2008/07/16 Add)
+     ,iv_dept_code_06     IN  VARCHAR2          -- 06 : 部署_06(2008/07/16 Add)
+     ,iv_dept_code_07     IN  VARCHAR2          -- 07 : 部署_07(2008/07/16 Add)
+     ,iv_dept_code_08     IN  VARCHAR2          -- 08 : 部署_08(2008/07/16 Add)
+     ,iv_dept_code_09     IN  VARCHAR2          -- 09 : 部署_09(2008/07/16 Add)
+     ,iv_dept_code_10     IN  VARCHAR2          -- 10 : 部署_10(2008/07/16 Add)
+     ,iv_fix_class        IN  VARCHAR2          -- 11 : 予定確定区分
+     ,iv_date_cutoff      IN  VARCHAR2          -- 12 : 締め実施日
+     ,iv_cutoff_from      IN  VARCHAR2          -- 13 : 締め実施時間From
+     ,iv_cutoff_to        IN  VARCHAR2          -- 14 : 締め実施時間To
+     ,iv_date_fix         IN  VARCHAR2          -- 15 : 確定通知実施日
+     ,iv_fix_from         IN  VARCHAR2          -- 16 : 確定通知実施時間From
+     ,iv_fix_to           IN  VARCHAR2          -- 17 : 確定通知実施時間To
   )
 --
 --###########################  固定部 START   ###########################
@@ -4058,14 +4150,23 @@ AS
     -- ===============================================
     submain
       (
-        iv_dept_code        => iv_dept_code    -- 01 : 部署
-       ,iv_fix_class        => iv_fix_class    -- 02 : 予定確定区分
-       ,iv_date_cutoff      => iv_date_cutoff  -- 03 : 締め実施日
-       ,iv_cutoff_from      => iv_cutoff_from  -- 04 : 締め実施時間From
-       ,iv_cutoff_to        => iv_cutoff_to    -- 05 : 締め実施時間To
-       ,iv_date_fix         => iv_date_fix     -- 06 : 確定通知実施日
-       ,iv_fix_from         => iv_fix_from     -- 07 : 確定通知実施時間From
-       ,iv_fix_to           => iv_fix_to       -- 08 : 確定通知実施時間To
+        iv_dept_code_01     => iv_dept_code_01 -- 01 : 部署_01
+       ,iv_dept_code_02     => iv_dept_code_02 -- 02 : 部署_02(2008/07/16 Add)
+       ,iv_dept_code_03     => iv_dept_code_03 -- 03 : 部署_03(2008/07/16 Add)
+       ,iv_dept_code_04     => iv_dept_code_04 -- 04 : 部署_04(2008/07/16 Add)
+       ,iv_dept_code_05     => iv_dept_code_05 -- 05 : 部署_05(2008/07/16 Add)
+       ,iv_dept_code_06     => iv_dept_code_06 -- 06 : 部署_06(2008/07/16 Add)
+       ,iv_dept_code_07     => iv_dept_code_07 -- 07 : 部署_07(2008/07/16 Add)
+       ,iv_dept_code_08     => iv_dept_code_08 -- 08 : 部署_08(2008/07/16 Add)
+       ,iv_dept_code_09     => iv_dept_code_09 -- 09 : 部署_09(2008/07/16 Add)
+       ,iv_dept_code_10     => iv_dept_code_10 -- 10 : 部署_10(2008/07/16 Add)
+       ,iv_fix_class        => iv_fix_class    -- 11 : 予定確定区分
+       ,iv_date_cutoff      => iv_date_cutoff  -- 12 : 締め実施日
+       ,iv_cutoff_from      => iv_cutoff_from  -- 13 : 締め実施時間From
+       ,iv_cutoff_to        => iv_cutoff_to    -- 14 : 締め実施時間To
+       ,iv_date_fix         => iv_date_fix     -- 15 : 確定通知実施日
+       ,iv_fix_from         => iv_fix_from     -- 16 : 確定通知実施時間From
+       ,iv_fix_to           => iv_fix_to       -- 17 : 確定通知実施時間To
        ,ov_errbuf           => lv_errbuf       -- エラー・メッセージ
        ,ov_retcode          => lv_retcode      -- リターン・コード
        ,ov_errmsg           => lv_errmsg       -- ユーザー・エラー・メッセージ
@@ -4102,7 +4203,16 @@ AS
     -- 入力パラメータ
     -------------------------------------------------------
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '入力パラメータ' );
-    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署　　　　　　　　：' || iv_dept_code   ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_01 　　　　　　：' || iv_dept_code_01   ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_02 　　　　　　：' || iv_dept_code_02   ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_03 　　　　　　：' || iv_dept_code_03   ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_04 　　　　　　：' || iv_dept_code_04   ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_05 　　　　　　：' || iv_dept_code_05   ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_06 　　　　　　：' || iv_dept_code_06   ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_07 　　　　　　：' || iv_dept_code_07   ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_08 　　　　　　：' || iv_dept_code_08   ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_09 　　　　　　：' || iv_dept_code_09   ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_10 　　　　　　：' || iv_dept_code_10   ) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　予定確定区分　　　　：' || iv_fix_class   ) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　締め実施日　　　　　：' || iv_date_cutoff ) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　締め実施時間From　　：' || iv_cutoff_from ) ;

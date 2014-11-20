@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,8 @@ AS
  *  2008/06/19    1.5   M.Nomura         システムテスト 不具合対応#193
  *  2008/06/27    1.6   M.Nomura         システムテスト 不具合対応#303
  *  2008/07/04    1.7   M.Nomura         システムテスト 不具合対応#193 2回目
+ *  2008/07/17    1.8   Oracle 山根 一浩 I_S_001,I_S_192,T_S_443,指摘240対応
+ *  2008/07/22    1.9   N.Fukuda         I_S_001対応(予備1を小口/引取区分で使用する)
  *
  *****************************************************************************************/
 --
@@ -84,16 +86,17 @@ AS
 --
 --################################  固定部 END   ##################################
 --
-  -- ===============================================================================================
+  -- ==============================================================================================
   -- ユーザー定義例外
-  -- ===============================================================================================
+  -- ==============================================================================================
   -- ロック取得例外
   ex_lock_error    EXCEPTION ;
+  file_exists_expt EXCEPTION ;
   PRAGMA EXCEPTION_INIT( ex_lock_error, -54 ) ;
 --
-  -- ===============================================================================================
+  -- ==============================================================================================
   -- グローバル定数
-  -- ===============================================================================================
+  -- ==============================================================================================
   --------------------------------------------------
   -- パッケージ名
   --------------------------------------------------
@@ -128,6 +131,11 @@ AS
   -- 小口区分
   gc_small_method_y     CONSTANT VARCHAR2(1) := '1' ;   -- 小口
   gc_small_method_n     CONSTANT VARCHAR2(1) := '0' ;   -- 小口以外
+  -- 2008/07/22 Start
+  -- 小口/引取区分（予備１）
+  gc_small_class        CONSTANT VARCHAR2(1) := '1' ;   -- 小口
+  gc_takeback_class     CONSTANT VARCHAR2(1) := '2' ;   -- 引取
+  -- 2008/07/22 End
   -- Ｙ／Ｎフラグ
   gc_yes_no_y           CONSTANT VARCHAR2(1) := 'Y' ;   -- Ｙ
   gc_yes_no_n           CONSTANT VARCHAR2(1) := 'N' ;   -- Ｎ
@@ -227,9 +235,9 @@ AS
   gc_time_min               CONSTANT VARCHAR2(5) := '00:00' ;   -- 時間最小値
   gc_time_max               CONSTANT VARCHAR2(5) := '23:59' ;   -- 時間最大値
 --
-  -- ===============================================================================================
+  -- ==============================================================================================
   -- グローバル変数
-  -- ===============================================================================================
+  -- ==============================================================================================
   gd_effective_date   DATE ;    -- マスタ絞込み日付
   gd_date_from        DATE ;    -- 基準日付From
   gd_date_to          DATE ;    -- 基準日付To
@@ -240,6 +248,7 @@ AS
   gn_prof_del_date            NUMBER ;          -- 削除基準日数
   gv_prof_put_file_name       VARCHAR2(100) ;   -- 出力ファイル名
   gv_prof_put_file_path       VARCHAR2(100) ;   -- 出力ファイルディレクトリ
+  gv_prof_type_plan           VARCHAR2(100) ;   -- 引取変更 --2008/07/22 ADD
 --
   gr_outbound_rec     xxcmn_common_pkg.outbound_rec ;   -- ファイル情報のレコードの定義
 --
@@ -262,18 +271,27 @@ AS
   gv_debug_txt                VARCHAR2(1000) ;
   gv_debug_cnt                NUMBER DEFAULT 0 ;
 --
-  -- ===============================================================================================
+  -- ==============================================================================================
   -- レコード型宣言
-  -- ===============================================================================================
+  -- ==============================================================================================
   --------------------------------------------------
   -- 入力パラメータ格納用
   --------------------------------------------------
   TYPE rec_param_data  IS RECORD
     (
-      dept_code         VARCHAR2(4)   -- 01 : 部署
-     ,date_fix          VARCHAR2(20)  -- 02 : 確定通知実施日
-     ,fix_from          VARCHAR2(10)  -- 03 : 確定通知実施時間From
-     ,fix_to            VARCHAR2(10)  -- 04 : 確定通知実施時間To
+      dept_code_01      VARCHAR2(4)   -- 01 : 部署
+     ,dept_code_02      VARCHAR2(4)   -- 02 : 部署(2008/07/17 Add)
+     ,dept_code_03      VARCHAR2(4)   -- 03 : 部署(2008/07/17 Add)
+     ,dept_code_04      VARCHAR2(4)   -- 04 : 部署(2008/07/17 Add)
+     ,dept_code_05      VARCHAR2(4)   -- 05 : 部署(2008/07/17 Add)
+     ,dept_code_06      VARCHAR2(4)   -- 06 : 部署(2008/07/17 Add)
+     ,dept_code_07      VARCHAR2(4)   -- 07 : 部署(2008/07/17 Add)
+     ,dept_code_08      VARCHAR2(4)   -- 08 : 部署(2008/07/17 Add)
+     ,dept_code_09      VARCHAR2(4)   -- 09 : 部署(2008/07/17 Add)
+     ,dept_code_10      VARCHAR2(4)   -- 10 : 部署(2008/07/17 Add)
+     ,date_fix          VARCHAR2(20)  -- 11 : 確定通知実施日
+     ,fix_from          VARCHAR2(10)  -- 12 : 確定通知実施時間From
+     ,fix_to            VARCHAR2(10)  -- 13 : 確定通知実施時間To
     ) ;
   gr_param              rec_param_data ;
 --
@@ -326,6 +344,9 @@ AS
      ,out_whse_inout_div        xxcmn_item_locations_v.whse_inside_outside_div%TYPE   -- 出 倉庫 内外倉庫区分
      ,in_whse_inout_div         xxcmn_item_locations_v.whse_inside_outside_div%TYPE   -- 入 倉庫 内外倉庫区分
 -- ##### 20080619 1.5 ST不具合#193 END   #####
+-- 2008/07/22 Start
+     ,reserve1         xxwsh_hht_stock_deliv_info_tmp.reserve1%TYPE   -- 小口/引取区分（予備１）
+-- 2008/07/22 End
     ) ;
   TYPE tab_main_data IS TABLE OF rec_main_data INDEX BY BINARY_INTEGER ;
   gt_main_data  tab_main_data ;
@@ -484,7 +505,7 @@ AS
   /************************************************************************************************
    * Procedure Name   : prc_chk_param
    * Description      : パラメータチェック(F-01)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_chk_param
     (
       ov_errbuf   OUT NOCOPY VARCHAR2   -- エラー・メッセージ
@@ -541,9 +562,9 @@ AS
     END IF ;
 --
   EXCEPTION
-    -- =============================================================================================
+    -- ============================================================================================
     -- パラメータエラー
-    -- =============================================================================================
+    -- ============================================================================================
     WHEN ex_param_error THEN
       lv_errmsg := xxcmn_common_pkg.get_msg
                     ( iv_application    => gc_appl_sname_wsh
@@ -554,7 +575,7 @@ AS
       ov_errmsg  := lv_errmsg ;
       ov_errbuf  := lv_errmsg ;
       ov_retcode := gv_status_error ;
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -570,13 +591,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_chk_param ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_get_profile
    * Description      : プロファイル取得(F-02)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_get_profile
     (
       ov_errbuf   OUT NOCOPY VARCHAR2   -- エラー・メッセージ
@@ -601,6 +622,7 @@ AS
     lc_prof_name_period       CONSTANT VARCHAR2(50) := 'XXWSH_PURGE_PERIOD_601' ;
     lc_prof_name_file_name    CONSTANT VARCHAR2(50) := 'XXWSH_OB_IF_FILENAME_601F' ;
     lc_prof_name_file_path    CONSTANT VARCHAR2(50) := 'XXWSH_OB_IF_DEST_PATH_601F' ;
+    lc_prof_name_type_plan    CONSTANT VARCHAR2(50) := 'XXWSH_TRAN_TYPE_PLAN' ;  -- 2008/07/22 ADD
 --
     lc_msg_code               CONSTANT VARCHAR2(50) := 'APP-XXWSH-11953' ;
     lc_tok_name               CONSTANT VARCHAR2(50) := 'PROF_NAME' ;
@@ -610,6 +632,10 @@ AS
         := 'XXWSH:CSVファイル名_HHT入出庫配車確定情報抽出' ;
     lc_tok_val_path           CONSTANT VARCHAR2(100)
         := 'XXWSH:CSVファイル出力先ディレクトリパス_HHT入出庫配車確定情報抽出' ;
+    -- 2008/07/22 Start
+    lc_tok_val_type_plan      CONSTANT VARCHAR2(100)
+        := 'XXWSH:引取変更' ;
+    -- 2008/07/22 End
 --
     -- ==================================================
     -- 変数宣言
@@ -656,11 +682,22 @@ AS
       lv_toc_val := lc_tok_val_path ;
       RAISE ex_prof_error ;
     END IF ;
+    --
+    -- 2008/07/22 Start
+    -------------------------------------------------------
+    -- 引取変更
+    -------------------------------------------------------
+    gv_prof_type_plan := FND_PROFILE.VALUE( lc_prof_name_type_plan ) ;
+    IF ( gv_prof_type_plan IS NULL ) THEN
+      lv_toc_val := lc_tok_val_type_plan ;
+      RAISE ex_prof_error ;
+    END IF ;
+    -- 2008/07/22 End
 --
   EXCEPTION
-    -- =============================================================================================
+    -- ============================================================================================
     -- プロファイル取得エラー
-    -- =============================================================================================
+    -- ============================================================================================
     WHEN ex_prof_error THEN
       lv_errmsg := xxcmn_common_pkg.get_msg
                     ( iv_application    => gc_appl_sname_wsh
@@ -671,7 +708,7 @@ AS
       ov_errmsg  := lv_errmsg ;
       ov_errbuf  := lv_errmsg ;
       ov_retcode := gv_status_error ;
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -687,13 +724,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_get_profile ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_del_temp_data
    * Description      : データ削除(F-03)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_del_temp_data
     (
       ov_errbuf   OUT NOCOPY VARCHAR2   -- エラー・メッセージ
@@ -768,9 +805,9 @@ AS
     WHERE TRUNC( last_update_date ) <= TRUNC( SYSDATE ) - gn_prof_del_date ;
 --
   EXCEPTION
-    -- =============================================================================================
+    -- ============================================================================================
     -- ロック取得エラー
-    -- =============================================================================================
+    -- ============================================================================================
     WHEN ex_lock_error THEN
       -- エラーメッセージ取得
       lv_errmsg  := xxcmn_common_pkg.get_msg
@@ -781,7 +818,7 @@ AS
       ov_errmsg  := lv_errmsg ;
       ov_errbuf  := lv_errmsg ;
       ov_retcode := gv_status_error ;
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -797,13 +834,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_del_temp_data ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_get_main_data
    * Description      : メインデータ抽出(F-04)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_get_main_data
     (
       ov_errbuf   OUT NOCOPY VARCHAR2   -- エラー・メッセージ
@@ -876,11 +913,12 @@ AS
             ,out_whse_inout_div               -- 42:内外倉庫区分：出
             ,in_whse_inout_div                -- 41:内外倉庫区分：入
 -- ##### 20080619 1.5 ST不具合#193 END   #####
+            ,reserve1                         -- 43:小口/引取区分（予備１）
       FROM
         (
-        -- =========================================================================================
+        -- ========================================================================================
         -- 出荷データＳＱＬ
-        -- =========================================================================================
+        -- ========================================================================================
         SELECT xola.order_line_number             AS line_number
               ,xola.order_line_id                 AS line_id
               ,xoha.prev_notif_status             AS prev_notif_status
@@ -942,9 +980,18 @@ AS
               ,NULL                                 AS out_whse_inout_div   -- 内外倉庫区分：出
               ,NULL                                 AS in_whse_inout_div    -- 内外倉庫区分：入
 -- ##### 20080619 1.5 ST不具合#193 END   #####
+-- 2008/07/22 Start
+              ,CASE xottv.transaction_type_name
+                 WHEN gv_prof_type_plan THEN gc_takeback_class       --引取
+                 ELSE                  gc_small_class                --小口
+               END                                AS reserve1        -- 小口/引取区分（予備１）
+-- 2008/07/22 END
         FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
             ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
-            ,oe_transaction_types_all   otta      -- 受注タイプ
+            -- 2008/07/22 Start
+            --,oe_transaction_types_all   otta      -- 受注タイプ
+            ,xxwsh_oe_transaction_types2_v   xottv      -- 受注タイプ情報View２
+            -- 2008/07/22 End
             ,xxcmn_item_locations_v     xil       -- OPM保管場所情報VIEW
             ,xxcmn_carriers2_v          xc        -- 運送業者情報VIEW2
             ,xxcmn_party_sites2_v       xps       -- パーティサイト情報VIEW2（配送先）
@@ -962,10 +1009,10 @@ AS
               gd_effective_date       BETWEEN xim.start_date_active
                                       AND     NVL( xim.end_date_active, gd_effective_date )
         AND   xola.shipping_item_code = xim.item_no
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 受注明細
         AND   xoha.order_header_id = xola.order_header_id
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 配送配車計画
 -- M.HOKKANJI Ver1.2 START
 /*
@@ -980,7 +1027,7 @@ AS
         AND   xcs.delivery_type    = xlv.lookup_code(+)
         AND   xoha.delivery_no     = xcs.delivery_no(+)
 -- M.HOKKANJI Ver1.2 END
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 配送先
         AND   gd_effective_date  BETWEEN xp.start_date_active
                                  AND     NVL( xp.end_date_active, gd_effective_date )
@@ -988,7 +1035,7 @@ AS
         AND   gd_effective_date  BETWEEN xps.start_date_active
                                  AND     NVL( xps.end_date_active, gd_effective_date )
         AND   xoha.deliver_to_id = xps.party_site_id
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 運送業者
 -- M.HOKKANJI Ver1.2 START
 --        AND   gd_effective_date BETWEEN xc.start_date_active
@@ -998,15 +1045,19 @@ AS
                                 AND     NVL( xc.end_date_active(+), gd_effective_date )
         AND   xoha.career_id    = xc.party_id(+)
 -- M.HOKKANJI Ver1.2 END
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 保管場所
         AND   xil.whse_inside_outside_div = gc_whse_io_div_i            -- 内部倉庫
         AND   xoha.deliver_from_id        = xil.inventory_location_id
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 受注タイプ
-        AND   otta.attribute1    = gc_sp_class_ship                     -- 出荷依頼
-        AND   xoha.order_type_id = otta.transaction_type_id
-        --------------------------------------------------------------------------------------------
+        -- 2008/07/22 Start
+        --AND   otta.attribute1    = gc_sp_class_ship                     -- 出荷依頼
+        --AND   xoha.order_type_id = otta.transaction_type_id
+        AND   xottv.shipping_shikyu_class  = gc_sp_class_ship                     -- 出荷依頼
+        AND   xoha.order_type_id = xottv.transaction_type_id
+        -- 2008/07/22 End
+        -------------------------------------------------------------------------------------------
         -- 受注ヘッダアドオン
         AND   NOT EXISTS
                 ( SELECT 1
@@ -1038,15 +1089,24 @@ AS
         AND   xoha.notif_date           BETWEEN gd_date_from AND gd_date_to
         AND   xoha.latest_external_flag = gc_yes_no_y             -- 最新
         AND   xoha.prod_class           = gc_prod_class_r         -- リーフ
-        AND   xoha.instruction_dept     = gr_param.dept_code      -- 指示部署
+        AND   ((xoha.instruction_dept   = gr_param.dept_code_01)  -- 指示部署
+         OR   ((gr_param.dept_code_02 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_02))
+         OR   ((gr_param.dept_code_03 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_03))
+         OR   ((gr_param.dept_code_04 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_04))
+         OR   ((gr_param.dept_code_05 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_05))
+         OR   ((gr_param.dept_code_06 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_06))
+         OR   ((gr_param.dept_code_07 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_07))
+         OR   ((gr_param.dept_code_08 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_08))
+         OR   ((gr_param.dept_code_09 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_09))
+         OR   ((gr_param.dept_code_10 IS NULL) OR (xoha.instruction_dept = gr_param.dept_code_10)))
         AND   xola.order_line_id        = imld.mov_line_id (+)    -- ロット詳細ID
 -- ##### 20080704 Ver.1.7 ST障害No193 2回目 START #####
         AND   gc_doc_type_ship          = imld.document_type_code (+)   -- 文書タイプ
 -- ##### 20080704 Ver.1.7 ST障害No193 2回目 END   #####
         UNION ALL
-        -- =========================================================================================
+        -- ========================================================================================
         -- 移動データＳＱＬ
-        -- =========================================================================================
+        -- ========================================================================================
         SELECT xmril.line_number                  AS line_number
               ,xmril.mov_line_id                  AS line_id
               ,xmrih.prev_notif_status            AS prev_notif_status
@@ -1111,6 +1171,9 @@ AS
               ,xil1.whse_inside_outside_div       AS out_whse_inout_div   -- 内外倉庫区分：出
               ,xil2.whse_inside_outside_div       AS in_whse_inout_div    -- 内外倉庫区分：入
 -- ##### 20080619 1.5 ST不具合#193 END   #####
+-- 2008/07/22 Start
+              ,NULL                               AS reserve1        -- 小口/引取区分（予備１）
+-- 2008/07/22 END
         FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
             ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
             ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
@@ -1124,15 +1187,15 @@ AS
             ,xxcmn_item_mst2_v              xim       -- OPM品目情報VIEW2
             ,xxinv_mov_lot_details         imld       -- 移動ロット詳細
         WHERE
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 品目
               gd_effective_date   BETWEEN xim.start_date_active
                                   AND     NVL( xim.end_date_active, gd_effective_date )
         AND   xmril.item_id       = xim.item_id
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 移動依頼指示明細
         AND   xmrih.mov_hdr_id = xmril.mov_hdr_id
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 配送配車計画
 -- M.Hokkanji Ver1.2 START
 --        AND   xlv.lookup_type   = gc_lookup_ship_method
@@ -1144,7 +1207,7 @@ AS
         AND   xlv.lookup_type(+)   = gc_lookup_ship_method
         AND   xcs.delivery_type    = xlv.lookup_code(+)
         AND   xmrih.delivery_no    = xcs.delivery_no(+)
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 運送業者
 --        AND   gd_effective_date BETWEEN xc.start_date_active
 --                                AND     NVL( xc.end_date_active, gd_effective_date )
@@ -1154,13 +1217,13 @@ AS
         AND   xmrih.career_id   = xc.party_id(+)
 -- M.Hokkanji Ver1.2 END
 --
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 保管場所（配送先）
         AND   xmrih.ship_to_locat_id = xil2.inventory_location_id
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
         -- 保管場所（配送元）
         AND   xmrih.shipped_locat_id = xil1.inventory_location_id
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
 -- ##### 20080619 1.5 ST不具合#193 START #####
         AND
         (
@@ -1169,7 +1232,7 @@ AS
           (xil1.whse_inside_outside_div = gc_whse_io_div_i)
         )
 -- ##### 20080619 1.5 ST不具合#193 END   #####
-        --------------------------------------------------------------------------------------------
+        -------------------------------------------------------------------------------------------
 --
         -- 移動依頼指示ヘッダ
         AND   NOT EXISTS
@@ -1207,7 +1270,25 @@ AS
 --        AND   xmrih.product_flg           = gc_yes_no_y             -- 製品識別
         AND   xmrih.product_flg           = gc_product_flg_1        -- 製品識別(製品)
 -- M.Hokkanji Ver1.2 END
-        AND   xmrih.instruction_post_code = gr_param.dept_code      -- 指示部署
+        AND   ((xmrih.instruction_post_code = gr_param.dept_code_01) -- 指示部署
+         OR   ((gr_param.dept_code_02 IS NULL)
+         OR    (xmrih.instruction_post_code = gr_param.dept_code_02))
+         OR   ((gr_param.dept_code_03 IS NULL)
+         OR    (xmrih.instruction_post_code = gr_param.dept_code_03))
+         OR   ((gr_param.dept_code_04 IS NULL)
+         OR    (xmrih.instruction_post_code = gr_param.dept_code_04))
+         OR   ((gr_param.dept_code_05 IS NULL)
+         OR    (xmrih.instruction_post_code = gr_param.dept_code_05))
+         OR   ((gr_param.dept_code_06 IS NULL)
+         OR    (xmrih.instruction_post_code = gr_param.dept_code_06))
+         OR   ((gr_param.dept_code_07 IS NULL)
+         OR    (xmrih.instruction_post_code = gr_param.dept_code_07))
+         OR   ((gr_param.dept_code_08 IS NULL)
+         OR    (xmrih.instruction_post_code = gr_param.dept_code_08))
+         OR   ((gr_param.dept_code_09 IS NULL)
+         OR    (xmrih.instruction_post_code = gr_param.dept_code_09))
+         OR   ((gr_param.dept_code_10 IS NULL)
+         OR    (xmrih.instruction_post_code = gr_param.dept_code_10)))
         AND   xmril.mov_line_id           = imld.mov_line_id (+)    -- ロット詳細ID
 -- ##### 20080704 Ver.1.7 ST障害No193 2回目 START #####
         AND   gc_doc_type_move            = imld.document_type_code (+) -- 文書タイプ
@@ -1240,9 +1321,9 @@ AS
     END IF ;
 --
   EXCEPTION
-    -- =============================================================================================
+    -- ============================================================================================
     -- 対象データなし
-    -- =============================================================================================
+    -- ============================================================================================
     WHEN ex_no_data THEN
       lv_errmsg := xxcmn_common_pkg.get_msg
                     ( iv_application    => gc_appl_sname_wsh
@@ -1252,7 +1333,7 @@ AS
       ov_errbuf  := lv_errmsg ;
       ov_retcode := gv_status_warn ;
 --
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
       IF cu_main%ISOPEN THEN
@@ -1276,13 +1357,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_get_main_data ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_cre_head_data
    * Description      : ヘッダデータ作成
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_cre_head_data
     (
       ir_main_data            IN  rec_main_data
@@ -1349,7 +1430,10 @@ AS
     gt_status(gn_cre_idx)                 := '02' ;                               -- ステータス
     gt_freight_charge_class(gn_cre_idx)   := ir_main_data.freight_charge_class ;  -- 運賃区分
     gt_pallet_sum_quantity(gn_cre_idx)    := iv_pallet_sum_quantity ;             -- ﾊﾟﾚｯﾄ使用枚数
-    gt_reserve1(gn_cre_idx)               := NULL ;                               -- 予備１
+    -- 2008/07/22 Start
+    --gt_reserve1(gn_cre_idx)               := NULL ;                               -- 予備１
+    gt_reserve1(gn_cre_idx)               := ir_main_data.reserve1;                 -- 小口/引取区分（予備１）
+    -- 2008/07/22 End
     gt_reserve2(gn_cre_idx)               := NULL ;                               -- 予備２
     gt_reserve3(gn_cre_idx)               := NULL ;                               -- 予備３
     gt_reserve4(gn_cre_idx)               := NULL ;                               -- 予備４
@@ -1372,7 +1456,7 @@ AS
     gt_data_type(gn_cre_idx)              := ir_main_data.data_type ;             -- データタイプ
 --
   EXCEPTION
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1388,13 +1472,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_cre_head_data ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_cre_dtl_data
    * Description      : 明細データ作成
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_cre_dtl_data
     (
       ir_main_data            IN  rec_main_data
@@ -1557,7 +1641,7 @@ AS
     END IF ;
 --
   EXCEPTION
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1573,13 +1657,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_cre_dtl_data ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_create_ins_data
    * Description      : 通知済情報作成処理(F-05)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_create_ins_data
     (
       in_idx          IN  NUMBER            -- 対象データ配列インデックス
@@ -1628,9 +1712,9 @@ AS
     ov_retcode := gv_status_normal;
 --##### 固定ステータス初期化部 END   #################################
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- エラーハンドリング
-    -- =============================================================================================
+    -- ============================================================================================
     -------------------------------------------------------
     -- ケース入り数チェック
     -------------------------------------------------------
@@ -1644,9 +1728,9 @@ AS
       END IF ;
     END IF ;
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- データタイプ：出荷
-    -- =============================================================================================
+    -- ============================================================================================
     IF ( gt_main_data(in_idx).data_type = gc_data_type_syu_ins ) THEN
       -------------------------------------------------------
       -- 可変項目編集
@@ -1700,9 +1784,9 @@ AS
         RAISE global_api_expt;
       END IF ;
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- データタイプ：移動
-    -- =============================================================================================
+    -- ============================================================================================
     ELSIF ( gt_main_data(in_idx).data_type = gc_data_type_mov_ins ) THEN
       -------------------------------------------------------
       -- 可変項目編集
@@ -1815,9 +1899,9 @@ AS
     END IF ;
 --
   EXCEPTION
-    -- =============================================================================================
+    -- ============================================================================================
     -- ケース入り数エラー
-    -- =============================================================================================
+    -- ============================================================================================
     WHEN ex_case_quant_error THEN
       -- エラーメッセージ取得
       lv_errmsg  := xxcmn_common_pkg.get_msg
@@ -1830,7 +1914,7 @@ AS
       ov_errmsg    := lv_errmsg ;
       ov_errbuf    := lv_errmsg ;
       ov_retcode   := gv_status_error ;
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1846,13 +1930,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_create_ins_data ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_create_can_data
    * Description      : 変更前情報取消データ作成処理(F-06)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_create_can_data
     (
       iv_request_no           IN  xxwsh_stock_delivery_info_tmp.request_no%TYPE
@@ -2001,7 +2085,7 @@ AS
     END LOOP can_data_loop ;
 --
   EXCEPTION
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -2017,13 +2101,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_create_can_data ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_ins_temp_data
    * Description      : 一括登録処理(F-07)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_ins_temp_data
     (
       ov_errbuf               OUT NOCOPY VARCHAR2   -- エラー・メッセージ
@@ -2160,7 +2244,7 @@ AS
         ) ;
 --
   EXCEPTION
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -2176,13 +2260,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_ins_temp_data ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_out_csv_data
    * Description      : ＣＳＶ出力処理(F-08)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_out_csv_data
     (
       ov_errbuf               OUT NOCOPY VARCHAR2   -- エラー・メッセージ
@@ -2210,6 +2294,11 @@ AS
     lc_transfer_branch_no_d CONSTANT VARCHAR2(100) := '20' ;    -- 明細
 -- M.Hokkanji Ver1.2 END
 --
+    -- 2008/07/17 Add ↓
+    lv_file_name    CONSTANT VARCHAR2(200) := 'HHT入出庫配車確定情報ファイル';
+    lv_tkn_name     CONSTANT VARCHAR2(100) := 'NAME';
+    -- 2008/07/17 Add ↑
+--
     -- ==================================================
     -- 変数宣言
     -- ==================================================
@@ -2223,6 +2312,12 @@ AS
 -- M.Hokkanji Ver1.2 START
     lt_new_modify_del_class xxwsh_stock_delivery_info_tmp.new_modify_del_class%TYPE;
 -- M.Hokkanji Ver1.2 END
+--
+    -- 2008/07/17 Add ↓
+    lb_retcd        BOOLEAN;
+    ln_file_size    NUMBER;
+    ln_block_size   NUMBER;
+    -- 2008/07/17 Add ↑
 --
     -- ==================================================
     -- カーソル宣言
@@ -2292,6 +2387,26 @@ AS
     ov_retcode := gv_status_normal;
 --##### 固定ステータス初期化部 END   #################################
 --
+    -- 2008/07/17 Add ↓
+    -- ====================================================
+    -- ＵＴＬファイル存在チェック
+    -- ====================================================
+    UTL_FILE.FGETATTR(gv_prof_put_file_path,
+                      gv_prof_put_file_name,
+                      lb_retcd,
+                      ln_file_size,
+                      ln_block_size);
+--
+    -- ファイル存在
+    IF (lb_retcd) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg('XXCMN',
+                                            'APP-XXCMN-10602',
+                                            lv_tkn_name,
+                                            lv_file_name);
+      lv_errbuf := lv_errmsg;
+      RAISE file_exists_expt;
+    END IF;
+    -- 2008/07/17 Add ↑
     -- ====================================================
     -- ＵＴＬファイルオープン
     -- ====================================================
@@ -2324,15 +2439,15 @@ AS
                   || re_out_data.request_no               || ','  -- 依頼No
                   || re_out_data.reserve                  || ','  -- 予備
                   || re_out_data.head_sales_branch        || ','  -- 拠点コード
-                  || re_out_data.head_sales_branch_name   || ','  -- 管轄拠点名称
+                  || REPLACE(re_out_data.head_sales_branch_name,',')   || ','  -- 管轄拠点名称
                   || re_out_data.shipped_locat_code       || ','  -- 出庫倉庫コード
-                  || re_out_data.shipped_locat_name       || ','  -- 出庫倉庫名称
+                  || REPLACE(re_out_data.shipped_locat_name,',')       || ','  -- 出庫倉庫名称
                   || re_out_data.ship_to_locat_code       || ','  -- 入庫倉庫コード
-                  || re_out_data.ship_to_locat_name       || ','  -- 入庫倉庫名称
+                  || REPLACE(re_out_data.ship_to_locat_name,',')       || ','  -- 入庫倉庫名称
                   || re_out_data.freight_carrier_code     || ','  -- 運送業者コード
-                  || re_out_data.freight_carrier_name     || ','  -- 運送業者名
+                  || REPLACE(re_out_data.freight_carrier_name,',')     || ','  -- 運送業者名
                   || re_out_data.deliver_to               || ','  -- 配送先コード
-                  || re_out_data.deliver_to_name          || ','  -- 配送先名
+                  || REPLACE(re_out_data.deliver_to_name,',')          || ','  -- 配送先名
                   || TO_CHAR( re_out_data.schedule_ship_date   , 'YYYY/MM/DD' ) || ','  -- 発日
                   || TO_CHAR( re_out_data.schedule_arrival_date, 'YYYY/MM/DD' ) || ','  -- 着日
                   || re_out_data.shipping_method_code     || ','  -- 配送区分
@@ -2342,7 +2457,7 @@ AS
                   || re_out_data.arrival_time_from        || ','  -- 着荷時間指定(FROM)
                   || re_out_data.arrival_time_to          || ','  -- 着荷時間指定(TO)
                   || re_out_data.cust_po_number           || ','  -- 顧客発注番号
-                  || re_out_data.description              || ','  -- 摘要
+                  || REPLACE(re_out_data.description,',')              || ','  -- 摘要
                   || re_out_data.status                   || ','  -- ステータス
                   || re_out_data.freight_charge_class     || ','  -- 運賃区分
                   || re_out_data.pallet_sum_quantity      || ','  -- パレット使用枚数
@@ -2352,7 +2467,7 @@ AS
                   || re_out_data.reserve4                 || ','  -- 予備４
                   || re_out_data.report_dept              || ','  -- 報告部署
                   || re_out_data.item_code                || ','  -- 品目コード
-                  || re_out_data.item_name                || ','  -- 品目名
+                  || REPLACE(re_out_data.item_name,',')                || ','  -- 品目名
                   || re_out_data.item_uom_code            || ','  -- 品目単位
                   || re_out_data.item_quantity            || ','  -- 品目数量
                   || re_out_data.lot_no                   || ','                -- ロット番号
@@ -2405,7 +2520,11 @@ AS
     UTL_FILE.FCLOSE( lf_file_hand ) ;
 --
   EXCEPTION
---##### 固定例外処理部 START #######################################################################
+    WHEN file_exists_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -2424,13 +2543,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_out_csv_data ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_ins_out_data
    * Description      : 通知済みデータ登録処理(F-09,F-10)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_ins_out_data
     (
       ov_errbuf               OUT NOCOPY VARCHAR2   -- エラー・メッセージ
@@ -2555,9 +2674,9 @@ AS
     ;
 --
   EXCEPTION
-    -- =============================================================================================
+    -- ============================================================================================
     -- ロック取得エラー
-    -- =============================================================================================
+    -- ============================================================================================
     WHEN ex_lock_error THEN
       -- エラーメッセージ取得
       lv_errmsg  := xxcmn_common_pkg.get_msg
@@ -2568,7 +2687,7 @@ AS
       ov_errmsg  := lv_errmsg ;
       ov_errbuf  := lv_errmsg ;
       ov_retcode := gv_status_error ;
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -2584,13 +2703,13 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_ins_out_data ;
 --
   /************************************************************************************************
    * Procedure Name   : prc_put_err_log
    * Description      : 混載エラーログ出力処理(F-11)
-   ************************************************************************************************/
+   ***********************************************************************************************/
   PROCEDURE prc_put_err_log
     (
       ov_errbuf               OUT NOCOPY VARCHAR2   -- エラー・メッセージ
@@ -2643,20 +2762,20 @@ AS
               ,xxcmn_item_mst2_v          xim     -- OPM品目情報VIEW2
               ,xxcmn_item_categories4_v   xic     -- OPM品目カテゴリ割当VIEW4
           WHERE
-          ------------------------------------------------------------------------------------------
+          -----------------------------------------------------------------------------------------
           -- 品目
-          ------------------------------------------------------------------------------------------
+          -----------------------------------------------------------------------------------------
                 xim.item_id             = xic.item_id
           AND   gd_effective_date       BETWEEN xim.start_date_active
                                         AND     NVL( xim.end_date_active ,gd_effective_date )
           AND   xola.shipping_item_code = xim.item_no
-          ------------------------------------------------------------------------------------------
+          -----------------------------------------------------------------------------------------
           -- 受注明細
-          ------------------------------------------------------------------------------------------
+          -----------------------------------------------------------------------------------------
           AND   xoha.order_header_id = xola.order_header_id
-          ------------------------------------------------------------------------------------------
+          -----------------------------------------------------------------------------------------
           -- 受注ヘッダアドオン
-          ------------------------------------------------------------------------------------------
+          -----------------------------------------------------------------------------------------
           AND   (
                   (   xoha.req_status            = gc_req_status_syu_3    -- 締め済
                   AND xoha.notif_status          = gc_notif_status_c      -- 確定通知済
@@ -2674,7 +2793,16 @@ AS
           AND   xoha.notif_date           BETWEEN gd_date_from AND gd_date_to
           AND   xoha.latest_external_flag = gc_yes_no_y             -- 最新
           AND   xoha.prod_class           = gc_prod_class_r         -- リーフ
-          AND   xoha.instruction_dept     = gr_param.dept_code      -- 指示部署
+          AND   ((xoha.instruction_dept   = gr_param.dept_code_01)  -- 指示部署
+          OR     (xoha.instruction_dept   = NVL(gr_param.dept_code_02,xoha.instruction_dept))
+          OR     (xoha.instruction_dept   = NVL(gr_param.dept_code_03,xoha.instruction_dept))
+          OR     (xoha.instruction_dept   = NVL(gr_param.dept_code_04,xoha.instruction_dept))
+          OR     (xoha.instruction_dept   = NVL(gr_param.dept_code_05,xoha.instruction_dept))
+          OR     (xoha.instruction_dept   = NVL(gr_param.dept_code_06,xoha.instruction_dept))
+          OR     (xoha.instruction_dept   = NVL(gr_param.dept_code_07,xoha.instruction_dept))
+          OR     (xoha.instruction_dept   = NVL(gr_param.dept_code_08,xoha.instruction_dept))
+          OR     (xoha.instruction_dept   = NVL(gr_param.dept_code_09,xoha.instruction_dept))
+          OR     (xoha.instruction_dept   = NVL(gr_param.dept_code_10,xoha.instruction_dept)))
           GROUP BY xoha.delivery_no
                   ,xoha.request_no
           ORDER BY xoha.delivery_no
@@ -2712,7 +2840,7 @@ AS
     END LOOP log_loop ;
 --
   EXCEPTION
---##### 固定例外処理部 START #######################################################################
+--##### 固定例外処理部 START ######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -2728,7 +2856,7 @@ AS
       ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
---##### 固定例外処理部 END   #######################################################################
+--##### 固定例外処理部 END   ######################################################################
   END prc_put_err_log ;
 --
   /**********************************************************************************
@@ -2737,10 +2865,19 @@ AS
    **********************************************************************************/
   PROCEDURE submain
     (
-      iv_dept_code        IN  VARCHAR2          -- 01 : 部署
-     ,iv_date_fix         IN  VARCHAR2          -- 02 : 確定通知実施日
-     ,iv_fix_from         IN  VARCHAR2          -- 03 : 確定通知実施時間From
-     ,iv_fix_to           IN  VARCHAR2          -- 04 : 確定通知実施時間To
+      iv_dept_code_01     IN  VARCHAR2          -- 01 : 部署_01
+     ,iv_dept_code_02     IN  VARCHAR2          -- 02 : 部署_02(2008/07/17 Add)
+     ,iv_dept_code_03     IN  VARCHAR2          -- 03 : 部署_03(2008/07/17 Add)
+     ,iv_dept_code_04     IN  VARCHAR2          -- 04 : 部署_04(2008/07/17 Add)
+     ,iv_dept_code_05     IN  VARCHAR2          -- 05 : 部署_05(2008/07/17 Add)
+     ,iv_dept_code_06     IN  VARCHAR2          -- 06 : 部署_06(2008/07/17 Add)
+     ,iv_dept_code_07     IN  VARCHAR2          -- 07 : 部署_07(2008/07/17 Add)
+     ,iv_dept_code_08     IN  VARCHAR2          -- 08 : 部署_08(2008/07/17 Add)
+     ,iv_dept_code_09     IN  VARCHAR2          -- 09 : 部署_09(2008/07/17 Add)
+     ,iv_dept_code_10     IN  VARCHAR2          -- 10 : 部署_10(2008/07/17 Add)
+     ,iv_date_fix         IN  VARCHAR2          -- 11 : 確定通知実施日
+     ,iv_fix_from         IN  VARCHAR2          -- 12 : 確定通知実施時間From
+     ,iv_fix_to           IN  VARCHAR2          -- 13 : 確定通知実施時間To
      ,ov_errbuf           OUT NOCOPY VARCHAR2   -- エラー・メッセージ
      ,ov_retcode          OUT NOCOPY VARCHAR2   -- リターン・コード
      ,ov_errmsg           OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ
@@ -2778,9 +2915,9 @@ AS
     ov_retcode := gv_status_normal;
 --###########################  固定部 END   ############################
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- 初期処理
-    -- =============================================================================================
+    -- ============================================================================================
     --------------------------------------------------
     -- グローバル変数の初期化
     --------------------------------------------------
@@ -2790,13 +2927,22 @@ AS
     --------------------------------------------------
     -- パラメータ格納
     --------------------------------------------------
-    gr_param.dept_code   := iv_dept_code ;                          -- 01 : 部署
-    gr_param.date_fix    := SUBSTR( iv_date_fix   , 1, 10 ) ;       -- 02 : 確定通知実施日
-    gr_param.fix_from    := NVL( iv_fix_from, gc_time_min ) ;       -- 03 : 確定通知実施時間From
-    gr_param.fix_to      := NVL( iv_fix_to  , gc_time_max ) ;       -- 04 : 確定通知実施時間To
+    gr_param.dept_code_01 := iv_dept_code_01 ;                  -- 01 : 部署_01
+    gr_param.dept_code_02 := iv_dept_code_02 ;                  -- 02 : 部署_02(2008/07/17 Add)
+    gr_param.dept_code_03 := iv_dept_code_03 ;                  -- 03 : 部署_03(2008/07/17 Add)
+    gr_param.dept_code_04 := iv_dept_code_04 ;                  -- 04 : 部署_04(2008/07/17 Add)
+    gr_param.dept_code_05 := iv_dept_code_05 ;                  -- 05 : 部署_05(2008/07/17 Add)
+    gr_param.dept_code_06 := iv_dept_code_06 ;                  -- 06 : 部署_06(2008/07/17 Add)
+    gr_param.dept_code_07 := iv_dept_code_07 ;                  -- 07 : 部署_07(2008/07/17 Add)
+    gr_param.dept_code_08 := iv_dept_code_08 ;                  -- 08 : 部署_08(2008/07/17 Add)
+    gr_param.dept_code_09 := iv_dept_code_09 ;                  -- 09 : 部署_09(2008/07/17 Add)
+    gr_param.dept_code_10 := iv_dept_code_10 ;                  -- 10 : 部署_10(2008/07/17 Add)
+    gr_param.date_fix     := SUBSTR( iv_date_fix   , 1, 10 ) ;  -- 11 : 確定通知実施日
+    gr_param.fix_from     := NVL( iv_fix_from, gc_time_min ) ;  -- 12 : 確定通知実施時間From
+    gr_param.fix_to       := NVL( iv_fix_to  , gc_time_max ) ;  -- 13 : 確定通知実施時間To
 --
-    gr_param.fix_from    := ' ' || gr_param.fix_from    || ':00' ;
-    gr_param.fix_to      := ' ' || gr_param.fix_to      || ':59' ;
+    gr_param.fix_from     := ' ' || gr_param.fix_from    || ':00' ;
+    gr_param.fix_to       := ' ' || gr_param.fix_to      || ':59' ;
 --
     --------------------------------------------------
     -- 基準日の設定
@@ -2815,9 +2961,9 @@ AS
     gn_program_application_id := FND_GLOBAL.PROG_APPL_ID ;      -- ＣＰ・アプリケーションID
     gn_program_id             := FND_GLOBAL.CONC_PROGRAM_ID ;   -- コンカレント・プログラムID
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- F-01 パラメータチェック
-    -- =============================================================================================
+    -- ============================================================================================
     prc_chk_param
       (
         ov_errbuf   => lv_errbuf
@@ -2829,9 +2975,9 @@ AS
       RAISE global_process_expt;
     END IF ;
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- F-02 プロファイル取得
-    -- =============================================================================================
+    -- ============================================================================================
     prc_get_profile
       (
         ov_errbuf   => lv_errbuf
@@ -2843,9 +2989,9 @@ AS
       RAISE global_process_expt;
     END IF ;
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- F-03 データ削除
-    -- =============================================================================================
+    -- ============================================================================================
     prc_del_temp_data
       (
         ov_errbuf   => lv_errbuf
@@ -2857,9 +3003,9 @@ AS
       RAISE global_process_expt;
     END IF ;
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- F-04 メインデータ抽出
-    -- =============================================================================================
+    -- ============================================================================================
     prc_get_main_data
       (
         ov_errbuf   => lv_errbuf
@@ -2882,9 +3028,9 @@ AS
     FOR i IN 1..gt_main_data.COUNT LOOP
       gn_target_cnt := gn_target_cnt + 1 ;
 --
-      ----------------------------------------------------------------------------------------------
+      ---------------------------------------------------------------------------------------------
       -- 依頼Ｎｏブレイクフラグの設定
-      ----------------------------------------------------------------------------------------------
+      ---------------------------------------------------------------------------------------------
       IF ( lv_temp_request_no = gt_main_data(i).request_no ) THEN
         lv_break_flg := gc_yes_no_n ;
       ELSE
@@ -2892,9 +3038,9 @@ AS
         lv_temp_request_no := gt_main_data(i).request_no ;
       END IF ;
 --
-      -- ===========================================================================================
+      -- ==========================================================================================
       -- F-05 通知済情報作成処理
-      -- ===========================================================================================
+      -- ==========================================================================================
       IF ( gt_main_data(i).line_delete_flag = gc_delete_flag_n ) THEN
         prc_create_ins_data
           (
@@ -2910,9 +3056,9 @@ AS
         END IF ;
       END IF ;
 --
-      -- ===========================================================================================
+      -- ==========================================================================================
       -- F-06 変更前情報取消データ作成処理
-      -- ===========================================================================================
+      -- ==========================================================================================
       IF (   ( lv_break_flg                      = gc_yes_no_y       )        -- 依頼Ｎｏブレイク
          AND ( gt_main_data(i).prev_notif_status = gc_notif_status_r ) ) THEN -- 前回通知：再通知要
         prc_create_can_data
@@ -2931,9 +3077,9 @@ AS
 --
     END LOOP main_loop ;
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- F-07 一括登録処理
-    -- =============================================================================================
+    -- ============================================================================================
     prc_ins_temp_data
       (
         ov_errbuf               => lv_errbuf
@@ -2945,9 +3091,9 @@ AS
       RAISE global_process_expt;
     END IF ;
 --
-    -- =============================================================================================
+    -- ============================================================================================
     -- F-08 ＣＳＶ出力処理
-    -- =============================================================================================
+    -- ============================================================================================
     prc_out_csv_data
       (
         ov_errbuf               => lv_errbuf
@@ -2994,9 +3140,9 @@ AS
     END IF ;
 --
   EXCEPTION
-    -- =============================================================================================
+    -- ============================================================================================
     -- 警告処理
-    -- =============================================================================================
+    -- ============================================================================================
     WHEN ex_worn THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := lv_errbuf ;
@@ -3031,7 +3177,16 @@ AS
     (
       errbuf              OUT NOCOPY VARCHAR2   -- エラー・メッセージ  --# 固定 #
      ,retcode             OUT NOCOPY VARCHAR2   -- リターン・コード    --# 固定 #
-     ,iv_dept_code        IN  VARCHAR2          -- 01 : 部署
+     ,iv_dept_code_01     IN  VARCHAR2          -- 01 : 部署_01
+     ,iv_dept_code_02     IN  VARCHAR2          -- 02 : 部署_02(2008/07/17 Add)
+     ,iv_dept_code_03     IN  VARCHAR2          -- 03 : 部署_03(2008/07/17 Add)
+     ,iv_dept_code_04     IN  VARCHAR2          -- 04 : 部署_04(2008/07/17 Add)
+     ,iv_dept_code_05     IN  VARCHAR2          -- 05 : 部署_05(2008/07/17 Add)
+     ,iv_dept_code_06     IN  VARCHAR2          -- 06 : 部署_06(2008/07/17 Add)
+     ,iv_dept_code_07     IN  VARCHAR2          -- 07 : 部署_07(2008/07/17 Add)
+     ,iv_dept_code_08     IN  VARCHAR2          -- 08 : 部署_08(2008/07/17 Add)
+     ,iv_dept_code_09     IN  VARCHAR2          -- 09 : 部署_09(2008/07/17 Add)
+     ,iv_dept_code_10     IN  VARCHAR2          -- 10 : 部署_10(2008/07/17 Add)
      ,iv_date_fix         IN  VARCHAR2          -- 02 : 確定通知実施日
      ,iv_fix_from         IN  VARCHAR2          -- 03 : 確定通知実施時間From
      ,iv_fix_to           IN  VARCHAR2          -- 04 : 確定通知実施時間To
@@ -3095,10 +3250,19 @@ AS
     -- ===============================================
     submain
       (
-        iv_dept_code        => iv_dept_code    -- 01 : 部署
-       ,iv_date_fix         => iv_date_fix     -- 02 : 確定通知実施日
-       ,iv_fix_from         => iv_fix_from     -- 03 : 確定通知実施時間From
-       ,iv_fix_to           => iv_fix_to       -- 04 : 確定通知実施時間To
+        iv_dept_code_01     => iv_dept_code_01 -- 01 : 部署
+       ,iv_dept_code_02     => iv_dept_code_02 -- 02 : 部署(2008/07/17 Add)
+       ,iv_dept_code_03     => iv_dept_code_03 -- 03 : 部署(2008/07/17 Add)
+       ,iv_dept_code_04     => iv_dept_code_04 -- 04 : 部署(2008/07/17 Add)
+       ,iv_dept_code_05     => iv_dept_code_05 -- 05 : 部署(2008/07/17 Add)
+       ,iv_dept_code_06     => iv_dept_code_06 -- 06 : 部署(2008/07/17 Add)
+       ,iv_dept_code_07     => iv_dept_code_07 -- 07 : 部署(2008/07/17 Add)
+       ,iv_dept_code_08     => iv_dept_code_08 -- 08 : 部署(2008/07/17 Add)
+       ,iv_dept_code_09     => iv_dept_code_09 -- 09 : 部署(2008/07/17 Add)
+       ,iv_dept_code_10     => iv_dept_code_10 -- 10 : 部署(2008/07/17 Add)
+       ,iv_date_fix         => iv_date_fix     -- 11 : 確定通知実施日
+       ,iv_fix_from         => iv_fix_from     -- 12 : 確定通知実施時間From
+       ,iv_fix_to           => iv_fix_to       -- 13 : 確定通知実施時間To
        ,ov_errbuf           => lv_errbuf       -- エラー・メッセージ
        ,ov_retcode          => lv_retcode      -- リターン・コード
        ,ov_errmsg           => lv_errmsg       -- ユーザー・エラー・メッセージ
@@ -3135,7 +3299,16 @@ AS
     -- 入力パラメータ
     -------------------------------------------------------
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '入力パラメータ' );
-    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署　　　　　　　　：' || iv_dept_code   ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_01 　　　　　　：' || iv_dept_code_01) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_02 　　　　　　：' || iv_dept_code_02) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_03 　　　　　　：' || iv_dept_code_03) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_04 　　　　　　：' || iv_dept_code_04) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_05 　　　　　　：' || iv_dept_code_05) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_06 　　　　　　：' || iv_dept_code_06) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_07 　　　　　　：' || iv_dept_code_07) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_08 　　　　　　：' || iv_dept_code_08) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_09 　　　　　　：' || iv_dept_code_09) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　部署_10 　　　　　　：' || iv_dept_code_10) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　確定通知実施日　　　：' || iv_date_fix    ) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　確定通知実施時間From：' || iv_fix_from    ) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　確定通知実施時間To　：' || iv_fix_to      ) ;
@@ -3159,8 +3332,8 @@ AS
     -- 処理件数
     -------------------------------------------------------
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, 'ＣＳＶ出力件数' ) ;
-    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　出荷：' || TO_CHAR( gn_out_cnt_syu, 'FM999,999,990' ) ) ;
-    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　移動：' || TO_CHAR( gn_out_cnt_mov, 'FM999,999,990' ) ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　出荷：' || TO_CHAR( gn_out_cnt_syu, 'FM999,999,990' ));
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '　移動：' || TO_CHAR( gn_out_cnt_mov, 'FM999,999,990' ));
 --
     --ステータス出力
     SELECT flv.meaning
