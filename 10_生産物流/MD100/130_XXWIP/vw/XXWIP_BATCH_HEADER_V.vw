@@ -68,8 +68,8 @@ AS
   , xim2v.item_id                                 item_id                         -- 品目ID
   , xim2v.item_no                                 item_no                         -- 品目コード
   , xim2v.item_short_name                         item_short_name                 -- 品目(略称)
-  , xic3v.item_class_code                         item_class_code                 -- 品目区分
-  , xic3v.item_class_name                         item_class_name                 -- 品目区分(名称)
+  , xic5v.item_class_code                         item_class_code                 -- 品目区分
+  , xic5v.item_class_name                         item_class_name                 -- 品目区分(名称)
   , ilm.lot_id                                    lot_id                          -- ロットID
   , ilm.lot_no                                    lot_no                          -- ロットNo
   , grv.routing_id                                routing_id                      -- 工順ID
@@ -82,7 +82,7 @@ AS
   , xlvv_l03.meaning                              slip_type_name                  -- 伝票区分(名称)
   , grv.attribute15                               in_out_type                     -- 内外区分
   , CASE
-      WHEN ( ( grv.attribute16 = '3' ) AND ( xic3v.item_class_code = '5' ) )
+      WHEN ( ( grv.attribute16 = '3' ) AND ( xic5v.item_class_code = '5' ) )
         THEN xim2v.conv_unit
         ELSE xim2v.item_um
     END                                           item_um                         -- 単位
@@ -121,7 +121,7 @@ AS
   , xxcmn_lookup_values_v           xlvv_l10      -- 成績管理部署
   , xxcmn_lookup_values_v           xlvv_l08      -- タイプ
   , xxcmn_lookup_values_v           xlvv_l03      -- 伝票区分
-  , xxcmn_item_categories3_v        xic3v         -- カテゴリVIEW
+  , xxcmn_item_categories5_v        xic5v         -- カテゴリVIEW5
   , xxcmn_item_locations_v          xilv_deli     -- 保管場所マスタVIEW(納品場所)
   , xxcmn_item_locations_v          xilv_move     -- 保管場所マスタVIEW(移動場所)
   , gmd_routings_vl                 grv           -- 工順マスタVIEW
@@ -139,7 +139,7 @@ AS
     AND xlvv_l08.lookup_type    (+) = 'XXCMN_L08'
     AND xlvv_l03.lookup_code    (+) = grv.attribute13
     AND xlvv_l03.lookup_type    (+) = 'XXCMN_L03'
-    AND xic3v.item_id           (+) = gmd.item_id
+    AND xic5v.item_id           (+) = gmd.item_id
     AND xilv_deli.segment1      (+) = grv.attribute9
     AND grv.routing_id              = gbh.routing_id
     AND xim2v.item_id           (+) = gmd.item_id

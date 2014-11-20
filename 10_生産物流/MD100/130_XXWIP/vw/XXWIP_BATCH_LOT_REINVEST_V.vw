@@ -63,7 +63,7 @@ AS
   , enable_lot.item_id              item_id                         -- 品目ID
   , xim2v.item_no                   item_no                         -- 品目(コード)
   , enable_lot.lot_id               lot_id                          -- ロットID
-  , DECODE( xic4v.item_class_code
+  , DECODE( xic5v.item_class_code
           , '2', NULL
           , ilm.lot_no )
                                     lot_no                          -- ロットNo
@@ -118,7 +118,7 @@ AS
   , xxcmn_vendors                   xv            -- 仕入先アドオン
   , po_vendors                      pv            -- 仕入先
   , xxcmn_item_locations_v          xilv          -- 保管倉庫
-  , xxcmn_item_categories4_v        xic4v         -- 品目カテゴリ情報VIEW4
+  , xxcmn_item_categories5_v        xic5v         -- 品目カテゴリ情報VIEW5
   , xxcmn_item_mst2_v               xim2v         -- OPM品目マスタVIEW2
   , gme_batch_header                gbh           -- 生産バッチヘッダ
   , ic_lots_mst                     ilm           -- OPMロット
@@ -204,18 +204,18 @@ AS
                   , ilm.lot_id                      nise_lot_id
                   FROM
                     xxcmn_lot_status_v              xlsv          -- ロットステータス
-                  , xxcmn_item_categories4_v        xic4v         -- 品目カテゴリ情報VIEW4
+                  , xxcmn_item_categories5_v        xic5v         -- 品目カテゴリ情報VIEW5
                   , ic_lots_mst                     ilm           -- OPMロットマスタ
                   WHERE
-                        xlsv.prod_class_code         = xic4v.prod_class_code
+                        xlsv.prod_class_code         = xic5v.prod_class_code
                     AND xlsv.raw_mate_turn_m_reserve = 'Y'
                     AND xlsv.lot_status              = ilm.attribute23
-                    AND xic4v.item_id                = ilm.item_id
+                    AND xic5v.item_id                = ilm.item_id
                     AND NOT EXISTS(
                           SELECT 'X'
-                          FROM xxcmn_item_categories4_v        xic4v2
-                          WHERE xic4v2.item_id         = ilm.item_id
-                            AND xic4v2.item_class_code = '2'
+                          FROM xxcmn_item_categories5_v        xic5v2
+                          WHERE xic5v2.item_id         = ilm.item_id
+                            AND xic5v2.item_class_code = '2'
                         )
 --
                   UNION ALL
@@ -229,9 +229,9 @@ AS
                   WHERE
                         EXISTS(
                           SELECT 'X'
-                          FROM xxcmn_item_categories4_v        xic4v3
-                          WHERE xic4v3.item_id         = ilm.item_id
-                            AND xic4v3.item_class_code = '2'
+                          FROM xxcmn_item_categories5_v        xic5v3
+                          WHERE xic5v3.item_id         = ilm.item_id
+                            AND xic5v3.item_class_code = '2'
                         )
                 ) lot
               WHERE
@@ -280,7 +280,7 @@ AS
     AND xv.vendor_id             (+) = pv.vendor_id
     AND pv.segment1              (+) = ilm.attribute8
     AND xilv.segment1                = enable_lot.storehouse_code
-    AND xic4v.item_id                = enable_lot.item_id
+    AND xic5v.item_id                = enable_lot.item_id
     AND xim2v.item_id                = enable_lot.item_id
     AND xim2v.start_date_active      <= TRUNC( gbh.plan_start_date )
     AND xim2v.end_date_active        >= TRUNC( gbh.plan_start_date )
