@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK022A01C(body)
  * Description      : 販手販協予算Excelアップロード
  * MD.050           : 販手販協予算Excelアップロード MD050_COK_022_A01
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/20    1.0   T.Osada          新規作成
+ *  2009/06/12    1.1   K.Yamaguchi      [障害T1_1433]年月設定不正対応
  *
  *****************************************************************************************/
 --
@@ -105,6 +106,9 @@ AS
   cv_token_count             CONSTANT VARCHAR2(5)  := 'COUNT';           --トークン名(COUNT)
   --フォーマット
   cv_date_format_yyyymm      CONSTANT VARCHAR2(8)  := 'FXYYYYMM';        --日付型変換チェック用フォーマット
+-- 2009/06/12 Ver.1.1 [障害T1_1433] SCS K.Yamaguchi ADD START
+  cv_date_format_mm          CONSTANT VARCHAR2(2)  := 'MM';              --月のみ取得
+-- 2009/06/12 Ver.1.1 [障害T1_1433] SCS K.Yamaguchi ADD END
   --記号
   cv_msg_part                CONSTANT VARCHAR2(3)  := ' : ';   --コロン
   cv_msg_cont                CONSTANT VARCHAR2(3)  := '.';     --ピリオド
@@ -473,6 +477,9 @@ AS
     -- ローカル定数
     -- =======================
     cv_prg_name   CONSTANT VARCHAR2(50) := 'ins_bm_support_budget';   --プログラム名
+-- 2009/06/12 Ver.1.1 [障害T1_1433] SCS K.Yamaguchi ADD START
+    cv_no_adj_flag               gl_periods.adjustment_period_flag%TYPE := 'N';
+-- 2009/06/12 Ver.1.1 [障害T1_1433] SCS K.Yamaguchi ADD END
     -- =======================
     -- ローカル変数
     -- =======================
@@ -484,6 +491,9 @@ AS
     ln_bm_support_budget_id      NUMBER         DEFAULT 0;                  --販手販協予算ID
     lv_target_month              VARCHAR2(2)    DEFAULT NULL;               --月度
     ln_chr_length                NUMBER         DEFAULT 0;                  --月度文字列長
+-- 2009/06/12 Ver.1.1 [障害T1_1433] SCS K.Yamaguchi ADD START
+    lt_target_ym                 xxcok_bm_support_budget.target_month%TYPE DEFAULT NULL; -- 年月
+-- 2009/06/12 Ver.1.1 [障害T1_1433] SCS K.Yamaguchi ADD END
 --
   BEGIN
     ov_retcode := cv_status_normal;
@@ -504,6 +514,21 @@ AS
     ELSE
       lv_target_month := iv_target_month;
     END IF;
+-- 2009/06/12 Ver.1.1 [障害T1_1433] SCS K.Yamaguchi ADD START
+    -- =============================================================================
+    -- 年月決定
+    -- =============================================================================
+    SELECT TO_CHAR( gp.start_date, 'RRRRMM' )
+    INTO lt_target_ym
+    FROM gl_periods                gp                          -- 会計カレンダテーブル
+       , gl_sets_of_books          gsob                        -- 会計帳簿マスタ
+    WHERE gp.period_set_name             = gsob.period_set_name
+      AND gsob.set_of_books_id           = TO_NUMBER( gv_set_of_books_id )
+      AND gp.period_year                 = TO_NUMBER( iv_budget_year )
+      AND gp.adjustment_period_flag      = cv_no_adj_flag
+      AND TO_CHAR( gp.start_date, 'MM' ) = lv_target_month
+    ;
+-- 2009/06/12 Ver.1.1 [障害T1_1433] SCS K.Yamaguchi ADD END
     -- =============================================================================
     -- 販手販協予算テーブルへレコードの追加
     -- =============================================================================
@@ -537,7 +562,10 @@ AS
     , iv_sales_outlets_code                                --sales_outlets_code
     , iv_acct_code                                         --acct_code
     , iv_sub_acct_code                                     --sub_acct_code
-    , iv_budget_year || lv_target_month                    --target_month
+-- 2009/06/12 Ver.1.1 [障害T1_1433] SCS K.Yamaguchi REPAIR START
+--    , iv_budget_year || lv_target_month                    --target_month
+    , lt_target_ym                                         --target_month
+-- 2009/06/12 Ver.1.1 [障害T1_1433] SCS K.Yamaguchi REPAIR END
     , TO_NUMBER( iv_budget_amt )                           --budget_amt
     , cv_info_interface_status                             --info_interface_status
     , cn_created_by                                        --created_by
