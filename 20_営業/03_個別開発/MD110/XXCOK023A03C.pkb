@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK023A03C(body)
  * Description      : 運送費予算及び運送費実績を拠点別品目別（単品別）月別にCSVデータ形式で要求出力します。
  * MD.050           : 運送費予算一覧表出力 MD050_COK_023_A03
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/05/15    1.3   SCS A.Yano       [障害T1_1001] 出力される金額単位を千円に修正
  *  2009/09/03    1.4   SCS S.Moriyama   [障害0001257] OPM品目マスタ取得条件追加
  *  2009/10/02    1.5   SCS S.Moriyama   [障害E_T3_00630] VDBM残高一覧表が出力されない（同類不具合調査）
+ *  2009/12/07    1.6   SCS K.Nakamura   [障害E_本稼動_00022] PT対応（品目カテゴリから政策群コードを取得）
  *
  *****************************************************************************************/
 --
@@ -116,6 +117,9 @@ AS
   -- カスタム・プロファイル
   cv_pro_organization_code  CONSTANT VARCHAR2(21)  := 'XXCOK1_ORG_CODE_SALES';    -- 在庫組織コード
   cv_pro_head_office_code   CONSTANT VARCHAR2(20)  := 'XXCOK1_AFF2_DEPT_HON';     -- 本社の部門コード
+-- 2009/12/07 Ver.1.6 [障害E_本稼動_00022] SCS K.Nakamura ADD START
+  cv_pro_policy_group_code  CONSTANT VARCHAR2(24)  := 'XXCOK1_POLICY_GROUP_CODE'; -- 政策群コード
+-- 2009/12/07 Ver.1.6 [障害E_本稼動_00022] SCS K.Nakamura ADD END
  -- 値セット名
   cv_flex_st_name_department  CONSTANT VARCHAR2(15) := 'XX03_DEPARTMENT';           -- 部門
   cv_flex_st_name_bd_month    CONSTANT VARCHAR2(25) := 'XXCOK1_BUDGET_MONTH_ORDER'; -- 予算月
@@ -150,6 +154,9 @@ AS
   gv_budget_year          VARCHAR2(4)  DEFAULT NULL; -- 入力パラメータの予算年度
   gv_org_code             VARCHAR2(3)  DEFAULT NULL; -- 在庫組織コード
   gv_head_office_code     VARCHAR2(4)  DEFAULT NULL; -- 本社部門コード
+-- 2009/12/07 Ver.1.6 [障害E_本稼動_00022] SCS K.Nakamura ADD START
+  gv_policy_group_code    VARCHAR2(12) DEFAULT NULL; -- 政策群コード
+-- 2009/12/07 Ver.1.6 [障害E_本稼動_00022] SCS K.Nakamura ADD END
   gn_org_id               NUMBER       DEFAULT NULL; -- 在庫組織ID
   gn_resp_id              NUMBER       DEFAULT NULL; -- ログイン職責ID
   gn_user_id              NUMBER       DEFAULT NULL; -- ログインユーザーID
@@ -942,39 +949,91 @@ AS
     -- ローカル・カーソル
     -- ===============================
     -- 運送費予算カーソル
+-- 2009/12/07 Ver.1.6 [障害E_本稼動_00022] SCS K.Nakamura UPD START
+--    CURSOR budget_data_cur(
+--      iv_base_code IN VARCHAR2)
+--    IS
+--      SELECT xdccb.budget_year    AS budget_year,      -- 予算年度
+--             xdccb.base_code      AS base_code,        -- 拠点コード
+--             xdccb.item_code      AS item_code,        -- 商品コード
+--             item.item_short_name AS item_short_name   -- 商品名(略称)
+--      FROM   xxcok_dlv_cost_calc_budget xdccb,         -- 運送費予算テーブル
+--            (SELECT iimb.item_no,                      -- 品目コード
+--                    ximb.item_short_name,              -- 略称
+--                    xsibh.policy_group                 -- 政策群コード
+--             FROM   ic_item_mst_b              iimb,   -- opm品目マスタ
+--                    xxcmn_item_mst_b           ximb,   -- opm品目アドオンマスタ
+--                    mtl_system_items_b         msib,   -- 品目マスタ
+--                    xxcmm_system_items_b_hst   xsibh   -- Ｄｉｓｃ品目アドオンマスタ（変更履歴）
+--             WHERE  ximb.item_id          = iimb.item_id
+--             AND    iimb.item_no          = msib.segment1
+--             AND    msib.organization_id  = gn_org_id
+--             AND    xsibh.item_id         = iimb.item_id
+--             AND    xsibh.item_code       = msib.segment1
+--             AND    xsibh.apply_flag      = cv_flag_y
+--             AND    xsibh.policy_group IS NOT NULL
+---- 2009/09/03 Ver.1.4 [障害0001257] SCS S.Moriyama ADD START
+--             AND    gd_process_date BETWEEN ximb.start_date_active
+--                                    AND NVL ( ximb.end_date_active , gd_process_date )
+---- 2009/09/03 Ver.1.4 [障害0001257] SCS S.Moriyama ADD END
+--             AND    (xsibh.apply_date,xsibh.item_id) IN (SELECT MAX( xsibh.apply_date ), -- 適用日
+--                                                                item_id                  -- 品目ID
+--                                                         FROM   xxcmm_system_items_b_hst xsibh
+--                                                         WHERE  xsibh.policy_group IS NOT NULL
+--                                                         AND    xsibh.apply_flag   = cv_flag_y
+--                                                         GROUP BY item_id
+--                                                        )
+--            )item
+--      WHERE    xdccb.budget_year = gv_budget_year -- 入力パラメータの予算年度
+--      AND      xdccb.base_code   = iv_base_code
+--      AND      xdccb.item_code   = item.item_no(+)
+--      GROUP BY xdccb.budget_year,
+--               xdccb.base_code,
+--               xdccb.item_code,
+--               item.item_short_name,
+--               SUBSTRB( item.policy_group,1,3 )
+--      ORDER BY SUBSTRB( item.policy_group,1,3 ),
+--               xdccb.item_code
+--      ;
     CURSOR budget_data_cur(
       iv_base_code IN VARCHAR2)
     IS
-      SELECT xdccb.budget_year    AS budget_year,      -- 予算年度
+      SELECT /*+
+                  LEADING(xdccb)
+             */
+             xdccb.budget_year    AS budget_year,      -- 予算年度
              xdccb.base_code      AS base_code,        -- 拠点コード
              xdccb.item_code      AS item_code,        -- 商品コード
              item.item_short_name AS item_short_name   -- 商品名(略称)
       FROM   xxcok_dlv_cost_calc_budget xdccb,         -- 運送費予算テーブル
-            (SELECT iimb.item_no,                      -- 品目コード
+            (SELECT /*+
+                        USE_NL( msib,iimc,ximb )
+                        USE_NL( mic,mcb,mcsb,mcst )
+                    */
+                    iimb.item_no,                      -- 品目コード
                     ximb.item_short_name,              -- 略称
-                    xsibh.policy_group                 -- 政策群コード
+                    mcb.segment1                       -- 政策群コード
              FROM   ic_item_mst_b              iimb,   -- opm品目マスタ
                     xxcmn_item_mst_b           ximb,   -- opm品目アドオンマスタ
                     mtl_system_items_b         msib,   -- 品目マスタ
-                    xxcmm_system_items_b_hst   xsibh   -- Ｄｉｓｃ品目アドオンマスタ（変更履歴）
-             WHERE  ximb.item_id          = iimb.item_id
-             AND    iimb.item_no          = msib.segment1
-             AND    msib.organization_id  = gn_org_id
-             AND    xsibh.item_id         = iimb.item_id
-             AND    xsibh.item_code       = msib.segment1
-             AND    xsibh.apply_flag      = cv_flag_y
-             AND    xsibh.policy_group IS NOT NULL
--- 2009/09/03 Ver.1.4 [障害0001257] SCS S.Moriyama ADD START
+                    mtl_category_sets_b        mcsb,   -- 品目カテゴリセット
+                    mtl_category_sets_tl       mcst,   -- 品目カテゴリセット日本語
+                    mtl_categories_b           mcb ,   -- 品目カテゴリマスタ
+                    mtl_item_categories        mic     -- 品目カテゴリ割当
+             WHERE  ximb.item_id           = iimb.item_id
+             AND    iimb.item_no           = msib.segment1
+             AND    msib.organization_id   = gn_org_id
+             AND    mcst.category_set_id   = mcsb.category_set_id
+             AND    mcb.structure_id       = mcsb.structure_id
+             AND    mcb.category_id        = mic.category_id
+             AND    mcsb.category_set_id   = mic.category_set_id
+             AND    mcst.language          = USERENV( 'LANG' )
+             AND    mcst.category_set_name = gv_policy_group_code
+             AND    mcb.segment1           IS NOT NULL
+             AND    msib.organization_id   = mic.organization_id
+             AND    msib.inventory_item_id = mic.inventory_item_id
              AND    gd_process_date BETWEEN ximb.start_date_active
                                     AND NVL ( ximb.end_date_active , gd_process_date )
--- 2009/09/03 Ver.1.4 [障害0001257] SCS S.Moriyama ADD END
-             AND    (xsibh.apply_date,xsibh.item_id) IN (SELECT MAX( xsibh.apply_date ), -- 適用日
-                                                                item_id                  -- 品目ID
-                                                         FROM   xxcmm_system_items_b_hst xsibh
-                                                         WHERE  xsibh.policy_group IS NOT NULL
-                                                         AND    xsibh.apply_flag   = cv_flag_y
-                                                         GROUP BY item_id
-                                                        )
             )item
       WHERE    xdccb.budget_year = gv_budget_year -- 入力パラメータの予算年度
       AND      xdccb.base_code   = iv_base_code
@@ -983,10 +1042,12 @@ AS
                xdccb.base_code,
                xdccb.item_code,
                item.item_short_name,
-               SUBSTRB( item.policy_group,1,3 )
-      ORDER BY SUBSTRB( item.policy_group,1,3 ),
+               SUBSTRB( item.segment1,1,3 )
+      ORDER BY SUBSTRB( item.segment1,1,3 ),
                xdccb.item_code
     ;
+-- 2009/12/07 Ver.1.6 [障害E_本稼動_00022] SCS K.Nakamura UPD END
+--
     -- 運送費予算カーソルレコード型
     budget_data_rec budget_data_cur%ROWTYPE;
     -- 予算月カーソル
@@ -1455,6 +1516,14 @@ AS
       lv_profile_nm := cv_pro_head_office_code;
       RAISE no_profile_expt;
     END IF;
+-- 2009/12/07 Ver.1.6 [障害E_本稼動_00022] SCS K.Nakamura ADD START
+    -- カスタム・プロファイルの政策群コードを取得します。
+    gv_policy_group_code := fnd_profile.value(cv_pro_policy_group_code);
+    IF ( gv_policy_group_code IS NULL ) THEN
+      lv_profile_nm := cv_pro_policy_group_code;
+      RAISE no_profile_expt;
+    END IF;
+-- 2009/12/07 Ver.1.6 [障害E_本稼動_00022] SCS K.Nakamura ADD END
     -- ===============================
     -- 在庫組織IDの取得
     -- ===============================
