@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcff_common4_pkg(body)
  * Description      : リース契約関連共通関数
  * MD.050           : なし
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -16,13 +16,14 @@ AS
  *  insert_co_lin             P           リース契約明細登録関数
  *  insert_co_his             P           リース契約履歴登録関数
  *  update_co_hed             P           リース契約更新関数
- *  update_co_lin             P           リース契約履歴更新関数
+ *  update_co_lin             P           リース契約明細更新関数
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-11-19    1.0   SCS礒崎祐次      新規作成
+ *  2013-06-26    1.1   SCSK中野徹也     [E_本稼動_10871]消費税増税対応
  *
  *****************************************************************************************/
 --
@@ -313,6 +314,9 @@ AS
      , info_sys_if_date            -- リース管理情報連携日
      , first_installation_address  -- 初回設置場所
      , first_installation_place    -- 初回設置先
+-- 2013/06/26 Ver.1.1 T.Nakano ADD Start
+     , tax_code                    -- 税金コード
+-- 2013/06/26 Ver.1.1 T.Nakano ADD End
      , created_by                  -- 作成者
      , creation_date               -- 作成日
      , last_updated_by             -- 最終更新者
@@ -361,6 +365,9 @@ AS
      , io_contract_data_rec.info_sys_if_date            -- リース管理情報連携日
      , io_contract_data_rec.first_installation_address  -- 初回設置場所
      , io_contract_data_rec.first_installation_place    -- 初回設置先
+-- 2013/06/26 Ver.1.1 T.Nakano ADD Start
+     , io_contract_data_rec.tax_code                    -- 税金コード
+-- 2013/06/26 Ver.1.1 T.Nakano ADD End
      , io_contract_data_rec.created_by                  -- 作成者
      , io_contract_data_rec.creation_date               -- 作成日
      , io_contract_data_rec.last_updated_by             -- 最終更新者
@@ -485,6 +492,9 @@ AS
      , info_sys_if_date            -- リース管理情報連携日
      , first_installation_address  -- 初回設置場所
      , first_installation_place    -- 初回設置先
+-- 2013/06/26 Ver.1.1 T.Nakano ADD Start
+     , tax_code                    -- 税金コード
+-- 2013/06/26 Ver.1.1 T.Nakano ADD End
      , accounting_date             -- 計上日
      , accounting_if_flag          -- 会計IFフラグ
      , description                 -- 摘要
@@ -536,6 +546,9 @@ AS
      , io_contract_lin_data_rec.info_sys_if_date            -- リース管理情報連携日
      , io_contract_lin_data_rec.first_installation_address  -- 初回設置場所
      , io_contract_lin_data_rec.first_installation_place    -- 初回設置先
+-- 2013/06/26 Ver.1.1 T.Nakano ADD Start
+     , io_contract_lin_data_rec.tax_code                    -- 税金コード
+-- 2013/06/26 Ver.1.1 T.Nakano ADD End
      , io_contract_his_data_rec.accounting_date             -- 計上日
      , io_contract_his_data_rec.accounting_if_flag          -- 会計IFフラグ
      , io_contract_his_data_rec.description                 -- 摘要
@@ -741,6 +754,9 @@ AS
          , xcl.info_sys_if_date            = io_contract_data_rec.info_sys_if_date            -- リース管理情報連携日
          , xcl.first_installation_address  = io_contract_data_rec.first_installation_address  -- 初回設置場所
          , xcl.first_installation_place    = io_contract_data_rec.first_installation_place    -- 初回設置先
+-- 2013/06/26 Ver.1.1 T.Nakano ADD Start
+         , xcl.tax_code                    = io_contract_data_rec.tax_code                    -- 税金コード
+-- 2013/06/26 Ver.1.1 T.Nakano ADD End
          , xcl.created_by                  = io_contract_data_rec.created_by                  -- 作成者
          , xcl.creation_date               = io_contract_data_rec.creation_date               -- 作成日
          , xcl.last_updated_by             = io_contract_data_rec.last_updated_by             -- 最終更新者

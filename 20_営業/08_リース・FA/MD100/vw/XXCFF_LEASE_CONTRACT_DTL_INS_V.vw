@@ -3,6 +3,10 @@ CREATE OR REPLACE VIEW APPS.XXCFF_LEASE_CONTRACT_DTL_INS_V
  CONTRACT_LINE_ID             -- å_ñÒñæç◊ì‡ïîÇhÇc
 ,CONTRACT_HEADER_ID           -- å_ñÒì‡ïîÇhÇc
 ,CONTRACT_LINE_NUM            -- å_ñÒé}î‘
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD START Nakano
+,TAX_CODE                     -- ê≈ã‡ÉRÅ[Éh
+,TAX_NAME                     -- ê≈ã‡ìEóv
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD END Nakano
 ,OBJECT_HEADER_ID             -- ï®åèì‡ïîÇhÇc
 ,OBJECT_CODE                  -- ï®åèÉRÅ[Éh
 ,DEPARTMENT_NAME              -- ä«óùïîñÂñº
@@ -67,6 +71,10 @@ AS
 SELECT XCL.CONTRACT_LINE_ID                                        AS CONTRACT_LINE_ID
       ,XCL.CONTRACT_HEADER_ID                                      AS CONTRACT_HEADER_ID
       ,XCL.CONTRACT_LINE_NUM                                       AS CONTRACT_LINE_NUM
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD START Nakano
+      ,NVL(XCL.TAX_CODE, XCH.TAX_CODE)                             AS TAX_CODE
+      ,NVL(ATC2.DESCRIPTION, ATC1.DESCRIPTION)                     AS TAX_NAME
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD END Nakano
       ,XCL.OBJECT_HEADER_ID                                        AS OBJECT_HEADER_ID
       ,XOH.OBJECT_CODE                                             AS OBJECT_CODE
       ,XDV.DEPARTMENT_NAME                                         AS DEPARTMENT_NAME
@@ -137,6 +145,10 @@ FROM   XXCFF_CONTRACT_HEADERS  XCH
               ,CONTRACT_LINE_ID
         FROM  XXCFF_PAY_PLANNING
         GROUP BY CONTRACT_LINE_ID) XPP
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD START Nakano
+       ,AP_TAX_CODES           ATC1
+       ,AP_TAX_CODES           ATC2
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD END Nakano
  WHERE XCH.CONTRACT_HEADER_ID = XCL.CONTRACT_HEADER_ID
  AND   XCL.OBJECT_HEADER_ID   = XOH.OBJECT_HEADER_ID
  AND   XCL.CONTRACT_LINE_ID   = XPP.CONTRACT_LINE_ID
@@ -144,10 +156,18 @@ FROM   XXCFF_CONTRACT_HEADERS  XCH
  AND   XCL.ASSET_CATEGORY     = XCV.CATEGORY_CODE
  AND   XCL.CONTRACT_STATUS    = XCS.CONTRACT_STATUS_CODE
  AND   XCL.LEASE_KIND         = XLK.LEASE_KIND_CODE
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD START Nakano
+ AND   XCH.TAX_CODE      = ATC1.NAME(+)
+ AND   XCL.TAX_CODE      = ATC2.NAME(+)
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD END Nakano
 ;
 COMMENT ON COLUMN XXCFF_LEASE_CONTRACT_DTL_INS_V.CONTRACT_LINE_ID             IS 'å_ñÒñæç◊ì‡ïîÇhÇc';
 COMMENT ON COLUMN XXCFF_LEASE_CONTRACT_DTL_INS_V.CONTRACT_HEADER_ID           IS 'å_ñÒì‡ïîÇhÇc';
 COMMENT ON COLUMN XXCFF_LEASE_CONTRACT_DTL_INS_V.CONTRACT_LINE_NUM            IS 'å_ñÒé}î‘';
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD START Nakano
+COMMENT ON COLUMN XXCFF_LEASE_CONTRACT_DTL_INS_V.TAX_CODE                     IS 'ê≈ã‡ÉRÅ[Éh';
+COMMENT ON COLUMN XXCFF_LEASE_CONTRACT_DTL_INS_V.TAX_NAME                     IS 'ê≈ã‡ìEóv';
+--ÅyE_ñ{â“ìÆ_10871ÅzMOD END Nakano
 COMMENT ON COLUMN XXCFF_LEASE_CONTRACT_DTL_INS_V.OBJECT_HEADER_ID             IS 'ï®åèì‡ïîÇhÇc';
 COMMENT ON COLUMN XXCFF_LEASE_CONTRACT_DTL_INS_V.OBJECT_CODE                  IS 'ï®åèÉRÅ[Éh';
 COMMENT ON COLUMN XXCFF_LEASE_CONTRACT_DTL_INS_V.DEPARTMENT_NAME              IS 'ä«óùïîñÂñº';

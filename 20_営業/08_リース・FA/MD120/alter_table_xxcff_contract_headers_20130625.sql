@@ -1,0 +1,1 @@
+ALTER TABLE xxcff.xxcff_contract_headers MODIFY ( tax_code NULL );

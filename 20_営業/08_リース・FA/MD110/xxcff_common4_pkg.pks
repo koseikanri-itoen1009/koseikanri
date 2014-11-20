@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcff_common4_pkg(spec)
  * Description      : リース契約関連共通関数
  * MD.050           : なし
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -23,7 +23,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-11-19    1.0   SCS礒崎祐次       新規作成
- *  2008-12-22    1.0   SCS礒崎祐次       税金コードを追加
+ *  2008-12-22    1.1   SCS礒崎祐次       税金コードを追加
+ *  2013-06-25    1.2   SCSK中野徹也      [E_本稼動_10871]消費税増税対応
  *
  *****************************************************************************************/
 --
@@ -66,6 +67,9 @@ AS
      contract_line_id           xxcff_contract_lines.contract_line_id%TYPE             -- 契約内部明細ID
    , contract_header_id         xxcff_contract_lines.contract_header_id%TYPE           -- 契約内部ID
    , contract_line_num          xxcff_contract_lines.contract_line_num%TYPE            -- 契約枝番
+-- 2013/06/25 Ver.1.2 T.Nakano ADD Start
+   , tax_code                   xxcff_contract_lines.tax_code%TYPE                     -- 税金コード
+-- 2013/06/25 Ver.1.2 T.Nakano ADD End
    , contract_status            xxcff_contract_lines.contract_status%TYPE              -- 契約ステータス
    , first_charge               xxcff_contract_lines.first_charge%TYPE                 -- 初回月額リース料_リース料
    , first_tax_charge           xxcff_contract_lines.first_tax_charge%TYPE             -- 初回消費税額_リース料
