@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2010/02/01    1.20    M.Hokkanji       [E_T4_00195] 会計期間情報取得関数パラメータ修正[AR → INV]
  *  2010/05/10    1.21    Y.Kuboshima      [E_本稼動_02625] 営業原価の取得基準日修正[業務日付 → 納品日]
  *  2010/09/09    1.22    H.Sasaki         [E_本稼動_02635] エラー出力の追加（汎用エラーリスト）
+ *  2012/02/03    1.23    K.Kiriu          [E_本稼動_08938] 訂正時の消費税額不具合対応
  *
  *****************************************************************************************/
 --
@@ -3292,10 +3293,20 @@ AS
           IF ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
             -- 外税 OR 内税(伝票課税)の時
             IF ( lt_consumption_tax_class = cv_out_tax ) OR ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
---******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
---              gt_line_tax_amount( ln_max_no_data ) := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
-              gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
---******************************* 2009/04/16 N.Maeda Var1.10 MOD END   ***************************************
+/* 2012/02/03 Ver1.23 Mod Start */
+----******************************* 2009/04/16 N.Maeda Var1.10 MOD START ***************************************
+----              gt_line_tax_amount( ln_max_no_data ) := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+--              gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+----******************************* 2009/04/16 N.Maeda Var1.10 MOD END   ***************************************
+              --赤黒フラグが"黒"の場合
+              IF ( lt_red_black_flag = cv_black_flag ) THEN
+                gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+              --赤黒フラグが"赤"の場合
+              ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+                gt_accumulation_data(ln_max_no_data).tax_amount := ( ( ln_max_tax_data 
+                                                                          + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) );
+              END IF;
+/* 2012/02/03 Ver1.23 Mod End   */
             END IF;
           END IF;
         END IF;
