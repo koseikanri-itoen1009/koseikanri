@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI009A04R(body)
  * Description      : 入出庫ジャーナルチェックリスト
  * MD.050           : 入出庫ジャーナルチェックリスト MD050_COI_009_A04
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/04/02    1.1   H.Sasaki         [T1_0002]VD預け先の顧客コード出力
  *  2009/05/15    1.2   H.Sasaki         [T1_0785]帳票出力のソート項目の設定値を変更
  *  2009/06/03    1.3   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
+ *  2009/06/15    1.4   H.Sasaki         [I_E_453][T1_1090]HHT入出庫取得データを変更
  *
  *****************************************************************************************/
 --
@@ -102,15 +103,16 @@ AS
   cv_no                CONSTANT VARCHAR2(3)   := 'N';              -- 定数N
 --
   -- メッセージ
-  cv_msg_xxcoi00008  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00008';   -- 0件メッセージ
   cv_msg_xxcoi00005  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00005';   -- 在庫組織コード取得エラー
   cv_msg_xxcoi00006  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00006';   -- 在庫組織ID取得エラー
-  cv_msg_xxcoi00011  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00011';   -- 業務日付取得エラー
+  cv_msg_xxcoi00008  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00008';   -- 0件メッセージ
   cv_msg_xxcoi10004  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10004';   -- ロック取得エラーメッセージ(HHT入出庫一時表)
+  cv_msg_xxcoi00010  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00010';   -- APIエラー
+  cv_msg_xxcoi00011  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00011';   -- 業務日付取得エラー
   cv_msg_xxcoi10005  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10005';   -- ロック取得エラーメッセージ(入出庫ｼﾞｬｰﾅﾙ帳票ワークテーブル)
   cv_msg_xxcoi10092  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10092';   -- 所属拠点取得エラー
-  cv_msg_xxcoi10307  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10307';   -- パラメータ.出力区分メッセージ
   cv_msg_xxcoi10067  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10067';   -- パラメータ.年月日メッセージ
+  cv_msg_xxcoi10307  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10307';   -- パラメータ.出力区分メッセージ
   cv_msg_xxcoi10308  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10308';   -- パラメータ.拠点メッセージ
   cv_msg_xxcoi10309  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10309';   -- パラメータ.入出庫逆転データ区分メッセージ
   cv_msg_xxcoi10310  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10310';   -- パラメータ.伝票区分メッセージ
@@ -187,7 +189,7 @@ AS
   gn_hht_info_cnt           NUMBER;                                           -- HHT入出庫情報件数
   gn_hht_info_loop_cnt      NUMBER;                                           -- HHT入出庫情報ループカウンタ
   gn_organization_id        mtl_parameters.organization_id%TYPE;              -- 在庫組織ID
-  -- 
+  --
   gr_param                  gr_param_rec;
   gt_base_num_tab           gt_base_num_ttype;
   gt_hht_info_tab           gt_hht_info_ttype;
@@ -318,7 +320,7 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END del_work;
---  
+--
   /**********************************************************************************
    * Procedure Name   : svf_request
    * Description      : SVF起動(A-7)
@@ -349,9 +351,6 @@ AS
     cv_frm_file     CONSTANT VARCHAR2(30) := 'XXCOI009A04S.xml';     -- フォーム様式ファイル名
     cv_vrq_file     CONSTANT VARCHAR2(30) := 'XXCOI009A04S.vrq';     -- クエリー様式ファイル名
     cv_api_name     CONSTANT VARCHAR2(7)  := 'SVF起動';              -- SVF起動API名
---
-    -- エラーコード
-    cv_msg_xxcoi00010  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00010';   -- APIエラー
 --
     -- トークン名
     cv_token_name_1  CONSTANT VARCHAR2(30) := 'API_NAME';
@@ -511,7 +510,7 @@ AS
 --
     -- レコード読込
     FETCH upd_hht_tbl_cur INTO upd_hht_tbl_rec;
---    
+--
     --HHT入出庫一時表の更新
     UPDATE xxcoi_hht_inv_transactions xhit
     SET    xhit.output_flag = cv_yes
@@ -578,13 +577,13 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END upd_hht_data;
---  
+--
   /**********************************************************************************
    * Procedure Name   : ins_work_zero
    * Description      : ワークテーブルデータ登録(0件)(A-5)
    ***********************************************************************************/
   PROCEDURE ins_work_zero(
-    iv_nodata_msg              IN  VARCHAR2,     -- ゼロ件メッセージ 
+    iv_nodata_msg              IN  VARCHAR2,     -- ゼロ件メッセージ
     ov_errbuf                  OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode                 OUT VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg                  OUT VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -688,7 +687,7 @@ AS
        ,cn_program_id
        ,cd_program_update_date
       );
---      
+--
     -- コミット
     COMMIT;
     --==============================================================
@@ -767,24 +766,24 @@ AS
     --入出庫ジャーナルチェックリスト帳票ワークテーブル登録処理
     INSERT INTO xxcoi_rep_shipstore_jour_list(
         interface_id
-       ,target_term
-       ,output_kbn
-       ,outside_base_code
-       ,outside_base_name
-       ,outside_subinv_code
-       ,outside_subinv_name
-       ,invoice_type
-       ,invoice_type_name
-       ,inside_subinv_code
-       ,inside_subinv_name
-       ,item_code
-       ,item_name
-       ,case_quantity
-       ,case_in_quantity
-       ,quantity
-       ,total_quantity
-       ,invoice_no
-       ,nodata_msg
+       ,target_term                 -- 1
+       ,output_kbn                  -- 2
+       ,outside_base_code           -- 3
+       ,outside_base_name           -- 4
+       ,outside_subinv_code         -- 5
+       ,outside_subinv_name         -- 6
+       ,invoice_type                -- 7
+       ,invoice_type_name           -- 8
+       ,inside_subinv_code          -- 9
+       ,inside_subinv_name          -- 0
+       ,item_code                   -- 1
+       ,item_name                   -- 2
+       ,case_quantity               -- 3
+       ,case_in_quantity            -- 4
+       ,quantity                    -- 5
+       ,total_quantity              -- 6
+       ,invoice_no                  -- 7
+       ,nodata_msg                  -- 8
        --WHOカラム
        ,created_by
        ,creation_date
@@ -800,24 +799,24 @@ AS
 --        gt_hht_info_tab( gn_hht_info_loop_cnt ).interface_id
         gt_hht_info_tab( gn_hht_info_loop_cnt ).transaction_id                      -- インターフェースID
 -- == 2009/05/15 V1.2 Modified END   ===============================================================
-       ,SUBSTR(gr_param.target_date,1,10)                                           -- 対象期間
-       ,gv_output_kbn_name                                                          -- 出力区分
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_base_code                   -- 拠点コード
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_base_name                   -- 拠点名
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_subinv_code                 -- 出庫側保管場所コード
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_subinv_name                 -- 出庫側保管場所名
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).invoice_type                        -- 伝票区分
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).invoice_type_name                   -- 伝票区分名
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_subinv_code                  -- 出庫側保管場所コード
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_subinv_name                  -- 出庫側保管場所名
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).item_code                           -- 商品コード
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).item_name                           -- 商品名
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).case_quantity                       -- ケース数
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).case_in_quantity                    -- 入数
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).quantity                            -- 本数
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).total_quantity                      -- 合計数量
-       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).invoice_no                          -- 伝票No
-       ,NULL                                                                        -- 0件メッセージ
+       ,SUBSTR(gr_param.target_date,1,10)                                           -- 1対象期間
+       ,gv_output_kbn_name                                                          -- 2出力区分
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_base_code                   -- 3拠点コード
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_base_name                   -- 4拠点名
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_subinv_code                 -- 5出庫側保管場所コード
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_subinv_name                 -- 6出庫側保管場所名
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).invoice_type                        -- 7伝票区分
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).invoice_type_name                   -- 8伝票区分名
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_subinv_code                  -- 9出庫側保管場所コード
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_subinv_name                  -- 0出庫側保管場所名
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).item_code                           -- 1商品コード
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).item_name                           -- 2商品名
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).case_quantity                       -- 3ケース数
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).case_in_quantity                    -- 4入数
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).quantity                            -- 5本数
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).total_quantity                      -- 6合計数量
+       ,gt_hht_info_tab( gn_hht_info_loop_cnt ).invoice_no                          -- 7伝票No
+       ,NULL                                                                        -- 80件メッセージ
        --WHOカラム
        ,cn_created_by
        ,cd_creation_date
@@ -829,7 +828,7 @@ AS
        ,cn_program_id
        ,cd_program_update_date
       );
---      
+--
     -- コミット
     COMMIT;
     --==============================================================
@@ -892,10 +891,13 @@ AS
 -- == 2009/04/02 V1.1 Added END   ===============================================================
 --
     -- 参照タイプ
-    cv_invoice_type               CONSTANT VARCHAR2(30)  := 'XXCOI1_INVOICE_KBN';        -- 伝票区分
+-- == 2009/06/15 V1.4 Modified START ===============================================================
+--    cv_invoice_type               CONSTANT VARCHAR2(30)  := 'XXCOI1_INVOICE_KBN';        -- 伝票区分
+    cv_invoice_type               CONSTANT VARCHAR2(30)  := 'XXCOI1_HHT_EBS_CONVERT_TABLE';        -- 伝票区分
+-- == 2009/06/15 V1.4 Modified END   ===============================================================
 --
     -- 参照コード
---   
+--
     -- *** ローカル変数 ***
     ln_cnt                         NUMBER       DEFAULT  0;          -- ループカウンタ
     lv_zero_message                VARCHAR2(30) DEFAULT  NULL;       -- ゼロ件メッセージ
@@ -907,62 +909,127 @@ AS
     -- HHT入出庫データ
     CURSOR info_hht_cur
     IS
-    SELECT  xhit.transaction_id             transaction_id              -- HHT入出庫一時表ID 
-           ,xhit.interface_id               interface_id                -- インターフェースID
-           ,xhit.outside_base_code          out_base_code               -- 出庫拠点コード
-           ,SUBSTRB(hca.account_name,1,8)   out_base_name               -- 出庫拠点名
-           ,xhit.outside_subinv_code        outside_subinv_code         -- 出庫側保管場所コード
-           ,msi1.description                outside_subinv_name         -- 出庫拠保管場所名
-           ,xhit.invoice_type               invoice_type                -- 伝票区分
-           ,flv.meaning                     invoice_name                -- 伝票区分名
-           ,xhit.inside_subinv_code         inside_subinv_code          -- 入庫側保管場所コード
-           ,msi2.description                inside_subinv_name          -- 入庫拠保管場所名
-           ,xhit.item_code                  item_code                   -- 品目コード
-           ,ximb.item_short_name            item_short_name             -- 略称
-           ,xhit.case_quantity              case_quantity               -- ケース数
-           ,xhit.case_in_quantity           case_in_quantity            -- ケース入数
-           ,xhit.quantity                   quantity                    -- 本数
-           ,xhit.total_quantity             total_quantity              -- 総数
--- == 2009/04/02 V1.1 Modified START ===============================================================
---           ,xhit.invoice_no                invoice_no                 -- 伝票No
-           ,CASE  WHEN  xhit.record_type = cv_record_type_30  THEN
-                    NVL(xhit.inside_cust_code, xhit.invoice_no)
-                  ELSE
-                    NVL(xhit.inside_code, xhit.invoice_no)
-            END                             invoice_no                  -- 伝票№
--- == 2009/04/02 V1.1 Modified END   ===============================================================
-    FROM    xxcoi_hht_inv_transactions xhit                           -- HHT入出庫一時表
-           ,hz_cust_accounts           hca                            -- 顧客マスタ
-           ,mtl_secondary_inventories  msi1                           -- 保管場所マスタ1
-           ,mtl_secondary_inventories  msi2                           -- 保管場所マスタ2
-           ,mtl_system_items_b         msib                           -- 品目マスタ
-           ,ic_item_mst_b              iimb                           -- OPM品目マスタ  
-           ,xxcmn_item_mst_b           ximb                           -- OPM品目アドオンマスタ
-           ,fnd_lookup_values          flv                            -- クイックコードマスタ
-    WHERE  xhit.output_flag                         =  gr_param.output_kbn
-      AND  xhit.invoice_type                        =  NVL(gr_param.invoice_kbn,xhit.invoice_type)
-      AND  TO_CHAR(xhit.invoice_date,'YYYY/MM/DD')  =  SUBSTR(gr_param.target_date,1,10)
-      AND  xhit.outside_base_code                   =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
-      AND  ( ( ( gr_param.reverse_kbn = cv_1 ) AND (xhit.total_quantity < 0 ) )
-           OR ( ( gr_param.reverse_kbn = cv_0 ) AND (xhit.total_quantity > 0 ) ) )
-      AND  hca.account_number                       =  xhit.outside_base_code
-      AND  hca.customer_class_code                  =  cv_1
-      AND  xhit.outside_subinv_code                 =  msi1.secondary_inventory_name
-      AND  xhit.inside_subinv_code                  =  msi2.secondary_inventory_name(+)
--- == 2009/06/03 V1.3 Added START ===============================================================
-      AND  msi1.organization_id                     =  gn_organization_id
-      AND  msi2.organization_id(+)                  =  gn_organization_id
--- == 2009/06/03 V1.3 Added END   ===============================================================
-      AND  msib.segment1                            =  xhit.item_code
-      AND  msib.organization_id                     =  gn_organization_id
-      AND  msib.segment1                            =  iimb.item_no
-      AND  iimb.item_id                             =  ximb.item_id(+)
-      AND  flv.lookup_type                          =  cv_invoice_type
-      AND  flv.lookup_code                          =  xhit.invoice_type
-      AND  flv.enabled_flag                         =  cv_yes
-      AND  flv.language                             =  USERENV( 'LANG' )
-   ORDER BY xhit.interface_id
-      ;
+-- == 2009/06/15 V1.4 Modified START ===============================================================
+--    SELECT  xhit.transaction_id             transaction_id              -- HHT入出庫一時表ID
+--           ,xhit.interface_id               interface_id                -- インターフェースID
+--           ,xhit.outside_base_code          out_base_code               -- 出庫拠点コード
+--           ,SUBSTRB(hca.account_name,1,8)   out_base_name               -- 出庫拠点名
+--           ,xhit.outside_subinv_code        outside_subinv_code         -- 出庫側保管場所コード
+--           ,msi1.description                outside_subinv_name         -- 出庫拠保管場所名
+--           ,xhit.invoice_type               invoice_type                -- 伝票区分
+--           ,flv.meaning                     invoice_name                -- 伝票区分名
+--           ,xhit.inside_subinv_code         inside_subinv_code          -- 入庫側保管場所コード
+--           ,msi2.description                inside_subinv_name          -- 入庫拠保管場所名
+--           ,xhit.item_code                  item_code                   -- 品目コード
+--           ,ximb.item_short_name            item_short_name             -- 略称
+--           ,xhit.case_quantity              case_quantity               -- ケース数
+--           ,xhit.case_in_quantity           case_in_quantity            -- ケース入数
+--           ,xhit.quantity                   quantity                    -- 本数
+--           ,xhit.total_quantity             total_quantity              -- 総数
+---- == 2009/04/02 V1.1 Modified START ===============================================================
+----           ,xhit.invoice_no                invoice_no                 -- 伝票No
+--           ,CASE  WHEN  xhit.record_type = cv_record_type_30  THEN
+--                    NVL(xhit.inside_cust_code, xhit.invoice_no)
+--                  ELSE
+--                    NVL(xhit.inside_code, xhit.invoice_no)
+--            END                             invoice_no                  -- 伝票№
+---- == 2009/04/02 V1.1 Modified END   ===============================================================
+--    FROM    xxcoi_hht_inv_transactions xhit                           -- HHT入出庫一時表
+--           ,hz_cust_accounts           hca                            -- 顧客マスタ
+--           ,mtl_secondary_inventories  msi1                           -- 保管場所マスタ1
+--           ,mtl_secondary_inventories  msi2                           -- 保管場所マスタ2
+--           ,mtl_system_items_b         msib                           -- 品目マスタ
+--           ,ic_item_mst_b              iimb                           -- OPM品目マスタ
+--           ,xxcmn_item_mst_b           ximb                           -- OPM品目アドオンマスタ
+--           ,fnd_lookup_values          flv                            -- クイックコードマスタ
+--    WHERE  xhit.output_flag                         =  gr_param.output_kbn
+--      AND  xhit.invoice_type                        =  NVL(gr_param.invoice_kbn,xhit.invoice_type)
+--      AND  TO_CHAR(xhit.invoice_date,'YYYY/MM/DD')  =  SUBSTR(gr_param.target_date,1,10)
+--      AND  xhit.outside_base_code                   =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
+--      AND  ( ( ( gr_param.reverse_kbn = cv_1 ) AND (xhit.total_quantity < 0 ) )
+--           OR ( ( gr_param.reverse_kbn = cv_0 ) AND (xhit.total_quantity > 0 ) ) )
+--      AND  hca.account_number                       =  xhit.outside_base_code
+--      AND  hca.customer_class_code                  =  cv_1
+--      AND  xhit.outside_subinv_code                 =  msi1.secondary_inventory_name
+--      AND  xhit.inside_subinv_code                  =  msi2.secondary_inventory_name(+)
+---- == 2009/06/03 V1.3 Added START ===============================================================
+--      AND  msi1.organization_id                     =  gn_organization_id
+--      AND  msi2.organization_id(+)                  =  gn_organization_id
+---- == 2009/06/03 V1.3 Added END   ===============================================================
+--      AND  msib.segment1                            =  xhit.item_code
+--      AND  msib.organization_id                     =  gn_organization_id
+--      AND  msib.segment1                            =  iimb.item_no
+--      AND  iimb.item_id                             =  ximb.item_id(+)
+--      AND  flv.lookup_type                          =  cv_invoice_type
+--      AND  flv.lookup_code                          =  xhit.invoice_type
+--      AND  flv.enabled_flag                         =  cv_yes
+--      AND  flv.language                             =  USERENV( 'LANG' )
+--   ORDER BY xhit.interface_id
+--      ;
+      SELECT  xhit.transaction_id             transaction_id              -- HHT入出庫一時表ID
+             ,xhit.interface_id               interface_id                -- インターフェースID
+             ,xhit.outside_base_code          out_base_code               -- 出庫拠点コード
+             ,SUBSTRB(hca1.account_name,1,8)  out_base_name               -- 出庫拠点名
+            ,xhit.outside_code                outside_subinv_code         -- 出庫側保管場所コード
+            ,SUBSTRB(DECODE(outside_cust_code, NULL, msi1.description
+                                             , hca1.account_name
+                     ), 1, 50
+             )                                outside_subinv_name         -- 出庫拠保管場所名
+             ,flv.attribute11                 invoice_type                -- 伝票区分
+             ,flv.meaning                     invoice_name                -- 伝票区分名
+             ,xhit.inside_code                inside_subinv_code          -- 入庫側保管場所コード
+             ,SUBSTRB(DECODE(inside_cust_code, NULL, msi2.description
+                                                   , hca2.account_name
+                      ), 1, 50
+              )                               inside_subinv_name          -- 入庫拠保管場所名
+             ,xhit.item_code                  item_code                   -- 品目コード
+             ,ximb.item_short_name            item_short_name             -- 略称
+             ,xhit.case_quantity              case_quantity               -- ケース数
+             ,xhit.case_in_quantity           case_in_quantity            -- ケース入数
+             ,xhit.quantity                   quantity                    -- 本数
+             ,xhit.total_quantity             total_quantity              -- 総数
+             ,xhit.invoice_no                 invoice_no                  -- 伝票№
+      FROM    xxcoi_hht_inv_transactions      xhit                        -- HHT入出庫一時表
+             ,hz_cust_accounts                hca1                        -- 顧客マスタ（出庫）
+             ,hz_cust_accounts                hca2                        -- 顧客マスタ（入庫）
+             ,mtl_secondary_inventories       msi1                        -- 保管場所マスタ1
+             ,mtl_secondary_inventories       msi2                        -- 保管場所マスタ2
+             ,mtl_system_items_b              msib                        -- 品目マスタ
+             ,ic_item_mst_b                   iimb                        -- OPM品目マスタ
+             ,xxcmn_item_mst_b                ximb                        -- OPM品目アドオンマスタ
+             ,fnd_lookup_values               flv                         -- クイックコードマスタ
+      WHERE   xhit.output_flag                          =   gr_param.output_kbn
+      AND     TO_CHAR(xhit.invoice_date, 'YYYY/MM/DD')  =   SUBSTR(gr_param.target_date, 1, 10)
+      AND     xhit.outside_base_code                    =   gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
+      AND     ((    (gr_param.reverse_kbn   =   cv_1)
+                AND (xhit.total_quantity    <   0)
+               )
+               OR
+               (    (gr_param.reverse_kbn   = cv_0)
+                AND (xhit.total_quantity    > 0)
+               )
+              )
+      AND     xhit.outside_base_code                    =   hca1.account_number
+      AND     cv_1                                      =   hca1.customer_class_code
+      AND     xhit.inside_base_code                     =   hca2.account_number(+)
+      AND     cv_1                                      =   hca2.customer_class_code(+)
+      AND     xhit.outside_subinv_code                  =   msi1.secondary_inventory_name
+      AND     xhit.inside_subinv_code                   =   msi2.secondary_inventory_name(+)
+      AND     msi1.organization_id                      =   gn_organization_id
+      AND     msi2.organization_id(+)                   =   gn_organization_id
+      AND     msib.segment1                             =   xhit.item_code
+      AND     msib.organization_id                      =   gn_organization_id
+      AND     msib.segment1                             =   iimb.item_no
+      AND     iimb.item_id                              =   ximb.item_id(+)
+      AND     xhit.record_type                          =   flv.attribute1
+      AND     xhit.invoice_type                         =   flv.attribute2
+      AND     NVL(xhit.department_flag, cv_99)          =   flv.attribute3
+      AND     flv.lookup_type                           =   cv_invoice_type
+      AND     flv.language                              =   USERENV('LANG')
+      AND     flv.enabled_flag                          =   cv_yes
+      AND     flv.attribute11                           =   NVL(gr_param.invoice_kbn, flv.attribute11)
+      ORDER BY xhit.interface_id;
+-- == 2009/06/15 V1.4 Modified END   ===============================================================
 --
     -- ローカル・レコード
 --
@@ -1076,23 +1143,23 @@ AS
     -- 拠点情報(管理元拠点)
     CURSOR info_base1_cur
     IS
-      SELECT hca.account_number account_num                         -- 顧客コード
-      FROM   hz_cust_accounts hca                                   -- 顧客マスタ
-            ,xxcmm_cust_accounts xca                                -- 顧客追加情報アドオンマスタ
-      WHERE  hca.cust_account_id = xca.customer_id
-        AND  hca.customer_class_code = cv_1
-        AND  hca.account_number = NVL( gr_param.out_base_code,hca.account_number )
+      SELECT hca.account_number       account_num           -- 顧客コード
+      FROM   hz_cust_accounts         hca                   -- 顧客マスタ
+            ,xxcmm_cust_accounts      xca                   -- 顧客追加情報アドオンマスタ
+      WHERE  hca.cust_account_id      = xca.customer_id
+        AND  hca.customer_class_code  = cv_1
+        AND  hca.account_number       = NVL( gr_param.out_base_code, hca.account_number )
         AND  xca.management_base_code = gv_base_code
       ORDER BY hca.account_number
     ;
---    
+--
     -- 拠点情報(拠点)
     CURSOR info_base2_cur
     IS
-      SELECT  hca.account_number account_num                         -- 顧客コード
-        FROM  hz_cust_accounts hca                                   -- 顧客マスタ
+      SELECT  hca.account_number      account_num           -- 顧客コード
+        FROM  hz_cust_accounts        hca                   -- 顧客マスタ
        WHERE  hca.customer_class_code = cv_1
-         AND  hca.account_number = NVL( gr_param.out_base_code,hca.account_number )
+         AND  hca.account_number      = NVL( gr_param.out_base_code, hca.account_number )
        ORDER BY hca.account_number
     ;
 --
@@ -1210,8 +1277,11 @@ AS
     -- 定数
     cv_profile_name    CONSTANT VARCHAR2(24)   := 'XXCOI1_ORGANIZATION_CODE';        -- プロファイル名(在庫組織コード)
     cv_output_kbn      CONSTANT VARCHAR2(30)   := 'XXCOI1_OUTPUT_KBN';               -- 参照タイプ(出力区分)
-    cv_invoice_type    CONSTANT VARCHAR2(30)   := 'XXCOI1_INVOICE_KBN';              -- 参照タイプ(伝票区分)
     cv_reverse_kbn     CONSTANT VARCHAR2(30)   := 'XXCOI1_REVERSE_DATA_OUTPUT_KBN';  -- 参照タイプ(入出庫逆転データ出力区分)
+-- == 2009/06/15 V1.4 Modified START ===============================================================
+--    cv_invoice_type    CONSTANT VARCHAR2(30)   := 'XXCOI1_INVOICE_KBN';              -- 参照タイプ(伝票区分)
+    cv_invoice_type    CONSTANT VARCHAR2(30)   := 'XXCOI1_HHT_EBS_CONVERT_TABLE';    -- 参照タイプ(伝票区分)
+-- == 2009/06/15 V1.4 Modified END   ===============================================================
 --
     -- *** ローカル変数 ***
     lv_organization_code mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
@@ -1236,7 +1306,7 @@ AS
     -- ***************************************
 --
     -- =====================================
-    -- 業務日付取得(共通関数)   
+    -- 業務日付取得(共通関数)
     -- =====================================
     gd_process_date := xxccp_common_pkg2.get_process_date;
     --
@@ -1249,15 +1319,15 @@ AS
                   );
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
-    END IF;         
+    END IF;
 --
     -- =====================================
-    -- プロファイル値取得(在庫組織コード)   
+    -- プロファイル値取得(在庫組織コード)
     -- =====================================
     lv_organization_code := FND_PROFILE.VALUE(cv_profile_name);
     IF ( lv_organization_code IS NULL ) THEN
       -- エラーメッセージ取得
-      lv_errmsg := xxccp_common_pkg.get_msg( 
+      lv_errmsg := xxccp_common_pkg.get_msg(
                       iv_application  => cv_app_name
                      ,iv_name         => cv_msg_xxcoi00005
                      ,iv_token_name1  => cv_token_pro
@@ -1265,15 +1335,15 @@ AS
                   );
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
-    END IF;         
+    END IF;
 --
     -- =====================================
-    -- 在庫組織ID取得                       
+    -- 在庫組織ID取得
     -- =====================================
     gn_organization_id := xxcoi_common_pkg.get_organization_id(lv_organization_code);
     IF ( gn_organization_id IS NULL ) THEN
       -- エラーメッセージ取得
-      lv_errmsg := xxcmn_common_pkg.get_msg( 
+      lv_errmsg := xxcmn_common_pkg.get_msg(
                       iv_application  => cv_app_name
                      ,iv_name         => cv_msg_xxcoi00006
                      ,iv_token_name1  => cv_token_org_code
@@ -1281,17 +1351,17 @@ AS
                   );
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
-    END IF;         
+    END IF;
 --
     -- =====================================
-    -- 所属拠点取得                       
+    -- 所属拠点取得
     -- =====================================
-    gv_base_code := xxcoi_common_pkg.get_base_code( 
+    gv_base_code := xxcoi_common_pkg.get_base_code(
                         in_user_id     => cn_created_by     -- ユーザーID
                        ,id_target_date => gd_process_date); -- 対象日
     IF ( gv_base_code IS NULL ) THEN
       -- エラーメッセージ取得
-      lv_errmsg := xxcmn_common_pkg.get_msg( 
+      lv_errmsg := xxcmn_common_pkg.get_msg(
                       iv_application  => cv_app_name
                      ,iv_name         => cv_msg_xxcoi10092);
       lv_errbuf := lv_errmsg;
@@ -1315,8 +1385,8 @@ AS
                     );
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
-    END IF;  
---    
+    END IF;
+--
     -- パラメータ出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  =>  cv_app_name
@@ -1332,23 +1402,48 @@ AS
     -- パラメータ.伝票区分
     -- 伝票区分名取得
     IF ( gr_param.invoice_kbn IS NOT NULL ) THEN
-     lv_invoice_type_name := xxcoi_common_pkg.get_meaning(cv_invoice_type,gr_param.invoice_kbn);
-      --
-      -- リターンコードがNULLの場合はエラー
-      IF ( lv_invoice_type_name IS NULL ) THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  =>  cv_app_name
-                      ,iv_name         =>  cv_msg_xxcoi10312
-                      ,iv_token_name1  =>  cv_token_invoice_kbn
-                      ,iv_token_value1 =>  gr_param.invoice_kbn
-                      );
-        lv_errbuf := lv_errmsg;
-        RAISE global_api_expt;
-      END IF;  
+-- == 2009/06/15 V1.4 Modified START ===============================================================
+--     lv_invoice_type_name := xxcoi_common_pkg.get_meaning(cv_invoice_type, gr_param.invoice_kbn);
+--      --
+--      -- リターンコードがNULLの場合はエラー
+--      IF ( lv_invoice_type_name IS NULL ) THEN
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  =>  cv_app_name
+--                      ,iv_name         =>  cv_msg_xxcoi10312
+--                      ,iv_token_name1  =>  cv_token_invoice_kbn
+--                      ,iv_token_value1 =>  gr_param.invoice_kbn
+--                      );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_api_expt;
+--      END IF;
+--
+      BEGIN
+        SELECT  flv.meaning
+        INTO    lv_invoice_type_name
+        FROM    fnd_lookup_values     flv
+        WHERE   flv.lookup_type   =   cv_invoice_type
+        AND     flv.attribute11   =   gr_param.invoice_kbn
+        AND     flv.language      =   USERENV('LANG')
+        AND     flv.enabled_flag  =   cv_yes
+        AND     SYSDATE   BETWEEN   NVL(flv.start_date_active, SYSDATE)
+                          AND       NVL(flv.end_date_active, SYSDATE);
+        --
+      EXCEPTION
+        WHEN  NO_DATA_FOUND THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  =>  cv_app_name
+                        ,iv_name         =>  cv_msg_xxcoi10312
+                        ,iv_token_name1  =>  cv_token_invoice_kbn
+                        ,iv_token_value1 =>  gr_param.invoice_kbn
+                        );
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+-- == 2009/06/15 V1.4 Modified END   ===============================================================
     ELSE
       lv_invoice_type_name := gr_param.invoice_kbn;
     END IF;
---    
+--
     -- パラメータ出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  =>  cv_app_name
@@ -1360,7 +1455,7 @@ AS
       which  => FND_FILE.LOG
     , buff   => gv_out_msg
     );
---  
+--
     -- パラメータ.年月日
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  =>  cv_app_name
@@ -1399,8 +1494,8 @@ AS
                     );
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
-    END IF;  
---    
+    END IF;
+--
     -- パラメータ出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  =>  cv_app_name
@@ -1412,7 +1507,7 @@ AS
       which  => FND_FILE.LOG
     , buff   => gv_out_msg
     );
---    
+--
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -1581,7 +1676,7 @@ AS
             END IF;
 --
             -- パラメータ.出力フラグが"未出力"の場合のみ
-            IF ( gr_param.output_kbn = cv_no ) THEN  
+            IF ( gr_param.output_kbn = cv_no ) THEN
               -- =============================
               -- 出力フラグ更新(A-5)
               -- =============================
