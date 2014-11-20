@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/03    1.00 SCS 高岡 健太    初回作成
  *  2009/02/12    1.1  SCS T.KANEDA     [障害COK_003] 入金額取得不具合対応
+ *  2009/07/15    1.2  SCS M.HIROSE     [障害0000511] パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -452,7 +453,13 @@ AS
     on_target_credit := 0;
 --
     -- 対象債権総額取得
-    SELECT SUM(apsa.amount_due_remaining) sum_amount --未消込残高総額
+    SELECT 
+-- Modify 2009.07.15 Ver1.2 Start
+           /*+ INDEX(rcta RA_CUSTOMER_TRX_N11)
+               INDEX(apsa AR_PAYMENT_SCHEDULES_N2)
+           */
+-- Modify 2009.07.15 Ver1.2 End
+           SUM(apsa.amount_due_remaining) sum_amount --未消込残高総額
     INTO on_target_credit
     FROM ra_customer_trx_all rcta,      --AR取引ヘッダテーブル
          ar_payment_schedules_all apsa, --AR支払計画テーブル
@@ -730,7 +737,13 @@ AS
       in_pay_from_customer NUMBER, --A-4顧客ID
       id_receipt_date      DATE)   --A-4入金日
     IS
-      SELECT rcta.customer_trx_id customer_trx_id, --取引ヘッダID
+      SELECT 
+-- Modify 2009.07.15 Ver1.2 Start
+           /*+ INDEX(rcta RA_CUSTOMER_TRX_N11)
+               INDEX(apsa AR_PAYMENT_SCHEDULES_N2)
+           */
+-- Modify 2009.07.15 Ver1.2 End
+             rcta.customer_trx_id customer_trx_id, --取引ヘッダID
              rcta.trx_number trx_number            --取引番号
       FROM ra_customer_trx_all rcta,      --AR取引ヘッダテーブル
            ar_payment_schedules_all apsa, --AR支払計画テーブル
