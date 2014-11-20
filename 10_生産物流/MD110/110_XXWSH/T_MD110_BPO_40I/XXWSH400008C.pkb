@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2008/04/10    1.0   Masakazu Yamashita    新規作成
  *  2008/06/19    1.1   Yasuhisa Yamamoto     システムテスト障害対応
  *  2008/06/26    1.2   ToshikazuIshiwata     システムテスト障害対応(#309)
+ *  2008/07/02    1.3   Naoki Fukuda          ST不具合対応(#373)
  *
  *****************************************************************************************/
 --
@@ -85,7 +86,8 @@ AS
   -- フォーキャスト分類（引取計画）
   gv_forecast_kbn_hkeikaku      CONSTANT VARCHAR2(10) := '01';
   -- 抽出対象ステータス（拠点パターン）
-  gv_select_status_kyoten       CONSTANT VARCHAR2(10) := '1';
+  --gv_select_status_kyoten       CONSTANT VARCHAR2(10) := '1';   --2008/07/02 ST不具合対応(#373)
+  gv_select_status_kyoten       CONSTANT VARCHAR2(10) := '2';     --2008/07/02 ST不具合対応(#373)
 --
   -- エラーメッセージ関連
   gc_application_cmn            CONSTANT VARCHAR2(10) := 'XXCMN' ;

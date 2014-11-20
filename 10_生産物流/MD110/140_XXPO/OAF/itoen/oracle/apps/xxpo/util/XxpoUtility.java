@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2008-06-18 1.3  伊藤ひとみ   結合バグ 発注明細IFの単価、仕入定価を
 *                              仕入/標準単価ヘッダの内訳合計に変更。
 * 2008-06-30 1.4  吉元強樹     ST不具合ログ#41を対応
+* 2008-07-02 1.5  吉元強樹     ST不具合ログ#104を対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -33,7 +34,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.4
+ * @version 1.5
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -811,6 +812,9 @@ public class XxpoUtility
         sb.append("  AND    xph.factory_id          = :3 "                   ); // 工場ID
         sb.append("  AND    xph.futai_code          = '0' "                  ); // 付帯コード
         sb.append("  AND    xph.price_type          = '1' "                  ); // マスタ区分1:仕入
+// 20080702 yoshimoto add Start
+        sb.append("  AND    xph.supply_to_code IS NULL "                     ); // 支給先コード IS NULL
+// 20080702 yoshimoto add End
         sb.append("  AND    (((:4                   = '1') "                 ); // 仕入単価導入日タイプが1:製造日の場合、条件が製造日
         sb.append("    AND  (xph.start_date_active <= :5) "                  ); // 適用開始日 <= 製造日
         sb.append("    AND  (xph.end_date_active   >= :5)) "                 ); // 適用終了日 >= 製造日
@@ -3093,6 +3097,9 @@ public class XxpoUtility
     sb.append("   WHERE  xph.item_id            = :2   " ); // 品目ID
     sb.append("   AND    xph.factory_id         = :3   " ); // 工場ID
     sb.append("   AND    xph.price_type         = '1'  " ); // マスタ区分 1(仕入)
+// 20080702 yoshimoto add Start
+    sb.append("   AND    xph.supply_to_code IS NULL    " ); // 支給先コード IS NULL
+// 20080702 yoshimoto add End
     sb.append("   AND    xph.start_date_active <= :4   " ); // 適用開始日
     sb.append("   AND    xph.end_date_active   >= :4;  " ); // 適用終了日
                // 取得に失敗した場合
@@ -10206,6 +10213,9 @@ public class XxpoUtility
     sb.append("  AND    xph.factory_id          = :3 "                   ); // 工場ID
     sb.append("  AND    xph.futai_code          = '0' "                  ); // 付帯コード
     sb.append("  AND    xph.price_type          = '1' "                  ); // マスタ区分1:仕入
+// 20080702 yoshimoto add Start
+    sb.append("  AND    xph.supply_to_code IS NULL "                     ); // 支給先コード IS NULL
+// 20080702 yoshimoto add End
     sb.append("  AND    (((:4                   = '1') "                 ); // 仕入単価導入日タイプが1:製造日の場合、条件が製造日
     sb.append("    AND  (xph.start_date_active <= :5) "                  ); // 適用開始日 <= 製造日
     sb.append("    AND  (xph.end_date_active   >= :5)) "                 ); // 適用終了日 >= 製造日
