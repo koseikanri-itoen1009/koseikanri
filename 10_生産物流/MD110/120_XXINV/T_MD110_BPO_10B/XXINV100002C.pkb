@@ -7,7 +7,7 @@ AS
  * Description      : 販売計画表
  * MD.050/070       : 販売計画・引取計画 (T_MD050_BPO_100)
  *                    販売計画表         (T_MD070_BPO_10B)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -15,7 +15,7 @@ AS
  * ---------------------------- ----------------------------------------------------------
  *  pro_get_cus_option           P データ取得    - カスタムオプション取得        (B-1-0)
  *  prc_sale_plan                P データ抽出    - 販売計画表情報抽出(全拠点時)  (B-1-1-1)
- *  prc_sale_plan_1              P データ抽出    - 販売計画表情報抽出(拠点時)    (B-1-1-2)
+ *  prc_sale_plan_1              P データ抽出    - 販売計画表情x報抽出(拠点時)    (B-1-1-2)
  *  prc_create_xml_data_user     P XMLデータ変換 - ユーザー情報部分       (user_info)
  *  prc_create_xml_data_param    P XMLデータ変換 - パラメータ情報部分     (param_info)
  *  prc_create_xml_data          P XMLデータ作成 - 帳票データ出力
@@ -36,6 +36,7 @@ AS
  *  2008/07/02   1.5   Satoshi Yunba    禁則文字対応
  *  2009/03/23   1.6   Hajime Iida      本番障害#1334対応
  *  2009/04/14   1.7   吉元 強樹        本番障害#1409対応
+ *  2009/04/20   1.8   椎名 昭圭        本番障害#1409対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1547,12 +1548,22 @@ AS
     ln_s_am_sum          NUMBER := 0;                    -- 売上高
     ln_nuit_sum          NUMBER := 0;                    -- 本数
     ln_price_sum         NUMBER := 0;                    -- 品目定価
-    ln_to_am_sum         NUMBER := 0;                    -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_to_am_sum         NUMBER := 0;                    -- 内訳合計
+    ln_s_unit_price_sum  NUMBER := 0;                    -- 標準原価
+    ln_ara_sum           NUMBER := 0;                    -- 粗利(集計用)
+    ln_chk_0_sum         NUMBER := 0;                    -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
     ln_quant_sum         NUMBER := 0;                    -- 数量
 --
     -- 小群計計算用項目変数
     ln_st_quant_sum      NUMBER := 0;                    -- 数量
-    ln_st_s_u_price_sum  NUMBER := 0;                    -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_st_s_u_price_sum  NUMBER := 0;                    -- 内訳合計
+    ln_st_s_unit_price_sum  NUMBER := 0;                 -- 標準原価
+    ln_st_ara_sum           NUMBER := 0;                 -- 粗利(集計用)
+    ln_st_chk_0_sum         NUMBER := 0;                 -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
     ln_st_arari_sum      NUMBER := 0;                    -- 粗利
     ln_st_s_am_sum       NUMBER := 0;                    -- 売上高
     ln_st_nuit_sum       NUMBER := 0;                    -- 本数
@@ -1560,7 +1571,12 @@ AS
 --
     -- 中群計計算用項目変数
     ln_mt_quant_sum      NUMBER := 0;                    -- 数量
-    ln_mt_s_u_price_sum  NUMBER := 0;                    -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_mt_s_u_price_sum  NUMBER := 0;                    -- 内訳合計
+    ln_mt_s_unit_price_sum  NUMBER := 0;                 -- 標準原価
+    ln_mt_ara_sum           NUMBER := 0;                 -- 粗利(集計用)
+    ln_mt_chk_0_sum         NUMBER := 0;                 -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
     ln_mt_arari_sum      NUMBER := 0;                    -- 粗利
     ln_mt_s_am_sum       NUMBER := 0;                    -- 売上高
     ln_mt_nuit_sum       NUMBER := 0;                    -- 本数
@@ -1568,7 +1584,12 @@ AS
 --
     -- 大群計計算用項目変数
     ln_lt_quant_sum      NUMBER := 0;                    -- 数量
-    ln_lt_s_u_price_sum  NUMBER := 0;                    -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_lt_s_u_price_sum  NUMBER := 0;                    -- 内訳合計
+    ln_lt_s_unit_price_sum  NUMBER := 0;                 -- 標準原価
+    ln_lt_ara_sum           NUMBER := 0;                 -- 粗利(集計用)
+    ln_lt_chk_0_sum         NUMBER := 0;                 -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
     ln_lt_arari_sum      NUMBER := 0;                    -- 粗利
     ln_lt_s_am_sum       NUMBER := 0;                    -- 売上高
     ln_lt_nuit_sum       NUMBER := 0;                    -- 本数
@@ -1579,7 +1600,12 @@ AS
     ln_ktn_s_am_sum      NUMBER := 0;                    -- 売上高
     ln_ktn_nuit_sum      NUMBER := 0;                    -- 本数
     ln_ktn_price_sum     NUMBER := 0;                    -- 品目定価
-    ln_ktn_to_am_sum     NUMBER := 0;                    -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_ktn_to_am_sum     NUMBER := 0;                    -- 内訳合計
+    ln_ktn_s_unit_price_sum  NUMBER := 0;                -- 標準原価
+    ln_ktn_ara_sum           NUMBER := 0;                -- 粗利(集計用)
+    ln_ktn_chk_0_sum         NUMBER := 0;                -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
     ln_ktn_quant_sum     NUMBER := 0;                    -- 数量
 --
     -- 商品区分計計算用項目変数
@@ -1587,7 +1613,12 @@ AS
     ln_skbn_s_am_sum     NUMBER := 0;                    -- 売上高
     ln_skbn_nuit_sum     NUMBER := 0;                    -- 本数
     ln_skbn_price_sum    NUMBER := 0;                    -- 品目定価
-    ln_skbn_to_am_sum    NUMBER := 0;                    -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_skbn_to_am_sum    NUMBER := 0;                    -- 内訳合計
+    ln_skbn_s_unit_price_sum  NUMBER := 0;               -- 標準原価
+    ln_skbn_ara_sum           NUMBER := 0;               -- 粗利(集計用)
+    ln_skbn_chk_0_sum         NUMBER := 0;               -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
     ln_skbn_quant_sum    NUMBER := 0;                    -- 数量
 --
     -- 総合計計算用項目変数
@@ -1595,7 +1626,12 @@ AS
     ln_to_s_am_sum       NUMBER := 0;                    -- 売上高
     ln_to_nuit_sum       NUMBER := 0;                    -- 本数
     ln_to_price_sum      NUMBER := 0;                    -- 品目定価
-    ln_to_to_am_sum      NUMBER := 0;                    -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_to_to_am_sum      NUMBER := 0;                    -- 内訳合計
+    ln_to_s_unit_price_sum  NUMBER := 0;                 -- 標準原価
+    ln_to_ara_sum           NUMBER := 0;                 -- 粗利(集計用)
+    ln_to_chk_0_sum         NUMBER := 0;                 -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
     ln_to_quant_sum      NUMBER := 0;                    -- 数量
 --
     -- *** ローカル・例外処理 ***
@@ -1676,7 +1712,10 @@ AS
           -- 細群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+          ln_syo_s_unit_price := ln_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_s_unit_price';
@@ -1687,7 +1726,10 @@ AS
           -- 細群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+          ln_arari_sum := ln_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_arari';
@@ -1714,6 +1756,8 @@ AS
           ----------------------------------------------------------------
           -- 細群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_price_sum * ln_nuit_sum;
           -- ０除算回避判定
@@ -1724,6 +1768,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_syo_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_syo_kake_par := ROUND((ln_s_am_sum * 100) / ln_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_syo_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_kake_par';
@@ -1757,7 +1811,10 @@ AS
           -- 小群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+          ln_sttl_s_unit_price := ln_st_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_s_unit_price';
@@ -1768,7 +1825,10 @@ AS
           -- 小群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_st_arari_sum := ln_st_s_am_sum - ln_sttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_st_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+          ln_st_arari_sum := ln_st_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_arari';
@@ -1795,6 +1855,8 @@ AS
           ----------------------------------------------------------------
           -- 小群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_st_price_sum * ln_st_nuit_sum;
           -- ０除算回避判定
@@ -1805,6 +1867,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_sttl_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_st_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_sttl_kake_par := ROUND((ln_st_s_am_sum * 100) / ln_st_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_sttl_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_kake_par';
@@ -1838,7 +1910,10 @@ AS
           -- 中群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+          ln_mttl_s_unit_price := ln_mt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_s_unit_price';
@@ -1849,7 +1924,10 @@ AS
           -- 中群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+          ln_mt_arari_sum := ln_mt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_arari';
@@ -1876,6 +1954,8 @@ AS
           ----------------------------------------------------------------
           -- 中群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_mt_price_sum * ln_mt_nuit_sum;
           -- ０除算回避判定
@@ -1886,6 +1966,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_mttl_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_mt_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_mttl_kake_par := ROUND((ln_mt_s_am_sum * 100) / ln_mt_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_mttl_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_kake_par';
@@ -1919,7 +2009,10 @@ AS
           -- 大群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+          ln_lttl_s_unit_price := ln_lt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_s_unit_price';
@@ -1930,7 +2023,10 @@ AS
           -- 大群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+          ln_lt_arari_sum := ln_lt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_arari';
@@ -1957,6 +2053,8 @@ AS
           ----------------------------------------------------------------
           -- 大群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_lt_price_sum * ln_lt_nuit_sum;
           -- ０除算回避判定
@@ -1967,6 +2065,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_lttl_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_lt_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_lttl_kake_par := ROUND((ln_lt_s_am_sum * 100) / ln_lt_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_lttl_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_kake_par';
@@ -1998,7 +2106,10 @@ AS
           -- 拠点計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_ktn_s_unit_price := ln_ktn_to_am_sum * ln_ktn_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_ktn_s_unit_price := ln_ktn_to_am_sum * ln_ktn_quant_sum;
+          ln_ktn_s_unit_price := ln_ktn_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_s_unit_price';
@@ -2009,7 +2120,10 @@ AS
           -- 拠点計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_ktn_arari_sum := ln_ktn_s_am_sum - ln_ktn_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_ktn_arari_sum := ln_ktn_s_am_sum - ln_ktn_s_unit_price;
+          ln_ktn_arari_sum := ln_ktn_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_arari';
@@ -2036,6 +2150,8 @@ AS
           ----------------------------------------------------------------
           -- 拠点計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_ktn_price_sum * ln_ktn_nuit_sum;
           -- ０除算回避判定
@@ -2046,6 +2162,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_ktn_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_ktn_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_ktn_kake_par := ROUND((ln_ktn_s_am_sum * 100) / ln_ktn_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_ktn_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_kake_par';
@@ -2077,7 +2203,10 @@ AS
           -- 商品区分計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_skbn_s_unit_price := ln_skbn_to_am_sum * ln_skbn_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_skbn_s_unit_price := ln_skbn_to_am_sum * ln_skbn_quant_sum;
+          ln_skbn_s_unit_price := ln_skbn_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_s_unit_price';
@@ -2088,7 +2217,10 @@ AS
           -- 商品区分計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_skbn_arari_sum := ln_skbn_s_am_sum - ln_skbn_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_skbn_arari_sum := ln_skbn_s_am_sum - ln_skbn_s_unit_price;
+          ln_skbn_arari_sum := ln_skbn_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_arari';
@@ -2115,6 +2247,8 @@ AS
           ----------------------------------------------------------------
           -- 商品区分計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_skbn_price_sum * ln_skbn_nuit_sum;
           -- ０除算回避判定
@@ -2125,6 +2259,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_skbn_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_skbn_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_skbn_kake_par := ROUND((ln_skbn_s_am_sum * 100) / ln_skbn_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_skbn_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_kake_par';
@@ -2242,21 +2386,36 @@ AS
 --
         -- 小群計集計用項目初期化
         ln_st_quant_sum     := 0;          -- 数量
-        ln_st_s_u_price_sum := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--        ln_st_s_u_price_sum := 0;          -- 内訳合計
+        ln_st_s_unit_price_sum := 0;       -- 標準原価
+        ln_st_ara_sum          := 0;       -- 粗利(集計用)
+        ln_st_chk_0_sum        := 0;       -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
         ln_st_arari_sum     := 0;          -- 粗利
         ln_st_s_am_sum      := 0;          -- 売上高
         ln_st_nuit_sum      := 0;          -- 本数
         ln_st_price_sum     := 0;          -- 品目定価
         -- 中群計集計用項目初期化
         ln_mt_quant_sum     := 0;          -- 数量
-        ln_mt_s_u_price_sum := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--        ln_mt_s_u_price_sum := 0;          -- 内訳合計
+        ln_mt_s_unit_price_sum := 0;       -- 標準原価
+        ln_mt_ara_sum          := 0;       -- 粗利(集計用)
+        ln_mt_chk_0_sum        := 0;       -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
         ln_mt_arari_sum     := 0;          -- 粗利
         ln_mt_s_am_sum      := 0;          -- 売上高
         ln_mt_nuit_sum      := 0;          -- 本数
         ln_mt_price_sum     := 0;          -- 品目定価
         -- 大群計集計用項目初期化
         ln_lt_quant_sum     := 0;          -- 数量
-        ln_lt_s_u_price_sum := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--        ln_lt_s_u_price_sum := 0;          -- 内訳合計
+        ln_lt_s_unit_price_sum := 0;       -- 標準原価
+        ln_lt_ara_sum          := 0;       -- 粗利(集計用)
+        ln_lt_chk_0_sum        := 0;       -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
         ln_lt_arari_sum     := 0;          -- 粗利
         ln_lt_s_am_sum      := 0;          -- 売上高
         ln_lt_nuit_sum      := 0;          -- 本数
@@ -2266,14 +2425,24 @@ AS
         ln_ktn_s_am_sum     := 0;          -- 売上高
         ln_ktn_nuit_sum     := 0;          -- 本数
         ln_ktn_price_sum    := 0;          -- 品目定価
-        ln_ktn_to_am_sum    := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--        ln_ktn_to_am_sum    := 0;          -- 内訳合計
+        ln_ktn_s_unit_price_sum := 0;      -- 標準原価
+        ln_ktn_ara_sum          := 0;      -- 粗利(集計用)
+        ln_ktn_chk_0_sum        := 0;      -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
         ln_ktn_quant_sum    := 0;          -- 数量
         -- 商品区分計集計用項目初期化
         ln_skbn_arari_sum   := 0;          -- 粗利
         ln_skbn_s_am_sum    := 0;          -- 売上高
         ln_skbn_nuit_sum    := 0;          -- 本数
         ln_skbn_price_sum   := 0;          -- 品目定価
-        ln_skbn_to_am_sum   := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--        ln_skbn_to_am_sum   := 0;          -- 内訳合計
+        ln_skbn_s_unit_price_sum := 0;     -- 標準原価
+        ln_skbn_ara_sum          := 0;     -- 粗利(集計用)
+        ln_skbn_chk_0_sum        := 0;     -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
         ln_skbn_quant_sum   := 0;          -- 数量
       END IF;
 --
@@ -2293,7 +2462,10 @@ AS
         -- 細群計(標準原価)データ
         ----------------------------------------------------------------
         -- 標準原価算出
-        ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--        ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+        ln_syo_s_unit_price := ln_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_s_unit_price';
@@ -2304,7 +2476,10 @@ AS
         -- 細群計(粗利)データ
         ----------------------------------------------------------------
         -- 粗利算出
-        ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--        ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+        ln_arari_sum := ln_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_arari';
@@ -2331,6 +2506,8 @@ AS
         ----------------------------------------------------------------
         -- 細群計(掛率)データ  ((売上高*100)/(品目定価*本数))
         ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
         -- ０除算判定項目へ判定値を挿入
         ln_chk_0 := ln_price_sum * ln_nuit_sum;
         -- ０除算回避判定
@@ -2341,6 +2518,16 @@ AS
           -- 値が[0]の場合は、一律[0]設定
           ln_syo_kake_par := gn_0;
         END IF;
+*/
+        -- ０除算回避判定
+        IF (ln_chk_0_sum <> 0) THEN
+          -- 値が[0]出なければ計算
+          ln_syo_kake_par := ROUND((ln_s_am_sum * 100) / ln_chk_0_sum, 2);
+        ELSE
+          -- 値が[0]の場合は、一律[0]設定
+          ln_syo_kake_par := gn_0;
+        END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_kake_par';
@@ -2378,7 +2565,10 @@ AS
           -- 小群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+          ln_sttl_s_unit_price := ln_st_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_s_unit_price';
@@ -2389,7 +2579,10 @@ AS
           -- 小群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_st_arari_sum := ln_st_s_am_sum - ln_sttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_st_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+          ln_st_arari_sum := ln_st_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_arari';
@@ -2416,6 +2609,8 @@ AS
           ----------------------------------------------------------------
           -- 小群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_st_price_sum * ln_st_nuit_sum;
           -- ０除算回避判定
@@ -2426,6 +2621,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_sttl_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_st_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_sttl_kake_par := ROUND((ln_st_s_am_sum * 100) / ln_st_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_sttl_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_kake_par';
@@ -2443,7 +2648,12 @@ AS
 --
           -- 小群計集計用項目初期化
           ln_st_quant_sum     := 0;              -- 数量
-          ln_st_s_u_price_sum := 0;              -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_st_s_u_price_sum := 0;              -- 内訳合計
+          ln_st_s_unit_price_sum := 0;           -- 標準原価
+          ln_st_ara_sum          := 0;           -- 粗利(集計用)
+          ln_st_chk_0_sum        := 0;           -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_st_arari_sum     := 0;              -- 粗利
           ln_st_s_am_sum      := 0;              -- 売上高
           ln_st_nuit_sum      := 0;              -- 本数
@@ -2474,7 +2684,10 @@ AS
           -- 中群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+          ln_mttl_s_unit_price := ln_mt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_s_unit_price';
@@ -2485,7 +2698,10 @@ AS
           -- 中群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+          ln_mt_arari_sum := ln_mt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_arari';
@@ -2512,6 +2728,8 @@ AS
           ----------------------------------------------------------------
           -- 中群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_mt_price_sum * ln_mt_nuit_sum;
           -- ０除算回避判定
@@ -2522,6 +2740,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_mttl_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_mt_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_mttl_kake_par := ROUND((ln_mt_s_am_sum * 100) / ln_mt_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_mttl_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_kake_par';
@@ -2540,7 +2768,12 @@ AS
 --
           -- 中群計集計用項目初期化
           ln_mt_quant_sum     := 0;              -- 数量
-          ln_mt_s_u_price_sum := 0;              -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_mt_s_u_price_sum := 0;              -- 内訳合計
+          ln_mt_s_unit_price_sum := 0;           -- 標準原価
+          ln_mt_ara_sum          := 0;           -- 粗利(集計用)
+          ln_mt_chk_0_sum        := 0;           -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_mt_arari_sum     := 0;              -- 粗利
           ln_mt_s_am_sum      := 0;              -- 売上高
           ln_mt_nuit_sum      := 0;              -- 本数
@@ -2571,7 +2804,10 @@ AS
           -- 大群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+          ln_lttl_s_unit_price := ln_lt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_s_unit_price';
@@ -2582,7 +2818,10 @@ AS
           -- 大群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+          ln_lt_arari_sum := ln_lt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_arari';
@@ -2609,6 +2848,8 @@ AS
           ----------------------------------------------------------------
           -- 大群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_lt_price_sum * ln_lt_nuit_sum;
           -- ０除算回避判定
@@ -2619,6 +2860,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_lttl_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_lt_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_lttl_kake_par := ROUND((ln_lt_s_am_sum * 100) / ln_lt_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_lttl_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_kake_par';
@@ -2637,7 +2888,12 @@ AS
 --
           -- 大群計集計用項目初期化
           ln_lt_quant_sum     := 0;              -- 数量
-          ln_lt_s_u_price_sum := 0;              -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_lt_s_u_price_sum := 0;              -- 内訳合計
+          ln_lt_s_unit_price_sum := 0;           -- 標準原価
+          ln_lt_ara_sum          := 0;           -- 粗利(集計用)
+          ln_lt_chk_0_sum        := 0;           -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_lt_arari_sum     := 0;              -- 粗利
           ln_lt_s_am_sum      := 0;              -- 売上高
           ln_lt_nuit_sum      := 0;              -- 本数
@@ -2687,7 +2943,12 @@ AS
         ln_price_sum  := 0;         -- 品目定価
         ln_arari_sum  := 0;         -- 粗利
         ln_s_am_sum   := 0;         -- 売上高
-        ln_to_am_sum  := 0;         -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--        ln_to_am_sum  := 0;         -- 内訳合計
+        ln_s_unit_price_sum := 0;   -- 標準原価
+        ln_ara_sum          := 0;   -- 粗利(集計用)
+        ln_chk_0_sum        := 0;   -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE START
         ln_quant_sum  := 0;         -- 数量
       END IF;
 --
@@ -2852,7 +3113,13 @@ AS
       ln_s_am_sum   := ln_s_am_sum   + TO_NUMBER(gr_sale_plan(i).amount);              -- 売上高
       ln_nuit_sum   := ln_nuit_sum   + TO_NUMBER(gr_sale_plan(i).quant);               -- 本数
       ln_price_sum  := ln_price_sum  + ln_price;                                       -- 品目定価
-      ln_to_am_sum  := ln_to_am_sum  + TO_NUMBER(gr_sale_plan(i).total_amount);        -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_to_am_sum  := ln_to_am_sum  + TO_NUMBER(gr_sale_plan(i).total_amount);        -- 内訳合計
+      -- 明細ごとの計算結果を足し込む
+      ln_s_unit_price_sum := ln_s_unit_price_sum + ln_s_u_price;                       -- 標準原価
+      ln_ara_sum          := ln_ara_sum + ln_arari;                                    -- 粗利(集計用)
+      ln_chk_0_sum        := ln_chk_0_sum + ln_chk_0;                                  -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
       -- 出力単位が「本数」の場合
       IF (gr_param.output_unit = gv_output_unit) THEN
         ln_quant_sum      := ln_quant_sum        + TO_NUMBER(gr_sale_plan(i).quant);   -- 数量
@@ -2869,8 +3136,16 @@ AS
       ELSE
         ln_st_quant_sum   := ln_st_quant_sum     + ln_output_unit;                     -- 数量
       END IF;
+-- 2009/04/20 v1.8 UPDATE START
+/*
       ln_st_s_u_price_sum := ln_st_s_u_price_sum + TO_NUMBER(gr_sale_plan(i).total_amount);
                                                                                        -- 内訳合計
+*/
+      -- 明細ごとの計算結果を足し込む
+      ln_st_s_unit_price_sum  := ln_st_s_unit_price_sum + ln_s_u_price;                -- 標準原価
+      ln_st_ara_sum           := ln_st_ara_sum + ln_arari;                             -- 粗利(集計用)
+      ln_st_chk_0_sum         := ln_st_chk_0_sum + ln_chk_0;                           -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
       ln_st_s_am_sum      := ln_st_s_am_sum      + TO_NUMBER(gr_sale_plan(i).amount);  -- 売上高
       ln_st_nuit_sum      := ln_st_nuit_sum      + TO_NUMBER(gr_sale_plan(i).quant);   -- 本数
       ln_st_price_sum     := ln_st_price_sum     + ln_price;                           -- 品目定価
@@ -2883,8 +3158,16 @@ AS
       ELSE
         ln_mt_quant_sum   := ln_mt_quant_sum     + ln_output_unit;                     -- 数量
       END IF;
+-- 2009/04/20 v1.8 UPDATE START
+/*
       ln_mt_s_u_price_sum := ln_mt_s_u_price_sum + TO_NUMBER(gr_sale_plan(i).total_amount);
                                                                                        -- 内訳合計
+*/
+      -- 明細ごとの計算結果を足し込む
+      ln_mt_s_unit_price_sum  := ln_mt_s_unit_price_sum + ln_s_u_price;                -- 標準原価
+      ln_mt_ara_sum           := ln_mt_ara_sum + ln_arari;                             -- 粗利(集計用)
+      ln_mt_chk_0_sum         := ln_mt_chk_0_sum + ln_chk_0;                           -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
       ln_mt_s_am_sum      := ln_mt_s_am_sum      + TO_NUMBER(gr_sale_plan(i).amount);  -- 売上高
       ln_mt_nuit_sum      := ln_mt_nuit_sum      + TO_NUMBER(gr_sale_plan(i).quant);   -- 本数
       ln_mt_price_sum     := ln_mt_price_sum     + ln_price;                           -- 品目定価
@@ -2897,8 +3180,16 @@ AS
       ELSE
         ln_lt_quant_sum   := ln_lt_quant_sum     + ln_output_unit;                     -- 数量
       END IF;
+-- 2009/04/20 v1.8 UPDATE START
+/*
       ln_lt_s_u_price_sum := ln_lt_s_u_price_sum + TO_NUMBER(gr_sale_plan(i).total_amount);
                                                                                        -- 内訳合計
+*/
+      -- 明細ごとの計算結果を足し込む
+      ln_lt_s_unit_price_sum  := ln_lt_s_unit_price_sum + ln_s_u_price;                -- 標準原価
+      ln_lt_ara_sum           := ln_lt_ara_sum + ln_arari;                             -- 粗利(集計用)
+      ln_lt_chk_0_sum         := ln_lt_chk_0_sum + ln_chk_0;                           -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
       ln_lt_s_am_sum      := ln_lt_s_am_sum      + TO_NUMBER(gr_sale_plan(i).amount);  -- 売上高
       ln_lt_nuit_sum      := ln_lt_nuit_sum      + TO_NUMBER(gr_sale_plan(i).quant);   -- 本数
       ln_lt_price_sum     := ln_lt_price_sum     + ln_price;                           -- 品目定価
@@ -2907,8 +3198,16 @@ AS
       ln_ktn_s_am_sum     := ln_ktn_s_am_sum     + TO_NUMBER(gr_sale_plan(i).amount);  -- 売上高
       ln_ktn_nuit_sum     := ln_ktn_nuit_sum     + TO_NUMBER(gr_sale_plan(i).quant);   -- 本数
       ln_ktn_price_sum    := ln_ktn_price_sum    + ln_price;                           -- 品目定価
+-- 2009/04/20 v1.8 UPDATE START
+/*
       ln_ktn_to_am_sum    := ln_ktn_to_am_sum    + TO_NUMBER(gr_sale_plan(i).total_amount);
                                                                                        -- 内訳合計
+*/
+      -- 明細ごとの計算結果を足し込む
+      ln_ktn_s_unit_price_sum  := ln_ktn_s_unit_price_sum + ln_s_u_price;              -- 標準原価
+      ln_ktn_ara_sum           := ln_ktn_ara_sum + ln_arari;                           -- 粗利
+      ln_ktn_chk_0_sum         := ln_ktn_chk_0_sum + ln_chk_0;                         -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
       -- 出力単位が「本数」の場合
       IF (gr_param.output_unit = gv_output_unit) THEN
         ln_ktn_quant_sum   := ln_ktn_quant_sum   + TO_NUMBER(gr_sale_plan(i).quant);   -- 数量
@@ -2921,8 +3220,16 @@ AS
       ln_skbn_s_am_sum    := ln_skbn_s_am_sum    + TO_NUMBER(gr_sale_plan(i).amount);  -- 売上高
       ln_skbn_nuit_sum    := ln_skbn_nuit_sum    + TO_NUMBER(gr_sale_plan(i).quant);   -- 本数
       ln_skbn_price_sum   := ln_skbn_price_sum   + ln_price;                           -- 品目定価
+-- 2009/04/20 v1.8 UPDATE START
+/*
       ln_skbn_to_am_sum   := ln_skbn_to_am_sum   + TO_NUMBER(gr_sale_plan(i).total_amount);
                                                                                        -- 内訳合計
+*/
+      -- 明細ごとの計算結果を足し込む
+      ln_skbn_s_unit_price_sum  := ln_skbn_s_unit_price_sum + ln_s_u_price;            -- 標準原価
+      ln_skbn_ara_sum           := ln_skbn_ara_sum + ln_arari;                         -- 粗利(集計用)
+      ln_skbn_chk_0_sum         := ln_skbn_chk_0_sum + ln_chk_0;                       -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
       -- 出力単位が「本数」の場合
       IF (gr_param.output_unit = gv_output_unit) THEN
         ln_skbn_quant_sum   := ln_skbn_quant_sum + TO_NUMBER(gr_sale_plan(i).quant);   -- 数量
@@ -2935,8 +3242,16 @@ AS
       ln_to_s_am_sum      := ln_to_s_am_sum      + TO_NUMBER(gr_sale_plan(i).amount);  -- 売上高
       ln_to_nuit_sum      := ln_to_nuit_sum      + TO_NUMBER(gr_sale_plan(i).quant);   -- 本数
       ln_to_price_sum     := ln_to_price_sum     + ln_price;                           -- 品目定価
+-- 2009/04/20 v1.8 UPDATE START
+/*
       ln_to_to_am_sum     := ln_to_to_am_sum     + TO_NUMBER(gr_sale_plan(i).total_amount);
                                                                                        -- 内訳合計
+*/
+      -- 明細ごとの計算結果を足し込む
+      ln_to_s_unit_price_sum  := ln_to_s_unit_price_sum + ln_s_u_price;                -- 標準原価
+      ln_to_ara_sum           := ln_to_ara_sum + ln_arari;                             -- 粗利(集計用)
+      ln_to_chk_0_sum         := ln_to_chk_0_sum + ln_chk_0;                           -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
       -- 出力単位が「本数」の場合
       IF (gr_param.output_unit = gv_output_unit) THEN
         ln_to_quant_sum   := ln_to_quant_sum     + TO_NUMBER(gr_sale_plan(i).quant);   -- 数量
@@ -2960,7 +3275,10 @@ AS
     -- 細群計(標準原価)データ
     ----------------------------------------------------------------
     -- 標準原価算出
-    ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+    ln_syo_s_unit_price := ln_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_s_unit_price';
@@ -2971,8 +3289,12 @@ AS
     -- 細群計(粗利)データ
     ----------------------------------------------------------------
     -- 粗利算出
-    ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+    ln_arari_sum := ln_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
+
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_arari';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
@@ -2998,6 +3320,8 @@ AS
     ----------------------------------------------------------------
     -- 細群計(掛率)データ  ((売上高*100)/(品目定価*本数))
     ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
     -- ０除算判定項目へ判定値を挿入
     ln_chk_0 := ln_price_sum * ln_nuit_sum;
     -- ０除算回避判定
@@ -3008,6 +3332,16 @@ AS
       -- 値が[0]の場合は、一律[0]設定
       ln_syo_kake_par := gn_0;
     END IF;
+*/
+    -- ０除算回避判定
+    IF (ln_chk_0_sum <> 0) THEN
+      -- 値が[0]出なければ計算
+      ln_syo_kake_par := ROUND((ln_s_am_sum * 100) / ln_chk_0_sum, 2);
+    ELSE
+      -- 値が[0]の場合は、一律[0]設定
+      ln_syo_kake_par := gn_0;
+    END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_kake_par';
@@ -3041,7 +3375,10 @@ AS
     -- 小群計(標準原価)データ
     ----------------------------------------------------------------
     -- 標準原価算出
-    ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+    ln_sttl_s_unit_price := ln_st_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_s_unit_price';
@@ -3052,7 +3389,10 @@ AS
     -- 小群計(粗利)データ
     ----------------------------------------------------------------
     -- 粗利算出
-    ln_st_arari_sum := ln_st_s_am_sum - ln_sttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_st_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+    ln_st_arari_sum := ln_st_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_arari';
@@ -3079,6 +3419,8 @@ AS
     ----------------------------------------------------------------
     -- 小群計(掛率)データ  ((売上高*100)/(品目定価*本数))
     ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
     -- ０除算判定項目へ判定値を挿入
     ln_chk_0 := ln_st_price_sum * ln_st_nuit_sum;
     -- ０除算回避判定
@@ -3089,6 +3431,16 @@ AS
       -- 値が[0]の場合は、一律[0]設定
       ln_sttl_kake_par := gn_0;
     END IF;
+*/
+    -- ０除算回避判定
+    IF (ln_st_chk_0_sum <> 0) THEN
+      -- 値が[0]出なければ計算
+      ln_sttl_kake_par := ROUND((ln_st_s_am_sum * 100) / ln_st_chk_0_sum, 2);
+    ELSE
+      -- 値が[0]の場合は、一律[0]設定
+      ln_sttl_kake_par := gn_0;
+    END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_kake_par';
@@ -3122,7 +3474,10 @@ AS
     -- 中群計(標準原価)データ
     ----------------------------------------------------------------
     -- 標準原価算出
-    ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+    ln_mttl_s_unit_price := ln_mt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_s_unit_price';
@@ -3133,7 +3488,10 @@ AS
     -- 中群計(粗利)データ
     ----------------------------------------------------------------
     -- 粗利算出
-    ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+    ln_mt_arari_sum := ln_mt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_arari';
@@ -3160,6 +3518,8 @@ AS
     ----------------------------------------------------------------
     -- 中群計(掛率)データ  ((売上高*100)/(品目定価*本数))
     ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
     -- ０除算判定項目へ判定値を挿入
     ln_chk_0 := ln_mt_price_sum * ln_mt_nuit_sum;
     -- ０除算回避判定
@@ -3170,6 +3530,16 @@ AS
       -- 値が[0]の場合は、一律[0]設定
       ln_mttl_kake_par := gn_0;
     END IF;
+*/
+    -- ０除算回避判定
+    IF (ln_mt_chk_0_sum <> 0) THEN
+      -- 値が[0]出なければ計算
+      ln_mttl_kake_par := ROUND((ln_mt_s_am_sum * 100) / ln_mt_chk_0_sum, 2);
+    ELSE
+      -- 値が[0]の場合は、一律[0]設定
+      ln_mttl_kake_par := gn_0;
+    END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_kake_par';
@@ -3203,7 +3573,10 @@ AS
     -- 大群計(標準原価)データ
     ----------------------------------------------------------------
     -- 標準原価算出
-    ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+    ln_lttl_s_unit_price := ln_lt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_s_unit_price';
@@ -3214,7 +3587,10 @@ AS
     -- 大群計(粗利)データ
     ----------------------------------------------------------------
     -- 粗利算出
-    ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+    ln_lt_arari_sum := ln_lt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_arari';
@@ -3241,6 +3617,8 @@ AS
     ----------------------------------------------------------------
     -- 大群計(掛率)データ  ((売上高*100)/(品目定価*本数))
     ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
     -- ０除算判定項目へ判定値を挿入
     ln_chk_0 := ln_lt_price_sum * ln_lt_nuit_sum;
     -- ０除算回避判定
@@ -3251,6 +3629,16 @@ AS
       -- 値が[0]の場合は、一律[0]設定
       ln_lttl_kake_par := gn_0;
     END IF;
+*/
+    -- ０除算回避判定
+    IF (ln_lt_chk_0_sum <> 0) THEN
+      -- 値が[0]出なければ計算
+      ln_lttl_kake_par := ROUND((ln_lt_s_am_sum * 100) / ln_lt_chk_0_sum, 2);
+    ELSE
+      -- 値が[0]の場合は、一律[0]設定
+      ln_lttl_kake_par := gn_0;
+    END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_kake_par';
@@ -3282,7 +3670,10 @@ AS
     -- 拠点計(標準原価)データ
     ----------------------------------------------------------------
     -- 標準原価算出
-    ln_ktn_s_unit_price := ln_ktn_to_am_sum * ln_ktn_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_ktn_s_unit_price := ln_ktn_to_am_sum * ln_ktn_quant_sum;
+    ln_ktn_s_unit_price := ln_ktn_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_s_unit_price';
@@ -3293,7 +3684,10 @@ AS
     -- 拠点計(粗利)データ
     ----------------------------------------------------------------
     -- 粗利算出
-    ln_ktn_arari_sum := ln_ktn_s_am_sum - ln_ktn_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_ktn_arari_sum := ln_ktn_s_am_sum - ln_ktn_s_unit_price;
+    ln_ktn_arari_sum := ln_ktn_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_arari';
@@ -3320,6 +3714,8 @@ AS
     ----------------------------------------------------------------
     -- 拠点計(掛率)データ  ((売上高*100)/(品目定価*本数))
     ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
     -- ０除算判定項目へ判定値を挿入
     ln_chk_0 := ln_ktn_price_sum * ln_ktn_nuit_sum;
     -- ０除算回避判定
@@ -3330,6 +3726,16 @@ AS
       -- 値が[0]の場合は、一律[0]設定
       ln_ktn_kake_par := gn_0;
     END IF;
+*/
+    -- ０除算回避判定
+    IF (ln_ktn_chk_0_sum <> 0) THEN
+      -- 値が[0]出なければ計算
+      ln_ktn_kake_par := ROUND((ln_ktn_s_am_sum * 100) / ln_ktn_chk_0_sum, 2);
+    ELSE
+      -- 値が[0]の場合は、一律[0]設定
+      ln_ktn_kake_par := gn_0;
+    END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_kake_par';
@@ -3361,7 +3767,10 @@ AS
     -- 商品区分計(標準原価)データ
     ----------------------------------------------------------------
     -- 標準原価算出
-    ln_skbn_s_unit_price := ln_skbn_to_am_sum * ln_skbn_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_skbn_s_unit_price := ln_skbn_to_am_sum * ln_skbn_quant_sum;
+    ln_skbn_s_unit_price := ln_skbn_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_s_unit_price';
@@ -3372,7 +3781,10 @@ AS
     -- 商品区分計(粗利)データ
     ----------------------------------------------------------------
     -- 粗利算出
-    ln_skbn_arari_sum := ln_skbn_s_am_sum - ln_skbn_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_skbn_arari_sum := ln_skbn_s_am_sum - ln_skbn_s_unit_price;
+    ln_skbn_arari_sum := ln_skbn_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_arari';
@@ -3399,6 +3811,8 @@ AS
     ----------------------------------------------------------------
     -- 商品区分計(掛率)データ  ((売上高*100)/(品目定価*本数))
     ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
     -- ０除算判定項目へ判定値を挿入
     ln_chk_0 := ln_skbn_price_sum * ln_skbn_nuit_sum;
     -- ０除算回避判定
@@ -3409,6 +3823,16 @@ AS
       -- 値が[0]の場合は、一律[0]設定
       ln_skbn_kake_par := gn_0;
     END IF;
+*/
+    -- ０除算回避判定
+    IF (ln_skbn_chk_0_sum <> 0) THEN
+      -- 値が[0]出なければ計算
+      ln_skbn_kake_par := ROUND((ln_skbn_s_am_sum * 100) / ln_skbn_chk_0_sum, 2);
+    ELSE
+      -- 値が[0]の場合は、一律[0]設定
+      ln_skbn_kake_par := gn_0;
+    END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_kake_par';
@@ -3426,7 +3850,10 @@ AS
     -- 総合計(標準原価)データ
     ----------------------------------------------------------------
     -- 標準原価算出
-    ln_to_s_unit_price := ln_to_to_am_sum * ln_to_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_to_s_unit_price := ln_to_to_am_sum * ln_to_quant_sum;
+    ln_to_s_unit_price := ln_to_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'to_s_unit_price';
@@ -3437,7 +3864,10 @@ AS
     -- 総合計(粗利)データ
     ----------------------------------------------------------------
     -- 粗利算出
-    ln_to_arari_sum := ln_to_s_am_sum - ln_to_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--    ln_to_arari_sum := ln_to_s_am_sum - ln_to_s_unit_price;
+    ln_to_arari_sum := ln_to_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'to_arari';
@@ -3464,6 +3894,8 @@ AS
     ----------------------------------------------------------------
     -- 総合計(掛率)データ  ((売上高*100)/(品目定価*本数))
     ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
     -- ０除算判定項目へ判定値を挿入
     ln_chk_0 := ln_to_price_sum * ln_to_nuit_sum;
     -- ０除算回避判定
@@ -3474,6 +3906,16 @@ AS
       -- 値が[0]の場合は、一律[0]設定
       ln_to_kake_par := gn_0;
     END IF;
+*/
+    -- ０除算回避判定
+    IF (ln_to_chk_0_sum <> 0) THEN
+      -- 値が[0]出なければ計算
+      ln_to_kake_par := ROUND((ln_to_s_am_sum * 100) / ln_to_chk_0_sum, 2);
+    ELSE
+      -- 値が[0]の場合は、一律[0]設定
+      ln_to_kake_par := gn_0;
+    END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'to_kake_par';
@@ -3578,8 +4020,11 @@ AS
             ----------------------------------------------------------------
             -- 細群計(標準原価)データ
             ----------------------------------------------------------------
-            -- 標準原価算出
-            ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+          -- 標準原価算出
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+            ln_syo_s_unit_price := ln_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_s_unit_price';
@@ -3590,7 +4035,10 @@ AS
             -- 細群計(粗利)データ
             ----------------------------------------------------------------
             -- 粗利算出
-            ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+            ln_arari_sum := ln_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_arari';
@@ -3617,6 +4065,8 @@ AS
             ----------------------------------------------------------------
             -- 細群計(掛率)データ  ((売上高*100)/(品目定価*本数))
             ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
             -- ０除算判定項目へ判定値を挿入
             ln_chk_0 := ln_price_sum * ln_nuit_sum;
             -- ０除算回避判定
@@ -3627,6 +4077,16 @@ AS
               -- 値が[0]の場合は、一律[0]設定
               ln_syo_kake_par := gn_0;
             END IF;
+*/
+            -- ０除算回避判定
+            IF (ln_chk_0_sum <> 0) THEN
+              -- 値が[0]出なければ計算
+              ln_syo_kake_par := ROUND((ln_s_am_sum * 100) / ln_chk_0_sum, 2);
+            ELSE
+              -- 値が[0]の場合は、一律[0]設定
+              ln_syo_kake_par := gn_0;
+            END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_kake_par';
@@ -3660,7 +4120,10 @@ AS
             -- 小群計(標準原価)データ
             ----------------------------------------------------------------
             -- 標準原価算出
-            ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+            ln_sttl_s_unit_price := ln_st_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_s_unit_price';
@@ -3671,7 +4134,10 @@ AS
             -- 小群計(粗利)データ
             ----------------------------------------------------------------
             -- 粗利算出
-            ln_st_arari_sum := ln_st_s_am_sum - ln_sttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_st_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+            ln_st_arari_sum := ln_st_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_arari';
@@ -3698,6 +4164,8 @@ AS
             ----------------------------------------------------------------
             -- 小群計(掛率)データ  ((売上高*100)/(品目定価*本数))
             ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
             -- ０除算判定項目へ判定値を挿入
             ln_chk_0 := ln_st_price_sum * ln_st_nuit_sum;
             -- ０除算回避判定
@@ -3708,6 +4176,16 @@ AS
               -- 値が[0]の場合は、一律[0]設定
               ln_sttl_kake_par := gn_0;
             END IF;
+*/
+            -- ０除算回避判定
+            IF (ln_st_chk_0_sum <> 0) THEN
+              -- 値が[0]出なければ計算
+              ln_sttl_kake_par := ROUND((ln_st_s_am_sum * 100) / ln_st_chk_0_sum, 2);
+            ELSE
+              -- 値が[0]の場合は、一律[0]設定
+              ln_sttl_kake_par := gn_0;
+            END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_kake_par';
@@ -3741,7 +4219,10 @@ AS
             -- 中群計(標準原価)データ
             ----------------------------------------------------------------
             -- 標準原価算出
-            ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+            ln_mttl_s_unit_price := ln_mt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_s_unit_price';
@@ -3752,7 +4233,10 @@ AS
             -- 中群計(粗利)データ
             ----------------------------------------------------------------
             -- 粗利算出
-            ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+            ln_mt_arari_sum := ln_mt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_arari';
@@ -3779,6 +4263,8 @@ AS
             ----------------------------------------------------------------
             -- 中群計(掛率)データ  ((売上高*100)/(品目定価*本数))
             ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
             -- ０除算判定項目へ判定値を挿入
             ln_chk_0 := ln_mt_price_sum * ln_mt_nuit_sum;
             -- ０除算回避判定
@@ -3789,6 +4275,16 @@ AS
               -- 値が[0]の場合は、一律[0]設定
               ln_mttl_kake_par := gn_0;
             END IF;
+*/
+            -- ０除算回避判定
+            IF (ln_mt_chk_0_sum <> 0) THEN
+              -- 値が[0]出なければ計算
+              ln_mttl_kake_par := ROUND((ln_mt_s_am_sum * 100) / ln_mt_chk_0_sum, 2);
+            ELSE
+              -- 値が[0]の場合は、一律[0]設定
+              ln_mttl_kake_par := gn_0;
+            END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_kake_par';
@@ -3822,7 +4318,10 @@ AS
             -- 大群計(標準原価)データ
             ----------------------------------------------------------------
             -- 標準原価算出
-            ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+            ln_lttl_s_unit_price := ln_lt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_s_unit_price';
@@ -3833,7 +4332,10 @@ AS
             -- 大群計(粗利)データ
             ----------------------------------------------------------------
             -- 粗利算出
-            ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+            ln_lt_arari_sum := ln_lt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_arari';
@@ -3860,6 +4362,8 @@ AS
             ----------------------------------------------------------------
             -- 大群計(掛率)データ  ((売上高*100)/(品目定価*本数))
             ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
             -- ０除算判定項目へ判定値を挿入
             ln_chk_0 := ln_lt_price_sum * ln_lt_nuit_sum;
             -- ０除算回避判定
@@ -3870,6 +4374,16 @@ AS
               -- 値が[0]の場合は、一律[0]設定
               ln_lttl_kake_par := gn_0;
             END IF;
+*/
+            -- ０除算回避判定
+            IF (ln_lt_chk_0_sum <> 0) THEN
+              -- 値が[0]出なければ計算
+              ln_lttl_kake_par := ROUND((ln_lt_s_am_sum * 100) / ln_lt_chk_0_sum, 2);
+            ELSE
+              -- 値が[0]の場合は、一律[0]設定
+              ln_lttl_kake_par := gn_0;
+            END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_kake_par';
@@ -3901,7 +4415,10 @@ AS
             -- 拠点計(標準原価)データ
             ----------------------------------------------------------------
             -- 標準原価算出
-            ln_ktn_s_unit_price := ln_ktn_to_am_sum * ln_ktn_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_ktn_s_unit_price := ln_ktn_to_am_sum * ln_ktn_quant_sum;
+            ln_ktn_s_unit_price := ln_ktn_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_s_unit_price';
@@ -3912,7 +4429,10 @@ AS
             -- 拠点計(粗利)データ
             ----------------------------------------------------------------
             -- 粗利算出
-            ln_ktn_arari_sum := ln_ktn_s_am_sum - ln_ktn_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_ktn_arari_sum := ln_ktn_s_am_sum - ln_ktn_s_unit_price;
+            ln_ktn_arari_sum := ln_ktn_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_arari';
@@ -3939,6 +4459,8 @@ AS
             ----------------------------------------------------------------
             -- 拠点計(掛率)データ  ((売上高*100)/(品目定価*本数))
             ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
             -- ０除算判定項目へ判定値を挿入
             ln_chk_0 := ln_ktn_price_sum * ln_ktn_nuit_sum;
             -- ０除算回避判定
@@ -3949,6 +4471,16 @@ AS
               -- 値が[0]の場合は、一律[0]設定
               ln_ktn_kake_par := gn_0;
             END IF;
+*/
+            -- ０除算回避判定
+            IF (ln_ktn_chk_0_sum <> 0) THEN
+              -- 値が[0]出なければ計算
+              ln_ktn_kake_par := ROUND((ln_ktn_s_am_sum * 100) / ln_ktn_chk_0_sum, 2);
+            ELSE
+              -- 値が[0]の場合は、一律[0]設定
+              ln_ktn_kake_par := gn_0;
+            END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_kake_par';
@@ -3980,7 +4512,10 @@ AS
             -- 商品区分計(標準原価)データ
             ----------------------------------------------------------------
             -- 標準原価算出
-            ln_skbn_s_unit_price := ln_skbn_to_am_sum * ln_skbn_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_skbn_s_unit_price := ln_skbn_to_am_sum * ln_skbn_quant_sum;
+            ln_skbn_s_unit_price := ln_skbn_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_s_unit_price';
@@ -3991,7 +4526,10 @@ AS
             -- 商品区分計(粗利)データ
             ----------------------------------------------------------------
             -- 粗利算出
-            ln_skbn_arari_sum := ln_skbn_s_am_sum - ln_skbn_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_skbn_arari_sum := ln_skbn_s_am_sum - ln_skbn_s_unit_price;
+            ln_skbn_arari_sum := ln_skbn_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_arari';
@@ -4018,6 +4556,8 @@ AS
             ----------------------------------------------------------------
             -- 商品区分計(掛率)データ  ((売上高*100)/(品目定価*本数))
             ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
             -- ０除算判定項目へ判定値を挿入
             ln_chk_0 := ln_skbn_price_sum * ln_skbn_nuit_sum;
             -- ０除算回避判定
@@ -4028,6 +4568,16 @@ AS
               -- 値が[0]の場合は、一律[0]設定
               ln_skbn_kake_par := gn_0;
             END IF;
+*/
+            -- ０除算回避判定
+            IF (ln_skbn_chk_0_sum <> 0) THEN
+              -- 値が[0]出なければ計算
+              ln_skbn_kake_par := ROUND((ln_skbn_s_am_sum * 100) / ln_skbn_chk_0_sum, 2);
+            ELSE
+              -- 値が[0]の場合は、一律[0]設定
+              ln_skbn_kake_par := gn_0;
+            END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_kake_par';
@@ -4146,21 +4696,36 @@ AS
 --
           -- 小群計集計用項目初期化
           ln_st_quant_sum     := 0;          -- 数量
-          ln_st_s_u_price_sum := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_st_s_u_price_sum := 0;          -- 内訳合計
+          ln_st_s_unit_price_sum := 0;       -- 標準原価
+          ln_st_ara_sum          := 0;       -- 粗利(集計用)
+          ln_st_chk_0_sum        := 0;       -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_st_arari_sum     := 0;          -- 粗利
           ln_st_s_am_sum      := 0;          -- 売上高
           ln_st_nuit_sum      := 0;          -- 本数
           ln_st_price_sum     := 0;          -- 品目定価
           -- 中群計集計用項目初期化
           ln_mt_quant_sum     := 0;          -- 数量
-          ln_mt_s_u_price_sum := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_mt_s_u_price_sum := 0;          -- 内訳合計
+          ln_mt_s_unit_price_sum := 0;       -- 標準原価
+          ln_mt_ara_sum          := 0;       -- 粗利(集計用)
+          ln_mt_chk_0_sum        := 0;       -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_mt_arari_sum     := 0;          -- 粗利
           ln_mt_s_am_sum      := 0;          -- 売上高
           ln_mt_nuit_sum      := 0;          -- 本数
           ln_mt_price_sum     := 0;          -- 品目定価
           -- 大群計集計用項目初期化
           ln_lt_quant_sum     := 0;          -- 数量
-          ln_lt_s_u_price_sum := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_lt_s_u_price_sum := 0;          -- 内訳合計
+          ln_lt_s_unit_price_sum := 0;       -- 標準原価
+          ln_lt_ara_sum          := 0;       -- 粗利(集計用)
+          ln_lt_chk_0_sum        := 0;       -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_lt_arari_sum     := 0;          -- 粗利
           ln_lt_s_am_sum      := 0;          -- 売上高
           ln_lt_nuit_sum      := 0;          -- 本数
@@ -4170,14 +4735,24 @@ AS
           ln_ktn_s_am_sum     := 0;          -- 売上高
           ln_ktn_nuit_sum     := 0;          -- 本数
           ln_ktn_price_sum    := 0;          -- 品目定価
-          ln_ktn_to_am_sum    := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_ktn_to_am_sum    := 0;          -- 内訳合計
+          ln_ktn_s_unit_price_sum := 0;      -- 標準原価
+          ln_ktn_ara_sum          := 0;      -- 粗利(集計用)
+          ln_ktn_chk_0_sum        := 0;      -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_ktn_quant_sum    := 0;          -- 数量
           -- 商品区分計集計用項目初期化
           ln_skbn_arari_sum   := 0;          -- 粗利
           ln_skbn_s_am_sum    := 0;          -- 売上高
           ln_skbn_nuit_sum    := 0;          -- 本数
           ln_skbn_price_sum   := 0;          -- 品目定価
-          ln_skbn_to_am_sum   := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_skbn_to_am_sum   := 0;          -- 内訳合計
+          ln_skbn_s_unit_price_sum := 0;     -- 標準原価
+          ln_skbn_ara_sum          := 0;     -- 粗利(集計用)
+          ln_skbn_chk_0_sum        := 0;     -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_skbn_quant_sum   := 0;          -- 数量
         END IF;
 --
@@ -4197,7 +4772,10 @@ AS
           -- 細群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+          ln_syo_s_unit_price := ln_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_s_unit_price';
@@ -4208,7 +4786,10 @@ AS
           -- 細群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+          ln_arari_sum := ln_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_arari';
@@ -4235,6 +4816,8 @@ AS
           ----------------------------------------------------------------
           -- 細群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_price_sum * ln_nuit_sum;
           -- ０除算回避判定
@@ -4245,6 +4828,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_syo_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_syo_kake_par := ROUND((ln_s_am_sum * 100) / ln_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_syo_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_kake_par';
@@ -4278,7 +4871,10 @@ AS
           -- 小群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+          ln_sttl_s_unit_price := ln_st_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_s_unit_price';
@@ -4289,7 +4885,10 @@ AS
           -- 小群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_st_arari_sum := ln_st_s_am_sum - ln_sttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_st_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+          ln_st_arari_sum := ln_st_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_arari';
@@ -4316,6 +4915,8 @@ AS
           ----------------------------------------------------------------
           -- 小群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_st_price_sum * ln_st_nuit_sum;
           -- ０除算回避判定
@@ -4326,6 +4927,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_sttl_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_st_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_sttl_kake_par := ROUND((ln_st_s_am_sum * 100) / ln_st_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_sttl_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_kake_par';
@@ -4359,7 +4970,10 @@ AS
           -- 中群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+          ln_mttl_s_unit_price := ln_mt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_s_unit_price';
@@ -4370,7 +4984,10 @@ AS
           -- 中群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+          ln_mt_arari_sum := ln_mt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_arari';
@@ -4397,6 +5014,8 @@ AS
           ----------------------------------------------------------------
           -- 中群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_mt_price_sum * ln_mt_nuit_sum;
           -- ０除算回避判定
@@ -4407,6 +5026,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_mttl_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_mt_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_mttl_kake_par := ROUND((ln_mt_s_am_sum * 100) / ln_mt_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_mttl_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_kake_par';
@@ -4440,18 +5069,27 @@ AS
           -- 大群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+          ln_lttl_s_unit_price := ln_lt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_s_unit_price';
           gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-          gt_xml_data_table(gl_xml_idx).tag_value := ln_lt_s_u_price_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          gt_xml_data_table(gl_xml_idx).tag_value := ln_lt_s_u_price_sum;
+          gt_xml_data_table(gl_xml_idx).tag_value := ln_lttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE END
 --
           ----------------------------------------------------------------
           -- 大群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+          ln_lt_arari_sum := ln_lt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_arari';
@@ -4478,6 +5116,8 @@ AS
           ----------------------------------------------------------------
           -- 大群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_lt_price_sum * ln_lt_nuit_sum;
           -- ０除算回避判定
@@ -4488,6 +5128,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_lttl_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_lt_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_lttl_kake_par := ROUND((ln_lt_s_am_sum * 100) / ln_lt_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_lttl_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_kake_par';
@@ -4519,7 +5169,10 @@ AS
           -- 拠点計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_ktn_s_unit_price := ln_ktn_to_am_sum * ln_ktn_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_ktn_s_unit_price := ln_ktn_to_am_sum * ln_ktn_quant_sum;
+          ln_ktn_s_unit_price := ln_ktn_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_s_unit_price';
@@ -4530,7 +5183,10 @@ AS
           -- 拠点計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_ktn_arari_sum := ln_ktn_s_am_sum - ln_ktn_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_ktn_arari_sum := ln_ktn_s_am_sum - ln_ktn_s_unit_price;
+          ln_ktn_arari_sum := ln_ktn_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_arari';
@@ -4557,6 +5213,8 @@ AS
           ----------------------------------------------------------------
           -- 拠点計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_ktn_price_sum * ln_ktn_nuit_sum;
           -- ０除算回避判定
@@ -4567,6 +5225,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_ktn_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_ktn_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_ktn_kake_par := ROUND((ln_ktn_s_am_sum * 100) / ln_ktn_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_ktn_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_kake_par';
@@ -4643,25 +5311,45 @@ AS
           ln_price_sum        := 0;          -- 品目定価
           ln_arari_sum        := 0;          -- 粗利
           ln_s_am_sum         := 0;          -- 売上高
-          ln_to_am_sum        := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_to_am_sum        := 0;          -- 内訳合計
+          ln_s_unit_price_sum := 0;          -- 標準原価
+          ln_ara_sum          := 0;          -- 粗利(集計用)
+          ln_chk_0_sum        := 0;          -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_quant_sum        := 0;          -- 数量
           -- 小群計集計用項目初期化
           ln_st_quant_sum     := 0;          -- 数量
-          ln_st_s_u_price_sum := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_st_s_u_price_sum := 0;          -- 内訳合計
+          ln_st_s_unit_price_sum := 0;       -- 標準原価
+          ln_st_ara_sum          := 0;       -- 粗利(集計用)
+          ln_st_chk_0_sum        := 0;       -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_st_arari_sum     := 0;          -- 粗利
           ln_st_s_am_sum      := 0;          -- 売上高
           ln_st_nuit_sum      := 0;          -- 本数
           ln_st_price_sum     := 0;          -- 品目定価
           -- 中群計集計用項目初期化
           ln_mt_quant_sum     := 0;          -- 数量
-          ln_mt_s_u_price_sum := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_mt_s_u_price_sum := 0;          -- 内訳合計
+          ln_mt_s_unit_price_sum := 0;       -- 標準原価
+          ln_mt_ara_sum          := 0;       -- 粗利(集計用)
+          ln_mt_chk_0_sum        := 0;       -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_mt_arari_sum     := 0;          -- 粗利
           ln_mt_s_am_sum      := 0;          -- 売上高
           ln_mt_nuit_sum      := 0;          -- 本数
           ln_mt_price_sum     := 0;          -- 品目定価
           -- 大群計集計用項目初期化
           ln_lt_quant_sum     := 0;          -- 数量
-          ln_lt_s_u_price_sum := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_lt_s_u_price_sum := 0;          -- 内訳合計
+          ln_lt_s_unit_price_sum := 0;       -- 標準原価
+          ln_lt_ara_sum          := 0;       -- 粗利(集計用)
+          ln_lt_chk_0_sum        := 0;       -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_lt_arari_sum     := 0;          -- 粗利
           ln_lt_s_am_sum      := 0;          -- 売上高
           ln_lt_nuit_sum      := 0;          -- 本数
@@ -4671,7 +5359,12 @@ AS
           ln_ktn_s_am_sum     := 0;          -- 売上高
           ln_ktn_nuit_sum     := 0;          -- 本数
           ln_ktn_price_sum    := 0;          -- 品目定価
-          ln_ktn_to_am_sum    := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_ktn_to_am_sum    := 0;          -- 内訳合計
+          ln_ktn_s_unit_price_sum := 0;      -- 標準原価
+          ln_ktn_ara_sum          := 0;      -- 粗利(集計用)
+          ln_ktn_chk_0_sum        := 0;      -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_ktn_quant_sum    := 0;          -- 数量
         END IF;
 --
@@ -4691,7 +5384,10 @@ AS
           -- 細群計(標準原価)データ
           ----------------------------------------------------------------
           -- 標準原価算出
-          ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+          ln_syo_s_unit_price := ln_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_s_unit_price';
@@ -4702,7 +5398,10 @@ AS
           -- 細群計(粗利)データ
           ----------------------------------------------------------------
           -- 粗利算出
-          ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+          ln_arari_sum := ln_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_arari';
@@ -4729,6 +5428,8 @@ AS
           ----------------------------------------------------------------
           -- 細群計(掛率)データ  ((売上高*100)/(品目定価*本数))
           ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
           -- ０除算判定項目へ判定値を挿入
           ln_chk_0 := ln_price_sum * ln_nuit_sum;
           -- ０除算回避判定
@@ -4739,6 +5440,16 @@ AS
             -- 値が[0]の場合は、一律[0]設定
             ln_syo_kake_par := gn_0;
           END IF;
+*/
+          -- ０除算回避判定
+          IF (ln_chk_0_sum <> 0) THEN
+            -- 値が[0]出なければ計算
+            ln_syo_kake_par := ROUND((ln_s_am_sum * 100) / ln_chk_0_sum, 2);
+          ELSE
+            -- 値が[0]の場合は、一律[0]設定
+            ln_syo_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
           gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_kake_par';
@@ -4776,7 +5487,10 @@ AS
             -- 小群計(標準原価)データ
             ----------------------------------------------------------------
             -- 標準原価算出
-            ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+            ln_sttl_s_unit_price := ln_st_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_s_unit_price';
@@ -4787,7 +5501,10 @@ AS
             -- 小群計(粗利)データ
             ----------------------------------------------------------------
             -- 粗利算出
-            ln_st_arari_sum := ln_st_s_am_sum - ln_sttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_st_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+            ln_st_arari_sum := ln_st_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_arari';
@@ -4814,6 +5531,8 @@ AS
             ----------------------------------------------------------------
             -- 小群計(掛率)データ  ((売上高*100)/(品目定価*本数))
             ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
             -- ０除算判定項目へ判定値を挿入
             ln_chk_0 := ln_st_price_sum * ln_st_nuit_sum;
             -- ０除算回避判定
@@ -4824,6 +5543,16 @@ AS
               -- 値が[0]の場合は、一律[0]設定
               ln_sttl_kake_par := gn_0;
             END IF;
+*/
+            -- ０除算回避判定
+            IF (ln_st_chk_0_sum <> 0) THEN
+              -- 値が[0]出なければ計算
+              ln_sttl_kake_par := ROUND((ln_st_s_am_sum * 100) / ln_st_chk_0_sum, 2);
+            ELSE
+              -- 値が[0]の場合は、一律[0]設定
+              ln_sttl_kake_par := gn_0;
+            END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_kake_par';
@@ -4842,7 +5571,12 @@ AS
 --
             -- 小群計集計用項目初期化
             ln_st_quant_sum     := 0;          -- 数量
-            ln_st_s_u_price_sum := 0;          -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_st_s_u_price_sum := 0;          -- 内訳合計
+            ln_st_s_unit_price_sum := 0;       -- 標準原価
+            ln_st_ara_sum          := 0;       -- 粗利(集計用)
+            ln_st_chk_0_sum        := 0;       -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
             ln_st_arari_sum     := 0;          -- 粗利
             ln_st_s_am_sum      := 0;          -- 売上高
             ln_st_nuit_sum      := 0;          -- 本数
@@ -4873,7 +5607,10 @@ AS
             -- 中群計(標準原価)データ
             ----------------------------------------------------------------
             -- 標準原価算出
-            ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+            ln_mttl_s_unit_price := ln_mt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_s_unit_price';
@@ -4884,7 +5621,10 @@ AS
             -- 中群計(粗利)データ
             ----------------------------------------------------------------
             -- 粗利算出
-            ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+            ln_mt_arari_sum := ln_mt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_arari';
@@ -4911,6 +5651,8 @@ AS
             ----------------------------------------------------------------
             -- 中群計(掛率)データ  ((売上高*100)/(品目定価*本数))
             ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
             -- ０除算判定項目へ判定値を挿入
             ln_chk_0 := ln_mt_price_sum * ln_mt_nuit_sum;
             -- ０除算回避判定
@@ -4921,6 +5663,16 @@ AS
               -- 値が[0]の場合は、一律[0]設定
               ln_mttl_kake_par := gn_0;
             END IF;
+*/
+            -- ０除算回避判定
+            IF (ln_mt_chk_0_sum <> 0) THEN
+              -- 値が[0]出なければ計算
+              ln_mttl_kake_par := ROUND((ln_mt_s_am_sum * 100) / ln_mt_chk_0_sum, 2);
+            ELSE
+              -- 値が[0]の場合は、一律[0]設定
+              ln_mttl_kake_par := gn_0;
+            END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_kake_par';
@@ -4939,7 +5691,12 @@ AS
 --
             -- 中群計集計用項目初期化
             ln_mt_quant_sum     := 0;              -- 数量
-            ln_mt_s_u_price_sum := 0;              -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_mt_s_u_price_sum := 0;              -- 内訳合計
+            ln_mt_s_unit_price_sum := 0;           -- 標準原価
+            ln_mt_ara_sum          := 0;           -- 粗利(集計用)
+            ln_mt_chk_0_sum        := 0;           -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
             ln_mt_arari_sum     := 0;              -- 粗利
             ln_mt_s_am_sum      := 0;              -- 売上高
             ln_mt_nuit_sum      := 0;              -- 本数
@@ -4970,7 +5727,10 @@ AS
             -- 大群計(標準原価)データ
             ----------------------------------------------------------------
             -- 標準原価算出
-            ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+            ln_lttl_s_unit_price := ln_lt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_s_unit_price';
@@ -4981,7 +5741,10 @@ AS
             -- 大群計(粗利)データ
             ----------------------------------------------------------------
             -- 粗利算出
-            ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+            ln_lt_arari_sum := ln_lt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_arari';
@@ -5008,6 +5771,8 @@ AS
             ----------------------------------------------------------------
             -- 大群計(掛率)データ  ((売上高*100)/(品目定価*本数))
             ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
             -- ０除算判定項目へ判定値を挿入
             ln_chk_0 := ln_lt_price_sum * ln_lt_nuit_sum;
             -- ０除算回避判定
@@ -5019,6 +5784,16 @@ AS
               -- 値が[0]の場合は、一律[0]設定
               ln_lttl_kake_par := gn_0;
             END IF;
+*/
+            -- ０除算回避判定
+            IF (ln_lt_chk_0_sum <> 0) THEN
+              -- 値が[0]出なければ計算
+              ln_lttl_kake_par := ROUND((ln_lt_s_am_sum * 100) / ln_lt_chk_0_sum, 2);
+            ELSE
+              -- 値が[0]の場合は、一律[0]設定
+              ln_lttl_kake_par := gn_0;
+            END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
             gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
             gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_kake_par';
@@ -5037,7 +5812,12 @@ AS
 --
             -- 大群計集計用項目初期化
             ln_lt_quant_sum     := 0;              -- 数量
-            ln_lt_s_u_price_sum := 0;              -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--            ln_lt_s_u_price_sum := 0;              -- 内訳合計
+            ln_lt_s_unit_price_sum := 0;           -- 標準原価
+            ln_lt_ara_sum          := 0;           -- 粗利(集計用)
+            ln_lt_chk_0_sum        := 0;           -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
             ln_lt_arari_sum     := 0;              -- 粗利
             ln_lt_s_am_sum      := 0;              -- 売上高
             ln_lt_nuit_sum      := 0;              -- 本数
@@ -5073,7 +5853,12 @@ AS
           ln_price_sum  := 0;         -- 品目定価
           ln_arari_sum  := 0;         -- 粗利
           ln_s_am_sum   := 0;         -- 売上高
-          ln_to_am_sum  := 0;         -- 内訳合計
+-- 2009/04/20 v1.8 UPDATE START
+--          ln_to_am_sum  := 0;         -- 内訳合計
+          ln_s_unit_price_sum := 0;   -- 標準原価
+          ln_ara_sum          := 0;   -- 粗利(集計用)
+          ln_chk_0_sum        := 0;   -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
           ln_quant_sum  := 0;         -- 数量
         END IF;
 --
@@ -5238,8 +6023,16 @@ AS
         ln_s_am_sum   := ln_s_am_sum  + TO_NUMBER(gr_sale_plan_1(i).amount);   -- 売上高
         ln_nuit_sum   := ln_nuit_sum  + TO_NUMBER(gr_sale_plan_1(i).quant);    -- 本数
         ln_price_sum  := ln_price_sum + ln_price;                              -- 品目定価
+-- 2009/04/20 v1.8 UPDATE START
+/*
         ln_to_am_sum  := ln_to_am_sum + TO_NUMBER(gr_sale_plan_1(i).total_amount);
                                                                                -- 内訳合計
+*/
+        -- 明細ごとの計算結果を足し込む
+        ln_s_unit_price_sum := ln_s_unit_price_sum + ln_s_u_price;             -- 標準原価
+        ln_ara_sum          := ln_ara_sum + ln_arari;                          -- 粗利(集計用)
+        ln_chk_0_sum        := ln_chk_0_sum + ln_chk_0;                        -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
         -- 出力単位が「本数」の場合
         IF (gr_param.output_unit = gv_output_unit) THEN
           ln_quant_sum    := ln_quant_sum    + TO_NUMBER(gr_sale_plan_1(i).quant);
@@ -5258,8 +6051,16 @@ AS
         ELSE
           ln_st_quant_sum   := ln_st_quant_sum     + ln_output_unit;           -- 数量
         END IF;
+-- 2009/04/20 v1.8 UPDATE START
+/*
         ln_st_s_u_price_sum := ln_st_s_u_price_sum + TO_NUMBER(gr_sale_plan_1(i).total_amount);
                                                                                -- 内訳合計
+*/
+        -- 明細ごとの計算結果を足し込む
+        ln_st_s_unit_price_sum  := ln_st_s_unit_price_sum + ln_s_u_price;      -- 標準原価
+        ln_st_ara_sum           := ln_st_ara_sum + ln_arari;                   -- 粗利(集計用)
+        ln_st_chk_0_sum         := ln_st_chk_0_sum + ln_chk_0;                 -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
         ln_st_s_am_sum      := ln_st_s_am_sum      + TO_NUMBER(gr_sale_plan_1(i).amount);
                                                                                -- 売上高
         ln_st_nuit_sum      := ln_st_nuit_sum      + TO_NUMBER(gr_sale_plan_1(i).quant);
@@ -5275,8 +6076,16 @@ AS
         ELSE
           ln_mt_quant_sum   := ln_mt_quant_sum     + ln_output_unit;           -- 数量
         END IF;
+-- 2009/04/20 v1.8 UPDATE START
+/*
         ln_mt_s_u_price_sum := ln_mt_s_u_price_sum + TO_NUMBER(gr_sale_plan_1(i).total_amount);
                                                                                -- 内訳合計
+*/
+        -- 明細ごとの計算結果を足し込む
+        ln_mt_s_unit_price_sum  := ln_mt_s_unit_price_sum + ln_s_u_price;      -- 標準原価
+        ln_mt_ara_sum           := ln_mt_ara_sum + ln_arari;                   -- 粗利(集計用)
+        ln_mt_chk_0_sum         := ln_mt_chk_0_sum + ln_chk_0;                 -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
         ln_mt_s_am_sum      := ln_mt_s_am_sum      + TO_NUMBER(gr_sale_plan_1(i).amount);
                                                                                -- 売上高
         ln_mt_nuit_sum      := ln_mt_nuit_sum      + TO_NUMBER(gr_sale_plan_1(i).quant);
@@ -5292,8 +6101,16 @@ AS
         ELSE
           ln_lt_quant_sum   := ln_lt_quant_sum     + ln_output_unit;           -- 数量
         END IF;
+-- 2009/04/20 v1.8 UPDATE START
+/*
         ln_lt_s_u_price_sum := ln_lt_s_u_price_sum + TO_NUMBER(gr_sale_plan_1(i).total_amount);
                                                                                -- 内訳合計
+*/
+        -- 明細ごとの計算結果を足し込む
+        ln_lt_s_unit_price_sum  := ln_lt_s_unit_price_sum + ln_s_u_price;      -- 標準原価
+        ln_lt_ara_sum           := ln_lt_ara_sum + ln_arari;                   -- 粗利(集計用)
+        ln_lt_chk_0_sum         := ln_lt_chk_0_sum + ln_chk_0;                 -- 掛率(集計用)-- 2009/04/20 v1.8 UPDATE END
+-- 2009/04/20 v1.8 UPDATE END
         ln_lt_s_am_sum      := ln_lt_s_am_sum      + TO_NUMBER(gr_sale_plan_1(i).amount);
                                                                                -- 売上高
         ln_lt_nuit_sum      := ln_lt_nuit_sum      + TO_NUMBER(gr_sale_plan_1(i).quant);
@@ -5306,8 +6123,16 @@ AS
         ln_skbn_nuit_sum    := ln_skbn_nuit_sum    + TO_NUMBER(gr_sale_plan_1(i).quant);
                                                                                -- 本数
         ln_skbn_price_sum   := ln_skbn_price_sum   + ln_price;                 -- 品目定価
+-- 2009/04/20 v1.8 UPDATE START
+/*
         ln_ktn_to_am_sum    := ln_ktn_to_am_sum    + TO_NUMBER(gr_sale_plan_1(i).total_amount);
                                                                                -- 内訳合計
+*/
+        -- 明細ごとの計算結果を足し込む
+        ln_skbn_s_unit_price_sum  := ln_skbn_s_unit_price_sum + ln_s_u_price;  -- 標準原価
+        ln_skbn_ara_sum           := ln_skbn_ara_sum + ln_arari;               -- 粗利(集計用)
+        ln_skbn_chk_0_sum         := ln_skbn_chk_0_sum + ln_chk_0;             -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
         -- 出力単位が「本数」の場合
         IF (gr_param.output_unit = gv_output_unit) THEN
           ln_ktn_quant_sum   := ln_ktn_quant_sum   + TO_NUMBER(gr_sale_plan_1(i).quant);
@@ -5323,8 +6148,16 @@ AS
         ln_ktn_nuit_sum     := ln_ktn_nuit_sum     + TO_NUMBER(gr_sale_plan_1(i).quant);
                                                                                -- 本数
         ln_ktn_price_sum    := ln_ktn_price_sum    + ln_price;                 -- 品目定価
+-- 2009/04/20 v1.8 UPDATE START
+/*
         ln_skbn_to_am_sum   := ln_skbn_to_am_sum   + TO_NUMBER(gr_sale_plan_1(i).total_amount);
                                                                                -- 内訳合計
+*/
+        -- 明細ごとの計算結果を足し込む
+        ln_ktn_s_unit_price_sum := ln_ktn_s_unit_price_sum + ln_s_u_price;    -- 標準原価
+        ln_ktn_ara_sum          := ln_ktn_ara_sum + ln_arari;                 -- 粗利
+        ln_ktn_chk_0_sum        := ln_ktn_chk_0_sum + ln_chk_0;               -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
         -- 出力単位が「本数」の場合
         IF (gr_param.output_unit = gv_output_unit) THEN
           ln_skbn_quant_sum   := ln_skbn_quant_sum + TO_NUMBER(gr_sale_plan_1(i).quant);
@@ -5340,8 +6173,16 @@ AS
         ln_to_nuit_sum      := ln_to_nuit_sum      + TO_NUMBER(gr_sale_plan_1(i).quant);
                                                                                -- 本数
         ln_to_price_sum     := ln_to_price_sum     + ln_price;                 -- 品目定価
+-- 2009/04/20 v1.8 UPDATE START
+/*
         ln_to_to_am_sum     := ln_to_to_am_sum     + TO_NUMBER(gr_sale_plan_1(i).total_amount);
                                                                                -- 内訳合計
+*/
+        -- 明細ごとの計算結果を足し込む
+        ln_to_s_unit_price_sum  := ln_to_s_unit_price_sum + ln_s_u_price;      -- 標準原価
+        ln_to_ara_sum           := ln_to_ara_sum + ln_arari;                   -- 粗利(集計用)
+        ln_to_chk_0_sum         := ln_to_chk_0_sum + ln_chk_0;                 -- 掛率(集計用)
+-- 2009/04/20 v1.8 UPDATE END
         -- 出力単位が「本数」の場合
         IF (gr_param.output_unit = gv_output_unit) THEN
           ln_to_quant_sum   := ln_to_quant_sum     + TO_NUMBER(gr_sale_plan_1(i).quant);
@@ -5367,7 +6208,10 @@ AS
       -- 細群計(標準原価)データ
       ----------------------------------------------------------------
       -- 標準原価算出
-      ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_syo_s_unit_price := ln_to_am_sum * ln_quant_sum;
+      ln_syo_s_unit_price := ln_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_s_unit_price';
@@ -5378,7 +6222,10 @@ AS
       -- 細群計(粗利)データ
       ----------------------------------------------------------------
       -- 粗利算出
-      ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+      ln_arari_sum := ln_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_arari';
@@ -5405,6 +6252,8 @@ AS
       ----------------------------------------------------------------
       -- 細群計(掛率)データ  ((売上高*100)/(品目定価*本数))
       ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
       -- ０除算判定項目へ判定値を挿入
       ln_chk_0 := ln_price_sum * ln_nuit_sum;
       -- ０除算回避判定
@@ -5415,6 +6264,16 @@ AS
         -- 値が[0]の場合は、一律[0]設定
         ln_syo_arari_par := gn_0;
       END IF;
+*/
+      -- ０除算回避判定
+      IF (ln_chk_0_sum <> 0) THEN
+        -- 値が[0]出なければ計算
+        ln_syo_kake_par := ROUND((ln_s_am_sum * 100) / ln_chk_0_sum, 2);
+      ELSE
+        -- 値が[0]の場合は、一律[0]設定
+        ln_syo_kake_par := gn_0;
+      END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'syo_kake_par';
@@ -5448,7 +6307,10 @@ AS
       -- 小群計(標準原価)データ
       ----------------------------------------------------------------
       -- 標準原価算出
-      ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_sttl_s_unit_price := ln_st_s_u_price_sum * ln_st_quant_sum;
+      ln_sttl_s_unit_price := ln_st_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_s_unit_price';
@@ -5459,7 +6321,10 @@ AS
       -- 小群計(粗利)データ
       ----------------------------------------------------------------
       -- 粗利算出
-      ln_st_arari_sum := ln_st_s_am_sum - ln_sttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_st_arari_sum := ln_s_am_sum - ln_syo_s_unit_price;
+      ln_st_arari_sum := ln_st_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_arari';
@@ -5486,6 +6351,8 @@ AS
       ----------------------------------------------------------------
       -- 小群計(掛率)データ  ((売上高*100)/(品目定価*本数))
       ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
       -- ０除算判定項目へ判定値を挿入
       ln_chk_0 := ln_st_price_sum * ln_st_nuit_sum;
       -- ０除算回避判定
@@ -5496,6 +6363,16 @@ AS
         -- 値が[0]の場合は、一律[0]設定
         ln_sttl_kake_par := gn_0;
       END IF;
+*/
+      -- ０除算回避判定
+      IF (ln_st_chk_0_sum <> 0) THEN
+        -- 値が[0]出なければ計算
+        ln_sttl_kake_par := ROUND((ln_st_s_am_sum * 100) / ln_st_chk_0_sum, 2);
+      ELSE
+        -- 値が[0]の場合は、一律[0]設定
+        ln_sttl_kake_par := gn_0;
+      END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'sttl_kake_par';
@@ -5529,7 +6406,10 @@ AS
       -- 中群計(標準原価)データ
       ----------------------------------------------------------------
       -- 標準原価算出
-      ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_mttl_s_unit_price := ln_mt_s_u_price_sum * ln_mt_quant_sum;
+      ln_mttl_s_unit_price := ln_mt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_s_unit_price';
@@ -5540,7 +6420,10 @@ AS
       -- 中群計(粗利)データ
       ----------------------------------------------------------------
       -- 粗利算出
-      ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_mt_arari_sum := ln_mt_s_am_sum - ln_mttl_s_unit_price;
+      ln_mt_arari_sum := ln_mt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_arari';
@@ -5567,6 +6450,8 @@ AS
       ----------------------------------------------------------------
       -- 中群計(掛率)データ  ((売上高*100)/(品目定価*本数))
       ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
       -- ０除算判定項目へ判定値を挿入
       ln_chk_0 := ln_mt_price_sum * ln_mt_nuit_sum;
       -- ０除算回避判定
@@ -5577,6 +6462,16 @@ AS
         -- 値が[0]の場合は、一律[0]設定
         ln_mttl_kake_par := gn_0;
       END IF;
+*/
+      -- ０除算回避判定
+      IF (ln_mt_chk_0_sum <> 0) THEN
+        -- 値が[0]出なければ計算
+        ln_mttl_kake_par := ROUND((ln_mt_s_am_sum * 100) / ln_mt_chk_0_sum, 2);
+      ELSE
+        -- 値が[0]の場合は、一律[0]設定
+        ln_mttl_kake_par := gn_0;
+      END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'mttl_kake_par';
@@ -5610,7 +6505,10 @@ AS
       -- 大群計(標準原価)データ
       ----------------------------------------------------------------
       -- 標準原価算出
-      ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_lttl_s_unit_price := ln_lt_s_u_price_sum * ln_lt_quant_sum;
+      ln_lttl_s_unit_price := ln_lt_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_s_unit_price';
@@ -5621,7 +6519,10 @@ AS
       -- 大群計(粗利)データ
       ----------------------------------------------------------------
       -- 粗利算出
-      ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_lt_arari_sum := ln_lt_s_am_sum - ln_lttl_s_unit_price;
+      ln_lt_arari_sum := ln_lt_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_arari';
@@ -5648,6 +6549,8 @@ AS
       ----------------------------------------------------------------
       -- 大群計(掛率)データ  ((売上高*100)/(品目定価*本数))
       ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
       -- ０除算判定項目へ判定値を挿入
       ln_chk_0 := ln_lt_price_sum * ln_lt_nuit_sum;
       -- ０除算回避判定
@@ -5658,6 +6561,16 @@ AS
         -- 値が[0]の場合は、一律[0]設定
         ln_lttl_kake_par := gn_0;
       END IF;
+*/
+      -- ０除算回避判定
+      IF (ln_lt_chk_0_sum <> 0) THEN
+        -- 値が[0]出なければ計算
+        ln_lttl_kake_par := ROUND((ln_lt_s_am_sum * 100) / ln_lt_chk_0_sum, 2);
+      ELSE
+        -- 値が[0]の場合は、一律[0]設定
+        ln_lttl_kake_par := gn_0;
+      END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'lttl_kake_par';
@@ -5689,7 +6602,10 @@ AS
       -- 拠点計(標準原価)データ
       ----------------------------------------------------------------
       -- 標準原価算出
-      ln_ktn_s_unit_price := ln_ktn_to_am_sum * ln_ktn_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_ktn_s_unit_price := ln_ktn_to_am_sum * ln_ktn_quant_sum;
+      ln_ktn_s_unit_price := ln_ktn_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_s_unit_price';
@@ -5700,7 +6616,10 @@ AS
       -- 拠点計(粗利)データ
       ----------------------------------------------------------------
       -- 粗利算出
-      ln_ktn_arari_sum := ln_ktn_s_am_sum - ln_ktn_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_ktn_arari_sum := ln_ktn_s_am_sum - ln_ktn_s_unit_price;
+      ln_ktn_arari_sum := ln_ktn_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_arari';
@@ -5727,6 +6646,8 @@ AS
       ----------------------------------------------------------------
       -- 拠点計(掛率)データ  ((売上高*100)/(品目定価*本数))
       ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
       -- ０除算判定項目へ判定値を挿入
       ln_chk_0 := ln_ktn_price_sum * ln_ktn_nuit_sum;
       -- ０除算回避判定
@@ -5737,6 +6658,16 @@ AS
         -- 値が[0]の場合は、一律[0]設定
         ln_ktn_kake_par := gn_0;
       END IF;
+*/
+      -- ０除算回避判定
+      IF (ln_ktn_chk_0_sum <> 0) THEN
+        -- 値が[0]出なければ計算
+        ln_ktn_kake_par := ROUND((ln_ktn_s_am_sum * 100) / ln_ktn_chk_0_sum, 2);
+      ELSE
+        -- 値が[0]の場合は、一律[0]設定
+        ln_ktn_kake_par := gn_0;
+      END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'ktn_kake_par';
@@ -5768,7 +6699,10 @@ AS
       -- 商品区分計(標準原価)データ
       ----------------------------------------------------------------
       -- 標準原価算出
-      ln_skbn_s_unit_price := ln_skbn_to_am_sum * ln_skbn_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_skbn_s_unit_price := ln_skbn_to_am_sum * ln_skbn_quant_sum;
+      ln_skbn_s_unit_price := ln_skbn_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_s_unit_price';
@@ -5779,7 +6713,10 @@ AS
       -- 商品区分計(粗利)データ
       ----------------------------------------------------------------
       -- 粗利算出
-      ln_skbn_arari_sum := ln_skbn_s_am_sum - ln_skbn_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_skbn_arari_sum := ln_skbn_s_am_sum - ln_skbn_s_unit_price;
+      ln_skbn_arari_sum := ln_skbn_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_arari';
@@ -5806,6 +6743,8 @@ AS
       ----------------------------------------------------------------
       -- 商品区分計(掛率)データ  ((売上高*100)/(品目定価*本数))
       ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
       -- ０除算判定項目へ判定値を挿入
       ln_chk_0 := ln_skbn_price_sum * ln_skbn_nuit_sum;
       -- ０除算回避判定
@@ -5816,6 +6755,16 @@ AS
         -- 値が[0]の場合は、一律[0]設定
         ln_skbn_kake_par := gn_0;
       END IF;
+*/
+      -- ０除算回避判定
+      IF (ln_skbn_chk_0_sum <> 0) THEN
+        -- 値が[0]出なければ計算
+        ln_skbn_kake_par := ROUND((ln_skbn_s_am_sum * 100) / ln_skbn_chk_0_sum, 2);
+      ELSE
+        -- 値が[0]の場合は、一律[0]設定
+        ln_skbn_kake_par := gn_0;
+          END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'skbn_kake_par';
@@ -5833,7 +6782,10 @@ AS
       -- 総合計(標準原価)データ
       ----------------------------------------------------------------
       -- 標準原価算出
-      ln_to_s_unit_price := ln_to_to_am_sum * ln_to_quant_sum;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_to_s_unit_price := ln_to_to_am_sum * ln_to_quant_sum;
+      ln_to_s_unit_price := ln_to_s_unit_price_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'to_s_unit_price';
@@ -5844,7 +6796,10 @@ AS
       -- 総合計(粗利)データ
       ----------------------------------------------------------------
       -- 粗利算出
-      ln_to_arari_sum := ln_to_s_am_sum - ln_to_s_unit_price;
+-- 2009/04/20 v1.8 UPDATE START
+--      ln_to_arari_sum := ln_to_s_am_sum - ln_to_s_unit_price;
+      ln_to_arari_sum := ln_to_ara_sum;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'to_arari';
@@ -5871,6 +6826,8 @@ AS
       ----------------------------------------------------------------
       -- 総合計(掛率)データ  ((売上高*100)/(品目定価*本数))
       ----------------------------------------------------------------
+-- 2009/04/20 v1.8 UPDATE START
+/*
       -- ０除算判定項目へ判定値を挿入
       ln_chk_0 := ln_to_price_sum * ln_to_nuit_sum;
       -- ０除算回避判定
@@ -5881,6 +6838,16 @@ AS
         -- 値が[0]の場合は、一律[0]設定
         ln_to_kake_par := gn_0;
       END IF;
+*/
+      -- ０除算回避判定
+      IF (ln_to_chk_0_sum <> 0) THEN
+        -- 値が[0]出なければ計算
+        ln_to_kake_par := ROUND((ln_to_s_am_sum * 100) / ln_to_chk_0_sum, 2);
+      ELSE
+        -- 値が[0]の場合は、一律[0]設定
+        ln_to_kake_par := gn_0;
+      END IF;
+-- 2009/04/20 v1.8 UPDATE END
 --
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'to_kake_par';
