@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2009/12/01    1.19  M.Sano           [E_本稼動_00234] 成績者、納品者の妥当性チェック修正
  *  2009/12/10    1.20  M.Sano           [E_本稼動_00108] 共通関数＜会計期間情報取得＞異常終了時の処理修正
  *  2010/01/18    1.21  M.Uehara         [E_本稼動_01128] カード売区分設定時のカード会社存在チェック追加
+ *  2010/01/27    1.22  N.Maeda          [E_本稼動_01321]カード会社取得済配列設定
  *
  *****************************************************************************************/
 --
@@ -2440,6 +2441,9 @@ AS
           gt_select_cus(lt_customer_number).bus_low_type   := lt_bus_low_type;    -- 業態（小分類）
           gt_select_cus(lt_customer_number).base_name      := lt_base_name;       -- 拠点名称
           gt_select_cus(lt_customer_number).dept_hht_div   := lt_hht_class;       -- 百貨店用HHT区分
+--****************************** 2010/01/27 1.22 N.Maeda ADD START *******************************--
+          gt_select_cus(lt_customer_number).card_company   := lt_card_company;    -- カード会社
+--****************************** 2010/01/27 1.22 N.Maeda ADD START *******************************--
         END IF;
 --
       END IF;
