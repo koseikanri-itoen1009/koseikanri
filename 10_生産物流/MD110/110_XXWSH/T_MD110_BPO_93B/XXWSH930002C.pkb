@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -104,6 +104,7 @@ AS
  *  2008/10/06    1.19 Oracle 北寒寺正夫 統合テスト障害#305対応(未来日チェックで使用するフラグをチェック処理実行前に毎回初期化するように修正)
  *  2008/10/07    1.19 Oracle 福田 直樹  統合テスト障害#308対応(チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する)
  *  2008/10/08    1.19 Oracle 福田 直樹  統合テスト障害#310対応(入力パラ"対象倉庫"抽出条件が移動入庫/230の場合に入庫倉庫ではなく出庫倉庫になっている)
+ *  2008/10/13    1.20 Oracle 福田 直樹  統合テスト障害#314対応(差異チェックで取込報告と比較するトランザクションは実績・指示の順で比較する)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -556,6 +557,17 @@ AS
   gv_frt_chrg_type_act           CONSTANT VARCHAR2(1)  := '2';  -- 実費振替
 --
   gv_delivery_no_null            CONSTANT VARCHAR2(1)  := 'X';  -- 配送No＝NULL時の変換文字
+--
+  -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------
+  gv_msg_sai_1                   CONSTANT VARCHAR2(20) := '（出荷日差異）';
+  gv_msg_sai_2                   CONSTANT VARCHAR2(20) := '（着荷日差異）';
+  gv_msg_sai_3                   CONSTANT VARCHAR2(20) := '（運送業者差異）';
+  gv_msg_sai_4                   CONSTANT VARCHAR2(20) := '（配送区分差異）';
+  gv_msg_sai_5                   CONSTANT VARCHAR2(20) := '（出荷先差異）';
+  gv_msg_sai_6                   CONSTANT VARCHAR2(20) := '（取引先差異）';
+  gv_msg_sai_7                   CONSTANT VARCHAR2(20) := '（出庫日差異）';
+  gv_msg_sai_8                   CONSTANT VARCHAR2(20) := '（入庫日差異）';
+  -- 2008/10/13 統合テスト障害#314 Add End ----------------------------------
 --
   gn_normal                      NUMBER := 0;
   gn_warn                        NUMBER := 1;
@@ -6945,6 +6957,8 @@ AS
     ln_lot_err_flg                 NUMBER;
     lv_error_flag                  VARCHAR2(1) := 0;
 --
+    lv_err_msg_sai                 VARCHAR2(20);  -- 2008/10/13 統合テスト障害#314 Add
+--
     -- *** ローカル・カーソル ***
     CURSOR cur_lots_product_check
       (
@@ -7035,7 +7049,6 @@ AS
 --
     -- *** ローカル・レコード ***
 --
---     AA VARCHAR2(30) ;
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -7052,8 +7065,6 @@ AS
     <<appropriate_chk_line_loop>>
     FOR i IN 1..gr_interface_info_rec.COUNT LOOP
 --
---      AA := gr_interface_info_rec(i).orderd_item_code;
---
       lt_eos_data_type    := gr_interface_info_rec(i).eos_data_type;
       lv_error_flg        := gr_interface_info_rec(i).err_flg;                  --エラーフラグ
       lt_delivery_no      := gr_interface_info_rec(i).delivery_no;              --配送No
@@ -7062,6 +7073,7 @@ AS
       IF (lv_error_flg = '0') THEN
 --
         ln_errflg := 0;
+        lv_err_msg_sai := NULL;  -- 2008/10/13 統合テスト障害#314 Add
 --
         -- 1.
         -- 1.1 指示の項目と実績の項目を比較し、指示上の実績項目に値が設定されている場合は、
@@ -7072,8 +7084,9 @@ AS
           INTO   ln_cnt
           FROM   xxinv_mov_req_instr_headers xmrih
           WHERE  xmrih.mov_num = gr_interface_info_rec(i).order_source_ref --移動H.移動番号=抽出項目:受注ソース参照
-          --調整中or依頼済
-          AND    ((xmrih.status = gv_mov_status_03) OR (xmrih.status = gv_mov_status_02))
+          --調整中・依頼済・出庫報告有・入庫報告有・入出庫報告有
+          --AND    ((xmrih.status = gv_mov_status_03) OR (xmrih.status = gv_mov_status_02))  --2008/10/13 統合テスト障害#314 Del
+          AND xmrih.status IN (gv_mov_status_02,gv_mov_status_03,gv_mov_status_04,gv_mov_status_05,gv_mov_status_06) --2008/10/13 統合テスト障害#314 Add
           --確定通知済
           AND    xmrih.notif_status = gv_notif_status_40
           ;
@@ -7104,88 +7117,104 @@ AS
             FROM  xxinv_mov_req_instr_headers xmrih
             -- 移動H.移動番号=抽出項目:受注ソース参照
             WHERE xmrih.mov_num = gr_interface_info_rec(i).order_source_ref
-            -- 調整中or依頼済
-            AND   ((xmrih.status = gv_mov_status_03) OR (xmrih.status = gv_mov_status_02))
+            --調整中・依頼済・出庫報告有・入庫報告有・入出庫報告有
+            --AND   ((xmrih.status = gv_mov_status_03) OR (xmrih.status = gv_mov_status_02))  --2008/10/13 統合テスト障害#314 Del
+            AND xmrih.status IN (gv_mov_status_02,gv_mov_status_03,gv_mov_status_04,gv_mov_status_05,gv_mov_status_06) --2008/10/13 統合テスト障害#314 Add
             -- 確定通知済
             AND   xmrih.notif_status = gv_notif_status_40
             AND   ROWNUM=1
             ;
 --
-            -- 出庫予定日、抽出項目:出荷日、出庫実績日の比較
-            IF (lt_mov_schedule_ship_date <> gr_interface_info_rec(i).shipped_date) THEN
+            -- 2008/10/13 統合テスト障害#314 Del Start ---------------------------------------
+            ---- 出庫予定日、抽出項目:出荷日、出庫実績日の比較
+            --IF (lt_mov_schedule_ship_date <> gr_interface_info_rec(i).shipped_date) THEN
+            --  ln_errflg := 1;
+            --
+            --ELSIF (lt_mov_actual_ship_date IS NOT NULL) THEN
+            --
+            --  IF (lt_mov_schedule_ship_date <> lt_mov_actual_ship_date) THEN
+            --    ln_errflg := 1;
+            --  END IF;
+            --
+            --END IF;
+            -- 2008/10/13 統合テスト障害#314 Del End -----------------------------------------
 --
+            -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
+            -- 取込報告:出庫日 <> トランザクション:NVL(出庫実績日, 出庫予定日)
+            IF (gr_interface_info_rec(i).shipped_date <> NVL(lt_mov_actual_ship_date,lt_mov_schedule_ship_date)) THEN
               ln_errflg := 1;
-              --********** debug_log ********** START ***
-              debug_log(FND_FILE.LOG,'移動予定実績警告１');
-              --********** debug_log ********** END   ***
---
-            ELSIF (lt_mov_actual_ship_date IS NOT NULL) THEN
---
-              IF (lt_mov_schedule_ship_date <> lt_mov_actual_ship_date) THEN
-                ln_errflg := 1;
-                --********** debug_log ********** START ***
-                debug_log(FND_FILE.LOG,'移動予定実績警告２');
-                --********** debug_log ********** END   ***
-              END IF;
---
+              lv_err_msg_sai := gv_msg_sai_7;
             END IF;
+            -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
 --
-            -- 入庫予定日、抽出項目:着荷日、入庫実績日の比較
-            IF (lt_mov_schedule_arrival_date <> gr_interface_info_rec(i).arrival_date) THEN
+            -- 2008/10/13 統合テスト障害#314 Del Start ---------------------------------------
+            ---- 入庫予定日、抽出項目:着荷日、入庫実績日の比較
+            --IF (lt_mov_schedule_arrival_date <> gr_interface_info_rec(i).arrival_date) THEN
+            --  ln_errflg := 1;
+            --
+            --ELSIF (lt_mov_actual_arrival_date IS NOT NULL) THEN
+            --
+            --  IF (lt_mov_schedule_arrival_date <> lt_mov_actual_arrival_date) THEN
+            --    ln_errflg := 1;
+            --  END IF;
+            --
+            --END IF;
+            -- 2008/10/13 統合テスト障害#314 Del End -----------------------------------------
 --
+            -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
+            -- 取込報告:入庫日 <> トランザクション:NVL(入庫実績日, 入庫予定日)
+            IF (gr_interface_info_rec(i).arrival_date <> NVL(lt_mov_actual_arrival_date,lt_mov_schedule_arrival_date)) THEN
               ln_errflg := 1;
-              --********** debug_log ********** START ***
-              debug_log(FND_FILE.LOG,'移動予定実績警告３');
-              --********** debug_log ********** END   ***
---
-            ELSIF (lt_mov_actual_arrival_date IS NOT NULL) THEN
---
-              IF (lt_mov_schedule_arrival_date <> lt_mov_actual_arrival_date) THEN
-                ln_errflg := 1;
-                --********** debug_log ********** START ***
-                debug_log(FND_FILE.LOG,'移動予定実績警告４');
-                --********** debug_log ********** END   ***
-              END IF;
---
+              lv_err_msg_sai := gv_msg_sai_8;
             END IF;
+            -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
 --
-            -- 運送業者、抽出項目:運送業者、運送業者_実績の比較
-            IF (lt_mov_freight_code <> gr_interface_info_rec(i).freight_carrier_code) THEN
+            -- 2008/10/13 統合テスト障害#314 Del Start ---------------------------------------
+            ---- 運送業者、抽出項目:運送業者、運送業者_実績の比較
+            --IF (lt_mov_freight_code <> gr_interface_info_rec(i).freight_carrier_code) THEN
+            --  ln_errflg := 1;
+            --
+            --ELSIF (lt_mov_actual_freight_code IS NOT NULL) THEN
+            --
+            --  IF (lt_mov_freight_code <> lt_mov_actual_freight_code) THEN
+            --    ln_errflg := 1;
+            --  END IF;
+            --
+            --END IF;
+            -- 2008/10/13 統合テスト障害#314 Del End -----------------------------------------
 --
+            -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
+            -- 取込報告:運送業者 <> トランザクション:NVL(運送業者_実績, 運送業者)
+            IF (gr_interface_info_rec(i).freight_carrier_code <> NVL(lt_mov_actual_freight_code,lt_mov_freight_code)) THEN
               ln_errflg := 1;
-              --********** debug_log ********** START ***
-              debug_log(FND_FILE.LOG,'移動予定実績警告５');
-              --********** debug_log ********** END   ***
---
-            ELSIF (lt_mov_actual_freight_code IS NOT NULL) THEN
---
-              IF (lt_mov_freight_code <> lt_mov_actual_freight_code) THEN
-                ln_errflg := 1;
-                --********** debug_log ********** START ***
-                debug_log(FND_FILE.LOG,'移動予定実績警告６');
-                --********** debug_log ********** END   ***
-              END IF;
---
+              lv_err_msg_sai := gv_msg_sai_3;
             END IF;
+            -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
 --
-            -- 配送区分、抽出項目:配送区分、配送区分_実績の比較
-            IF (NVL(lt_mov_shipping_code,gv_delivery_no_null) <> NVL(gr_interface_info_rec(i).shipping_method_code,gv_delivery_no_null)) THEN
+            -- 2008/10/13 統合テスト障害#314 Del Start ---------------------------------------
+            ---- 配送区分、抽出項目:配送区分、配送区分_実績の比較
+            --IF (NVL(lt_mov_shipping_code,gv_delivery_no_null) <> NVL(gr_interface_info_rec(i).shipping_method_code,gv_delivery_no_null)) THEN
+            --  ln_errflg := 1;
+            --
+            --ELSIF (lt_mov_actual_shipping_code IS NOT NULL) THEN
+            --
+            --  IF (lt_mov_shipping_code <> lt_mov_actual_shipping_code) THEN
+            --    ln_errflg := 1;
+            --  END IF;
+            --
+            --END IF;
+            -- 2008/10/13 統合テスト障害#314 Del End -----------------------------------------
 --
+            -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
+            -- 取込報告:配送区分 <> トランザクション:NVL(配送区分_実績, 配送区分)
+            IF (
+                NVL(gr_interface_info_rec(i).shipping_method_code, gv_delivery_no_null) <> 
+                NVL(lt_mov_actual_shipping_code, NVL(lt_mov_shipping_code, gv_delivery_no_null))
+               ) THEN
               ln_errflg := 1;
-              --********** debug_log ********** START ***
-              debug_log(FND_FILE.LOG,'移動予定実績警告７');
-              --********** debug_log ********** END   ***
---
-            ELSIF (lt_mov_actual_shipping_code IS NOT NULL) THEN
---
-              IF (lt_mov_shipping_code <> lt_mov_actual_shipping_code) THEN
-                ln_errflg := 1;
-                --********** debug_log ********** START ***
-                debug_log(FND_FILE.LOG,'移動予定実績警告８');
-                --********** debug_log ********** END   ***
-              END IF;
---
+              lv_err_msg_sai := gv_msg_sai_4;
             END IF;
+            -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
 --
             IF (ln_errflg = 1) THEN
 --
@@ -7196,7 +7225,8 @@ AS
                              ,gv_param1_token
                              ,gr_interface_info_rec(i).delivery_no           --IF_H.配送No
                              ,gv_param2_token
-                             ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
+                             --,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照            2008/10/13 統合テスト障害#314 Del
+                             ,gr_interface_info_rec(i).order_source_ref || lv_err_msg_sai --IF_H.受注ソース参照 2008/10/13 統合テスト障害#314 Add
                              ,gv_param3_token
                              ,gr_interface_info_rec(i).eos_data_type         --IF_H.EOSデータ種別
                              ,gv_param4_token
@@ -7249,8 +7279,9 @@ AS
             FROM   xxwsh_order_headers_all xoha
             -- 受注H.依頼No=抽出項目:受注ソース参照
             WHERE  xoha.request_no = gr_interface_info_rec(i).order_source_ref
-            -- 締め済みor受領済み
-            AND    ((xoha.req_status = gv_req_status_03) OR (xoha.req_status = gv_req_status_07))
+            -- 締め済み・受領済み・実績計上済
+            --AND    ((xoha.req_status = gv_req_status_03) OR (xoha.req_status = gv_req_status_07))         --2008/10/13 統合テスト障害#314 Del
+            AND    xoha.req_status IN (gv_req_status_03,gv_req_status_04,gv_req_status_07,gv_req_status_08) --2008/10/13 統合テスト障害#314 Add
             AND    xoha.notif_status = gv_notif_status_40 -- 確定通知済
             AND    xoha.latest_external_flag = gv_yesno_y -- 最新フラグ
             ;
@@ -7287,124 +7318,148 @@ AS
               FROM   xxwsh_order_headers_all xoha
               -- 受注H.依頼No=抽出項目:受注ソース参照
               WHERE  xoha.request_no = gr_interface_info_rec(i).order_source_ref
-              -- 締め済みor受領済み
-              AND    ((xoha.req_status = gv_req_status_03) OR (xoha.req_status = gv_req_status_07))
+              -- 締め済み・受領済み・実績計上済
+              --AND    ((xoha.req_status = gv_req_status_03) OR (xoha.req_status = gv_req_status_07))         --2008/10/13 統合テスト障害#314 Del
+              AND    xoha.req_status IN (gv_req_status_03,gv_req_status_04,gv_req_status_07,gv_req_status_08) --2008/10/13 統合テスト障害#314 Add
               AND    xoha.notif_status = gv_notif_status_40 -- 確定通知済
               AND    xoha.latest_external_flag = gv_yesno_y -- 最新フラグ
               AND    ROWNUM=1
               ;
 --
-              -- 出荷予定日、抽出項目:出荷日、出荷日の比較
-              IF (lt_req_schedule_ship_date <> gr_interface_info_rec(i).shipped_date) THEN
+              -- 2008/10/13 統合テスト障害#314 Del Start ---------------------------------------
+              ---- 出荷予定日、抽出項目:出荷日、出荷日の比較
+              --IF (lt_req_schedule_ship_date <> gr_interface_info_rec(i).shipped_date) THEN
+              --  ln_errflg := 1;
+              --
+              --ELSIF (lt_req_shipped_date IS NOT NULL) THEN
+              --
+              --  IF (lt_req_schedule_ship_date <> lt_req_shipped_date) THEN
+              --    ln_errflg := 1;
+              --  END IF;
+              --
+              --END IF;
+              -- 2008/10/13 統合テスト障害#314 Del End -----------------------------------------
 --
+              -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
+              -- 取込報告:出荷日 <> トランザクション:NVL(出荷日, 出荷予定日)
+              IF (gr_interface_info_rec(i).shipped_date <> NVL(lt_req_shipped_date,lt_req_schedule_ship_date)) THEN
                 ln_errflg := 1;
-                --********** debug_log ********** START ***
-                debug_log(FND_FILE.LOG,'出荷支給予定実績警告１');
-                --********** debug_log ********** END   ***
---
-              ELSIF (lt_req_shipped_date IS NOT NULL) THEN
---
-                IF (lt_req_schedule_ship_date <> lt_req_shipped_date) THEN
-                  ln_errflg := 1;
-                  --********** debug_log ********** START ***
-                  debug_log(FND_FILE.LOG,'出荷支給予定実績警告２');
-                  --********** debug_log ********** END   ***
-                END IF;
---
+                lv_err_msg_sai := gv_msg_sai_1;
               END IF;
+              -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
 --
-              -- 着荷予定日、抽出項目:着荷日、着荷日の比較
-              IF (lt_req_schedule_arrival_date <> gr_interface_info_rec(i).arrival_date) THEN
+              -- 2008/10/13 統合テスト障害#314 Del Start ---------------------------------------
+              ---- 着荷予定日、抽出項目:着荷日、着荷日の比較
+              --IF (lt_req_schedule_arrival_date <> gr_interface_info_rec(i).arrival_date) THEN
+              --  ln_errflg := 1;
+              --
+              --ELSIF (lt_req_arrival_date IS NOT NULL) THEN
+              --
+              --  IF (lt_req_schedule_arrival_date <> lt_req_arrival_date) THEN
+              --    ln_errflg := 1;
+              --  END IF;
+              --
+              --END IF;
+              -- 2008/10/13 統合テスト障害#314 Del End -----------------------------------------
 --
+              -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
+              -- 取込報告:着荷日 <> トランザクション:NVL(着荷日, 着荷予定日)
+              IF (gr_interface_info_rec(i).arrival_date <> NVL(lt_req_arrival_date,lt_req_schedule_arrival_date)) THEN
                 ln_errflg := 1;
-                --********** debug_log ********** START ***
-                debug_log(FND_FILE.LOG,'出荷支給予定実績警告３');
-                --********** debug_log ********** END   ***
---
-              ELSIF (lt_req_arrival_date IS NOT NULL) THEN
---
-                IF (lt_req_schedule_arrival_date <> lt_req_arrival_date) THEN
-                  ln_errflg := 1;
-                  --********** debug_log ********** START ***
-                  debug_log(FND_FILE.LOG,'出荷支給予定実績警告４');
-                  --********** debug_log ********** END   ***
-                END IF;
---
+                lv_err_msg_sai := gv_msg_sai_2;
               END IF;
+              -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
 --
-              -- 運送業者、抽出項目:運送業者、運送業者_実績の比較
-              IF (lt_req_freight_code <> gr_interface_info_rec(i).freight_carrier_code) THEN
+              -- 2008/10/13 統合テスト障害#314 Del Start ---------------------------------------
+              ---- 運送業者、抽出項目:運送業者、運送業者_実績の比較
+              --IF (lt_req_freight_code <> gr_interface_info_rec(i).freight_carrier_code) THEN
+              --  ln_errflg := 1;
+              --
+              --ELSIF (lt_req_result_freight_code IS NOT NULL) THEN
+              --
+              --  IF (lt_req_freight_code <> lt_req_result_freight_code) THEN
+              --    ln_errflg := 1;
+              --  END IF;
+              --
+              --END IF;
+              -- 2008/10/13 統合テスト障害#314 Del End -----------------------------------------
 --
+              -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
+              -- 取込報告:運送業者 <> トランザクション:NVL(運送業者_実績, 運送業者)
+              IF (gr_interface_info_rec(i).freight_carrier_code <> NVL(lt_req_result_freight_code,lt_req_freight_code)) THEN
                 ln_errflg := 1;
-                --********** debug_log ********** START ***
-                debug_log(FND_FILE.LOG,'出荷支給予定実績警告５');
-                --********** debug_log ********** END   ***
---
-              ELSIF (lt_req_result_freight_code IS NOT NULL) THEN
---
-                IF (lt_req_freight_code <> lt_req_result_freight_code) THEN
-                  ln_errflg := 1;
-                --********** debug_log ********** START ***
-                debug_log(FND_FILE.LOG,'出荷支給予定実績警告６');
-                --********** debug_log ********** END   ***
-                END IF;
---
+                lv_err_msg_sai := gv_msg_sai_3;
               END IF;
+              -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
 --
-              -- 配送区分、抽出項目:配送区分、配送区分_実績の比較
-              IF (NVL(lt_req_shipping_code,gv_delivery_no_null) <> NVL(gr_interface_info_rec(i).shipping_method_code,gv_delivery_no_null)) THEN
+              -- 2008/10/13 統合テスト障害#314 Del Start ---------------------------------------
+              ---- 配送区分、抽出項目:配送区分、配送区分_実績の比較
+              --IF (NVL(lt_req_shipping_code,gv_delivery_no_null) <> NVL(gr_interface_info_rec(i).shipping_method_code,gv_delivery_no_null)) THEN
+              --  ln_errflg := 1;
+              --
+              --ELSIF (lt_req_result_shipping_code IS NOT NULL) THEN
+              --
+              --  IF (lt_req_shipping_code <> lt_req_result_shipping_code) THEN
+              --    ln_errflg := 1;
+              --  END IF;
+              --
+              --END IF;
+              -- 2008/10/13 統合テスト障害#314 Del End -----------------------------------------
 --
+              -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
+              -- 取込報告:配送区分 <> トランザクション:NVL(配送区分_実績, 配送区分)
+              IF ( NVL(gr_interface_info_rec(i).shipping_method_code,gv_delivery_no_null) <>
+                   NVL(lt_req_result_shipping_code, NVL(lt_req_shipping_code,gv_delivery_no_null))
+                 ) THEN
                 ln_errflg := 1;
-                --********** debug_log ********** START ***
-                debug_log(FND_FILE.LOG,'出荷支給予定実績警告７');
-                --********** debug_log ********** END   ***
---
-              ELSIF (lt_req_result_shipping_code IS NOT NULL) THEN
---
-                IF (lt_req_shipping_code <> lt_req_result_shipping_code) THEN
-                  ln_errflg := 1;
-                  --********** debug_log ********** START ***
-                  debug_log(FND_FILE.LOG,'出荷支給予定実績警告８');
-                  --********** debug_log ********** END   ***
-                END IF;
---
+                lv_err_msg_sai := gv_msg_sai_4;
               END IF;
+              -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
 --
-              -- 出荷先、抽出項目:出荷先、出荷先_実績の比較
-              -- 出荷
               -- 拠点出荷確定報告 or 庭先出荷確定報告
               IF ((lt_eos_data_type = gv_eos_data_cd_210)  OR
                   (lt_eos_data_type = gv_eos_data_cd_215)) THEN
 --
-                IF (lt_req_deliver_to <> gr_interface_info_rec(i).party_site_code) THEN
+                -- 2008/10/13 統合テスト障害#314 Del Start ---------------------------------------
+                ---- 出荷先、抽出項目:出荷先、出荷先_実績の比較
+                --IF (lt_req_deliver_to <> gr_interface_info_rec(i).party_site_code) THEN
+                --  ln_errflg := 1;
+                --
+                --ELSIF (lt_req_result_deliver_to IS NOT NULL) THEN
+                --
+                --  IF (lt_req_deliver_to <> lt_req_result_deliver_to) THEN
+                --    ln_errflg := 1;
+                --  END IF;
+                --
+                --END IF;
+                -- 2008/10/13 統合テスト障害#314 Del End -----------------------------------------
 --
+                -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
+                -- 取込報告:出荷先 <> トランザクション:NVL(出荷先_実績, 出荷先)
+                IF (gr_interface_info_rec(i).party_site_code <> NVL(lt_req_result_deliver_to,lt_req_deliver_to)) THEN
                   ln_errflg := 1;
-                  --********** debug_log ********** START ***
-                  debug_log(FND_FILE.LOG,'出荷支給予定実績警告９');
-                  --********** debug_log ********** END   ***
---
-                ELSIF (lt_req_result_deliver_to IS NOT NULL) THEN
---
-                  IF (lt_req_deliver_to <> lt_req_result_deliver_to) THEN
-                    ln_errflg := 1;
-                    --********** debug_log ********** START ***
-                    debug_log(FND_FILE.LOG,'出荷支給予定実績警告１０');
-                    --********** debug_log ********** END   ***
-                  END IF;
---
+                  lv_err_msg_sai := gv_msg_sai_5;
                 END IF;
+                -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
 --
               END IF;
 --
-              -- 支給時の比較
-              IF (lt_eos_data_type <> gv_eos_data_cd_200) THEN  -- 有償出荷報告
+              -- 有償出荷報告
+              IF (lt_eos_data_type <> gv_eos_data_cd_200) THEN
 --
-                IF (lt_vendor_site_code <> gr_interface_info_rec(i).party_site_code) THEN
+                -- 2008/10/13 統合テスト障害#314 Del Start ---------------------------------------
+                --IF (lt_vendor_site_code <> gr_interface_info_rec(i).party_site_code) THEN
+                --  ln_errflg := 1;
+                --END IF;
+                -- 2008/10/13 統合テスト障害#314 Del End -----------------------------------------
+--
+                -- 2008/10/13 統合テスト障害#314 Add Start ---------------------------------------
+                -- 取込報告:出荷先 <> トランザクション:取引先
+                IF (gr_interface_info_rec(i).party_site_code <> lt_vendor_site_code) THEN
                   ln_errflg := 1;
-                  --********** debug_log ********** START ***
-                  debug_log(FND_FILE.LOG,'出荷支給予定実績警告１１');
-                  --********** debug_log ********** END   ***
+                  lv_err_msg_sai := gv_msg_sai_6;
                 END IF;
+                -- 2008/10/13 統合テスト障害#314 Add End -----------------------------------------
 --
               END IF;
 --
@@ -7417,7 +7472,8 @@ AS
                               ,gv_param1_token
                               ,gr_interface_info_rec(i).delivery_no           --IF_H.配送No
                               ,gv_param2_token
-                              ,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照
+                              --,gr_interface_info_rec(i).order_source_ref      --IF_H.受注ソース参照            2008/10/13 統合テスト障害#314 Del
+                              ,gr_interface_info_rec(i).order_source_ref || lv_err_msg_sai --IF_H.受注ソース参照 2008/10/13 統合テスト障害#314 Add
                               ,gv_param3_token
                               ,gr_interface_info_rec(i).eos_data_type         --IF_H.EOSデータ種別
                               ,gv_param4_token
