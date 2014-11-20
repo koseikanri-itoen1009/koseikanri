@@ -98,13 +98,13 @@ SELECT
        ,xxsky_crowd_code_v         CROWD          --群コード取得用
  WHERE
    --品目情報取得 (原価有効終了日時点で有効な品目情報を取得する事とする)
-        SCCD.item_id               = ITEM.item_id(+)
-   AND  TRUNC( SCCD.end_date )    >= ITEM.start_date_active(+)
-   AND  TRUNC( SCCD.end_date )    <= ITEM.end_date_active(+)
+        SCCD.item_id               = ITEM.item_id
+   AND  TRUNC( SCCD.end_date )    >= ITEM.start_date_active
+   AND  TRUNC( SCCD.end_date )    <= ITEM.end_date_active
    --品目カテゴリ情報取得
-   AND  SCCD.item_id               = PRODC.item_id(+)
-   AND  SCCD.item_id               = ITEMC.item_id(+)
-   AND  SCCD.item_id               = CROWD.item_id(+)
+   AND  SCCD.item_id               = PRODC.item_id
+   AND  SCCD.item_id               = ITEMC.item_id
+   AND  SCCD.item_id               = CROWD.item_id
 /
 COMMENT ON TABLE APPS.XXSKY_標準原価集計_現在_V IS 'SKYLINK用標準原価集計（現在）VIEW'
 /
