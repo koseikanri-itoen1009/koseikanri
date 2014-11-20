@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : Á‰»‚u‚cŠ|—¦ì¬
  * MD.050           : Á‰»‚u‚cŠ|—¦ì¬ MD050_COS_004_A06
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *                                       [E_–{‰Ò“®_01397]Š|—¦‚É‘Î‚·‚éè‡’lƒ`ƒFƒbƒNˆ—‚Ì’Ç‰ÁB
  *  2010/03/24    1.14  K.Atsushiba      [E_–{‰Ò“®_01805]ŒÚ‹qˆÚs‘Î‰ž
  *  2010/04/05    1.15  H.Sasaki         [E_–{‰Ò“®_01688]W–ñƒtƒ‰ƒO‚ð’Ç‰Á
+ *  2010/05/02    1.16  T.Ishiwata       [E_–{‰Ò“®_02552]‚o‚s‘Î‰ž
  *
  *****************************************************************************************/
 --
@@ -394,6 +395,11 @@ AS
 -- 2010/03/24 Ver.1.14 Add Start
   cv_dya_fmt_month              CONSTANT VARCHAR2(2) := 'MM';         -- ŒŽ
 -- 2010/03/24 Ver.1.14 Add End
+--
+-- 2010/05/02 Ver.1.16 T.Ishiwata Add Start
+  --‹Æ‘Ô¬•ª—Þ27:Á‰»VD
+  cv_buz_type27                 CONSTANT VARCHAR2(2)  := '27';
+-- 2010/05/02 Ver.1.16 T.Ishiwata Add End
 --
   -- ===============================
   -- ƒ†[ƒU[’è‹`ƒOƒ[ƒoƒ‹Œ^
@@ -4573,36 +4579,39 @@ AS
             OR ( gt_customer_number IS NOT NULL AND gt_customer_number = hca2.account_number ) )
 --          AND hca2.account_number                 = NVL( gt_customer_number, hca2.account_number )
 -- ************** 2009/08/04 N.Maeda 1.10 MOD  END  ********************* --
-          AND EXISTS(
-                SELECT
-                  cv_exists_flag_yes              exists_flag
-                FROM
--- 2009/07/16 Ver.1.9 M.Sano Del Start
---                  fnd_application                 fa,
---                  fnd_lookup_types                flt,
--- 2009/07/16 Ver.1.9 M.Sano Del Start
-                  fnd_lookup_values               flv
-                WHERE
--- 2009/07/16 Ver.1.9 M.Sano Mod Start
---                  fa.application_id               = flt.application_id
---                AND flt.lookup_type               = flv.lookup_type
---                AND fa.application_short_name     = ct_xxcos_appl_short_name
---                AND flv.lookup_type               = ct_qct_gyotai_sho_mst
-                  flv.lookup_type               = ct_qct_gyotai_sho_mst
--- 2009/07/16 Ver.1.9 M.Sano Mod End
-                AND flv.lookup_code               LIKE ct_qcc_gyotai_sho_mst
-                AND flv.meaning                   = xca2.business_low_type
-                AND id_digestion_due_date         >= flv.start_date_active
-                AND id_digestion_due_date         <= NVL( flv.end_date_active, gd_max_date )
-                AND flv.enabled_flag              = ct_enabled_flag_yes
--- 2009/07/16 Ver.1.9 M.Sano Mod Start
---                AND flv.language                  = USERENV( 'LANG' )
-                AND flv.language                  = ct_lang
--- 2009/07/16 Ver.1.9 M.Sano Mod End
--- ************** 2009/08/04 N.Maeda 1.10 DEL START ********************* --
---                AND ROWNUM                        = 1
--- ************** 2009/08/04 N.Maeda 1.10 DEL  END  ********************* --
-              )
+-- 2010/05/02 Ver.1.16 T.Ishiwata Mod Start
+          AND xca2.business_low_type  =  cv_buz_type27     -- ‹Æ‘Ô¬•ª—Þ‚Q‚V‚Ì‚Ý
+--          AND EXISTS(
+--                SELECT
+--                  cv_exists_flag_yes              exists_flag
+--                FROM
+---- 2009/07/16 Ver.1.9 M.Sano Del Start
+----                  fnd_application                 fa,
+----                  fnd_lookup_types                flt,
+---- 2009/07/16 Ver.1.9 M.Sano Del Start
+--                  fnd_lookup_values               flv
+--                WHERE
+---- 2009/07/16 Ver.1.9 M.Sano Mod Start
+----                  fa.application_id               = flt.application_id
+----                AND flt.lookup_type               = flv.lookup_type
+----                AND fa.application_short_name     = ct_xxcos_appl_short_name
+----                AND flv.lookup_type               = ct_qct_gyotai_sho_mst
+--                  flv.lookup_type               = ct_qct_gyotai_sho_mst
+---- 2009/07/16 Ver.1.9 M.Sano Mod End
+--                AND flv.lookup_code               LIKE ct_qcc_gyotai_sho_mst
+--                AND flv.meaning                   = xca2.business_low_type
+--                AND id_digestion_due_date         >= flv.start_date_active
+--                AND id_digestion_due_date         <= NVL( flv.end_date_active, gd_max_date )
+--                AND flv.enabled_flag              = ct_enabled_flag_yes
+---- 2009/07/16 Ver.1.9 M.Sano Mod Start
+----                AND flv.language                  = USERENV( 'LANG' )
+--                AND flv.language                  = ct_lang
+---- 2009/07/16 Ver.1.9 M.Sano Mod End
+---- ************** 2009/08/04 N.Maeda 1.10 DEL START ********************* --
+----                AND ROWNUM                        = 1
+---- ************** 2009/08/04 N.Maeda 1.10 DEL  END  ********************* --
+--              )
+-- 2010/05/02 Ver.1.16 T.Ishiwata Mod End
           AND iv_due_day                          IN (
                                                        DECODE(
                                                          xca2.conclusion_day1,
