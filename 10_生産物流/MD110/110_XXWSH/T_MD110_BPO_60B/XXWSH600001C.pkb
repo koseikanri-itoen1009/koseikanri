@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -37,7 +37,7 @@ AS
  *  2008/07/02    1.2  Oracle M.Hokkanji ST障害 #321、#351対応 *
  *  2008/07/10    1.3  Oracle M.Hokkanji TE080指摘03対応、ヘッダ積載率再計算対応
  *  2008/07/14    1.4  Oracle 山根一浩   仕様変更No.95対応
- *
+ *  2008/08/04    1.5  Oracle M.Hokkanji 結合再テスト不具合対応(400TE080_159原因2)ST#513対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1720,6 +1720,10 @@ debug_log(FND_FILE.LOG,'移動指示データ登録');
 --debug_log(FND_FILE.LOG,'ソートテーブル登録完了');
 --
     END IF;
+-- Ver1.5 M.Hokkanji Start
+    debug_log(FND_FILE.LOG,'ソートテーブル登録完了したためコミット');
+    COMMIT;
+-- Ver1.5 M.Hokkanji End
 --
   EXCEPTION
     -- ロック取得エラー
@@ -2429,6 +2433,10 @@ debug_log(FND_FILE.LOG,'自動配車集約中間明細テーブル登録数：'|| gt_request_no_ta
         ;
 debug_log(FND_FILE.LOG,'自動配車ソート用中間テーブル更新数：'|| lt_trans_id_tab.COUNT);
     END IF;
+-- Ver1.5 M.Hokkanji Start
+    debug_log(FND_FILE.LOG,'自動配車集約中間テーブル登録後コミット');
+    COMMIT;
+-- Ver1.5 M.Hokkanji End
 --
   EXCEPTION
 --
@@ -3895,6 +3903,10 @@ debug_log(FND_FILE.LOG,'PLSQL表：gt_int_no_lines_tab');
           gt_int_no_lines_tab(ln_cnt_2)   -- 集約No
         , gt_request_no_tab(ln_cnt_2)     -- 依頼No
         );
+-- Ver1.5 M.Hokkanji Start
+   debug_log(FND_FILE.LOG,'自動配車集約中間明細テーブル登録後コミット');
+   COMMIT;
+-- Ver1.5 M.Hokkanji End
 --
   EXCEPTION
 --
@@ -5668,7 +5680,9 @@ debug_cnt number default 0;
              AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
              AND (xdl.sm_end_date_active IS NULL
                   OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
-             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji Start
+--             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji End
              AND DECODE(gv_prod_class, gv_prod_cls_drink
                     , xdl.drink_deadweight                     -- ドリンク積載重量
                     , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
@@ -5696,7 +5710,9 @@ debug_cnt number default 0;
              AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
              AND (xdl.sm_end_date_active IS NULL
                   OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
-             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji Start
+--             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji End
              AND DECODE(gv_prod_class, gv_prod_cls_drink
                     , xdl.drink_deadweight                     -- ドリンク積載重量
                     , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
@@ -5727,7 +5743,9 @@ debug_cnt number default 0;
              AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
              AND (xdl.sm_end_date_active IS NULL
                   OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
-             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji Start
+--             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji End
              AND DECODE(gv_prod_class, gv_prod_cls_drink
                     , xdl.drink_deadweight                     -- ドリンク積載重量
                     , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
@@ -5758,7 +5776,9 @@ debug_cnt number default 0;
              AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
              AND (xdl.sm_end_date_active IS NULL
                   OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
-             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji Start
+--             AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji End
              AND DECODE(gv_prod_class, gv_prod_cls_drink
                     , xdl.drink_deadweight                     -- ドリンク積載重量
                     , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
@@ -5786,7 +5806,9 @@ debug_cnt number default 0;
                AND xdl.sm_start_date_active <= gd_date_from      -- 出荷方法適用開始日
                AND (xdl.sm_end_date_active IS NULL
                     OR xdl.sm_end_date_active >= gd_date_from)   -- 出荷方法適用終了日
-               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji Start
+--               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji End
                AND DECODE(gv_prod_class, gv_prod_cls_drink
                       , xdl.drink_deadweight                     -- ドリンク積載重量
                       , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
@@ -5810,7 +5832,9 @@ debug_cnt number default 0;
                AND xdl.sm_start_date_active <= gd_date_from      -- 出荷方法適用開始日
                AND (xdl.sm_end_date_active IS NULL
                     OR xdl.sm_end_date_active >= gd_date_from)   -- 出荷方法適用終了日
-               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji Start
+--               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji End
                AND DECODE(gv_prod_class, gv_prod_cls_drink
                       , xdl.drink_deadweight                     -- ドリンク積載重量
                       , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
@@ -5837,7 +5861,9 @@ debug_cnt number default 0;
                AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
                AND (xdl.sm_end_date_active IS NULL
                     OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
-               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji Start
+--               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji End
                AND DECODE(gv_prod_class, gv_prod_cls_drink
                       , xdl.drink_deadweight                     -- ドリンク積載重量
                       , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
@@ -5864,7 +5890,9 @@ debug_cnt number default 0;
                AND xdl.sm_start_date_active <= gd_date_from       -- 出荷方法適用開始日
                AND (xdl.sm_end_date_active IS NULL
                     OR xdl.sm_end_date_active >= gd_date_from)    -- 出荷方法適用終了日
-               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji Start
+--               AND NVL(xdl.consolidated_flag, '0') = '0'         -- 混載許可フラグ:混載不許可
+-- Ver1.5 M.Hokkanji End
                AND DECODE(gv_prod_class, gv_prod_cls_drink
                       , xdl.drink_deadweight                     -- ドリンク積載重量
                       , xdl.leaf_deadweight) IS NOT NULL         -- リーフ積載重量
@@ -5886,6 +5914,7 @@ debug_cnt number default 0;
     BEGIN
 --
 debug_log(FND_FILE.LOG,'7-2-1配送区分取得');
+debug_log(FND_FILE.LOG,'7-2-1重量容積区分：' || iv_weight_capa_class);
 debug_log(FND_FILE.LOG,'7-2-1コード区分１：'||iv_code_class1);
 debug_log(FND_FILE.LOG,'7-2-1入出庫場所コード１：'||iv_entering_despatching_code1);
 debug_log(FND_FILE.LOG,'7-2-1コード区分２：'||iv_code_class2);
@@ -6022,7 +6051,10 @@ debug_log(FND_FILE.LOG,'7-2検索回数：'|| ln_order_num_cnt);
               , iv_entering_despatching_code1 => first_deliver_from   -- 配送元
               , iv_code_class2                => lv_cdkbn_2     -- コード区分２：倉庫 or 配送先
               , iv_entering_despatching_code2 => first_deliver_to           -- 配送先
-              , iv_weight_capa_class          => first_intensive_sum_weight -- 重量容積区分
+-- Ver1.5 M.Hokkanji Start
+              , iv_weight_capa_class          => first_weight_capacity_class -- 重量容積区分
+--              , iv_weight_capa_class          => first_intensive_sum_weight -- 重量容積区分
+-- Ver1.5 M.Hokkanji End
               , in_order_num                  => ln_order_num_cnt           -- 検索順
               , ov_ship_method_class          => lt_ship_method_cls         -- 次の配送区分
               , on_next_weight_capacity       => ln_next_weight_capacity    -- 積載重量／容積
@@ -6040,7 +6072,10 @@ debug_log(FND_FILE.LOG,'7-2検索回数：'|| ln_order_num_cnt);
                           || gv_msg_comma ||
                           first_deliver_to
                           || gv_msg_comma ||
-                          first_intensive_sum_weight
+-- Ver1.5 M.Hokkanji Start
+--                          first_intensive_sum_weight
+                          first_weight_capacity_class
+-- Ver1.5 M.Hokkanji End
                           || gv_msg_comma ||
                           ln_order_num_cnt
                           ;
@@ -6060,9 +6095,12 @@ debug_log(FND_FILE.LOG,'7-2検索回数：'|| ln_order_num_cnt);
         IF (lt_ship_method_cls IS NOT NULL) THEN
 --
 debug_log(FND_FILE.LOG,'7-3次の配送区分取得');
+debug_log(FND_FILE.LOG,'7-3次の配送区分:' || lt_ship_method_cls);
           -- 次の配送区分が基準明細の集約合計を超えるかチェックする
           IF (first_weight_capacity_class = gv_weight) THEN
 debug_log(FND_FILE.LOG,'7-3-1配送区分が基準明細の集約合計を超えるかチェック:重量');
+debug_log(FND_FILE.LOG,'7-3-1:基準明細重量：' || first_intensive_sum_weight);
+debug_log(FND_FILE.LOG,'7-3-1:次の配送区分重量：' || ln_next_weight_capacity);
 --
             -- 重量の場合
 --
@@ -6092,6 +6130,8 @@ debug_log(FND_FILE.LOG,'7-3-1-2重量オーバーしない');
 --
           ELSE
 debug_log(FND_FILE.LOG,'7-3-2配送区分が基準明細の集約合計を超えるかチェック:容積');
+debug_log(FND_FILE.LOG,'7-3-2:基準明細容積：' || first_intensive_sum_capacity);
+debug_log(FND_FILE.LOG,'7-3-2:次の配送区分容積：' || ln_next_weight_capacity);
             -- 容積の場合
             IF (first_intensive_sum_capacity > ln_next_weight_capacity) THEN
 --
@@ -7361,6 +7401,10 @@ debug_log(FND_FILE.LOG,'・終了判定カウント:'|| ln_finish_judge_cnt);
         , gt_mixed_no_tab(ln_cnt)             -- 混載元No
       );
 --
+-- Ver1.5 M.Hokkanji Start
+debug_log(FND_FILE.LOG,'小口配送情報作成処理前にコミット');
+    COMMIT;
+-- Ver1.5 M.Hokkanji End
 debug_log(FND_FILE.LOG,'小口配送情報作成処理');
 --
     -- ==============================
@@ -7376,6 +7420,11 @@ debug_log(FND_FILE.LOG,'小口配送情報作成処理');
       RAISE global_api_expt;
     END IF;
 --
+-- Ver1.5 M.Hokkanji Start
+-- 配送No設定以降はロールバックするためエラーを特定できるようここでコミット
+debug_log(FND_FILE.LOG,'配送No設定で既存配車を削除しているためここでコミット処理');
+    COMMIT;
+-- Ver1.5 M.Hokkanji End
 debug_log(FND_FILE.LOG,'配送No設定(振り直し)');
     -- ==================================
     --  配送No設定(振り直し)
@@ -7440,6 +7489,9 @@ debug_log(FND_FILE.LOG,'配送No設定(振り直し)');
     -- *** ローカル定数 ***
     cv_object                   CONSTANT VARCHAR2(2) := '1';  -- 対象区分：対象
     cn_sts_error                CONSTANT NUMBER := 1;         -- 共通関数エラー
+-- Ver1.5 M.Hokkanji Start
+    cv_non_slip_class           CONSTANT VARCHAR2(2) := '1';  -- 伝票無し配車区分
+-- Ver1.5 M.Hokkanji End
 --
 -- 20080603 K.Yamane 不具合No4->
     -- *** ローカル変数 ***
@@ -7570,8 +7622,10 @@ debug_log(FND_FILE.LOG,'配送No設定(振り直し)');
            ,  SUM(mixed.mixed_total_weight)     mix_total_weight      -- 混載合計重量
            ,  SUM(mixed.mixed_total_capacity)   mix_total_capacity    -- 混載合計容積
            ,  mixed.weight_capacity_class       m_c_class             -- 重量容積区分
-           ,  mixed.max_weight                  max_weight            -- 最大積載重量
-           ,  mixed.max_capacity                max_capacity          -- 最大積載容積
+-- Ver1.5 M.Hokkanji Start
+--           ,  mixed.max_weight                  max_weight            -- 最大積載重量
+--           ,  mixed.max_capacity                max_capacity          -- 最大積載容積
+-- Ver1.5 M.Hokkanji End
         FROM (SELECT  DISTINCT xict.transaction_type  -- 処理種別
                     , xmct.mixed_class                -- 混載種別
                     , xmct.delivery_no                -- 配送No
@@ -7597,8 +7651,10 @@ debug_log(FND_FILE.LOG,'配送No設定(振り直し)');
                     , xmct.mixed_total_weight         -- 混載合計重量
                     , xmct.mixed_total_capacity       -- 混載合計容積
                     , xict.weight_capacity_class      -- 重量容積区分
-                    , xict.max_weight                 -- 最大積載重量
-                    , xict.max_capacity               -- 最大積載容積
+-- Ver1.5 M.Hokkanji Start
+--                    , xict.max_weight                 -- 最大積載重量
+--                    , xict.max_capacity               -- 最大積載容積
+-- Ver1.5 M.Hokkanji End
                FROM xxwsh_intensive_carriers_tmp xict       -- 自動配車集約中間テーブル
 --2008.05.26 D.Sugahara 不具合No9対応->
                   , xxwsh_mixed_carriers_tmp     xmct       -- 自動配車混載中間テーブル
@@ -7631,8 +7687,10 @@ debug_log(FND_FILE.LOG,'配送No設定(振り直し)');
             , mixed.schedule_arrival_date       -- 着荷日
             , mixed.transaction_type_name       -- 出庫形態
             , mixed.weight_capacity_class       -- 重量容積区分
-            , mixed.max_weight                  -- 最大積載重量
-            , mixed.max_capacity                -- 最大積載容積
+-- Ver1.5 M.Hokkanji Start
+--            , mixed.max_weight                  -- 最大積載重量
+--            , mixed.max_capacity                -- 最大積載容積
+-- Ver1.5 M.Hokkanji End
       ;
 --
     -- *** ローカル・レコード ***
@@ -8233,6 +8291,10 @@ debug_log(FND_FILE.LOG,'4-2一括登録処理');
         , arrival_date                  -- 着荷日
         , weight_capacity_class         -- 重量容積区分
         , freight_charge_type           -- 運賃形態
+-- Ver1.5 M.Hokkanji Start
+        , non_slip_class                -- 伝票なし配車区分
+        , prod_class                    -- 商品区分
+-- Ver1.5 M.Hokkanji End
         , created_by                    -- 作成者
         , creation_date                 -- 作成日
         , last_updated_by               -- 最終更新者
@@ -8278,6 +8340,10 @@ debug_log(FND_FILE.LOG,'4-2一括登録処理');
         , NULL                                  -- 着荷日
         , lt_weight_capa_cls_tab2(ins_cnt)      -- 重量容積区分
         , lt_freight_charge_type_tab2(ins_cnt)  -- 運賃形態
+-- Ver1.5 M.Hokkanji Start
+        , cv_non_slip_class                     -- 伝票なし配車区分
+        , gv_prod_class                         -- 商品区分
+-- Ver1.5 M.Hokkanji End
         , lt_user_id                            -- 作成者
         , SYSDATE                               -- 作成日
         , lt_user_id                            -- 最終更新者
@@ -9519,12 +9585,16 @@ debug_log(FND_FILE.LOG,'ステータス出力');
 --
     --ステータスセット
     retcode := lv_retcode;
+-- Ver1.5 M.Hokkanji Start
+-- 各中間テーブル作成処理でコミットを入れたためロールバックを実行するように変更
+--  (配車配送計画作成後もしくは削除後にエラーとなった場合にロールバックするため
 -- テスト中はROLLBACKはコメントアウト***************************************************
-    COMMIT;
+    --COMMIT;
     --終了ステータスがエラーの場合はROLLBACKする
---    IF (retcode = gv_status_error) THEN
---      ROLLBACK;
---    END IF;
+    IF (retcode = gv_status_error) THEN
+      ROLLBACK;
+    END IF;
+-- Ver1.5 M.Hokkanji End
 --
   EXCEPTION
     -- *** 共通関数OTHERS例外ハンドラ ***
