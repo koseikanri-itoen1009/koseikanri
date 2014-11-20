@@ -1,0 +1,10 @@
+CREATE OR REPLACE DIRECTORY xxcmm_hht_out      AS '/var/T3/ebsif/outbound/ad_iffile/ha/';
+CREATE OR REPLACE DIRECTORY xxcmm_jihanki_out  AS '/var/T3/ebsif/outbound/ad_iffile/ma/';
+CREATE OR REPLACE DIRECTORY xxcmm_chohyo_out   AS '/var/T3/ebsif/outbound/ad_iffile/ka/';
+CREATE OR REPLACE DIRECTORY xxcmm_jyoho_out    AS '/var/T3/ebsif/outbound/ad_iffile/kb/';
+CREATE OR REPLACE DIRECTORY xxcmm_workflow_out AS '/var/T3/ebsif/outbound/ad_iffile/mc/';
+CREATE OR REPLACE DIRECTORY xxcmm_jinji_in     AS '/var/T3/ebsif/inbound/ad_iffile/na/';
+CREATE OR REPLACE DIRECTORY xxcmm_tmp_out      AS '/var/T3/ebsif/outbound/ad_iffile/tmp';
+CREATE OR REPLACE DIRECTORY xxcmm_tmp_in       AS '/var/T3/ebsif/inbound/ad_iffile/tmp';
+-- Ver1.1 2009/04/03 Add  BFA取込ファイル出力ディレクトリ定義を追加
+CREATE OR REPLACE DIRECTORY xxcmm_bfa_out      AS '/usr/tmp';

@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XXCFR1_INV_EDI_FILEPATH
+  AS '/var/T3/ebsif/outbound/ca_iffile/jx/';
