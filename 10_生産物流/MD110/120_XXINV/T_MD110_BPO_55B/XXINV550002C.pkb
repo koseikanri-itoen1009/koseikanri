@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/09/22    1.17  Hitomi Itou      T_TE080_BPO_550 指摘28(在庫調整実績情報の外注出来高情報・受入返品情報取得(相手先在庫)の相手先を取引先に変更)
  *  2008/10/20    1.18  Takao Ohashi     T_S_492(出力されない処理区分と事由コートの組み合わせを出力させる)
  *  2008/10/23    1.19  Takao Ohashi     指摘442(品目振替情報の取得条件修正)
+ *  2008/11/07    1.20  Hitomi Itou      統合テスト指摘548対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2189,6 +2190,9 @@ AS
           AND oe_info.order_type_id = otta.transaction_type_id                    --受注タイプID
           --OPM品目情報VIEW2(出荷品目用)抽出条件
           AND xola.shipping_item_code = ximv_s.item_no                            --品目コード
+--add start 1.20
+          AND oe_info.item_id         = ximv_s.item_id                            --品目ID
+--add end 1.20
           AND oe_info.trans_date
             BETWEEN ximv_s.start_date_active
             AND NVL(ximv_s.end_date_active,oe_info.trans_date)                    --適用開始日・終了日
@@ -2525,7 +2529,10 @@ AS
          ,itp.lot_id                                          lot_id              --ロットID
 --mod start 1.9
 --         ,SUBSTRB(gmd_d.attribute11,1,10)                     standard_date       --日付
-         ,DECODE(grt.routing_desc                                               --工順区分
+-- mod start 1.20 工順名は工順区分マスタから取得
+--         ,DECODE(grt.routing_desc                                               --工順区分
+         ,DECODE(grct.routing_class_desc                                        --工順区分
+-- mod end 1.20
                 ,gv_item_transfer      ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --品目振替
                 ,gv_item_return        ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --返品原料
                 ,gv_item_dissolve      ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --解体半製品
@@ -2537,13 +2544,19 @@ AS
 --mod start 1.9
 --         ,SUBSTRB(gmd_d.attribute11,1,10)                     out_date            --出庫日
 --         ,SUBSTRB(gmd_d.attribute11,1,10)                     in_date             --着日
-         ,DECODE(grt.routing_desc                                               --工順区分
+-- mod start 1.20 工順名は工順区分マスタから取得
+--         ,DECODE(grt.routing_desc                                               --工順区分
+         ,DECODE(grct.routing_class_desc                                        --工順区分
+-- mod end 1.20
                 ,gv_item_transfer      ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --品目振替
                 ,gv_item_return        ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --返品原料
                 ,gv_item_dissolve      ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --解体半製品
                                        ,SUBSTRB(gmd_d.attribute11,1,10)         --その他
           )                                                   out_date
-         ,DECODE(grt.routing_desc                                               --工順区分
+-- mod start 1.20 工順名は工順区分マスタから取得
+--         ,DECODE(grt.routing_desc                                               --工順区分
+         ,DECODE(grct.routing_class_desc                                        --工順区分
+-- mod end 1.20
                 ,gv_item_transfer      ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --品目振替
                 ,gv_item_return        ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --返品原料
                 ,gv_item_dissolve      ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --解体半製品
@@ -2553,7 +2566,10 @@ AS
          ,''                                                  jrsd_code           --管轄拠点コード
          ,''                                                  jrsd_name           --管轄拠点名
          ,grb.routing_no                                      other_code          --相手先コード
-         ,grt.routing_desc                                    other_name          --相手先名称
+-- mod start 1.20 工順名は工順区分マスタから取得
+--         ,grt.routing_desc                                    other_name          --相手先名称
+         ,grct.routing_class_desc                             other_name          --相手先名称
+-- mod end 1.20
          ,SUM(CASE gmd.line_type --ラインタイプ
             WHEN gn_linetype_mtrl THEN 0
             ELSE NVL(itp.trans_qty,0)
@@ -2578,7 +2594,10 @@ AS
          ,gme_material_details                                gmd                 --生産原料詳細
          ,gme_material_details                                gmd_d               --生産原料詳細(完成品)
          ,gmd_routings_b                                      grb                 --工順マスタ
-         ,gmd_routings_tl                                     grt                 --工順マスタ日本語
+-- mod start 1.20
+--         ,gmd_routings_tl                                     grt                 --工順マスタ日本語
+         ,gmd_routing_class_tl                                grct                --工順区分マスタ日本語
+-- mod end 1.20
          ,xxcmn_item_locations2_v                             xilv                --保管場所情報VIEW2
          --生産原料詳細(振替元先品目)
          ,(
@@ -2598,15 +2617,29 @@ AS
            FROM
              gme_batch_header                                 gbh                 --生産バッチ
             ,gme_material_details                             gmd                 --生産原料詳細
-            ,gmd_routings_tl                                  grt                 --工順マスタ日本語
+
+-- mod start 1.20
+--            ,gmd_routings_tl                                  grt                 --工順マスタ日本語
+            ,gmd_routings_b                                   grb                 --工順マスタ
+            ,gmd_routing_class_tl                             grct                --工順区分マスタ日本語
+-- mod end 1.20
             ,xxcmn_item_categories5_v                         xicv                --OPM品目カテゴリ割当情報VIEW5
            --生産原料詳細抽出条件
            WHERE gbh.batch_id = gmd.batch_id                                      --バッチID
-           --工順マスタ日本語抽出条件
-           AND gbh.routing_id = grt.routing_id                                    --工順ID
-           AND grt.language = gv_lang                                             --言語
-           AND grt.source_lang = gv_source_lang                                   --言語
-           AND grt.routing_desc = gv_item_transfer                                --工順名
+-- mod start 1.20
+--           --工順マスタ日本語抽出条件
+--           AND gbh.routing_id = grt.routing_id                                    --工順ID
+--           AND grt.language = gv_lang                                             --言語
+--           AND grt.source_lang = gv_source_lang                                   --言語
+--           AND grt.routing_desc = gv_item_transfer                                --工順名
+           --工順マスタ抽出条件
+           AND gbh.routing_id          = grb.routing_id                             --工順ID
+           --工順区分マスタ日本語抽出条件
+           AND grb.routing_class       = grct.routing_class                         --工順コード
+           AND grct.language           = gv_lang                                    --言語
+           AND grct.source_lang        = gv_source_lang                             --言語
+           AND grct.routing_class_desc = gv_item_transfer                           --工順名
+-- mod end 1.20
            --OPM品目カテゴリ割当情報VIEW5
            AND gmd.item_id = xicv.item_id
            GROUP BY gbh.batch_id
@@ -2625,14 +2658,23 @@ AS
         AND gmd.line_no = gmd_t.line_no(+)                                        --ラインNO
         --工順マスタ抽出条件
         AND gbh.routing_id = grb.routing_id                                       --工順ID
+-- mod start 1.20 工順名は工順区分マスタから取得
         --工順マスタ日本語抽出条件
-        AND grb.routing_id = grt.routing_id                                       --工順ID
-        AND grt.language = gv_lang                                                --言語
-        AND grt.source_lang = gv_source_lang                                      --言語
+--        AND grb.routing_id = grt.routing_id                                       --工順ID
+--        AND grt.language = gv_lang                                                --言語
+--        AND grt.source_lang = gv_source_lang                                      --言語
+        --工順区分マスタ日本語抽出条件
+        AND grb.routing_class = grct.routing_class                                  --工順コード
+        AND grct.language     = gv_lang                                             --言語
+        AND grct.source_lang  = gv_source_lang                                      --言語
+-- mod end 1.20
         --OPM保管場所マスタ抽出条件
 -- mod start 1.19
 --        AND xilv.segment1 = grb.attribute9                                        --保管場所コード
-        AND xilv.segment1 = DECODE(grt.routing_desc
+-- mod start 1.20 工順名は工順区分マスタから取得
+--        AND xilv.segment1 = DECODE(grt.routing_desc
+        AND xilv.segment1 = DECODE(grct.routing_class_desc
+-- mod end 1.20
                                   ,gv_item_transfer  ,xilv.segment1               -- 品目振替
                                   ,gv_item_return    ,xilv.segment1               -- 返品原料
                                   ,gv_item_dissolve  ,xilv.segment1               -- 解体半製品
@@ -2642,7 +2684,10 @@ AS
 --        AND TO_DATE(gmd_d.attribute11,gv_fmt_ymd)
 --          BETWEEN xilv.date_from
 --          AND NVL(xilv.date_to,TO_DATE(gmd_d.attribute11,gv_fmt_ymd))             --適用開始日・終了日
-        AND DECODE(grt.routing_desc                                               --工順区分
+-- mod start 1.20 工順名は工順区分マスタから取得
+--        AND DECODE(grt.routing_desc                                               --工順区分
+        AND DECODE(grct.routing_class_desc                                          --工順区分
+-- mod end 1.20
                   ,gv_item_transfer      ,itp.trans_date                          --品目振替
                   ,gv_item_return        ,itp.trans_date                          --返品原料
                   ,gv_item_dissolve      ,itp.trans_date                          --解体半製品
@@ -2650,7 +2695,10 @@ AS
             )
           BETWEEN xilv.date_from
           AND NVL(xilv.date_to,
-                DECODE(grt.routing_desc                                               --工順区分
+-- mod start 1.20 工順名は工順区分マスタから取得
+--                DECODE(grt.routing_desc                                               --工順区分
+                DECODE(grct.routing_class_desc                                        --工順区分
+-- mod end 1.20
                       ,gv_item_transfer      ,itp.trans_date                          --品目振替
                       ,gv_item_return        ,itp.trans_date                          --返品原料
                       ,gv_item_dissolve      ,itp.trans_date                          --解体半製品
@@ -2672,18 +2720,27 @@ AS
         AND NVL(xrpm.hit_in_div,gv_dummy) = NVL(gmd.attribute5,gv_dummy)          --打込区分
         AND NVL(xrpm.routing_class,gv_dummy) = NVL(grb.routing_class,gv_dummy)    --工順区分
         AND (
-          (   grt.routing_desc = gv_item_transfer                                 --品目振替の場合
+-- mod start 1.20 工順名は工順区分マスタから取得
+--          (   grt.routing_desc = gv_item_transfer                                 --品目振替の場合
+          (   grct.routing_class_desc = gv_item_transfer                          --品目振替の場合
+-- mod end 1.20
           AND xrpm.item_div_ahead = gmd_t.item_class_ahead                        --振替先品目区分
           AND xrpm.item_div_origin = gmd_t.item_class_origin                      --振替元品目区分
           )
         OR
-          (   grt.routing_desc != gv_item_transfer)                                --品目振替ではない場合
+-- mod start 1.20 工順名は工順区分マスタから取得
+--          (   grt.routing_desc != gv_item_transfer)                                --品目振替ではない場合
+          (   grct.routing_class_desc != gv_item_transfer)                        --品目振替ではない場合
+-- mod end 1.20
         )
         AND xrpm.use_div_invent = gv_inventory                                    --在庫使用区分
         --生産日
 --mod start 1.9
 --        AND SUBSTRB(gmd_d.attribute11,1,10) BETWEEN civ_ymd_from AND civ_ymd_to   --生産日
-        AND DECODE(grt.routing_desc                                               --工順区分
+-- mod start 1.20 工順名は工順区分マスタから取得
+--        AND DECODE(grt.routing_desc                                               --工順区分
+        AND DECODE(grct.routing_class_desc                                        --工順区分
+-- mod end 1.20
                   ,gv_item_transfer      ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --品目振替
                   ,gv_item_return        ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --返品原料
                   ,gv_item_dissolve      ,TO_CHAR(itp.trans_date,gv_fmt_ymd)      --解体半製品
@@ -2703,7 +2760,10 @@ AS
          ,xrpm.new_div_invent                                                     --新区分
          ,gbh.batch_no                                                            --伝票No
          ,grb.routing_no                                                          --相手先コード
-         ,grt.routing_desc                                                        --相手先名称
+-- mod start 1.20 工順名は工順区分マスタから取得
+--         ,grt.routing_desc                                                        --相手先名称
+         ,grct.routing_class_desc
+-- mod end 1.20
          ,itp.whse_code                                                           --倉庫コード
          ,xilv.whse_name                                                          --倉庫名
          ,itp.location                                                            --保管倉庫コード
