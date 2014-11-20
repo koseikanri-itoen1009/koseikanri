@@ -6,7 +6,7 @@ AS
  * Package Name           : xxccp_ifcommon_pkg(body)
  * Description            : 
  * MD.070                 : MD070_IPO_CCP_共通関数
- * Version                : 1.4
+ * Version                : 1.5
  *
  * Program List
  *  --------------------      ---- -----   --------------------------------------------------
@@ -26,6 +26,8 @@ AS
  *  2009-05-01    1.3  Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
  *  2009-05-22    1.4  Masayuki.Sano    障害番号T1_1145対応
  *                                      ・データ種コード:81のレコード長変更(775⇒776)
+ *  2011-10-06    1.5  Kazuyuki.Kiriu   E_本稼動_07906対応
+ *                                      ・流通ＢＭＳ対応
  *****************************************************************************************/
 --  
   /**********************************************************************************
@@ -58,9 +60,14 @@ AS
     cv_data_kind_22       CONSTANT VARCHAR2(2) := '22';   -- データ種コード:22
     cv_data_kind_51       CONSTANT VARCHAR2(2) := '51';   -- データ種コード:51
     cv_data_kind_81       CONSTANT VARCHAR2(2) := '81';   -- データ種コード:81
-    cv_len_of_record_21   CONSTANT NUMBER      := '4500'; -- 21のレコード長
-    cv_len_of_record_22   CONSTANT NUMBER      := '4500'; -- 22のレコード長
-    cv_len_of_record_51   CONSTANT NUMBER      := '1000'; -- 51のレコード長
+-- 2011-10-06 Ver.1.5 Update By Kazuyuki.Kiriu Start
+--    cv_len_of_record_21   CONSTANT NUMBER      := '4500'; -- 21のレコード長
+--    cv_len_of_record_22   CONSTANT NUMBER      := '4500'; -- 22のレコード長
+--    cv_len_of_record_51   CONSTANT NUMBER      := '1000'; -- 51のレコード長
+    cv_len_of_record_21   CONSTANT NUMBER      := 8000; -- 21のレコード長
+    cv_len_of_record_22   CONSTANT NUMBER      := 8000; -- 22のレコード長
+    cv_len_of_record_51   CONSTANT NUMBER      := 3000; -- 51のレコード長
+-- 2011-10-06 Ver.1.5 Update By Kazuyuki.Kiriu End
 -- 2009-05-22 Ver.1.4 Update By Masayuki.Sano Start
 --    cv_len_of_record_81   CONSTANT NUMBER      := '775';  -- 81のレコード長
     cv_len_of_record_81   CONSTANT NUMBER      := '776';  -- 81のレコード長
