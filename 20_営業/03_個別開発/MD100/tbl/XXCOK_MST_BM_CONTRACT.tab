@@ -1,0 +1,92 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOK_MST_BM_CONTRACT
+ * Description : 販手条件マスタ
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/15    1.0   T.Osada          新規作成
+ *  2009/01/23    1.1   K.Iwabuchi       BM率、BM金額の桁数変更
+ *
+ **************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_MST_BM_CONTRACT
+(
+   BM_CONTRACT_ID           NUMBER         NOT NULL,
+   CUST_CODE                VARCHAR2(9)    NOT NULL,
+   CALC_TYPE                VARCHAR2(2)    NOT NULL,
+   CONTAINER_TYPE_CODE      VARCHAR2(4),
+   SELLING_PRICE            NUMBER(12),
+   BM1_PCT                  NUMBER(4,2),
+   BM1_AMT                  NUMBER(10,2),
+   BM2_PCT                  NUMBER(4,2),
+   BM2_AMT                  NUMBER(10,2),
+   BM3_PCT                  NUMBER(4,2),
+   BM3_AMT                  NUMBER(10,2),
+   CALC_TARGET_FLAG         VARCHAR2(1)    NOT NULL,
+   START_DATE_ACTIVE        DATE           NOT NULL,
+   END_DATE_ACTIVE          DATE,
+   CREATED_BY               NUMBER  (15,0) NOT NULL,
+   CREATION_DATE            DATE           NOT NULL,
+   LAST_UPDATED_BY          NUMBER  (15,0) NOT NULL,
+   LAST_UPDATE_DATE         DATE           NOT NULL,
+   LAST_UPDATE_LOGIN        NUMBER  (15,0),
+   REQUEST_ID               NUMBER  (15,0),
+   PROGRAM_APPLICATION_ID   NUMBER  (15,0),
+   PROGRAM_ID               NUMBER  (15,0),
+   PROGRAM_UPDATE_DATE      DATE,
+   CONSTRAINT XXCOK_MST_BM_CONTRACT_PK PRIMARY KEY(BM_CONTRACT_ID)
+   USING INDEX TABLESPACE XXIDX2
+)
+/
+COMMENT ON TABLE  XXCOK.XXCOK_MST_BM_CONTRACT                         IS '販手条件マスタ'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM_CONTRACT_ID          IS '販手条件ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.CUST_CODE               IS '顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.CALC_TYPE               IS '計算条件'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.CONTAINER_TYPE_CODE     IS '容器区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.SELLING_PRICE           IS '売価'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM1_PCT                 IS 'BM1率(%)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM1_AMT                 IS 'BM1金額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM2_PCT                 IS 'BM2率(%)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM2_AMT                 IS 'BM2金額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM3_PCT                 IS 'BM3率(%)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM3_AMT                 IS 'BM3金額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.CALC_TARGET_FLAG        IS '計算対象フラグ'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.START_DATE_ACTIVE       IS '有効日(FROM)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.END_DATE_ACTIVE         IS '有効日(TO)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.CREATED_BY              IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.CREATION_DATE           IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.LAST_UPDATED_BY         IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.LAST_UPDATE_DATE        IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.LAST_UPDATE_LOGIN       IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.REQUEST_ID              IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.PROGRAM_APPLICATION_ID  IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.PROGRAM_ID              IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.PROGRAM_UPDATE_DATE     IS 'プログラム更新日'
+/

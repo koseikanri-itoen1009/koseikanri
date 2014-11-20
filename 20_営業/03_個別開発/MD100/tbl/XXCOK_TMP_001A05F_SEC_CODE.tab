@@ -1,0 +1,25 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOK_TMP_001A05F_SEC_CODE
+ * Description : 顧客移行情報行政一時表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/15    1.0   T.Osada          新規作成
+ *
+ **************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE XXCOK.XXCOK_TMP_001A05F_SEC_CODE
+(
+   SECTION_CODE           VARCHAR2(5)            -- 行政地区コード
+)
+ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE  XXCOK.XXCOK_TMP_001A05F_SEC_CODE              IS '顧客移行情報行政一時表'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_001A05F_SEC_CODE.SECTION_CODE IS '行政地区コード'
+/
+;

@@ -1,0 +1,77 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOK_TMP_WHOLESALE_BILL
+ * Description : 問屋請求書EXCELアップロードワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/15    1.0   T.Osada          新規作成
+ *
+ **************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE XXCOK.XXCOK_TMP_WHOLESALE_BILL
+(
+    SORT_NO              NUMBER,
+    FILE_ID              NUMBER,
+    SUPPLIER_CODE        VARCHAR2(100),
+    EXPECT_PAYMENT_DATE  VARCHAR2(100),
+    SELLING_MONTH        VARCHAR2(100),
+    BASE_CODE            VARCHAR2(100),
+    BILL_NO              VARCHAR2(100),
+    CUST_CODE            VARCHAR2(100),
+    SALES_OUTLETS_CODE   VARCHAR2(100),
+    ITEM_CODE            VARCHAR2(100),
+    ACCT_CODE            VARCHAR2(100),
+    SUB_ACCT_CODE        VARCHAR2(100),
+    DEMAND_UNIT_TYPE     VARCHAR2(100),
+    DEMAND_QTY           VARCHAR2(100),
+    DEMAND_UNIT_PRICE    VARCHAR2(100),
+    DEMAND_AMT           VARCHAR2(100),
+    PAYMENT_QTY          VARCHAR2(100),
+    PAYMENT_UNIT_PRICE   VARCHAR2(100),
+    PAYMENT_AMT          VARCHAR2(100)
+)
+/
+COMMENT ON TABLE  XXCOK.XXCOK_TMP_WHOLESALE_BILL                     IS '問屋請求書EXCELアップロードワークテーブル'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.SORT_NO             IS 'ソートNO'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.FILE_ID             IS 'ファイルID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.SUPPLIER_CODE       IS '仕入先コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.EXPECT_PAYMENT_DATE IS '支払予定日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.SELLING_MONTH       IS '売上対象年月'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.BASE_CODE           IS '拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.BILL_NO             IS '請求書NO.'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.CUST_CODE           IS '顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.SALES_OUTLETS_CODE  IS '問屋帳合先コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.ITEM_CODE           IS '品目コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.ACCT_CODE           IS '勘定科目コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.SUB_ACCT_CODE       IS '補助科目コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.DEMAND_UNIT_TYPE    IS '請求単位'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.DEMAND_QTY          IS '請求数量'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.DEMAND_UNIT_PRICE   IS '請求単価(税抜)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.DEMAND_AMT          IS '請求金額(税抜)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.PAYMENT_QTY         IS '支払数量'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.PAYMENT_UNIT_PRICE  IS '支払単価(税抜)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_WHOLESALE_BILL.PAYMENT_AMT         IS '支払金額(税抜)'
+/

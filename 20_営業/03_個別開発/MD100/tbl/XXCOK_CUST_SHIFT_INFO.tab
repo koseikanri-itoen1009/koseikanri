@@ -1,0 +1,91 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOK_CUST_SHIFT_INFO
+ * Description : 顧客移行情報テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/15    1.0   T.Osada          新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_CUST_SHIFT_INFO
+(
+   CUST_SHIFT_ID          NUMBER(12)     NOT NULL,
+   CUST_CODE              VARCHAR2(9)    NOT NULL,
+   PREV_BASE_CODE         VARCHAR2(4)    NOT NULL,
+   NEW_BASE_CODE          VARCHAR2(4)    NOT NULL,
+   CUST_SHIFT_DATE        DATE           NOT NULL,
+   TARGET_ACCTG_YEAR      NUMBER(4,0)    NOT NULL,
+   EMP_CODE               VARCHAR2(5)    NOT NULL,
+   INPUT_DATE             DATE           NOT NULL,
+   STATUS                 VARCHAR2(1)    NOT NULL,
+   SHIFT_TYPE             VARCHAR2(1)    NOT NULL,
+   CREATE_CHG_JE_FLAG     VARCHAR2(1)    NOT NULL,
+   ORG_SLIP_NUMBER        VARCHAR2(50),
+   VD_INV_TRNSFR_STATUS   VARCHAR2(1)    NOT NULL,
+   BASE_SPLIT_FLAG        VARCHAR2(1),
+   CREATED_BY             NUMBER(15,0)   NOT NULL,
+   CREATION_DATE          DATE           NOT NULL,
+   LAST_UPDATED_BY        NUMBER(15,0)   NOT NULL,
+   LAST_UPDATE_DATE       DATE           NOT NULL,
+   LAST_UPDATE_LOGIN      NUMBER(15,0),
+   REQUEST_ID             NUMBER(15,0),
+   PROGRAM_APPLICATION_ID NUMBER(15,0),
+   PROGRAM_ID             NUMBER(15,0),
+   PROGRAM_UPDATE_DATE    DATE,
+   CONSTRAINT XXCOK_CUST_SHIFT_INFO_PK PRIMARY KEY (CUST_SHIFT_ID)
+   USING INDEX TABLESPACE XXIDX2
+) 
+/
+COMMENT ON TABLE  XXCOK.XXCOK_CUST_SHIFT_INFO                         IS '顧客移行情報テーブル'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.CUST_SHIFT_ID           IS '顧客移行情報ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.CUST_CODE               IS '顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.PREV_BASE_CODE          IS '旧担当拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.NEW_BASE_CODE           IS '新担当拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.CUST_SHIFT_DATE         IS '顧客移行日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.TARGET_ACCTG_YEAR       IS '対象会計年度'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.EMP_CODE                IS '入力者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.INPUT_DATE              IS '入力日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.STATUS                  IS 'ステータス'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.SHIFT_TYPE              IS '移行区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.CREATE_CHG_JE_FLAG      IS '釣銭仕訳作成フラグ'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.ORG_SLIP_NUMBER         IS '元伝票番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.VD_INV_TRNSFR_STATUS    IS 'VD在庫保管場所転送ステータス'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.BASE_SPLIT_FLAG         IS '拠点分割情報連携フラグ'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.CREATED_BY              IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.CREATION_DATE           IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.LAST_UPDATED_BY         IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.LAST_UPDATE_DATE        IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.LAST_UPDATE_LOGIN       IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.REQUEST_ID              IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.PROGRAM_APPLICATION_ID  IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.PROGRAM_ID              IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_CUST_SHIFT_INFO.PROGRAM_UPDATE_DATE     IS 'プログラム更新日'
+/

@@ -1,0 +1,73 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOK_DLV_COST_RESULT_SUM
+ * Description : 運送費実績月別集計テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/15    1.0   T.Osada          新規作成
+ *
+ **************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_DLV_COST_RESULT_SUM
+(
+    RESULT_SUM_ID             NUMBER      NOT NULL,
+    TARGET_YEAR               VARCHAR2(4) NOT NULL,
+    TARGET_MONTH              VARCHAR2(2) NOT NULL,
+    BASE_CODE                 VARCHAR2(4),
+    ITEM_CODE                 VARCHAR2(7),
+    SMALL_AMT_TYPE            VARCHAR2(1),
+    SUM_CS_QTY                NUMBER,
+    SUM_AMT                   NUMBER,
+    CREATED_BY                NUMBER(15,0)   NOT NULL,
+    CREATION_DATE             DATE           NOT NULL,
+    LAST_UPDATED_BY           NUMBER(15,0)   NOT NULL,
+    LAST_UPDATE_DATE          DATE           NOT NULL,
+    LAST_UPDATE_LOGIN         NUMBER(15,0),
+    REQUEST_ID                NUMBER(15,0),
+    PROGRAM_APPLICATION_ID    NUMBER(15,0),
+    PROGRAM_ID                NUMBER(15,0),
+    PROGRAM_UPDATE_DATE       DATE,
+    CONSTRAINT XXCOK_DLV_COST_RESULT_SUM_PK PRIMARY KEY (RESULT_SUM_ID)
+    USING INDEX TABLESPACE XXIDX2
+)
+/
+COMMENT ON TABLE XXCOK.XXCOK_DLV_COST_RESULT_SUM                         IS '運送費実績月別集計テーブル'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.RESULT_SUM_ID          IS '運送費実績集計ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.TARGET_YEAR            IS '対象年度'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.TARGET_MONTH           IS '月'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.BASE_CODE              IS '拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.ITEM_CODE              IS '品目コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.SMALL_AMT_TYPE         IS '小口区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.SUM_CS_QTY             IS '集計数量(C/S)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.SUM_AMT                IS '集計金額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.CREATED_BY             IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.CREATION_DATE          IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.LAST_UPDATED_BY        IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.LAST_UPDATE_DATE       IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.LAST_UPDATE_LOGIN      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.REQUEST_ID             IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.PROGRAM_APPLICATION_ID IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.PROGRAM_ID             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_DLV_COST_RESULT_SUM.PROGRAM_UPDATE_DATE    IS 'プログラム更新日'
+/

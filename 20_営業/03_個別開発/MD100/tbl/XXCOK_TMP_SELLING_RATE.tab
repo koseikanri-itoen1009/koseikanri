@@ -1,0 +1,42 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOK_TMP_SELLING_RATE
+ * Description : 売上振替割合登録一時表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/15    1.0   T.Osada          新規作成
+ *
+ **************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE XXCOK.XXCOK_TMP_SELLING_RATE
+(
+   VALID_INVALID_TYPE      VARCHAR2(1),
+   SELLING_FROM_BASE_CODE  VARCHAR2(4),
+   SELLING_FROM_CUST_CODE  VARCHAR2(9),
+   SELLING_TO_CUST_CODE    VARCHAR2(9),
+   SELLING_TRNS_RATE       NUMBER(6,2),
+   FILE_ID                 NUMBER,
+   ERROR_FLAG              VARCHAR2(1)
+)
+ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE  XXCOK.XXCOK_TMP_SELLING_RATE                        IS '売上振替割合登録一時表'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_SELLING_RATE.VALID_INVALID_TYPE     IS '登録･無効区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_SELLING_RATE.SELLING_FROM_BASE_CODE IS '売上振替元拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_SELLING_RATE.SELLING_FROM_CUST_CODE IS '売上振替元顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_SELLING_RATE.SELLING_TO_CUST_CODE   IS '売上振替先顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_SELLING_RATE.SELLING_TRNS_RATE      IS '売上振替割合'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_SELLING_RATE.FILE_ID                IS 'ファイルID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_SELLING_RATE.ERROR_FLAG             IS 'エラーフラグ'
+/

@@ -1,0 +1,10 @@
+CREATE UNIQUE INDEX xxcok.xxcok_mst_bm_contract_u01
+ON xxcok.xxcok_mst_bm_contract(
+     cust_code
+   , calc_type
+   , container_type_code
+   , selling_price
+   , start_date_active
+)
+TABLESPACE xxidx2
+/

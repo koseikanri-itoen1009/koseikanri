@@ -1,0 +1,82 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOK_BM_SUPPORT_BUDGET
+ * Description : 販手販協予算テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/15    1.0   T.Osada          新規作成
+ *
+ **************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_BM_SUPPORT_BUDGET
+(
+   BM_SUPPORT_BUDGET_ID           NUMBER,
+   COMPANY_CODE                   VARCHAR2(3),
+   BUDGET_YEAR                    VARCHAR2(4)   NOT NULL,
+   BASE_CODE                      VARCHAR2(4)   NOT NULL,
+   CORP_CODE                      VARCHAR2(6)   NOT NULL,
+   SALES_OUTLETS_CODE             VARCHAR2(9),
+   ACCT_CODE                      VARCHAR2(5),
+   SUB_ACCT_CODE                  VARCHAR2(5),
+   TARGET_MONTH                   VARCHAR2(6),
+   BUDGET_AMT                     NUMBER(12),
+   INFO_INTERFACE_STATUS          VARCHAR2(1),
+   CREATED_BY                     NUMBER(15,0)  NOT NULL,
+   CREATION_DATE                  DATE          NOT NULL,
+   LAST_UPDATED_BY                NUMBER(15,0)  NOT NULL,
+   LAST_UPDATE_DATE               DATE          NOT NULL,
+   LAST_UPDATE_LOGIN              NUMBER(15,0),
+   REQUEST_ID                     NUMBER(15,0),
+   PROGRAM_APPLICATION_ID         NUMBER(15,0),
+   PROGRAM_ID                     NUMBER(15,0),
+   PROGRAM_UPDATE_DATE            DATE,
+   CONSTRAINT XXCOK_BM_SUPPORT_BUDGET_PK PRIMARY KEY(BM_SUPPORT_BUDGET_ID)
+   USING INDEX TABLESPACE XXIDX2
+)
+/
+COMMENT ON TABLE XXCOK.XXCOK_BM_SUPPORT_BUDGET                         IS '販手販協予算テーブル'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.BM_SUPPORT_BUDGET_ID   IS '販手販協予算ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.COMPANY_CODE           IS '会社コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.BUDGET_YEAR            IS '予算年度'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.BASE_CODE              IS '拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.CORP_CODE              IS '企業コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.SALES_OUTLETS_CODE     IS '問屋帳合先コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.ACCT_CODE              IS '勘定科目コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.SUB_ACCT_CODE          IS '補助科目コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.TARGET_MONTH           IS '月度'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.BUDGET_AMT             IS '予算金額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.INFO_INTERFACE_STATUS  IS '情報系連携ステータス'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.CREATED_BY             IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.CREATION_DATE          IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.LAST_UPDATED_BY        IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.LAST_UPDATE_DATE       IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.LAST_UPDATE_LOGIN      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.REQUEST_ID             IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.PROGRAM_APPLICATION_ID IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.PROGRAM_ID             IS 'プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SUPPORT_BUDGET.PROGRAM_UPDATE_DATE    IS 'プログラム更新日'
+/

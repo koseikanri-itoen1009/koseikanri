@@ -1,0 +1,149 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOK_REP_BM_BALANCE
+ * Description : 販手残高一覧帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/15    1.0   T.Osada          新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_REP_BM_BALANCE
+(
+   P_PAYMENT_DATE               VARCHAR2(8),
+   P_REF_BASE_CODE              VARCHAR2(4),
+   P_SELLING_BASE_CODE          VARCHAR2(4),
+   P_TARGET_DISP                VARCHAR2(12),
+   H_WARNNING_MARK              VARCHAR2(2),
+   PAYMENT_CODE                 VARCHAR2(9),
+   PAYMENT_NAME                 VARCHAR2(240),
+   BANK_NO                      VARCHAR2(4),
+   BANK_NAME                    VARCHAR2(60),
+   BANK_BRANCH_NO               VARCHAR2(4),
+   BANK_BRANCH_NAME             VARCHAR2(60),
+   BANK_ACCT_TYPE               VARCHAR2(1),
+   BANK_ACCT_TYPE_NAME          VARCHAR2(4),
+   BANK_ACCT_NO                 VARCHAR2(7),
+   BANK_ACCT_NAME               VARCHAR2(150),
+   REF_BASE_CODE                VARCHAR2(4),
+   REF_BASE_NAME                VARCHAR2(240),
+   BM_PAYMENT_TYPE              VARCHAR2(80),
+   BANK_TRNS_FEE                VARCHAR2(20),
+   PAYMENT_STOP                 VARCHAR2(20),
+   SELLING_BASE_CODE            VARCHAR2(4),
+   SELLING_BASE_NAME            VARCHAR2(240),
+   WARNNING_MARK                VARCHAR2(2),
+   CUST_CODE                    VARCHAR2(9),
+   CUST_NAME                    VARCHAR2(360),
+   BM_THIS_MONTH                NUMBER,
+   ELECTRIC_AMT                 NUMBER,
+   UNPAID_LAST_MONTH            NUMBER,
+   UNPAID_BALANCE               NUMBER,
+   RESV_PAYMENT                 VARCHAR2(4),
+   PAYMENT_DATE                 DATE,
+   CLOSING_DATE                 DATE,
+   SELLING_BASE_SECTION_CODE    VARCHAR2(5),
+   NO_DATA_MESSAGE              VARCHAR2(30),
+   CREATED_BY                   NUMBER(15,0)    NOT NULL,
+   CREATION_DATE                DATE            NOT NULL,
+   LAST_UPDATED_BY              NUMBER(15,0)    NOT NULL,
+   LAST_UPDATE_DATE             DATE            NOT NULL,
+   LAST_UPDATE_LOGIN            NUMBER(15,0),
+   REQUEST_ID                   NUMBER(15,0),
+   PROGRAM_APPLICATION_ID       NUMBER(15,0),
+   PROGRAM_ID                   NUMBER(15,0),
+   PROGRAM_UPDATE_DATE          DATE
+)
+/
+COMMENT ON TABLE  XXCOK.XXCOK_REP_BM_BALANCE                           IS '販手残高一覧帳票ワークテーブル'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.P_PAYMENT_DATE            IS '支払日(入力パラメータ)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.P_REF_BASE_CODE           IS '問合せ担当拠点(入力パラメータ)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.P_SELLING_BASE_CODE       IS '売上計上拠点(入力パラメータ)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.P_TARGET_DISP             IS '表示対象(入力パラメータ)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.H_WARNNING_MARK           IS '警告マーク(ヘッダ出力)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.PAYMENT_CODE              IS '支払先コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.PAYMENT_NAME              IS '支払先名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BANK_NO                   IS '銀行番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BANK_NAME                 IS '銀行名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BANK_BRANCH_NO            IS '銀行支店番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BANK_BRANCH_NAME          IS '銀行支店名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BANK_ACCT_TYPE            IS '口座種別'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BANK_ACCT_TYPE_NAME       IS '口座種別名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BANK_ACCT_NO              IS '口座番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BANK_ACCT_NAME            IS '銀行口座名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.REF_BASE_CODE             IS '本部担当拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.REF_BASE_NAME             IS '本部担当拠点名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BM_PAYMENT_TYPE           IS 'BM支払区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BANK_TRNS_FEE             IS '振込手数料'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.PAYMENT_STOP              IS '支払停止'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.SELLING_BASE_CODE         IS '売上計上拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.SELLING_BASE_NAME         IS '売上計上拠点名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.WARNNING_MARK             IS '警告マーク'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CUST_CODE                 IS '顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CUST_NAME                 IS '顧客名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BM_THIS_MONTH             IS '当月BM'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.ELECTRIC_AMT              IS '電気料'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.UNPAID_LAST_MONTH         IS '前月までの未払'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.UNPAID_BALANCE            IS '未払残高'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.RESV_PAYMENT              IS '支払保留'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.PAYMENT_DATE              IS '支払日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CLOSING_DATE              IS '締め日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.SELLING_BASE_SECTION_CODE IS '地区コード（売上計上拠点）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.NO_DATA_MESSAGE           IS '0件メッセージ'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CREATED_BY                IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CREATION_DATE             IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.LAST_UPDATED_BY           IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.LAST_UPDATE_DATE          IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.LAST_UPDATE_LOGIN         IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.REQUEST_ID                IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.PROGRAM_APPLICATION_ID    IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.PROGRAM_ID                IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.PROGRAM_UPDATE_DATE       IS 'プログラム更新日'
+/

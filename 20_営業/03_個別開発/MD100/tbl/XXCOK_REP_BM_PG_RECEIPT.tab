@@ -1,0 +1,112 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOK_REP_BM_PG_RECEIPT
+ * Description : 支払案内書領収書付き版帳票ワークテーブル
+ * Version     : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/15    1.0   T.Osada          新規作成
+ *  2009/01/22    1.1   K.Yamaguchi      項目追加・データ型変更
+ *  2009/01/23    1.2   T.Abe            データ型変更
+ *
+ **************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_REP_BM_PG_RECEIPT
+(
+   PAYMENT_CODE              VARCHAR2(9),
+   PUBLICATION_DATE          VARCHAR2(30),
+   PAYMENT_ZIP_CODE          VARCHAR2(8),
+   PAYMENT_ADDR_1            VARCHAR2(30),
+   PAYMENT_ADDR_2            VARCHAR2(30),
+   PAYMENT_NAME_1            VARCHAR2(30),
+   PAYMENT_NAME_2            VARCHAR2(30),
+   CONTACT_BASE_SECTION_CODE VARCHAR2(5),
+   CONTACT_BASE_CODE         VARCHAR2(4),
+   CONTACT_BASE_NAME         VARCHAR2(20),
+   CONTACT_ADDR_1            VARCHAR2(30),
+   CONTACT_ADDR_2            VARCHAR2(30),
+   CONTACT_PHONE_NO          VARCHAR2(15),
+   TARGET_MONTH              VARCHAR2(30),
+   CLOSING_DATE              DATE,
+   SELLING_AMT_SUM           NUMBER,
+   BM_INDEX_1                VARCHAR2(20),
+   BM_AMT_1                  NUMBER,
+   BM_INDEX_2                VARCHAR2(20),
+   BM_AMT_2                  NUMBER,
+   PAYMENT_AMT_TAX           NUMBER,
+   CREATED_BY                NUMBER  (15,0) NOT NULL,
+   CREATION_DATE             DATE           NOT NULL,
+   LAST_UPDATED_BY           NUMBER  (15,0) NOT NULL,
+   LAST_UPDATE_DATE          DATE           NOT NULL,
+   LAST_UPDATE_LOGIN         NUMBER  (15,0),
+   REQUEST_ID                NUMBER  (15,0),
+   PROGRAM_APPLICATION_ID    NUMBER  (15,0),
+   PROGRAM_ID                NUMBER  (15,0),
+   PROGRAM_UPDATE_DATE       DATE
+)
+/
+COMMENT ON TABLE  XXCOK.XXCOK_REP_BM_PG_RECEIPT                           IS '支払案内書領収書付き版帳票ワークテーブル'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.PAYMENT_CODE              IS '支払先コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.PUBLICATION_DATE          IS '発行日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.PAYMENT_ZIP_CODE          IS '支払先郵便番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.PAYMENT_ADDR_1            IS '支払先住所1'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.PAYMENT_ADDR_2            IS '支払先住所2'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.PAYMENT_NAME_1            IS '支払先宛名1'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.PAYMENT_NAME_2            IS '支払先宛名2'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.CONTACT_BASE_SECTION_CODE IS '地区コード(連絡先拠点)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.CONTACT_BASE_CODE         IS '連絡先拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.CONTACT_BASE_NAME         IS '連絡先拠点名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.CONTACT_ADDR_1            IS '連絡先住所1'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.CONTACT_ADDR_2            IS '連絡先住所2'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.CONTACT_PHONE_NO          IS '連絡先電話番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.TARGET_MONTH              IS '年月分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.CLOSING_DATE              IS '締め日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.SELLING_AMT_SUM           IS '販売金額合計'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.BM_INDEX_1                IS '合計見出し1'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.BM_AMT_1                  IS '合計手数料1'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.BM_INDEX_2                IS '合計見出し2'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.BM_AMT_2                  IS '合計手数料2'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.PAYMENT_AMT_TAX           IS '支払金額(税込)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.CREATED_BY                IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.CREATION_DATE             IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.LAST_UPDATED_BY           IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.LAST_UPDATE_DATE          IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.LAST_UPDATE_LOGIN         IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.REQUEST_ID                IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.PROGRAM_APPLICATION_ID    IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.PROGRAM_ID                IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_RECEIPT.PROGRAM_UPDATE_DATE       IS 'プログラム更新日'
+/

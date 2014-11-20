@@ -1,0 +1,183 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOK_REP_WHOLESALE_PAY
+ * Description : 問屋販売条件支払チェック帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/15    1.0   T.Osada          新規作成
+ *  2009/01/23    1.1   K.Iwabuchi       その他科目桁数変更
+ *
+ **************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_REP_WHOLESALE_PAY
+(
+   WHOLESALE_BILL_DETAIL_ID        NUMBER,                 -- 問屋請求書明細ID
+   P_BASE_CODE                     VARCHAR2(4),            -- 拠点コード(入力パラメータ)
+   P_WHOLESALE_CODE_ADMIN          VARCHAR2(9),            -- 問屋管理コード(入力パラメータ)
+   P_CUST_CODE                     VARCHAR2(9),            -- 顧客コード(入力パラメータ)
+   P_SALES_OUTLETS_CODE            VARCHAR2(9),            -- 問屋帳合先コード(入力パラメータ)
+   P_PAYMENT_DATE                  VARCHAR2(10),           -- 支払年月日(入力パラメータ)
+   P_SELLING_MONTH                 VARCHAR2(7),            -- 売上対象年月(入力パラメータ)
+   PAYMENT_DATE                    VARCHAR2(10),           -- 支払年月日
+   SELLING_MONTH                   VARCHAR2(7),            -- 売上対象年月
+   BILL_NO                         VARCHAR2(10),           -- 請求書NO.
+   CUST_CODE                       VARCHAR2(9),            -- 顧客コード
+   CUST_NAME                       VARCHAR2(100),          -- 顧客名
+   SALES_OUTLETS_CODE              VARCHAR2(9),            -- 問屋帳合先コード
+   SALES_OUTLETS_NAME              VARCHAR2(100),          -- 問屋帳合先名
+   WHOLESALE_CODE_ADMIN            VARCHAR2(9),            -- 問屋管理コード
+   WHOLESALE_NAME_ADMIN            VARCHAR2(80),           -- 問屋管理名
+   SUPPLIER_CODE                   VARCHAR2(9),            -- 仕入先コード
+   SUPPLIER_NAME                   VARCHAR2(100),          -- 仕入先名
+   BANK_NAME                       VARCHAR2(60),           -- 銀行名
+   BANK_BRANCH_NAME                VARCHAR2(60),           -- 支店名
+   BANK_ACCT_TYPE                  VARCHAR2(4),            -- 口座種別
+   BANK_ACCT_NO                    VARCHAR2(30),           -- 口座番号
+   ITEM_CODE                       VARCHAR2(240),          -- 品名コード
+   ITEM_NAME                       VARCHAR2(100),          -- 品名
+   UNIT_TYPE                       VARCHAR2(1),            -- 単位
+   DEMAND_QTY                      NUMBER(9),              -- 請求数量
+   DEMAND_UNIT_PRICE               NUMBER(8,2),            -- 請求単価
+   DEMAND_AMT                      NUMBER(10),             -- 請求金額
+   PAYMENT_QTY                     NUMBER(9),              -- 支払数量
+   PAYMENT_UNIT_PRICE              NUMBER(8,2),            -- 支払単価
+   PAYMENT_AMT_DISP                NUMBER(10),             -- 支払金額(表示用)
+   PAYMENT_AMT_CALC                NUMBER(10),             -- 支払金額(計算用)
+   NORMAL_SPECIAL_TYPE             VARCHAR2(1),            -- 通特区分
+   MARKET_AMT                      NUMBER(8,2),            -- (実)建値
+   NORMAL_STORE_DELIVER_AMT        NUMBER(8,2),            -- 通常店納
+   ONCE_STORE_DELIVER_AMT          NUMBER(8,2),            -- 今回店納
+   NET_SELLING_PRICE               NUMBER(8,2),            -- NET価格
+   NET_PCT                         NUMBER(4,2),            -- NET掛率
+   MARGIN_PCT                      NUMBER(4,2),            -- マージン率
+   CS_MARGIN_AMT                   NUMBER(8,2),            -- C/Sマージン額
+   COVERAGE_AMT                    NUMBER(9),              -- 補填
+   WHOLESALE_MARGIN_SUM            NUMBER(9),              -- 問屋マージン
+   EXPANSION_SALES_AMT             NUMBER(9),              -- 拡売費
+   MISC_ACCT_AMT                   NUMBER(10),             -- その他科目
+   NO_DATA_MESSAGE                 VARCHAR2(30),           -- 0件メッセージ
+   CREATED_BY                      NUMBER(15,0) NOT NULL,  -- 作成者
+   CREATION_DATE                   DATE         NOT NULL,  -- 作成日
+   LAST_UPDATED_BY                 NUMBER(15,0) NOT NULL,  -- 最終更新者
+   LAST_UPDATE_DATE                DATE         NOT NULL,  -- 最終更新日
+   LAST_UPDATE_LOGIN               NUMBER(15,0),           -- 最終更新ログイン
+   REQUEST_ID                      NUMBER(15,0),           -- 要求ID
+   PROGRAM_APPLICATION_ID          NUMBER(15,0),           -- コンカレント・プログラム・アプリケーションID
+   PROGRAM_ID                      NUMBER(15,0),           -- コンカレント・プログラムID
+   PROGRAM_UPDATE_DATE             DATE                    -- プログラム更新日
+)
+/
+COMMENT ON TABLE  XXCOK.XXCOK_REP_WHOLESALE_PAY IS '問屋販売条件支払チェック帳票ワークテーブル'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.WHOLESALE_BILL_DETAIL_ID IS '問屋請求書明細ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.P_BASE_CODE              IS '拠点コード(入力パラメータ)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.P_WHOLESALE_CODE_ADMIN   IS '問屋管理コード(入力パラメータ)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.P_CUST_CODE              IS '顧客コード(入力パラメータ)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.P_SALES_OUTLETS_CODE     IS '問屋帳合先コード(入力パラメータ)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.P_PAYMENT_DATE           IS '支払年月日(入力パラメータ)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.P_SELLING_MONTH          IS '売上対象年月(入力パラメータ)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.PAYMENT_DATE             IS '支払年月日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.SELLING_MONTH            IS '売上年月'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.BILL_NO                  IS '請求書NO.'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.CUST_CODE                IS '顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.CUST_NAME                IS '顧客名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.SALES_OUTLETS_CODE       IS '問屋帳合先コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.SALES_OUTLETS_NAME       IS '問屋帳合先名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.WHOLESALE_CODE_ADMIN     IS '問屋管理コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.WHOLESALE_NAME_ADMIN     IS '問屋管理名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.SUPPLIER_CODE            IS '仕入先コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.SUPPLIER_NAME            IS '仕入先名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.BANK_NAME                IS '銀行名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.BANK_BRANCH_NAME         IS '支店名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.BANK_ACCT_TYPE           IS '口座種別'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.BANK_ACCT_NO             IS '口座番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.ITEM_CODE                IS '品名コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.ITEM_NAME                IS '品名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.UNIT_TYPE                IS '単位'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.DEMAND_QTY               IS '請求数量'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.DEMAND_UNIT_PRICE        IS '請求単価'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.DEMAND_AMT               IS '請求金額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.PAYMENT_QTY              IS '支払数量'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.PAYMENT_UNIT_PRICE       IS '支払単価'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.PAYMENT_AMT_DISP         IS '支払金額(表示用)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.PAYMENT_AMT_CALC         IS '支払金額(計算用)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.NORMAL_SPECIAL_TYPE      IS '通特区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.MARKET_AMT               IS '(実)建値'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.NORMAL_STORE_DELIVER_AMT IS '通常店納'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.ONCE_STORE_DELIVER_AMT   IS '今回店納'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.NET_SELLING_PRICE        IS 'NET価格'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.NET_PCT                  IS 'NET掛率'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.MARGIN_PCT               IS 'マージン率'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.CS_MARGIN_AMT            IS 'C/Sマージン額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.COVERAGE_AMT             IS '補填'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.WHOLESALE_MARGIN_SUM     IS '問屋マージン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.EXPANSION_SALES_AMT      IS '拡売費'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.MISC_ACCT_AMT            IS 'その他科目'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.NO_DATA_MESSAGE          IS '0件メッセージ'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.CREATED_BY               IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.CREATION_DATE            IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.LAST_UPDATED_BY          IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.LAST_UPDATE_DATE         IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.LAST_UPDATE_LOGIN        IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.REQUEST_ID               IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.PROGRAM_APPLICATION_ID   IS 'アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.PROGRAM_ID               IS 'プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_WHOLESALE_PAY.PROGRAM_UPDATE_DATE      IS 'プログラム更新日'
+/
