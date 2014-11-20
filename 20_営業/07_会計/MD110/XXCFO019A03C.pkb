@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A03C(body)
  * Description      : 電子帳簿販売実績の情報系システム連携
  * MD.050           : 電子帳簿販売実績の情報系システム連携 <MD050_CFO_019_A03>
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2012/10/31    1.1   N.Sugiura        [結合テスト障害No29] エラー内容を出力ファイルに出力する
  *  2012/11/28    1.2   T.Osawa          管理テーブル更新、ＡＲ取引取得エラー
  *  2012/12/18    1.3   T.Ishiwata       性能改善対応
+ *  2013/08/06    1.4   S.Niki           E_本稼動_10960対応(消費税増税対応)
  *
  *****************************************************************************************/
 --
@@ -2111,7 +2112,10 @@ AS
                 AND       flv.language                  =         cv_lang
                 AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.delivery_date          
                 AND       NVL(flv.end_date_active, gd_prdate)     >=  xseh.delivery_date
-                AND       flv.lookup_code               =         xseh.consumption_tax_class)
+-- Ver.1.4 Mod Start
+--                AND       flv.lookup_code               =         xseh.consumption_tax_class)
+                AND       flv.attribute3                =         xseh.consumption_tax_class)
+-- Ver.1.4 Mod End
                                                         AS  consumption_tax_class_name          --消費税区分名
               , xseh.tax_code                           AS  tax_code                            --税金コード
               , xseh.tax_rate                           AS  tax_rate                            --消費税率
@@ -2365,7 +2369,10 @@ AS
                 AND       flv.language                  =         cv_lang
                 AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.delivery_date          
                 AND       NVL(flv.end_date_active, gd_prdate)     >=  xseh.delivery_date
-                AND       flv.lookup_code               =         xseh.consumption_tax_class)
+-- Ver.1.4 Mod Start
+--                AND       flv.lookup_code               =         xseh.consumption_tax_class)
+                AND       flv.attribute3                =         xseh.consumption_tax_class)
+-- Ver.1.4 Mod End
                                                         AS  consumption_tax_class_name          --消費税区分名
               , xseh.tax_code                           AS  tax_code                            --税金コード
               , xseh.tax_rate                           AS  tax_rate                            --消費税率
@@ -2614,7 +2621,10 @@ AS
                 AND       flv.language                  =         cv_lang
                 AND       NVL(flv.start_date_active, gd_prdate)   <=  xseh.delivery_date          
                 AND       NVL(flv.end_date_active, gd_prdate)     >=  xseh.delivery_date
-                AND       flv.lookup_code               =         xseh.consumption_tax_class)
+-- Ver.1.4 Mod Start
+--                AND       flv.lookup_code               =         xseh.consumption_tax_class)
+                AND       flv.attribute3                =         xseh.consumption_tax_class)
+-- Ver.1.4 Mod End
                                                         AS  consumption_tax_class_name          --消費税区分名
               , xseh.tax_code                           AS  tax_code                            --税金コード
               , xseh.tax_rate                           AS  tax_rate                            --消費税率
