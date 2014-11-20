@@ -1,0 +1,9 @@
+CREATE INDEX xxcok.xxcok_selling_to_info_n02
+ON xxcok.xxcok_selling_to_info(
+     selling_from_info_id
+   , selling_to_cust_code
+   , start_month
+   , invalid_flag
+)
+TABLESPACE xxidx2
+/
