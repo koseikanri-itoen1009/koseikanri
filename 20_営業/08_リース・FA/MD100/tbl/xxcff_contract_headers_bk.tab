@@ -1,0 +1,80 @@
+/*************************************************************************
+ * 
+ * Table Name      : xxcff_contract_headers_bk
+ * Description     : リース契約ヘッダＢＫ
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2012/10/05    1.0   SCSK 谷口    初回作成
+ ************************************************************************/
+CREATE TABLE xxcff.xxcff_contract_headers_bk (
+     contract_header_id             NUMBER        NOT NULL
+    ,contract_number                VARCHAR2(15)  NOT NULL
+    ,lease_class                    VARCHAR2(2)   NOT NULL
+    ,lease_type                     VARCHAR2(1)   NOT NULL
+    ,lease_company                  VARCHAR2(2)   NOT NULL
+    ,re_lease_times                 NUMBER(3)     NOT NULL
+    ,comments                       VARCHAR2(50)
+    ,contract_date                  DATE          NOT NULL
+    ,payment_frequency              NUMBER(3)     NOT NULL
+    ,payment_type                   VARCHAR2(1)   NOT NULL
+    ,payment_years                  NUMBER(3)     NOT NULL
+    ,lease_start_date               DATE          NOT NULL
+    ,lease_end_date                 DATE          NOT NULL
+    ,first_payment_date             DATE          NOT NULL
+    ,second_payment_date            DATE          NOT NULL
+    ,third_payment_date             NUMBER(2)     NOT NULL
+    ,start_period_name              VARCHAR2(7)   NOT NULL
+    ,lease_payment_flag             VARCHAR2(1)
+    ,tax_code                       VARCHAR2(4)   NOT NULL
+    ,run_period_name                VARCHAR2(7)   NOT NULL
+    ,run_line_num                   NUMBER(3)     NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcff_contract_headers_bk_pk PRIMARY KEY (contract_header_id,run_period_name,run_line_num)
+  USING INDEX TABLESPACE xxidx2)
+;
+--
+COMMENT ON TABLE xxcff.xxcff_contract_headers_bk IS 'リース契約ヘッダＢＫ';
+--
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.contract_header_id                      IS '契約内部ID';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.contract_number                         IS '契約番号';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.lease_class                             IS 'リース種別';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.lease_type                              IS 'リース区分';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.lease_company                           IS 'リース会社';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.re_lease_times                          IS '再リース回数';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.comments                                IS '件名';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.contract_date                           IS 'リース契約日';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.payment_frequency                       IS '支払回数';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.payment_type                            IS '頻度';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.payment_years                           IS '年数';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.lease_start_date                        IS 'リース開始日';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.lease_end_date                          IS 'リース終了日';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.first_payment_date                      IS '初回支払日';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.second_payment_date                     IS '2回目支払日';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.third_payment_date                      IS '3回目以降支払日';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.start_period_name                       IS '費用計上開始会計期間';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.lease_payment_flag                      IS 'リース支払計画完了フラグ';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.tax_code                                IS '税金コード';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.run_period_name                         IS '実行会計期間';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.run_line_num                            IS '実行枝番';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.created_by                              IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.creation_date                           IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.last_updated_by                         IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.last_update_date                        IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.last_update_login                       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.request_id                              IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.program_id                              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_contract_headers_bk.program_update_date                     IS 'プログラム更新日';

@@ -1,0 +1,116 @@
+/*************************************************************************
+ * 
+ * Table Name      : xxcff_contract_lines_bk
+ * Description     : リース契約明細ＢＫ
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2012/10/05    1.0   SCSK 谷口    初回作成
+ ************************************************************************/
+CREATE TABLE xxcff.xxcff_contract_lines_bk (
+     contract_line_id               NUMBER        NOT NULL
+    ,contract_header_id             NUMBER        NOT NULL
+    ,contract_line_num              NUMBER(3)     NOT NULL
+    ,contract_status                VARCHAR2(3)   NOT NULL
+    ,first_charge                   NUMBER(10)    NOT NULL
+    ,first_tax_charge               NUMBER(10)    NOT NULL
+    ,first_total_charge             NUMBER(11)
+    ,second_charge                  NUMBER(10)    NOT NULL
+    ,second_tax_charge              NUMBER(10)    NOT NULL
+    ,second_total_charge            NUMBER(11)
+    ,first_deduction                NUMBER(10)    NOT NULL
+    ,first_tax_deduction            NUMBER(10)    NOT NULL
+    ,first_total_deduction          NUMBER(11)
+    ,second_deduction               NUMBER(10)    NOT NULL
+    ,second_tax_deduction           NUMBER(10)    NOT NULL
+    ,second_total_deduction         NUMBER(11)
+    ,gross_charge                   NUMBER(12)
+    ,gross_tax_charge               NUMBER(12)
+    ,gross_total_charge             NUMBER(13)
+    ,gross_deduction                NUMBER(12)
+    ,gross_tax_deduction            NUMBER(12)
+    ,gross_total_deduction          NUMBER(13)
+    ,lease_kind                     VARCHAR2(1)   NOT NULL
+    ,estimated_cash_price           NUMBER(13)
+    ,present_value_discount_rate    NUMBER(6,5)
+    ,present_value                  NUMBER(13)
+    ,life_in_months                 NUMBER(3)
+    ,original_cost                  NUMBER(13)
+    ,calc_interested_rate           NUMBER(8,7)
+    ,object_header_id               NUMBER        NOT NULL
+    ,asset_category                 VARCHAR2(30)  NOT NULL
+    ,expiration_date                DATE
+    ,cancellation_date              DATE
+    ,vd_if_date                     DATE
+    ,info_sys_if_date               DATE
+    ,first_installation_address     VARCHAR2(600)
+    ,first_installation_place       VARCHAR2(50)
+    ,run_period_name                VARCHAR2(7)   NOT NULL
+    ,run_line_num                   NUMBER(3)     NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcff_contract_lines_bk_pk PRIMARY KEY (contract_line_id,contract_header_id,run_period_name,run_line_num)
+  USING INDEX TABLESPACE xxidx2)
+;
+--
+COMMENT ON TABLE xxcff.xxcff_contract_lines_bk IS 'リース契約明細ＢＫ';
+--
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.contract_line_id                          IS '契約明細内部ID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.contract_header_id                        IS '契約内部ID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.contract_line_num                         IS '契約枝番';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.contract_status                           IS '契約ステータス';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.first_charge                              IS '初回月額リース料_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.first_tax_charge                          IS '初回消費税額_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.first_total_charge                        IS '初回計_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.second_charge                             IS '2回目以降月額リース料_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.second_tax_charge                         IS '2回目以降消費税額_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.second_total_charge                       IS '2回目以降計_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.first_deduction                           IS '初回月額リース料_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.first_tax_deduction                       IS '初回月額消費税額_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.first_total_deduction                     IS '初回計_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.second_deduction                          IS '2回目以降月額リース料_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.second_tax_deduction                      IS '2回目以降消費税額_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.second_total_deduction                    IS '2回目以降計_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.gross_charge                              IS '総額リース料_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.gross_tax_charge                          IS '総額消費税_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.gross_total_charge                        IS '総額計_リース料';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.gross_deduction                           IS '総額リース料_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.gross_tax_deduction                       IS '総額消費税_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.gross_total_deduction                     IS '総額計_控除額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.lease_kind                                IS 'リース種類';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.estimated_cash_price                      IS '見積現金購入価額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.present_value_discount_rate               IS '現在価値割引率';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.present_value                             IS '現在価値';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.life_in_months                            IS '法定耐用年数';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.original_cost                             IS '取得価額';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.calc_interested_rate                      IS '計算利子率';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.object_header_id                          IS '物件内部ID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.asset_category                            IS '資産種類';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.expiration_date                           IS '満了日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.cancellation_date                         IS '中途解約日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.vd_if_date                                IS 'リース契約情報連携日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.info_sys_if_date                          IS 'リース管理情報連携日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.first_installation_address                IS '初回設置場所';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.first_installation_place                  IS '初回設置先';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.run_period_name                           IS '実行会計期間';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.run_line_num                              IS '実行枝番';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.created_by                                IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.creation_date                             IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.last_updated_by                           IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.last_update_date                          IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.last_update_login                         IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.request_id                                IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.program_application_id                    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.program_id                                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.program_update_date                       IS 'プログラム更新日';

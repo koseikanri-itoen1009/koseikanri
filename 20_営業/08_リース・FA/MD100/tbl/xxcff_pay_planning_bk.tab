@@ -1,0 +1,78 @@
+/*************************************************************************
+ * 
+ * Table Name      : xxcff_pay_planning_bk
+ * Description     : リース支払計画ＢＫ
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2012/10/05    1.0   SCSK 谷口    初回作成
+ ************************************************************************/
+CREATE TABLE xxcff.xxcff_pay_planning_bk (
+     contract_line_id               NUMBER        NOT NULL
+    ,payment_frequency              NUMBER(3)     NOT NULL
+    ,contract_header_id             NUMBER        NOT NULL
+    ,period_name                    VARCHAR2(7)   NOT NULL
+    ,payment_date                   DATE          NOT NULL
+    ,lease_charge                   NUMBER(10)
+    ,lease_tax_charge               NUMBER(10)
+    ,lease_deduction                NUMBER(10)
+    ,lease_tax_deduction            NUMBER(10)
+    ,op_charge                      NUMBER(10)
+    ,op_tax_charge                  NUMBER(10)
+    ,fin_debt                       NUMBER(10)
+    ,fin_tax_debt                   NUMBER(10)
+    ,fin_interest_due               NUMBER(10)
+    ,fin_debt_rem                   NUMBER(10)
+    ,fin_tax_debt_rem               NUMBER(10)
+    ,accounting_if_flag             VARCHAR2(1)   NOT NULL
+    ,payment_match_flag             VARCHAR2(1)   NOT NULL
+    ,run_period_name                VARCHAR2(7)   NOT NULL
+    ,run_line_num                   NUMBER(3)     NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcff_pay_planning_bk_pk PRIMARY KEY (contract_line_id,payment_frequency,run_period_name,run_line_num)
+  USING INDEX TABLESPACE xxidx2)
+;
+--
+COMMENT ON TABLE xxcff.xxcff_pay_planning_bk IS 'リース支払計画ＢＫ';
+--
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.contract_line_id                            IS '契約明細内部ID';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.payment_frequency                           IS '支払回数';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.contract_header_id                          IS '契約内部ID';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.period_name                                 IS '会計期間';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.payment_date                                IS '支払日';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.lease_charge                                IS 'リース料';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.lease_tax_charge                            IS 'リース料_消費税';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.lease_deduction                             IS 'リース控除額';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.lease_tax_deduction                         IS 'リース控除額_消費税';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.op_charge                                   IS 'ＯＰリース料';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.op_tax_charge                               IS 'ＯＰリース料額_消費税';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.fin_debt                                    IS 'ＦＩＮリース債務額';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.fin_tax_debt                                IS 'ＦＩＮリース債務額_消費税';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.fin_interest_due                            IS 'ＦＩＮリース支払利息';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.fin_debt_rem                                IS 'ＦＩＮリース債務残';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.fin_tax_debt_rem                            IS 'ＦＩＮリース債務残_消費税';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.accounting_if_flag                          IS '会計ＩＦフラグ';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.payment_match_flag                          IS '照合済フラグ';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.run_period_name                             IS '実行会計期間';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.run_line_num                                IS '実行枝番';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.created_by                                  IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.creation_date                               IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.last_updated_by                             IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.last_update_date                            IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.last_update_login                           IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.request_id                                  IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.program_application_id                      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.program_id                                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.program_update_date                         IS 'プログラム更新日';
