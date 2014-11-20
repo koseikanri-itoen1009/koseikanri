@@ -3,7 +3,7 @@
  * VIEW Name       : xxcso_visit_actual_v
  * Description     : 共通用：有効訪問実績ビュー
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/04/14    1.0  K.Satomura    初回作成
  *  2009/04/24    1.1  K.Satomura    システムテスト障害対応(T1_0734)
+ *  2009/09/11    1.2  K.Satomura    統合テスト障害対応(0000900)
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcso_visit_actual_v
 (
@@ -229,120 +230,232 @@ AND    jtb.task_type_id            = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
 AND    NVL(jtb.deleted_flag, 'N')  = 'N'
 AND    jtb.actual_end_date IS NOT NULL
 UNION ALL
-SELECT jtb.task_id
-      ,jtb.created_by
-      ,jtb.creation_date
-      ,jtb.last_updated_by
-      ,jtb.last_update_date
-      ,jtb.last_update_login
-      ,jtb.object_version_number
-      ,jtb.task_number
-      ,jtb.task_type_id
-      ,jtb.task_status_id
-      ,jtb.task_priority_id
-      ,jtb.owner_id
-      ,jtb.owner_type_code
-      ,jtb.owner_territory_id
-      ,jtb.assigned_by_id
-      ,jtb.cust_account_id
-      ,jtb.customer_id
-      ,jtb.address_id
-      ,jtb.planned_start_date
-      ,jtb.planned_end_date
-      ,jtb.scheduled_start_date
-      ,jtb.scheduled_end_date
-      ,jtb.actual_start_date
-      ,jtb.actual_end_date
-      ,jtb.source_object_type_code
-      ,jtb.timezone_id
-      ,jtb.source_object_id
-      ,jtb.source_object_name
-      ,jtb.duration
-      ,jtb.duration_uom
-      ,jtb.planned_effort
-      ,jtb.planned_effort_uom
-      ,jtb.actual_effort
-      ,jtb.actual_effort_uom
-      ,jtb.percentage_complete
-      ,jtb.reason_code
-      ,jtb.private_flag
-      ,jtb.publish_flag
-      ,jtb.restrict_closure_flag
-      ,jtb.multi_booked_flag
-      ,jtb.milestone_flag
-      ,jtb.holiday_flag
-      ,jtb.billable_flag
-      ,jtb.bound_mode_code
-      ,jtb.soft_bound_flag
-      ,jtb.workflow_process_id
-      ,jtb.notification_flag
-      ,jtb.notification_period
-      ,jtb.notification_period_uom
-      ,jtb.parent_task_id
-      ,jtb.recurrence_rule_id
-      ,jtb.alarm_start
-      ,jtb.alarm_start_uom
-      ,jtb.alarm_on
-      ,jtb.alarm_count
-      ,jtb.alarm_fired_count
-      ,jtb.alarm_interval
-      ,jtb.alarm_interval_uom
-      ,jtb.deleted_flag
-      ,jtb.palm_flag
-      ,jtb.wince_flag
-      ,jtb.laptop_flag
-      ,jtb.device1_flag
-      ,jtb.device2_flag
-      ,jtb.device3_flag
-      ,jtb.costs
-      ,jtb.currency_code
-      ,jtb.org_id
-      ,jtb.escalation_level
-      ,jtb.attribute1
-      ,jtb.attribute2
-      ,jtb.attribute3
-      ,jtb.attribute4
-      ,jtb.attribute5
-      ,jtb.attribute6
-      ,jtb.attribute7
-      ,jtb.attribute8
-      ,jtb.attribute9
-      ,jtb.attribute10
-      ,jtb.attribute11
-      ,jtb.attribute12
-      ,jtb.attribute13
-      ,jtb.attribute14
-      ,jtb.attribute15
-      ,jtb.attribute_category
-      ,jtb.security_group_id
-      ,jtb.orig_system_reference
-      ,jtb.orig_system_reference_id
-      ,jtb.update_status_flag
-      ,jtb.calendar_start_date
-      ,jtb.calendar_end_date
-      ,jtb.date_selected
-      ,jtb.template_id
-      ,jtb.template_group_id
-      ,jtb.object_changed_date
-      ,jtb.task_confirmation_status
-      ,jtb.task_confirmation_counter
-      ,jtb.task_split_flag
-      ,jtb.open_flag
-      ,jtb.entity
-      ,jtb.child_position
-      ,jtb.child_sequence_num
-      ,ala.customer_id
-FROM   jtf_tasks_b  jtb
-      ,as_leads_all ala
-WHERE  jtb.task_status_id          = fnd_profile.value('XXCSO1_TASK_STATUS_CLOSED_ID')
-AND    jtb.source_object_type_code = 'OPPORTUNITY'
-AND    jtb.task_type_id            = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
-AND    NVL(jtb.deleted_flag, 'N')  = 'N'
-AND    jtb.actual_end_date IS NOT NULL
-/* 2009.04.24 K.Satomura T1_0734対応 START */
---AND    ala.customer_id             = jtb.source_object_id
-AND    ala.lead_id                 = jtb.source_object_id
+/* 2009.09.11 K.Satomura 0000900対応 START */
+--SELECT jtb.task_id
+--      ,jtb.created_by
+--      ,jtb.creation_date
+--      ,jtb.last_updated_by
+--      ,jtb.last_update_date
+--      ,jtb.last_update_login
+--      ,jtb.object_version_number
+--      ,jtb.task_number
+--      ,jtb.task_type_id
+--      ,jtb.task_status_id
+--      ,jtb.task_priority_id
+--      ,jtb.owner_id
+--      ,jtb.owner_type_code
+--      ,jtb.owner_territory_id
+--      ,jtb.assigned_by_id
+--      ,jtb.cust_account_id
+--      ,jtb.customer_id
+--      ,jtb.address_id
+--      ,jtb.planned_start_date
+--      ,jtb.planned_end_date
+--      ,jtb.scheduled_start_date
+--      ,jtb.scheduled_end_date
+--      ,jtb.actual_start_date
+--      ,jtb.actual_end_date
+--      ,jtb.source_object_type_code
+--      ,jtb.timezone_id
+--      ,jtb.source_object_id
+--      ,jtb.source_object_name
+--      ,jtb.duration
+--      ,jtb.duration_uom
+--      ,jtb.planned_effort
+--      ,jtb.planned_effort_uom
+--      ,jtb.actual_effort
+--      ,jtb.actual_effort_uom
+--      ,jtb.percentage_complete
+--      ,jtb.reason_code
+--      ,jtb.private_flag
+--      ,jtb.publish_flag
+--      ,jtb.restrict_closure_flag
+--      ,jtb.multi_booked_flag
+--      ,jtb.milestone_flag
+--      ,jtb.holiday_flag
+--      ,jtb.billable_flag
+--      ,jtb.bound_mode_code
+--      ,jtb.soft_bound_flag
+--      ,jtb.workflow_process_id
+--      ,jtb.notification_flag
+--      ,jtb.notification_period
+--      ,jtb.notification_period_uom
+--      ,jtb.parent_task_id
+--      ,jtb.recurrence_rule_id
+--      ,jtb.alarm_start
+--      ,jtb.alarm_start_uom
+--      ,jtb.alarm_on
+--      ,jtb.alarm_count
+--      ,jtb.alarm_fired_count
+--      ,jtb.alarm_interval
+--      ,jtb.alarm_interval_uom
+--      ,jtb.deleted_flag
+--      ,jtb.palm_flag
+--      ,jtb.wince_flag
+--      ,jtb.laptop_flag
+--      ,jtb.device1_flag
+--      ,jtb.device2_flag
+--      ,jtb.device3_flag
+--      ,jtb.costs
+--      ,jtb.currency_code
+--      ,jtb.org_id
+--      ,jtb.escalation_level
+--      ,jtb.attribute1
+--      ,jtb.attribute2
+--      ,jtb.attribute3
+--      ,jtb.attribute4
+--      ,jtb.attribute5
+--      ,jtb.attribute6
+--      ,jtb.attribute7
+--      ,jtb.attribute8
+--      ,jtb.attribute9
+--      ,jtb.attribute10
+--      ,jtb.attribute11
+--      ,jtb.attribute12
+--      ,jtb.attribute13
+--      ,jtb.attribute14
+--      ,jtb.attribute15
+--      ,jtb.attribute_category
+--      ,jtb.security_group_id
+--      ,jtb.orig_system_reference
+--      ,jtb.orig_system_reference_id
+--      ,jtb.update_status_flag
+--      ,jtb.calendar_start_date
+--      ,jtb.calendar_end_date
+--      ,jtb.date_selected
+--      ,jtb.template_id
+--      ,jtb.template_group_id
+--      ,jtb.object_changed_date
+--      ,jtb.task_confirmation_status
+--      ,jtb.task_confirmation_counter
+--      ,jtb.task_split_flag
+--      ,jtb.open_flag
+--      ,jtb.entity
+--      ,jtb.child_position
+--      ,jtb.child_sequence_num
+--      ,ala.customer_id
+--FROM   jtf_tasks_b  jtb
+--      ,as_leads_all ala
+--WHERE  jtb.task_status_id          = fnd_profile.value('XXCSO1_TASK_STATUS_CLOSED_ID')
+--AND    jtb.source_object_type_code = 'OPPORTUNITY'
+--AND    jtb.task_type_id            = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
+--AND    NVL(jtb.deleted_flag, 'N')  = 'N'
+--AND    jtb.actual_end_date IS NOT NULL
+--/* 2009.04.24 K.Satomura T1_0734対応 START */
+----AND    ala.customer_id             = jtb.source_object_id
+--AND    ala.lead_id                 = jtb.source_object_id
 /* 2009.04.24 K.Satomura T1_0734対応 END */
+SELECT jtb2.task_id
+      ,jtb2.created_by
+      ,jtb2.creation_date
+      ,jtb2.last_updated_by
+      ,jtb2.last_update_date
+      ,jtb2.last_update_login
+      ,jtb2.object_version_number
+      ,jtb2.task_number
+      ,jtb2.task_type_id
+      ,jtb2.task_status_id
+      ,jtb2.task_priority_id
+      ,jtb2.owner_id
+      ,jtb2.owner_type_code
+      ,jtb2.owner_territory_id
+      ,jtb2.assigned_by_id
+      ,jtb2.cust_account_id
+      ,jtb2.customer_id
+      ,jtb2.address_id
+      ,jtb2.planned_start_date
+      ,jtb2.planned_end_date
+      ,jtb2.scheduled_start_date
+      ,jtb2.scheduled_end_date
+      ,jtb2.actual_start_date
+      ,jtb2.actual_end_date
+      ,jtb2.source_object_type_code
+      ,jtb2.timezone_id
+      ,jtb2.source_object_id
+      ,jtb2.source_object_name
+      ,jtb2.duration
+      ,jtb2.duration_uom
+      ,jtb2.planned_effort
+      ,jtb2.planned_effort_uom
+      ,jtb2.actual_effort
+      ,jtb2.actual_effort_uom
+      ,jtb2.percentage_complete
+      ,jtb2.reason_code
+      ,jtb2.private_flag
+      ,jtb2.publish_flag
+      ,jtb2.restrict_closure_flag
+      ,jtb2.multi_booked_flag
+      ,jtb2.milestone_flag
+      ,jtb2.holiday_flag
+      ,jtb2.billable_flag
+      ,jtb2.bound_mode_code
+      ,jtb2.soft_bound_flag
+      ,jtb2.workflow_process_id
+      ,jtb2.notification_flag
+      ,jtb2.notification_period
+      ,jtb2.notification_period_uom
+      ,jtb2.parent_task_id
+      ,jtb2.recurrence_rule_id
+      ,jtb2.alarm_start
+      ,jtb2.alarm_start_uom
+      ,jtb2.alarm_on
+      ,jtb2.alarm_count
+      ,jtb2.alarm_fired_count
+      ,jtb2.alarm_interval
+      ,jtb2.alarm_interval_uom
+      ,jtb2.deleted_flag
+      ,jtb2.palm_flag
+      ,jtb2.wince_flag
+      ,jtb2.laptop_flag
+      ,jtb2.device1_flag
+      ,jtb2.device2_flag
+      ,jtb2.device3_flag
+      ,jtb2.costs
+      ,jtb2.currency_code
+      ,jtb2.org_id
+      ,jtb2.escalation_level
+      ,jtb2.attribute1
+      ,jtb2.attribute2
+      ,jtb2.attribute3
+      ,jtb2.attribute4
+      ,jtb2.attribute5
+      ,jtb2.attribute6
+      ,jtb2.attribute7
+      ,jtb2.attribute8
+      ,jtb2.attribute9
+      ,jtb2.attribute10
+      ,jtb2.attribute11
+      ,jtb2.attribute12
+      ,jtb2.attribute13
+      ,jtb2.attribute14
+      ,jtb2.attribute15
+      ,jtb2.attribute_category
+      ,jtb2.security_group_id
+      ,jtb2.orig_system_reference
+      ,jtb2.orig_system_reference_id
+      ,jtb2.update_status_flag
+      ,jtb2.calendar_start_date
+      ,jtb2.calendar_end_date
+      ,jtb2.date_selected
+      ,jtb2.template_id
+      ,jtb2.template_group_id
+      ,jtb2.object_changed_date
+      ,jtb2.task_confirmation_status
+      ,jtb2.task_confirmation_counter
+      ,jtb2.task_split_flag
+      ,jtb2.open_flag
+      ,jtb2.entity
+      ,jtb2.child_position
+      ,jtb2.child_sequence_num
+      ,ala.customer_id
+FROM   jtf_tasks_b  jtb2
+      ,as_leads_all ala
+WHERE  jtb2.task_status_id          = fnd_profile.value('XXCSO1_TASK_STATUS_CLOSED_ID')
+AND    jtb2.source_object_type_code = 'OPPORTUNITY'
+AND    jtb2.task_type_id            = fnd_profile.value('XXCSO1_TASK_TYPE_VISIT')
+AND    NVL(jtb2.deleted_flag, 'N')  = 'N'
+AND    jtb2.actual_end_date IS NOT NULL
+AND    ala.lead_id                 = jtb2.source_object_id
 WITH READ ONLY
 ;
 COMMENT ON COLUMN xxcso_visit_actual_v.task_id IS 'タスクID';
