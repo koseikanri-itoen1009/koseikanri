@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_WHOLESALE_PAY
  * Description : 問屋販売条件支払チェック帳票ワークテーブル
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/01/23    1.1   K.Iwabuchi       その他科目桁数変更
  *  2009/07/09    1.2   K.Yamaguchi      [障害0000515]STORAGE句追加
+ *  2009/12/03    1.3   S.Moriyama       [E_本稼動_00289]NET掛率、マージン率の桁数変更(小数定義除外)
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_WHOLESALE_PAY
@@ -53,8 +54,12 @@ CREATE TABLE XXCOK.XXCOK_REP_WHOLESALE_PAY
    NORMAL_STORE_DELIVER_AMT        NUMBER(8,2),            -- 通常店納
    ONCE_STORE_DELIVER_AMT          NUMBER(8,2),            -- 今回店納
    NET_SELLING_PRICE               NUMBER(8,2),            -- NET価格
-   NET_PCT                         NUMBER(4,2),            -- NET掛率
-   MARGIN_PCT                      NUMBER(4,2),            -- マージン率
+-- 2009/12/03 Ver.1.3 [E_本稼動_00289] SCS S.Moriyama UPD START
+--   NET_PCT                         NUMBER(4,2),            -- NET掛率
+--   MARGIN_PCT                      NUMBER(4,2),            -- マージン率
+   NET_PCT                         NUMBER,                 -- NET掛率
+   MARGIN_PCT                      NUMBER,                 -- マージン率
+-- 2009/12/03 Ver.1.3 [E_本稼動_00289] SCS S.Moriyama UPD END
    CS_MARGIN_AMT                   NUMBER(8,2),            -- C/Sマージン額
    COVERAGE_AMT                    NUMBER(9),              -- 補填
    WHOLESALE_MARGIN_SUM            NUMBER(9),              -- 問屋マージン
