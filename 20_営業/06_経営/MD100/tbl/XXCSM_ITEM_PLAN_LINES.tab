@@ -8,9 +8,9 @@ CREATE TABLE xxcsm.xxcsm_item_plan_lines (
     ,item_no                        VARCHAR2(32)
     ,item_group_no                  VARCHAR2(10)
     ,amount                         NUMBER(16,1)  DEFAULT 0
-    ,sales_budget                   NUMBER(12,0)  DEFAULT 0
-    ,amount_gross_margin            NUMBER(12,0)  DEFAULT 0
-    ,credit_rate                    NUMBER(7,2)   DEFAULT 0
+    ,sales_budget                   NUMBER(15,0)  DEFAULT 0
+    ,amount_gross_margin            NUMBER(15,0)  DEFAULT 0
+    ,credit_rate                    NUMBER(10,2)  DEFAULT 0
     ,margin_rate                    NUMBER(7,2)   DEFAULT 0
     ,created_by                     NUMBER(15)    NOT NULL
     ,creation_date                  DATE          NOT NULL

@@ -1,0 +1,14 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : XXCSM_TMP_ITEM_PLAN_SAL_SUM_N1
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2011/01/13    1.0   Y.Kanami     èââÒçÏê¨
+ ************************************************************************/
+CREATE INDEX XXCSM.XXCSM_TMP_ITEM_PLAN_SAL_SUM_N1 ON XXCSM.XXCSM_TMP_ITEM_PLAN_SALES_SUM(GROUP1_CD);
