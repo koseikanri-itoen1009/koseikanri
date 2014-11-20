@@ -8,6 +8,8 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-16 1.0  SCS富尾和基  新規作成
 * 2009-03-05 1.1  SCS柳平直人  [CT1-034]重複営業員エラー対応
+* 2009-04-02 1.2  SCS阿部大輔  [T1_0092]担当営業員の顧客対応
+* 2009-04-02 1.2  SCS阿部大輔  [T1_0125]担当営業員の行追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019009j.server;
@@ -189,8 +191,10 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
     XxcsoRtnRsrcFullVORowImpl registRow
       = (XxcsoRtnRsrcFullVORowImpl)registVo.first();
     
-    if ( registRow != null )
-    {
+    /* 20090402_abe_T1_0092 START*/
+    //if ( registRow != null )
+    //{
+    /* 20090402_abe_T1_0092 END*/
       initRow.setAddCustomerButtonRender(Boolean.TRUE);
       while ( registRow != null )
       {
@@ -198,11 +202,13 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
 
         registRow = (XxcsoRtnRsrcFullVORowImpl)registVo.next();
       }
-    }
-    else
-    {
-      initRow.setAddCustomerButtonRender(Boolean.FALSE);
-    }
+    /* 20090402_abe_T1_0092 START*/
+    //}
+    //else
+    //{
+    //  initRow.setAddCustomerButtonRender(Boolean.FALSE);
+    //}
+    /* 20090402_abe_T1_0092 END*/
 
     //////////////////////////////////////
     // 検索後検証処理
@@ -403,6 +409,25 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
     // 登録・更新処理
     //////////////////////////////////////
     commit();
+
+
+    /* 20090402_abe_T1_0125 START*/
+    registRow
+      = (XxcsoRtnRsrcFullVORowImpl)registVo.first();
+    while ( registRow != null )
+    {
+        //追加ボタンで未入力の場合は行を削除
+        if ( (( registRow.getNextResource() == null)
+          || registRow.getNextResource().equals(""))
+          || ((registRow.getNextRouteNo() == null)
+          || registRow.getNextRouteNo().equals("")))
+        {
+          registRow.remove();
+        }
+      registRow = (XxcsoRtnRsrcFullVORowImpl)registVo.next();
+    }
+    /* 20090402_abe_T1_0125 END*/
+    //次行に移行
 
     OAException msg
       = XxcsoMessage.createConfirmMessage(
@@ -789,6 +814,17 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
         isRsvAccount = true;
       }
 
+      /* 20090402_abe_T1_0125 START*/
+      //追加ボタンで未入力の場合は行を削除
+      if ( (( registRow.getNextResource() == null)
+        || registRow.getNextResource().equals(""))
+        && ((registRow.getNextRouteNo() == null)
+        || registRow.getNextRouteNo().equals(""))
+        && (registRow.getAccountNumberReadOnly().equals(Boolean.FALSE) ))
+      {
+        registRow.remove();
+      }
+      /* 20090402_abe_T1_0125 END*/
       //次行に移行
       registRow = (XxcsoRtnRsrcFullVORowImpl)registVo.next();
     }
@@ -1006,9 +1042,9 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
     registVo.initQuery(
       initRow.getEmployeeNumber()
      ,initRow.getRouteNo()
-     ,initRow.getBaseCode()
+    ,initRow.getBaseCode()
     );
-
+    
     XxcsoRtnRsrcFullVORowImpl registRow
       = (XxcsoRtnRsrcFullVORowImpl)registVo.first();
     
