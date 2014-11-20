@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -85,6 +85,7 @@ AS
  *  2008/11/13    1.16  Oracle 伊藤ひとみ 統合テスト指摘538,641対応
  *  2008/11/24    1.17  Oracle 大橋孝郎  本番環境問合せ_障害管理表#221対応
  *  2008/12/22    1.18  Oracle 椎名 昭圭 本番#830対応
+ *  2009/01/09    1.19  Oracle 佐久間尚豊 本番#950対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4458,6 +4459,9 @@ AS
     lv_attribute10             ic_item_mst_b.attribute10%TYPE;
     lv_attribute16             ic_item_mst_b.attribute16%TYPE;
     lv_attribute25             ic_item_mst_b.attribute25%TYPE;
+-- 2009/01/09 H.Sakuma Add Start 本番#950
+    lv_attribute30             ic_item_mst_b.attribute30%TYPE;
+-- 2009/01/09 H.Sakuma Add End   本番#950
 --
     -- *** ローカル・カーソル ***
 --
@@ -4495,6 +4499,9 @@ AS
 --2008/09/08 Mod ↑
         lv_attribute25 := ir_masters_rec.weight_volume;
       END IF;
+-- 2009/01/09 H.Sakuma Add Start 本番#950
+    lv_attribute30     :=  TO_CHAR(SYSDATE, 'YYYY/MM/DD');
+-- 2009/01/09 H.Sakuma Add End   本番#950
 --
       UPDATE ic_item_mst_b
       SET    item_desc1             = ir_masters_rec.item_name
@@ -4515,6 +4522,9 @@ AS
             ,attribute21            = ir_masters_rec.jan_code
             ,attribute25            = lv_attribute25
             ,attribute26            = ir_masters_rec.sale_obj_code
+-- 2009/01/09 H.Sakuma Add Start 本番#950
+            ,attribute30            = lv_attribute30
+-- 2009/01/09 H.Sakuma Add End   本番#950
             ,inactive_ind           = gv_inactive_ind_on
             ,last_updated_by        = gn_user_id
             ,last_update_date       = gd_sysdate
