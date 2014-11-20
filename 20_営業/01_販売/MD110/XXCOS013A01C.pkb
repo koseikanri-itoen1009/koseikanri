@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.13
+ * Version          : 1.15
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -42,6 +42,8 @@ AS
  *  2009/04/17    1.11  K.KIN            T1_0328
  *  2009/04/21    1.12  K.KIN            T1_0659
  *  2009/04/22    1.13  K.KIN            T1_0116
+ *  2009/05/07    1.14  K.KIN            T1_0908
+ *  2009/05/07    1.15  K.KIN            T1_0914、T1_0915
  *
  *****************************************************************************************/
 --
@@ -1160,7 +1162,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
          OR ( xseh.cust_gyotai_sho              = gt_gyotai_fvd
            AND NVL( xseh.card_sale_class, cv_cash_class )
                                                 = gt_cash_sale_cls
-           AND NVL( xsel.cash_and_card, 0 )     > 0 ) )
+           AND NVL( xsel.cash_and_card, 0 )    <> 0 ) )
       AND avta.tax_code                         = xseh.tax_code
       AND avta.set_of_books_id                  = TO_NUMBER( gv_set_bks_id )
       AND avta.enabled_flag                     = cv_enabled_yes
@@ -1254,7 +1256,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       IF ( (   gt_sales_exp_tbl2( sale_idx ).cust_gyotai_sho = gt_fvd_xiaoka
             OR gt_sales_exp_tbl2( sale_idx ).cust_gyotai_sho = gt_gyotai_fvd )
         AND (  gt_sales_exp_tbl2( sale_idx ).card_sale_class = gt_cash_sale_cls
-          AND  gt_sales_exp_tbl2( sale_idx ).cash_and_card   > 0 ) ) THEN
+          AND  gt_sales_exp_tbl2( sale_idx ).cash_and_card  <> 0 ) ) THEN
 --
         --現金・カード併用
         lv_heiyou_cash_flag := cv_y_flag;
@@ -1992,7 +1994,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
              )
            )THEN
              ln_term_amount := ln_term_amount + gt_sales_norm_tbl2( sale_norm_idx ).pure_amount;
-        ELSIF ( ln_term_amount >= ln_max_amount ) THEN
+        ELSIF ( ABS( ln_term_amount ) >= ABS( ln_max_amount ) ) THEN
              ln_max_amount       := ln_term_amount;
              ln_term_amount      := gt_sales_norm_tbl2( sale_norm_idx ).pure_amount;
              lt_goods_prod_class := lt_prod_cls;
@@ -2008,7 +2010,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
       ELSE
 --
-        IF ( ln_term_amount >= ln_max_amount ) THEN
+        IF ( ABS( ln_term_amount ) >= ABS( ln_max_amount ) ) THEN
              lt_goods_prod_class := lt_prod_cls;
              lt_goods_item_code  := lt_item_code;
         END IF;
@@ -3785,7 +3787,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
              )
            )THEN
              ln_term_amount := ln_term_amount + gt_sales_bulk_tbl2( sale_bulk_idx ).pure_amount;
-        ELSIF ( ln_term_amount >= ln_max_amount ) THEN
+        ELSIF ( ABS( ln_term_amount ) >= ABS( ln_max_amount ) ) THEN
              ln_max_amount       := ln_term_amount;
              ln_term_amount      := gt_sales_bulk_tbl2( sale_bulk_idx ).pure_amount;
              lt_goods_prod_class := lt_prod_cls;
@@ -3801,7 +3803,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
       ELSE
 --
-        IF ( ln_term_amount >= ln_max_amount ) THEN
+        IF ( ABS( ln_term_amount ) >= ABS( ln_max_amount ) ) THEN
              lt_goods_prod_class := lt_prod_cls;
              lt_goods_item_code  := lt_item_code;
         END IF;
@@ -5343,7 +5345,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           INSERT INTO
             ra_interface_lines_all
           VALUES
-            gt_ar_interface_tbl(i)
+            gt_ar_interface_tbl1(i)
           ;
       EXCEPTION
         WHEN OTHERS THEN
@@ -5469,7 +5471,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           INSERT INTO
             ra_interface_distributions_all
           VALUES
-            gt_ar_dis_tbl(i)
+            gt_ar_dis_tbl1(i)
           ;
       EXCEPTION
         WHEN OTHERS THEN
