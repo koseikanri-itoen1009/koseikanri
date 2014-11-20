@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/03/24    1.1   Yutaka.Kuboshima 全角半角チェック処理を追加
  *  2009/10/23    1.2   Yutaka.Kuboshima 障害0001350の対応
  *  2010/01/04    1.3   Yutaka.Kuboshima 障害E_本稼動_00778の対応
+ *  2010/01/27    1.4   Yutaka.Kuboshima 障害E_本稼動_01279,E_本稼動_01280の対応
  *
  *****************************************************************************************/
 --
@@ -1133,7 +1134,10 @@ AS
         --略称の型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_ryaku            --項目名称カナ
                                             ,lv_cust_name_ryaku  --顧客名称カナ
-                                            ,50                  --項目長
+-- 2010/01/27 Ver1.4 E_本稼動_01279 modify start by Yutaka.Kuboshima
+--                                            ,50                  --項目長
+                                            ,80                  --項目長
+-- 2010/01/27 Ver1.4 E_本稼動_01279 modify end by Yutaka.Kuboshima
                                             ,NULL                --項目長（小数点以下）
                                             ,cv_null_ok          --必須フラグ
                                             ,cv_element_vc2      --属性（0・検証なし、1、数値、2、日付）
@@ -4316,6 +4320,10 @@ AS
     cv_ship_to               CONSTANT VARCHAR2(7)     := 'SHIP_TO';               --使用目的・出荷先
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
 --
+-- 2010/01/27 Ver1.4 E_本稼動_01280 add start by Yutaka.Kuboshima
+    cv_a_flag                CONSTANT VARCHAR2(1)     := 'A';                     --ステータス(有効)
+-- 2010/01/27 Ver1.4 E_本稼動_01280 add start by Yutaka.Kuboshima
+--
     -- *** ローカル変数 ***
     lv_header_str                     VARCHAR2(2000)  := NULL;                    --ヘッダメッセージ格納用変数
     lv_output_str                     VARCHAR2(2047)  := NULL;                    --出力文字列格納用変数
@@ -4484,6 +4492,9 @@ AS
                                            WHERE  hcasiv.cust_account_id = hca.cust_account_id
                                            AND    hcasiv.party_site_id   = hpsiv.party_site_id)
       AND     hca.account_number        = xwcbr.customer_code
+-- 2010/01/27 Ver1.4 E_本稼動_01280 add start by Yutaka.Kuboshima
+      AND     hcsu.status               = cv_a_flag
+-- 2010/01/27 Ver1.4 E_本稼動_01280 add end by Yutaka.Kuboshima
       AND     xwcbr.file_id             = in_file_id_wk
       FOR UPDATE NOWAIT
       ;
@@ -4510,6 +4521,9 @@ AS
             ,hcsu.price_list_id         price_list_id
       FROM   hz_cust_site_uses hcsu
       WHERE  hcsu.site_use_code     = cv_ship_to
+-- 2010/01/27 Ver1.4 E_本稼動_01280 add start by Yutaka.Kuboshima
+      AND     hcsu.status           = cv_a_flag
+-- 2010/01/27 Ver1.4 E_本稼動_01280 add end by Yutaka.Kuboshima
       AND    hcsu.cust_acct_site_id = in_cust_acct_site_id
       ;
     -- 顧客使用目的マスタ出荷先レコードロックカーソルレコード型
