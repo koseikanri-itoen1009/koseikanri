@@ -1,0 +1,55 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved
+ *
+ * Table Name  : XXCOS_ORDER_LIST_CONDITIONS
+ * Description : 受注一覧出力管理テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2010/09/18    1.0   K.Taniguchi      新規作成 [E_本稼働_09940]
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_ORDER_LIST_CONDITIONS (
+   RECORD_ID                      NUMBER        NOT NULL        --レコードID
+  ,DELIVERY_BASE_CODE             VARCHAR2(4)   NOT NULL        --拠点コード
+  ,OUTPUT_DATETIME                DATE          NOT NULL        --出力時間
+  ,CHAIN_CODE                     VARCHAR2(4)                   --チェーン店コード
+  ,CHAIN_NAME                     VARCHAR2(40)                  --チェーン店名
+  ,STORE_CODE                     VARCHAR2(10)                  --店舗コード
+  ,INVOICE_NUMBER                 VARCHAR2(12)                  --伝票番号
+  ,ORDER_NUMBER                   NUMBER                        --受注番号
+  ,CREATED_BY                     NUMBER(15,0)  NOT NULL        --作成者
+  ,CREATION_DATE                  DATE          NOT NULL        --作成日
+  ,LAST_UPDATED_BY                NUMBER(15,0)  NOT NULL        --最終更新者
+  ,LAST_UPDATE_DATE               DATE          NOT NULL        --最終更新日
+  ,LAST_UPDATE_LOGIN              NUMBER(15,0)                  --最終更新ログイン
+  ,REQUEST_ID                     NUMBER(15,0)  NOT NULL        --要求ID
+  ,PROGRAM_APPLICATION_ID         NUMBER(15,0)                  --コンカレント・プログラム・アプリケーションID
+  ,PROGRAM_ID                     NUMBER(15,0)                  --コンカレント・プログラムID
+  ,PROGRAM_UPDATE_DATE            DATE                          --プログラム更新日
+  ,CONSTRAINT XXCOS_ORDER_LIST_CONDITIONS_PK PRIMARY KEY (RECORD_ID)
+   USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON TABLE  XXCOS.XXCOS_ORDER_LIST_CONDITIONS                           IS '受注一覧出力管理テーブル';
+--
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.RECORD_ID                 IS 'レコードID';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.DELIVERY_BASE_CODE        IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.OUTPUT_DATETIME           IS '出力時間';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.CHAIN_CODE                IS 'チェーン店コード';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.CHAIN_NAME                IS 'チェーン店名';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.STORE_CODE                IS '店舗コード';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.INVOICE_NUMBER            IS '伝票番号';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.ORDER_NUMBER              IS '受注番号';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.CREATED_BY                IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.CREATION_DATE             IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.LAST_UPDATED_BY           IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.LAST_UPDATE_DATE          IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.LAST_UPDATE_LOGIN         IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.REQUEST_ID                IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.PROGRAM_APPLICATION_ID    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.PROGRAM_ID                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_ORDER_LIST_CONDITIONS.PROGRAM_UPDATE_DATE       IS 'プログラム更新日';

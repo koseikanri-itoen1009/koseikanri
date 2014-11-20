@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (body)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2012/01/30    1.14  K.Kiriu          [E_本稼動_08658]EDI出力時の出力数量変更対応
  *  2012/04/18    1.15  Y.Horikawa       [E_本稼動_09441]PT対応
  *  2012/09/13    1.16  K.Taniguchi      [E_本稼動_09939]EDI取込時の受注抽出条件修正対応
+ *  2012/09/19    1.17  K.Taniguchi      [E_本稼動_09940]EDI(新規)出力時、受注一覧出力管理テーブル出力対応
  *
  *****************************************************************************************/
 --
@@ -226,6 +227,9 @@ AS
   cv_msg_vl_table_name1          CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11808';    --受注一覧リスト帳票ワークテーブル
   cv_msg_vl_table_name2          CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11809';    --受注テーブル
   cv_msg_vl_table_name3          CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11810';    --受注明細テーブル
+/* 2012/09/19 Ver1.17 Add Start */
+  cv_msg_vl_table_name4          CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11826';    --受注一覧出力管理テーブル
+/* 2012/09/19 Ver1.17 Add End */
   cv_msg_vl_api_name             CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00041';    --API名称
   cv_msg_vl_key_request_id       CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00088';    --要求ID
   cv_msg_vl_min_date             CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00120';    --MIN日付
@@ -314,12 +318,19 @@ AS
   TYPE g_lines_rowid_ttype IS TABLE OF ROWID INDEX BY BINARY_INTEGER;
   --受注一覧リスト帳票ワークテーブル型
   TYPE g_rpt_data_ttype IS TABLE OF xxcos_rep_order_list%ROWTYPE INDEX BY BINARY_INTEGER;
+/* 2012/09/19 Ver1.17 Add Start */
+  --受注一覧出力管理テーブル型
+  TYPE g_list_cond_ttype IS TABLE OF xxcos_order_list_conditions%ROWTYPE INDEX BY BINARY_INTEGER;
+/* 2012/09/19 Ver1.17 Add End */
 --
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
   g_report_data_tab           g_rpt_data_ttype;                                  --帳票データコレクション
   gt_oola_rowid_tab           g_lines_rowid_ttype;                               --明細ROWID
+/* 2012/09/19 Ver1.17 Add Start */
+  gt_list_cond_tab            g_list_cond_ttype;                                 --受注一覧出力管理テーブルコレクション
+/* 2012/09/19 Ver1.17 Add End */
   gt_org_id                   mtl_parameters.organization_id%TYPE;               --在庫組織ID
   gd_proc_date                DATE;                                              --業務日付
   gd_min_date                 DATE;                                              --MIN日付
@@ -1431,6 +1442,9 @@ AS
     lv_tkn_vl_table_name      VARCHAR2(100);                          --テーブル名称(文言)
     ln_idx                    NUMBER;                                 --メインループカウント
     lt_record_id              xxcos_rep_order_list.record_id%TYPE;    --レコードID
+/* 2012/09/19 Ver1.17 Add Start */
+    ln_list_cond_idx          NUMBER;                                 --受注一覧出力管理テーブル用カウント
+/* 2012/09/19 Ver1.17 Add End */
 --
     -- *** ローカル・カーソル ***
 --****************************** 2009/07/29 1.7 T.Tominaga MOD START ******************************--
@@ -1523,6 +1537,10 @@ AS
 /* 2010/01/22 Ver1.9 Add Start E_本稼動_00408対応 */
         ,ooha.request_date                     AS dlv_date_header            --納品日(ヘッダ)
 /* 2010/01/22 Ver1.9 Add End   E_本稼動_00408対応 */
+/* 2012/09/19 Ver1.17 Add Start */
+        ,xca.store_code                        AS store_code                 -- 店舗コード
+        ,xeh.invoice_number                    AS invoice_number             -- 伝票番号
+/* 2012/09/19 Ver1.17 Add End */
       FROM
         oe_order_headers_all       ooha    -- 受注ヘッダ
         ,oe_order_lines_all        oola    -- 受注明細
@@ -1874,6 +1892,10 @@ AS
 /* 2010/01/22 Ver1.9 Add Start E_本稼動_00408対応 */
         ,ooha.request_date                     AS dlv_date_header            --納品日(ヘッダ)
 /* 2010/01/22 Ver1.9 Add End   E_本稼動_00408対応 */
+/* 2012/09/19 Ver1.17 Add Start */
+        ,NULL                                  AS store_code                 -- 店舗コード
+        ,NULL                                  AS invoice_number             -- 伝票番号
+/* 2012/09/19 Ver1.17 Add End */
       FROM
         oe_order_headers_all       ooha    -- 受注ヘッダ
         ,oe_order_lines_all        oola    -- 受注明細
@@ -2133,6 +2155,9 @@ AS
 /* 2010/01/22 Ver1.9 Add Start E_本稼動_00408対応 */
     ln_rowid_idx    := 0;
 /* 2010/01/22 Ver1.9 Add End E_本稼動_00408対応 */
+/* 2012/09/19 Ver1.17 Add Start */
+    ln_list_cond_idx := 0;
+/* 2012/09/19 Ver1.17 Add End */
 --
 --****************************** 2009/07/29 1.7 T.Tominaga MOD START ******************************--
 --    FOR l_data_edi_or_not_rec IN data_edi_or_not_cur LOOP
@@ -2244,6 +2269,34 @@ AS
 --      gt_oola_rowid_tab(ln_idx)                        := l_data_edi_or_not_rec.row_id;                --ROWID
       gt_oola_rowid_tab(ln_rowid_idx)                  := l_data_edi_or_not_rec.row_id;                --ROWID
 /* 2010/01/22 Ver1.9 Mod End E_本稼動_00408対応 */
+/* 2012/09/19 Ver1.17 Add Start */
+      --EDI取込新規の場合
+      IF ( iv_order_source = gv_order_source_edi_chk ) 
+        AND ( iv_output_type = gt_report_output_type_n ) THEN
+--
+        --受注一覧出力管理テーブル登録用に、コレクションへ退避する
+        ln_list_cond_idx := ln_list_cond_idx + 1;
+--
+        gt_list_cond_tab(ln_list_cond_idx).delivery_base_code     := iv_delivery_base_code;                 --拠点コード
+        gt_list_cond_tab(ln_list_cond_idx).output_datetime        := cd_creation_date;                      --出力時間
+        gt_list_cond_tab(ln_list_cond_idx).chain_code             := l_data_edi_or_not_rec.chain_code;      --チェーン店コード
+        gt_list_cond_tab(ln_list_cond_idx).chain_name             := l_data_edi_or_not_rec.chain_name;      --チェーン店名
+        gt_list_cond_tab(ln_list_cond_idx).store_code             := l_data_edi_or_not_rec.store_code;      --店舗コード
+        gt_list_cond_tab(ln_list_cond_idx).invoice_number         := l_data_edi_or_not_rec.invoice_number;  --伝票番号
+        gt_list_cond_tab(ln_list_cond_idx).order_number           := l_data_edi_or_not_rec.order_number;    --受注番号
+        --
+        gt_list_cond_tab(ln_list_cond_idx).created_by             := cn_created_by;             --作成者
+        gt_list_cond_tab(ln_list_cond_idx).creation_date          := cd_creation_date;          --作成日
+        gt_list_cond_tab(ln_list_cond_idx).last_updated_by        := cn_last_updated_by;        --最終更新者
+        gt_list_cond_tab(ln_list_cond_idx).last_update_date       := cd_last_update_date;       --最終更新日
+        gt_list_cond_tab(ln_list_cond_idx).last_update_login      := cn_last_update_login;      --最終更新ﾛｸﾞｲﾝ
+        gt_list_cond_tab(ln_list_cond_idx).request_id             := cn_request_id;             --要求ID
+        gt_list_cond_tab(ln_list_cond_idx).program_application_id := cn_program_application_id; --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        gt_list_cond_tab(ln_list_cond_idx).program_id             := cn_program_id;             --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        gt_list_cond_tab(ln_list_cond_idx).program_update_date    := cd_program_update_date;    --ﾌﾟﾛｸﾞﾗﾑ更新日
+--
+      END IF;
+/* 2012/09/19 Ver1.17 Add End */
       --
       g_report_data_tab(ln_idx).record_id              := lt_record_id;                                --レコードID
       g_report_data_tab(ln_idx).order_source           := iv_order_source;                             --受注ソース
@@ -2613,6 +2666,147 @@ AS
 --
   END update_order_line_data;
 --
+/* 2012/09/19 Ver1.17 Add Start */
+  /**********************************************************************************
+   * Procedure Name   : insert_list_conditions_data
+   * Description      : 受注一覧出力管理テーブル登録（EDI取込新規のみ）(A-8)
+   ***********************************************************************************/
+  PROCEDURE insert_list_conditions_data(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'insert_list_conditions_data'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_tkn_vl_table_name      VARCHAR2(100);      --対象テーブル名
+    ln_ins_tab_idx            NUMBER DEFAULT 0;   --受注一覧出力管理テーブル登録用コレクションインデックス
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+    lt_list_cond_bk_rec       xxcos_order_list_conditions%ROWTYPE;  --ブレイク処理用受注一覧出力管理テーブルレコード
+--
+    -- *** ローカルPL/SQL表 ***
+    lt_ins_list_cond_tab      g_list_cond_ttype;  --受注一覧出力管理テーブル登録用コレクション
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --受注一覧出力管理テーブルコレクションが空の場合（EDI新規以外の場合は空となる）
+    --以下の登録処理は行わず、ステータス正常でプロシージャを抜ける
+    IF ( gt_list_cond_tab.COUNT = 0 ) THEN
+      RETURN;
+    END IF;
+--
+--
+    --受注一覧出力管理テーブルコレクションより「受注番号」単位のコレクションを作成する
+    FOR ln_cnt IN gt_list_cond_tab.FIRST .. gt_list_cond_tab.LAST LOOP
+--
+      --ループ１回目は、現在要素をブレイク用レコードに格納するだけ
+      IF ( ln_cnt = gt_list_cond_tab.FIRST ) THEN
+        lt_list_cond_bk_rec := gt_list_cond_tab(ln_cnt);
+--
+      --ループ２回目以降
+      ELSE
+        --受注番号ブレイク時
+        IF ( NVL(lt_list_cond_bk_rec.order_number, -1) 
+              <> NVL(gt_list_cond_tab(ln_cnt).order_number, -1) )
+        THEN
+          --受注一覧出力管理テーブル登録用コレクションへ格納する
+          ln_ins_tab_idx := ln_ins_tab_idx + 1;
+          --レコードIDの取得
+          SELECT xxcos_order_list_conditions_s1.NEXTVAL AS redord_id
+          INTO   lt_list_cond_bk_rec.record_id
+          FROM   dual;
+          --
+          lt_ins_list_cond_tab(ln_ins_tab_idx) := lt_list_cond_bk_rec;
+        END IF;
+--
+        --現在要素をブレイク用レコードへ格納
+        lt_list_cond_bk_rec := gt_list_cond_tab(ln_cnt);
+      END IF;
+--
+    END LOOP;
+--
+    --コレクションの最終要素を受注一覧出力管理テーブル登録用コレクションへ格納
+    ln_ins_tab_idx := ln_ins_tab_idx + 1;
+    --レコードIDの取得
+    SELECT xxcos_order_list_conditions_s1.NEXTVAL AS redord_id
+    INTO   lt_list_cond_bk_rec.record_id
+    FROM   dual;
+    lt_ins_list_cond_tab(ln_ins_tab_idx) := lt_list_cond_bk_rec;
+--
+--
+    --受注一覧出力管理テーブル登録処理
+    BEGIN
+      FORALL ln_cnt IN lt_ins_list_cond_tab.FIRST .. lt_ins_list_cond_tab.LAST
+        INSERT INTO  xxcos_order_list_conditions
+        VALUES       lt_ins_list_cond_tab(ln_cnt);
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE global_data_insert_expt;
+    END;
+--
+  EXCEPTION
+    --*** 処理対象データ登録例外 ***
+    WHEN global_data_insert_expt THEN
+      lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_vl_table_name4
+      );
+      ov_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_insert_err,
+        iv_token_name1        =>  cv_tkn_nm_table_name,
+        iv_token_value1       =>  lv_tkn_vl_table_name,
+        iv_token_name2        =>  cv_tkn_nm_key_data,
+        iv_token_value2       =>  NULL
+      );
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END insert_list_conditions_data;
+/* 2012/09/19 Ver1.17 Add End */
+--
   /**********************************************************************************
    * Procedure Name   : execute_svf
    * Description      : SVF起動(A-6)
@@ -2971,6 +3165,11 @@ AS
     lv_update_retcode                 VARCHAR2(1);
     lv_update_errmsg                  VARCHAR2(5000);
 -- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
+/* 2012/09/19 Ver1.17 Add Start */
+    lv_ins_list_cond_errbuf           VARCHAR2(5000);
+    lv_ins_list_cond_retcode          VARCHAR2(1);
+    lv_ins_list_cond_errmsg           VARCHAR2(5000);
+/* 2012/09/19 Ver1.17 Add End */
 --
   BEGIN
 --
@@ -3152,9 +3351,33 @@ AS
 --    COMMIT;
 -- ************ 2009/10/02 1.8 N.Maeda DEL  END  ************--
 --
--- ************ 2009/10/02 1.8 N.Maeda ADD START ************--
-    IF ( lv_update_retcode = cv_status_normal ) THEN
--- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
+/* 2012/09/19 Ver1.17 Add Start */
+    -- ===============================
+    -- A-8  受注一覧出力管理テーブル登録（EDI取込新規のみ）
+    -- ===============================
+    IF ( iv_order_source = gv_order_source_edi_chk ) 
+      AND ( iv_output_type = gt_report_output_type_n ) THEN
+      --
+      insert_list_conditions_data(
+        ov_errbuf  => lv_errbuf,  -- エラー・メッセージ           --# 固定 #
+        ov_retcode => lv_retcode, -- リターン・コード             --# 固定 #
+        ov_errmsg  => lv_errmsg); -- ユーザー・エラー・メッセージ --# 固定 #
+    END IF;
+--
+    --エラーでもワークテーブルを削除する為、エラー情報を保持
+    lv_ins_list_cond_errbuf  := lv_errbuf;
+    lv_ins_list_cond_retcode := lv_retcode;
+    lv_ins_list_cond_errmsg  := lv_errmsg;
+--
+/* 2012/09/19 Ver1.17 Add End */
+/* 2012/09/19 Ver1.17 Mod Start */
+---- ************ 2009/10/02 1.8 N.Maeda ADD START ************--
+--    IF ( lv_update_retcode = cv_status_normal ) THEN
+---- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
+    --受注明細出力済み更新、受注一覧出力管理テーブル登録のいずれも正常に処理された場合
+    IF ( lv_update_retcode = cv_status_normal ) 
+      AND ( lv_ins_list_cond_retcode = cv_status_normal ) THEN
+/* 2012/09/19 Ver1.17 Mod End */
       -- ===============================
       -- A-6  SVF起動
       -- ===============================
@@ -3178,9 +3401,16 @@ AS
       lv_errbuf_svf  := lv_errbuf;
       lv_retcode_svf := lv_retcode;
       lv_errmsg_svf  := lv_errmsg;
--- ************ 2009/10/02 1.8 N.Maeda ADD START ************--
+/* 2012/09/19 Ver1.17 Mod Start */
+---- ************ 2009/10/02 1.8 N.Maeda ADD START ************--
+--    END IF;
+---- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
+    ELSE
+      --受注明細出力済み更新、受注一覧出力管理テーブル登録のいずれかがエラーの場合
+      --後続処理でCOMMITする前にROLLBACKしておく
+      ROLLBACK;
     END IF;
--- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
+/* 2012/09/19 Ver1.17 Mod End */
 -- 2009/06/19  Ver1.5 T1_1437  Mod End
 --
     -- ===============================
@@ -3208,6 +3438,15 @@ AS
       RAISE global_process_expt;
     END IF;
 -- ************ 2009/10/02 1.8 N.Maeda ADD  END  ************--
+/* 2012/09/19 Ver1.17 Add Start */
+    --受注一覧出力管理テーブル登録結果確認
+    IF ( lv_ins_list_cond_retcode = cv_status_error ) THEN
+      lv_errbuf   := lv_ins_list_cond_errbuf;
+      lv_retcode  := lv_ins_list_cond_retcode;
+      lv_errmsg   := lv_ins_list_cond_errmsg;
+      RAISE global_process_expt;
+    END IF;
+/* 2012/09/19 Ver1.17 Add End */
     --SVF実行結果確認
     IF ( lv_retcode_svf = cv_status_error ) THEN
       lv_errbuf  := lv_errbuf_svf;
