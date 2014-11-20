@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  *  2009/04/21    1.2   K.Kiriu          [T1_0444]成績計上者コードの結合不正対応
  *  2009/06/17    1.3   N.Nishimura      [T1_1439]対象件数0件時、正常終了とする
  *  2009/06/25    1.4   N.Nishimura      [T1_1437]データパージ不具合対応
+ *  2009/08/11    1.5   N.Maeda          [0000865]PT対応
+ *  2009/08/13    1.5   N.Maeda          [0000865]レビュー指摘対応
  *
  *****************************************************************************************/
 --
@@ -465,23 +467,11 @@ AS
 --
     --会計区分取得
     BEGIN
+-- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
       SELECT  look_val.meaning            acc_cls
       INTO    lt_account_cls
-      FROM    fnd_lookup_values           look_val,
-              fnd_lookup_types_tl         types_tl,
-              fnd_lookup_types            types,
-              fnd_application_tl          appl,
-              fnd_application             app
-      WHERE   appl.application_id         = types.application_id
-      AND     app.application_id          = appl.application_id
-      AND     types_tl.lookup_type        = look_val.lookup_type
-      AND     types.lookup_type           = types_tl.lookup_type
-      AND     types.security_group_id     = types_tl.security_group_id
-      AND     types.view_application_id   = types_tl.view_application_id
-      AND     types_tl.language           = cv_lang
-      AND     look_val.language           = cv_lang
-      AND     appl.language               = cv_lang
-      AND     app.application_short_name  = cv_xxcos_short_name
+      FROM    fnd_lookup_values           look_val
+      WHERE   look_val.language           = cv_lang
       AND     look_val.lookup_type        = cv_type_acc
       AND     look_val.attribute1         = cv_diff_y
       AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
@@ -489,6 +479,32 @@ AS
       AND     look_val.enabled_flag       = ct_enabled_flg_y
       AND     rownum                      = 1
       ;
+--
+--      SELECT  look_val.meaning            acc_cls
+--      INTO    lt_account_cls
+--      FROM    fnd_lookup_values           look_val,
+--              fnd_lookup_types_tl         types_tl,
+--              fnd_lookup_types            types,
+--              fnd_application_tl          appl,
+--              fnd_application             app
+--      WHERE   appl.application_id         = types.application_id
+--      AND     app.application_id          = appl.application_id
+--      AND     types_tl.lookup_type        = look_val.lookup_type
+--      AND     types.lookup_type           = types_tl.lookup_type
+--      AND     types.security_group_id     = types_tl.security_group_id
+--      AND     types.view_application_id   = types_tl.view_application_id
+--      AND     types_tl.language           = cv_lang
+--      AND     look_val.language           = cv_lang
+--      AND     appl.language               = cv_lang
+--      AND     app.application_short_name  = cv_xxcos_short_name
+--      AND     look_val.lookup_type        = cv_type_acc
+--      AND     look_val.attribute1         = cv_diff_y
+--      AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--      AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--      AND     look_val.enabled_flag       = ct_enabled_flg_y
+--      AND     rownum                      = 1
+--      ;
+-- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         RAISE global_acc_period_cls_get_expt;
@@ -732,183 +748,269 @@ AS
       AND   seh.order_source_id     = oos.order_source_id                             --受注ソースID
       --受注ソースのクイック参照
       AND   EXISTS(
+-- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
               SELECT  'Y'                         ext_flg
-              FROM    fnd_lookup_values           look_val,
-                      fnd_lookup_types_tl         types_tl,
-                      fnd_lookup_types            types,
-                      fnd_application_tl          appl,
-                      fnd_application             app
-              WHERE   appl.application_id         = types.application_id
-              AND     app.application_id          = appl.application_id
-              AND     types_tl.lookup_type        = look_val.lookup_type
-              AND     types.lookup_type           = types_tl.lookup_type
-              AND     types.security_group_id     = types_tl.security_group_id
-              AND     types.view_application_id   = types_tl.view_application_id
-              AND     types_tl.language           = cv_lang
-              AND     look_val.language           = cv_lang
-              AND     appl.language               = cv_lang
-              AND     app.application_short_name  = cv_xxcos_short_name
+              FROM    fnd_lookup_values           look_val
+              WHERE   look_val.language           = cv_lang
               AND     look_val.lookup_type        = cv_ord_src_type
               AND     look_val.lookup_code        LIKE cv_ord_src_code
               AND     look_val.meaning            = oos.name
               AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
               AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
               AND     look_val.enabled_flag       = ct_enabled_flg_y
+--
+--              SELECT  'Y'                         ext_flg
+--              FROM    fnd_lookup_values           look_val,
+--                      fnd_lookup_types_tl         types_tl,
+--                      fnd_lookup_types            types,
+--                      fnd_application_tl          appl,
+--                      fnd_application             app
+--              WHERE   appl.application_id         = types.application_id
+--              AND     app.application_id          = appl.application_id
+--              AND     types_tl.lookup_type        = look_val.lookup_type
+--              AND     types.lookup_type           = types_tl.lookup_type
+--              AND     types.security_group_id     = types_tl.security_group_id
+--              AND     types.view_application_id   = types_tl.view_application_id
+--              AND     types_tl.language           = cv_lang
+--              AND     look_val.language           = cv_lang
+--              AND     appl.language               = cv_lang
+--              AND     app.application_short_name  = cv_xxcos_short_name
+--              AND     look_val.lookup_type        = cv_ord_src_type
+--              AND     look_val.lookup_code        LIKE cv_ord_src_code
+--              AND     look_val.meaning            = oos.name
+--              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--              AND     look_val.enabled_flag       = ct_enabled_flg_y
+-- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
                   )
       --作成元区分のクイック参照
       AND   EXISTS(
+-- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
               SELECT  'Y'                         ext_flg
-              FROM    fnd_lookup_values           look_val,
-                      fnd_lookup_types_tl         types_tl,
-                      fnd_lookup_types            types,
-                      fnd_application_tl          appl,
-                      fnd_application             app
-              WHERE   appl.application_id         = types.application_id
-              AND     app.application_id          = appl.application_id
-              AND     types_tl.lookup_type        = look_val.lookup_type
-              AND     types.lookup_type           = types_tl.lookup_type
-              AND     types.security_group_id     = types_tl.security_group_id
-              AND     types.view_application_id   = types_tl.view_application_id
-              AND     types_tl.language           = cv_lang
-              AND     look_val.language           = cv_lang
-              AND     appl.language               = cv_lang
-              AND     app.application_short_name  = cv_xxcos_short_name
+              FROM    fnd_lookup_values           look_val
+              WHERE   look_val.language           = cv_lang
               AND     look_val.lookup_type        = cv_mk_org_type
               AND     look_val.lookup_code        LIKE cv_mk_org_code1
               AND     look_val.meaning            = seh.create_class
               AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
               AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
               AND     look_val.enabled_flag       = ct_enabled_flg_y
+--
+--              SELECT  'Y'                         ext_flg
+--              FROM    fnd_lookup_values           look_val,
+--                      fnd_lookup_types_tl         types_tl,
+--                      fnd_lookup_types            types,
+--                      fnd_application_tl          appl,
+--                      fnd_application             app
+--              WHERE   appl.application_id         = types.application_id
+--              AND     app.application_id          = appl.application_id
+--              AND     types_tl.lookup_type        = look_val.lookup_type
+--              AND     types.lookup_type           = types_tl.lookup_type
+--              AND     types.security_group_id     = types_tl.security_group_id
+--              AND     types.view_application_id   = types_tl.view_application_id
+--              AND     types_tl.language           = cv_lang
+--              AND     look_val.language           = cv_lang
+--              AND     appl.language               = cv_lang
+--              AND     app.application_short_name  = cv_xxcos_short_name
+--              AND     look_val.lookup_type        = cv_mk_org_type
+--              AND     look_val.lookup_code        LIKE cv_mk_org_code1
+--              AND     look_val.meaning            = seh.create_class
+--              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--              AND     look_val.enabled_flag       = ct_enabled_flg_y
+-- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
                   )
       --売上区分のクイック参照
       AND   NOT EXISTS(
+-- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
               SELECT  'Y'                         ext_flg
-              FROM    fnd_lookup_values           look_val,
-                      fnd_lookup_types_tl         types_tl,
-                      fnd_lookup_types            types,
-                      fnd_application_tl          appl,
-                      fnd_application             app
-              WHERE   appl.application_id         = types.application_id
-              AND     app.application_id          = appl.application_id
-              AND     types_tl.lookup_type        = look_val.lookup_type
-              AND     types.lookup_type           = types_tl.lookup_type
-              AND     types.security_group_id     = types_tl.security_group_id
-              AND     types.view_application_id   = types_tl.view_application_id
-              AND     types_tl.language           = cv_lang
-              AND     look_val.language           = cv_lang
-              AND     appl.language               = cv_lang
-              AND     app.application_short_name  = cv_xxcos_short_name
+              FROM    fnd_lookup_values           look_val
+              WHERE   look_val.language           = cv_lang
               AND     look_val.lookup_type        = cv_sl_cls_type
               AND     look_val.lookup_code        LIKE cv_sl_cls_code1
               AND     look_val.meaning            = sel.sales_class
               AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
               AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
               AND     look_val.enabled_flag       = ct_enabled_flg_y
+--
+--              SELECT  'Y'                         ext_flg
+--              FROM    fnd_lookup_values           look_val,
+--                      fnd_lookup_types_tl         types_tl,
+--                      fnd_lookup_types            types,
+--                      fnd_application_tl          appl,
+--                      fnd_application             app
+--              WHERE   appl.application_id         = types.application_id
+--              AND     app.application_id          = appl.application_id
+--              AND     types_tl.lookup_type        = look_val.lookup_type
+--              AND     types.lookup_type           = types_tl.lookup_type
+--              AND     types.security_group_id     = types_tl.security_group_id
+--              AND     types.view_application_id   = types_tl.view_application_id
+--              AND     types_tl.language           = cv_lang
+--              AND     look_val.language           = cv_lang
+--              AND     appl.language               = cv_lang
+--              AND     app.application_short_name  = cv_xxcos_short_name
+--              AND     look_val.lookup_type        = cv_sl_cls_type
+--              AND     look_val.lookup_code        LIKE cv_sl_cls_code1
+--              AND     look_val.meaning            = sel.sales_class
+--              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--              AND     look_val.enabled_flag       = ct_enabled_flg_y
+-- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
                   )
       --非在庫品目コードのクイック参照
       AND   NOT EXISTS(
+-- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
               SELECT  'Y'                         ext_flg
-              FROM    fnd_lookup_values           look_val,
-                      fnd_lookup_types_tl         types_tl,
-                      fnd_lookup_types            types,
-                      fnd_application_tl          appl,
-                      fnd_application             app
-              WHERE   appl.application_id         = types.application_id
-              AND     app.application_id          = appl.application_id
-              AND     types_tl.lookup_type        = look_val.lookup_type
-              AND     types.lookup_type           = types_tl.lookup_type
-              AND     types.security_group_id     = types_tl.security_group_id
-              AND     types.view_application_id   = types_tl.view_application_id
-              AND     types_tl.language           = cv_lang
-              AND     look_val.language           = cv_lang
-              AND     appl.language               = cv_lang
-              AND     app.application_short_name  = cv_xxcos_short_name
+              FROM    fnd_lookup_values           look_val
+              WHERE   look_val.language           = cv_lang
               AND     look_val.lookup_type        = cv_no_inv_item_type
               AND     look_val.lookup_code        = sel.item_code
               AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
               AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
               AND     look_val.enabled_flag       = ct_enabled_flg_y
+--
+--              SELECT  'Y'                         ext_flg
+--              FROM    fnd_lookup_values           look_val,
+--                      fnd_lookup_types_tl         types_tl,
+--                      fnd_lookup_types            types,
+--                      fnd_application_tl          appl,
+--                      fnd_application             app
+--              WHERE   appl.application_id         = types.application_id
+--              AND     app.application_id          = appl.application_id
+--              AND     types_tl.lookup_type        = look_val.lookup_type
+--              AND     types.lookup_type           = types_tl.lookup_type
+--              AND     types.security_group_id     = types_tl.security_group_id
+--              AND     types.view_application_id   = types_tl.view_application_id
+--              AND     types_tl.language           = cv_lang
+--              AND     look_val.language           = cv_lang
+--              AND     appl.language               = cv_lang
+--              AND     app.application_short_name  = cv_xxcos_short_name
+--              AND     look_val.lookup_type        = cv_no_inv_item_type
+--              AND     look_val.lookup_code        = sel.item_code
+--              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--              AND     look_val.enabled_flag       = ct_enabled_flg_y
+-- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
                       )
       --売上拠点コードを絞込み
-      AND   1 = (
-                 CASE
-                  WHEN iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
-                                                             FROM   xxcos_login_base_info_v lbiv1 
-                                                             WHERE  seh.sales_base_code = lbiv1.base_code 
-                                                           ) THEN
-                    1
-                  WHEN iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code THEN
-                    1
-                  ELSE
-                    0
-                 END
-                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
+      AND   ( ( iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y'
+                                                      FROM   xxcos_login_base_info_v lbiv1
+                                                      WHERE  seh.sales_base_code = lbiv1.base_code ) )
+        OR ( iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code ) )
+--      AND   1 = (
+--                 CASE
+--                  WHEN iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
+--                                                             FROM   xxcos_login_base_info_v lbiv1 
+--                                                             WHERE  seh.sales_base_code = lbiv1.base_code 
+--                                                           ) THEN
+--                    1
+--                  WHEN iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code THEN
+--                    1
+--                  ELSE
+--                    0
+--                 END
+--                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
       --納品日を絞込み
       AND   seh.delivery_date >= id_dlv_date_from 
       AND   seh.delivery_date <= id_dlv_date_to
       --営業担当を絞込み
-      AND   1 = (
-                 CASE
-/* 2009/04/21 Ver1.2 Mod Start */
---                  WHEN iv_sale_emp_code IS NULL AND EXISTS( SELECT 'Y' 
---                                                            FROM   xxcos_rs_info_v riv1 
---                                                            WHERE  seh.sales_base_code       = riv1.base_code 
---                                                            AND    seh.results_employee_code = riv1.employee_number
---                                                            AND    seh.delivery_date >= riv1.effective_start_date
---                                                            AND    seh.delivery_date <= riv1.effective_end_date
---                                                          ) THEN
-                  WHEN iv_sale_emp_code IS NULL THEN
-/* 2009/04/21 Ver1.2 Mod End   */
-                    1
-                  WHEN iv_sale_emp_code IS NOT NULL AND iv_sale_emp_code = seh.results_employee_code THEN
-                    1
-                  ELSE
-                    0
-                 END
-                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
+      AND  ( ( iv_sale_emp_code IS NULL )
+             OR ( iv_sale_emp_code IS NOT NULL AND iv_sale_emp_code = seh.results_employee_code ) )
+--      AND   1 = (
+--                 CASE
+--/* 2009/04/21 Ver1.2 Mod Start */
+----                  WHEN iv_sale_emp_code IS NULL AND EXISTS( SELECT 'Y' 
+----                                                            FROM   xxcos_rs_info_v riv1 
+----                                                            WHERE  seh.sales_base_code       = riv1.base_code 
+----                                                            AND    seh.results_employee_code = riv1.employee_number
+----                                                            AND    seh.delivery_date >= riv1.effective_start_date
+----                                                            AND    seh.delivery_date <= riv1.effective_end_date
+----                                                          ) THEN
+--                  WHEN iv_sale_emp_code IS NULL THEN
+--/* 2009/04/21 Ver1.2 Mod End   */
+--                    1
+--                  WHEN iv_sale_emp_code IS NOT NULL AND iv_sale_emp_code = seh.results_employee_code THEN
+--                    1
+--                  ELSE
+--                    0
+--                 END
+--                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
       --出荷先を絞込み
-      AND   1 = (
-                 CASE
-                  WHEN iv_ship_to_code IS NULL 
-                    AND EXISTS( 
-                               SELECT 'Y' 
-                               FROM   hz_cust_accounts hca1,
-                                      xxcmm_cust_accounts xca1
-                               WHERE  hca1.cust_account_id  = xca1.customer_id 
-                               AND    seh.sales_base_code   = xca1.sale_base_code
-                               AND    EXISTS (
-                                             SELECT  'X'                         
-                                             FROM    fnd_lookup_values           look_val,
-                                                     fnd_lookup_types_tl         types_tl,
-                                                     fnd_lookup_types            types,
-                                                     fnd_application_tl          appl,
-                                                     fnd_application             app
-                                             WHERE   appl.application_id         = types.application_id
-                                             AND     app.application_id          = appl.application_id
-                                             AND     types_tl.lookup_type        = look_val.lookup_type
-                                             AND     types.lookup_type           = types_tl.lookup_type
-                                             AND     types.security_group_id     = types_tl.security_group_id
-                                             AND     types.view_application_id   = types_tl.view_application_id
-                                             AND     types_tl.language           = cv_lang
-                                             AND     look_val.language           = cv_lang
-                                             AND     appl.language               = cv_lang
-                                             AND     app.application_short_name  = cv_xxcos_short_name
-                                             AND     look_val.lookup_type        = cv_cus_cls_type
-                                             AND     look_val.lookup_code        LIKE cv_cus_cls_code
-                                             AND     look_val.meaning            = hca1.customer_class_code
-                                             AND     gd_proc_date >= NVL( look_val.start_date_active, gd_min_date )
-                                             AND     gd_proc_date <= NVL( look_val.end_date_active, gd_max_date )
-                                             AND     look_val.enabled_flag       = ct_enabled_flg_y
-                                             )
-                               AND    seh.ship_to_customer_code = hca1.account_number
-                              ) THEN
-                    1
-                  WHEN iv_ship_to_code IS NOT NULL AND iv_ship_to_code = seh.ship_to_customer_code THEN
-                    1
-                  ELSE
-                    0
-                 END
-                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
+      AND ( ( iv_ship_to_code IS NULL AND EXISTS( SELECT 'Y' 
+                                                  FROM   hz_cust_accounts    hca1,
+                                                         xxcmm_cust_accounts xca1,
+                                                         fnd_lookup_values   look_val
+                                                  WHERE  hca1.cust_account_id  = xca1.customer_id 
+                                                  AND    seh.sales_base_code   = xca1.sale_base_code
+                                                  AND    look_val.language     = cv_lang
+                                                  AND    look_val.lookup_type  = cv_cus_cls_type
+                                                  AND    look_val.lookup_code  LIKE cv_cus_cls_code
+                                                  AND    look_val.meaning      = hca1.customer_class_code
+                                                  AND    gd_proc_date >= NVL( look_val.start_date_active, gd_min_date )
+                                                  AND    gd_proc_date <= NVL( look_val.end_date_active, gd_max_date )
+                                                  AND    look_val.enabled_flag = ct_enabled_flg_y
+                                                  AND    seh.ship_to_customer_code = hca1.account_number ) )
+            OR ( iv_ship_to_code IS NOT NULL AND iv_ship_to_code = seh.ship_to_customer_code ) )
+--      AND   1 = (
+--                 CASE
+--                  WHEN iv_ship_to_code IS NULL 
+--                    AND EXISTS( 
+--                               SELECT 'Y' 
+--                               FROM   hz_cust_accounts hca1,
+--                                      xxcmm_cust_accounts xca1
+--                               WHERE  hca1.cust_account_id  = xca1.customer_id 
+--                               AND    seh.sales_base_code   = xca1.sale_base_code
+--                               AND    EXISTS (
+---- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
+--                                             SELECT  'X'                         
+--                                             FROM    fnd_lookup_values           look_val
+--                                             WHERE   look_val.language           = cv_lang
+--                                             AND     look_val.lookup_type        = cv_cus_cls_type
+--                                             AND     look_val.lookup_code        LIKE cv_cus_cls_code
+--                                             AND     look_val.meaning            = hca1.customer_class_code
+--                                             AND     gd_proc_date >= NVL( look_val.start_date_active, gd_min_date )
+--                                             AND     gd_proc_date <= NVL( look_val.end_date_active, gd_max_date )
+--                                             AND     look_val.enabled_flag       = ct_enabled_flg_y
+----
+----                                             SELECT  'X'                         
+----                                             FROM    fnd_lookup_values           look_val,
+----                                                     fnd_lookup_types_tl         types_tl,
+----                                                     fnd_lookup_types            types,
+----                                                     fnd_application_tl          appl,
+----                                                     fnd_application             app
+----                                             WHERE   appl.application_id         = types.application_id
+----                                             AND     app.application_id          = appl.application_id
+----                                             AND     types_tl.lookup_type        = look_val.lookup_type
+----                                             AND     types.lookup_type           = types_tl.lookup_type
+----                                             AND     types.security_group_id     = types_tl.security_group_id
+----                                             AND     types.view_application_id   = types_tl.view_application_id
+----                                             AND     types_tl.language           = cv_lang
+----                                             AND     look_val.language           = cv_lang
+----                                             AND     appl.language               = cv_lang
+----                                             AND     app.application_short_name  = cv_xxcos_short_name
+----                                             AND     look_val.lookup_type        = cv_cus_cls_type
+----                                             AND     look_val.lookup_code        LIKE cv_cus_cls_code
+----                                             AND     look_val.meaning            = hca1.customer_class_code
+----                                             AND     gd_proc_date >= NVL( look_val.start_date_active, gd_min_date )
+----                                             AND     gd_proc_date <= NVL( look_val.end_date_active, gd_max_date )
+----                                             AND     look_val.enabled_flag       = ct_enabled_flg_y
+---- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
+--                                             )
+--                               AND    seh.ship_to_customer_code = hca1.account_number
+--                              ) THEN
+--                    1
+--                  WHEN iv_ship_to_code IS NOT NULL AND iv_ship_to_code = seh.ship_to_customer_code THEN
+--                    1
+--                  ELSE
+--                    0
+--                 END
+--                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
             --営業原価 IS NULL OR 納品単価 < 営業原価
       AND   ( sel.business_cost IS NULL OR NVL( sel.standard_unit_price_excluded, 0 ) < sel.business_cost )
       AND   seh.sales_base_code       = lbiv.base_code            --売上拠点コード
@@ -966,158 +1068,232 @@ AS
       WHERE seh.sales_exp_header_id = sel.sales_exp_header_id                         --販売実績ヘッダID
       --作成元区分のクイック参照
       AND   EXISTS(
+-- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
               SELECT  'Y'                         ext_flg
-              FROM    fnd_lookup_values           look_val,
-                      fnd_lookup_types_tl         types_tl,
-                      fnd_lookup_types            types,
-                      fnd_application_tl          appl,
-                      fnd_application             app
-              WHERE   appl.application_id         = types.application_id
-              AND     app.application_id          = appl.application_id
-              AND     types_tl.lookup_type        = look_val.lookup_type
-              AND     types.lookup_type           = types_tl.lookup_type
-              AND     types.security_group_id     = types_tl.security_group_id
-              AND     types.view_application_id   = types_tl.view_application_id
-              AND     types_tl.language           = cv_lang
-              AND     look_val.language           = cv_lang
-              AND     appl.language               = cv_lang
-              AND     app.application_short_name  = cv_xxcos_short_name
+              FROM    fnd_lookup_values           look_val
+              WHERE   look_val.language           = cv_lang
               AND     look_val.lookup_type        = cv_mk_org_type
               AND     look_val.lookup_code        LIKE cv_mk_org_code2
               AND     look_val.meaning            = seh.create_class
               AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
               AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
               AND     look_val.enabled_flag       = ct_enabled_flg_y
+--
+--              SELECT  'Y'                         ext_flg
+--              FROM    fnd_lookup_values           look_val,
+--                      fnd_lookup_types_tl         types_tl,
+--                      fnd_lookup_types            types,
+--                      fnd_application_tl          appl,
+--                      fnd_application             app
+--              WHERE   appl.application_id         = types.application_id
+--              AND     app.application_id          = appl.application_id
+--              AND     types_tl.lookup_type        = look_val.lookup_type
+--              AND     types.lookup_type           = types_tl.lookup_type
+--              AND     types.security_group_id     = types_tl.security_group_id
+--              AND     types.view_application_id   = types_tl.view_application_id
+--              AND     types_tl.language           = cv_lang
+--              AND     look_val.language           = cv_lang
+--              AND     appl.language               = cv_lang
+--              AND     app.application_short_name  = cv_xxcos_short_name
+--              AND     look_val.lookup_type        = cv_mk_org_type
+--              AND     look_val.lookup_code        LIKE cv_mk_org_code2
+--              AND     look_val.meaning            = seh.create_class
+--              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--              AND     look_val.enabled_flag       = ct_enabled_flg_y
+-- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
                   )
       --売上区分のクイック参照
       AND   EXISTS(
+-- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
               SELECT  'Y'                         ext_flg
-              FROM    fnd_lookup_values           look_val,
-                      fnd_lookup_types_tl         types_tl,
-                      fnd_lookup_types            types,
-                      fnd_application_tl          appl,
-                      fnd_application             app
-              WHERE   appl.application_id         = types.application_id
-              AND     app.application_id          = appl.application_id
-              AND     types_tl.lookup_type        = look_val.lookup_type
-              AND     types.lookup_type           = types_tl.lookup_type
-              AND     types.security_group_id     = types_tl.security_group_id
-              AND     types.view_application_id   = types_tl.view_application_id
-              AND     types_tl.language           = cv_lang
-              AND     look_val.language           = cv_lang
-              AND     appl.language               = cv_lang
-              AND     app.application_short_name  = cv_xxcos_short_name
+              FROM    fnd_lookup_values           look_val
+              WHERE   look_val.language           = cv_lang
               AND     look_val.lookup_type        = cv_sl_cls_type
               AND     look_val.lookup_code        LIKE cv_sl_cls_code2
               AND     look_val.meaning            = sel.sales_class
               AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
               AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
               AND     look_val.enabled_flag       = ct_enabled_flg_y
+--
+--              SELECT  'Y'                         ext_flg
+--              FROM    fnd_lookup_values           look_val,
+--                      fnd_lookup_types_tl         types_tl,
+--                      fnd_lookup_types            types,
+--                      fnd_application_tl          appl,
+--                      fnd_application             app
+--              WHERE   appl.application_id         = types.application_id
+--              AND     app.application_id          = appl.application_id
+--              AND     types_tl.lookup_type        = look_val.lookup_type
+--              AND     types.lookup_type           = types_tl.lookup_type
+--              AND     types.security_group_id     = types_tl.security_group_id
+--              AND     types.view_application_id   = types_tl.view_application_id
+--              AND     types_tl.language           = cv_lang
+--              AND     look_val.language           = cv_lang
+--              AND     appl.language               = cv_lang
+--              AND     app.application_short_name  = cv_xxcos_short_name
+--              AND     look_val.lookup_type        = cv_sl_cls_type
+--              AND     look_val.lookup_code        LIKE cv_sl_cls_code2
+--              AND     look_val.meaning            = sel.sales_class
+--              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--              AND     look_val.enabled_flag       = ct_enabled_flg_y
+-- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
                   )
       --非在庫品目コードのクイック参照
       AND   NOT EXISTS(
+-- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
               SELECT  'Y'                         ext_flg
-              FROM    fnd_lookup_values           look_val,
-                      fnd_lookup_types_tl         types_tl,
-                      fnd_lookup_types            types,
-                      fnd_application_tl          appl,
-                      fnd_application             app
-              WHERE   appl.application_id         = types.application_id
-              AND     app.application_id          = appl.application_id
-              AND     types_tl.lookup_type        = look_val.lookup_type
-              AND     types.lookup_type           = types_tl.lookup_type
-              AND     types.security_group_id     = types_tl.security_group_id
-              AND     types.view_application_id   = types_tl.view_application_id
-              AND     types_tl.language           = cv_lang
-              AND     look_val.language           = cv_lang
-              AND     appl.language               = cv_lang
-              AND     app.application_short_name  = cv_xxcos_short_name
+              FROM    fnd_lookup_values           look_val
+              WHERE   look_val.language           = cv_lang
               AND     look_val.lookup_type        = cv_no_inv_item_type
               AND     look_val.lookup_code        = sel.item_code
               AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
               AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
               AND     look_val.enabled_flag       = ct_enabled_flg_y
+--
+--              SELECT  'Y'                         ext_flg
+--              FROM    fnd_lookup_values           look_val,
+--                      fnd_lookup_types_tl         types_tl,
+--                      fnd_lookup_types            types,
+--                      fnd_application_tl          appl,
+--                      fnd_application             app
+--              WHERE   appl.application_id         = types.application_id
+--              AND     app.application_id          = appl.application_id
+--              AND     types_tl.lookup_type        = look_val.lookup_type
+--              AND     types.lookup_type           = types_tl.lookup_type
+--              AND     types.security_group_id     = types_tl.security_group_id
+--              AND     types.view_application_id   = types_tl.view_application_id
+--              AND     types_tl.language           = cv_lang
+--              AND     look_val.language           = cv_lang
+--              AND     appl.language               = cv_lang
+--              AND     app.application_short_name  = cv_xxcos_short_name
+--              AND     look_val.lookup_type        = cv_no_inv_item_type
+--              AND     look_val.lookup_code        = sel.item_code
+--              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--              AND     look_val.enabled_flag       = ct_enabled_flg_y
+-- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
                       )
       --売上拠点コードを絞込み
-      AND   1 = (
-                 CASE
-                  WHEN iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
-                                                             FROM   xxcos_login_base_info_v lbiv1 
-                                                             WHERE  seh.sales_base_code = lbiv1.base_code 
-                                                           ) THEN
-                    1
-                  WHEN iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code THEN
-                    1
-                  ELSE
-                    0
-                 END
-                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
+      AND  ( ( iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
+                                                     FROM   xxcos_login_base_info_v lbiv1 
+                                                     WHERE  seh.sales_base_code = lbiv1.base_code ) )
+             OR ( iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code ) )
+--      AND   1 = (
+--                 CASE
+--                  WHEN iv_sale_base_code IS NULL AND EXISTS( SELECT 'Y' 
+--                                                             FROM   xxcos_login_base_info_v lbiv1 
+--                                                             WHERE  seh.sales_base_code = lbiv1.base_code 
+--                                                           ) THEN
+--                    1
+--                  WHEN iv_sale_base_code IS NOT NULL AND iv_sale_base_code = seh.sales_base_code THEN
+--                    1
+--                  ELSE
+--                    0
+--                 END
+--                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
       --納品日を絞込み
       AND   seh.delivery_date >= id_dlv_date_from 
       AND   seh.delivery_date <= id_dlv_date_to
       --営業担当を絞込み
-      AND   1 = (
-                 CASE
-/* 2009/04/21 Ver1.2 Mod Start */
---                  WHEN iv_sale_emp_code IS NULL AND EXISTS( SELECT 'Y' 
---                                                            FROM   xxcos_rs_info_v riv1 
---                                                            WHERE  seh.sales_base_code       = riv1.base_code 
---                                                            AND    seh.results_employee_code = riv1.employee_number
---                                                            AND    seh.delivery_date >= riv1.effective_start_date
---                                                           AND    seh.delivery_date <= riv1.effective_end_date
---                                                          ) THEN
-                  WHEN iv_sale_emp_code IS NULL THEN
-/* 2009/04/21 Ver1.2 Mod End   */
-                    1
-                  WHEN iv_sale_emp_code IS NOT NULL AND iv_sale_emp_code = seh.results_employee_code THEN
-                    1
-                  ELSE
-                    0
-                 END
-                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
+      AND   ( ( iv_sale_emp_code IS NULL )
+              OR ( iv_sale_emp_code IS NOT NULL AND iv_sale_emp_code = seh.results_employee_code ) )
+--      AND   1 = (
+--                 CASE
+--/* 2009/04/21 Ver1.2 Mod Start */
+----                  WHEN iv_sale_emp_code IS NULL AND EXISTS( SELECT 'Y' 
+----                                                            FROM   xxcos_rs_info_v riv1 
+----                                                            WHERE  seh.sales_base_code       = riv1.base_code 
+----                                                            AND    seh.results_employee_code = riv1.employee_number
+----                                                            AND    seh.delivery_date >= riv1.effective_start_date
+----                                                           AND    seh.delivery_date <= riv1.effective_end_date
+----                                                          ) THEN
+--                  WHEN iv_sale_emp_code IS NULL THEN
+--/* 2009/04/21 Ver1.2 Mod End   */
+--                    1
+--                  WHEN iv_sale_emp_code IS NOT NULL AND iv_sale_emp_code = seh.results_employee_code THEN
+--                    1
+--                  ELSE
+--                    0
+--                 END
+--                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
       --出荷先を絞込み
-      AND   1 = (
-                 CASE
-                  WHEN iv_ship_to_code IS NULL 
-                    AND EXISTS( 
-                               SELECT 'Y' 
-                               FROM   hz_cust_accounts hca1,
-                                      xxcmm_cust_accounts xca1
-                               WHERE  hca1.cust_account_id  = xca1.customer_id 
-                               AND    seh.sales_base_code   = xca1.sale_base_code
-                               AND    EXISTS (
-                                             SELECT  'X'                         
-                                             FROM    fnd_lookup_values           look_val,
-                                                     fnd_lookup_types_tl         types_tl,
-                                                     fnd_lookup_types            types,
-                                                     fnd_application_tl          appl,
-                                                     fnd_application             app
-                                             WHERE   appl.application_id         = types.application_id
-                                             AND     app.application_id          = appl.application_id
-                                             AND     types_tl.lookup_type        = look_val.lookup_type
-                                             AND     types.lookup_type           = types_tl.lookup_type
-                                             AND     types.security_group_id     = types_tl.security_group_id
-                                             AND     types.view_application_id   = types_tl.view_application_id
-                                             AND     types_tl.language           = cv_lang
-                                             AND     look_val.language           = cv_lang
-                                             AND     appl.language               = cv_lang
-                                             AND     app.application_short_name  = cv_xxcos_short_name
-                                             AND     look_val.lookup_type        = cv_cus_cls_type
-                                             AND     look_val.lookup_code        LIKE cv_cus_cls_code
-                                             AND     look_val.meaning            = hca1.customer_class_code
-                                             AND     gd_proc_date >= NVL( look_val.start_date_active, gd_min_date )
-                                             AND     gd_proc_date <= NVL( look_val.end_date_active, gd_max_date )
-                                             AND     look_val.enabled_flag       = ct_enabled_flg_y
-                                             )
-                               AND    seh.ship_to_customer_code = hca1.account_number
-                              ) THEN
-                    1
-                  WHEN iv_ship_to_code IS NOT NULL AND iv_ship_to_code = seh.ship_to_customer_code THEN
-                    1
-                  ELSE
-                    0
-                 END
-                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD START *********** --
+      AND  ( ( iv_ship_to_code IS NULL AND EXISTS( SELECT 'Y' 
+                                                   FROM   hz_cust_accounts    hca1,
+                                                          xxcmm_cust_accounts xca1,
+                                                          fnd_lookup_values   look_val
+                                                   WHERE  hca1.cust_account_id  = xca1.customer_id 
+                                                   AND    seh.sales_base_code   = xca1.sale_base_code
+                                                   AND    look_val.language     = cv_lang
+                                                   AND    look_val.lookup_type = cv_cus_cls_type
+                                                   AND    look_val.lookup_code LIKE cv_cus_cls_code
+                                                   AND    look_val.meaning     = hca1.customer_class_code
+                                                   AND    gd_proc_date >= NVL( look_val.start_date_active, gd_min_date )
+                                                   AND    gd_proc_date <= NVL( look_val.end_date_active, gd_max_date )
+                                                   AND    look_val.enabled_flag = ct_enabled_flg_y
+                                                   AND    seh.ship_to_customer_code = hca1.account_number ) )
+             OR ( iv_ship_to_code IS NOT NULL AND iv_ship_to_code = seh.ship_to_customer_code ) )
+--      AND   1 = (
+--                 CASE
+--                  WHEN iv_ship_to_code IS NULL 
+--                    AND EXISTS( 
+--                               SELECT 'Y' 
+--                               FROM   hz_cust_accounts hca1,
+--                                      xxcmm_cust_accounts xca1
+--                               WHERE  hca1.cust_account_id  = xca1.customer_id 
+--                               AND    seh.sales_base_code   = xca1.sale_base_code
+--                               AND    EXISTS (
+---- ******** 2009/08/11 1.5 N.Maeda MOD START *********** --
+--                                             SELECT  'X'                         
+--                                             FROM    fnd_lookup_values           look_val
+--                                             WHERE   look_val.language           = cv_lang
+--                                             AND     look_val.lookup_type        = cv_cus_cls_type
+--                                             AND     look_val.lookup_code        LIKE cv_cus_cls_code
+--                                             AND     look_val.meaning            = hca1.customer_class_code
+--                                             AND     gd_proc_date >= NVL( look_val.start_date_active, gd_min_date )
+--                                             AND     gd_proc_date <= NVL( look_val.end_date_active, gd_max_date )
+--                                             AND     look_val.enabled_flag       = ct_enabled_flg_y
+----
+----                                             SELECT  'X'                         
+----                                             FROM    fnd_lookup_values           look_val,
+----                                                     fnd_lookup_types_tl         types_tl,
+----                                                     fnd_lookup_types            types,
+----                                                     fnd_application_tl          appl,
+----                                                     fnd_application             app
+----                                             WHERE   appl.application_id         = types.application_id
+----                                             AND     app.application_id          = appl.application_id
+----                                             AND     types_tl.lookup_type        = look_val.lookup_type
+----                                             AND     types.lookup_type           = types_tl.lookup_type
+----                                             AND     types.security_group_id     = types_tl.security_group_id
+----                                             AND     types.view_application_id   = types_tl.view_application_id
+----                                             AND     types_tl.language           = cv_lang
+----                                             AND     look_val.language           = cv_lang
+----                                             AND     appl.language               = cv_lang
+----                                             AND     app.application_short_name  = cv_xxcos_short_name
+----                                             AND     look_val.lookup_type        = cv_cus_cls_type
+----                                             AND     look_val.lookup_code        LIKE cv_cus_cls_code
+----                                             AND     look_val.meaning            = hca1.customer_class_code
+----                                             AND     gd_proc_date >= NVL( look_val.start_date_active, gd_min_date )
+----                                             AND     gd_proc_date <= NVL( look_val.end_date_active, gd_max_date )
+----                                             AND     look_val.enabled_flag       = ct_enabled_flg_y
+---- ******** 2009/08/11 1.5 N.Maeda MOD END *********** --
+--                                             )
+--                               AND    seh.ship_to_customer_code = hca1.account_number
+--                              ) THEN
+--                    1
+--                  WHEN iv_ship_to_code IS NOT NULL AND iv_ship_to_code = seh.ship_to_customer_code THEN
+--                    1
+--                  ELSE
+--                    0
+--                 END
+--                )
+-- ******** 2009/08/13 1.5 N.Maeda MOD END *********** --
             --営業原価 IS NULL OR 納品単価 < 営業原価
       AND   ( sel.business_cost IS NULL OR NVL( sel.standard_unit_price_excluded, 0 ) < sel.business_cost )
       AND   seh.sales_base_code       = lbiv.base_code            --売上拠点コード
