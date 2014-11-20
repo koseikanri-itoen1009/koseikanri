@@ -49,7 +49,8 @@ AS
  *  2009/05/01    1.6   T.Mori           [障害T1_0897]スキーマ名設定
  *  2009/05/07    1.7   N.Yanagitaira    [障害T1_0200]VDリース料、費用合計算出方法修正
  *  2009/06/05    1.8   N.Yanagitaira    [障害T1_1307]chk_single_byte_kana修正
- *****************************************************************************************/
+ *  2009/07/16    1.9   D.Abe            [SCS障害0000385]SP専決書否認時のフロー変更
+*****************************************************************************************/
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -547,6 +548,20 @@ AS
 --
           lb_notify_flag := TRUE;
 --
+          /* 20090716_abe_0000385 START*/
+          -- 処理中の回送先を見つけ、決裁状態区分を未処理に設定する
+          UPDATE  xxcso_sp_decision_sends
+          SET     approval_state_type = cv_approval_state_none
+                 ,approval_date       = xxcso_util_common_pkg.get_online_sysdate
+                 ,approval_content    = cv_content_return
+                 ,last_updated_by     = fnd_global.user_id
+                 ,last_update_date    = SYSDATE
+                 ,last_update_login   = fnd_global.login_id
+          WHERE   sp_decision_header_id = ln_sp_decision_header_id
+          AND     approval_state_type <> cv_approval_state_none
+          ;
+          /* 20090716_abe_0000385 END*/
+--
           EXIT send_loop;
 --
         END IF;
@@ -614,6 +629,20 @@ AS
           END IF;
 --
           lb_notify_flag := TRUE;
+--
+          /* 20090716_abe_0000385 START*/
+          -- 処理中の回送先を見つけ、決裁状態区分を未処理に設定する
+          UPDATE  xxcso_sp_decision_sends
+          SET     approval_state_type = cv_approval_state_none
+                 ,approval_date       = xxcso_util_common_pkg.get_online_sysdate
+                 ,approval_content    = cv_content_reject
+                 ,last_updated_by     = fnd_global.user_id
+                 ,last_update_date    = SYSDATE
+                 ,last_update_login   = fnd_global.login_id
+          WHERE   sp_decision_header_id = ln_sp_decision_header_id
+          AND     approval_state_type <> cv_approval_state_none
+          ;
+          /* 20090716_abe_0000385 END*/
 --
           EXIT send_loop;
 --

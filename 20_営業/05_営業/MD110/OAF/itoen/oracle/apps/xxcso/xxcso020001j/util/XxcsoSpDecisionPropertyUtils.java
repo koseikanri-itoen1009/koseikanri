@@ -9,6 +9,7 @@
 * 2008-12-27 1.0  SCS小川浩     新規作成
 * 2009-04-20 1.1  SCS柳平直人   [ST障害T1_0302]返却ボタン押下後表示不正対応
 * 2009-05-13 1.2  SCS柳平直人   [ST障害T1_0954]T1_0302修正漏れ反映
+* 2009-07-16 1.3  SCS阿部大輔   [SCS障害0000385]否決ボタン時の提出ボタン対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -919,30 +920,20 @@ public class XxcsoSpDecisionPropertyUtils
     sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.first();
     while ( sendRow != null )
     {
-      if ( applicationCode.equals(loginEmployeeNumber) )
-      {
-        // 承認コメント以外
-        // すべて入力可能
-        sendRow.setApprovalCommentReadOnly(        Boolean.TRUE  );
+/* 20090716_abe_0000385 START*/
 
-        if ( XxcsoSpDecisionConstants.STATUS_ENABLE.equals(status) )
-        {
-          // ステータスが有効の場合は、すべて入力不可
-          sendRow.setRangeTypeReadOnly(            Boolean.TRUE  );
-          sendRow.setApproveCodeReadOnly(          Boolean.TRUE  );
-        }
-        
-        sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.next();
-        continue;
-      }
-      
-      String targetEmployeeNumber = sendRow.getApproveCode();
       String approvalStateType    = sendRow.getApprovalStateType();
 
-      if ( XxcsoSpDecisionConstants.APPR_DURING.equals(approvalStateType) )
+      // 決裁状態区分(0：未処理)
+      if (XxcsoSpDecisionConstants.APPR_NONE.equals(approvalStateType))
       {
-        duringFlag = true;
-        
+        // コメントを使用不可
+        sendRow.setApprovalCommentReadOnly(      Boolean.TRUE  );
+      }
+      // 決裁状態区分(1：処理中)
+      else if (XxcsoSpDecisionConstants.APPR_DURING.equals(approvalStateType))
+      {
+        String targetEmployeeNumber = sendRow.getApproveCode();
         if ( loginEmployeeNumber.equals(targetEmployeeNumber) )
         {
           sendRow.setRangeTypeReadOnly(              Boolean.TRUE  );
@@ -952,24 +943,108 @@ public class XxcsoSpDecisionPropertyUtils
         {
           sendRow.setRangeTypeReadOnly(              Boolean.TRUE  );
           sendRow.setApproveCodeReadOnly(            Boolean.TRUE  );
-          sendRow.setApprovalCommentReadOnly(        Boolean.TRUE  );        
+          sendRow.setApprovalCommentReadOnly(        Boolean.TRUE  );      
         }
+        duringFlag = true;
       }
-      else
+      // 決裁状態区分(2：処理済)
+      else if (XxcsoSpDecisionConstants.APPR_END.equals(approvalStateType))
       {
-        sendRow.setApprovalCommentReadOnly(        Boolean.TRUE  );
+        // 承認者、関連、コメントを使用不可
+        sendRow.setRangeTypeReadOnly(            Boolean.TRUE  );
+        sendRow.setApproveCodeReadOnly(          Boolean.TRUE  );
+        sendRow.setApprovalCommentReadOnly(      Boolean.TRUE  );
       }
 
-      if ( ! duringFlag )
-      {
-        // 承認作業中ユーザー以前のユーザーは入力不可
-        sendRow.setRangeTypeReadOnly(              Boolean.TRUE  );
-        sendRow.setApproveCodeReadOnly(            Boolean.TRUE  );
-        sendRow.setApprovalCommentReadOnly(        Boolean.TRUE  );        
-      }
-      
       sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.next();
     }
+    
+
+    sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.first();
+    while ( sendRow != null )
+    {
+      // 回送先に決裁状態区分(1：処理中)が存在する場合
+      if ( duringFlag)
+      {
+
+        String approvalStateType    = sendRow.getApprovalStateType();
+
+        // 決裁状態区分(1：処理中)
+        if (XxcsoSpDecisionConstants.APPR_DURING.equals(approvalStateType))
+        {
+          break;
+        }
+        // 承認者、関連を使用不可
+        sendRow.setRangeTypeReadOnly(            Boolean.TRUE  );
+        sendRow.setApproveCodeReadOnly(          Boolean.TRUE  );
+      }
+      // 回送先に決裁状態区分(1：処理中)が存在しない場合
+      else
+      {
+        if ( XxcsoSpDecisionConstants.STATUS_ENABLE.equals(status) )
+        {
+          // ステータスが有効の場合は、すべて入力不可
+          sendRow.setRangeTypeReadOnly(            Boolean.TRUE  );
+          sendRow.setApproveCodeReadOnly(          Boolean.TRUE  );
+          sendRow.setApprovalCommentReadOnly(      Boolean.TRUE  );
+        }
+      } 
+      sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.next();
+    }
+
+//      if ( applicationCode.equals(loginEmployeeNumber) )
+//      {
+//        // 承認コメント以外
+//        // すべて入力可能
+//        sendRow.setApprovalCommentReadOnly(        Boolean.TRUE  );
+//
+//        if ( XxcsoSpDecisionConstants.STATUS_ENABLE.equals(status) )
+//        {
+//          // ステータスが有効の場合は、すべて入力不可
+//          sendRow.setRangeTypeReadOnly(            Boolean.TRUE  );
+//          sendRow.setApproveCodeReadOnly(          Boolean.TRUE  );
+//        }
+//        
+//        sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.next();
+//        continue;
+//      }
+//      
+//      String targetEmployeeNumber = sendRow.getApproveCode();
+//      String approvalStateType    = sendRow.getApprovalStateType();
+//
+//      if ( XxcsoSpDecisionConstants.APPR_DURING.equals(approvalStateType) )
+//      {
+//        duringFlag = true;
+//        
+//        if ( loginEmployeeNumber.equals(targetEmployeeNumber) )
+//        {
+//          sendRow.setRangeTypeReadOnly(              Boolean.TRUE  );
+//          sendRow.setApproveCodeReadOnly(            Boolean.TRUE  );
+//        }
+//        else
+//        {
+//          sendRow.setRangeTypeReadOnly(              Boolean.TRUE  );
+//          sendRow.setApproveCodeReadOnly(            Boolean.TRUE  );
+//          sendRow.setApprovalCommentReadOnly(        Boolean.TRUE  );        
+//        }
+//      }
+//      else
+//      {
+//        sendRow.setApprovalCommentReadOnly(        Boolean.TRUE  );
+//      }
+//
+//      if ( ! duringFlag )
+//      {
+//        // 承認作業中ユーザー以前のユーザーは入力不可
+//        sendRow.setRangeTypeReadOnly(              Boolean.TRUE  );
+//        sendRow.setApproveCodeReadOnly(            Boolean.TRUE  );
+//        sendRow.setApprovalCommentReadOnly(        Boolean.TRUE  );        
+//      }
+//      
+//      sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.next();
+//    }
+/* 20090716_abe_0000385 END*/
+
   }
 
   
@@ -1298,22 +1373,24 @@ public class XxcsoSpDecisionPropertyUtils
           }
         }
       }
+// 2009-07-16 [障害0000385] Mod Start
 // 2009-04-20 [ST障害T1_0302] Add Start
-      String approvalContent = sendRow.getApprovalContent();
-      if ( XxcsoSpDecisionConstants.APPR_CONT_RETURN.equals( approvalContent ) )
-      {
-        if ( approveCode.equals( loginEmployeeNumber ) )
-        {
-          contReturnSelfFlag = true;
-        }
-// 2009-05-13 [ST障害T1_0954] Del Start
-//        else
+//      String approvalContent = sendRow.getApprovalContent();
+//      if ( XxcsoSpDecisionConstants.APPR_CONT_RETURN.equals( approvalContent ) )
+//      {
+//        if ( approveCode.equals( loginEmployeeNumber ) )
 //        {
-//          contReturnSelfFlag = false;
+//          contReturnSelfFlag = true;
 //        }
-// 2009-05-13 [ST障害T1_0954] Del End
-      }
-// 2009-04-20 [ST障害T1_0302] Add End
+//// 2009-05-13 [ST障害T1_0954] Del Start
+////        else
+////        {
+////          contReturnSelfFlag = false;
+////        }
+//// 2009-05-13 [ST障害T1_0954] Del End
+//      }
+//// 2009-04-20 [ST障害T1_0302] Add End
+// 2009-07-16 [障害0000385] Mod End
       
       sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.next();
     }
@@ -1366,13 +1443,15 @@ public class XxcsoSpDecisionPropertyUtils
       initRow.setSubmitButtonRender(                 Boolean.FALSE );
     }
 
-// 2009-04-20 [ST障害T1_0302] Add Start
-    if ( contReturnSelfFlag )
-    {
-      // 決裁内容が返却の場合は提出ボタンを非表示
-      initRow.setSubmitButtonRender(                 Boolean.FALSE );
-    }
-// 2009-04-20 [ST障害T1_0302] Add End
+// 2009-07-16 [障害0000385] Mod Start
+//// 2009-04-20 [ST障害T1_0302] Add Start
+//    if ( contReturnSelfFlag )
+//    {
+//      // 決裁内容が返却の場合は提出ボタンを非表示
+//      initRow.setSubmitButtonRender(                 Boolean.FALSE );
+//    }
+//// 2009-04-20 [ST障害T1_0302] Add End
+// 2009-07-16 [障害0000385] Mod End
 
     /////////////////////////////////////
     // 確認ボタン、返却ボタンの表示／非表示を設定
