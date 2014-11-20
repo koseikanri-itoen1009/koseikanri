@@ -617,6 +617,11 @@ SELECT
                            cm_cmpt_dtl                 CMPD                --品目原価マスタ
                           ,cm_cmpt_mst_b               CMPM                --コンポーネント
                           ,cm_cldr_dtl                 CLDD                --原価カレンダ明細
+-- 2009/11/12 Add Start
+                           -- 品目区分
+                          ,gmi_item_categories    gic_h
+                          ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
                     WHERE
                            CMPD.whse_code              = '000'             --倉庫コード(原価倉庫)
                       AND  CMPD.cost_mthd_code         = 'STDU'            --原価方法コード
@@ -627,6 +632,12 @@ SELECT
                       AND  CMPD.cost_cmpntcls_id       = CMPM.cost_cmpntcls_id
                       AND  CMPD.calendar_code          = CLDD.calendar_code
                       AND  CMPD.period_code            = CLDD.period_code
+-- 2009/11/12 Add Start
+                      AND  mcb_h.segment1 = '5'
+                      AND  gic_h.category_id           = mcb_h.category_id
+                      AND  gic_h.category_set_id       = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+                      AND  CMPD.item_id                = gic_h.item_id
+-- 2009/11/12 Add End
                     GROUP BY
                            CMPD.item_id
                           ,CLDD.start_date
@@ -634,11 +645,19 @@ SELECT
                 )                                      GPRC                --品目別標準原価情報
           WHERE
             --品目情報取得
-                 UHG.item_id                  = ITEM.item_id(+)
-            AND  TRUNC( UHG.trans_date )     >= ITEM.start_date_active(+)
-            AND  TRUNC( UHG.trans_date )     <= ITEM.end_date_active(+)
+-- 2009/11/12 Mod Start
+            --     UHG.item_id                  = ITEM.item_id(+)
+            --AND  TRUNC( UHG.trans_date )     >= ITEM.start_date_active(+)
+            --AND  TRUNC( UHG.trans_date )     <= ITEM.end_date_active(+)
+                 UHG.item_id                  = ITEM.item_id
+            AND  TRUNC( UHG.trans_date )     >= ITEM.start_date_active
+            AND  TRUNC( UHG.trans_date )     <= ITEM.end_date_active
+-- 2009/11/12 Mod End
             --原価･ロット管理区分取得
-            AND  UHG.item_id                  = ITMB.item_id(+)
+-- 2009/11/12 Mod Start
+            --AND  UHG.item_id                  = ITMB.item_id(+)
+            AND  UHG.item_id                  = ITMB.item_id
+-- 2009/11/12 Mod Start
             --ロット原価情報取得
             AND  UHG.item_id                  = LCST.item_id(+)
             AND  UHG.lot_id                   = LCST.lot_id(+)
@@ -696,11 +715,20 @@ SELECT
          OR SUHG.trans_qty_hara_genmou      <> 0       --32.払出_棚卸減耗
        )
    --倉庫名取得
-   AND  SUHG.whse_code   = IWM.whse_code(+)
+-- 2009/11/12 Mod Start
+   --AND  SUHG.whse_code   = IWM.whse_code(+)
+   AND  SUHG.whse_code   = IWM.whse_code
+-- 2009/11/12 Mod End
    --品目カテゴリ情報取得
-   AND  SUHG.item_id     = PRODC.item_id(+)  --商品区分
-   AND  SUHG.item_id     = ITEMC.item_id(+)  --品目区分
-   AND  SUHG.item_id     = CROWD.item_id(+)  --群コード
+-- 2009/11/12 Mod Start
+   --AND  SUHG.item_id     = PRODC.item_id(+)  --商品区分
+   --AND  SUHG.item_id     = ITEMC.item_id(+)  --品目区分
+   --AND  SUHG.item_id     = CROWD.item_id(+)  --群コード
+   AND  SUHG.item_id     = PRODC.item_id  --商品区分
+   AND  PRODC.item_id     = ITEMC.item_id  --品目区分
+   AND  PRODC.item_id     = CROWD.item_id  --群コード
+   AND  ITEMC.item_id     = CROWD.item_id
+-- 2009/11/12 Mod End
 /
 COMMENT ON TABLE APPS.XXSKY_受払情報_製品_基本_V IS 'SKYLINK用受払情報製品（基本）VIEW'
 /

@@ -36,9 +36,20 @@ SELECT
              ,TRUNC(ADD_MONTHS(TO_DATE(XSIMS.invent_ym, 'YYYYMM'), 1), 'MM')       trans_date    --棚卸年月
         FROM  xxinv_stc_inventory_month_stck     XSIMS
              ,ic_whse_mst                        IWM
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
        WHERE  
               IWM.whse_code  = XSIMS.whse_code
          AND  IWM.attribute1 = '0'
+-- 2009/11/12 Add Start
+         AND  mcb_h.segment1 = '5'
+         AND  gic_h.category_id         = mcb_h.category_id
+         AND  gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+         AND  XSIMS.item_id             = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       ------------------------------------------------------
       -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
@@ -62,6 +73,11 @@ SELECT
             ,gme_batch_header                 gbh
             ,gmd_routings_b                   grb
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+            ,gmi_item_categories    gic_h
+            ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itp.doc_type            = 'PROD'
       AND    itp.completed_ind       = 1
       AND    itp.reverse_id          IS NULL
@@ -102,6 +118,12 @@ SELECT
                               AND    gic.category_id = mcb.category_id
                               AND    mcb.segment1    = xrpm.item_div_ahead))
              ))
+-- 2009/11/12 Add Start
+      AND  mcb_h.segment1 = '5'
+      AND  gic_h.category_id         = mcb_h.category_id
+      AND  gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND  itp.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       --拠点
       -- ----------------------------------------------------
@@ -123,11 +145,18 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itp.doc_type            = 'PORC'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -135,9 +164,14 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    rsl.oe_order_header_id  = xola.header_id
       AND    rsl.oe_order_line_id    = xola.line_id
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xrpm.item_div_ahead     = '5'
@@ -152,6 +186,12 @@ SELECT
       AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND    mcb_h.segment1 = '5'
+      AND    gic_h.category_id         = mcb_h.category_id
+      AND    gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND    itp.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       -- 振替入庫・振替有償
       -- ----------------------------------------------------
@@ -179,7 +219,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -197,12 +239,19 @@ SELECT
       AND    xicv2.item_class_code   <> '5'
       AND    rsl.shipment_header_id  = itp.doc_id
       AND    rsl.line_num            = itp.doc_line
-      AND    ooha.header_id          = rsl.oe_order_header_id
+-- 2009/11/12 Del Start
+      --AND    ooha.header_id          = rsl.oe_order_header_id
+-- 2009/11/12 Del End
       AND    xoha.header_id          = rsl.oe_order_header_id
-      AND    ooha.header_id          = xoha.header_id
+-- 2009/11/12 Del Start
+      --AND    ooha.header_id          = xoha.header_id
+-- 2009/11/12 Del End
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.line_id            = rsl.oe_order_line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
@@ -240,7 +289,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -264,12 +315,19 @@ SELECT
       AND    xrpm.item_div_origin    = itmc2.item_class_code
       AND    rsl.shipment_header_id  = itp.doc_id
       AND    rsl.line_num            = itp.doc_line
-      AND    ooha.header_id          = rsl.oe_order_header_id
+-- 2009/11/12 Del Start
+      --AND    ooha.header_id          = rsl.oe_order_header_id
+-- 2009/11/12 Del End
       AND    xoha.header_id          = rsl.oe_order_header_id
-      AND    ooha.header_id          = xoha.header_id
+-- 2009/11/12 Del Start
+      --AND    ooha.header_id          = xoha.header_id
+-- 2009/11/12 Del End
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.line_id            = rsl.oe_order_line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
@@ -301,7 +359,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -327,9 +387,14 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    rsl.oe_order_header_id  = xoha.header_id
       AND    rsl.oe_order_line_id    = xola.line_id
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod Start
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
@@ -361,7 +426,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -379,10 +446,15 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    xoha.header_id          = rsl.oe_order_header_id
       AND    xola.line_id            = rsl.oe_order_line_id
-      AND    ooha.header_id          = rsl.oe_order_header_id
-      AND    ooha.header_id          = xoha.header_id
+-- 2009/11/12 Del Start
+      --AND    ooha.header_id          = rsl.oe_order_header_id
+      --AND    ooha.header_id          = xoha.header_id
+-- 2009/11/12 Del End
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
@@ -419,7 +491,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -437,11 +511,16 @@ SELECT
       AND    xrpm.item_div_origin    = xicv2.item_class_code
       AND    rsl.shipment_header_id  = itp.doc_id
       AND    rsl.line_num            = itp.doc_line
-      AND    ooha.header_id          = rsl.oe_order_header_id
+-- 2009/11/12 Del Start
+      --AND    ooha.header_id          = rsl.oe_order_header_id
+-- 2009/11/12 Del End
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xoha.header_id          = rsl.oe_order_header_id
       AND    xola.line_id            = rsl.oe_order_line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
@@ -472,11 +551,18 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itp.doc_type            = 'PORC'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -484,9 +570,14 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    xoha.header_id          = rsl.oe_order_header_id
       AND    xola.line_id            = rsl.oe_order_line_id
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Add Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Add End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '3'
@@ -496,6 +587,12 @@ SELECT
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND    mcb_h.segment1 = '5'
+      AND    gic_h.category_id         = mcb_h.category_id
+      AND    gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND    itp.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       -- その他
       -- ----------------------------------------------------
@@ -517,11 +614,18 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itp.doc_type            = 'PORC'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -529,15 +633,26 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    xoha.header_id          = rsl.oe_order_header_id
       AND    xola.line_id            = rsl.oe_order_line_id
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.source_document_code = 'RMA'
       AND    xrpm.dealings_div       IN ('504','509')
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND    mcb_h.segment1 = '5'
+      AND    gic_h.category_id         = mcb_h.category_id
+      AND    gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND    itp.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
     -- ----------------------------------------------------
     -- PORC :経理受払区分購買関連（仕入）
@@ -560,6 +675,11 @@ SELECT
             ,rcv_shipment_lines               rsl
             ,rcv_transactions                 rt
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itp.doc_type            = 'PORC'
       AND    itp.completed_ind       = 1
       AND    rsl.shipment_header_id  = itp.doc_id
@@ -571,6 +691,12 @@ SELECT
       AND    xrpm.source_document_code = rsl.source_document_code
       AND    xrpm.transaction_type   = rt.transaction_type
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND  mcb_h.segment1 = '5'
+      AND  gic_h.category_id         = mcb_h.category_id
+      AND  gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND  itp.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
     -- 有償・拠点
     -- ----------------------------------------------------
@@ -592,11 +718,18 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itp.doc_type            = 'OMSO'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -604,9 +737,14 @@ SELECT
       AND    wdd.source_header_id    = xoha.header_id
       AND    wdd.source_line_id      = xola.line_id
       AND    otta.attribute1         IN ('1','2')
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    xrpm.item_div_ahead     = '5'
@@ -619,6 +757,12 @@ SELECT
       AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND  mcb_h.segment1 = '5'
+      AND  gic_h.category_id         = mcb_h.category_id
+      AND  gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND  itp.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
     -- 振替入庫・振替有償
     -- ----------------------------------------------------
@@ -646,7 +790,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -666,8 +812,13 @@ SELECT
       AND    xoha.header_id          = wdd.source_header_id
       AND    xola.line_id            = wdd.source_line_id
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    xoha.header_id          = ooha.header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
@@ -704,7 +855,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -728,8 +881,13 @@ SELECT
       AND    xrpm.item_div_origin    = itmc2.item_class_code
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    xoha.header_id          = wdd.source_header_id
-      AND    ooha.header_id          = xoha.header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Del Start
+      --AND    ooha.header_id          = xoha.header_id
+-- 2009/11/12 Del End
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod Start
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
@@ -762,7 +920,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -780,8 +940,13 @@ SELECT
       AND    wdd.source_header_id    = xoha.header_id
       AND    wdd.source_line_id      = xola.line_id
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    xoha.header_id          = ooha.header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
@@ -812,7 +977,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -828,8 +995,13 @@ SELECT
       AND    xola.request_item_code  <> xola.shipping_item_code
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    xoha.header_id          = wdd.source_header_id
-      AND    xoha.header_id          = ooha.header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
@@ -868,7 +1040,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -890,8 +1064,13 @@ SELECT
       AND    xoha.header_id          = wdd.source_header_id
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.line_id            = wdd.source_line_id
-      AND    xoha.header_id          = ooha.header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
@@ -921,20 +1100,32 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+            ,gmi_item_categories    gic_h
+            ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itp.doc_type            = 'OMSO'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    wdd.source_header_id    = xoha.header_id
       AND    wdd.source_line_id      = xola.line_id
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '3'
@@ -943,6 +1134,12 @@ SELECT
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND  mcb_h.segment1 = '5'
+      AND  gic_h.category_id         = mcb_h.category_id
+      AND  gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND  itp.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
     -- その他
     -- ----------------------------------------------------
@@ -964,11 +1161,18 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itp.doc_type            = 'OMSO'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -976,13 +1180,24 @@ SELECT
       AND    xoha.header_id          = wdd.source_header_id
       AND    xola.line_id            = wdd.source_line_id
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('504','509')
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND  mcb_h.segment1 = '5'
+      AND  gic_h.category_id         = mcb_h.category_id
+      AND  gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND  itp.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       -- 倉庫移動
       -- ----------------------------------------------------
@@ -1006,6 +1221,11 @@ SELECT
             ,xxinv_mov_req_instr_lines  xmril
             ,xxinv_mov_req_instr_headers xmrih
             ,xxcmn_rcv_pay_mst          xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itp.doc_type            = 'XFER'
       AND    itp.completed_ind       = 1
       AND    xmrih.mov_hdr_id        = xmril.mov_hdr_id
@@ -1019,6 +1239,12 @@ SELECT
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND  mcb_h.segment1 = '5'
+      AND  gic_h.category_id         = mcb_h.category_id
+      AND  gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND  itp.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       -- 倉庫移動
       -- ----------------------------------------------------
@@ -1043,6 +1269,11 @@ SELECT
             ,xxinv_mov_req_instr_lines        xmril
             ,xxinv_mov_req_instr_headers      xmrih
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itc.doc_type            = 'TRNI'
       AND    itc.reason_code         = 'X122'
       AND    xmrih.mov_hdr_id        = xmril.mov_hdr_id
@@ -1058,6 +1289,12 @@ SELECT
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND    mcb_h.segment1 = '5'
+      AND    gic_h.category_id         = mcb_h.category_id
+      AND    gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND    itc.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       -- 廃却・見本・総務払出・棚卸減耗
       -- ----------------------------------------------------
@@ -1083,6 +1320,11 @@ SELECT
             ,itc.trans_date             trans_date
       FROM   ic_tran_cmp                itc
             ,xxcmn_rcv_pay_mst          xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itc.doc_type          = 'ADJI'
       AND    itc.reason_code       IN ('X911'
                                       ,'X912'
@@ -1110,6 +1352,12 @@ SELECT
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND    mcb_h.segment1 = '5'
+      AND    gic_h.category_id         = mcb_h.category_id
+      AND    gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND    itc.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       -- 仕入先返品
       -- ----------------------------------------------------
@@ -1131,11 +1379,22 @@ SELECT
             ,itc.trans_date                   trans_date
       FROM   ic_tran_cmp                      itc
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+            -- 品目区分
+            ,gmi_item_categories    gic_h
+            ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itc.doc_type            = 'ADJI'
       AND    itc.reason_code         = 'X201'
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND    mcb_h.segment1 = '5'
+      AND    gic_h.category_id         = mcb_h.category_id
+      AND    gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND    itc.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       -- 浜岡
       -- ----------------------------------------------------
@@ -1156,11 +1415,22 @@ SELECT
             ,itc.trans_date             trans_date
       FROM   ic_tran_cmp                itc
             ,xxcmn_rcv_pay_mst          xrpm
+-- 2009/11/12 Add Start
+            -- 品目区分
+            ,gmi_item_categories    gic_h
+            ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itc.doc_type            = 'ADJI'
       AND    itc.reason_code         = 'X988'
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND    mcb_h.segment1 = '5'
+      AND    gic_h.category_id         = mcb_h.category_id
+      AND    gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND    itc.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(移動)
@@ -1184,6 +1454,11 @@ SELECT
             ,xxinv_mov_req_instr_lines  xmrl
             ,xxinv_mov_req_instr_headers xmrih
             ,xxcmn_rcv_pay_mst          xrpm
+-- 2009/11/12 Add Start
+            -- 品目区分
+            ,gmi_item_categories    gic_h
+            ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itc.doc_type            = 'ADJI'
       AND    itc.reason_code         = 'X123'
       AND    xmrih.mov_hdr_id        = xmrl.mov_hdr_id
@@ -1202,6 +1477,12 @@ SELECT
                                          ELSE xrpm.rcv_pay_div
                                        END
       AND    xrpm.break_col_03       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND    mcb_h.segment1 = '5'
+      AND    gic_h.category_id         = mcb_h.category_id
+      AND    gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND    itc.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       -- その他
       -- ----------------------------------------------------
@@ -1222,11 +1503,22 @@ SELECT
             ,itc.trans_date             trans_date
       FROM   ic_tran_cmp                itc
             ,xxcmn_rcv_pay_mst          xrpm
+-- 2009/11/12 Add Start
+            -- 品目区分
+            ,gmi_item_categories    gic_h
+            ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itc.doc_type            = 'ADJI'
       AND    itc.reason_code        IN ('X942','X943','X950','X951')
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND  mcb_h.segment1 = '5'
+      AND  gic_h.category_id         = mcb_h.category_id
+      AND  gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND  itc.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       -- 品種移動
       -- ----------------------------------------------------
@@ -1308,25 +1600,43 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itp.doc_type            = 'OMSO'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    xoha.header_id          = wdd.source_header_id
       AND    xola.line_id            = wdd.source_line_id
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('504','509')
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_03       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND    mcb_h.segment1 = '5'
+      AND    gic_h.category_id         = mcb_h.category_id
+      AND    gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND    itp.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
       UNION ALL
       -- 廃却・見本
       -- ----------------------------------------------------
@@ -1347,11 +1657,18 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/11/12 Del Start
+            --,oe_order_headers_all             ooha
+-- 2009/11/12 Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/11/12 Add Start
+             -- 品目区分
+             ,gmi_item_categories    gic_h
+             ,mtl_categories_b       mcb_h
+-- 2009/11/12 Add End
       WHERE  itp.doc_type            = 'PORC'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -1359,15 +1676,26 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    xoha.header_id          = rsl.oe_order_header_id
       AND    xola.line_id            = rsl.oe_order_line_id
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del Start
+      --AND    xoha.header_id          = ooha.header_id
+-- 2009/11/12 Del End
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/12 Mod Start
+      --AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/12 Mod End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.source_document_code = 'RMA'
       AND    xrpm.dealings_div       IN ('504','509')
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_03       IS NOT NULL
+-- 2009/11/12 Add Start
+      AND  mcb_h.segment1 = '5'
+      AND  gic_h.category_id         = mcb_h.category_id
+      AND  gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+      AND  itp.item_id               = gic_h.item_id
+-- 2009/11/12 Add End
     --****************************************************************************
     -- 対象のデータを取得 END
     --****************************************************************************
