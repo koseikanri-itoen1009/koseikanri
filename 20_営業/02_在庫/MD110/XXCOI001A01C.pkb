@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *                                       [T1_0387]データ抽出条件の変更（レコードタイプ）
  *  2009/05/01    1.4   T.Nakamura       [T1_0485]サマリ、詳細抽出条件の追加、詳細の取得情報の変更
  *                                                出荷依頼ステータス04対象のサマリ、詳細の更新情報の変更
+ *  2009/05/14    1.5   H.Sasaki         [T1_0387]入庫情報一時表の存在チェック条件を修正
  *
  *****************************************************************************************/
 --
@@ -2940,13 +2941,13 @@ AS
       INTO    ov_rowid
             , ot_req_status
       FROM    xxcoi_storage_information xsi
-      WHERE   xsi.slip_num = gv_slip_num
-      AND     xsi.slip_date = g_summary_tab ( in_slip_cnt ) .slip_date
-      AND     xsi.base_code = g_summary_tab ( in_slip_cnt ) .base_code
-      AND     xsi.warehouse_code = iv_store_code
-      AND     xsi.parent_item_code = g_summary_tab ( in_slip_cnt ) .parent_item_no
-      AND     xsi.item_code = g_summary_tab ( in_slip_cnt ) .item_no
-      AND     xsi.slip_type = cv_slip_type
+      WHERE   xsi.slip_num          = gv_slip_num
+      AND     xsi.slip_date         = g_summary_tab ( in_slip_cnt ) .slip_date
+      AND     xsi.base_code         = g_summary_tab ( in_slip_cnt ) .base_code
+      AND     xsi.warehouse_code    = iv_store_code
+      AND     xsi.parent_item_code  = g_summary_tab ( in_slip_cnt ) .parent_item_no
+      AND     xsi.item_code         = g_summary_tab ( in_slip_cnt ) .item_no
+      AND     xsi.slip_type         = cv_slip_type
       AND     xsi.summary_data_flag = cv_y_flag
       ;
       ob_record_valid := TRUE;
@@ -3044,16 +3045,24 @@ AS
       INTO   ov_rowid
             ,ot_req_status
       FROM   xxcoi_storage_information xsi
-      WHERE  xsi.slip_num = gv_slip_num
-      AND    xsi.slip_date = g_detail_tab ( in_line_cnt ) .slip_date
-      AND    xsi.base_code = g_detail_tab ( in_line_cnt ) .base_code
-      AND    xsi.warehouse_code = iv_store_code
-      AND    xsi.parent_item_code = g_detail_tab ( in_line_cnt ) .parent_item_no
-      AND    xsi.item_code = g_detail_tab ( in_line_cnt ) .item_no
-      AND    xsi.taste_term = g_detail_tab ( in_line_cnt ) .taste_term
-      AND    xsi.difference_summary_code = g_detail_tab ( in_line_cnt ) .difference_summary_code
-      AND    xsi.slip_type = cv_slip_type
-      AND    xsi.summary_data_flag = cv_n_flag
+      WHERE  xsi.slip_num                 = gv_slip_num
+      AND    xsi.slip_date                = g_detail_tab ( in_line_cnt ) .slip_date
+      AND    xsi.base_code                = g_detail_tab ( in_line_cnt ) .base_code
+      AND    xsi.warehouse_code           = iv_store_code
+      AND    xsi.parent_item_code         = g_detail_tab ( in_line_cnt ) .parent_item_no
+      AND    xsi.item_code                = g_detail_tab ( in_line_cnt ) .item_no
+-- == 2009/05/14 V1.5 Modified START ===============================================================
+--      AND    xsi.taste_term               = g_detail_tab ( in_line_cnt ) .taste_term
+--      AND    xsi.difference_summary_code  = g_detail_tab ( in_line_cnt ) .difference_summary_code
+      AND    (   (xsi.taste_term          = g_detail_tab ( in_line_cnt ) .taste_term)
+              OR (xsi.taste_term IS NULL)
+             )
+      AND    (   (xsi.difference_summary_code  = g_detail_tab ( in_line_cnt ) .difference_summary_code)
+              OR (xsi.difference_summary_code IS NULL)
+             )
+-- == 2009/05/14 V1.5 Modified END   ===============================================================
+      AND    xsi.slip_type                = cv_slip_type
+      AND    xsi.summary_data_flag        = cv_n_flag
       ;
       ob_record_valid := TRUE;
     EXCEPTION
