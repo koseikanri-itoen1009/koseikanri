@@ -7,7 +7,7 @@ AS
  * Description      : 品目振替
  * MD.050           : 品目振替 T_MD050_BPO_520
  * MD.070           : 品目振替 T_MD070_BPO_52C
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,7 +40,8 @@ AS
  *  chk_mst_data           マスタ存在チェックを行うプロシージャ       (A-22)
  *  chk_close_period       在庫クローズチェックを行うプロシージャ     (A-23)
  *  chk_qty_over_plan      引当可能数超過チェック(予定)を行うプロシージャ (A-24)
- *  chk_qty_over_actual    引当可能数超過チェック(実績)を行うプロシージャ(A-25)
+ *  chk_qty_over_actual    引当可能数超過チェック(実績)を行うプロシージャ
+ *  chk_minus_qty          マイナス在庫チェック
  *  get_batch_data         バッチデータ取得を行うプロシージャ         (A-26)
  *  get_item_data          品目データ取得を行うプロシージャ           (A-27)
  *  chk_and_ins_formula    フォーミュラ有無チェック 登録処理          (A-28)
@@ -63,6 +64,7 @@ AS
  *  2009/01/15    1.1  SCS    伊藤 ひとみ  指摘2,7対応
  *  2009/02/03    1.2  SCS    伊藤 ひとみ  本番障害#1113対応
  *  2009/03/03    1.3  SCS    椎名 昭圭    本番障害#1241,#1251対応
+ *  2009/03/19    1.4  SCS    椎名 昭圭    本番障害#1308対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -158,6 +160,9 @@ AS
   gv_msg_xxinv_10184    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10184'; -- 引当可能在庫不足エラーメッセージ
   gv_msg_xxinv_10185    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10185'; -- 引当可能在庫数超過エラーメッセージ
 -- 2009/01/15 H.Itou Add End
+-- 2009/03/19 v1.4 ADD START
+  gv_msg_xxinv_10188    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10188'; -- マイナス在庫チェックエラーメッセージ
+-- 2009/03/19 v1.4 ADD END
 --
   -- トークン
   gv_tkn_parameter      CONSTANT VARCHAR2(15)   := 'PARAMETER';
@@ -1215,11 +1220,12 @@ AS
 --
   END chk_close_period;
 --
+-- 2009/03/19 v1.4 UPDATE START
   /**********************************************************************************
    * Procedure Name   : chk_qty_over_actual
    * Description      : 引当可能数超過チェック(実績)(A-25)
    ***********************************************************************************/
-  PROCEDURE chk_qty_over_actual(
+/*  PROCEDURE chk_qty_over_actual(
     ir_masters_rec IN OUT NOCOPY masters_rec -- 1.チェック対象レコード
 -- 2009/01/15 H.Itou Add Start 指摘8対応
   , id_standard_date IN DATE                   -- 2.有効日付
@@ -1403,6 +1409,170 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END chk_qty_over_actual;
+*/
+  /**********************************************************************************
+   * Procedure Name   : chk_qty_over_actual
+   * Description      : 引当可能数超過チェック(実績)
+   ***********************************************************************************/
+  PROCEDURE chk_qty_over_actual(
+    ir_masters_rec IN OUT NOCOPY masters_rec -- 1.チェック対象レコード
+  , id_standard_date IN DATE                   -- 2.有効日付
+  , in_qty           IN NUMBER                 -- 3.実績数量
+  , ov_errbuf      OUT    NOCOPY VARCHAR2    -- エラー・メッセージ           --# 固定 #
+  , ov_retcode     OUT    NOCOPY VARCHAR2    -- リターン・コード             --# 固定 #
+  , ov_errmsg      OUT    NOCOPY VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_qty_over_actual'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    -- *** ローカル変数 ***
+    ln_can_enc_qty     NUMBER;  -- 引当可能数
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 引当可能数の算出
+    ln_can_enc_qty := xxcmn_common_pkg.get_can_enc_qty(
+                         ir_masters_rec.inventory_location_id     -- 1.保管倉庫ID
+                       , ir_masters_rec.from_item_id              -- 2.品目ID
+                       , ir_masters_rec.from_lot_id               -- 3.ロットID
+                       , id_standard_date);                       -- 4.有効日付
+--
+    -- 引当可能数より大きい場合
+    IF ( ln_can_enc_qty < in_qty ) THEN
+      -- エラーメッセージを取得
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
+                                          , gv_msg_xxinv_10185
+                                          , gv_tkn_location      , ir_masters_rec.inventory_location_code
+                                          , gv_tkn_item          , ir_masters_rec.from_item_no
+                                          , gv_tkn_lot           , ir_masters_rec.lot_no
+                                          , gv_tkn_standard_date , TO_CHAR(id_standard_date, gv_yyyymmdd));
+      -- 共通関数例外ハンドラ
+      RAISE global_api_expt;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_qty_over_actual;
+--
+  /**********************************************************************************
+   * Procedure Name   : chk_minus_qty
+   * Description      : マイナス在庫チェック
+   ***********************************************************************************/
+  PROCEDURE chk_minus_qty(
+    ir_masters_rec IN OUT NOCOPY masters_rec -- 1.チェック対象レコード
+  , in_qty         IN NUMBER                 -- 2.数量
+  , ov_errbuf      OUT    NOCOPY VARCHAR2    -- エラー・メッセージ           --# 固定 #
+  , ov_retcode     OUT    NOCOPY VARCHAR2    -- リターン・コード             --# 固定 #
+  , ov_errmsg      OUT    NOCOPY VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_minus_qty'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    -- *** ローカル変数 ***
+    ln_onhand_stk_qty  NUMBER;  -- 手持在庫数量格納用
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 手持在庫数量の取得
+    ln_onhand_stk_qty := xxcmn_common_pkg.get_stock_qty(
+                                     ir_masters_rec.inventory_location_id     -- 1.保管倉庫ID
+                                   , ir_masters_rec.from_item_id              -- 2.品目ID
+                                   , ir_masters_rec.from_lot_id);             -- 3.ロットID
+--
+--
+    -- 手持在庫数量より大きい場合
+    IF ( ln_onhand_stk_qty < in_qty ) THEN
+      -- エラーメッセージを取得
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
+                                          , gv_msg_xxinv_10188
+                                          , gv_tkn_location      , ir_masters_rec.inventory_location_code
+                                          , gv_tkn_item          , ir_masters_rec.from_item_no
+                                          , gv_tkn_lot           , ir_masters_rec.lot_no);
+-- 2009/01/15 H.Itou Mod End
+      -- 共通関数例外ハンドラ
+      RAISE global_api_expt;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_minus_qty;
+-- 2009/03/19 v1.4 UPDATE END
 --
   /**********************************************************************************
    * Procedure Name   : chk_qty_over_plan
@@ -6413,6 +6583,8 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- 2009/03/19 v1.4 UPDATE START
+/*
 -- 2009/01/15 H.Itou Add Start 指摘8対応
       -- ===============================
       -- 引当可能数超過チェック(実績)(A-25)
@@ -6431,6 +6603,23 @@ AS
         RAISE global_process_expt;
       END IF;
 -- 2009/01/15 H.Itou Add End
+*/
+      -- ===============================
+      -- マイナス在庫チェック
+      -- ===============================
+      chk_minus_qty(lr_masters_rec                 -- 1.チェック対象レコード
+                  , lr_masters_rec.trans_qty       -- 2.予定数量
+                  , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                  , lv_retcode      -- リターン・コード             --# 固定 #
+                  , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+--
+-- 2009/03/19 v1.4 UPDATE END
 --
       -- ===============================
       -- リリースバッチ(A-33)
@@ -6563,6 +6752,8 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- 2009/03/19 v1.4 UPDATE START
+/*
       -- ===============================
       -- 引当可能数超過チェック(実績)(A-25)
       -- ===============================
@@ -6582,6 +6773,40 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+*/
+      -- ===============================
+      -- マイナス在庫チェック
+      -- ===============================
+      chk_minus_qty(lr_masters_rec                 -- 1.チェック対象レコード
+                  , TO_NUMBER(iv_quantity)         -- 2.実績数量
+                  , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                  , lv_retcode      -- リターン・コード             --# 固定 #
+                  , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+--
+      -- ===============================
+      -- 引当可能数超過チェック(実績)
+      -- ===============================
+      -- 振替元品目 出庫数新規チェック
+      chk_qty_over_actual(lr_masters_rec          -- 1.チェック対象レコード
+                        , id_sysdate              -- 2.有効日付
+                        , TO_NUMBER(iv_quantity)  -- 3.実績数量
+                        , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                        , lv_retcode      -- リターン・コード             --# 固定 #
+                        , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+--
+-- 2009/03/19 v1.4 UPDATE END
       -- ====================================
       -- 工順有無チェック(A-2)
       -- ====================================
