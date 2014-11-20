@@ -41,6 +41,8 @@ AS
  *                                       ファイル名を出力するように修正
  *                                       コンカレントパラメータの値セット変更(XXCMN_S_10_DATE -> XXCMN_YYYYMMDD) パラメータ結果に時分秒除外
  *  2009/04/02    1.7   Y.Kuboshima      障害T1_0153,T1_0154の対応
+ *  2009/05/22    1.8   H.Yoshikawa      障害T1_0317の対応 製品商品区分の条件削除し
+ *                                                         品目コードの先導２桁が「00」に変更
  *
  *****************************************************************************************/
 --
@@ -169,7 +171,9 @@ AS
   cv_hon_product_class  CONSTANT VARCHAR2(12)  := '本社商品区分';        -- 本社商品区分
   cv_item_product_class CONSTANT VARCHAR2(12)  := '商品製品区分';        -- 商品製品区分
   cv_csv_mode           CONSTANT VARCHAR2(1)   := 'w';                   -- csvファイルオープン時のモード
-  cv_product_div        CONSTANT VARCHAR2(1)   := '2';                   -- 製品(2)
+-- Ver1.8  2009/05/22 Del  商品製品区分の条件を削除
+--  cv_product_div        CONSTANT VARCHAR2(1)   := '2';                   -- 製品(2)
+--
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -578,22 +582,27 @@ AS
                  ,xoiv.search_update_date                                    -- 検索対象更新日
       FROM        xxcmm_opmmtl_items_v    xoiv                               --
                  ,ic_item_mst_b           parent_iimb                        -- OPM品目（親品目）
-                 ,gmi_item_categories     gic_sales                          -- OPM品目カテゴリ割当（商品製品区分）
-                 ,mtl_category_sets_vl    mcsv_sales                         -- カテゴリセットビュー（商品製品区分）
-                 ,mtl_categories_vl       mcv_sales                          -- カテゴリビュー（商品製品区分）
-      WHERE       xoiv.item_id                 = gic_sales.item_id           -- 商品製品区分
-      AND         gic_sales.category_set_id    = mcsv_sales.category_set_id  -- 商品製品区分
-      AND         gic_sales.category_id        = mcv_sales.category_id       -- 商品製品区分
-      AND         mcsv_sales.category_set_name = cv_item_product_class       -- 商品製品区分
-      AND         mcv_sales.segment1           = cv_product_div              -- カテゴリ．商品製品区分＝２（製品）
--- Ver1.4 Mod 親品目が設定されていない品目を抽出対象とするよう修正 2009/2/10
---      AND         xoiv.parent_item_id          = parent_iimb.item_id         -- 親品目ID＝品目ID
-      AND         xoiv.parent_item_id          = parent_iimb.item_id(+)      -- 親品目ID＝品目ID
+-- Ver1.8  2009/05/22 Del  商品製品区分の条件を削除
+--                 ,gmi_item_categories     gic_sales                          -- OPM品目カテゴリ割当（商品製品区分）
+--                 ,mtl_category_sets_vl    mcsv_sales                         -- カテゴリセットビュー（商品製品区分）
+--                 ,mtl_categories_vl       mcv_sales                          -- カテゴリビュー（商品製品区分）
+--      WHERE       xoiv.item_id                 = gic_sales.item_id           -- 商品製品区分
+--      AND         gic_sales.category_set_id    = mcsv_sales.category_set_id  -- 商品製品区分
+--      AND         gic_sales.category_id        = mcv_sales.category_id       -- 商品製品区分
+--      AND         mcsv_sales.category_set_name = cv_item_product_class       -- 商品製品区分
+--      AND         mcv_sales.segment1           = cv_product_div              -- カテゴリ．商品製品区分＝２（製品）
 -- End
-      AND         xoiv.search_update_date     >= gd_date_from                -- 検索対象更新日 >= 入力パラメータの最終更新日（開始）
-      AND         xoiv.search_update_date     <= gd_date_to                  -- 検索対象更新日 <= 入力パラメータの最終更新日（終了）
-      AND         xoiv.start_date_active      <= gd_date_to + 1              -- 適用開始日     <= 入力パラメータの最終更新日（終了）＋1日
-      AND         xoiv.end_date_active        >= gd_date_to + 1              -- 適用終了日     >= 入力パラメータの最終更新日（終了）＋1日
+-- Ver1.8  2009/05/22 Add  品目コードの先頭２桁が「00」を対象とするよう条件を追加
+      WHERE       SUBSTRB( xoiv.item_no, 1, 2 ) = cv_item_code_cut           -- 品目コードの先頭２桁が「00」
+-- End
+-- Ver1.4 Mod 親品目が設定されていない品目を抽出対象とするよう修正 2009/2/10
+--      AND         xoiv.parent_item_id           = parent_iimb.item_id         -- 親品目ID＝品目ID
+      AND         xoiv.parent_item_id           = parent_iimb.item_id(+)     -- 親品目ID＝品目ID
+-- End
+      AND         xoiv.search_update_date      >= gd_date_from               -- 検索対象更新日 >= 入力パラメータの最終更新日（開始）
+      AND         xoiv.search_update_date      <= gd_date_to                 -- 検索対象更新日 <= 入力パラメータの最終更新日（終了）
+      AND         xoiv.start_date_active       <= gd_date_to + 1             -- 適用開始日     <= 入力パラメータの最終更新日（終了）＋1日
+      AND         xoiv.end_date_active         >= gd_date_to + 1             -- 適用終了日     >= 入力パラメータの最終更新日（終了）＋1日
       ORDER BY    xoiv.item_no;
     --
     l_csv_item_tab                     xxcmm004a12c_ttype;                  -- 商品IF出力データ

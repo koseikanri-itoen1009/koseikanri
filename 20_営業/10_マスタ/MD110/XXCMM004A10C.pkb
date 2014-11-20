@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcmm004a10c
+CREATE OR REPLACE PACKAGE BODY XXCMM004A10C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -43,6 +43,7 @@ AS
  *  2009/02/17    1.5   R.Takigawa       単体テストバグ修正
  *                                        1.本社商品区分と商品製品区分の入れ替え
  *  2009/04/14    1.6   H.Yoshikawa      障害T1_0214対応  Disc品目アドオン「内容量」「内訳入数」桁数変更
+ *  2009/05/26    1.7   H.Yoshikawa      障害T1_0317対応  品目コードの不要な範囲設定を削除
  *
  *****************************************************************************************/
 --
@@ -175,9 +176,11 @@ AS
   --共通化のためコメントアウト 2009/01/23
   --cv_date_format          CONSTANT VARCHAR2(10) := 'YYYY/MM/DD'; -- 日付書式
   --
-  --デフォルト値
-  cv_item_code_from       CONSTANT VARCHAR2(20)  := '0000001';    -- 品名コード開始
-  cv_item_code_to         CONSTANT VARCHAR2(20)  := '3999999';    -- 品名コード終了
+-- Ver1.7 2009/05/27  Del  不要なため削除
+--  --デフォルト値
+--  cv_item_code_from       CONSTANT VARCHAR2(20)  := '0000001';    -- 品名コード開始
+--  cv_item_code_to         CONSTANT VARCHAR2(20)  := '3999999';    -- 品名コード終了
+-- End1.7
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -396,16 +399,25 @@ AS
     -- 品名コード
     lv_step      := 'A-1.2';
     lv_msg_token := '品名コードチェック';
-    -- 品名コード（開始）がNULLなら'0000001'をセット 2009/01/20追加
-    IF ( gv_item_code_from IS NULL ) THEN
-      gv_item_code_from := cv_item_code_from;
-    END IF;
-    -- 品名コード（終了）がNULLなら'3999999'をセット 2009/01/20追加
-    IF ( gv_item_code_to IS NULL ) THEN
-      gv_item_code_to := cv_item_code_to;
-    END IF;
+-- Ver1.7 2009/05/27  Del  不要なため削除
+--    -- 品名コード（開始）がNULLなら'0000001'をセット 2009/01/20追加
+--    IF ( gv_item_code_from IS NULL ) THEN
+--      gv_item_code_from := cv_item_code_from;
+--    END IF;
+--    -- 品名コード（終了）がNULLなら'3999999'をセット 2009/01/20追加
+--    IF ( gv_item_code_to IS NULL ) THEN
+--      gv_item_code_to := cv_item_code_to;
+--    END IF;
+-- End1.7
+--
+-- Ver1.7 2009/05/27  Mod  不要な品目コード範囲設定を削除に伴う修正
     -- 品名コード（開始）と品名コード（終了）の比較
-    IF ( gv_item_code_from > gv_item_code_to ) THEN
+    -- 開始、終了とも指定時にチェックする
+--    IF ( gv_item_code_from > gv_item_code_to ) THEN
+    IF  ( gv_item_code_from IS NOT NULL )
+    AND ( gv_item_code_to   IS NOT NULL )
+    AND ( gv_item_code_from > gv_item_code_to ) THEN
+-- End1.7
       lv_errmsg := xxccp_common_pkg.get_msg(
           iv_application  => cv_app_name_xxcmm,
           iv_name         => cv_msg_xxcmm_00475
@@ -843,8 +855,16 @@ AS
              OR (   gd_date_to   IS NOT NULL
                 AND TRUNC( xoiv.search_update_date ) <= gd_date_to   ))
 -- End
-      AND     ( xoiv.item_code   >= gv_item_code_from
-      AND       xoiv.item_code   <= gv_item_code_to )                   --品名コード
+-- Ver1.7 2009/05/27  Mod  不要な品目コード範囲設定を削除に伴う修正
+--      AND     ( xoiv.item_code   >= gv_item_code_from
+--      AND       xoiv.item_code   <= gv_item_code_to )                   --品名コード
+      AND     ( (   gv_item_code_from IS NULL )
+             OR (   gv_item_code_from IS NOT NULL
+                AND xoiv.item_code   >= gv_item_code_from ))
+      AND     ( (   gv_item_code_to   IS NULL )
+             OR (   gv_item_code_to   IS NOT NULL
+                AND xoiv.item_code   <= gv_item_code_to   ))
+-- End1.7
       AND   ( ( gn_item_status IS NULL )
       OR      ( gn_item_status IS NOT NULL AND xoiv.item_status = gn_item_status ) ) -- 品目ステータス
       ORDER BY  se.seisakugun,
@@ -901,8 +921,16 @@ AS
              OR (   gd_date_to   IS NOT NULL
                 AND xsibh.apply_date <= gd_date_to   ))
 -- End
-      AND     ( xoiv.item_code    >= gv_item_code_from
-      AND       xoiv.item_code    <= gv_item_code_to )                          -- 品名コード
+-- Ver1.7 2009/05/27  Mod  不要な品目コード範囲設定を削除に伴う修正
+--      AND     ( xoiv.item_code    >= gv_item_code_from
+--      AND       xoiv.item_code    <= gv_item_code_to )                          -- 品名コード
+      AND     ( (   gv_item_code_from IS NULL )
+             OR (   gv_item_code_from IS NOT NULL
+                AND xoiv.item_code   >= gv_item_code_from ))
+      AND     ( (   gv_item_code_to   IS NULL )
+             OR (   gv_item_code_to   IS NOT NULL
+                AND xoiv.item_code   <= gv_item_code_to   ))
+-- End1.7
       AND   ( ( gn_item_status IS NULL )
       OR      ( gn_item_status IS NOT NULL AND xsibh.item_status = gn_item_status ) ) -- 品目ステータス
 -- Ver1.4 2009/02/12  ソートを修正
@@ -2210,5 +2238,5 @@ AS
 --
 --###########################  固定部 END   #######################################################
 --
-END xxcmm004a10c;
+END XXCMM004A10C;
 /
