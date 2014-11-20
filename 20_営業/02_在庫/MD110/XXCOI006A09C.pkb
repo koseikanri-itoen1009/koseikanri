@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A09C(body)
  * Description      : 資材取引情報を元に月次在庫受払表（日次）を作成します
  * MD.050           : 日次在庫受払表作成<MD050_COI_006_A09>
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/04/06    1.1   H.Sasaki         [T1_0197]月次在庫受払表（累計）の作成
  *  2009/05/08    1.2   T.Nakamura       [T1_0839]拠点間移動オーダーを受払データ作成対象に追加
  *  2009/05/14    1.3   H.Sasaki         [T1_0840][T1_0842]倉替数量の集計条件変更
+ *  2009/05/27    1.4   H.Sasaki         [T1_1234]累計テーブルの作成方法修正
  *
  *****************************************************************************************/
 --
@@ -290,6 +291,13 @@ AS
 --
     -- *** ローカル変数 ***
     ln_dummy      NUMBER;       -- ダミー変数
+-- == 2009/05/27 V1.4 Added START ===============================================================
+    lt_organization_id            xxcoi_inv_reception_daily.organization_id%TYPE;
+    lt_subinventory_type          xxcoi_inv_reception_daily.subinventory_type%TYPE;
+    lt_operation_cost             xxcoi_inv_reception_daily.operation_cost%TYPE;
+    lt_standard_cost              xxcoi_inv_reception_daily.standard_cost%TYPE;
+    lt_book_inventory_quantity    xxcoi_inv_reception_daily.book_inventory_quantity%TYPE;
+-- == 2009/05/27 V1.4 Added END   ===============================================================
 --
     -- ===============================
     -- ローカル・カーソル
@@ -297,56 +305,118 @@ AS
     -- 累計情報取得カーソル
     CURSOR  sum_data_cur
     IS
-      SELECT  xird.base_code                  base_code                             -- 拠点コード
-             ,xird.organization_id            organization_id                       -- 組織ID
-             ,xird.subinventory_type          subinventory_type                     -- 保管場所区分
-             ,xird.subinventory_code          subinventory_code                     -- 保管場所
-             ,SUBSTRB(TO_CHAR(xird.practice_date, cv_date), 1, 6)
-                                              practice_date                         -- 年月
-             ,xird.inventory_item_id          inventory_item_id                     -- 品目ID
-             ,xird.operation_cost             operation_cost                        -- 営業原価
-             ,xird.standard_cost              standard_cost                         -- 標準原価
-             ,xird.sales_shipped              sales_shipped                         -- 売上出庫
-             ,xird.sales_shipped_b            sales_shipped_b                       -- 売上出庫振戻
-             ,xird.return_goods               return_goods                          -- 返品
-             ,xird.return_goods_b             return_goods_b                        -- 返品振戻
-             ,xird.warehouse_ship             warehouse_ship                        -- 倉庫へ返庫
-             ,xird.truck_ship                 truck_ship                            -- 営業車へ出庫
-             ,xird.others_ship                others_ship                           -- 入出庫＿その他出庫
-             ,xird.warehouse_stock            warehouse_stock                       -- 倉庫より入庫
-             ,xird.truck_stock                truck_stock                           -- 営業車より入庫
-             ,xird.others_stock               others_stock                          -- 入出庫＿その他入庫
-             ,xird.change_stock               change_stock                          -- 倉替入庫
-             ,xird.change_ship                change_ship                           -- 倉替出庫
-             ,xird.goods_transfer_old         goods_transfer_old                    -- 商品振替（旧商品）
-             ,xird.goods_transfer_new         goods_transfer_new                    -- 商品振替（新商品）
-             ,xird.sample_quantity            sample_quantity                       -- 見本出庫
-             ,xird.sample_quantity_b          sample_quantity_b                     -- 見本出庫振戻
-             ,xird.customer_sample_ship       customer_sample_ship                  -- 顧客見本出庫
-             ,xird.customer_sample_ship_b     customer_sample_ship_b                -- 顧客見本出庫振戻
-             ,xird.customer_support_ss        customer_support_ss                   -- 顧客協賛見本出庫
-             ,xird.customer_support_ss_b      customer_support_ss_b                 -- 顧客協賛見本出庫振戻
-             ,xird.vd_supplement_stock        vd_supplement_stock                   -- 消化VD補充入庫
-             ,xird.vd_supplement_ship         vd_supplement_ship                    -- 消化VD補充出庫
-             ,xird.inventory_change_in        inventory_change_in                   -- 基準在庫変更入庫
-             ,xird.inventory_change_out       inventory_change_out                  -- 基準在庫変更出庫
-             ,xird.factory_return             factory_return                        -- 工場返品
-             ,xird.factory_return_b           factory_return_b                      -- 工場返品振戻
-             ,xird.factory_change             factory_change                        -- 工場倉替
-             ,xird.factory_change_b           factory_change_b                      -- 工場倉替振戻
-             ,xird.removed_goods              removed_goods                         -- 廃却
-             ,xird.removed_goods_b            removed_goods_b                       -- 廃却振戻
-             ,xird.factory_stock              factory_stock                         -- 工場入庫
-             ,xird.factory_stock_b            factory_stock_b                       -- 工場入庫振戻
-             ,xird.ccm_sample_ship            ccm_sample_ship                       -- 顧客広告宣伝費A自社商品
-             ,xird.ccm_sample_ship_b          ccm_sample_ship_b                     -- 顧客広告宣伝費A自社商品振戻
-             ,xird.wear_decrease              wear_decrease                         -- 棚卸減耗増
-             ,xird.wear_increase              wear_increase                         -- 棚卸減耗減
-             ,xird.selfbase_ship              selfbase_ship                         -- 保管場所移動＿自拠点出庫
-             ,xird.selfbase_stock             selfbase_stock                        -- 保管場所移動＿自拠点入庫
-             ,xird.book_inventory_quantity    book_inventory_quantity               -- 帳簿在庫数
-      FROM    xxcoi_inv_reception_daily   xird                                      -- 月次在庫受払表（日時）
-      WHERE   xird.request_id     =   cn_request_id;
+-- == 2009/05/27 V1.4 Modified START ===============================================================
+--      SELECT  xird.base_code                  base_code                             -- 拠点コード
+--             ,xird.organization_id            organization_id                       -- 組織ID
+--             ,xird.subinventory_type          subinventory_type                     -- 保管場所区分
+--             ,xird.subinventory_code          subinventory_code                     -- 保管場所
+--             ,SUBSTRB(TO_CHAR(xird.practice_date, cv_date), 1, 6)
+--                                              practice_date                         -- 年月
+--             ,xird.inventory_item_id          inventory_item_id                     -- 品目ID
+--             ,xird.operation_cost             operation_cost                        -- 営業原価
+--             ,xird.standard_cost              standard_cost                         -- 標準原価
+--             ,xird.sales_shipped              sales_shipped                         -- 売上出庫
+--             ,xird.sales_shipped_b            sales_shipped_b                       -- 売上出庫振戻
+--             ,xird.return_goods               return_goods                          -- 返品
+--             ,xird.return_goods_b             return_goods_b                        -- 返品振戻
+--             ,xird.warehouse_ship             warehouse_ship                        -- 倉庫へ返庫
+--             ,xird.truck_ship                 truck_ship                            -- 営業車へ出庫
+--             ,xird.others_ship                others_ship                           -- 入出庫＿その他出庫
+--             ,xird.warehouse_stock            warehouse_stock                       -- 倉庫より入庫
+--             ,xird.truck_stock                truck_stock                           -- 営業車より入庫
+--             ,xird.others_stock               others_stock                          -- 入出庫＿その他入庫
+--             ,xird.change_stock               change_stock                          -- 倉替入庫
+--             ,xird.change_ship                change_ship                           -- 倉替出庫
+--             ,xird.goods_transfer_old         goods_transfer_old                    -- 商品振替（旧商品）
+--             ,xird.goods_transfer_new         goods_transfer_new                    -- 商品振替（新商品）
+--             ,xird.sample_quantity            sample_quantity                       -- 見本出庫
+--             ,xird.sample_quantity_b          sample_quantity_b                     -- 見本出庫振戻
+--             ,xird.customer_sample_ship       customer_sample_ship                  -- 顧客見本出庫
+--             ,xird.customer_sample_ship_b     customer_sample_ship_b                -- 顧客見本出庫振戻
+--             ,xird.customer_support_ss        customer_support_ss                   -- 顧客協賛見本出庫
+--             ,xird.customer_support_ss_b      customer_support_ss_b                 -- 顧客協賛見本出庫振戻
+--             ,xird.vd_supplement_stock        vd_supplement_stock                   -- 消化VD補充入庫
+--             ,xird.vd_supplement_ship         vd_supplement_ship                    -- 消化VD補充出庫
+--             ,xird.inventory_change_in        inventory_change_in                   -- 基準在庫変更入庫
+--             ,xird.inventory_change_out       inventory_change_out                  -- 基準在庫変更出庫
+--             ,xird.factory_return             factory_return                        -- 工場返品
+--             ,xird.factory_return_b           factory_return_b                      -- 工場返品振戻
+--             ,xird.factory_change             factory_change                        -- 工場倉替
+--             ,xird.factory_change_b           factory_change_b                      -- 工場倉替振戻
+--             ,xird.removed_goods              removed_goods                         -- 廃却
+--             ,xird.removed_goods_b            removed_goods_b                       -- 廃却振戻
+--             ,xird.factory_stock              factory_stock                         -- 工場入庫
+--             ,xird.factory_stock_b            factory_stock_b                       -- 工場入庫振戻
+--             ,xird.ccm_sample_ship            ccm_sample_ship                       -- 顧客広告宣伝費A自社商品
+--             ,xird.ccm_sample_ship_b          ccm_sample_ship_b                     -- 顧客広告宣伝費A自社商品振戻
+--             ,xird.wear_decrease              wear_decrease                         -- 棚卸減耗増
+--             ,xird.wear_increase              wear_increase                         -- 棚卸減耗減
+--             ,xird.selfbase_ship              selfbase_ship                         -- 保管場所移動＿自拠点出庫
+--             ,xird.selfbase_stock             selfbase_stock                        -- 保管場所移動＿自拠点入庫
+--             ,xird.book_inventory_quantity    book_inventory_quantity               -- 帳簿在庫数
+--      FROM    xxcoi_inv_reception_daily   xird                                      -- 月次在庫受払表（日時）
+--      WHERE   xird.request_id     =   cn_request_id;
+--
+SELECT    sub.base_code                         base_code
+         ,sub.subinventory_code                 subinventory_code
+         ,sub.inventory_item_id                 inventory_item_id
+         ,sub.practice_date                     practice_date
+         ,SUM(xird.sales_shipped)               sales_shipped
+         ,SUM(xird.sales_shipped_b)             sales_shipped_b                       -- 売上出庫振戻
+         ,SUM(xird.return_goods)                return_goods                          -- 返品
+         ,SUM(xird.return_goods_b)              return_goods_b                        -- 返品振戻
+         ,SUM(xird.warehouse_ship)              warehouse_ship                        -- 倉庫へ返庫
+         ,SUM(xird.truck_ship)                  truck_ship                            -- 営業車へ出庫
+         ,SUM(xird.others_ship)                 others_ship                           -- 入出庫＿その他出庫
+         ,SUM(xird.warehouse_stock)             warehouse_stock                       -- 倉庫より入庫
+         ,SUM(xird.truck_stock)                 truck_stock                           -- 営業車より入庫
+         ,SUM(xird.others_stock)                others_stock                          -- 入出庫＿その他入庫
+         ,SUM(xird.change_stock)                change_stock                          -- 倉替入庫
+         ,SUM(xird.change_ship)                 change_ship                           -- 倉替出庫
+         ,SUM(xird.goods_transfer_old)          goods_transfer_old                    -- 商品振替（旧商品）
+         ,SUM(xird.goods_transfer_new)          goods_transfer_new                    -- 商品振替（新商品）
+         ,SUM(xird.sample_quantity)             sample_quantity                       -- 見本出庫
+         ,SUM(xird.sample_quantity_b)           sample_quantity_b                     -- 見本出庫振戻
+         ,SUM(xird.customer_sample_ship)        customer_sample_ship                  -- 顧客見本出庫
+         ,SUM(xird.customer_sample_ship_b)      customer_sample_ship_b                -- 顧客見本出庫振戻
+         ,SUM(xird.customer_support_ss)         customer_support_ss                   -- 顧客協賛見本出庫
+         ,SUM(xird.customer_support_ss_b)       customer_support_ss_b                 -- 顧客協賛見本出庫振戻
+         ,SUM(xird.vd_supplement_stock)         vd_supplement_stock                   -- 消化VD補充入庫
+         ,SUM(xird.vd_supplement_ship)          vd_supplement_ship                    -- 消化VD補充出庫
+         ,SUM(xird.inventory_change_in)         inventory_change_in                   -- 基準在庫変更入庫
+         ,SUM(xird.inventory_change_out)        inventory_change_out                  -- 基準在庫変更出庫
+         ,SUM(xird.factory_return)              factory_return                        -- 工場返品
+         ,SUM(xird.factory_return_b)            factory_return_b                      -- 工場返品振戻
+         ,SUM(xird.factory_change)              factory_change                        -- 工場倉替
+         ,SUM(xird.factory_change_b)            factory_change_b                      -- 工場倉替振戻
+         ,SUM(xird.removed_goods)               removed_goods                         -- 廃却
+         ,SUM(xird.removed_goods_b)             removed_goods_b                       -- 廃却振戻
+         ,SUM(xird.factory_stock)               factory_stock                         -- 工場入庫
+         ,SUM(xird.factory_stock_b)             factory_stock_b                       -- 工場入庫振戻
+         ,SUM(xird.ccm_sample_ship)             ccm_sample_ship                       -- 顧客広告宣伝費A自社商品
+         ,SUM(xird.ccm_sample_ship_b)           ccm_sample_ship_b                     -- 顧客広告宣伝費A自社商品振戻
+         ,SUM(xird.wear_decrease)               wear_decrease                         -- 棚卸減耗増
+         ,SUM(xird.wear_increase)               wear_increase                         -- 棚卸減耗減
+         ,SUM(xird.selfbase_ship)               selfbase_ship                         -- 保管場所移動＿自拠点出庫
+         ,SUM(xird.selfbase_stock)              selfbase_stock                        -- 保管場所移動＿自拠点入庫
+FROM      xxcoi_inv_reception_daily   xird
+         ,(SELECT    vw_xird.base_code
+                    ,vw_xird.subinventory_code
+                    ,vw_xird.inventory_item_id
+                    ,SUBSTRB(TO_CHAR(vw_xird.practice_date, cv_date), 1, 6) practice_date
+           FROM      xxcoi_inv_reception_daily   vw_xird
+           WHERE     vw_xird.request_id = cn_request_id
+          )                           sub
+WHERE     xird.base_code          = sub.base_code
+AND       xird.subinventory_code  = sub.subinventory_code
+AND       xird.inventory_item_id  = sub.inventory_item_id
+AND       xird.practice_date  BETWEEN TRUNC(TO_DATE(sub.practice_date, cv_month))
+                              AND     LAST_DAY(TO_DATE(sub.practice_date, cv_month))
+GROUP BY  sub.base_code
+         ,sub.subinventory_code
+         ,sub.inventory_item_id
+         ,sub.practice_date;
+-- == 2009/05/27 V1.4 Modified END   ===============================================================
     --
     -- 累計情報取得レコード型
     sum_data_rec  sum_data_cur%ROWTYPE;
@@ -371,6 +441,29 @@ AS
     <<set_sum_data_loop>>
     FOR sum_data_rec IN sum_data_cur LOOP
       BEGIN
+-- == 2009/05/27 V1.4 Added START ===============================================================
+        -- ===================================
+        --  0.日次データ取得
+        -- ===================================
+        SELECT  xird.organization_id            organization_id                       -- 組織ID
+               ,xird.subinventory_type          subinventory_type                     -- 保管場所区分
+               ,xird.operation_cost             operation_cost                        -- 営業原価
+               ,xird.standard_cost              standard_cost                         -- 標準原価
+               ,xird.book_inventory_quantity    book_inventory_quantity               -- 帳簿在庫数
+        INTO    lt_organization_id
+               ,lt_subinventory_type
+               ,lt_operation_cost
+               ,lt_standard_cost
+               ,lt_book_inventory_quantity
+        FROM    xxcoi_inv_reception_daily   xird
+        WHERE   xird.base_code          =   sum_data_rec.base_code
+        AND     xird.subinventory_code  =   sum_data_rec.subinventory_code
+        AND     xird.inventory_item_id  =   sum_data_rec.inventory_item_id
+        AND     xird.request_id         =   cn_request_id
+        AND     SUBSTRB(TO_CHAR(xird.practice_date, cv_date), 1, 6)
+                                        =   sum_data_rec.practice_date;
+-- == 2009/05/27 V1.4 Added END   ===============================================================
+        --
         -- ===================================
         --  1.累計テーブルロック取得
         -- ===================================
@@ -389,52 +482,52 @@ AS
         -- ===================================
         -- ロックが取得された場合、入出庫数を更新する
         UPDATE  xxcoi_inv_reception_sum
-        SET     sales_shipped             = sales_shipped           + sum_data_rec.sales_shipped            -- 01.売上出庫
-               ,sales_shipped_b           = sales_shipped_b         + sum_data_rec.sales_shipped_b          -- 02.売上出庫振戻
-               ,return_goods              = return_goods            + sum_data_rec.return_goods             -- 03.返品
-               ,return_goods_b            = return_goods_b          + sum_data_rec.return_goods_b           -- 04.返品振戻
-               ,warehouse_ship            = warehouse_ship          + sum_data_rec.warehouse_ship           -- 05.倉庫へ返庫
-               ,truck_ship                = truck_ship              + sum_data_rec.truck_ship               -- 06.営業車へ出庫
-               ,others_ship               = others_ship             + sum_data_rec.others_ship              -- 07.入出庫＿その他出庫
-               ,warehouse_stock           = warehouse_stock         + sum_data_rec.warehouse_stock          -- 08.倉庫より入庫
-               ,truck_stock               = truck_stock             + sum_data_rec.truck_stock              -- 09.営業車より入庫
-               ,others_stock              = others_stock            + sum_data_rec.others_stock             -- 10.入出庫＿その他入庫
-               ,change_stock              = change_stock            + sum_data_rec.change_stock             -- 11.倉替入庫
-               ,change_ship               = change_ship             + sum_data_rec.change_ship              -- 12.倉替出庫
-               ,goods_transfer_old        = goods_transfer_old      + sum_data_rec.goods_transfer_old       -- 13.商品振替（旧商品）
-               ,goods_transfer_new        = goods_transfer_new      + sum_data_rec.goods_transfer_new       -- 14.商品振替（新商品）
-               ,sample_quantity           = sample_quantity         + sum_data_rec.sample_quantity          -- 15.見本出庫
-               ,sample_quantity_b         = sample_quantity_b       + sum_data_rec.sample_quantity_b        -- 16.見本出庫振戻
-               ,customer_sample_ship      = customer_sample_ship    + sum_data_rec.customer_sample_ship     -- 17.顧客見本出庫
-               ,customer_sample_ship_b    = customer_sample_ship_b  + sum_data_rec.customer_sample_ship_b   -- 18.顧客見本出庫振戻
-               ,customer_support_ss       = customer_support_ss     + sum_data_rec.customer_support_ss      -- 19.顧客協賛見本出庫
-               ,customer_support_ss_b     = customer_support_ss_b   + sum_data_rec.customer_support_ss_b    -- 20.顧客協賛見本出庫振戻
-               ,ccm_sample_ship           = ccm_sample_ship         + sum_data_rec.ccm_sample_ship          -- 21.顧客広告宣伝費A自社商品
-               ,ccm_sample_ship_b         = ccm_sample_ship_b       + sum_data_rec.ccm_sample_ship_b        -- 22.顧客広告宣伝費A自社商品振戻
-               ,vd_supplement_stock       = vd_supplement_stock     + sum_data_rec.vd_supplement_stock      -- 23.消化VD補充入庫
-               ,vd_supplement_ship        = vd_supplement_ship      + sum_data_rec.vd_supplement_ship       -- 24.消化VD補充出庫
-               ,inventory_change_in       = inventory_change_in     + sum_data_rec.inventory_change_in      -- 25.基準在庫変更入庫
-               ,inventory_change_out      = inventory_change_out    + sum_data_rec.inventory_change_out     -- 26.基準在庫変更出庫
-               ,factory_return            = factory_return          + sum_data_rec.factory_return           -- 27.工場返品
-               ,factory_return_b          = factory_return_b        + sum_data_rec.factory_return_b         -- 28.工場返品振戻
-               ,factory_change            = factory_change          + sum_data_rec.factory_change           -- 29.工場倉替
-               ,factory_change_b          = factory_change_b        + sum_data_rec.factory_change_b         -- 30.工場倉替振戻
-               ,removed_goods             = removed_goods           + sum_data_rec.removed_goods            -- 31.廃却
-               ,removed_goods_b           = removed_goods_b         + sum_data_rec.removed_goods_b          -- 32.廃却振戻
-               ,factory_stock             = factory_stock           + sum_data_rec.factory_stock            -- 33.工場入庫
-               ,factory_stock_b           = factory_stock_b         + sum_data_rec.factory_stock_b          -- 34.工場入庫振戻
-               ,wear_decrease             = wear_decrease           + sum_data_rec.wear_decrease            -- 35.棚卸減耗増
-               ,wear_increase             = wear_increase           + sum_data_rec.wear_increase            -- 36.棚卸減耗減
-               ,selfbase_ship             = selfbase_ship           + sum_data_rec.selfbase_ship            -- 37.保管場所移動＿自拠点出庫
-               ,selfbase_stock            = selfbase_stock          + sum_data_rec.selfbase_stock           -- 38.保管場所移動＿自拠点入庫
-               ,book_inventory_quantity   = sum_data_rec.book_inventory_quantity                            -- 39.帳簿在庫数
-               ,last_updated_by           = cn_last_updated_by                                              -- 40.最終更新者
-               ,last_update_date          = SYSDATE                                                         -- 41.最終更新日
-               ,last_update_login         = cn_last_update_login                                            -- 42.最終更新ログイン
-               ,request_id                = cn_request_id                                                   -- 43.要求ID
-               ,program_application_id    = cn_program_application_id                                       -- 44.コンカレント・プログラム・アプリケーションID
-               ,program_id                = cn_program_id                                                   -- 45.コンカレント・プログラムID
-               ,program_update_date       = SYSDATE                                                         -- 46.プログラム更新日
+        SET     sales_shipped             = sum_data_rec.sales_shipped            -- 01.売上出庫
+               ,sales_shipped_b           = sum_data_rec.sales_shipped_b          -- 02.売上出庫振戻
+               ,return_goods              = sum_data_rec.return_goods             -- 03.返品
+               ,return_goods_b            = sum_data_rec.return_goods_b           -- 04.返品振戻
+               ,warehouse_ship            = sum_data_rec.warehouse_ship           -- 05.倉庫へ返庫
+               ,truck_ship                = sum_data_rec.truck_ship               -- 06.営業車へ出庫
+               ,others_ship               = sum_data_rec.others_ship              -- 07.入出庫＿その他出庫
+               ,warehouse_stock           = sum_data_rec.warehouse_stock          -- 08.倉庫より入庫
+               ,truck_stock               = sum_data_rec.truck_stock              -- 09.営業車より入庫
+               ,others_stock              = sum_data_rec.others_stock             -- 10.入出庫＿その他入庫
+               ,change_stock              = sum_data_rec.change_stock             -- 11.倉替入庫
+               ,change_ship               = sum_data_rec.change_ship              -- 12.倉替出庫
+               ,goods_transfer_old        = sum_data_rec.goods_transfer_old       -- 13.商品振替（旧商品）
+               ,goods_transfer_new        = sum_data_rec.goods_transfer_new       -- 14.商品振替（新商品）
+               ,sample_quantity           = sum_data_rec.sample_quantity          -- 15.見本出庫
+               ,sample_quantity_b         = sum_data_rec.sample_quantity_b        -- 16.見本出庫振戻
+               ,customer_sample_ship      = sum_data_rec.customer_sample_ship     -- 17.顧客見本出庫
+               ,customer_sample_ship_b    = sum_data_rec.customer_sample_ship_b   -- 18.顧客見本出庫振戻
+               ,customer_support_ss       = sum_data_rec.customer_support_ss      -- 19.顧客協賛見本出庫
+               ,customer_support_ss_b     = sum_data_rec.customer_support_ss_b    -- 20.顧客協賛見本出庫振戻
+               ,ccm_sample_ship           = sum_data_rec.ccm_sample_ship          -- 21.顧客広告宣伝費A自社商品
+               ,ccm_sample_ship_b         = sum_data_rec.ccm_sample_ship_b        -- 22.顧客広告宣伝費A自社商品振戻
+               ,vd_supplement_stock       = sum_data_rec.vd_supplement_stock      -- 23.消化VD補充入庫
+               ,vd_supplement_ship        = sum_data_rec.vd_supplement_ship       -- 24.消化VD補充出庫
+               ,inventory_change_in       = sum_data_rec.inventory_change_in      -- 25.基準在庫変更入庫
+               ,inventory_change_out      = sum_data_rec.inventory_change_out     -- 26.基準在庫変更出庫
+               ,factory_return            = sum_data_rec.factory_return           -- 27.工場返品
+               ,factory_return_b          = sum_data_rec.factory_return_b         -- 28.工場返品振戻
+               ,factory_change            = sum_data_rec.factory_change           -- 29.工場倉替
+               ,factory_change_b          = sum_data_rec.factory_change_b         -- 30.工場倉替振戻
+               ,removed_goods             = sum_data_rec.removed_goods            -- 31.廃却
+               ,removed_goods_b           = sum_data_rec.removed_goods_b          -- 32.廃却振戻
+               ,factory_stock             = sum_data_rec.factory_stock            -- 33.工場入庫
+               ,factory_stock_b           = sum_data_rec.factory_stock_b          -- 34.工場入庫振戻
+               ,wear_decrease             = sum_data_rec.wear_decrease            -- 35.棚卸減耗増
+               ,wear_increase             = sum_data_rec.wear_increase            -- 36.棚卸減耗減
+               ,selfbase_ship             = sum_data_rec.selfbase_ship            -- 37.保管場所移動＿自拠点出庫
+               ,selfbase_stock            = sum_data_rec.selfbase_stock           -- 38.保管場所移動＿自拠点入庫
+               ,book_inventory_quantity   = lt_book_inventory_quantity            -- 39.帳簿在庫数
+               ,last_updated_by           = cn_last_updated_by                    -- 40.最終更新者
+               ,last_update_date          = SYSDATE                               -- 41.最終更新日
+               ,last_update_login         = cn_last_update_login                  -- 42.最終更新ログイン
+               ,request_id                = cn_request_id                         -- 43.要求ID
+               ,program_application_id    = cn_program_application_id             -- 44.コンカレント・プログラム・アプリケーションID
+               ,program_id                = cn_program_id                         -- 45.コンカレント・プログラムID
+               ,program_update_date       = SYSDATE                               -- 46.プログラム更新日
         WHERE   base_code                 = sum_data_rec.base_code
         AND     subinventory_code         = sum_data_rec.subinventory_code
         AND     inventory_item_id         = sum_data_rec.inventory_item_id
@@ -515,13 +608,13 @@ AS
            ,program_update_date                         -- 56.プログラム更新日
           )VALUES(
             sum_data_rec.base_code                      -- 01
-           ,sum_data_rec.organization_id                -- 02
+           ,lt_organization_id                          -- 02
            ,sum_data_rec.subinventory_code              -- 03
-           ,sum_data_rec.subinventory_type              -- 04
+           ,lt_subinventory_type                        -- 04
            ,sum_data_rec.practice_date                  -- 05
            ,sum_data_rec.inventory_item_id              -- 06
-           ,sum_data_rec.operation_cost                 -- 07
-           ,sum_data_rec.standard_cost                  -- 08
+           ,lt_operation_cost                           -- 07
+           ,lt_standard_cost                            -- 08
            ,sum_data_rec.sales_shipped                  -- 09
            ,sum_data_rec.sales_shipped_b                -- 10
            ,sum_data_rec.return_goods                   -- 11
@@ -560,7 +653,7 @@ AS
            ,sum_data_rec.wear_increase                  -- 44
            ,sum_data_rec.selfbase_ship                  -- 45
            ,sum_data_rec.selfbase_stock                 -- 46
-           ,sum_data_rec.book_inventory_quantity        -- 47
+           ,lt_book_inventory_quantity                  -- 47
            ,cn_created_by                               -- 48
            ,SYSDATE                                     -- 49
            ,cn_last_updated_by                          -- 50
