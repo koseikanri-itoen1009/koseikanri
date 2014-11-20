@@ -197,17 +197,17 @@ FROM (SELECT subsql.line_num          line_num                    -- 明細番号
                   ,pla.cancel_flag              cancel_flag          -- 取消フラグ
 
                   ,CASE -- 数量
-                     -- 発注アドオンステータスが「25:受入あり」以降 かつ、入出庫換算単位に値ありの場合、受入数量 × ケース入数
-                     WHEN (('25' <= :0) AND (ximv.conv_unit IS NOT NULL)) THEN 
+                     -- 発注アドオンステータスが「25:受入あり」以降 かつ、ドリンク製品、入出庫換算単位に値ありの場合、受入数量 × ケース入数
+                     WHEN (('25' <= :0) AND (ximv.conv_unit IS NOT NULL) AND (xicv3.item_class_code = '5') AND (xicv3.prod_class_code = '2')) THEN 
                        TO_NUMBER(pla.attribute7) * ximv.num_of_cases
-                     -- 発注アドオンステータスが「25:受入あり」以降 かつ、入出庫換算単位に値なしの場合、受入数量
-                     WHEN (('25' <= :1) AND (ximv.conv_unit IS NULL)) THEN 
+                     -- 上記以外且つ、発注アドオンステータスが「25:受入あり」以降
+                     WHEN ('25' <= :1) THEN 
                        TO_NUMBER(pla.attribute7)
-                     -- 発注アドオンステータスが「25:受入あり」未満 かつ、入出庫換算単位に値ありの場合、発注数量 × ケース入数
-                     WHEN (('25' > :2) AND  (ximv.conv_unit IS NOT NULL)) THEN 
+                     -- 発注アドオンステータスが「25:受入あり」未満 かつ、ドリンク製品、入出庫換算単位に値ありの場合、発注数量 × ケース入数
+                     WHEN (('25' > :2) AND  (ximv.conv_unit IS NOT NULL) AND (xicv3.item_class_code = '5') AND (xicv3.prod_class_code = '2')) THEN 
                        TO_NUMBER(pla.attribute11) * ximv.num_of_cases
-                     -- 発注アドオンステータスが「25:受入あり」未満 かつ、入出庫換算単位に値ありの場合、発注数量
-                     WHEN (('25' > :3) AND  (ximv.conv_unit IS NULL)) THEN 
+                     -- 上記以外且つ、発注アドオンステータスが「25:受入あり」未満
+                     WHEN ('25' > :3) THEN 
                        TO_NUMBER(pla.attribute11)
                    END                          qty                  -- 数量
                    /* 明細3 */
@@ -235,6 +235,7 @@ FROM (SELECT subsql.line_num          line_num                    -- 明細番号
                  ,xxcmn_item_mst2_v             ximv2                -- 元品目情報
                  ,xxcmn_lookup_values_v         xlvv1                -- クイックコード：口銭名称
                  ,xxcmn_lookup_values_v         xlvv2                -- クイックコード：賦課名称
+                 ,xxcmn_item_categories3_v      xicv3                -- OPM品目カテゴリ割当情報VIEW3
             WHERE pla.po_line_id           = plla.po_line_id                 -- 発注納入明細結合条件
             AND   pla.item_id              = ximv.inventory_item_id          -- 品目情報結合条件①
             AND   ximv.start_date_active  <= TRUNC(TO_DATE(:4,'YYYY/MM/DD')) -- 品目情報結合条件②
@@ -247,6 +248,7 @@ FROM (SELECT subsql.line_num          line_num                    -- 明細番号
               OR (ximv2.start_date_active IS NULL))                          -- 元品目情報結合条件②
             AND   (ximv2.end_date_active   >= TRUNC(TO_DATE(:9,'YYYY/MM/DD'))
               OR (ximv2.end_date_active IS NULL))                            -- 元品目情報結合条件③
+            AND   ximv.item_id             = xicv3.item_id 
             AND   xlvv1.lookup_code        = plla.attribute3                 -- クイックコード：口銭名称結合条件
             AND   xlvv2.lookup_code        = plla.attribute6                 -- クイックコード：賦課名称結合条件
             AND   xlvv1.lookup_type        = 'XXPO_KOUSEN_TYPE'              -- 口銭名称
