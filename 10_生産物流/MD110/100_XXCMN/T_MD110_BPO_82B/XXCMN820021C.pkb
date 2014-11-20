@@ -837,7 +837,10 @@ AS
         IF ( re_main.s_quantity = 0 ) THEN
             lr_amount.s_unit_price := 0;
         ELSE
-            lr_amount.s_unit_price := ROUND( re_main.s_amount / re_main.s_quantity, 2 ) ;
+-- 2008/12/14 MOD S
+--            lr_amount.s_unit_price := ROUND( re_main.s_amount / re_main.s_quantity, 2 ) ;
+            lr_amount.s_unit_price := ROUND( re_main.s_amount / gv_quant, 2 ) ;
+-- 2008/12/14 MOD E
         END IF;
 -- S  2008/12/11 1.8 MOD BY T.Miyata 本番#542 バグ修正
 --        IF ( lr_amount.r_unit_price = 0 ) THEN
@@ -845,7 +848,10 @@ AS
 -- E  2008/12/11 1.8 MOD BY T.Miyata 本番#542 バグ修正
           lr_amount.r_unit_price := 0;
         ELSE
-          lr_amount.r_unit_price := ROUND( re_main.r_amount / re_main.r_quantity, 2 ) ;
+-- 2008/12/14 MOD S
+--          lr_amount.r_unit_price := ROUND( re_main.r_amount / re_main.r_quantity, 2 ) ;
+          lr_amount.r_unit_price := ROUND( re_main.r_amount / gv_quant, 2 ) ;
+-- 2008/12/14 MOD E
         END IF;
 -- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
         lr_amount.d_unit_price := lr_amount.s_unit_price - lr_amount.r_unit_price ;
