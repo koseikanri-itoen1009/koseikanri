@@ -8,7 +8,7 @@ AS
  *                  : 商品計画データを抽出し、生産システムに連携するためのIFテーブルにデータを
  *                  : 登録します。
  * MD.050           : MD050_CSM_002_A15_年間商品計画生産システムIF
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009-03-24    1.2   M.Ohtsuki        [T1_0097] パージ条件不具合の対応
  *  2009-05-11    1.3   M.Ohtsuki        [T1_0942] 新商品を連携対象に含む対応
  *  2009-07-31    1.4   M.Ohtsuki        [0000903] 共通関数INパラメータの不具合の対応
+ *  2011-11-08    1.5   Y.Horikawa       [E_本稼動_07458] 値引額、数量0売上あり　を連携対象に追加
  *
  *****************************************************************************************/
 --
@@ -105,6 +106,10 @@ AS
 --//+ADD END        2009/03/24   T1_0097 M.Ohtsuki
   --プロファイル名
   cv_yearplan_calender    CONSTANT VARCHAR2(100) := 'XXCSM1_YEARPLAN_CALENDER';                     -- XXCSM:年間販売計画カレンダー名
+--// Add Start 2011/11/08 Ver.1.5
+  cv_sales_discount_item_cd    CONSTANT VARCHAR2(100) := 'XXCOS1_DISCOUNT_ITEM_CODE';              -- XXCOS:売上値引品目
+  cv_receipt_discount_item_cd  CONSTANT VARCHAR2(100) := 'XXCSM1_RECEIPT_DISCOUNT_ITEM_CODE';      -- XXCSM:入金値引品目
+--// Add End 2011/11/08 Ver.1.5
   -- トークンコード
   cv_tkn_prf_name         CONSTANT VARCHAR2(20) := 'PROF_NAME';                                     -- プロファイル名セット
   cv_tkn_item             CONSTANT VARCHAR2(20) := 'ITEM';                                          -- 項目名称セット
@@ -114,11 +119,15 @@ AS
 --
   -- ===============================
   -- ユーザー定義グローバル変数
-  -- ===============================  
+  -- ===============================
   gd_process_date         DATE;                                                 -- 業務日付格納用
   gv_prf_calender         VARCHAR2(100);                                        -- プロファイルXXCSM:年間販売計画カレンダー名
   gn_active_year          NUMBER;                                               -- 対象年度
---   
+--// Add Start 2011/11/08 Ver.1.5
+  gv_prf_sales_discnt_item_cd    VARCHAR2(100);  -- プロファイル XXCOS:売上値引品目
+  gv_prf_receipt_discnt_item_cd  VARCHAR2(100);  -- プロファイル XXCSM:入金値引品目
+--// Add End 2011/11/08 Ver.1.5
+--
   /**********************************************************************************
    * Procedure Name   : init
    * Argument         : なし
@@ -153,7 +162,7 @@ AS
     ln_carender_cnt     NUMBER;                                                 -- 年間販売計画チェック用
     ln_retcode          NUMBER;                                                 -- 年間販売計画カレンダー取得関数:STATUS
     lv_result           VARCHAR2(1);                                            -- 年間販売計画カレンダー取得関数:処理結果
-    lv_msg              VARCHAR2(100);                                          -- 
+    lv_msg              VARCHAR2(100);                                          --
     -- *** ローカル例外 ***
     getprofile_err_expt EXCEPTION;                                              -- プロファイル取得エラーメッセージ
     calendar_check_expt EXCEPTION;                                              -- 年間販売計画カレンダー未存在エラーメッセージ
@@ -207,6 +216,34 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE getprofile_err_expt;
     END IF;
+--// Add Start 2011/11/08 Ver.1.5
+    -- XXCOS:売上値引品目
+    gv_prf_sales_discnt_item_cd :=  FND_PROFILE.VALUE(cv_sales_discount_item_cd);
+    -- プロファイル値取得に失敗した場合
+    IF (gv_prf_sales_discnt_item_cd IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                            --アプリケーション短縮名
+                     ,iv_name         => cv_xxcsm_msg_00005                     --メッセージコード
+                     ,iv_token_name1  => cv_tkn_prf_name                        --トークンコード1
+                     ,iv_token_value1 => cv_sales_discount_item_cd              --トークン値1
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE getprofile_err_expt;
+    END IF;
+    -- XXCSM:入金値引品目
+    gv_prf_receipt_discnt_item_cd :=  FND_PROFILE.VALUE(cv_receipt_discount_item_cd);
+    -- プロファイル値取得に失敗した場合
+    IF (gv_prf_receipt_discnt_item_cd IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                            --アプリケーション短縮名
+                     ,iv_name         => cv_xxcsm_msg_00005                     --メッセージコード
+                     ,iv_token_name1  => cv_tkn_prf_name                        --トークンコード1
+                     ,iv_token_value1 => cv_receipt_discount_item_cd            --トークン値1
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE getprofile_err_expt;
+    END IF;
+--// Add End 2011/11/08 Ver.1.5
     -- ===========================================
     -- A-1: ④ 年間販売計画カレンダー存在チェック
     -- ===========================================
@@ -224,7 +261,7 @@ AS
                      );
         lv_errbuf := lv_errmsg;
         RAISE calendar_check_expt;
-      END IF;  
+      END IF;
     END;
     -- ===========================================
     -- A-1: ⑤ 年間販売計画カレンダー有効年度取得
@@ -252,7 +289,7 @@ AS
                    );
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
-      END IF; 
+    END IF;
 --
   EXCEPTION
     -- *** プロファイル取得例外ハンドラ ***
@@ -293,7 +330,7 @@ AS
    * Procedure Name   : del_existing_data
    * Description      : 既存データ削除処理
    ***********************************************************************************/
-  PROCEDURE del_existing_data(           
+  PROCEDURE del_existing_data(
      ov_errbuf           OUT NOCOPY VARCHAR2                                                        -- エラー・メッセージ
     ,ov_retcode          OUT NOCOPY VARCHAR2                                                        -- リターン・コード
     ,ov_errmsg           OUT NOCOPY VARCHAR2                                                        -- ユーザー・エラー・メッセージ
@@ -324,11 +361,23 @@ AS
     -- *** ローカル・カーソル ***
     CURSOR del_existing_data_cur
     IS
-      SELECT ROWID
+--// Mod Start 2011/11/08 Ver.1.5
+--      SELECT ROWID
+      SELECT /*+ unnest(@a) */
+             ROWID
+--// Mod End 2011/11/08 Ver.1.5
       FROM   xxinv_mrp_forecast_interface xxmfi
       WHERE  xxmfi.forecast_designator = cv_forecast_designator                                     -- 固定値:'5'（販売計画）
-      AND    NOT EXISTS 
-              (SELECT 'X'
+--// Add Start 2011/11/08 Ver.1.5
+      AND    xxmfi.program_application_id = cn_program_application_id  -- コンカレント・プログラム・アプリケーションID
+      AND    xxmfi.program_id             = cn_program_id              -- コンカレント・プログラムID
+--// Add End 2011/11/08 Ver.1.5
+      AND    NOT EXISTS
+--// Mod Start 2011/11/08 Ver.1.5
+--              (SELECT 'X'
+              (SELECT /*+ qb_name(a) */
+                      'X'
+--// Mod End 2011/11/08 Ver.1.5
                FROM   xxcsm_item_plan_headers  xxiph
                      ,xxcsm_item_plan_lines    xxipl
                WHERE  xxiph.item_plan_header_id = xxipl.item_plan_header_id
@@ -343,10 +392,26 @@ AS
                AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date      -- 開始日付
                AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_end_date  -- 終了日付
                )
+--// Add Start 2011/11/08 Ver.1.5
+      AND    NOT EXISTS
+              (SELECT 'X'
+               FROM   xxcsm_item_plan_headers  xiph
+                     ,xxcsm_item_plan_loc_bdgt xiplb
+               WHERE  xiplb.item_plan_header_id = xiph.item_plan_header_id
+               AND    xiph.plan_year = gn_active_year                                               -- 対象年度
+               AND     ((xiplb.sales_discount <> 0                                                  -- 売上値引額
+                   AND   xxmfi.item_code = gv_prf_sales_discnt_item_cd)                             -- 売上値引品目コード
+                 OR     (xiplb.receipt_discount <> 0                                                -- 入金値引額
+                   AND   xxmfi.item_code = gv_prf_receipt_discnt_item_cd))                          -- 入金値引品目コード
+               AND    xiph.location_cd = xxmfi.base_code                                            -- 拠点コード
+               AND    TRUNC(TO_DATE(xiplb.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date      -- 開始日付
+               AND    TRUNC(TO_DATE(xiplb.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_end_date  -- 終了日付
+              )
+--// Add End 2011/11/08 Ver.1.5
       FOR UPDATE NOWAIT
       ;
     -- *** ローカル例外 ***
-    rock_err_expt        EXCEPTION; 
+    rock_err_expt        EXCEPTION;
 --
   BEGIN
 --
@@ -380,6 +445,22 @@ AS
                 AND    xxiph.location_cd         = xxmfi.base_code                                  -- 拠点コード
                 AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date     -- 開始日付
                 AND    TRUNC(TO_DATE(xxipl.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_end_date -- 終了日付
+--// Add Start 2011/11/08 Ver.1.5
+               )
+    AND    NOT EXISTS
+              (SELECT 'X'
+               FROM   xxcsm_item_plan_headers  xiph
+                     ,xxcsm_item_plan_loc_bdgt xiplb
+               WHERE  xiplb.item_plan_header_id = xiph.item_plan_header_id
+               AND    xiph.plan_year = gn_active_year                                               -- 対象年度
+               AND     ((xiplb.sales_discount <> 0                                                  -- 売上値引額
+                   AND   xxmfi.item_code = gv_prf_sales_discnt_item_cd)                             -- 売上値引品目コード
+                 OR     (xiplb.receipt_discount <> 0                                                -- 入金値引額
+                   AND   xxmfi.item_code = gv_prf_receipt_discnt_item_cd))                          -- 入金値引品目コード
+               AND    xiph.location_cd = xxmfi.base_code                                            -- 拠点コード
+               AND    TRUNC(TO_DATE(xiplb.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date      -- 開始日付
+               AND    TRUNC(TO_DATE(xiplb.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_end_date  -- 終了日付
+--// Add End 2011/11/08 Ver.1.5
                );
   EXCEPTION
     -- *** 販売計画/引取計画I/Fテーブルロック例外ハンドラ ***
@@ -413,7 +494,7 @@ AS
    * Argument         : iv_kyoten_cd   [拠点コード]
    * Description      : 販売計画/引取計画I/Fテーブル事前削除処理(A-3)
    ***********************************************************************************/
-  PROCEDURE del_forecast_firstif(           
+  PROCEDURE del_forecast_firstif(
      iv_kyoten_cd        IN  VARCHAR2                                           -- 拠点コード
     ,ov_errbuf           OUT NOCOPY VARCHAR2                                    -- エラー・メッセージ
     ,ov_retcode          OUT NOCOPY VARCHAR2                                    -- リターン・コード
@@ -447,11 +528,24 @@ AS
 --//+ADD END   2009/05/11   T1_0942 M.Ohtsuki
     -- *** ローカル・カーソル ***
     CURSOR del_forecast_firstif_cur
-    IS    
-      SELECT ROWID
+    IS
+--// Mod Start 2011/11/08 Ver.1.5
+--      SELECT ROWID
+      SELECT /*+ push_subq(@a) push_subq(@b) */
+             ROWID
+--// Mod End 2011/11/08 Ver.1.5
       FROM   xxinv_mrp_forecast_interface xxmfi
       WHERE  xxmfi.forecast_designator = cv_forecast_designator     -- 固定値:'5'（販売計画）
-      AND EXISTS (SELECT 'X'
+--// Add Start 2011/11/08 Ver.1.5
+      AND    xxmfi.program_application_id = cn_program_application_id  -- コンカレント・プログラム・アプリケーションID
+      AND    xxmfi.program_id             = cn_program_id              -- コンカレント・プログラムID
+      AND    xxmfi.base_code              = iv_kyoten_cd               -- 拠点コード
+--// Add End 2011/11/08 Ver.1.5
+--// Mod Start 2011/11/08 Ver.1.5
+--      AND EXISTS (SELECT 'X'
+      AND (EXISTS (SELECT /*+ index(xxipl xxcsm_item_plan_lines_n01) qb_name(a) */
+                          'X'
+--// Mod End 2011/11/08 Ver.1.5
                   FROM   xxcsm_item_plan_headers  xxiph
                         ,xxcsm_item_plan_lines    xxipl
                   WHERE  xxiph.item_plan_header_id = xxipl.item_plan_header_id
@@ -465,11 +559,32 @@ AS
                   AND    xxipl.item_no = xxmfi.item_code                            -- 商品コード
                   AND    xxiph.location_cd = iv_kyoten_cd                           -- 拠点コード
                   AND    xxiph.location_cd = xxmfi.base_code                        -- 拠点コード
+--// Add Start 2011/11/08 Ver.1.5
+                  AND    xxiph.plan_year   = gn_active_year                         -- 年度
+--// Add End 2011/11/08 Ver.1.5
                  )
+--// Add Start 2011/11/08 Ver.1.5
+        OR EXISTS (SELECT /*+ qb_name(b) */
+                          'X'
+                   FROM   xxcsm_item_plan_headers  xiph
+                         ,xxcsm_item_plan_loc_bdgt xiplb
+                   WHERE  xiplb.item_plan_header_id = xiph.item_plan_header_id
+                   AND     ((xiplb.sales_discount <> 0                                                  -- 売上値引額
+                       AND   xxmfi.item_code = gv_prf_sales_discnt_item_cd)                             -- 売上値引品目コード
+                     OR     (xiplb.receipt_discount <> 0                                                -- 入金値引額
+                       AND   xxmfi.item_code = gv_prf_receipt_discnt_item_cd))                          -- 入金値引品目コード
+                   AND    xiph.location_cd = xxmfi.base_code                                            -- 拠点コード
+                   AND    TRUNC(TO_DATE(xiplb.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date      -- 開始日付
+                   AND    TRUNC(TO_DATE(xiplb.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_end_date  -- 終了日付
+                   AND    xiph.location_cd = iv_kyoten_cd                                               -- 拠点コード
+                   AND    xiph.plan_year = gn_active_year                                               -- 年度
+                  )
+          )
+--// Add End 2011/11/08 Ver.1.5
       FOR UPDATE NOWAIT
       ;
     -- *** ローカル例外 ***
-    rock_err_expt        EXCEPTION; 
+    rock_err_expt        EXCEPTION;
 --
     PRAGMA EXCEPTION_INIT(rock_err_expt,-54);
 --
@@ -484,13 +599,24 @@ AS
     OPEN del_forecast_firstif_cur;
     CLOSE del_forecast_firstif_cur;
     --対象データ削除処理
-    DELETE FROM xxinv_mrp_forecast_interface  xxmfi               -- 販売計画/引取計画I/Fテーブル
+--// Mod Start 2011/11/08 Ver.1.5
+--    DELETE FROM xxinv_mrp_forecast_interface  xxmfi               -- 販売計画/引取計画I/Fテーブル
+    DELETE /*+ push_subq(@a) push_subq(@b) */
+    FROM xxinv_mrp_forecast_interface  xxmfi               -- 販売計画/引取計画I/Fテーブル
+--// Mod End 2011/11/08 Ver.1.5
     WHERE  xxmfi.forecast_designator = cv_forecast_designator     -- 固定値:'5'（販売計画）
 --//+ADD START 2009/02/24   CT063 M.Ohtsuki
     AND    xxmfi.program_application_id = cn_program_application_id  -- コンカレント・プログラム・アプリケーションID
     AND    xxmfi.program_id             = cn_program_id              -- コンカレント・プログラムID
---//+ADD END   2009/02/24   CT063 M.Ohtsuki                                                            
-    AND EXISTS (SELECT 'X'
+--//+ADD END   2009/02/24   CT063 M.Ohtsuki
+--// Add Start 2011/11/08 Ver.1.5
+    AND    xxmfi.base_code              = iv_kyoten_cd               -- 拠点コード
+--// Add End 2011/11/08 Ver.1.5
+--// Mod Start 2011/11/08 Ver.1.5
+--    AND EXISTS (SELECT 'X'
+    AND (EXISTS (SELECT /*+ index(xxipl xxcsm_item_plan_lines_n01) qb_name(a) */
+                        'X'
+--// Mod End 2011/11/08 Ver.1.5
                 FROM   xxcsm_item_plan_headers  xxiph
                       ,xxcsm_item_plan_lines    xxipl
                 WHERE  xxiph.item_plan_header_id = xxipl.item_plan_header_id
@@ -504,7 +630,28 @@ AS
                 AND    xxipl.item_no = xxmfi.item_code                            -- 商品コード
                 AND    xxiph.location_cd = iv_kyoten_cd                           -- 拠点コード
                 AND    xxiph.location_cd = xxmfi.base_code                        -- 拠点コード
+--// Add Start 2011/11/08 Ver.1.5
+                AND    xxiph.plan_year   = gn_active_year                         -- 年度
+--// Add End 2011/11/08 Ver.1.5
                )
+--// Add Start 2011/11/08 Ver.1.5
+    OR   EXISTS (SELECT /*+ qb_name(b) */
+                        'X'
+                 FROM   xxcsm_item_plan_headers  xiph
+                       ,xxcsm_item_plan_loc_bdgt xiplb
+                 WHERE  xiplb.item_plan_header_id = xiph.item_plan_header_id
+                 AND     ((xiplb.sales_discount <> 0                                                  -- 売上値引額
+                     AND   xxmfi.item_code = gv_prf_sales_discnt_item_cd)                             -- 売上値引品目コード
+                   OR     (xiplb.receipt_discount <> 0                                                -- 入金値引額
+                     AND   xxmfi.item_code = gv_prf_receipt_discnt_item_cd))                          -- 入金値引品目コード
+                 AND    xiph.location_cd = xxmfi.base_code                                            -- 拠点コード
+                 AND    TRUNC(TO_DATE(xiplb.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_date      -- 開始日付
+                 AND    TRUNC(TO_DATE(xiplb.year_month,'YYYYMM'), 'MONTH') = xxmfi.forecast_end_date  -- 終了日付
+                 AND    xiph.location_cd = iv_kyoten_cd                                               -- 拠点コード
+                 AND    xiph.plan_year = gn_active_year                                               -- 年度
+                )
+        )
+--// Add End 2011/11/08 Ver.1.5
     ;
   EXCEPTION
     -- *** 販売計画/引取計画I/Fテーブルロック例外ハンドラ ***
@@ -546,7 +693,7 @@ AS
      iv_item_cd          IN  VARCHAR2                                           -- 商品コード
     ,in_amount           IN  NUMBER                                             -- 数量
     ,on_case_count       OUT NUMBER                                             -- ケース数量
-    ,on_bara_count       OUT NUMBER                                             -- バラ数量 
+    ,on_bara_count       OUT NUMBER                                             -- バラ数量
     ,ov_errbuf           OUT NOCOPY VARCHAR2                                    -- エラー・メッセージ
     ,ov_retcode          OUT NOCOPY VARCHAR2                                    -- リターン・コード
     ,ov_errmsg           OUT NOCOPY VARCHAR2                                    -- ユーザー・エラー・メッセージ
@@ -575,7 +722,7 @@ AS
     CURSOR get_compute_cur(
       iv_item_cd       VARCHAR2
     )
-    IS    
+    IS
       SELECT iimb.attribute11          insert_count   -- 入数
       FROM   ic_item_mst_b             iimb           -- OPM品目マスタ
             ,mtl_system_items_b        msib           -- 品目マスタ
@@ -584,7 +731,7 @@ AS
       AND    ROWNUM <= 1
       ;
     -- *** ローカル・レコード ***
-    get_compute_rec    get_compute_cur%ROWTYPE;    
+    get_compute_rec    get_compute_cur%ROWTYPE;
 --
 --
   BEGIN
@@ -598,7 +745,7 @@ AS
     OPEN get_compute_cur(iv_item_cd);
       FETCH get_compute_cur INTO get_compute_rec;
     -- カーソルクローズ
-    CLOSE get_compute_cur;    
+    CLOSE get_compute_cur;
     -- =============================
     -- A-3: ②出力パラメータ設定
     -- =============================
@@ -613,7 +760,7 @@ AS
     ELSE
       on_case_count := 0;
       on_bara_count := in_amount;   -- 数量を全てバラ数とする
-    END IF;   
+    END IF;
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -803,9 +950,13 @@ AS
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
         AND    xipl.item_kbn IN (cv_item_kbn,cv_new_item)                                          --（商品単品,新商品）
 --//+UPD END   2009/05/11   T1_0942 M.Ohtsuki
---//+ADD START 2009/02/24   CT063 M.Ohtsuki
-        AND  xipl.amount <> 0                                                    -- 商品計画明細テーブル. 数量 <> 0
---//+ADD END   2009/02/24   CT063 M.Ohtsuki
+--// Mod Start 2011/11/08 Ver.1.5
+----//+ADD START 2009/02/24   CT063 M.Ohtsuki
+--        AND  xipl.amount <> 0                                                    -- 商品計画明細テーブル. 数量 <> 0
+----//+ADD END   2009/02/24   CT063 M.Ohtsuki
+        AND  (xipl.amount <> 0                                                   -- 商品計画明細テーブル. 数量 <> 0
+          OR  xipl.sales_budget <> 0)                                            -- 商品計画明細テーブル. 売上金額 <> 0
+--// Mod End 2011/11/08 Ver.1.5
         AND  NOT EXISTS (SELECT 'X'
                          FROM   fnd_lookup_values         flv                      --クイックコード値
                                ,mtl_categories_b          mcb                      --品目カテゴリ
@@ -831,9 +982,38 @@ AS
                          AND    gic.category_set_id = mcsb.category_set_id
                          AND    iimb.item_no = xipl.item_no                        -- 品目マスタと商品計画明細テーブルの商品コードを関連付け
                          )
-      ORDER BY xiph.location_cd
-              ,xipl.year_month
-              ,xipl.item_no
+--// Add Start 2011/11/08 Ver.1.5
+      UNION ALL
+      SELECT xiplb.year_month             nengetsu    -- 年月
+            ,xiph.location_cd             kyoten_cd   -- 拠点コード
+            ,gv_prf_sales_discnt_item_cd  syouhin_cd  -- 商品コード
+            ,0                            suryo       -- 数量
+            ,xiplb.sales_discount         urikin      -- 売上金額（売上値引額）
+      FROM   xxcsm_item_plan_headers  xiph                         -- 商品計画ヘッダテーブル
+            ,xxcsm_item_plan_loc_bdgt xiplb                        -- 商品計画拠点別予算テーブル
+      WHERE  xiplb.item_plan_header_id = xiph.item_plan_header_id  -- ヘッダIDで関連付け
+      AND    xiph.plan_year = gn_active_year                       -- 商品計画ヘッダテーブル．予算年度 ＝ A-1で取得した年度
+      AND    xiplb.sales_discount <> 0                             -- 商品計画拠点別予算テーブル．売上値引 <> 0
+      UNION ALL
+      SELECT xiplb.year_month               nengetsu    -- 年月
+            ,xiph.location_cd               kyoten_cd   -- 拠点コード
+            ,gv_prf_receipt_discnt_item_cd  syouhin_cd  -- 商品コード
+            ,0                              suryo       -- 数量
+            ,xiplb.receipt_discount         urikin      -- 売上金額（入金値引額）
+      FROM   xxcsm_item_plan_headers  xiph                         -- 商品計画ヘッダテーブル
+            ,xxcsm_item_plan_loc_bdgt xiplb                        -- 商品計画拠点別予算テーブル
+      WHERE  xiplb.item_plan_header_id = xiph.item_plan_header_id  -- ヘッダIDで関連付け
+      AND    xiph.plan_year = gn_active_year                       -- 商品計画ヘッダテーブル．予算年度 ＝ A-1で取得した年度
+      AND    xiplb.receipt_discount <> 0                           -- 商品計画拠点別予算テーブル．入金値引 <> 0
+--// Add End 2011/11/08 Ver.1.5
+--// Mod Start 2011/11/08 Ver.1.5
+--      ORDER BY xiph.location_cd
+--              ,xipl.year_month
+--              ,xipl.item_no
+      ORDER BY kyoten_cd
+              ,nengetsu
+              ,syouhin_cd
+--// Mod End 2011/11/08 Ver.1.5
       ;
     -- *** ローカル・レコード ***
     year_item_date_rec    year_item_date_cur%ROWTYPE;
@@ -901,7 +1081,7 @@ AS
           ELSIF (ln_sts_flg = cn_sts_error) THEN
             --エラー件数のカウント
             gn_error_cnt := gn_error_cnt + ln_location_count;
-          ELSE 
+          ELSE
             NULL;
           END IF;
           --拠点件数のクリア；
@@ -933,11 +1113,19 @@ AS
           RAISE global_skip_expt;
         END IF;
 --
-        -- 数量がNULLだった場合、又は0の場合、
-        -- 後の単位換算処理のケース数の除算にて、NULL又は0で除算を行うことになる。
-        -- そのエラーを防ぐため、global_skip_exptとして警告を上げる。
+--// Del Start 2011/11/08 Ver.1.5  （2009/03/24 T1_0117 にて換算処理は削除されているためコメント削除）
+--        -- 数量がNULLだった場合、又は0の場合、
+--        -- 後の単位換算処理のケース数の除算にて、NULL又は0で除算を行うことになる。
+--        -- そのエラーを防ぐため、global_skip_exptとして警告を上げる。
+--// Del End 2011/11/08 Ver.1.5
+--// Add Start 2011/11/08 Ver.1.5
+        -- 数量がNULLの場合、global_skip_exptとして警告を上げる。
+        -- Ver.1.5 対応により、数量0も連携する必要があるため　数量＝0の場合のエラーチェックを削除
+--// Add End 2011/11/08 Ver.1.5
         IF (year_item_date_rec.suryo IS NULL)
-          OR (year_item_date_rec.suryo = 0)
+--// Del Start 2011/11/08 Ver.1.5
+--          OR (year_item_date_rec.suryo = 0)
+--// Del End 2011/11/08 Ver.1.5
         THEN
           lv_errmsg  := xxccp_common_pkg.get_msg(
                         iv_application  => cv_app_name                              --アプリケーション短縮名
@@ -945,7 +1133,7 @@ AS
                        ,iv_token_name1  => cv_tkn_itemcd                            --トークンコード1
                        ,iv_token_value1 => year_item_date_rec.syouhin_cd            --トークン値1
                        ,iv_token_name2  => cv_tkn_kyotencd                          --トークンコード2
-                       ,iv_token_value2 => year_item_date_rec.kyoten_cd             --トークン値2                       
+                       ,iv_token_value2 => year_item_date_rec.kyoten_cd             --トークン値2
                        );
           lv_errbuf := lv_errmsg;
           RAISE global_skip_expt;
@@ -981,7 +1169,7 @@ AS
 --          ,in_case_count   => ln_case_count                                       -- ケース数量
 --          ,in_bara_count   => ln_bara_count                                       -- バラ数量
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-          ,in_bara_count   => year_item_date_rec.suryo                            -- バラ数量          
+          ,in_bara_count   => year_item_date_rec.suryo                            -- バラ数量
 --//+UPD END   2009/03/24   T1_0117 M.Ohtsuki
           ,in_sales_budget => year_item_date_rec.urikin                           -- 売上金額
           ,ov_errbuf       => lv_errbuf                                           -- エラー・メッセージ
@@ -1082,7 +1270,7 @@ AS
   PROCEDURE main(
      errbuf           OUT NOCOPY VARCHAR2                                                              -- エラー・メッセージ
     ,retcode          OUT NOCOPY VARCHAR2                                                              -- リターン・コード
-    )                                                                   
+    )
     --
 --###########################  固定部 START   ###########################
 --
