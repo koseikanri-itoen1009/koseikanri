@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2008/08/04    1.14  M.NOMURA         追加結合不具合対応
  *  2008/08/12    1.15  N.Fukuda         課題#32対応
  *  2008/08/12    1.15  N.Fukuda         課題#48(変更要求#164)対応
+ *  2008/09/01    1.16  Y.Yamamoto       PT 2-2_17 指摘17対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -834,7 +835,10 @@ AS
     IS
       SELECT xndi.request_no
       FROM xxwsh_notif_delivery_info xndi
-      WHERE TRUNC( xndi.last_update_date ) <= TRUNC( SYSDATE ) - gn_prof_del_date
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--      WHERE TRUNC( xndi.last_update_date ) <= TRUNC( SYSDATE ) - gn_prof_del_date
+      WHERE  xndi.last_update_date < TRUNC( SYSDATE ) - gn_prof_del_date + 1
+-- 2008/09/01 v1.16 update Y.Yamamoto end
       FOR UPDATE NOWAIT
     ;
 --
@@ -868,7 +872,10 @@ AS
     DELETE FROM xxwsh_stock_delivery_info_tmp ;
     DELETE FROM xxwsh_stock_delivery_info_tmp2 ;
     DELETE FROM xxwsh_notif_delivery_info
-    WHERE TRUNC( last_update_date ) <= TRUNC( SYSDATE ) - gn_prof_del_date ;
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--    WHERE TRUNC( last_update_date ) <= TRUNC( SYSDATE ) - gn_prof_del_date ;
+    WHERE  last_update_date < TRUNC( SYSDATE ) - gn_prof_del_date + 1 ;
+-- 2008/09/01 v1.16 update Y.Yamamoto end
 --
   EXCEPTION
     -- =============================================================================================
@@ -941,6 +948,13 @@ AS
     -- ====================================================
     -- 中間テーブル登録
     -- ====================================================
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+    -- ====================================================
+    -- パフォーマンス対応のため、1つのSQLを予定確定区分ごとに分割
+    -- 予定確定区分が「予定」の場合
+    -- ====================================================
+    IF ( gr_param.fix_class = gc_fix_class_y ) THEN
+--
     INSERT INTO xxwsh_stock_delivery_info_tmp2
       -- ===========================================================================================
       -- 出荷データＳＱＬ
@@ -1025,7 +1039,15 @@ AS
           ,xxwsh_carriers_schedule    xcs       -- 配車配送計画アドオン
           ,xxcmn_lookup_values2_v     xlv       -- クイックコード情報VIEW2
           ,xxcmn_item_mst2_v          xim       -- OPM品目情報VIEW2
-          ,xxcmn_item_categories4_v   xic       -- OPM品目カテゴリ割当VIEW4
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--          ,xxcmn_item_categories4_v   xic       -- OPM品目カテゴリ割当VIEW4
+          ,xxcmn_item_categories5_v   xic       -- OPM品目カテゴリ割当VIEW5
+          ,(SELECT distinct xtc.concurrent_id
+              FROM xxwsh_tightening_control xtc
+             WHERE xtc.tightening_date BETWEEN gd_date_from
+                                           AND gd_date_to
+           ) xtci
+-- 2008/09/01 v1.16 update Y.Yamamoto end
       WHERE
       ----------------------------------------------------------------------------------------------
       -- 品目
@@ -1084,19 +1106,22 @@ AS
       AND   xoha.req_status           IN( gc_req_status_syu_3   -- 締め済
                                          ,gc_req_status_syu_5 ) -- 取消
 -- M.HOKKANJI Ver1.9 START
-      AND  ((gr_param.fix_class = gc_fix_class_y
-              AND EXISTS ( SELECT xic.concurrent_id
-                             FROM xxwsh_tightening_control xic
-                            WHERE xic.concurrent_id = xoha.tightening_program_id
-                              AND xic.tightening_date BETWEEN gd_date_from
-                                                          AND gd_date_to
-                         )
-            ) OR (gr_param.fix_class = gc_fix_class_k
-              AND xoha.notif_date BETWEEN gd_date_from
-                                      AND gd_date_to))
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--      AND  ((gr_param.fix_class = gc_fix_class_y
+--              AND EXISTS ( SELECT xic.concurrent_id
+--                             FROM xxwsh_tightening_control xic
+--                            WHERE xic.concurrent_id = xoha.tightening_program_id
+--                              AND xic.tightening_date BETWEEN gd_date_from
+--                                                          AND gd_date_to
+--                         )
+--            ) OR (gr_param.fix_class = gc_fix_class_k
+--              AND xoha.notif_date BETWEEN gd_date_from
+--                                      AND gd_date_to))
 --      AND   DECODE( gr_param.fix_class, gc_fix_class_y, xoha.tightening_date
 --                                      , gc_fix_class_k, xoha.notif_date      )
 --              BETWEEN gd_date_from AND gd_date_to
+      AND   xoha.tightening_program_id = xtci.concurrent_id
+-- 2008/09/01 v1.16 update Y.Yamamoto end
 -- M.HOKKANJI Ver1.9 END
       UNION ALL
       -- ===========================================================================================
@@ -1175,7 +1200,10 @@ AS
           ,xxwsh_carriers_schedule    xcs       -- 配車配送計画アドオン
           ,xxcmn_lookup_values2_v     xlv       -- クイックコード情報VIEW2
           ,xxcmn_item_mst2_v          xim       -- OPM品目情報VIEW2
-          ,xxcmn_item_categories4_v   xic       -- OPM品目カテゴリ割当VIEW4
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--          ,xxcmn_item_categories4_v   xic       -- OPM品目カテゴリ割当VIEW4
+          ,xxcmn_item_categories5_v   xic       -- OPM品目カテゴリ割当VIEW5
+-- 2008/09/01 v1.16 update Y.Yamamoto end
       WHERE
       ----------------------------------------------------------------------------------------------
       -- 品目
@@ -1231,11 +1259,13 @@ AS
       AND   xoha.req_status           IN( gc_req_status_shi_3   -- 受領済
                                          ,gc_req_status_shi_5 ) -- 取消
 -- M.HOKKANJI Ver1.9 START
+-- 2008/09/01 v1.16 delete Y.Yamamoto start
       -- パラメータが確定の場合のみ日付を参照
-      AND  ((gr_param.fix_class = gc_fix_class_y
-            ) OR (gr_param.fix_class = gc_fix_class_k
-              AND xoha.notif_date BETWEEN gd_date_from
-                                      AND gd_date_to))
+--      AND  ((gr_param.fix_class = gc_fix_class_y
+--            ) OR (gr_param.fix_class = gc_fix_class_k
+--              AND xoha.notif_date BETWEEN gd_date_from
+--                                      AND gd_date_to))
+-- 2008/09/01 v1.16 delete Y.Yamamoto end
 --      AND   DECODE( gr_param.fix_class, gc_fix_class_y, xoha.tightening_date
 --                                      , gc_fix_class_k, xoha.notif_date      )
 --              BETWEEN gd_date_from AND gd_date_to
@@ -1329,7 +1359,10 @@ AS
           ,xxwsh_carriers_schedule        xcs       -- 配車配送計画アドオン
           ,xxcmn_lookup_values2_v         xlv       -- クイックコード情報VIEW2
           ,xxcmn_item_mst2_v              xim       -- OPM品目情報VIEW2
-          ,xxcmn_item_categories4_v       xic       -- OPM品目カテゴリ割当VIEW4
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--          ,xxcmn_item_categories4_v   xic       -- OPM品目カテゴリ割当VIEW4
+          ,xxcmn_item_categories5_v   xic       -- OPM品目カテゴリ割当VIEW5
+-- 2008/09/01 v1.16 update Y.Yamamoto end
       WHERE
       ----------------------------------------------------------------------------------------------
       -- 品目
@@ -1394,10 +1427,498 @@ AS
                                  ,gc_mov_status_adj     -- 調整中
                                  ,gc_mov_status_ccl )   -- 取消
       ---- パラメータが「実績」の場合のみ
-      AND   DECODE( gr_param.fix_class, gc_fix_class_y, gd_date_from
-                                      , gc_fix_class_k, xmrih.notif_date      )
-              BETWEEN gd_date_from AND gd_date_to
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--      AND   DECODE( gr_param.fix_class, gc_fix_class_y, gd_date_from
+--                                      , gc_fix_class_k, xmrih.notif_date      )
+--              BETWEEN gd_date_from AND gd_date_to
+      AND   gd_date_from BETWEEN gd_date_from
+                             AND gd_date_to
+-- 2008/09/01 v1.16 update Y.Yamamoto end
       ;
+    -- ====================================================
+    -- 予定確定区分が「確定」の場合
+    -- ====================================================
+    ELSIF ( gr_param.fix_class = gc_fix_class_k ) THEN
+    INSERT INTO xxwsh_stock_delivery_info_tmp2
+      -- ===========================================================================================
+      -- 出荷データＳＱＬ
+      -- ===========================================================================================
+      SELECT xola.order_line_number                   -- 01:明細番号
+            ,xola.order_line_id                       -- 02:明細ID
+            ,CASE
+               WHEN xola.delete_flag = gc_yes_no_y THEN gc_delete_flag_y
+               ELSE gc_delete_flag_n
+             END                                      -- 03:明細削除フラグ
+            ,xoha.req_status                          -- 04:ステータス
+            ,xoha.notif_status                        -- 05:通知ステータス
+            ,xoha.prev_notif_status                   -- 06:前回通知ステータス
+            ,CASE
+               WHEN xoha.req_status = gc_req_status_syu_5 THEN gc_data_type_syu_can
+               ELSE gc_data_type_syu_ins
+             END                                      -- 07:データタイプ
+-- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
+            ,NULL                                     -- XX:EOS宛先（入庫倉庫）
+-- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
+            ,xil.eos_detination                       -- 08:EOS宛先（出庫倉庫）
+            ,xc.eos_detination                        -- 09:EOS宛先（運送業者）
+            ,xoha.delivery_no                         -- 10:配送No
+            ,xoha.request_no                          -- 11:依頼No
+            ,xp.party_number                          -- 12:拠点コード
+            ,xp.party_name                            -- 13:管轄拠点名称
+            ,xil.segment1                             -- 14:出庫倉庫コード
+            ,SUBSTRB( xil.description, 1, 20 )        -- 15:出庫倉庫名称
+            ,NULL                                     -- 16:入庫倉庫コード
+            ,NULL                                     -- 17:入庫倉庫名称
+            ,xc.party_number                          -- 18:運送業者コード
+            ,xc.party_name                            -- 19:運送業者名
+            ,xps.party_site_number                    -- 20:配送先コード
+            ,xps.party_site_full_name                 -- 21:配送先名
+            ,xoha.schedule_ship_date                  -- 22:発日
+            ,xoha.schedule_arrival_date               -- 23:着日
+            ,xlv.lookup_code                          -- 24:配送区分
+            ,CASE
+               WHEN xoha.weight_capacity_class  = gc_wc_class_j
+               --AND  xlv.attribute6              = gc_small_method_y THEN xoha.sum_weight      --2008/08/12 Del 課題#48(変更#164)
+               AND  xlv.attribute6              = gc_small_method_y THEN NVL(xoha.sum_weight,0) --2008/08/12 Add 課題#48(変更#164)
+-- M.HOKKANJI Ver1.2 START
+               WHEN xoha.weight_capacity_class  = gc_wc_class_j
+               AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN NVL(xoha.sum_weight,0)
+                                                                      + NVL(xoha.sum_pallet_weight,0)
+--               AND  xlv.attribute6             <> gc_small_method_y THEN xoha.sum_weight
+--                                                                      + xoha.sum_pallet_weight
+-- M.HOKKANJI Ver1.2 END
+               --WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN xoha.sum_capacity      --2008/08/12 Del 課題#48(変更#164)
+               WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN NVL(xoha.sum_capacity,0) --2008/08/12 Add 課題#48(変更#164)
+             END                                      -- 25:重量／容積
+            ,xoha.mixed_no                            -- 26:混載元依頼No
+            ,xoha.collected_pallet_qty                -- 27:ﾊﾟﾚｯﾄ回収枚数
+            ,CASE
+               WHEN xoha.freight_charge_class = gc_freight_class_y THEN gc_freight_class_ins_y
+               ELSE gc_freight_class_ins_n
+             END freight_charge_class                         -- 28:運賃区分
+            ,NVL( xoha.arrival_time_from, gc_time_default )   -- 29:着荷時間指定From
+            ,NVL( xoha.arrival_time_to  , gc_time_default )   -- 30:着荷時間指定To
+            ,xoha.cust_po_number                      -- 31:顧客発注番号
+            ,xoha.shipping_instructions               -- 32:摘要
+            ,xoha.pallet_sum_quantity                 -- 33:ﾊﾟﾚｯﾄ使用枚数（出）
+            ,NULL                                     -- 34:ﾊﾟﾚｯﾄ使用枚数（入）
+            ,xoha.instruction_dept                    -- 35:報告部署
+            ,xic.prod_class_code                      -- 36:商品区分
+            ,xic.item_class_code                      -- 37:品目区分
+            ,xim.item_no                              -- 38:品目コード
+            ,xim.item_id                              -- 39:品目ID
+            ,xim.item_name                            -- 40:品目名
+            ,xim.item_um                              -- 41:単位
+            ,xim.conv_unit                            -- 42:入出庫換算単位
+            ,xola.quantity                            -- 43:数量
+            ,xim.num_of_cases                         -- 44:ケース入数
+            ,xim.lot_ctl                              -- 45:ロット使用
+      FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
+          ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
+          ,oe_transaction_types_all   otta      -- 受注タイプ
+          ,xxcmn_item_locations_v     xil       -- OPM保管場所情報VIEW
+          ,xxcmn_carriers2_v          xc        -- 運送業者情報VIEW2
+          ,xxcmn_party_sites2_v       xps       -- パーティサイト情報VIEW2（配送先）
+          ,xxcmn_parties2_v           xp        -- パーティ情報VIEW2（拠点）
+          ,xxwsh_carriers_schedule    xcs       -- 配車配送計画アドオン
+          ,xxcmn_lookup_values2_v     xlv       -- クイックコード情報VIEW2
+          ,xxcmn_item_mst2_v          xim       -- OPM品目情報VIEW2
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--          ,xxcmn_item_categories4_v   xic       -- OPM品目カテゴリ割当VIEW4
+          ,xxcmn_item_categories5_v   xic       -- OPM品目カテゴリ割当VIEW5
+-- 2008/09/01 v1.16 update Y.Yamamoto end
+      WHERE
+      ----------------------------------------------------------------------------------------------
+      -- 品目
+            xim.item_id             = xic.item_id
+      AND   gd_effective_date       BETWEEN xim.start_date_active
+                                    AND     NVL( xim.end_date_active, gd_effective_date )
+      AND   xola.shipping_item_code = xim.item_no
+      ----------------------------------------------------------------------------------------------
+      -- 受注明細
+      AND   xoha.order_header_id = xola.order_header_id
+      ----------------------------------------------------------------------------------------------
+      -- 配送配車計画
+-- M.HOKKANJI Ver1.2 START
+/*
+      AND   gd_effective_date BETWEEN xlv.start_date_active
+                              AND     NVL( xlv.end_date_active, gd_effective_date )
+      AND   xlv.enabled_flag  = gc_yes_no_y
+      AND   xlv.lookup_type   = gc_lookup_ship_method
+      AND   xcs.delivery_type = xlv.lookup_code
+      AND   xoha.delivery_no  = xcs.delivery_no
+*/
+      AND   gd_effective_date BETWEEN NVL(xlv.start_date_active, gd_effective_date )
+                              AND     NVL( xlv.end_date_active, gd_effective_date )
+      AND   xlv.enabled_flag(+)  = gc_yes_no_y
+      AND   xlv.lookup_type(+)   = gc_lookup_ship_method
+      AND   xcs.delivery_type = xlv.lookup_code(+)
+      AND   xoha.delivery_no  = xcs.delivery_no(+)
+-- M.HOKKANJI Ver1.2 END
+      ----------------------------------------------------------------------------------------------
+      -- 配送先
+      AND   gd_effective_date  BETWEEN xp.start_date_active
+                               AND     NVL( xp.end_date_active, gd_effective_date )
+      AND   xps.base_code      = xp.party_number
+      AND   gd_effective_date  BETWEEN xps.start_date_active
+                               AND     NVL( xps.end_date_active, gd_effective_date )
+      AND   xoha.deliver_to_id = xps.party_site_id
+      ----------------------------------------------------------------------------------------------
+      -- 運送業者
+      AND   gd_effective_date BETWEEN xc.start_date_active(+)
+                              AND     NVL( xc.end_date_active(+), gd_effective_date )
+      AND   xoha.career_id    = xc.party_id(+)
+      ----------------------------------------------------------------------------------------------
+      -- 保管場所
+      AND   xil.eos_control_type = gc_manage_eos_y    -- EOS業者
+      AND   xoha.deliver_from_id = xil.inventory_location_id
+      ----------------------------------------------------------------------------------------------
+      -- 受注タイプ
+      AND   otta.attribute1    = gc_sp_class_ship     -- 出荷依頼
+      AND   xoha.order_type_id = otta.transaction_type_id
+      ----------------------------------------------------------------------------------------------
+      -- 受注ヘッダアドオン
+      AND   xoha.latest_external_flag = gc_yes_no_y             -- 最新
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+      AND   xoha.prod_class           = gv_item_div_security    -- 商品区分（セキュリティ）
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
+      AND   xoha.req_status           IN( gc_req_status_syu_3   -- 締め済
+                                         ,gc_req_status_syu_5 ) -- 取消
+-- M.HOKKANJI Ver1.9 START
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--      AND  ((gr_param.fix_class = gc_fix_class_y
+--              AND EXISTS ( SELECT xic.concurrent_id
+--                             FROM xxwsh_tightening_control xic
+--                            WHERE xic.concurrent_id = xoha.tightening_program_id
+--                              AND xic.tightening_date BETWEEN gd_date_from
+--                                                          AND gd_date_to
+--                         )
+--            ) OR (gr_param.fix_class = gc_fix_class_k
+--              AND xoha.notif_date BETWEEN gd_date_from
+--                                      AND gd_date_to))
+      AND xoha.notif_date BETWEEN gd_date_from
+                              AND gd_date_to
+-- 2008/09/01 v1.16 update Y.Yamamoto end
+--      AND   DECODE( gr_param.fix_class, gc_fix_class_y, xoha.tightening_date
+--                                      , gc_fix_class_k, xoha.notif_date      )
+--              BETWEEN gd_date_from AND gd_date_to
+-- M.HOKKANJI Ver1.9 END
+      UNION ALL
+      -- ===========================================================================================
+      -- 支給データＳＱＬ
+      -- ===========================================================================================
+      SELECT xola.order_line_number                   -- 01:明細番号
+            ,xola.order_line_id                       -- 02:明細ID
+            ,CASE
+               WHEN xola.delete_flag = gc_yes_no_y THEN gc_delete_flag_y
+               ELSE gc_delete_flag_n
+             END                                      -- 03:明細削除フラグ
+            ,xoha.req_status                          -- 04:ステータス
+            ,xoha.notif_status                        -- 05:通知ステータス
+            ,xoha.prev_notif_status                   -- 06:前回通知ステータス
+            ,CASE
+               WHEN xoha.req_status = gc_req_status_shi_5 THEN gc_data_type_shi_can
+               ELSE gc_data_type_shi_ins
+             END                                      -- 07:データタイプ
+-- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
+            ,NULL                                     -- XX:EOS宛先（入庫倉庫）
+-- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
+            ,xil.eos_detination                       -- 08:EOS宛先（出庫倉庫）
+            ,xc.eos_detination                        -- 09:EOS宛先（運送業者）
+            ,xoha.delivery_no                         -- 10:配送No
+            ,xoha.request_no                          -- 11:依頼No
+            ,NULL                                     -- 12:拠点コード
+            ,NULL                                     -- 13:管轄拠点名称
+            ,xil.segment1                             -- 14:出庫倉庫コード
+            ,SUBSTRB( xil.description, 1, 20 )        -- 15:出庫倉庫名称
+            ,NULL                                     -- 16:入庫倉庫コード
+            ,NULL                                     -- 17:入庫倉庫名称
+            ,xc.party_number                          -- 18:運送業者コード
+            ,xc.party_name                            -- 19:運送業者名
+            ,xvs.vendor_site_code                     -- 20:配送先コード
+            ,xvs.vendor_site_name                     -- 21:配送先名
+            ,xoha.schedule_ship_date                  -- 22:発日
+            ,xoha.schedule_arrival_date               -- 23:着日
+            ,xlv.lookup_code                          -- 24:配送区分
+            ,CASE
+               --2008/08/12 Start 課題#48(変更#164) ----------------------------------------------
+               --WHEN xoha.weight_capacity_class  = gc_wc_class_j   THEN xoha.sum_weight
+               --WHEN xoha.weight_capacity_class  = gc_wc_class_y   THEN xoha.sum_capacity
+               WHEN xoha.weight_capacity_class  = gc_wc_class_j   THEN NVL(xoha.sum_weight,0)
+               WHEN xoha.weight_capacity_class  = gc_wc_class_y   THEN NVL(xoha.sum_capacity,0)
+               --2008/08/12 End 課題#48(変更#164) ------------------------------------------------
+             END                                      -- 25:重量／容積
+            ,xoha.mixed_no                            -- 26:混載元依頼No
+            ,xoha.collected_pallet_qty                -- 27:ﾊﾟﾚｯﾄ回収枚数
+            ,CASE
+               WHEN xoha.freight_charge_class = gc_freight_class_y THEN gc_freight_class_ins_y
+               ELSE gc_freight_class_ins_n
+             END freight_charge_class                         -- 28:運賃区分
+            ,NVL( xoha.arrival_time_from, gc_time_default )   -- 29:着荷時間指定From
+            ,NVL( xoha.arrival_time_to  , gc_time_default )   -- 30:着荷時間指定To
+            ,xoha.cust_po_number                      -- 31:顧客発注番号
+            ,xoha.shipping_instructions               -- 32:摘要
+            ,xoha.pallet_sum_quantity                 -- 33:ﾊﾟﾚｯﾄ使用枚数（出）
+            ,NULL                                     -- 34:ﾊﾟﾚｯﾄ使用枚数（入）
+            ,xoha.instruction_dept                    -- 35:報告部署
+            ,xic.prod_class_code                      -- 36:商品区分
+            ,xic.item_class_code                      -- 37:品目区分
+            ,xim.item_no                              -- 38:品目コード
+            ,xim.item_id                              -- 39:品目ID
+            ,xim.item_name                            -- 40:品目名
+            ,xim.item_um                              -- 41:単位
+            ,xim.conv_unit                            -- 42:入出庫換算単位
+            ,xola.quantity                            -- 43:数量
+            ,xim.num_of_cases                         -- 44:ケース入数
+            ,xim.lot_ctl                              -- 45:ロット使用
+      FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
+          ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
+          ,oe_transaction_types_all   otta      -- 受注タイプ
+          ,xxcmn_item_locations_v     xil       -- OPM保管場所情報VIEW
+          ,xxcmn_carriers2_v          xc        -- 運送業者情報VIEW2
+          ,xxcmn_vendor_sites_v       xvs       -- 仕入先サイト情報VIEW2
+          ,xxwsh_carriers_schedule    xcs       -- 配車配送計画アドオン
+          ,xxcmn_lookup_values2_v     xlv       -- クイックコード情報VIEW2
+          ,xxcmn_item_mst2_v          xim       -- OPM品目情報VIEW2
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--          ,xxcmn_item_categories4_v   xic       -- OPM品目カテゴリ割当VIEW4
+          ,xxcmn_item_categories5_v   xic       -- OPM品目カテゴリ割当VIEW5
+-- 2008/09/01 v1.16 update Y.Yamamoto end
+      WHERE
+      ----------------------------------------------------------------------------------------------
+      -- 品目
+            xim.item_id             = xic.item_id
+      AND   gd_effective_date       BETWEEN xim.start_date_active
+                                    AND     NVL( xim.end_date_active, gd_effective_date )
+      AND   xola.shipping_item_code = xim.item_no
+      ----------------------------------------------------------------------------------------------
+      -- 受注明細
+      AND   xoha.order_header_id = xola.order_header_id
+      ----------------------------------------------------------------------------------------------
+      -- 配送配車計画
+-- M.HOKKANJI Ver1.2 START
+/*
+      AND   gd_effective_date BETWEEN xlv.start_date_active
+                              AND     NVL( xlv.end_date_active, gd_effective_date )
+      AND   xlv.enabled_flag  = gc_yes_no_y
+      AND   xlv.lookup_type   = gc_lookup_ship_method
+      AND   xcs.delivery_type = xlv.lookup_code
+      AND   xoha.delivery_no  = xcs.delivery_no
+*/
+      AND   gd_effective_date BETWEEN NVL(xlv.start_date_active, gd_effective_date )
+                              AND     NVL( xlv.end_date_active, gd_effective_date )
+      AND   xlv.enabled_flag(+)  = gc_yes_no_y
+      AND   xlv.lookup_type(+)   = gc_lookup_ship_method
+      AND   xcs.delivery_type = xlv.lookup_code(+)
+      AND   xoha.delivery_no  = xcs.delivery_no(+)
+-- M.HOKKANJI Ver1.2 END
+      ----------------------------------------------------------------------------------------------
+      -- 配送先
+      AND   gd_effective_date   BETWEEN xvs.start_date_active
+                                AND     NVL( xvs.end_date_active, gd_effective_date )
+      AND   xoha.vendor_site_id = xvs.vendor_site_id
+      ----------------------------------------------------------------------------------------------
+      -- 運送業者
+      AND   gd_effective_date BETWEEN xc.start_date_active(+)
+                              AND     NVL( xc.end_date_active(+), gd_effective_date )
+      AND   xoha.career_id    = xc.party_id(+)
+      ----------------------------------------------------------------------------------------------
+      -- 保管場所
+      AND   xil.eos_control_type = gc_manage_eos_y    -- EOS業者
+      AND   xoha.deliver_from_id = xil.inventory_location_id
+      ----------------------------------------------------------------------------------------------
+      -- 受注タイプ
+      AND   otta.attribute1    = gc_sp_class_prov     -- 支給依頼
+      AND   xoha.order_type_id = otta.transaction_type_id
+      ----------------------------------------------------------------------------------------------
+      -- 受注ヘッダアドオン
+      AND   xoha.latest_external_flag = gc_yes_no_y             -- 最新
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+      AND   xoha.prod_class           = gv_item_div_security    -- 商品区分（セキュリティ）
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
+      AND   xoha.req_status           IN( gc_req_status_shi_3   -- 受領済
+                                         ,gc_req_status_shi_5 ) -- 取消
+-- M.HOKKANJI Ver1.9 START
+      -- パラメータが確定の場合のみ日付を参照
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--      AND  ((gr_param.fix_class = gc_fix_class_y
+--            ) OR (gr_param.fix_class = gc_fix_class_k
+--              AND xoha.notif_date BETWEEN gd_date_from
+--                                      AND gd_date_to))
+      AND   xoha.notif_date BETWEEN gd_date_from
+                                AND gd_date_to
+-- 2008/09/01 v1.16 update Y.Yamamoto end
+--      AND   DECODE( gr_param.fix_class, gc_fix_class_y, xoha.tightening_date
+--                                      , gc_fix_class_k, xoha.notif_date      )
+--              BETWEEN gd_date_from AND gd_date_to
+-- M.HOKKANJI Ver1.9 END
+      UNION ALL
+      -- ===========================================================================================
+      -- 移動データＳＱＬ
+      -- ===========================================================================================
+      SELECT xmril.line_number                        -- 01:明細番号
+            ,xmril.mov_line_id                        -- 02:明細ID
+            ,CASE
+               WHEN xmril.delete_flg = gc_yes_no_y THEN gc_delete_flag_y
+               ELSE gc_delete_flag_n
+             END                                      -- 03:明細削除フラグ
+            ,xmrih.status                             -- 04:ステータス
+            ,xmrih.notif_status                       -- 05:通知ステータス
+            ,xmrih.prev_notif_status                  -- 06:前回通知ステータス
+            ,CASE
+               WHEN xmrih.status = gc_req_status_syu_5 THEN gc_data_type_mov_can
+               ELSE gc_data_type_mov_ins
+             END                                      -- 07:データタイプ
+-- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
+            ,xil2.eos_detination                      -- XX:EOS宛先（入庫倉庫）
+-- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
+            ,xil1.eos_detination                      -- 08:EOS宛先（出庫倉庫）
+            ,xc.eos_detination                        -- 09:EOS宛先（運送業者）
+            ,xmrih.delivery_no                        -- 10:配送No
+            ,xmrih.mov_num                            -- 11:依頼No
+            ,NULL                                     -- 12:拠点コード
+            ,NULL                                     -- 13:管轄拠点名称
+            ,xil1.segment1                            -- 14:出庫倉庫コード
+            ,SUBSTRB( xil1.description, 1, 20 )       -- 15:出庫倉庫名称
+            ,xil2.segment1                            -- 16:入庫倉庫コード
+            ,SUBSTRB( xil2.description, 1, 20 )       -- 17:入庫倉庫名称
+            ,xc.party_number                          -- 18:運送業者コード
+            ,xc.party_name                            -- 19:運送業者名
+            ,NULL                                     -- 20:配送先コード
+            ,NULL                                     -- 21:配送先名
+            ,xmrih.schedule_ship_date                 -- 22:発日
+            ,xmrih.schedule_arrival_date              -- 23:着日
+            ,xlv.lookup_code                          -- 24:配送区分
+            ,CASE
+-- M.HOKKANJI Ver1.2 START
+               WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+               --AND  xlv.attribute6               = gc_small_method_y THEN xmrih.sum_weight      --2008/08/12 Del 課題#48(変更#164)
+               AND  xlv.attribute6               = gc_small_method_y THEN NVL(xmrih.sum_weight,0) --2008/08/12 Add 課題#48(変更#164)
+               WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+               AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN NVL(xmrih.sum_weight,0)
+                                                                    + NVL(xmrih.sum_pallet_weight,0)
+                                                                    
+               --WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN xmrih.sum_capacity      --2008/08/12 Del 課題#48(変更#164)
+               WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN NVL(xmrih.sum_capacity,0) --2008/08/12 Add 課題#48(変更#164)
+/*
+               WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+               AND  xlv.attribute6               = gc_wc_class_j THEN xmrih.sum_weight
+               WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+               AND  xlv.attribute6              <> gc_wc_class_j THEN xmrih.sum_weight
+                                                                    + xmrih.sum_pallet_weight
+               WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN xmrih.sum_capacity
+*/
+-- M.HOKKANJI Ver1.2 END
+             END                                      -- 25:重量／容積
+            ,NULL                                     -- 26:混載元依頼No
+            ,xmrih.collected_pallet_qty               -- 27:ﾊﾟﾚｯﾄ回収枚数
+            ,CASE
+               WHEN xmrih.freight_charge_class = gc_freight_class_y THEN gc_freight_class_ins_y
+               ELSE gc_freight_class_ins_n
+             END                                                -- 28:運賃区分
+            ,NVL( xmrih.arrival_time_from, gc_time_default )    -- 29:着荷時間指定From
+            ,NVL( xmrih.arrival_time_to  , gc_time_default )    -- 30:着荷時間指定To
+            ,NULL                                     -- 31:顧客発注番号
+            ,xmrih.description                        -- 32:摘要
+            ,xmrih.out_pallet_qty                     -- 33:ﾊﾟﾚｯﾄ使用枚数（出）
+            ,xmrih.in_pallet_qty                      -- 34:ﾊﾟﾚｯﾄ使用枚数（入）
+            ,xmrih.instruction_post_code              -- 35:報告部署
+            ,xic.prod_class_code                      -- 36:商品区分
+            ,xic.item_class_code                      -- 37:品目区分
+            ,xim.item_no                              -- 38:品目コード
+            ,xim.item_id                              -- 39:品目ID
+            ,xim.item_name                            -- 40:品目名
+            ,xim.item_um                              -- 41:単位
+            ,xim.conv_unit                            -- 42:入出庫換算単位
+            ,xmril.instruct_qty                       -- 43:数量
+            ,xim.num_of_cases                         -- 44:ケース入数
+            ,xim.lot_ctl                              -- 45:ロット使用
+      FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
+          ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
+          ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
+          ,xxcmn_item_locations_v         xil2      -- OPM保管場所情報VIEW（配送先）
+          ,xxcmn_carriers2_v              xc        -- 運送業者情報VIEW2
+          ,xxwsh_carriers_schedule        xcs       -- 配車配送計画アドオン
+          ,xxcmn_lookup_values2_v         xlv       -- クイックコード情報VIEW2
+          ,xxcmn_item_mst2_v              xim       -- OPM品目情報VIEW2
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--          ,xxcmn_item_categories4_v   xic       -- OPM品目カテゴリ割当VIEW4
+          ,xxcmn_item_categories5_v   xic       -- OPM品目カテゴリ割当VIEW5
+-- 2008/09/01 v1.16 update Y.Yamamoto end
+      WHERE
+      ----------------------------------------------------------------------------------------------
+      -- 品目
+            xim.item_id             = xic.item_id
+      AND   gd_effective_date       BETWEEN xim.start_date_active
+                                    AND     NVL( xim.end_date_active, gd_effective_date )
+      AND   xmril.item_id           = xim.item_id
+      ----------------------------------------------------------------------------------------------
+      -- 移動依頼指示明細
+      AND   xmrih.mov_hdr_id = xmril.mov_hdr_id
+      ----------------------------------------------------------------------------------------------
+      -- 配送配車計画
+-- M.HOKKANJI Ver1.2 START
+      AND   gd_effective_date BETWEEN NVL(xlv.start_date_active, gd_effective_date)
+                              AND     NVL( xlv.end_date_active, gd_effective_date )
+      AND   xlv.enabled_flag(+)  = gc_yes_no_y
+      AND   xlv.lookup_type(+)   = gc_lookup_ship_method
+      AND   xcs.delivery_type = xlv.lookup_code(+)
+      AND   xmrih.delivery_no = xcs.delivery_no(+)
+/*
+      AND   gd_effective_date BETWEEN xlv.start_date_active
+                              AND     NVL( xlv.end_date_active, gd_effective_date )
+      AND   xlv.enabled_flag  = gc_yes_no_y
+      AND   xlv.lookup_type   = gc_lookup_ship_method
+      AND   xcs.delivery_type = xlv.lookup_code
+      AND   xmrih.delivery_no = xcs.delivery_no
+*/
+-- M.HOKKANJI Ver1.2 END
+      ----------------------------------------------------------------------------------------------
+      -- 運送業者
+      AND   gd_effective_date BETWEEN xc.start_date_active(+)
+                              AND     NVL( xc.end_date_active(+), gd_effective_date )
+      AND   xmrih.career_id    = xc.party_id(+)
+      ----------------------------------------------------------------------------------------------
+-- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
+/***
+      -- 保管場所（配送先）
+      AND   xil2.eos_control_type  = gc_manage_eos_y    -- EOS業者
+      AND   xmrih.ship_to_locat_id = xil2.inventory_location_id
+      ----------------------------------------------------------------------------------------------
+      -- 保管場所（配送元）
+      AND   xil1.eos_control_type  = gc_manage_eos_y    -- EOS業者
+      AND   xmrih.shipped_locat_id = xil1.inventory_location_id
+      ----------------------------------------------------------------------------------------------
+***/
+      -- 保管場所（配送先）
+      AND   xmrih.ship_to_locat_id = xil2.inventory_location_id
+      ----------------------------------------------------------------------------------------------
+      -- 保管場所（配送元）
+      AND   xmrih.shipped_locat_id = xil1.inventory_location_id
+      ----------------------------------------------------------------------------------------------
+      AND   (xil1.eos_control_type  = gc_manage_eos_y   -- EOS業者（配送先）
+          OR xil2.eos_control_type  = gc_manage_eos_y)  -- EOS業者（配送元）
+      ----------------------------------------------------------------------------------------------
+-- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
+      -- 移動依頼指示ヘッダ
+      AND   xmrih.mov_type    = gc_mov_type_y           -- 積送あり
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 START #####
+      AND   xmrih.item_class  = gv_item_div_security    -- 商品区分（セキュリティ）
+-- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
+      AND   xmrih.status      IN( gc_mov_status_cmp     -- 依頼済
+                                 ,gc_mov_status_adj     -- 調整中
+                                 ,gc_mov_status_ccl )   -- 取消
+      ---- パラメータが「実績」の場合のみ
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--      AND   DECODE( gr_param.fix_class, gc_fix_class_y, gd_date_from
+--                                      , gc_fix_class_k, xmrih.notif_date      )
+--              BETWEEN gd_date_from AND gd_date_to
+      AND   xmrih.notif_date BETWEEN gd_date_from
+                                 AND gd_date_to
+-- 2008/09/01 v1.16 update Y.Yamamoto end
+      ;
+    END IF;
+-- 2008/09/01 v1.16 Y.Yamamoto End
 --
   EXCEPTION
 --##### 固定例外処理部 START #######################################################################
@@ -1586,7 +2107,11 @@ AS
             || ' AND  NOT EXISTS'
                       || '( SELECT 1'
                       || '  FROM xxwsh_notif_delivery_info xndi'
-                      || '  WHERE xndi.request_no = wsdit2.request_no )'
+-- 2008/09/01 v1.16 update Y.Yamamoto start
+--                      || '  WHERE xndi.request_no = wsdit2.request_no )'
+                      || '  WHERE xndi.request_no = wsdit2.request_no '
+                      || '  AND   rownum <= 1 )'
+-- 2008/09/01 v1.16 update Y.Yamamoto end
           || ' )'
           || ' OR'
           || ' (   wsdit2.notif_status      = ''' || gc_notif_status_c || ''''  -- 確定通知済
