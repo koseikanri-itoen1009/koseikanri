@@ -8,7 +8,7 @@ AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -107,6 +107,7 @@ AS
  *  2009/02/27   1.18 Oracle 大橋 孝郎   本番#1240対応
  *  2009/04/08   1.19 Oracle 吉元 強樹   本番#1352,1374対応
  *  2009/04/09   1.20 Oracle 吉元 強樹   本番#1350対応
+ *  2009/04/13   1.21 Oracle 吉元 強樹   本番#1350対応,メッセージ出力不具合対応(エラー重複表示)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2655,9 +2656,12 @@ AS
                                                      ,gv_cons_fc_type_hikitori)  -- '引取計画'
                                                      ,1
                                                      ,5000);
+--
+-- 2009/04/13 v1.21 T.Yoshimoto Del Start メッセージ不具合(重複表示)
 -- add start 1.11
-      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
 -- add end 1.11
+-- 2009/04/13 v1.21 T.Yoshimoto Del End メッセージ不具合(重複表示)
       RAISE no_data;
     END IF;
 --
@@ -2798,9 +2802,12 @@ AS
                                                      ,gv_cons_fc_type_hanbai) -- '販売計画'
                                                      ,1
                                                      ,5000);
+--
+-- 2009/04/13 v1.21 T.Yoshimoto Del Start メッセージ不具合(重複表示)
 -- add start 1.11
-      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
 -- add end 1.11
+-- 2009/04/13 v1.21 T.Yoshimoto Del End メッセージ不具合(重複表示)
       RAISE no_data;
     END IF;
 --
@@ -2937,9 +2944,12 @@ AS
                                                      ,gv_cons_fc_type_keikaku)  -- '計画商品'
                                                      ,1
                                                      ,5000);
+--
+-- 2009/04/13 v1.21 T.Yoshimoto Del Start メッセージ不具合(重複表示)
 -- add start 1.11
-      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
 -- add end 1.11
+-- 2009/04/13 v1.21 T.Yoshimoto Del Del メッセージ不具合(重複表示)
       RAISE no_data;
     END IF;
 --
