@@ -1,0 +1,121 @@
+CREATE TABLE xxpo.xxpo_namaha_prod_txns (
+     txns_id                         NUMBER         NOT NULL ,
+     entry_number                    VARCHAR2(9)     ,
+     aracha_item_id                  NUMBER         NOT NULL ,
+     aracha_item_code                VARCHAR2(40)   NOT NULL ,
+     aracha_lot_id                   NUMBER   ,
+     aracha_lot_number               VARCHAR2(32)     ,
+     aracha_quantity                 NUMBER(12,3)     ,
+     aracha_uom                      VARCHAR2(3)     ,
+     processing_unit_price           NUMBER(9,2)     ,
+     location_id                     NUMBER         NOT NULL ,
+     location_code                   VARCHAR2(40)   NOT NULL ,
+     nijirushi                       VARCHAR2(20)     ,
+     description                     VARCHAR2(150)     ,
+     collect1_quantity               NUMBER(12,3)     ,
+     collect1_temp_unit_price        NUMBER(9,2)     ,
+     collect1_final_unit_price       NUMBER(9,2)     ,
+     collect2_quantity               NUMBER(12,3)     ,
+     collect2_temp_unit_price        NUMBER(9,2)     ,
+     collect2_final_unit_price       NUMBER(9,2)     ,
+     receive1_quantity               NUMBER(12,3)     ,
+     receive1_temp_unit_price        NUMBER(9,2)     ,
+     receive1_final_unit_price       NUMBER(9,2)     ,
+     receive2_quantity               NUMBER(12,3)     ,
+     receive2_temp_unit_price        NUMBER(9,2)     ,
+     receive2_final_unit_price       NUMBER(9,2)     ,
+     shipment_quantity               NUMBER(12,3)     ,
+     shipment_temp_unit_price        NUMBER(9,2)     ,
+     shipment_final_unit_price       NUMBER(9,2)     ,
+     byproduct1_item_id              NUMBER   ,
+     byproduct1_item_code            VARCHAR2(40)     ,
+     byproduct1_lot_id               NUMBER   ,
+     byproduct1_lot_number           VARCHAR2(32)     ,
+     byproduct1_quantity             NUMBER(12,3)     ,
+     byproduct1_uom                  VARCHAR2(3)     ,
+     byproduct2_item_id              NUMBER   ,
+     byproduct2_item_code            VARCHAR2(40)     ,
+     byproduct2_lot_id               NUMBER   ,
+     byproduct2_lot_number           VARCHAR2(32)     ,
+     byproduct2_quantity             NUMBER(12,3)     ,
+     byproduct2_uom                  VARCHAR2(3)     ,
+     byproduct3_item_id              NUMBER   ,
+     byproduct3_item_code            VARCHAR2(40)     ,
+     byproduct3_lot_id               NUMBER   ,
+     byproduct3_lot_number           VARCHAR2(32)     ,
+     byproduct3_quantity             NUMBER(12,3)     ,
+     byproduct3_uom                  VARCHAR2(3)     ,
+     final_unit_price_entered_flg    VARCHAR2(1)   DEFAULT 'N'  NOT NULL ,
+     department_code                 VARCHAR2(60)     ,
+     created_by                      NUMBER(15)    NOT NULL ,
+     creation_date                   DATE          NOT NULL ,
+     last_updated_by                 NUMBER(15)    NOT NULL ,
+     last_update_date                DATE          NOT NULL ,
+     last_update_login               NUMBER(15)     ,
+     request_id                      NUMBER(15)     ,
+     program_application_id          NUMBER(15)     ,
+     program_id                      NUMBER(15)     ,
+     program_update_date             DATE  ,
+     CONSTRAINT XXPO_NAMAHA_PROD_TXNS_PK PRIMARY KEY (TXNS_ID)
+       ) 
+;
+--
+COMMENT ON TABLE XXPO.XXPO_NAMAHA_PROD_TXNS IS '生葉実績（アドオン）';
+--
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.TXNS_ID IS '実績ID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.ENTRY_NUMBER IS '伝票No';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.ARACHA_ITEM_ID IS '荒茶品目ID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.ARACHA_ITEM_CODE IS '荒茶品目コード';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.ARACHA_LOT_ID IS '荒茶ロットID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.ARACHA_LOT_NUMBER IS '荒茶ロットNo';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.ARACHA_QUANTITY IS '仕上数量';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.ARACHA_UOM IS '仕上単位';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.PROCESSING_UNIT_PRICE IS '加工単価';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.LOCATION_ID IS '入庫先ID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.LOCATION_CODE IS '入庫先コード';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.NIJIRUSHI IS '荷印';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.DESCRIPTION IS '備考';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.COLLECT1_QUANTITY IS '集荷1数量';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.COLLECT1_TEMP_UNIT_PRICE IS '集荷1単価(仮)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.COLLECT1_FINAL_UNIT_PRICE IS '集荷1単価(正)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.COLLECT2_QUANTITY IS '集荷2数量';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.COLLECT2_TEMP_UNIT_PRICE IS '集荷2単価(仮)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.COLLECT2_FINAL_UNIT_PRICE IS '集荷2単価(正)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.RECEIVE1_QUANTITY IS '受入1数量';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.RECEIVE1_TEMP_UNIT_PRICE IS '受入1単価(仮)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.RECEIVE1_FINAL_UNIT_PRICE IS '受入1単価(正)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.RECEIVE2_QUANTITY IS '受入2数量';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.RECEIVE2_TEMP_UNIT_PRICE IS '受入2単価(仮)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.RECEIVE2_FINAL_UNIT_PRICE IS '受入2単価(正)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.SHIPMENT_QUANTITY IS '出荷数量';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.SHIPMENT_TEMP_UNIT_PRICE IS '出荷単価(仮)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.SHIPMENT_FINAL_UNIT_PRICE IS '出荷単価(正)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT1_ITEM_ID IS '副産物1品目ID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT1_ITEM_CODE IS '副産物1品目コード';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT1_LOT_ID IS '副産物1ロットID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT1_LOT_NUMBER IS '副産物1ロットNo';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT1_QUANTITY IS '副産物1数量';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT1_UOM IS '副産物1単位';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT2_ITEM_ID IS '副産物2品目ID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT2_ITEM_CODE IS '副産物2品目コード';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT2_LOT_ID IS '副産物2ロットID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT2_LOT_NUMBER IS '副産物2ロットNo';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT2_QUANTITY IS '副産物2数量';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT2_UOM IS '副産物2単位';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT3_ITEM_ID IS '副産物3品目ID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT3_ITEM_CODE IS '副産物3品目コード';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT3_LOT_ID IS '副産物3ロットID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT3_LOT_NUMBER IS '副産物3ロットNo';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT3_QUANTITY IS '副産物3数量';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT3_UOM IS '副産物3単位';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.FINAL_UNIT_PRICE_ENTERED_FLG IS '正単価入力完了フラグ';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.DEPARTMENT_CODE IS '部署コード';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.CREATED_BY IS '作成者';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.CREATION_DATE IS '作成日';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.LAST_UPDATED_BY IS '最終更新者';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.LAST_UPDATE_DATE IS '最終更新日';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.LAST_UPDATE_LOGIN IS '最終更新ログイン';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.REQUEST_ID IS '要求ID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.PROGRAM_APPLICATION_ID IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.PROGRAM_ID IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.PROGRAM_UPDATE_DATE IS 'プログラム更新日';

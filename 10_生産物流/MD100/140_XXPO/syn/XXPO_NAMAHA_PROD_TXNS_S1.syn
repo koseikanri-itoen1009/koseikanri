@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxpo_namaha_prod_txns_s1 FOR xxpo.xxpo_namaha_prod_txns_s1;

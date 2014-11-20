@@ -1,0 +1,64 @@
+CREATE TABLE xxpo.xxpo_rcv_txns_interface
+(
+  txns_id                     NUMBER        NOT NULL,
+  source_document_number      VARCHAR2(20)  NOT NULL,
+  vendor_code                 VARCHAR2(30)  NOT NULL,
+  vendor_name                 VARCHAR2(240),
+  promised_date               DATE          NOT NULL,
+  location_code               VARCHAR2(30)  NOT NULL,
+  location_name               VARCHAR2(240),
+  source_document_line_num    NUMBER        NOT NULL,
+  item_code                   VARCHAR2(40)  NOT NULL,
+  item_name                   VARCHAR2(240),
+  lot_number                  VARCHAR2(32),
+  producted_date              DATE,
+  koyu_code                   VARCHAR2(6),
+  quantity                    NUMBER(12,3)  NOT NULL,
+  po_line_description         VARCHAR2(150),
+  rcv_date                    DATE          NOT NULL,
+  rcv_quantity                NUMBER(12,3)  NOT NULL,
+  rcv_quantity_uom            VARCHAR2(3)   NOT NULL,
+  rcv_line_description        VARCHAR2(150),
+  created_by                  NUMBER(15)    NOT NULL,
+  creation_date               DATE          NOT NULL,
+  last_updated_by             NUMBER(15)    NOT NULL,
+  last_update_date            DATE          NOT NULL,
+  last_update_login           NUMBER(15),
+  request_id                  NUMBER(15),
+  program_application_id      NUMBER(15),
+  program_id                  NUMBER(15),
+  program_update_date         DATE,
+  CONSTRAINT xxpo_rcv_txns_if_pk PRIMARY KEY ( txns_id )
+  USING INDEX TABLESPACE XXIDX
+  ) ;
+--
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.txns_id                   IS '取引ID';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.source_document_number    IS '元文書番号';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.vendor_code               IS '取引先コード';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.vendor_name               IS '取引先名';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.promised_date             IS '納入日';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.location_code             IS '納入先コード';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.location_name             IS '納入先名';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.source_document_line_num  IS '元文書明細番号';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.item_code                 IS '品目コード';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.item_name                 IS '品目名称';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.lot_number                IS 'ロットNo';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.producted_date            IS '製造日';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.koyu_code                 IS '固有記号';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.quantity                  IS '指示数量';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.po_line_description       IS '明細摘要';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.rcv_date                  IS '受入日';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.rcv_quantity              IS '受入数量';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.rcv_quantity_uom          IS '単位コード';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.rcv_line_description      IS '受入明細摘要';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.created_by                IS '作成者';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.creation_date             IS '作成日';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.last_updated_by           IS '最終更新者';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.last_update_date          IS '最終更新日';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.last_update_login         IS '最終更新ログイン';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.request_id                IS '要求ID';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.program_application_id    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.program_id                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxpo.xxpo_rcv_txns_interface.program_update_date       IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxpo.xxpo_rcv_txns_interface IS '受入実績インタフェース(アドオン)';
