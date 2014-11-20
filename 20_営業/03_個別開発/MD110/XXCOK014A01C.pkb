@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : ”Ì”„ÀÑî•ñEè”—¿ŒvZğŒ‚©‚ç‚Ì”Ì”„è”—¿ŒvZˆ—
  * MD.050           : ğŒ•Ê”Ìè”Ì‹¦ŒvZˆ— MD050_COK_014_A01
- * Version          : 2.1
+ * Version          : 2.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -51,6 +51,8 @@ AS
  *                                       [áŠQT1_1400][áŠQT1_1402][áŠQT1_1422]
  *                                       C³¢“ï‚É‚æ‚èÄì¬
  *  2009/06/26    2.1   M.Hiruta         [áŠQ0000269] ƒpƒtƒH[ƒ}ƒ“ƒX‚ğŒüã‚³‚¹‚é‚½‚ßSQL‚ğC³
+ *  2009/07/08    2.2   M.Hiruta         [áŠQ0000009] ğŒ•Ê”Ìè”Ì‹¦ŒvZ‘ÎÛŠO‚Ì”Ì”„ÀÑ‚ğœŠO‚·‚é‚æ‚¤‚ÉC³
+ *                                                     Œ…”’´‰ß‚ğ–h‚®‚½‚ßA“d‹C—¿iŒÅ’è/•Ï“®j‚ÌŠ„–ßŠz‚ğC³
  *
  *****************************************************************************************/
   --==================================================
@@ -135,6 +137,9 @@ AS
 -- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
   cv_lookup_type_06                CONSTANT VARCHAR2(30)    := 'XXCMM_CUST_GYOTAI_CHU';             -- ‹Æ‘Ôi’†•ª—Şj
 -- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+  cv_lookup_type_07                CONSTANT VARCHAR2(30)    := 'XXCOK1_CALC_SALES_CLASS';           -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
   -- —LŒøƒtƒ‰ƒO
   cv_enable                        CONSTANT VARCHAR2(1)     := 'Y';
   -- ‹¤’ÊŠÖ”ƒƒbƒZ[ƒWo—Í‹æ•ª
@@ -824,6 +829,18 @@ AS
                     AND xseh.delivery_date         <= xt0c.closing_date
                     AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
                     AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+                    AND EXISTS ( SELECT 'X'
+                                 FROM fnd_lookup_values    flv
+                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                                   AND flv.lookup_code             = xsel.sales_class
+                                   AND flv.language                = USERENV( 'LANG' )
+                                   AND flv.enabled_flag            = cv_enable
+                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+                                   AND ROWNUM = 1
+                        )
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
                     AND xsim.item_code              = xsel.item_code
                     AND flv1.lookup_code(+)         = xsim.vessel_group
                     AND flv1.lookup_type(+)         = cv_lookup_type_04
@@ -1034,6 +1051,18 @@ AS
                     AND xseh.delivery_date         <= xt0c.closing_date
                     AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
                     AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+                    AND EXISTS ( SELECT 'X'
+                                 FROM fnd_lookup_values    flv
+                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                                   AND flv.lookup_code             = xsel.sales_class
+                                   AND flv.language                = USERENV( 'LANG' )
+                                   AND flv.enabled_flag            = cv_enable
+                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+                                   AND ROWNUM = 1
+                        )
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
                     AND xsim.item_code              = xsel.item_code
                     AND flv1.lookup_code(+)         = xsim.vessel_group
                     AND flv1.lookup_type(+)         = cv_lookup_type_04
@@ -1244,6 +1273,18 @@ AS
                     AND xseh.delivery_date         <= xt0c.closing_date
                     AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
                     AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+                    AND EXISTS ( SELECT 'X'
+                                 FROM fnd_lookup_values    flv
+                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                                   AND flv.lookup_code             = xsel.sales_class
+                                   AND flv.language                = USERENV( 'LANG' )
+                                   AND flv.enabled_flag            = cv_enable
+                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+                                   AND ROWNUM = 1
+                        )
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
                     AND xsim.item_code              = xsel.item_code
                     AND flv1.lookup_code(+)         = xsim.vessel_group
                     AND flv1.lookup_type(+)         = cv_lookup_type_04
@@ -1439,6 +1480,18 @@ AS
                     AND xseh.delivery_date         <= xt0c.closing_date
                     AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
                     AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+                    AND EXISTS ( SELECT 'X'
+                                 FROM fnd_lookup_values    flv
+                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                                   AND flv.lookup_code             = xsel.sales_class
+                                   AND flv.language                = USERENV( 'LANG' )
+                                   AND flv.enabled_flag            = cv_enable
+                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+                                   AND ROWNUM = 1
+                        )
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
                     AND xsim.item_code              = xsel.item_code
                     AND NOT EXISTS ( SELECT 'X'
                                      FROM fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
@@ -1556,24 +1609,36 @@ AS
          , xbc.bm1_vendor_code                                            AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
          , xbc.bm1_vendor_site_code                                       AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
          , xbc.bm1_bm_payment_type                                        AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
-         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+-- Start 2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
+--         , xbc.bm1_pct                                                    AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+--         , xbc.bm1_amt                                                    AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+         , NULL                                                           AS bm1_pct                    -- y‚a‚l‚PzBM—¦(%)
+         , NULL                                                           AS bm1_amt                    -- y‚a‚l‚PzBM‹àŠz
+-- End   2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
          , NULL                                                           AS bm1_cond_bm_tax_pct        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_—¦
          , NULL                                                           AS bm1_cond_bm_amt_tax        -- y‚a‚l‚PzğŒ•Êè”—¿Šz(Å)_Šz
          , TRUNC( SUM( xbc.bm1_amt ) )                                    AS bm1_electric_amt_tax       -- y‚a‚l‚Pz“d‹C—¿(Å)
          , xbc.bm2_vendor_code                                            AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
          , xbc.bm2_vendor_site_code                                       AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
          , xbc.bm2_bm_payment_type                                        AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
-         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+-- Start 2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
+--         , xbc.bm2_pct                                                    AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+--         , xbc.bm2_amt                                                    AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+         , NULL                                                           AS bm2_pct                    -- y‚a‚l‚QzBM—¦(%)
+         , NULL                                                           AS bm2_amt                    -- y‚a‚l‚QzBM‹àŠz
+-- End   2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
          , NULL                                                           AS bm2_cond_bm_tax_pct        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_—¦
          , NULL                                                           AS bm2_cond_bm_amt_tax        -- y‚a‚l‚QzğŒ•Êè”—¿Šz(Å)_Šz
          , NULL                                                           AS bm2_electric_amt_tax       -- y‚a‚l‚Qz“d‹C—¿(Å)
          , xbc.bm3_vendor_code                                            AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
          , xbc.bm3_vendor_site_code                                       AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
          , xbc.bm3_bm_payment_type                                        AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
-         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
-         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+-- Start 2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
+--         , xbc.bm3_pct                                                    AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+--         , xbc.bm3_amt                                                    AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+         , NULL                                                           AS bm3_pct                    -- y‚a‚l‚RzBM—¦(%)
+         , NULL                                                           AS bm3_amt                    -- y‚a‚l‚RzBM‹àŠz
+-- End   2009/07/08 Ver_2.2 0000009 M.Hiruta REPAIR
          , NULL                                                           AS bm3_cond_bm_tax_pct        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_—¦
          , NULL                                                           AS bm3_cond_bm_amt_tax        -- y‚a‚l‚RzğŒ•Êè”—¿Šz(Å)_Šz
          , NULL                                                           AS bm3_electric_amt_tax       -- y‚a‚l‚Rz“d‹C—¿(Å)
@@ -1664,6 +1729,18 @@ AS
                     AND xseh.delivery_date         <= xt0c.closing_date
                     AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
                     AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+                    AND EXISTS ( SELECT 'X'
+                                 FROM fnd_lookup_values    flv
+                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                                   AND flv.lookup_code             = xsel.sales_class
+                                   AND flv.language                = USERENV( 'LANG' )
+                                   AND flv.enabled_flag            = cv_enable
+                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+                                   AND ROWNUM = 1
+                        )
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
                     AND xsim.item_code              = xsel.item_code
                     AND NOT EXISTS ( SELECT 'X'
                                      FROM fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
@@ -1794,6 +1871,18 @@ AS
                     AND xseh.delivery_date         <= xt0c.closing_date
                     AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
                     AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+                    AND EXISTS ( SELECT 'X'
+                                 FROM fnd_lookup_values    flv
+                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                                   AND flv.lookup_code             = xsel.sales_class
+                                   AND flv.language                = USERENV( 'LANG' )
+                                   AND flv.enabled_flag            = cv_enable
+                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+                                   AND ROWNUM = 1
+                        )
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
                     AND xsim.item_code              = xsel.item_code
                     AND xsel.item_code              = gv_elec_change_item_code
                   GROUP BY xseh.ship_to_customer_code
@@ -2005,6 +2094,18 @@ AS
                     AND xseh.delivery_date         <= xt0c.closing_date
                     AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
                     AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD START
+                    AND EXISTS ( SELECT 'X'
+                                 FROM fnd_lookup_values    flv
+                                 WHERE flv.lookup_type             = cv_lookup_type_07  -- ”ÌèŒvZ‘ÎÛ”„ã‹æ•ª
+                                   AND flv.lookup_code             = xsel.sales_class
+                                   AND flv.language                = USERENV( 'LANG' )
+                                   AND flv.enabled_flag            = cv_enable
+                                   AND gd_process_date       BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                                 AND NVL( flv.end_date_active,   gd_process_date )
+                                   AND ROWNUM = 1
+                        )
+-- 2009/07/10 Ver.2.2 [áŠQ0000009] SCS K.Yamaguchi ADD END
                     AND xsim.item_code              = xsel.item_code
 -- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
                     AND xt0c.receiv_discount_rate  IS NOT NULL -- “ü‹à’lˆø—¦‚ªİ’è‚³‚ê‚Ä‚¢‚éŒÚ‹q‚Ì‚İ
