@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2010/03/01    1.15  S.Karikomi       [E_本稼働_01635]ヘッダ出力拠点修正
  *                                                       件数カウント単位の同期対応
  *  2010/03/09    1.16  S.Karikomi       [E_本稼働_01637]売単価、売価金額修正
+ *  2010/03/11    1.17  S.Karikomi       [E_本稼働_01848]納品日変更対応
  *
  *****************************************************************************************/
 --
@@ -762,7 +763,10 @@ AS
           ,xeh.order_date                       order_date                     -- EDIヘッダ情報.発注日
           ,xeh.center_delivery_date             center_delivery_date           -- EDIヘッダ情報.センター納品日
           ,xeh.result_delivery_date             result_delivery_date           -- EDIヘッダ情報.実納品日
-          ,xeh.shop_delivery_date               shop_delivery_date             -- EDIヘッダ情報.店舗納品日
+/* 2010/03/11 Ver1.17 Mod Start */
+--          ,xeh.shop_delivery_date               shop_delivery_date             -- EDIヘッダ情報.店舗納品日
+          ,ooha.request_date                    shop_delivery_date             -- 受注ヘッダ.要求日
+/* 2010/03/11 Ver1.17 Mod  End  */
           ,xeh.data_creation_date_edi_data      data_creation_date_edi_data    -- EDIヘッダ情報.データ作成日(ＥＤＩデータ中)
           ,xeh.data_creation_time_edi_data      data_creation_time_edi_data    -- EDIヘッダ情報.データ作成時刻(ＥＤＩデータ中)
 -- ***************************** 2009/07/10 1.10 N.Maeda    MOD START ******************************--
@@ -1162,8 +1166,12 @@ AS
     AND    xeh.edi_delivery_schedule_flag = cv_n                              -- EDIﾍｯﾀﾞ情報.EDI納品予定送信済ﾌﾗｸﾞ='N'(未送信)
     AND    xeh.data_type_code             = cv_data_type_edi                  -- EDIﾍｯﾀﾞ情報.ﾃﾞｰﾀ種ｺｰﾄﾞ='11'(受注EDI)
     AND    xeh.edi_chain_code             = gt_edi_c_code                     -- EDIﾍｯﾀﾞ情報.EDIﾁｪｰﾝ店ｺｰﾄﾞ=inﾊﾟﾗﾒｰﾀ.EDIﾁｪｰﾝ店ｺｰﾄﾞ
-    AND    TRUNC(xeh.shop_delivery_date)    BETWEEN gt_shop_date_from         -- EDIﾍｯﾀﾞ情報.店舗納品日 BETWEEN inﾊﾟﾗﾒｰﾀ.店舗納品日From
+/* 2010/03/11 Ver1.17 Mod Start */
+--    AND    TRUNC(xeh.shop_delivery_date)    BETWEEN gt_shop_date_from         -- EDIﾍｯﾀﾞ情報.店舗納品日 BETWEEN inﾊﾟﾗﾒｰﾀ.店舗納品日From
+--                                                AND gt_shop_date_to           --                            AND inﾊﾟﾗﾒｰﾀ.店舗納品日To
+    AND    TRUNC(ooha.request_date)         BETWEEN gt_shop_date_from         -- 受注ﾍｯﾀﾞ.要求日 BETWEEN inﾊﾟﾗﾒｰﾀ.店舗納品日From
                                                 AND gt_shop_date_to           --                            AND inﾊﾟﾗﾒｰﾀ.店舗納品日To
+/* 2010/03/11 Ver1.17 Mod  End  */
     AND  ( gt_sale_class                 IS NULL                              -- inﾊﾟﾗﾒｰﾀ.定番特売区分 IS NULL
     OR     gt_sale_class                  = cv_sale_class_all                 -- inﾊﾟﾗﾒｰﾀ.定番特売区分='0'(両方)
     OR     xeh.ar_sale_class              = gt_sale_class )                   -- EDIﾍｯﾀﾞ情報.特売区分=inﾊﾟﾗﾒｰﾀ.定番特売区分
