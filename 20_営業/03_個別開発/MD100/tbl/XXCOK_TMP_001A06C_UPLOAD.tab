@@ -1,0 +1,50 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCOK_TMP_001A06C_UPLOAD
+ * Description : 年次顧客移行情報Excelアップロード一時表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2013/02/07    1.0   K.Nakamura       新規作成
+ *
+ ****************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE XXCOK.XXCOK_TMP_001A06C_UPLOAD
+(
+   FILE_ID                NUMBER         NOT NULL,
+   RECORD_NO              NUMBER         NOT NULL,
+   CUST_CODE              VARCHAR2(9)            ,
+   PREV_BASE_CODE         VARCHAR2(4)            ,
+   NEW_BASE_CODE          VARCHAR2(4)            ,
+   STATUS                 VARCHAR2(1)            ,
+   CUST_SHIFT_ID          NUMBER                 ,
+   CUSTOMER_CLASS_CODE    VARCHAR2(2)            ,
+   UPLOAD_DICIDE_FLAG     VARCHAR2(1)            ,
+   ERROR_MESSAGE          VARCHAR2(500)
+)
+/
+COMMENT ON TABLE  XXCOK.XXCOK_TMP_001A06C_UPLOAD                         IS '年次顧客移行情報Excelアップロード一時表'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_001A06C_UPLOAD.FILE_ID                 IS 'ファイルID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_001A06C_UPLOAD.RECORD_NO               IS 'レコードNo'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_001A06C_UPLOAD.CUST_CODE               IS '顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_001A06C_UPLOAD.PREV_BASE_CODE          IS '旧担当拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_001A06C_UPLOAD.NEW_BASE_CODE           IS '新担当拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_001A06C_UPLOAD.STATUS                  IS 'ステータス'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_001A06C_UPLOAD.CUST_SHIFT_ID           IS '顧客移行情報ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_001A06C_UPLOAD.CUSTOMER_CLASS_CODE     IS '顧客区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_001A06C_UPLOAD.UPLOAD_DICIDE_FLAG      IS 'アップロード判定フラグ'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_001A06C_UPLOAD.ERROR_MESSAGE           IS 'エラーメッセージ'
+/
