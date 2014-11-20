@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2009/01/26   1.8   SCS二瓶           本番障害#936対応（鮮度条件・ロット逆転PT対応）
  *                                       本番障害#332対応（条件：出庫元不備対応）
  *  2009/01/28   1.9   SCS伊藤           本番障害#1028対応（パラメータに指示部署追加）
+ *  2009/03/17   1.10  SCS北寒寺         本番障害#1323対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2013,7 +2014,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_20
         ) - 
         ( -- D1)需要数  実績未計上の出荷依頼
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.10 M.Hokkanji Start
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+        SELECT  /*+ LEADING(mil,mld,ola,oha,otta) */
+                NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.10 M.Hokkanji End
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
@@ -2036,7 +2041,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- D2)需要数  実績未計上の支給指示
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.10 M.Hokkanji Start
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+        SELECT  /*+ LEADING(mil,mld,ola,oha,otta) */
+                NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.10 M.Hokkanji End
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
@@ -2124,7 +2133,11 @@ AS
         AND     mil.attribute5         = it_head_loc
         ) - 
         ( -- D6)需要数  実績未計上の相手先倉庫発注入庫予定
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.10 M.Hokkanji Start
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+        SELECT  /*+ LEADING(iimb,mil,msib,pla,pha) */
+                NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.10 M.Hokkanji End
         FROM    ic_item_mst_b         iimb
                ,mtl_system_items_b    msib    -- 品目マスタ
                ,po_lines_all          pla     -- 発注明細
