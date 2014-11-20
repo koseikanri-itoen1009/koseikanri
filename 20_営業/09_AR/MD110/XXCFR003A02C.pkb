@@ -7,7 +7,7 @@ AS
  * Description      : 請求ヘッダデータ作成
  * MD.050           : MD050_CFR_003_A02_請求ヘッダデータ作成
  * MD.070           : MD050_CFR_003_A02_請求ヘッダデータ作成
- * Version          : 1.09
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/12/11    1.07 SCS 安川 智博    障害「E_本稼動_00424」暫定対応
  *  2009/12/28    1.08 SCS 安川 智博    障害「E_本稼動_00606」対応
  *  2010/01/29    1.09 SCS 安川 智博    障害「E_本稼動_01503」対応」
+ *  2011/03/10    1.10 SCS 西野 裕介    障害「E_本稼動_03333」対応
  *
  *****************************************************************************************/
 --
@@ -138,6 +139,12 @@ AS
 -- Modify 2009.07.21 Ver1.03 start
   cv_msg_cfr_00077  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00077'; --一意制約エラーメッセージ
 -- Modify 2009.07.21 Ver1.03 end
+-- Modify 2011.03.10 Ver1.10 Start
+  cv_msg_cfr_00132  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00132'; --売掛コード1(請求先)エラーメッセージ(EDI請求)
+  cv_msg_cfr_00133  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00133'; --売掛コード1(請求先)エラーメッセージ(伊藤園標準)
+  cv_msg_cfr_00134  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00134'; --請求書出力形式定義無しエラーメッセージ(0件)
+  cv_msg_cfr_00135  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00135'; --請求書出力形式定義無しエラーメッセージ
+-- Modify 2011.03.10 Ver1.10 End
 --
   -- 日本語辞書参照コード
   cv_dict_cfr_00000002  CONSTANT VARCHAR2(20) := 'CFR000A00002'; -- 営業日付取得関数
@@ -168,6 +175,11 @@ AS
 -- Modify 2009.07.21 Ver1.03 start
   cv_tkn_cut_date   CONSTANT VARCHAR2(30)  := 'CUTOFF_DATE';     -- 締日
 -- Modify 2009.07.21 Ver1.03 end
+-- Modify 2011.03.10 Ver1.10 Start
+  cv_tkn_lookup_type        CONSTANT VARCHAR2(30)  := 'LOOKUP_TYPE';       -- 参照タイプ
+  cv_tkn_lookup_code        CONSTANT VARCHAR2(30)  := 'LOOKUP_CODE';       -- 参照コード
+  cv_tkn_bill_invoice_type  CONSTANT VARCHAR2(30)  := 'BILL_INVOICE_TYPE'; -- 請求書出力形式
+-- Modify 2011.03.10 Ver1.10 End
 --
   -- 使用DB名
   cv_table_xiit       CONSTANT VARCHAR2(100) := 'XXCFR_INV_INFO_TRANSFER';     -- 請求情報引渡テーブル
@@ -178,6 +190,9 @@ AS
 --
   -- 参照タイプ
   cv_look_type_ar_cd  CONSTANT VARCHAR2(100) := 'XXCMM_INVOICE_GRP_CODE';     -- 売掛コード1(請求書)
+-- Modify 2011.03.10 Ver1.10 Start
+  cv_inv_output_form_type  CONSTANT VARCHAR2(100) := 'XXCMM_CUST_SEKYUSYO_SHUT_KSK';  -- 請求書出力形式
+-- Modify 2011.03.10 Ver1.10 End
 --
   -- ファイル出力
   cv_file_type_out      CONSTANT VARCHAR2(10) := 'OUTPUT';    -- メッセージ出力
@@ -192,11 +207,20 @@ AS
   cv_account_class_rec  CONSTANT VARCHAR2(3)  := 'REC';       -- 勘定区分(売掛/未収金)
   cv_line_type_tax      CONSTANT VARCHAR2(3)  := 'TAX';       -- 取引明細タイプ(税金)
   cv_line_type_line     CONSTANT VARCHAR2(4)  := 'LINE';      -- 取引明細タイプ(明細)
+-- Modify 2011.03.10 Ver1.10 Start
+  cv_inv_prt_type       CONSTANT VARCHAR2(1)  := '3';         -- 請求書出力区分 3(EDI)
+-- Modify 2011.03.10 Ver1.10 End
 --
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
 --
+-- Modify 2011.03.10 Ver1.10 Start
+    TYPE inv_output_form_rtype IS RECORD(
+      inv_output_form_code            fnd_lookup_values_vl.lookup_code%type     -- 請求書出力形式
+     ,inv_output_form_name            fnd_lookup_values_vl.meaning%type         -- 請求書出力形式名称
+    );
+-- Modify 2011.03.10 Ver1.10 End
     -- 請求締対象顧客情報抽出カーソル用
     TYPE get_acct_code_ttype          IS TABLE OF xxcfr_inv_target_cust_list.bill_cust_code%TYPE
                                                   INDEX BY PLS_INTEGER;
@@ -216,6 +240,12 @@ AS
                                                   INDEX BY PLS_INTEGER;
     TYPE get_bill_pub_cycle_ttype     IS TABLE OF xxcfr_inv_target_cust_list.bill_pub_cycle%TYPE
                                                   INDEX BY PLS_INTEGER;
+-- Modify 2011.03.10 Ver1.10 Start
+    TYPE inv_output_form_ttype        IS TABLE OF inv_output_form_rtype
+                                                  INDEX BY fnd_lookup_values.lookup_code%TYPE;
+    TYPE inv_output_form_sub_ttype    IS TABLE OF inv_output_form_rtype
+                                                  INDEX BY BINARY_INTEGER;
+-- Modify 2011.03.10 Ver1.10 End
     gt_get_acct_code_tab            get_acct_code_ttype;
     gt_get_cutoff_date_tab          get_cutoff_date_ttype;
     gt_get_cust_name_tab            get_cust_name_ttype;
@@ -225,6 +255,10 @@ AS
     gt_get_term_id_tab              get_term_id_ttype;
     gt_get_tax_div_tab              get_tax_div_ttype;
     gt_get_bill_pub_cycle_tab       get_bill_pub_cycle_ttype;
+-- Modify 2011.03.10 Ver1.10 Start
+    gt_inv_output_form_tab          inv_output_form_ttype;
+    gt_inv_output_form_sub_tab      inv_output_form_sub_ttype;
+-- Modify 2011.03.10 Ver1.10 End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -491,6 +525,48 @@ AS
     gv_party_rev_code := xxcfr_common_pkg.lookup_dictionary(
                            iv_loopup_type_prefix => cv_msg_kbn_cfr
                           ,iv_keyword            => cv_dict_cfr_00302007);
+--
+-- Modify 2011.03.10 Ver1.10 Start
+    --==============================================================
+    -- 請求書出力形式
+    --==============================================================
+    BEGIN
+      SELECT
+        flv.lookup_code      lookup_code  -- 請求書出力形式
+       ,flv.meaning          line_type    -- 請求書出力形式名称
+      BULK COLLECT INTO
+        gt_inv_output_form_sub_tab        -- 請求書出力形式
+      FROM
+        fnd_lookup_values    flv
+      WHERE
+          flv.lookup_type        = cv_inv_output_form_type
+      AND flv.language           = USERENV( 'LANG' )
+      AND flv.enabled_flag       = 'Y'
+      AND gd_process_date  BETWEEN NVL( flv.start_date_active , gd_process_date )
+                               AND NVL( flv.end_date_active , gd_process_date )
+      ;
+--
+      IF( gt_inv_output_form_sub_tab.COUNT = 0) THEN
+        RAISE NO_DATA_FOUND;
+      END IF; 
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB( xxccp_common_pkg.get_msg(
+                              iv_application  => cv_msg_kbn_cfr           -- 'XXCFR'
+                             ,iv_name         => cv_msg_cfr_00134         -- 請求書出力形式
+                             ,iv_token_name1  => cv_tkn_lookup_type       -- トークン'lookup_type'
+                             ,iv_token_value1 => cv_inv_output_form_type) -- 参照タイプ
+                             ,1
+                             ,5000);
+        lv_errbuf  := lv_errmsg || cv_msg_part || SQLERRM;
+        RAISE global_api_expt;
+    END;
+--
+    FOR i IN 1..gt_inv_output_form_sub_tab.COUNT LOOP
+      gt_inv_output_form_tab( gt_inv_output_form_sub_tab( i ).inv_output_form_code ) := gt_inv_output_form_sub_tab( i );
+    END LOOP;
+-- Modify 2011.03.10 Ver1.10 END
 --
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
@@ -2196,8 +2272,52 @@ AS
 --
       --売掛コード1(請求先)
       IF (gt_payment_cust_code IS NULL) THEN
-        lv_dict_err_code := cv_dict_cfr_00302003;
-        RAISE acct_info_required_expt;
+-- Modify 2011.03.10 Ver1.10 Start
+--        lv_dict_err_code := cv_dict_cfr_00302003;
+--        RAISE acct_info_required_expt;
+        IF (gt_invoice_output_form = cv_inv_prt_type ) THEN  -- '3'(EDI)
+          -- EDI請求の場合
+          lv_errmsg := SUBSTRB( xxccp_common_pkg.get_msg(
+                                iv_application  => cv_msg_kbn_cfr
+                               ,iv_name         => cv_msg_cfr_00132
+                               ,iv_token_name1  => cv_tkn_cust_code
+                               ,iv_token_value1 => iv_cust_acct_code
+                               ,iv_token_name2  => cv_tkn_cust_name
+                               ,iv_token_value2 => iv_cust_acct_name)
+                               ,1
+                               ,5000);
+        ELSE
+          -- EDI請求以外の場合
+          IF ( gt_inv_output_form_tab.EXISTS( gt_invoice_output_form )) THEN
+            -- 請求書出力形式が登録されている場合
+            lv_errmsg := SUBSTRB( xxccp_common_pkg.get_msg( 
+                                  iv_application  => cv_msg_kbn_cfr
+                                 ,iv_name         => cv_msg_cfr_00133
+                                 ,iv_token_name1  => cv_tkn_cust_code
+                                 ,iv_token_value1 => iv_cust_acct_code
+                                 ,iv_token_name2  => cv_tkn_cust_name
+                                 ,iv_token_value2 => iv_cust_acct_name
+                                 ,iv_token_name3  => cv_tkn_bill_invoice_type
+                                 ,iv_token_value3 => gt_inv_output_form_tab( gt_invoice_output_form ).inv_output_form_name)
+                                 ,1
+                                 ,5000);
+          ELSE
+            -- 請求書出力形式が登録されていない場合
+            lv_errmsg := SUBSTRB( xxccp_common_pkg.get_msg(
+                                  iv_application  => cv_msg_kbn_cfr           -- 'XXCFR'
+                                 ,iv_name         => cv_msg_cfr_00135         -- 請求書出力形式
+                                 ,iv_token_name1  => cv_tkn_lookup_type       -- トークン'lookup_type'
+                                 ,iv_token_value1 => cv_inv_output_form_type  -- 参照タイプ
+                                 ,iv_token_name2  => cv_tkn_lookup_code       -- トークン'lookup_code'
+                                 ,iv_token_value2 => gt_invoice_output_form)  -- 参照コード
+                                 ,1
+                                 ,5000);
+          END IF;
+        END IF;
+--
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+        ov_retcode := cv_status_warn;
+-- Modify 2011.03.10 Ver1.10 End
       END IF;
 --
       --請求拠点コード
