@@ -1,0 +1,1 @@
+CREATE INDEX xxwip.xxwip_dlines_n02 ON xxwip.xxwip_delivery_lines(delivery_no) TABLESPACE xxidx;

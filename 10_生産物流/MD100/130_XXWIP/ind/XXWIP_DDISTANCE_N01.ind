@@ -1,0 +1,1 @@
+CREATE INDEX xxwip.xxwip_ddistance_n01 ON xxwip.xxwip_delivery_distance(goods_classe, delivery_company_code, origin_shipment, code_division, shipping_address_code) TABLESPACE xxidx;
