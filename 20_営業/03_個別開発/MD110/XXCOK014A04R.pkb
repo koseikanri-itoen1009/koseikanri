@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2013/05/21    1.18  SCSK S.Niki      [障害E_本稼動_10595再]「消込済」出力条件変更
  *                                       [障害E_本稼動_10411]   パラメータ「支払先コード」「支払ステータス」追加
  *                                                              変動電気代未入力マーク出力、ソート順変更
+ *  2013/05/24    1.19  SCSK S.Niki      [障害E_本稼動_10411再] 支払ステータスソート順変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -1224,6 +1225,19 @@ AS
       FROM    xxcok_rep_bm_balance  xrbb
       WHERE   xrbb.request_id  = cn_request_id
       ;
+-- Ver.1.19 [障害E_本稼動_10411再] SCSK S.Niki ADD START
+    -- 支払ステータス有りデータ
+    CURSOR l_resv_payment_cur
+    IS
+      SELECT  xrbb.payment_code              AS  payment_code       -- 支払先コード
+            , MIN( xrbb.resv_payment_sort )  AS  resv_payment_sort  -- 支払ステータス並び順
+      FROM    xxcok_rep_bm_balance  xrbb
+      WHERE   xrbb.request_id    = cn_request_id
+      AND     xrbb.resv_payment  IS NOT NULL
+      AND     xrbb.err_flag      IS NULL
+      GROUP BY xrbb.payment_code
+      ;
+-- Ver.1.19 [障害E_本稼動_10411再] SCSK S.Niki ADD END
 --
   BEGIN
     -- ===============================================
@@ -1327,7 +1341,7 @@ AS
     END;
     --
     -- ===============================================
-    -- 3. 支払ステータス並び順更新
+    -- 3-1. 支払ステータス並び順更新
     -- ===============================================
     -- 支払ステータス名称から、値セットDFF1の「支払ステータス並び順」を設定
     BEGIN
@@ -1357,6 +1371,35 @@ AS
                       );
         RAISE global_process_expt;
     END;
+-- Ver.1.19 [障害E_本稼動_10411再] SCSK S.Niki ADD START
+    --
+    -- ===============================================
+    -- 3-2. 支払ステータス並び順更新
+    -- ===============================================
+    -- 支払ステータス有りデータをループ
+    FOR l_resv_payment_rec IN l_resv_payment_cur LOOP
+      BEGIN
+        -- 支払ステータス並び順を更新する
+        UPDATE  xxcok_rep_bm_balance  xrbb
+        SET     xrbb.resv_payment_sort = l_resv_payment_rec.resv_payment_sort  -- 支払ステータス並び順
+        WHERE   xrbb.request_id        = cn_request_id
+        AND     xrbb.payment_code      = l_resv_payment_rec.payment_code       -- 対象の支払先コード
+        ;
+      --
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- 帳票ワークテーブル更新エラー
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_xxcok_appl_short_name
+                        , iv_name         => cv_msg_code_10535
+                        , iv_token_name1  => cv_token_errmsg
+                        , iv_token_value1 => SQLERRM
+                        );
+          RAISE global_process_expt;
+      END;
+      --
+    END LOOP;
+-- Ver.1.19 [障害E_本稼動_10411再] SCSK S.Niki ADD END
     --
     -- ===============================================
     -- 4. 不要データ削除
