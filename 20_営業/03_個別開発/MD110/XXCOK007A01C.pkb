@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -44,6 +44,8 @@ AS
  *  2009/10/16    1.8   S.Moriyama       [障害E_T3_00632]伝票入力者対応により売上実績情報へ
  *                                                       売上振替元顧客コードを設定するように変更
  *  2009/10/19    1.9   K.Yamaguchi      [障害E_T3_00631] 消費税コード取得方法を変更
+ *  2009/12/05    1.10  S.Moriyama       [障害E_本稼動_00XXX] 売上振替元顧客側の原価金額(発注)に対して
+ *                                                            符号逆転を行うように修正
  *
  *****************************************************************************************/
   -- =========================
@@ -1474,7 +1476,10 @@ AS
 -- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
 --    ot_from_cust_rec.shipment_cost_amt := in_shipment_cost_amt;
 --    ot_to_cust_rec.shipment_cost_amt   := in_shipment_cost_amt;
-    ot_from_cust_rec.order_cost_amt := in_order_cost_amt;
+-- 2009/12/03 Ver.1.10 [E_本稼動_00XXX] SCS S.Moriyama UPD START
+--    ot_from_cust_rec.order_cost_amt := in_order_cost_amt;
+    ot_from_cust_rec.order_cost_amt := in_order_cost_amt * -1;
+-- 2009/12/03 Ver.1.10 [E_本稼動_00XXX] SCS S.Moriyama UPD END
     ot_to_cust_rec.order_cost_amt   := in_order_cost_amt;
 -- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
     -- *** レコード型に値をセット(商品コード) ***
