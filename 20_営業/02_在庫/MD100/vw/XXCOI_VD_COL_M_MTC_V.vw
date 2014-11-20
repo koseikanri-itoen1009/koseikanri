@@ -3,7 +3,7 @@
  *
  * View Name       : xxcoi_vd_col_m_mtc_v
  * Description     : VDコラムマスタメンテナンス画面ビュー
- * Version         : 1.0
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/18    1.0   SCS H.Wada       新規作成
  *  2008/12/04    1.1   SCS H.Wada       修正（VDコラムマスタ名修正）
+ *  2009/04/30    1.2   T.Nakamura       [障害T1_0877] セミコロンを追加
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_VD_COL_M_MTC_V
@@ -95,49 +96,49 @@ ORDER BY xmvc.customer_id, xmvc.column_no;
 /
 COMMENT ON TABLE xxcoi_vd_col_m_mtc_v IS 'VDコラムマスタメンテナンス画面ビュー'
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.vd_column_mst_id              IS 'VDコラムマスタID'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.vd_column_mst_id              IS 'VDコラムマスタID';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.customer_id                   IS '顧客ID'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.customer_id                   IS '顧客ID';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.column_no                     IS 'コラム№'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.column_no                     IS 'コラム№';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.item_code                     IS '品目コード(当月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.item_code                     IS '品目コード(当月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_item_code                IS '品目コード(前月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_item_code                IS '品目コード(前月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.item_name                     IS '品目名称(当月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.item_name                     IS '品目名称(当月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_item_name                IS '品目名称(前月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_item_name                IS '品目名称(前月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.item_id                       IS '品目ID(当月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.item_id                       IS '品目ID(当月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_item_id                  IS '品目ID(前月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_item_id                  IS '品目ID(前月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.primary_uom_code              IS '基準単位(当月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.primary_uom_code              IS '基準単位(当月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_primary_uom_code         IS '基準単位(前月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_primary_uom_code         IS '基準単位(前月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.inventory_quantity            IS '基準在庫数(当月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.inventory_quantity            IS '基準在庫数(当月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_inventory_quantity       IS '基準在庫数(前月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_inventory_quantity       IS '基準在庫数(前月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.price                         IS '単価(当月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.price                         IS '単価(当月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_price                    IS '単価(前月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_price                    IS '単価(前月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.hot_cold                      IS 'H/C値(当月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.hot_cold                      IS 'H/C値(当月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_hot_cold                 IS 'H/C値(前月)'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_hot_cold                 IS 'H/C値(前月)';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.rack_quantity                 IS 'ラック数'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.rack_quantity                 IS 'ラック数';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.created_by                    IS '作成者'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.created_by                    IS '作成者';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.creation_date                 IS '作成日'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.creation_date                 IS '作成日';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_updated_by               IS '最終更新者'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_updated_by               IS '最終更新者';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_update_date              IS '最終更新日'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_update_date              IS '最終更新日';
 /
-COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_update_login             IS '最終更新ログイン'
+COMMENT ON COLUMN xxcoi_vd_col_m_mtc_v.last_update_login             IS '最終更新ログイン';
 /

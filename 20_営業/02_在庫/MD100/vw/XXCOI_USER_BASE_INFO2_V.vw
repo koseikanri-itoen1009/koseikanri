@@ -3,13 +3,14 @@
  *
  * View Name   : XXCOI_USER_BASE_INFO2_V
  * Description : 自拠点情報ビュー2
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   N.Abe            新規作成
+ *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] カラムコメント、バックスラッシュを追加
  *
  ************************************************************************/
 CREATE OR REPLACE FORCE VIEW "APPS"."XXCOI_USER_BASE_INFO2_V" ("ACCOUNT_NUMBER", "ACCOUNT_NAME") AS 
@@ -73,4 +74,10 @@ FROM    (SELECT  hca.account_number
          )
         ) a
 ORDER BY a.account_number;
-
+/
+COMMENT ON TABLE  XXCOI_USER_BASE_INFO2_V                   IS '自拠点情報ビュー2';
+/
+COMMENT ON COLUMN XXCOI_USER_BASE_INFO2_V.ACCOUNT_NUMBER    IS '拠点コード';
+/
+COMMENT ON COLUMN XXCOI_USER_BASE_INFO2_V.ACCOUNT_NAME      IS '拠点略称';
+/

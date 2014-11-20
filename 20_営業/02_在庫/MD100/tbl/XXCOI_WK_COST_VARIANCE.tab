@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOI_WK_COST_VARIANCE
  * Description : 原価差額ワークテーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/14    1.0   T.Kojima        新規作成
  *  2009/03/26    1.1   H.Sasaki        [障害T1_0120]
+ *  2009/04/30    1.2   T.Nakamura      [障害T1_0877] セミコロンを追加
  *
  **************************************************************************************/
 CREATE TABLE XXCOI.XXCOI_WK_COST_VARIANCE (
@@ -41,59 +42,59 @@ CREATE TABLE XXCOI.XXCOI_WK_COST_VARIANCE (
     ,program_application_id       NUMBER(15)
     ,program_id                   NUMBER(15)
     ,program_update_date          DATE
-)
+);
 /
-COMMENT ON TABLE xxcoi.xxcoi_wk_cost_variance IS '原価差額ワークテーブル'
+COMMENT ON TABLE xxcoi.xxcoi_wk_cost_variance IS '原価差額ワークテーブル';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.transaction_id                          IS '在庫取引ID'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.transaction_id                          IS '在庫取引ID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.dept_code                               IS '部門コード'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.dept_code                               IS '部門コード';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.adj_dept_code                           IS '調整部門コード'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.adj_dept_code                           IS '調整部門コード';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.account_code                            IS '勘定科目コード'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.account_code                            IS '勘定科目コード';
 /
 -- == 2009/03/26 V1.1 Added START ===============================================================
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.subacct_code                            IS '補助科目コード'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.subacct_code                            IS '補助科目コード';
 /
 -- == 2009/03/26 V1.1 Added END   ===============================================================
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.inventory_item_id                       IS '品目ID'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.inventory_item_id                       IS '品目ID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.transaction_date                        IS '取引日'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.transaction_date                        IS '取引日';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.transaction_value                       IS '取引金額'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.transaction_value                       IS '取引金額';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.primary_quantity                        IS '取引数量'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.primary_quantity                        IS '取引数量';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.base_transaction_value                  IS '基準単位金額'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.base_transaction_value                  IS '基準単位金額';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.organization_id                         IS '組織ID'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.organization_id                         IS '組織ID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.gl_batch_id                             IS 'GLバッチID'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.gl_batch_id                             IS 'GLバッチID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.standard_cost                           IS '標準原価'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.standard_cost                           IS '標準原価';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.operation_cost                          IS '営業原価'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.operation_cost                          IS '営業原価';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.cost_variance                           IS '原価差額'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.cost_variance                           IS '原価差額';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.status                                  IS 'ステータス'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.status                                  IS 'ステータス';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.created_by                              IS '作成者'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.created_by                              IS '作成者';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.creation_date                           IS '作成日'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.creation_date                           IS '作成日';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.last_updated_by                         IS '最終更新者'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.last_updated_by                         IS '最終更新者';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.last_update_date                        IS '最終更新日'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.last_update_date                        IS '最終更新日';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.last_update_login                       IS '最終更新ログイン'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.last_update_login                       IS '最終更新ログイン';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.request_id                              IS '要求ID'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.request_id                              IS '要求ID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.program_id                              IS 'コンカレント・プログラムID'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.program_id                              IS 'コンカレント・プログラムID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.program_update_date                     IS 'プログラム更新日'
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.program_update_date                     IS 'プログラム更新日';
 /

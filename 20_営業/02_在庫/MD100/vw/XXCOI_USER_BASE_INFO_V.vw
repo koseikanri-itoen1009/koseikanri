@@ -3,13 +3,14 @@
  *
  * View Name   : XXCOI_USER_BASE_INFO_V
  * Description : 自拠点情報ビュー
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   H.Sasaki         新規作成
+ *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] カラムコメント、バックスラッシュを追加
  *
  ************************************************************************/
   CREATE OR REPLACE FORCE VIEW "APPS"."XXCOI_USER_BASE_INFO_V" ("ACCOUNT_ID", "ACCOUNT_NUMBER", "ACCOUNT_NAME", "MANAGEMENT_BASE_CODE", "MANAGEMENT_BASE_FLAG", "DEPT_HHT_DIV") AS 
@@ -74,4 +75,18 @@
       AND     hca1.status                   =   'A'           -- 有効
       AND     hca1.cust_account_id          =   xca1.customer_id
       AND     hca1.account_number           =   hca2.management_base_code(+);
- 
+/
+COMMENT ON TABLE  XXCOI_USER_BASE_INFO_V                         IS '自拠点情報ビュー';
+/
+COMMENT ON COLUMN XXCOI_USER_BASE_INFO_V.ACCOUNT_ID              IS '顧客ID';
+/
+COMMENT ON COLUMN XXCOI_USER_BASE_INFO_V.ACCOUNT_NUMBER          IS '拠点コード';
+/
+COMMENT ON COLUMN XXCOI_USER_BASE_INFO_V.ACCOUNT_NAME            IS '拠点名称';
+/
+COMMENT ON COLUMN XXCOI_USER_BASE_INFO_V.MANAGEMENT_BASE_CODE    IS '管理元拠点';
+/
+COMMENT ON COLUMN XXCOI_USER_BASE_INFO_V.MANAGEMENT_BASE_FLAG    IS '管理元拠点フラグ';
+/
+COMMENT ON COLUMN XXCOI_USER_BASE_INFO_V.DEPT_HHT_DIV            IS 'HHT区分';
+/

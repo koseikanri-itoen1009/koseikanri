@@ -3,13 +3,14 @@
  *
  * View Name   : XXCOI_REC_DAILY_MONTHLY_V
  * Description : 受払年月日ビュー
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   U.Sai            新規作成
+ *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] カラムコメント、バックスラッシュを追加
  *
  ************************************************************************/
 
@@ -35,4 +36,10 @@ FROM  (SELECT TO_CHAR(PRACTICE_DATE,'YYYYMMDD') AS PRACTICE_DATE
        WHERE  PRACTICE_DATE < XXCCP_COMMON_PKG2.GET_PROCESS_DATE
        )      MD
 ORDER BY MD.PRACTICE_DATE;
- 
+/
+COMMENT ON TABLE  XXCOI_REC_DAILY_MONTHLY_V                   IS '受払年月日ビュー';
+/
+COMMENT ON COLUMN XXCOI_REC_DAILY_MONTHLY_V.BASE_CODE         IS '受払年月日';
+/
+COMMENT ON COLUMN XXCOI_REC_DAILY_MONTHLY_V.BASE_SHORT_NAME   IS '棚卸区分';
+/

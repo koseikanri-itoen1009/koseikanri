@@ -3,13 +3,14 @@
  *
  * View Name       : XXCOI_BASE_INFO_V
  * Description     : ‹’“_î•ñƒrƒ…[
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008-12-05    1.0   SCS M.Yoshioka   V‹Kì¬
+ *  2009/04/30    1.1   T.Nakamura       [áŠQT1_0877] ƒZƒ~ƒRƒƒ“‚ğ’Ç‰Á
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_BASE_INFO_V
@@ -37,13 +38,13 @@ FROM hz_cust_accounts hca                                             -- ŒÚ‹qƒ}ƒ
 WHERE hca.customer_class_code = '1'
     AND hca.status = 'A'
     AND hca.cust_account_id = xca.customer_id
-    AND hca.account_number <> NVL(xca.management_base_code,'99999')
+    AND hca.account_number <> NVL(xca.management_base_code,'99999');
 /
-COMMENT ON TABLE xxcoi_base_info_v IS '‹’“_î•ñƒrƒ…['
+COMMENT ON TABLE xxcoi_base_info_v IS '‹’“_î•ñƒrƒ…[';
 /
-COMMENT ON COLUMN xxcoi_base_info_v.base_code IS '‹’“_ƒR[ƒh'
+COMMENT ON COLUMN xxcoi_base_info_v.base_code IS '‹’“_ƒR[ƒh';
 /
-COMMENT ON COLUMN xxcoi_base_info_v.base_short_name IS '‹’“_—ªÌ'
+COMMENT ON COLUMN xxcoi_base_info_v.base_short_name IS '‹’“_—ªÌ';
 /
-COMMENT ON COLUMN xxcoi_base_info_v.focus_base_code IS 'i‚İ‹’“_'
+COMMENT ON COLUMN xxcoi_base_info_v.focus_base_code IS 'i‚İ‹’“_';
 /

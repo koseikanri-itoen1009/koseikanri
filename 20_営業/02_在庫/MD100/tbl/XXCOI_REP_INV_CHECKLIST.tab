@@ -1,15 +1,16 @@
 /************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * View Name   : XXCOI_REP_INV_CHECKLIST
+ * Table Name  : XXCOI_REP_INV_CHECKLIST
  * Description : 棚卸チェックリスト帳票ワーク
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   H.Sasaki         新規作成
+ *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] セミコロンを追加
  *
  ************************************************************************/
  CREATE TABLE xxcoi.xxcoi_rep_inv_checklist (
@@ -42,61 +43,61 @@
     ,program_update_date            DATE
   ,CONSTRAINT xxcoi_rep_inv_checklist_pk PRIMARY KEY (check_list_id, request_id)
   USING INDEX TABLESPACE xxidx2)
- PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M);
 /
-COMMENT ON TABLE xxcoi.xxcoi_rep_inv_checklist IS '棚卸チェックリスト帳票ワークテーブル'
+COMMENT ON TABLE xxcoi.xxcoi_rep_inv_checklist IS '棚卸チェックリスト帳票ワークテーブル';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.check_list_id                    IS 'チェックリストID'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.check_list_id                    IS 'チェックリストID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.check_year                       IS '年'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.check_year                       IS '年';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.check_month                      IS '月'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.check_month                      IS '月';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.inventory_kbn                    IS '棚卸区分'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.inventory_kbn                    IS '棚卸区分';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.base_code                        IS '拠点コード'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.base_code                        IS '拠点コード';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.base_name                        IS '拠点名'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.base_name                        IS '拠点名';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.subinventory_code                IS '保管場所コード'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.subinventory_code                IS '保管場所コード';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.subinventory_name                IS '保管場所名'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.subinventory_name                IS '保管場所名';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.inventory_date                   IS '棚卸日'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.inventory_date                   IS '棚卸日';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.inventory_slipno                 IS '棚卸伝票No'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.inventory_slipno                 IS '棚卸伝票No';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.item_code                        IS '品目コード'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.item_code                        IS '品目コード';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.item_name                        IS '品名'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.item_name                        IS '品名';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.case_in_qty                      IS '入数'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.case_in_qty                      IS '入数';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.case_qty                         IS 'ケース数'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.case_qty                         IS 'ケース数';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.singly_qty                       IS 'バラ数'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.singly_qty                       IS 'バラ数';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.inventory_qty                    IS '棚卸数'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.inventory_qty                    IS '棚卸数';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.quality_goods_kbn                IS '良品区分'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.quality_goods_kbn                IS '良品区分';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.message                          IS 'メッセージ'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.message                          IS 'メッセージ';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.created_by                       IS '作成者'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.created_by                       IS '作成者';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.creation_date                    IS '作成日'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.creation_date                    IS '作成日';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.last_updated_by                  IS '最終更新者'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.last_updated_by                  IS '最終更新者';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.last_update_date                 IS '最終更新日'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.last_update_date                 IS '最終更新日';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.last_update_login                IS '最終更新ログイン'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.last_update_login                IS '最終更新ログイン';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.request_id                       IS '要求ID'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.request_id                       IS '要求ID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.program_application_id           IS 'コンカレント・プログラム・アプリケーションID'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.program_application_id           IS 'コンカレント・プログラム・アプリケーションID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.program_id                       IS 'コンカレント・プログラムID'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.program_id                       IS 'コンカレント・プログラムID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.program_update_date              IS 'プログラム更新日'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.program_update_date              IS 'プログラム更新日';
 /

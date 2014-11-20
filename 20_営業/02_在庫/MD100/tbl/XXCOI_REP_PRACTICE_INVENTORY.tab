@@ -1,15 +1,16 @@
 /************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * View Name   : XXCOI_REP_PRACTICE_INVENTORY
+ * Table Name  : XXCOI_REP_PRACTICE_INVENTORY
  * Description : 商品実地棚卸票帳票ワークテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   H.Sasaki         新規作成
+ *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] セミコロンを追加
  *
  ************************************************************************/
  CREATE TABLE xxcoi.xxcoi_rep_practice_inventory (
@@ -31,50 +32,51 @@
     ,last_update_login              NUMBER(15)
     ,request_id                     NUMBER(15)    NOT NULL
     ,program_application_id         NUMBER(15)
-    ,program_id                     NUMBER(15)    ,program_update_date            DATE
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
   ,CONSTRAINT xxcoi_rep_practice_inv_pk PRIMARY KEY (slit_id, request_id)
   USING INDEX TABLESPACE xxidx2)
- PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M);
 /
-COMMENT ON TABLE xxcoi.xxcoi_rep_practice_inventory IS '商品実地棚卸表帳票ワークテーブル'
+COMMENT ON TABLE xxcoi.xxcoi_rep_practice_inventory IS '商品実地棚卸表帳票ワークテーブル';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.slit_id                     IS '棚卸票ID'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.slit_id                     IS '棚卸票ID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.inventory_year              IS '年'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.inventory_year              IS '年';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.inventory_month             IS '月'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.inventory_month             IS '月';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.base_code                   IS '拠点コード'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.base_code                   IS '拠点コード';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.subinventory_name           IS '棚卸場所名'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.subinventory_name           IS '棚卸場所名';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.stockplace_code             IS '仕入先コード'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.stockplace_code             IS '仕入先コード';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.gun_code                    IS '群コード'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.gun_code                    IS '群コード';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.item_code                   IS '品名コード'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.item_code                   IS '品名コード';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.item_name                   IS '品名'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.item_name                   IS '品名';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.first_inventory_qty         IS '月首残高'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.first_inventory_qty         IS '月首残高';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.message                     IS 'メッセージ'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.message                     IS 'メッセージ';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.created_by                  IS '作成者'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.created_by                  IS '作成者';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.creation_date               IS '作成日'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.creation_date               IS '作成日';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.last_updated_by             IS '最終更新者'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.last_updated_by             IS '最終更新者';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.last_update_date            IS '最終更新日'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.last_update_date            IS '最終更新日';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.last_update_login           IS '最終更新ログイン'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.last_update_login           IS '最終更新ログイン';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.request_id                  IS '要求ID'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.request_id                  IS '要求ID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.program_application_id      IS 'コンカレント・プログラム・アプリケーションID'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.program_application_id      IS 'コンカレント・プログラム・アプリケーションID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.program_id                  IS 'コンカレント・プログラムID'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.program_id                  IS 'コンカレント・プログラムID';
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.program_update_date         IS 'プログラム更新日'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_practice_inventory.program_update_date         IS 'プログラム更新日';
 /

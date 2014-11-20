@@ -3,13 +3,14 @@
  *
  * View Name   : XXCOI_PRACTICE_MONTH_DAY_V
  * Description : 棚卸年月日ビュー2
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2009/02/06    1.0   SCS              新規作成
+ *  2009/02/06    1.0   H.Sasaki         新規作成
+ *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] カラムコメント、バックスラッシュを追加
  *
  ************************************************************************/
   CREATE OR REPLACE FORCE VIEW "APPS"."XXCOI_PRACTICE_MONTH_DAY_V" ("PRACTICE_DATE","INVENTORY_KBN") AS 
@@ -34,3 +35,10 @@ FROM  (SELECT TO_CHAR(practice_date,'YYYYMMDD')   practice_date
        AND    practice_date < xxccp_common_pkg2.get_process_date
        )      a
 ORDER BY a.practice_date;
+/
+COMMENT ON TABLE  XXCOI_PRACTICE_MONTH_DAY_V                 IS '棚卸年月日ビュー2';
+/
+COMMENT ON COLUMN XXCOI_PRACTICE_MONTH_DAY_V.PRACTICE_DATE   IS '棚卸年月日';
+/
+COMMENT ON COLUMN XXCOI_PRACTICE_MONTH_DAY_V.INVENTORY_KBN   IS '棚卸区分';
+/

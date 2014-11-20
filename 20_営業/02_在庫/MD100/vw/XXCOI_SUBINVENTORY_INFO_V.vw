@@ -3,13 +3,14 @@
  *
  * View Name       : XXCOI_SUBINVENTORY_INFO_V
  * Description     : •ÛŠÇêŠî•ñƒrƒ…[
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008-11-17    1.0   SCS S.Moriyama   V‹Kì¬
+ *  2009/04/30    1.1   T.Nakamura       [áŠQT1_0877] ƒZƒ~ƒRƒƒ“‚ğ’Ç‰Á
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_SUBINVENTORY_INFO_V
@@ -60,49 +61,49 @@ SELECT msi.organization_id                                            -- İŒÉ‘g
       ,msi.attribute13                                                -- •ÛŠÇêŠ•ª—Ş
       ,msi.disable_date                                               -- –³Œø“ú
       ,msi.material_account                                           -- ’¼ÚŞ—¿”ïCCID 
-FROM   mtl_secondary_inventories msi                                  -- •ÛŠÇêŠƒ}ƒXƒ^
+FROM   mtl_secondary_inventories msi;                                 -- •ÛŠÇêŠƒ}ƒXƒ^
 /
-COMMENT ON TABLE xxcoi_subinventory_info_v IS '•ÛŠÇêŠî•ñƒrƒ…['
+COMMENT ON TABLE xxcoi_subinventory_info_v IS '•ÛŠÇêŠî•ñƒrƒ…[';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.organization_id IS 'İŒÉ‘gDID'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.organization_id IS 'İŒÉ‘gDID';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.subinventory_code IS '•ÛŠÇêŠƒR[ƒh'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.subinventory_code IS '•ÛŠÇêŠƒR[ƒh';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.subinventory_name IS '•ÛŠÇêŠ–¼Ì'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.subinventory_name IS '•ÛŠÇêŠ–¼Ì';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.management_base_code IS 'ŠÇ—‹’“_ƒR[ƒh'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.management_base_code IS 'ŠÇ—‹’“_ƒR[ƒh';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.store_code IS '‘qŒÉƒR[ƒh'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.store_code IS '‘qŒÉƒR[ƒh';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.shop_code IS '“X•ÜƒR[ƒh'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.shop_code IS '“X•ÜƒR[ƒh';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.subinventory_class IS '•ÛŠÇêŠ‹æ•ª'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.subinventory_class IS '•ÛŠÇêŠ‹æ•ª';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.delivery_code IS '”z‘—æƒR[ƒh'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.delivery_code IS '”z‘—æƒR[ƒh';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.employee_code IS '‰c‹ÆˆõƒR[ƒh'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.employee_code IS '‰c‹ÆˆõƒR[ƒh';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.customer_code IS 'ŒÚ‹qƒR[ƒh'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.customer_code IS 'ŒÚ‹qƒR[ƒh';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.invetory_class IS '’I‰µ‹æ•ª'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.invetory_class IS '’I‰µ‹æ•ª';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.main_store_class IS 'ƒƒCƒ“‘qŒÉ‹æ•ª'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.main_store_class IS 'ƒƒCƒ“‘qŒÉ‹æ•ª';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.base_code IS '–‹ÆŠƒR[ƒh'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.base_code IS '–‹ÆŠƒR[ƒh';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.sold_out_time IS '”„‚èØ‚êŠÔ'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.sold_out_time IS '”„‚èØ‚êŠÔ';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.replenishment_rate IS '•â[—¦'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.replenishment_rate IS '•â[—¦';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.hot_inventory IS 'ƒzƒbƒgİŒÉ'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.hot_inventory IS 'ƒzƒbƒgİŒÉ';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.auto_confirmation_flag IS '©“®“üŒÉŠm”F'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.auto_confirmation_flag IS '©“®“üŒÉŠm”F';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.chain_shop_code IS 'ƒ`ƒF[ƒ““XƒR[ƒh'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.chain_shop_code IS 'ƒ`ƒF[ƒ““XƒR[ƒh';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.subinventory_type IS '•ÛŠÇêŠ•ª—Ş'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.subinventory_type IS '•ÛŠÇêŠ•ª—Ş';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.disable_date IS '–³Œø“ú'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.disable_date IS '–³Œø“ú';
 /
-COMMENT ON COLUMN xxcoi_subinventory_info_v.material_account IS '’¼ÚŞ—¿”ïCCID'
+COMMENT ON COLUMN xxcoi_subinventory_info_v.material_account IS '’¼ÚŞ—¿”ïCCID';
 /

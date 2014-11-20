@@ -3,13 +3,14 @@
  *
  * View Name   : XXCOI_BASE_INFO2_V
  * Description : 拠点情報ビュー2
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   U.Sai            新規作成
+ *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] カラムコメント、バックスラッシュを追加
  *
  ************************************************************************/
 
@@ -33,3 +34,12 @@
   AND    hca.status = 'A'
   AND    hca.cust_account_id = xca.customer_id
   AND    hca.account_number <> NVL(xca.management_base_code,'99999');
+/
+COMMENT ON TABLE  XXCOI_BASE_INFO2_V                   IS '拠点情報ビュー2';
+/
+COMMENT ON COLUMN XXCOI_BASE_INFO2_V.BASE_CODE         IS '拠点コード';
+/
+COMMENT ON COLUMN XXCOI_BASE_INFO2_V.BASE_SHORT_NAME   IS '拠点略称';
+/
+COMMENT ON COLUMN XXCOI_BASE_INFO2_V.FOCUS_BASE_CODE   IS '絞込み拠点';
+/

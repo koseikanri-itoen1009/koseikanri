@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008-12-03    1.0   SCS M.Yoshioka   新規作成
+ *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] セミコロンを追加
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_RECEIPT_SHIP_INPUT_V
@@ -57,47 +58,47 @@ SELECT xhiw.rowid                                                     -- rowid
       ,xhiw.program_application_id                                    -- プログラムアプリケーションID
       ,xhiw.program_id                                                -- プログラムID
       ,xhiw.program_update_date                                       -- プログラム更新日
-FROM   xxcoi_hht_inv_transactions   xhiw                              -- HHT入出庫一時表
+FROM   xxcoi_hht_inv_transactions   xhiw;                             -- HHT入出庫一時表
 /
-COMMENT ON TABLE xxcoi_receipt_ship_input_v IS '入出庫入力画面ビュー'
+COMMENT ON TABLE xxcoi_receipt_ship_input_v IS '入出庫入力画面ビュー';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.transaction_id IS '入出庫一時表ID'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.transaction_id IS '入出庫一時表ID';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.column_no IS 'コラム№'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.column_no IS 'コラム№';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.hot_cold_div IS 'H/C'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.hot_cold_div IS 'H/C';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.inventory_item_id IS '品目ID'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.inventory_item_id IS '品目ID';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.item_code IS '品目コード'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.item_code IS '品目コード';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.case_in_quantity IS '入数'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.case_in_quantity IS '入数';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.case_quantity IS 'ケース数'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.case_quantity IS 'ケース数';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.quantity IS '本数'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.quantity IS '本数';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.primary_uom_code IS '基準単位'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.primary_uom_code IS '基準単位';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.unit_price IS '単価'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.unit_price IS '単価';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.total_quantity IS '総本数'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.total_quantity IS '総本数';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.last_update_date IS '最終更新日'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.last_update_date IS '最終更新日';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.last_updated_by IS '最終更新者'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.last_updated_by IS '最終更新者';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.creation_date IS '作成日'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.creation_date IS '作成日';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.created_by IS '作成者'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.created_by IS '作成者';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.last_update_login IS '最終更新ユーザ'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.last_update_login IS '最終更新ユーザ';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.request_id IS '要求ID'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.request_id IS '要求ID';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.program_application_id IS 'プログラムアプリケーションID'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.program_application_id IS 'プログラムアプリケーションID';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.program_id IS 'プログラムID'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.program_id IS 'プログラムID';
 /
-COMMENT ON COLUMN xxcoi_receipt_ship_input_v.program_update_date IS 'プログラム更新日'
+COMMENT ON COLUMN xxcoi_receipt_ship_input_v.program_update_date IS 'プログラム更新日';
 /

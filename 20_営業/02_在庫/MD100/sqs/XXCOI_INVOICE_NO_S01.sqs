@@ -1,1 +1,17 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Sequence Name : XXCOI_INVOICE_NO_S01
+ * Description   : 伝票番号シーケンス
+ * Version       : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/01/31    1.0   H.Sasaki         新規作成
+ *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] ヘッダログ、バックスラッシュを追加
+ *
+ ************************************************************************/
 CREATE SEQUENCE XXCOI.XXCOI_INVOICE_NO_S01 MINVALUE 1 MAXVALUE 99999999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER  NOCYCLE ;
+/

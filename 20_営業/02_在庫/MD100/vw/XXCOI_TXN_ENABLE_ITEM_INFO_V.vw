@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOI_TXN_ENABLE_ITEM_INFO_V
  * Description     : 在庫取引可能品目ビュー
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008-12-03    1.0   SCS M.Yoshioka   新規作成
  *  2008-12-26    1.1   SCS H.Nakajima   Disc品目アドオンの結合条件を変更
+ *  2009/04/30    1.1   T.Nakamura       [障害T1_0877] セミコロンを追加
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_TXN_ENABLE_ITEM_INFO_V
   (row_id
@@ -68,45 +69,45 @@ WHERE msib.segment1 = iimb.item_no
   AND msib.returnable_flag = 'Y'
   AND iimb.item_id = ximb.item_id
   AND iimb.item_id = xsib.item_id 
-  AND iimb.attribute26 = '1'
+  AND iimb.attribute26 = '1';
 /
-COMMENT ON TABLE xxcoi_txn_enable_item_info_v IS '在庫取引可能品目ビュー'
+COMMENT ON TABLE xxcoi_txn_enable_item_info_v IS '在庫取引可能品目ビュー';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.inventory_item_id IS '品目ID'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.inventory_item_id IS '品目ID';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.organization_id IS '在庫組織ID'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.organization_id IS '在庫組織ID';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.item_code IS '品目コード'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.item_code IS '品目コード';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.item_short_name IS '品目略称'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.item_short_name IS '品目略称';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.primary_uom_code IS '基準単位'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.primary_uom_code IS '基準単位';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.policy_group_apply_date IS '群ｺｰﾄﾞ適用開始日'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.policy_group_apply_date IS '群ｺｰﾄﾞ適用開始日';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.policy_group_new IS '群コード(新)'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.policy_group_new IS '群コード(新)';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.policy_group_old IS '旧群コード'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.policy_group_old IS '旧群コード';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.discrete_cost_apply_date IS '営業原価適用開始日'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.discrete_cost_apply_date IS '営業原価適用開始日';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.discrete_cost_new IS '営業原価(新)'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.discrete_cost_new IS '営業原価(新)';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.discrete_cost_old IS '旧営業原価'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.discrete_cost_old IS '旧営業原価';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.fixed_price_apply_date IS '定価適用開始日'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.fixed_price_apply_date IS '定価適用開始日';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.fixed_price_new IS '定価(新)'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.fixed_price_new IS '定価(新)';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.fixed_price_old IS '旧定価'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.fixed_price_old IS '旧定価';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.case_in_qty IS 'ケース入数'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.case_in_qty IS 'ケース入数';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.start_date_active IS 'OPM適用開始日'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.start_date_active IS 'OPM適用開始日';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.end_date_active IS 'OPM適用終了日'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.end_date_active IS 'OPM適用終了日';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.active_flag IS 'OPM適用済フラグ'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.active_flag IS 'OPM適用済フラグ';
 /
-COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.baracha_div IS 'バラ茶区分'
+COMMENT ON COLUMN xxcoi_txn_enable_item_info_v.baracha_div IS 'バラ茶区分';
 /
