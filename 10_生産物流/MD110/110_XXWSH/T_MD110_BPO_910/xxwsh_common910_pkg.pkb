@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.32
+ * Version                : 1.33
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2009/01/26   1.30  SCS   二瓶大輔   [ロット逆転防止チェック] 本番障害#936対応
  *  2009/03/03   1.31  SCS   風間由紀   [出荷可否チェック] 本番障害#1243対応
  *  2009/03/19   1.32  SCS   飯田甫     [積載効率チェック(合計値算出)] 統合テスト指摘311対応
+ *  2009/04/23   1.33  SCS   風間由紀   [リードタイム算出] 本番障害#1398対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4812,6 +4813,9 @@ AS
            AND   xdlv.entering_despatching_code1  =  iv_entering_despatching_code1
            AND   xdlv.code_class2                 =  cv_cust_class_base
            AND   xdlv.entering_despatching_code2  =  xcasv.base_code
+-- Ver1.33 Y.Kazama 本番障害#1398 Add Start
+           AND   xcasv.party_site_status          = 'A'                            -- サイトステータス[A:有効]
+-- Ver1.33 Y.Kazama 本番障害#1398 Add End
            AND   xdlv.lt_start_date_active       <=  trunc( id_standard_date )
            AND   xdlv.lt_end_date_active         >=  trunc( id_standard_date )
        GROUP BY
