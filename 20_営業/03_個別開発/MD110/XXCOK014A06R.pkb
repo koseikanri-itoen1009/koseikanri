@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A06R(body)
  * Description      : 条件別販手販協計算処理実行時に販手条件マスタ未登録の販売実績をエラーリストに出力
  * MD.050           : 自販機販手条件エラーリスト MD050_COK_014_A06
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/12/24    1.0   S.Tozawa         新規作成
  *  2009/03/02    1.1   M.Hiruta         [障害COK_066] 容器区分取得方法変更
  *  2009/03/25    1.2   S.Kayahara       最終行にスラッシュ追加
+ *  2009/03/02    1.3   K.Yamaguchi      [障害T1_0510] 売上拠点情報取得SQL文の不足対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -85,6 +86,9 @@ AS
   cv_token_yoki_kubun        CONSTANT VARCHAR2(25)  := 'XXCSO1_SP_RULE_BOTTLE';     -- 容器区分
 -- End   2009/03/03 M.Hiruta
   -- プロファイル
+-- 2009/04/14 Ver.1.3 [障害T1_0510] SCS K.Yamaguchi ADD START
+  cv_prof_org_id             CONSTANT VARCHAR2(25)  := 'ORG_ID';    -- MO：営業単位ID
+-- 2009/04/14 Ver.1.3 [障害T1_0510] SCS K.Yamaguchi ADD END
   cv_prof_org_code_sales     CONSTANT VARCHAR2(25)  := 'XXCOK1_ORG_CODE_SALES';     -- 在庫組織コード_営業組織
   -- 顧客タイプ
   cv_cust_base_type          CONSTANT VARCHAR2(30)  := '1';                  -- 顧客区分「拠点」：'1'
@@ -116,6 +120,9 @@ AS
   gv_no_data_msg_table      VARCHAR2(30)                         DEFAULT NULL;  -- 0件メッセージ(テーブル格納用)
   gv_no_data_msg_output     VARCHAR2(5000)                       DEFAULT NULL;  -- 0件メッセージ(SVF出力用)
   -- 取得データ格納
+-- 2009/04/14 Ver.1.3 [障害T1_0510] SCS K.Yamaguchi ADD START
+  gn_operating_unit         NUMBER                               DEFAULT NULL;  -- プロファイル(MO：営業単位ID)
+-- 2009/04/14 Ver.1.3 [障害T1_0510] SCS K.Yamaguchi ADD END
   gv_org_code               VARCHAR2(50)                         DEFAULT NULL;  -- プロファイル値(在庫組織コード)
   gn_org_id                 NUMBER                               DEFAULT NULL;  -- 在庫組織ID
   gt_selling_base_code      hz_cust_accounts.account_number%TYPE DEFAULT NULL;  -- 売上計上拠点コード(入力パラメータ)
@@ -572,6 +579,10 @@ AS
         AND    hca.cust_account_id     = hcasa.cust_account_id
         AND    hp.party_id             = hps.party_id
         AND    hps.location_id         = hl.location_id
+-- 2009/04/14 Ver.1.3 [障害T1_0510] SCS K.Yamaguchi ADD START
+        AND    hcasa.party_site_id     = hps.party_site_id
+        AND    hcasa.org_id            = gn_operating_unit
+-- 2009/04/14 Ver.1.3 [障害T1_0510] SCS K.Yamaguchi ADD END
         AND    hca.account_number      = iv_base_code
         AND    hca.customer_class_code = cv_cust_base_type;
 --
@@ -882,6 +893,26 @@ AS
                     , iv_message  => lv_message       --メッセージ
                     , in_new_line => cn_number_1      --改行
                     );
+-- 2009/04/14 Ver.1.3 [障害T1_0510] SCS K.Yamaguchi ADD START
+    --================================================
+    -- プロファイル(営業単位ID)の取得
+    --================================================
+    gn_operating_unit := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_org_id ) );
+    IF ( gn_operating_unit IS NULL ) THEN
+      lv_message  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_00003
+                    , iv_token_name1  => cv_token_profile
+                    , iv_token_value1 => cv_prof_org_id
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG     --出力区分
+                    , iv_message  => lv_message       --メッセージ
+                    , in_new_line => cn_number_0      --改行
+                    );
+      RAISE get_data_err_expt;
+    END IF;
+-- 2009/04/14 Ver.1.3 [障害T1_0510] SCS K.Yamaguchi ADD END
     --================================================
     -- カスタム・プロファイル(在庫組織コード)の取得
     --================================================
