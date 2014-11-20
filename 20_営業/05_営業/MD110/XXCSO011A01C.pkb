@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -75,6 +75,8 @@ AS
  *  2009-11-30    1.19  K.Satomura       【E_本稼動_00204】作業希望日のチェックを一時的に外す
  *  2009-11-30    1.20  T.Maruyama       【E_本稼動_00119】チェック強化対応
  *  2009-12-07    1.21  K.Satomura       【E_本稼動_00336】E_本稼動_00204の対応を元に戻す
+ *  2009-12-16    1.22  D.Abe            【E_本稼動_00354】廃棄決済でリース物件存在チェック対応
+ *                                       【E_本稼動_00498】リース物件ステータスの「再リース待ち」対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -2769,6 +2771,9 @@ AS
     cv_obj_sts_expired             CONSTANT VARCHAR2(3) := '107';  -- 満了
 /* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
     cv_obj_sts_uncontract          CONSTANT VARCHAR2(3) := '101';  -- 未契約
+/* 2009.12.16 D.Abe E_本稼動_00498対応 START */
+    cv_obj_sts_lease_wait          CONSTANT VARCHAR2(3) := '103';  -- 再リース待
+/* 2009.12.16 D.Abe E_本稼動_00498対応 END */
     -- リース区分
     cv_ls_tp_lease_cntrctd         CONSTANT VARCHAR2(1) := '1';    -- 原契約
     cv_ls_tp_re_lease_cntrctd      CONSTANT VARCHAR2(1) := '2';    -- 再リース契約
@@ -2856,10 +2861,17 @@ AS
     IF ( iv_chk_kbn = cv_obj_sts_chk_kbn_01 ) THEN
 /* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
 --      -- 物件ステータスがNULL以外でかつ、「契約済」「再リース契約済」以外の場合
-      -- 物件ステータスがNULL以外でかつ、「契約済」「再リース契約済」「未契約('101')」以外の場合
+      /* 2009.12.16 D.Abe E_本稼動_00498対応 START */
+      ---- 物件ステータスがNULL以外でかつ、「契約済」「再リース契約済」「未契約('101')」以外の場合
+      -- 物件ステータスがNULL以外でかつ、「契約済」「再リース契約済」「未契約('101')」「再リース待」以外の場合
+      /* 2009.12.16 D.Abe E_本稼動_00498対応 END */
       IF ( lv_object_status IS NOT NULL
 --           AND lv_object_status NOT IN ( cv_obj_sts_contracted, cv_obj_sts_re_lease_cntrctd ) ) THEN
-           AND lv_object_status NOT IN ( cv_obj_sts_contracted, cv_obj_sts_re_lease_cntrctd, cv_obj_sts_uncontract ) ) THEN
+           /* 2009.12.16 D.Abe E_本稼動_00498対応 START */
+           --AND lv_object_status NOT IN ( cv_obj_sts_contracted, cv_obj_sts_re_lease_cntrctd, cv_obj_sts_uncontract ) ) THEN
+           AND lv_object_status NOT IN ( cv_obj_sts_contracted, cv_obj_sts_re_lease_cntrctd, cv_obj_sts_uncontract,
+                                         cv_obj_sts_lease_wait ) ) THEN
+           /* 2009.12.16 D.Abe E_本稼動_00498対応 END */
 /* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) END */
           lv_errbuf := xxccp_common_pkg.get_msg(
                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
@@ -2873,6 +2885,13 @@ AS
       END IF;
       --
     ELSE
+      /* 2009.12.16 D.Abe E_本稼動_00354対応 START */
+      --  リース物件が存在しない場合
+      IF  ( lv_no_data_flg = cv_yes ) THEN
+        RETURN;
+      END IF;
+      --
+      /* 2009.12.16 D.Abe E_本稼動_00354対応 END */
 /* 2009.07.16 K.Hosoi 統合テスト障害対応(0000375,0000419) START */
 --      -- 物件ステータスがNULL以外でかつ、
 --      -- 「再リース契約済」「中途解約（自己都合）」「中途解約（保険対応）」「中途解約（満了）」「満了」以外の場合
