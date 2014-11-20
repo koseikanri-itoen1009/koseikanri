@@ -7,7 +7,7 @@ AS
  * Description      : 運賃更新
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_733
  * MD.070           : 運賃更新 T_MD070_BPO_73D
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/09/16    1.3  Oracle 吉田 夏樹  T_S_570 対応
  *  2008/10/24    1.4  Oracle 野村 正幸  統合#408対応
  *  2009/04/10    1.5  SCS    伊藤ひとみ 本番#432対応
+ *  2009/05/01    1.6  SCS    伊藤ひとみ 本番#432(指摘5)対応
  *
  *****************************************************************************************/
 --
@@ -611,6 +612,10 @@ AS
   TYPE t_ex_consolid_surcharge IS TABLE OF xxwip_deliverys.consolid_surcharge%TYPE INDEX BY BINARY_INTEGER;
   -- (洗替用)ピッキング料
   TYPE t_ex_picking_charge IS TABLE OF xxwip_deliverys.picking_charge%TYPE INDEX BY BINARY_INTEGER;
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+  -- (洗替用)請求運賃
+  TYPE t_ex_charged_amount IS TABLE OF xxwip_deliverys.charged_amount%TYPE INDEX BY BINARY_INTEGER;
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
 --
   tab_ex_delivery_no                    t_ex_delivery_no;
   tab_ex_contract_rate                  t_ex_contract_rate;
@@ -618,6 +623,9 @@ AS
   tab_ex_total_amount                   t_ex_total_amount;
   tab_ex_consolid_surcharge             t_ex_consolid_surcharge;
   tab_ex_picking_charge                 t_ex_picking_charge;
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+  tab_ex_charged_amount                 t_ex_charged_amount;      -- 請求運賃
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
 --
   -- 洗替運賃ヘッダアドオン更新用PL/SQL表索引
   gn_ex_cnt     NUMBER;
@@ -768,6 +776,9 @@ AS
     on_consolid_surcharge  OUT NOCOPY xxwip_deliverys.consolid_surcharge%TYPE,  -- 混載割増金額
     on_picking_charge      OUT NOCOPY xxwip_deliverys.picking_charge%TYPE,      -- ピッキング料
     on_contract_rate       OUT NOCOPY xxwip_deliverys.contract_rate%TYPE,       -- 契約運賃
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+    on_charged_amount      OUT NOCOPY xxwip_deliverys.charged_amount%TYPE,      -- 請求運賃
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
     ov_errbuf              OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode             OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg              OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -795,6 +806,9 @@ AS
     ln_consolid_surcharge NUMBER; -- ｢混載割増金額｣算出結果格納用
     ln_picking_charge     NUMBER; -- ｢ピッキング料｣算出結果格納用
     ln_contract_rate      NUMBER; -- ｢契約運賃｣算出結果格納用
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+    ln_charged_amount     NUMBER; -- ｢請求運賃｣算出結果格納用
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
 --
   BEGIN
 --
@@ -827,17 +841,25 @@ AS
     END IF;
 --
     -- ==============================
-    -- 契約運賃算出
+    -- 契約運賃/請求運賃算出
     -- ==============================
     -- 運賃マスタ(運送費)の変更フラグがONの場合、運賃マスタの運送料を設定
     IF (ir_xdc_ex_data.shipping_change_flg = gv_change_flg_on) THEN
       -- 契約運賃＝運賃マスタ.運送費
       ln_contract_rate := ir_xdc_ex_data.shipping_expenses;
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+      -- 請求運賃＝運賃マスタ.運送費
+      ln_charged_amount :=ir_xdc_ex_data.shipping_expenses;
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
 --
     -- 運賃マスタ(運送費)の変更フラグがOFFの場合、洗替前の運送料を設定
     ELSIF (ir_xdc_ex_data.shipping_change_flg = gv_change_flg_off) THEN
       -- 契約運賃＝運賃ヘッダ.契約運賃
       ln_contract_rate := ir_xd_ex_data.before_contract_rate;
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+      -- 請求運賃＝運賃ヘッダ.請求運賃
+      ln_charged_amount :=ir_xd_ex_data.charged_amount;
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
     END IF;
 --
     -- ==============================
@@ -858,7 +880,10 @@ AS
     -- 合計算出
     -- ==============================
     -- 合計 ＝ 運賃ヘッダ.請求運賃＋混載割増金額＋PIC＋運賃ヘッダ.諸料金
-    ln_total_amount := NVL(ir_xd_ex_data.charged_amount,0)
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+--    ln_total_amount := NVL(ir_xd_ex_data.charged_amount,0)
+    ln_total_amount := NVL(ln_charged_amount,0)
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
                      + ln_consolid_surcharge
                      + ln_picking_charge
                      + NVL(ir_xd_ex_data.many_rate, 0)
@@ -868,7 +893,10 @@ AS
     -- 差額算出
     -- ==============================
     ln_balance := ln_total_amount 
-                - (NVL(ir_xd_ex_data.charged_amount,0)
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+--                - (NVL(ir_xd_ex_data.charged_amount,0)
+                - (NVL(ln_charged_amount,0)
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
                  + ln_consolid_surcharge
                  + ln_picking_charge
                  + NVL(ir_xd_ex_data.many_rate, 0)
@@ -880,6 +908,9 @@ AS
     on_picking_charge     := ln_picking_charge;
     on_consolid_surcharge := ln_consolid_surcharge;
     on_contract_rate      := ln_contract_rate;
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+    on_charged_amount     := ln_charged_amount;
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
 --
   EXCEPTION
 --
@@ -2347,6 +2378,9 @@ AS
 -- ##### 20090410 Ver.1.5 本番#432対応 ADD START #####
     ln_contract_rate       NUMBER; -- ｢契約運賃｣
 -- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+    ln_charged_amount      NUMBER; -- 請求運賃
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
 --
   BEGIN
 --
@@ -2393,6 +2427,9 @@ AS
       on_consolid_surcharge  => ln_consolid_surcharge,          -- 混載割増金額
       on_picking_charge      => ln_picking_charge,              -- ピッキング料
       on_contract_rate       => ln_contract_rate,               -- 契約運賃
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+      on_charged_amount      => ln_charged_amount,              -- 請求運賃
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
       ov_errbuf              => lv_errbuf,                      -- エラー・メッセージ
       ov_retcode             => lv_retcode,                     -- リターン・コード
       ov_errmsg              => lv_errmsg);                     -- ユーザー・エラー・メッセージ
@@ -2418,6 +2455,9 @@ AS
       tab_ex_total_amount(gn_ex_cnt)       := ln_total_amount;                  -- 合計
       tab_ex_consolid_surcharge(gn_ex_cnt) := ln_consolid_surcharge;            -- 混載割増金額
       tab_ex_picking_charge(gn_ex_cnt)     := ln_picking_charge;                -- ピッキング料
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+      tab_ex_charged_amount(gn_ex_cnt)     := ln_charged_amount;                -- 請求運賃(契約運賃で洗替)
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
 --
   EXCEPTION
 --
@@ -2487,6 +2527,9 @@ AS
              total_amount           = tab_ex_total_amount(ln_index),       -- 合計
              consolid_surcharge     = tab_ex_consolid_surcharge(ln_index), -- 混載割増金額
              picking_charge         = tab_ex_picking_charge(ln_index),     -- ピッキング料
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD START #####
+             charged_amount         = tab_ex_charged_amount(ln_index),     -- 請求運賃
+-- ##### 20090501 Ver.1.6 本番#432(指摘5)対応 ADD END   #####
              last_updated_by        = gn_user_id,               -- 最終更新者
              last_update_date       = gd_sysdate,               -- 最終更新日
              last_update_login      = gn_login_id,              -- 最終更新ログイン
