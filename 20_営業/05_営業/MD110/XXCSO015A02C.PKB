@@ -59,6 +59,8 @@ AS
  *  2009-12-14    1.21  T.Maruyama       E_本稼動_00469対応 顧客名称、顧客住所について禁則文字
  *                                       が存在する場合は、該当文字を変換して連携する
  *  2009-12-21    1.22  K.Hosoi          E_本稼動_00563対応
+ *  2010-02-01    1.23  T.Maruyama       E_本稼動_01018 電話番号１～３が6バイトを超える場合は
+ *                                                      6バイトで切捨てする
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2831,19 +2833,26 @@ AS
       OR LENGTHB(lv_cur_phone_number2) > cn_phone_num_max_legth
       OR LENGTHB(lv_cur_phone_number3) > cn_phone_num_max_legth)
     THEN
-      -- 現設置先電話桁数エラー
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name         -- アプリケーション短縮名
-                     ,iv_name         => cv_tkn_number_18    -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_new_old      -- トークンコード1
-                     ,iv_token_value1 => cv_phone_old        -- トークン値1
-                     ,iv_token_name2  => cv_tkn_phone_num    -- トークンコード2
-                     ,iv_token_value2 => lv_cur_phone_number -- トークン値2
-                   );
-      --
-      /* 2009.05.27 M.Maruyama T1_1218対応 START */
-      lv_errbuf := lv_errmsg;
-      RAISE global_skip_expt;
+      /* 2010.02.01 T.Maruyama E_本稼動_01018対応 START */
+      --６桁を超える場合は切捨てする
+      lv_cur_phone_number1 := SUBSTRB(lv_cur_phone_number1, 1, cn_phone_num_max_legth);
+      lv_cur_phone_number2 := SUBSTRB(lv_cur_phone_number2, 1, cn_phone_num_max_legth);
+      lv_cur_phone_number3 := SUBSTRB(lv_cur_phone_number3, 1, cn_phone_num_max_legth);
+      
+      ---- 現設置先電話桁数エラー
+      --lv_errmsg := xxccp_common_pkg.get_msg(
+      --                iv_application  => cv_app_name         -- アプリケーション短縮名
+      --               ,iv_name         => cv_tkn_number_18    -- メッセージコード
+      --               ,iv_token_name1  => cv_tkn_new_old      -- トークンコード1
+      --               ,iv_token_value1 => cv_phone_old        -- トークン値1
+      --               ,iv_token_name2  => cv_tkn_phone_num    -- トークンコード2
+      --               ,iv_token_value2 => lv_cur_phone_number -- トークン値2
+      --             );
+      ----
+      --/* 2009.05.27 M.Maruyama T1_1218対応 START */
+      --lv_errbuf := lv_errmsg;
+      --RAISE global_skip_expt;
+      /* 2010.02.01 T.Maruyama E_本稼動_01018対応 END */
       --
     END IF;
     --
@@ -2851,19 +2860,26 @@ AS
       OR LENGTHB(lv_new_phone_number2) > cn_phone_num_max_legth
       OR LENGTHB(lv_new_phone_number3) > cn_phone_num_max_legth)
     THEN
-      -- 新設置先電話桁数エラー
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name         -- アプリケーション短縮名
-                     ,iv_name         => cv_tkn_number_18    -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_new_old      -- トークンコード1
-                     ,iv_token_value1 => cv_phone_new        -- トークン値1
-                     ,iv_token_name2  => cv_tkn_phone_num    -- トークンコード2
-                     ,iv_token_value2 => lv_new_phone_number -- トークン値2
-                   );
-      --
-      lv_errbuf := lv_errmsg;
-      /* 2009.05.27 M.Maruyama T1_1218対応 END */
-      RAISE global_skip_expt;
+      /* 2010.02.01 T.Maruyama E_本稼動_01018対応 START */
+      --６桁を超える場合は切捨てする
+      lv_new_phone_number1 := SUBSTRB(lv_new_phone_number1, 1, cn_phone_num_max_legth);
+      lv_new_phone_number2 := SUBSTRB(lv_new_phone_number2, 1, cn_phone_num_max_legth);
+      lv_new_phone_number3 := SUBSTRB(lv_new_phone_number3, 1, cn_phone_num_max_legth);
+      
+      ---- 新設置先電話桁数エラー
+      --lv_errmsg := xxccp_common_pkg.get_msg(
+      --                iv_application  => cv_app_name         -- アプリケーション短縮名
+      --               ,iv_name         => cv_tkn_number_18    -- メッセージコード
+      --               ,iv_token_name1  => cv_tkn_new_old      -- トークンコード1
+      --               ,iv_token_value1 => cv_phone_new        -- トークン値1
+      --               ,iv_token_name2  => cv_tkn_phone_num    -- トークンコード2
+      --               ,iv_token_value2 => lv_new_phone_number -- トークン値2
+      --             );
+      ----
+      --lv_errbuf := lv_errmsg;
+      --/* 2009.05.27 M.Maruyama T1_1218対応 END */
+      --RAISE global_skip_expt;
+      /* 2010.02.01 T.Maruyama E_本稼動_01018対応 END */
       --
     END IF;
     --
