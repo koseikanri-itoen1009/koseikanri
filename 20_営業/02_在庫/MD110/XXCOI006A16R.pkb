@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A16R(body)
  * Description      : ó•¥c‚•\i‹’“_•ÊE‡Œvj
  * MD.050           : ó•¥c‚•\i‹’“_•ÊE‡Œvj <MD050_XXCOI_006_A16>
- * Version          : V1.1
+ * Version          : V1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/01    1.0   Y.Kobayashi      ‰”Åì¬
  *  2009/05/13    1.1   T.Nakamura       [áŠQT1_0960]QÆ‚·‚éƒJƒeƒSƒŠ‚ğ¤•i»•i‹æ•ª‚É•ÏX
+ *  2009/06/26    1.2   H.Sasaki         [0000258]•¥o‡Œv‚ÉŠî€İŒÉ•ÏX“üŒÉ‚ğ’Ç‰Á
  *
  *****************************************************************************************/
 --
@@ -219,6 +220,9 @@ AS
            ,xirm.ccm_sample_ship                ccm_sample_ship           -- ŒÚ‹qLé“`”ïA©Ğ¤•i
            ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
            ,xirm.inventory_change_out           inventory_change_out      -- Šî€İŒÉ•ÏXoŒÉ
+-- == 2009/06/26 V1.2 Added START ===============================================================
+           ,xirm.inventory_change_in            inventory_change_in       -- Šî€İŒÉ•ÏX“üŒÉ
+-- == 2009/06/26 V1.2 Added END   ===============================================================
            ,xirm.factory_return                 factory_return            -- Hê•Ô•i
            ,xirm.factory_return_b               factory_return_b          -- Hê•Ô•iU–ß
            ,xirm.factory_change                 factory_change            -- Hê‘q‘Ö
@@ -299,6 +303,9 @@ AS
            ,xirm.ccm_sample_ship                ccm_sample_ship           -- ŒÚ‹qLé“`”ïA©Ğ¤•i
            ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
            ,xirm.inventory_change_out           inventory_change_out      -- Šî€İŒÉ•ÏXoŒÉ
+-- == 2009/06/26 V1.2 Added START ===============================================================
+           ,xirm.inventory_change_in            inventory_change_in       -- Šî€İŒÉ•ÏX“üŒÉ
+-- == 2009/06/26 V1.2 Added END   ===============================================================
            ,xirm.factory_return                 factory_return            -- Hê•Ô•i
            ,xirm.factory_return_b               factory_return_b          -- Hê•Ô•iU–ß
            ,xirm.factory_change                 factory_change            -- Hê‘q‘Ö
@@ -367,6 +374,9 @@ AS
            ,xirm.ccm_sample_ship                ccm_sample_ship           -- ŒÚ‹qLé“`”ïA©Ğ¤•i
            ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
            ,xirm.inventory_change_out           inventory_change_out      -- Šî€İŒÉ•ÏXoŒÉ
+-- == 2009/06/26 V1.2 Added START ===============================================================
+           ,xirm.inventory_change_in            inventory_change_in       -- Šî€İŒÉ•ÏX“üŒÉ
+-- == 2009/06/26 V1.2 Added END   ===============================================================
            ,xirm.factory_return                 factory_return            -- Hê•Ô•i
            ,xirm.factory_return_b               factory_return_b          -- Hê•Ô•iU–ß
            ,xirm.factory_change                 factory_change            -- Hê‘q‘Ö
@@ -447,6 +457,9 @@ AS
            ,xirm.ccm_sample_ship                ccm_sample_ship           -- ŒÚ‹qLé“`”ïA©Ğ¤•i
            ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
            ,xirm.inventory_change_out           inventory_change_out      -- Šî€İŒÉ•ÏXoŒÉ
+-- == 2009/06/26 V1.2 Added START ===============================================================
+           ,xirm.inventory_change_in            inventory_change_in       -- Šî€İŒÉ•ÏX“üŒÉ
+-- == 2009/06/26 V1.2 Added END   ===============================================================
            ,xirm.factory_return                 factory_return            -- Hê•Ô•i
            ,xirm.factory_return_b               factory_return_b          -- Hê•Ô•iU–ß
            ,xirm.factory_change                 factory_change            -- Hê‘q‘Ö
@@ -819,6 +832,9 @@ AS
                                    + ir_svf_data.ccm_sample_ship
                                    - ir_svf_data.ccm_sample_ship_b
                                    + ir_svf_data.inventory_change_out
+-- == 2009/06/26 V1.2 Added START ===============================================================
+                                   - ir_svf_data.inventory_change_in
+-- == 2009/06/26 V1.2 Added END   ===============================================================
                                    + ir_svf_data.factory_return
                                    - ir_svf_data.factory_return_b
                                    + ir_svf_data.factory_change

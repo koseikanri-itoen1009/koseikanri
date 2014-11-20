@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A17R(body)
  * Description      : 受払残高表（拠点別計）
  * MD.050           : 受払残高表（拠点別計） <MD050_XXCOI_006_A17>
- * Version          : V1.2
+ * Version          : V1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,8 @@ AS
  *  2008/11/13    1.0   H.Sasaki         初版作成
  *  2009/02/19    1.1   H.Sasaki         [障害COI_021]顧客マスタのステータスを検索条件に追加
  *  2009/06/02    1.2   H.Sasaki         [T1_1293]棚卸減耗数量取得条件を追加
+ *  2009/06/26    1.3   H.Sasaki         [0000258]T1_1293の対応を取り消し
+ *                                                払出合計に基準在庫変更入庫を追加
  *
  *****************************************************************************************/
 --
@@ -142,7 +144,52 @@ AS
   -- ===============================
   CURSOR  svf_data_cur
   IS
+-- == 2009/06/26 V1.3 Mdified START ===============================================================
 -- == 2009/06/02 V1.2 Mdified START ===============================================================
+    SELECT  xirm.base_code                      base_code                 -- 拠点コード
+           ,SUBSTRB(hca.account_name, 1, 8)     account_name              -- 拠点名称
+           ,xirm.month_begin_quantity           month_begin_quantity      -- 月首棚卸高
+           ,xirm.factory_stock                  factory_stock             -- 工場入庫
+           ,xirm.factory_stock_b                factory_stock_b           -- 工場入庫振戻
+           ,xirm.change_stock                   change_stock              -- 倉替入庫
+           ,xirm.goods_transfer_new             goods_transfer_new        -- 商品振替（新商品）
+           ,xirm.inv_result                     inv_result                -- 棚卸結果
+           ,xirm.inv_result_bad                 inv_result_bad            -- 棚卸結果(不良品)
+           ,xirm.inv_wear                       inv_wear                  -- 棚卸減耗
+           ,CASE WHEN gv_param_cost_type = '10' THEN  xirm.operation_cost
+                 ELSE  xirm.standard_cost
+            END                                 cost_amt                  -- 原価
+           ,xirm.sales_shipped                  sales_shipped             -- 売上出庫
+           ,xirm.sales_shipped_b                sales_shipped_b           -- 売上出庫振戻
+           ,xirm.return_goods                   return_goods              -- 返品
+           ,xirm.return_goods_b                 return_goods_b            -- 返品振戻
+           ,xirm.change_ship                    change_ship               -- 倉替出庫
+           ,xirm.goods_transfer_old             goods_transfer_old        -- 商品振替(旧商品)
+           ,xirm.sample_quantity                sample_quantity           -- 見本出庫
+           ,xirm.sample_quantity_b              sample_quantity_b         -- 見本出庫振戻
+           ,xirm.customer_sample_ship           customer_sample_ship      -- 顧客見本出庫
+           ,xirm.customer_sample_ship_b         customer_sample_ship_b    -- 顧客見本出庫振戻
+           ,xirm.customer_support_ss            customer_support_ss       -- 顧客協賛見本出庫
+           ,xirm.customer_support_ss_b          customer_support_ss_b     -- 顧客協賛見本出庫振戻
+           ,xirm.ccm_sample_ship                ccm_sample_ship           -- 顧客広告宣伝費A自社商品
+           ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- 顧客広告宣伝費A自社商品振戻
+           ,xirm.inventory_change_out           inventory_change_out      -- 基準在庫変更出庫
+           ,xirm.inventory_change_in            inventory_change_in       -- 基準在庫変更入庫
+           ,xirm.factory_return                 factory_return            -- 工場返品
+           ,xirm.factory_return_b               factory_return_b          -- 工場返品振戻
+           ,xirm.factory_change                 factory_change            -- 工場倉替
+           ,xirm.factory_change_b               factory_change_b          -- 工場倉替振戻
+           ,xirm.removed_goods                  removed_goods             -- 廃却
+           ,xirm.removed_goods_b                removed_goods_b           -- 廃却振戻
+    FROM    xxcoi_inv_reception_monthly         xirm                      -- 月次在庫受払表（月次）
+           ,hz_cust_accounts                    hca                       -- 顧客マスタ
+    WHERE   xirm.practice_month     =   gv_param_reception_date
+    AND     xirm.inventory_kbn      =   cv_inv_kbn_2
+    AND     xirm.base_code          =   hca.account_number
+    AND     hca.customer_class_code =   cv_cust_cls_1
+    AND     hca.status              =   cv_status_active
+    ORDER BY  xirm.base_code;
+--
 --    SELECT  xirm.base_code                      base_code                 -- 拠点コード
 --           ,SUBSTRB(hca.account_name, 1, 8)     account_name              -- 拠点名称
 --           ,xirm.month_begin_quantity           month_begin_quantity      -- 月首棚卸高
@@ -152,7 +199,9 @@ AS
 --           ,xirm.goods_transfer_new             goods_transfer_new        -- 商品振替（新商品）
 --           ,xirm.inv_result                     inv_result                -- 棚卸結果
 --           ,xirm.inv_result_bad                 inv_result_bad            -- 棚卸結果(不良品)
---           ,xirm.inv_wear                       inv_wear                  -- 棚卸減耗
+--           ,DECODE(msi.attribute5, cv_9, 0
+--                                       , xirm.inv_wear
+--            )                                   inv_wear                  -- 棚卸減耗
 --           ,CASE WHEN gv_param_cost_type = '10' THEN  xirm.operation_cost
 --                 ELSE  xirm.standard_cost
 --            END                                 cost_amt                  -- 原価
@@ -179,61 +228,17 @@ AS
 --           ,xirm.removed_goods_b                removed_goods_b           -- 廃却振戻
 --    FROM    xxcoi_inv_reception_monthly         xirm                      -- 月次在庫受払表（月次）
 --           ,hz_cust_accounts                    hca                       -- 顧客マスタ
+--           ,mtl_secondary_inventories           msi                       -- 保管場所マスタ
 --    WHERE   xirm.practice_month     =   gv_param_reception_date
 --    AND     xirm.inventory_kbn      =   cv_inv_kbn_2
 --    AND     xirm.base_code          =   hca.account_number
 --    AND     hca.customer_class_code =   cv_cust_cls_1
 --    AND     hca.status              =   cv_status_active
+--    AND     xirm.subinventory_code  =   msi.secondary_inventory_name
+--    AND     xirm.organization_id    =   msi.organization_id
 --    ORDER BY  xirm.base_code;
---
-    SELECT  xirm.base_code                      base_code                 -- 拠点コード
-           ,SUBSTRB(hca.account_name, 1, 8)     account_name              -- 拠点名称
-           ,xirm.month_begin_quantity           month_begin_quantity      -- 月首棚卸高
-           ,xirm.factory_stock                  factory_stock             -- 工場入庫
-           ,xirm.factory_stock_b                factory_stock_b           -- 工場入庫振戻
-           ,xirm.change_stock                   change_stock              -- 倉替入庫
-           ,xirm.goods_transfer_new             goods_transfer_new        -- 商品振替（新商品）
-           ,xirm.inv_result                     inv_result                -- 棚卸結果
-           ,xirm.inv_result_bad                 inv_result_bad            -- 棚卸結果(不良品)
-           ,DECODE(msi.attribute5, cv_9, 0
-                                       , xirm.inv_wear
-            )                                   inv_wear                  -- 棚卸減耗
-           ,CASE WHEN gv_param_cost_type = '10' THEN  xirm.operation_cost
-                 ELSE  xirm.standard_cost
-            END                                 cost_amt                  -- 原価
-           ,xirm.sales_shipped                  sales_shipped             -- 売上出庫
-           ,xirm.sales_shipped_b                sales_shipped_b           -- 売上出庫振戻
-           ,xirm.return_goods                   return_goods              -- 返品
-           ,xirm.return_goods_b                 return_goods_b            -- 返品振戻
-           ,xirm.change_ship                    change_ship               -- 倉替出庫
-           ,xirm.goods_transfer_old             goods_transfer_old        -- 商品振替(旧商品)
-           ,xirm.sample_quantity                sample_quantity           -- 見本出庫
-           ,xirm.sample_quantity_b              sample_quantity_b         -- 見本出庫振戻
-           ,xirm.customer_sample_ship           customer_sample_ship      -- 顧客見本出庫
-           ,xirm.customer_sample_ship_b         customer_sample_ship_b    -- 顧客見本出庫振戻
-           ,xirm.customer_support_ss            customer_support_ss       -- 顧客協賛見本出庫
-           ,xirm.customer_support_ss_b          customer_support_ss_b     -- 顧客協賛見本出庫振戻
-           ,xirm.ccm_sample_ship                ccm_sample_ship           -- 顧客広告宣伝費A自社商品
-           ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- 顧客広告宣伝費A自社商品振戻
-           ,xirm.inventory_change_out           inventory_change_out      -- 基準在庫変更出庫
-           ,xirm.factory_return                 factory_return            -- 工場返品
-           ,xirm.factory_return_b               factory_return_b          -- 工場返品振戻
-           ,xirm.factory_change                 factory_change            -- 工場倉替
-           ,xirm.factory_change_b               factory_change_b          -- 工場倉替振戻
-           ,xirm.removed_goods                  removed_goods             -- 廃却
-           ,xirm.removed_goods_b                removed_goods_b           -- 廃却振戻
-    FROM    xxcoi_inv_reception_monthly         xirm                      -- 月次在庫受払表（月次）
-           ,hz_cust_accounts                    hca                       -- 顧客マスタ
-           ,mtl_secondary_inventories           msi                       -- 保管場所マスタ
-    WHERE   xirm.practice_month     =   gv_param_reception_date
-    AND     xirm.inventory_kbn      =   cv_inv_kbn_2
-    AND     xirm.base_code          =   hca.account_number
-    AND     hca.customer_class_code =   cv_cust_cls_1
-    AND     hca.status              =   cv_status_active
-    AND     xirm.subinventory_code  =   msi.secondary_inventory_name
-    AND     xirm.organization_id    =   msi.organization_id
-    ORDER BY  xirm.base_code;
 -- == 2009/06/02 V1.2 Mdified END   ===============================================================
+-- == 2009/06/26 V1.3 Mdified END   ===============================================================
   --
   svf_data_rec    svf_data_cur%ROWTYPE;
 --
@@ -549,6 +554,9 @@ AS
                                     + ir_svf_data.ccm_sample_ship
                                     - ir_svf_data.ccm_sample_ship_b
                                     + ir_svf_data.inventory_change_out
+-- == 2009/06/26 V1.3 Added START ===============================================================
+                                    - ir_svf_data.inventory_change_in
+-- == 2009/06/26 V1.3 Added END   ===============================================================
                                     + ir_svf_data.factory_return
                                     - ir_svf_data.factory_return_b
                                     + ir_svf_data.factory_change

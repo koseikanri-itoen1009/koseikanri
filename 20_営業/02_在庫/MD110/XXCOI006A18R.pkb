@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A18R(body)
  * Description      : •¥o–¾×•\i‹’“_•ÊE‡Œvj
  * MD.050           : •¥o–¾×•\i‹’“_•ÊE‡Œvj <MD050_XXCOI_006_A18>
- * Version          : V1.1
+ * Version          : V1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/11    1.0   Y.Kobayashi      ‰”Åì¬
  *  2009/05/13    1.1   T.Nakamura       [áŠQT1_0960]QÆ‚·‚éƒJƒeƒSƒŠ‚ğ¤•i»•i‹æ•ª‚É•ÏX
+ *  2009/06/26    1.2   H.Sasaki         [0000258]”—ÊŒvZ‚É’I‰µŒ¸–Õ”‚ğ‰ÁZ‚µ‚È‚¢
+ *                                                •¥o‡Œv‚ÉŠî€İŒÉ•ÏX“üŒÉ‚ğ’Ç‰Á
  *
  *****************************************************************************************/
 --
@@ -209,6 +211,9 @@ AS
            ,xirm.customer_support_ss            customer_support_ss       -- ŒÚ‹q‹¦^Œ©–{oŒÉ
            ,xirm.customer_support_ss_b          customer_support_ss_b     -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
            ,xirm.inventory_change_out           inventory_change_out      -- Šî€İŒÉ•ÏXoŒÉ
+-- == 2009/06/26 V1.2 Added START ===============================================================
+           ,xirm.inventory_change_in            inventory_change_in       -- Šî€İŒÉ•ÏX“üŒÉ
+-- == 2009/06/26 V1.2 Added END   ===============================================================
            ,xirm.factory_return                 factory_return            -- Hê•Ô•i
            ,xirm.factory_return_b               factory_return_b          -- Hê•Ô•iU–ß
            ,xirm.factory_change                 factory_change            -- Hê‘q‘Ö
@@ -217,7 +222,9 @@ AS
            ,xirm.removed_goods_b                removed_goods_b           -- ”p‹pU–ß
            ,xirm.ccm_sample_ship                ccm_sample_ship           -- ŒÚ‹qLé“`”ïA©Ğ¤•i
            ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
-           ,xirm.wear_increase                  wear_increase             -- ’I‰µŒ¸–ÕŒ¸
+-- == 2009/06/26 V1.2 Deleted START ===============================================================
+--           ,xirm.wear_increase                  wear_increase             -- ’I‰µŒ¸–ÕŒ¸
+-- == 2009/06/26 V1.2 Deleted END   ===============================================================
     FROM    xxcoi_inv_reception_monthly         xirm                      -- ŒŸİŒÉó•¥•\iŒŸj
            ,mtl_categories_b                    mcb                       -- ƒJƒeƒSƒŠ
            ,mtl_item_categories                 mic                       -- •i–ÚƒJƒeƒSƒŠŠ„“–
@@ -282,6 +289,9 @@ AS
            ,xirm.customer_support_ss            customer_support_ss       -- ŒÚ‹q‹¦^Œ©–{oŒÉ
            ,xirm.customer_support_ss_b          customer_support_ss_b     -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
            ,xirm.inventory_change_out           inventory_change_out      -- Šî€İŒÉ•ÏXoŒÉ
+-- == 2009/06/26 V1.2 Added START ===============================================================
+           ,xirm.inventory_change_in            inventory_change_in       -- Šî€İŒÉ•ÏX“üŒÉ
+-- == 2009/06/26 V1.2 Added END   ===============================================================
            ,xirm.factory_return                 factory_return            -- Hê•Ô•i
            ,xirm.factory_return_b               factory_return_b          -- Hê•Ô•iU–ß
            ,xirm.factory_change                 factory_change            -- Hê‘q‘Ö
@@ -290,7 +300,9 @@ AS
            ,xirm.removed_goods_b                removed_goods_b           -- ”p‹pU–ß
            ,xirm.ccm_sample_ship                ccm_sample_ship           -- ŒÚ‹qLé“`”ïA©Ğ¤•i
            ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
-           ,xirm.wear_increase                  wear_increase             -- ’I‰µŒ¸–ÕŒ¸
+-- == 2009/06/26 V1.2 Deleted START ===============================================================
+--           ,xirm.wear_increase                  wear_increase             -- ’I‰µŒ¸–ÕŒ¸
+-- == 2009/06/26 V1.2 Deleted END   ===============================================================
     FROM    xxcoi_inv_reception_monthly         xirm                      -- ŒŸİŒÉó•¥•\iŒŸj
            ,hz_cust_accounts                    hca                       -- ŒÚ‹qƒ}ƒXƒ^
            ,mtl_categories_b                    mcb                       -- ƒJƒeƒSƒŠ
@@ -343,6 +355,9 @@ AS
            ,xirm.customer_support_ss            customer_support_ss       -- ŒÚ‹q‹¦^Œ©–{oŒÉ
            ,xirm.customer_support_ss_b          customer_support_ss_b     -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
            ,xirm.inventory_change_out           inventory_change_out      -- Šî€İŒÉ•ÏXoŒÉ
+-- == 2009/06/26 V1.2 Added START ===============================================================
+           ,xirm.inventory_change_in            inventory_change_in       -- Šî€İŒÉ•ÏX“üŒÉ
+-- == 2009/06/26 V1.2 Added END   ===============================================================
            ,xirm.factory_return                 factory_return            -- Hê•Ô•i
            ,xirm.factory_return_b               factory_return_b          -- Hê•Ô•iU–ß
            ,xirm.factory_change                 factory_change            -- Hê‘q‘Ö
@@ -351,7 +366,9 @@ AS
            ,xirm.removed_goods_b                removed_goods_b           -- ”p‹pU–ß
            ,xirm.ccm_sample_ship                ccm_sample_ship           -- ŒÚ‹qLé“`”ïA©Ğ¤•i
            ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
-           ,xirm.wear_increase                  wear_increase             -- ’I‰µŒ¸–ÕŒ¸
+-- == 2009/06/26 V1.2 Deleted START ===============================================================
+--           ,xirm.wear_increase                  wear_increase             -- ’I‰µŒ¸–ÕŒ¸
+-- == 2009/06/26 V1.2 Deleted END   ===============================================================
     FROM    xxcoi_inv_reception_monthly         xirm                      -- ŒŸİŒÉó•¥•\iŒŸj
            ,mtl_categories_b                    mcb                       -- ƒJƒeƒSƒŠ
            ,mtl_item_categories                 mic                       -- •i–ÚƒJƒeƒSƒŠŠ„“–
@@ -415,6 +432,9 @@ AS
            ,xirm.customer_support_ss            customer_support_ss       -- ŒÚ‹q‹¦^Œ©–{oŒÉ
            ,xirm.customer_support_ss_b          customer_support_ss_b     -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
            ,xirm.inventory_change_out           inventory_change_out      -- Šî€İŒÉ•ÏXoŒÉ
+-- == 2009/06/26 V1.2 Added START ===============================================================
+           ,xirm.inventory_change_in            inventory_change_in       -- Šî€İŒÉ•ÏX“üŒÉ
+-- == 2009/06/26 V1.2 Added END   ===============================================================
            ,xirm.factory_return                 factory_return            -- Hê•Ô•i
            ,xirm.factory_return_b               factory_return_b          -- Hê•Ô•iU–ß
            ,xirm.factory_change                 factory_change            -- Hê‘q‘Ö
@@ -423,7 +443,9 @@ AS
            ,xirm.removed_goods_b                removed_goods_b           -- ”p‹pU–ß
            ,xirm.ccm_sample_ship                ccm_sample_ship           -- ŒÚ‹qLé“`”ïA©Ğ¤•i
            ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
-           ,xirm.wear_increase                  wear_increase             -- ’I‰µŒ¸–ÕŒ¸
+-- == 2009/06/26 V1.2 Deleted START ===============================================================
+--           ,xirm.wear_increase                  wear_increase             -- ’I‰µŒ¸–ÕŒ¸
+-- == 2009/06/26 V1.2 Deleted END   ===============================================================
     FROM    xxcoi_inv_reception_monthly         xirm                      -- ŒŸİŒÉó•¥•\iŒŸj
            ,hz_cust_accounts                    hca                       -- ŒÚ‹qƒ}ƒXƒ^
            ,mtl_categories_b                    mcb                       -- ƒJƒeƒSƒŠ
@@ -794,8 +816,11 @@ AS
                                  - ir_svf_data.customer_sample_ship_b;      -- 18.Œ©–{oŒÉ”—Ê
       ln_disposal_qty         :=   ir_svf_data.removed_goods
                                  - ir_svf_data.removed_goods_b;             -- 20.”p‹poŒÉ”—Ê
-      ln_kuragae_ship_qty     :=   ir_svf_data.change_ship
-                                 + ir_svf_data.wear_increase;               -- 22.‘q‘ÖoŒÉ”—Ê
+-- == 2009/06/26 V1.2 Modified START ===============================================================
+--      ln_kuragae_ship_qty     :=   ir_svf_data.change_ship
+--                                 + ir_svf_data.wear_increase;               -- 22.‘q‘ÖoŒÉ”—Ê
+      ln_kuragae_ship_qty     :=   ir_svf_data.change_ship;                 -- 22.‘q‘ÖoŒÉ”—Ê
+-- == 2009/06/26 V1.2 Modified END ===============================================================
       ln_hurikae_ship_qty     :=   ir_svf_data.goods_transfer_old;          -- 24.U‘ÖoŒÉ”—Ê
       ln_factry_change_qty    :=   ir_svf_data.factory_change
                                  - ir_svf_data.factory_change_b;            -- 26.Hê‘q‘Ö”—Ê
@@ -806,7 +831,9 @@ AS
                                  - ir_svf_data.return_goods
                                  + ir_svf_data.return_goods_b
                                  + ir_svf_data.change_ship
-                                 + ir_svf_data.wear_increase
+-- == 2009/06/26 V1.2 Deleted START ===============================================================
+--                                 + ir_svf_data.wear_increase
+-- == 2009/06/26 V1.2 Deleted END   ===============================================================
                                  + ir_svf_data.goods_transfer_old
                                  + ir_svf_data.sample_quantity
                                  - ir_svf_data.sample_quantity_b
@@ -817,6 +844,9 @@ AS
                                  + ir_svf_data.ccm_sample_ship
                                  - ir_svf_data.ccm_sample_ship_b
                                  + ir_svf_data.inventory_change_out
+-- == 2009/06/26 V1.2 Added START ===============================================================
+                                 - ir_svf_data.inventory_change_in
+-- == 2009/06/26 V1.2 Added END   ===============================================================
                                  + ir_svf_data.factory_return
                                  - ir_svf_data.factory_return_b
                                  + ir_svf_data.factory_change

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A19R(body)
  * Description      : 払出明細表（拠点別計）
  * MD.050           : 払出明細表（拠点別計） <MD050_XXCOI_006_A19>
- * Version          : V1.1
+ * Version          : V1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,8 @@ AS
  *  2008/11/14    1.0   H.Sasaki         初版作成
  *  2009/02/19    1.1   H.Sasaki         [障害COI_022]顧客マスタのステータスを検索条件に追加
  *                                                    月次在庫の検索条件に棚卸ステータスを追加
+ *  2009/06/26    1.2   H.Sasaki         [0000258]数量計算に棚卸減耗数を加算しない
+ *                                                払出合計に基準在庫変更入庫を追加
  *
  *****************************************************************************************/
 --
@@ -160,13 +162,18 @@ AS
            ,xirm.ccm_sample_ship                ccm_sample_ship           -- 顧客広告宣伝費A自社商品
            ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- 顧客広告宣伝費A自社商品振戻
            ,xirm.inventory_change_out           inventory_change_out      -- 基準在庫変更出庫
+-- == 2009/06/26 V1.2 Added START ===============================================================
+           ,xirm.inventory_change_in            inventory_change_in       -- 基準在庫変更入庫
+-- == 2009/06/26 V1.2 Added END   ===============================================================
            ,xirm.factory_return                 factory_return            -- 工場返品
            ,xirm.factory_return_b               factory_return_b          -- 工場返品振戻
            ,xirm.factory_change                 factory_change            -- 工場倉替
            ,xirm.factory_change_b               factory_change_b          -- 工場倉替振戻
            ,xirm.removed_goods                  removed_goods             -- 廃却
            ,xirm.removed_goods_b                removed_goods_b           -- 廃却振戻
-           ,xirm.wear_increase                  wear_increase             -- 棚卸減耗減
+-- == 2009/06/26 V1.2 Deleted START ===============================================================
+--           ,xirm.wear_increase                  wear_increase             -- 棚卸減耗減
+-- == 2009/06/26 V1.2 Deleted END   ===============================================================
     FROM    xxcoi_inv_reception_monthly         xirm                      -- 月次在庫受払表（月次）
            ,hz_cust_accounts                    hca                       -- 顧客マスタ
     WHERE   xirm.practice_month     =   gv_param_reception_date
@@ -498,7 +505,10 @@ AS
       ln_disposal_qty           :=   ir_svf_data.removed_goods
                                    - ir_svf_data.removed_goods_b;                         -- 15.廃却出庫数量
       ln_disposal_money         :=  ROUND(ir_svf_data.cost_amt * ln_disposal_qty);        -- 16.廃却出庫金額
-      ln_kuragae_ship_qty       :=   ir_svf_data.change_ship + ir_svf_data.wear_increase; -- 17.倉替出庫数量
+-- == 2009/06/26 V1.2 Modified START ===============================================================
+--      ln_kuragae_ship_qty       :=   ir_svf_data.change_ship + ir_svf_data.wear_increase; -- 17.倉替出庫数量
+      ln_kuragae_ship_qty       :=   ir_svf_data.change_ship;                             -- 17.倉替出庫数量
+-- == 2009/06/26 V1.2 Modified END ===============================================================
       ln_kuragae_ship_money     :=  ROUND(ir_svf_data.cost_amt * ln_kuragae_ship_qty);    -- 18.倉替出庫金額
       ln_hurikae_ship_qty       :=   ir_svf_data.goods_transfer_old;                      -- 19.振替出庫数量
       ln_hurikae_ship_money     :=  ROUND(ir_svf_data.cost_amt * ln_hurikae_ship_qty);    -- 20.振替出庫金額
@@ -513,7 +523,9 @@ AS
                                    - ir_svf_data.return_goods
                                    + ir_svf_data.return_goods_b
                                    + ir_svf_data.change_ship
-                                   + ir_svf_data.wear_increase
+-- == 2009/06/26 V1.2 Deleted START ===============================================================
+--                                   + ir_svf_data.wear_increase
+-- == 2009/06/26 V1.2 Deleted START ===============================================================
                                    + ir_svf_data.goods_transfer_old
                                    + ir_svf_data.sample_quantity
                                    - ir_svf_data.sample_quantity_b
@@ -524,6 +536,9 @@ AS
                                    + ir_svf_data.ccm_sample_ship
                                    - ir_svf_data.ccm_sample_ship_b
                                    + ir_svf_data.inventory_change_out
+-- == 2009/06/26 V1.2 Added START ===============================================================
+                                   - ir_svf_data.inventory_change_in
+-- == 2009/06/26 V1.2 Added END   ===============================================================
                                    + ir_svf_data.factory_return
                                    - ir_svf_data.factory_return_b
                                    + ir_svf_data.factory_change
