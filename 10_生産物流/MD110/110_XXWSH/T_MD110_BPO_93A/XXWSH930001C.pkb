@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.31
+ * Version          : 1.33
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -117,6 +117,9 @@ AS
  *  2008/12/02    1.30 Oracle 福田 直樹  本番障害対応#188(A-5-3品目マスタ存在チェックの要件とmaster_data_get品目情報取得時の要件を同じにする)
  *  2008/12/04    1.31 Oracle 福田 直樹  本番障害対応(移動指示なし実績訂正時、移動入出庫実績登録(57A)で赤なく黒伝票が作成されてしまう)
  *  2008/12/06    1.32 Oracle 宮田       本番障害対応#484(数量に変更があった受注明細のみしか出荷実績I/F済みフラグがNにしかしていない。※ヘッダー単位で対象は全てNにする。)
+ *  2008/12/07    1.33 Oracle 福田 直樹  本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする)
+ *  2008/12/07    1.33 Oracle 福田 直樹  本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
+ *  2008/12/07    1.33 Oracle 福田 直樹  本番障害対応#470(配送Noの実績訂正を行うとヘッダに同一依頼Noのレコードが複数件作成されてしまう)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1103,6 +1106,8 @@ AS
   -- 2008/09/22 TE080_400指摘#76 Add Start ---------------------------------------------------------
   gb_shipping_result_if_flg BOOLEAN;    -- 全受注明細の出荷実績インタフェース済フラグを'N'に更新する場合はTRUE
   -- 2008/09/22 TE080_400指摘#76 Add End -----------------------------------------------------------
+--
+  gt_delivery_no_before      xxwsh_order_headers_all.delivery_no%TYPE;  --実績訂正時の訂正前の配送No  -- 2008/12/07 本番障害#470 Add
 --
   -- WHOカラム
   gt_user_id         xxinv_mov_lot_details.created_by%TYPE;             -- 作成者(最終更新者)
@@ -4065,7 +4070,8 @@ AS
                     ,1
                     ,5000);
 --
-      FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspbuf);
+      --FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspbuf); -- 2008/12/07 Del 本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
+      FND_FILE.PUT_LINE(FND_FILE.LOG, lv_dspbuf);      -- 2008/12/07 Add 本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
 --
       lv_warn_flg := gv_status_warn;
 --
@@ -4101,7 +4107,8 @@ AS
                     ,1
                     ,5000);
 --
-      FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspbuf);
+      --FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_dspbuf); -- 2008/12/07 Del 本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
+      FND_FILE.PUT_LINE(FND_FILE.LOG, lv_dspbuf);      -- 2008/12/07 Add 本番障害対応(A-3での出荷依頼IFのヘッダ・明細相互間の存在チェック結果出力先をLOGに変更)
 --
       lv_warn_flg := gv_status_warn;
 --
@@ -6294,7 +6301,7 @@ AS
               WHERE  xmrih.mov_num = gr_interface_info_rec(i).order_source_ref --移動H.移動番号
               AND    xmrih.shipped_locat_code = gr_interface_info_rec(i).location_code    --移動H.出庫元保管場所
               AND    xmrih.ship_to_locat_code = gr_interface_info_rec(i).ship_to_location --移動H.入庫先保管場所
-              AND    xmrih.delivery_no = gr_interface_info_rec(i).delivery_no  --移動H.配送No
+              --AND    xmrih.delivery_no = gr_interface_info_rec(i).delivery_no  --移動H.配送No    -- 2008/12/07 本番障害#470 Del
               AND    xmrih.status     <> gv_mov_status_99                      --移動H.ステータス<>取消
               ;
 --
@@ -6738,7 +6745,7 @@ AS
               FROM   xxwsh_order_headers_all  xoha
               WHERE  xoha.request_no   = gr_interface_info_rec(i).order_source_ref  --受注H.依頼No
               AND    xoha.deliver_from = gr_interface_info_rec(i).location_code     --受注H.出荷元保管場所
-              AND    xoha.delivery_no  = gr_interface_info_rec(i).delivery_no       --受注H.配送No
+              --AND    xoha.delivery_no  = gr_interface_info_rec(i).delivery_no       --受注H.配送No  -- 2008/12/07 本番障害#470 Del
               AND    xoha.latest_external_flag = gv_yesno_y                         --最新フラグ
               ;
 --
@@ -10245,6 +10252,14 @@ AS
       gr_order_h_rec.performance_management_dept := NULL;
     END IF;
 --
+    -- 2008/12/07 本番障害#470 Add Start ----------------------------------------------
+    SELECT  xoha.delivery_no
+    INTO    gt_delivery_no_before      -- 訂正前の配送Noを退避しておく
+    FROM    xxwsh.xxwsh_order_headers_all  xoha
+    WHERE   xoha.request_no           = gr_order_h_rec.request_no
+    AND     xoha.latest_external_flag = gv_yesno_y;
+    -- 2008/12/07 本番障害#470 Add End -------------------------------------------------
+--
     -- (210)拠点出荷確定報告・(215)庭先出荷確定報告以外の場合
     -- (210)拠点出荷確定報告・(215)庭先出荷確定報告の場合で、成績管理部署がない場合
     IF (gr_order_h_rec.performance_management_dept IS NULL) THEN
@@ -10254,6 +10269,7 @@ AS
          ,xoha.based_weight                 = gr_order_h_rec.based_weight
          ,xoha.based_capacity               = gr_order_h_rec.based_capacity
          ,xoha.real_pallet_quantity         = gr_order_h_rec.real_pallet_quantity
+         ,xoha.delivery_no                  = gr_order_h_rec.delivery_no                  -- 2008/12/07 本番障害#470 Add
          ,xoha.result_freight_carrier_id    = gr_order_h_rec.result_freight_carrier_id
          ,xoha.result_freight_carrier_code  = gr_order_h_rec.result_freight_carrier_code
          ,xoha.result_shipping_method_code  = gr_order_h_rec.result_shipping_method_code
@@ -10270,7 +10286,7 @@ AS
          ,xoha.program_id                   = gt_conc_program_id
          ,xoha.program_update_date          = gt_sysdate
       WHERE xoha.request_no           = gr_order_h_rec.request_no
-      AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec.delivery_no,gv_delivery_no_null)
+      --AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec.delivery_no,gv_delivery_no_null) -- 2008/12/07 本番障害#470 Del
       AND   xoha.latest_external_flag = gv_yesno_y;
 --
      -- (210)拠点出荷確定報告・(215)庭先出荷確定報告の場合で、成績管理部署がある場合
@@ -10281,6 +10297,7 @@ AS
          ,xoha.based_weight                 = gr_order_h_rec.based_weight
          ,xoha.based_capacity               = gr_order_h_rec.based_capacity
          ,xoha.real_pallet_quantity         = gr_order_h_rec.real_pallet_quantity
+         ,xoha.delivery_no                  = gr_order_h_rec.delivery_no                  -- 2008/12/07 本番障害#470 Add
          ,xoha.result_freight_carrier_id    = gr_order_h_rec.result_freight_carrier_id
          ,xoha.result_freight_carrier_code  = gr_order_h_rec.result_freight_carrier_code
          ,xoha.result_shipping_method_code  = gr_order_h_rec.result_shipping_method_code
@@ -10297,7 +10314,7 @@ AS
          ,xoha.program_id                   = gt_conc_program_id
          ,xoha.program_update_date          = gt_sysdate
       WHERE xoha.request_no           = gr_order_h_rec.request_no
-      AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec.delivery_no,gv_delivery_no_null)
+      --AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec.delivery_no,gv_delivery_no_null) -- 2008/12/07 本番障害#470 Del
       AND   xoha.latest_external_flag = gv_yesno_y;
 --
     END IF;
@@ -10307,7 +10324,7 @@ AS
     INTO lt_order_header_id
     FROM xxwsh_order_headers_all xoha
     WHERE xoha.request_no           = gr_order_h_rec.request_no
-    AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec.delivery_no,gv_delivery_no_null)
+    --AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec.delivery_no,gv_delivery_no_null) -- 2008/12/07 本番障害#470 Del
     AND   xoha.latest_external_flag = gv_yesno_y;
 --
     gr_order_h_rec.order_header_id := lt_order_header_id;
@@ -10521,7 +10538,7 @@ AS
       INTO  lr_order_h_rec_ins
       FROM  xxwsh_order_headers_all xoha
       WHERE xoha.request_no           = gr_order_h_rec_up2(in_index).request_no
-      AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec_up2(in_index).delivery_no,gv_delivery_no_null)
+      --AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec_up2(in_index).delivery_no,gv_delivery_no_null) -- 2008/12/07 Del 本番障害#470
       AND   xoha.latest_external_flag = gv_yesno_y
       -- 出荷：出荷実績計上済　支給：支給実績計上済
       AND    xoha.req_status IN(gv_req_status_04,gv_req_status_08);
@@ -10571,8 +10588,13 @@ AS
        ,xoha.program_id             = gt_conc_program_id
        ,xoha.program_update_date    = gt_sysdate
     WHERE xoha.request_no           = gr_order_h_rec_up2(in_index).request_no
-    AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec_up2(in_index).delivery_no,gv_delivery_no_null)
+    --AND   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_order_h_rec_up2(in_index).delivery_no,gv_delivery_no_null) -- 2008/12/07 Del 本番障害#470
     AND   xoha.latest_external_flag = gv_yesno_y;
+--
+    -- 2008/12/07 本番障害#470 Add Start -------------------------------
+    -- 訂正前の配送Noを退避しておく
+    gt_delivery_no_before := lr_order_h_rec_ins.delivery_no;
+    -- 2008/12/07 本番障害#470 Add End ---------------------------------
 --
     -- 受注ヘッダID取得(シーケンス)
     SELECT xxwsh_order_headers_all_s1.NEXTVAL
@@ -10601,7 +10623,8 @@ AS
     THEN
       gr_order_h_rec.req_status                  := gv_req_status_04;
     END IF;
-    gr_order_h_rec.delivery_no                 := lr_order_h_rec_ins.delivery_no;
+    --gr_order_h_rec.delivery_no                 := lr_order_h_rec_ins.delivery_no;            -- 2008/12/07 本番障害#470 Del
+    gr_order_h_rec.delivery_no                 := gr_interface_info_rec(in_index).delivery_no; -- 2008/12/07 本番障害#470 Add
     gr_order_h_rec.schedule_ship_date          := lr_order_h_rec_ins.schedule_ship_date;
     gr_order_h_rec.schedule_arrival_date       := lr_order_h_rec_ins.schedule_arrival_date;
     gr_order_h_rec.mixed_no                    := lr_order_h_rec_ins.mixed_no;
@@ -11186,12 +11209,14 @@ AS
         SELECT    MAX(xoha.order_header_id) order_header_id
         INTO      ln_order_header_id       -- ヘッダID
         FROM      xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
-        WHERE     NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null)
-        AND       xoha.request_no = gr_interface_info_rec(in_idx).order_source_ref
+        WHERE
+                  --NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null) -- 2008/12/07 本番障害#470 Del
+                  xoha.request_no = gr_interface_info_rec(in_idx).order_source_ref
         AND       xoha.actual_confirm_class = gv_yesno_y
         AND       xoha.latest_external_flag = gv_yesno_n  -- 2008/09/22 TE080_400指摘#76 Add これがないと最新のヘッダを取得してしまう
-        GROUP BY  xoha.delivery_no                 --配送No
-                 ,xoha.order_source_ref            --受注ソース参照
+        GROUP BY
+                  --xoha.delivery_no                 --配送No            -- 2008/12/07 本番障害#470 Del
+                 xoha.order_source_ref            --受注ソース参照
         ;
         --********** debug_log ********** START ***
         debug_log(FND_FILE.LOG,'(A-8-6)訂正前情報取得ln_order_header_id:' || ln_order_header_id);
@@ -11503,12 +11528,14 @@ AS
         SELECT    MAX(xoha.order_header_id) order_header_id
         INTO      ln_order_header_id       -- ヘッダID
         FROM      xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
-        WHERE     NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null)
-        AND       xoha.request_no = gr_interface_info_rec(in_idx).order_source_ref
+        WHERE
+                  --NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null) -- 2008/12/07 本番障害#470 Del
+                  xoha.request_no = gr_interface_info_rec(in_idx).order_source_ref
         AND       xoha.actual_confirm_class = gv_yesno_y
         AND       xoha.latest_external_flag = gv_yesno_n  -- 2008/10/01 TE080_930指摘#40 Add これがないと最新のヘッダを取得してしまう
-        GROUP BY  xoha.delivery_no                 --配送No
-                 ,xoha.order_source_ref            --受注ソース参照
+        GROUP BY
+                  --xoha.delivery_no                 --配送No         -- 2008/12/07 本番障害#470 Del
+                  xoha.order_source_ref            --受注ソース参照
         ;
         --********** debug_log ********** START ***
         debug_log(FND_FILE.LOG,'(A-8-7)訂正前情報取得ln_order_header_id:' || ln_order_header_id);
@@ -12761,6 +12788,15 @@ AS
     gr_mov_req_instr_h_rec.actual_arrival_date
                                           := gr_interface_info_rec(in_index).arrival_date;
 --
+    -- 2008/12/07 本番障害#470 Add Start ----------------------------------------------
+    SELECT  xmrih.delivery_no
+    INTO    gt_delivery_no_before      -- 訂正前の配送Noを退避しておく
+    FROM    xxinv_mov_req_instr_headers  xmrih
+    WHERE   xmrih.mov_num     = gr_mov_req_instr_h_rec.mov_num      -- 移動No
+    AND     xmrih.status     <> gv_mov_status_99                    -- ステータス<>取消
+    ;
+    -- 2008/12/07 本番障害#470 Add End -------------------------------------------------
+--
     -- 外部倉庫（指示なし）の場合、出庫／入庫予定日も出庫／入庫実績日で更新する。
     IF (gr_interface_info_rec(in_index).out_warehouse_flg = gv_flg_on)
     THEN
@@ -12772,6 +12808,7 @@ AS
          ,xmrih.collected_pallet_qty        = gr_mov_req_instr_h_rec.collected_pallet_qty
          ,xmrih.out_pallet_qty              = DECODE(gr_mov_req_instr_h_rec.out_pallet_qty,NULL,xmrih.out_pallet_qty,gr_mov_req_instr_h_rec.out_pallet_qty)
          ,xmrih.in_pallet_qty               = DECODE(gr_mov_req_instr_h_rec.in_pallet_qty,NULL,xmrih.in_pallet_qty,gr_mov_req_instr_h_rec.in_pallet_qty)  
+         ,xmrih.delivery_no                 = gr_mov_req_instr_h_rec.delivery_no              -- 2008/12/07 本番障害#470 Add
          ,xmrih.actual_career_id            = gr_mov_req_instr_h_rec.actual_career_id
          ,xmrih.actual_freight_carrier_code = gr_mov_req_instr_h_rec.actual_freight_carrier_code
          ,xmrih.actual_shipping_method_code = gr_mov_req_instr_h_rec.actual_shipping_method_code
@@ -12787,7 +12824,7 @@ AS
          ,xmrih.program_id                  = gt_conc_program_id
          ,xmrih.program_update_date         = gt_sysdate
       WHERE xmrih.mov_num     = gr_mov_req_instr_h_rec.mov_num      -- 移動No
-      AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No
+      --AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No -- 2008/12/07 本番障害#470 Del
       AND   xmrih.status     <> gv_mov_status_99                    -- ステータス<>取消
       ;
 --
@@ -12798,6 +12835,7 @@ AS
          ,xmrih.collected_pallet_qty        = gr_mov_req_instr_h_rec.collected_pallet_qty
          ,xmrih.out_pallet_qty              = DECODE(gr_mov_req_instr_h_rec.out_pallet_qty,NULL,xmrih.out_pallet_qty,gr_mov_req_instr_h_rec.out_pallet_qty)
          ,xmrih.in_pallet_qty               = DECODE(gr_mov_req_instr_h_rec.in_pallet_qty,NULL,xmrih.in_pallet_qty,gr_mov_req_instr_h_rec.in_pallet_qty)  
+         ,xmrih.delivery_no                 = gr_mov_req_instr_h_rec.delivery_no              -- 2008/12/07 本番障害#470 Add
          ,xmrih.actual_career_id            = gr_mov_req_instr_h_rec.actual_career_id
          ,xmrih.actual_freight_carrier_code = gr_mov_req_instr_h_rec.actual_freight_carrier_code
          ,xmrih.actual_shipping_method_code = gr_mov_req_instr_h_rec.actual_shipping_method_code
@@ -12813,7 +12851,7 @@ AS
          ,xmrih.program_id                  = gt_conc_program_id
          ,xmrih.program_update_date         = gt_sysdate
       WHERE xmrih.mov_num     = gr_mov_req_instr_h_rec.mov_num      -- 移動No
-      AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No
+      --AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No -- 2008/12/07 本番障害#470 Del
       AND   xmrih.status     <> gv_mov_status_99                    -- ステータス<>取消
       ;
 --
@@ -12824,7 +12862,7 @@ AS
     INTO lt_mov_hdr_id
     FROM xxinv_mov_req_instr_headers xmrih
     WHERE xmrih.mov_num     = gr_mov_req_instr_h_rec.mov_num      -- 移動No
-    AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No
+    --AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No -- 2008/12/07 本番障害#470 Del
     AND   xmrih.status     <> gv_mov_status_99                    -- ステータス<>取消
     ;
 --
@@ -13090,6 +13128,15 @@ AS
     --実績訂正フラグ
     gr_mov_req_instr_h_rec.correct_actual_flg := gv_yesno_y;
 --
+    -- 2008/12/07 本番障害#470 Add Start ----------------------------------------------
+    SELECT  xmrih.delivery_no
+    INTO    gt_delivery_no_before      -- 訂正前の配送Noを退避しておく
+    FROM    xxinv_mov_req_instr_headers  xmrih
+    WHERE   xmrih.mov_num     = gr_mov_req_instr_h_rec.mov_num      -- 移動No
+    AND     xmrih.status     <> gv_mov_status_99                    -- ステータス<>取消
+    ;
+    -- 2008/12/07 本番障害#470 Add End -------------------------------------------------
+--
     UPDATE xxinv_mov_req_instr_headers xmrih
     SET xmrih.collected_pallet_qty        = gr_mov_req_instr_h_rec.collected_pallet_qty
        ,xmrih.out_pallet_qty              = DECODE(gr_mov_req_instr_h_rec.out_pallet_qty,NULL,xmrih.out_pallet_qty,gr_mov_req_instr_h_rec.out_pallet_qty)
@@ -13099,6 +13146,7 @@ AS
        --,xmrih.comp_actual_flg             = gv_yesno_n  --2008/11/27 本番障害#179 Add --2008/12/04 Del 本番障害対応(移動指示なし実績訂正時、移動入出庫実績登録(57A)で赤なく黒伝票が作成されてしまう)
        ,xmrih.comp_actual_flg             = gv_yesno_y                                  --2008/12/04 Add 本番障害対応(移動指示なし実績訂正時、移動入出庫実績登録(57A)で赤なく黒伝票が作成されてしまう)
        ,xmrih.correct_actual_flg          = gr_mov_req_instr_h_rec.correct_actual_flg
+       ,xmrih.delivery_no                 = gr_mov_req_instr_h_rec.delivery_no          -- 2008/12/07 本番障害#470 Add
        ,xmrih.last_updated_by             = gt_user_id
        ,xmrih.last_update_date            = gt_sysdate
        ,xmrih.last_update_login           = gt_login_id
@@ -13107,7 +13155,7 @@ AS
        ,xmrih.program_id                  = gt_conc_program_id
        ,xmrih.program_update_date         = gt_sysdate
     WHERE xmrih.mov_num     = gr_mov_req_instr_h_rec.mov_num      -- 移動No
-    AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No
+    --AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No -- 2008/12/07 本番障害#470 Del
     AND   xmrih.status     <> gv_mov_status_99                    -- ステータス<>取消
     ;
     --==============================================================
@@ -13119,7 +13167,7 @@ AS
     INTO lt_mov_hdr_id
     FROM xxinv_mov_req_instr_headers xmrih
     WHERE xmrih.mov_num     = gr_mov_req_instr_h_rec.mov_num      -- 移動No
-    AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No
+    --AND   NVL(xmrih.delivery_no,gv_delivery_no_null) = NVL(gr_mov_req_instr_h_rec.delivery_no,gv_delivery_no_null)  -- 配送No -- 2008/12/07 本番障害#470 Del
     AND   xmrih.status     <> gv_mov_status_99                    -- ステータス<>取消
     ;
 --
@@ -13910,7 +13958,8 @@ AS
         AND     xca.start_date_active <= TRUNC(id_ship_date)         -- 基準日
         AND     (xca.end_date_active IS NULL OR
                  xca.end_date_active  >= TRUNC(id_ship_date))
-        AND     xoha.delivery_no          = iv_delivery_no           -- 配送No
+        --AND     xoha.delivery_no          = iv_delivery_no           -- 配送No    -- 2008/12/07 本番障害#470 Del
+        AND     xoha.request_no           = iv_request_no           -- 依頼No       -- 2008/12/07 本番障害#470 Add
         AND     xoha.latest_external_flag = gv_yesno_y
         AND     xca.party_status          = gv_view_status
         AND     xca.account_status        = gv_view_status
@@ -14055,13 +14104,39 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+    -- 2008/12/07 本番障害#470 Add Start ----------------------------------------------
+    IF (gt_delivery_no_before IS NOT NULL) AND
+       (gt_delivery_no_before <> gr_interface_info_rec(in_idx).delivery_no) THEN   -- 配送Noの訂正がある場合
+--
+      BEGIN
+        -- 訂正前の配車配送計画(アドオン)データを検索する
+        SELECT  COUNT(1)
+        INTO    ln_carriers_schedule_cnt
+        FROM    xxwsh_carriers_schedule
+        WHERE   delivery_no         = gt_delivery_no_before    -- 訂正前の配送No
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          ln_carriers_schedule_cnt := 0;
+      END;
+--
+      IF ln_carriers_schedule_cnt > 0 THEN           --存在する場合は削除する
+        DELETE FROM xxwsh_carriers_schedule   xcs
+        WHERE  xcs.delivery_no = gt_delivery_no_before    -- 訂正前の配送No
+        ;
+      END IF;
+--
+      ln_carriers_schedule_cnt := 0;
+--
+    END IF;
+    -- 2008/12/07 本番障害#470 Add End -------------------------------------------------
 --
     BEGIN
       -- 既存の配車配送計画(アドオン)データを検索する
       SELECT  COUNT(1)
       INTO    ln_carriers_schedule_cnt
       FROM    xxwsh_carriers_schedule
-      WHERE   delivery_no = gr_interface_info_rec(in_idx).delivery_no
+      WHERE   delivery_no         = gr_interface_info_rec(in_idx).delivery_no
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -14281,7 +14356,7 @@ AS
       -- IFの配送区分を設定する
       lv_result_shipping_method_code := gr_interface_info_rec(in_idx).shipping_method_code;
 --
-      -- 配車配送計画アドオンに登録する
+      -- 配車配送計画アドオンを更新する
       UPDATE xxwsh_carriers_schedule
       SET shipped_date                = ld_shipped_date
          ,arrival_date                = ld_arrival_date
@@ -14295,7 +14370,8 @@ AS
          ,program_application_id      = gt_prog_appl_id
          ,program_id                  = gt_conc_program_id
          ,program_update_date         = gt_sysdate
-      WHERE   delivery_no = gr_interface_info_rec(in_idx).delivery_no;
+      WHERE  delivery_no         = gr_interface_info_rec(in_idx).delivery_no
+      ;
 --
     END IF;
 --
@@ -14391,8 +14467,9 @@ AS
       FROM    xxinv_mov_req_instr_headers xmrif    -- 移動依頼/指示ヘッダ(アドオン)
             , xxinv_mov_req_instr_lines   xmrql    -- 移動依頼/指示明細(アドオン)
             , xxinv_mov_lot_details       xmld     -- 移動ロット詳細(アドオン)
-      WHERE   NVL(xmrif.delivery_no,gv_delivery_no_null) = NVL(in_delivery_no,gv_delivery_no_null) -- 配送No=配送No
-      AND     xmrif.mov_num          = in_order_source_ref  -- 依頼No=受注ソース参照
+      WHERE
+              --NVL(xmrif.delivery_no,gv_delivery_no_null) = NVL(in_delivery_no,gv_delivery_no_null) -- 配送No=配送No --2008/12/07 Del 本番障害#470
+              xmrif.mov_num          = in_order_source_ref  -- 依頼No=受注ソース参照
       AND     xmrif.mov_hdr_id       = xmrql.mov_hdr_id     -- 移動ヘッダアドオンID=移動ヘッダアドオンID
       AND     xmrif.status          <> gv_mov_status_99     -- ステータス<>取消
       AND     ((xmrql.delete_flg     = gv_yesno_n)          -- 削除フラグ=未削除
@@ -14474,6 +14551,8 @@ debug_log(FND_FILE.LOG,'　　移動No：' || gr_interface_info_rec(in_idx).order_sou
         (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off))        --保留flag  ：0(正常)
     THEN
 --
+      gt_delivery_no_before := NULL;   --実績訂正時の訂正前の配送Noを初期化  -- 2008/12/07 本番障害#470 Add
+--
       IF (ln_data_cnt > 0 ) THEN
         -- 取得データが存在する場合
         lb_line_upd_flg    := FALSE;
@@ -14538,7 +14617,35 @@ debug_log(FND_FILE.LOG,'　　　移動依頼/指示ヘッダアドオン (A-7-3)実施：mov_req_i
                 END IF;
 --
               END IF;
+--
               gb_mov_header_data_flg := TRUE;  -- 移動依頼/指示ヘッダを処理済に設定
+--
+              -- 2008/12/07 本番障害#470 Add Start ---------------------------------------------------
+              IF gr_interface_info_rec(in_idx).freight_charge_class = gv_include_exclude_1 THEN
+--
+                -- 配車配送計画アドオン作成
+                carriers_schedule_inup(
+                  in_idx,                   -- データindex
+                  lv_errbuf,                -- エラー・メッセージ           --# 固定 #
+                  lv_retcode,               -- リターン・コード             --# 固定 #
+                  lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+                );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　配車配送計画アドオン作成：carriers_schedule_inup');
+--********** debug_log ********** END   ***
+--
+                IF (lv_retcode = gv_status_error) THEN
+                  RAISE global_api_expt;
+                END IF;
+--
+                IF (lv_retcode = gv_status_warn) THEN
+                  ov_retcode := gv_status_warn;
+                END IF;
+--
+              END IF;
+              -- 2008/12/07 本番障害#470 Add End ---------------------------------------------------
+--
             END IF;
 --
           END IF;
@@ -14821,29 +14928,31 @@ debug_log(FND_FILE.LOG,'　　　移動依頼/指示データ移動ロット詳細 (A-7-6)実施(INSE
             RAISE global_api_expt;
           END IF;
 --
-          IF gr_interface_info_rec(in_idx).freight_charge_class = gv_include_exclude_1 THEN
---
-            -- 配車配送計画アドオン作成
-            carriers_schedule_inup(
-              in_idx,                   -- データindex
-              lv_errbuf,                -- エラー・メッセージ           --# 固定 #
-              lv_retcode,               -- リターン・コード             --# 固定 #
-              lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
-            );
---
---********** debug_log ********** START ***
-debug_log(FND_FILE.LOG,'　　　配車配送計画アドオン作成：carriers_schedule_inup');
---********** debug_log ********** END   ***
---
-            IF (lv_retcode = gv_status_error) THEN
-              RAISE global_api_expt;
-            END IF;
---
-            IF (lv_retcode = gv_status_warn) THEN
-              ov_retcode := gv_status_warn;
-            END IF;
---
-          END IF;
+          -- 2008/12/07 本番障害#470 Del Start ---------------------------------------------------
+          --IF gr_interface_info_rec(in_idx).freight_charge_class = gv_include_exclude_1 THEN
+          --
+          ---  -- 配車配送計画アドオン作成
+          --  carriers_schedule_inup(
+          --    in_idx,                   -- データindex
+          --    lv_errbuf,                -- エラー・メッセージ           --# 固定 #
+          --    lv_retcode,               -- リターン・コード             --# 固定 #
+          --    lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+          --  );
+          --
+          ----********** debug_log ********** START ***
+          --debug_log(FND_FILE.LOG,'　　　配車配送計画アドオン作成：carriers_schedule_inup');
+          ----********** debug_log ********** END   ***
+          --
+          --  IF (lv_retcode = gv_status_error) THEN
+          --    RAISE global_api_expt;
+          --  END IF;
+          --
+          --  IF (lv_retcode = gv_status_warn) THEN
+          --    ov_retcode := gv_status_warn;
+          --  END IF;
+          --
+          --END IF;
+          -- 2008/12/07 本番障害#470 Del End ---------------------------------------------------
 --
         END IF;
 --
@@ -15206,8 +15315,9 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目実績0更新:mov_zero_updt'
       FROM    xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
             , xxwsh_order_lines_all     xola    -- 受注明細(アドオン)
             , xxinv_mov_lot_details     xmld    -- 移動ロット詳細(アドオン)
-      WHERE   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(in_delivery_no,gv_delivery_no_null)
-      AND     xoha.request_no           = in_order_source_ref
+      WHERE
+              --NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(in_delivery_no,gv_delivery_no_null) -- 2008/12/07 本番障害#470 Del
+              xoha.request_no           = in_order_source_ref
       AND     xoha.order_header_id      = xola.order_header_id
       AND     xoha.latest_external_flag = gv_yesno_y
       AND     ((xola.delete_flag        = gv_yesno_n) OR (xola.delete_flag IS NULL))
@@ -15282,6 +15392,8 @@ debug_log(FND_FILE.LOG,'　　依頼No：' || gr_interface_info_rec(in_idx).order_sou
         (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off))        --保留flag  ：0(正常)
     THEN
 --
+      gt_delivery_no_before := NULL;   --実績訂正時の訂正前の配送Noを初期化  -- 2008/12/07 本番障害#470 Add
+--
       IF (ln_data_cnt > 0 ) THEN
         -- 取得データが存在する場合
         lb_line_upd_flg    := FALSE;
@@ -15329,6 +15441,7 @@ debug_log(FND_FILE.LOG,'　　　受注ヘッダアドオン 実績計上 (A-8-1)実施 (UPDATE)：
                   END IF;
 --
                   gb_ord_header_data_flg := TRUE;  -- 受注ヘッダデータを処理済に設定
+--
                 ELSE -- 実績計上済区分＝'Y'
 --
                   -- 受注ヘッダアドオン 実績訂正 (A-8-3,4)実施
@@ -15353,7 +15466,34 @@ debug_log(FND_FILE.LOG,'　　　受注ヘッダアドオン 実績訂正 (A-8-3,4)実施：order_h
                   END IF;
 --
                   gb_ord_header_data_flg := TRUE;  -- 受注ヘッダを処理済に設定
+--
                 END IF;
+--
+                -- 2008/12/07 本番障害#470 Add Start -------------------------------------------------------
+                IF gr_interface_info_rec(in_idx).freight_charge_class = gv_include_exclude_1 THEN
+--
+                  -- 配車配送計画アドオン作成
+                  carriers_schedule_inup(
+                    in_idx,                   -- データindex
+                    lv_errbuf,                -- エラー・メッセージ           --# 固定 #
+                    lv_retcode,               -- リターン・コード             --# 固定 #
+                    lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+                  );
+--
+--********** debug_log ********** START ***
+debug_log(FND_FILE.LOG,'　　　配車配送計画アドオン作成：carriers_schedule_inup');
+--********** debug_log ********** END   ***
+--
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  END IF;
+--
+                  IF (lv_retcode = gv_status_warn) THEN
+                    ov_retcode := gv_status_warn;
+                  END IF;
+--
+                END IF;
+                -- 2008/12/07 本番障害#470 Add End ---------------------------------------------------------
 --
               END IF;
 --
@@ -15557,29 +15697,31 @@ debug_log(FND_FILE.LOG,'　　　受注データ移動ロット詳細 (A-8-7)実施(INSERT)：orde
             RAISE global_api_expt;
           END IF;
 --
-          IF gr_interface_info_rec(in_idx).freight_charge_class = gv_include_exclude_1 THEN
---
-            -- 配車配送計画アドオン作成
-            carriers_schedule_inup(
-              in_idx,                   -- データindex
-              lv_errbuf,                -- エラー・メッセージ           --# 固定 #
-              lv_retcode,               -- リターン・コード             --# 固定 #
-              lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
-            );
---
---********** debug_log ********** START ***
-debug_log(FND_FILE.LOG,'　　　配車配送計画アドオン作成：carriers_schedule_inup');
---********** debug_log ********** END   ***
---
-            IF (lv_retcode = gv_status_error) THEN
-              RAISE global_api_expt;
-            END IF;
---
-            IF (lv_retcode = gv_status_warn) THEN
-              ov_retcode := gv_status_warn;
-            END IF;
---
-          END IF;
+          -- 2008/12/07 本番障害#470 Del Start --------------------------------------------------
+          --IF gr_interface_info_rec(in_idx).freight_charge_class = gv_include_exclude_1 THEN
+          --
+          --  -- 配車配送計画アドオン作成
+          --  carriers_schedule_inup(
+          --    in_idx,                   -- データindex
+          --    lv_errbuf,                -- エラー・メッセージ           --# 固定 #
+          --    lv_retcode,               -- リターン・コード             --# 固定 #
+          --    lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+          --  );
+          --
+          ----********** debug_log ********** START ***
+          --debug_log(FND_FILE.LOG,'　　　配車配送計画アドオン作成：carriers_schedule_inup');
+          ----********** debug_log ********** END   ***
+          --
+          --  IF (lv_retcode = gv_status_error) THEN
+          --    RAISE global_api_expt;
+          --  END IF;
+          --
+          --  IF (lv_retcode = gv_status_warn) THEN
+          --    ov_retcode := gv_status_warn;
+          --  END IF;
+          --
+          --END IF;
+          -- 2008/12/07 本番障害#470 Del End ----------------------------------------------------
 --
         END IF;
 --
@@ -15965,10 +16107,14 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
 --
   END origin_record_delete;
 --
+--------------------------------------------------------------------------------------------------------------------
+-- 2008/12/07 Del Start 本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする
+--------------------------------------------------------------------------------------------------------------------
  /**********************************************************************************
   * Procedure Name   : lot_reversal_prevention_check
   * Description      : ロット逆転防止チェック プロシージャ (A-9)
   ***********************************************************************************/
+/*
   PROCEDURE lot_reversal_prevention_check(
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
@@ -16207,11 +16353,19 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
 --#####################################  固定部 END   ##########################################
 --
   END lot_reversal_prevention_check;
+*/
+--------------------------------------------------------------------------------------------------------------------
+-- 2008/12/07 Del End 本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする
+--------------------------------------------------------------------------------------------------------------------
 --
+--------------------------------------------------------------------------------------------------------------------
+-- 2008/12/07 Del Start 本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする
+--------------------------------------------------------------------------------------------------------------------
  /**********************************************************************************
   * Procedure Name   : drawing_enable_check
   * Description      : 引当可能チェック プロシージャ (A-10)
   ***********************************************************************************/
+/*
   PROCEDURE drawing_enable_check(
     in_idx        IN  NUMBER,              --   データindex                  2008/10/27 課題T_S_619(1) Add
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -16460,6 +16614,10 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
 --#####################################  固定部 END   ##########################################
 --
   END drawing_enable_check;
+*/
+--------------------------------------------------------------------------------------------------------------------
+-- 2008/12/07 Del End 本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする
+--------------------------------------------------------------------------------------------------------------------
 --
  /**********************************************************************************
   * Procedure Name   : status_update
@@ -17457,25 +17615,27 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
             RAISE global_process_expt;
           END IF;
 --
-          -- 2008/10/27 課題T_S_619(1) Add Start -------------------------------------
-          -- ===============================
-          -- 引当可能チェック プロシージャ(A-10)
-          -- ===============================
-          drawing_enable_check(
-            in_idx,                 -- データindex
-            lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-            lv_retcode,             -- リターン・コード             --# 固定 #
-            lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
-          );
---
-          IF (lv_retcode = gv_status_warn) THEN
-            lv_warn_flg := gv_status_warn;
-          END IF;
---
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_process_expt;
-          END IF;
-          -- 2008/10/27 課題T_S_619(1) Add End --------------------------------------
+          -- 2008/12/07 Del Start 本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする ------------------
+          ---- 2008/10/27 課題T_S_619(1) Add Start
+          ---- ===============================
+          ---- 引当可能チェック プロシージャ(A-10)
+          ---- ===============================
+          --drawing_enable_check(
+          --  in_idx,                 -- データindex
+          --  lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+          --  lv_retcode,             -- リターン・コード             --# 固定 #
+          --  lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+          --);
+          --
+          --IF (lv_retcode = gv_status_warn) THEN
+          --  lv_warn_flg := gv_status_warn;
+          --END IF;
+          --
+          --IF (lv_retcode = gv_status_error) THEN
+          --  RAISE global_process_expt;
+          --END IF;
+          ---- 2008/10/27 課題T_S_619(1) Add End
+          -- 2008/12/07 Del End 本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする ---------------------
 --
         END IF;
 --
@@ -17550,25 +17710,27 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
             RAISE global_process_expt;
           END IF;
 --
-          -- 2008/10/27 課題T_S_619(1) Add Start -------------------------------------
-          -- ===============================
-          -- 引当可能チェック プロシージャ(A-10)
-          -- ===============================
-          drawing_enable_check(
-            in_idx,                 -- データindex
-            lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-            lv_retcode,             -- リターン・コード             --# 固定 #
-            lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
-          );
---
-          IF (lv_retcode = gv_status_warn) THEN
-            lv_warn_flg := gv_status_warn;
-          END IF;
---
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_process_expt;
-          END IF;
-          -- 2008/10/27 課題T_S_619(1) Add End --------------------------------------
+          -- 2008/12/07 Del Start 本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする ------------------
+          ---- 2008/10/27 課題T_S_619(1) Add Start
+          ---- ===============================
+          ---- 引当可能チェック プロシージャ(A-10)
+          ---- ===============================
+          --drawing_enable_check(
+          --  in_idx,                 -- データindex
+          --  lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+          --  lv_retcode,             -- リターン・コード             --# 固定 #
+          --  lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+          --);
+          --
+          --IF (lv_retcode = gv_status_warn) THEN
+          --  lv_warn_flg := gv_status_warn;
+          --END IF;
+          --
+          --IF (lv_retcode = gv_status_error) THEN
+          --  RAISE global_process_expt;
+          --END IF;
+          ---- 2008/10/27 課題T_S_619(1) Add End
+          -- 2008/12/07 Del End 本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする ---------------------
 --
         END IF;
 --
@@ -17576,22 +17738,24 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
 --
     END LOOP ord_gr_interface_info_rec_loop;
 --
-    -- ===============================
-    -- ロット逆転防止チェック プロシージャ(A-9)
-    -- ===============================
-    lot_reversal_prevention_check(
-      lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-      lv_retcode,             -- リターン・コード             --# 固定 #
-      lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
-    );
---
-    IF (lv_retcode = gv_status_warn) THEN
-      lv_warn_flg := gv_status_warn;
-    END IF;
---
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
+    -- 2008/12/07 Del Start 本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする ------------------
+    ---- ===============================
+    ---- ロット逆転防止チェック プロシージャ(A-9)
+    ---- ===============================
+    --lot_reversal_prevention_check(
+    --  lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+    --  lv_retcode,             -- リターン・コード             --# 固定 #
+    --  lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+    --);
+    --
+    --IF (lv_retcode = gv_status_warn) THEN
+    --  lv_warn_flg := gv_status_warn;
+    --END IF;
+    --
+    --IF (lv_retcode = gv_status_error) THEN
+    --  RAISE global_process_expt;
+    --END IF;
+    -- 2008/12/07 Del End 本番障害対応(引当可能チェック・ロット逆転防止チェックを行わないようにする ---------------------
 --
     -- 2008/10/27 課題T_S_619(1) Del Start --------------------------------------
     ---- ===============================
