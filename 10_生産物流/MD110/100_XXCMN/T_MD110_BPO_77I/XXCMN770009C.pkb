@@ -7,7 +7,7 @@ AS
  * Description      : ëºä®íËêUë÷å¥âøç∑àŸï\
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD050_BPO_770)
  *                  : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/12/08    1.14  N.Yoshida        ñ{î‘è·äQëŒâû éÛíçÉwÉbÉ_ÉAÉhÉIÉìÇ≈ç≈êVÉtÉâÉOYÇí«â¡
  *  2008/12/18    1.15  A.Shiina         ñ{î‘#789ëŒâû
  *  2009/01/14    1.16  N.Yoshida        ñ{î‘#1015ëŒâû
+ *  2009/05/12    1.17  M.Nomura         ñ{î‘#1469ëŒâû
  *
  *****************************************************************************************/
 --
@@ -539,8 +540,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -671,8 +676,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -806,8 +815,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -946,8 +959,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -1086,8 +1103,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -1221,8 +1242,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -1350,8 +1375,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -1479,8 +1508,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -1610,8 +1643,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -1746,8 +1783,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -1886,8 +1927,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -2018,8 +2063,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -2157,8 +2206,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -2290,8 +2343,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -2426,8 +2483,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -2567,8 +2628,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -2708,8 +2773,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -2844,8 +2913,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -2974,8 +3047,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -3104,8 +3181,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -3236,8 +3317,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -3373,8 +3458,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -3514,8 +3603,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -3647,8 +3740,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -3787,8 +3884,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -3920,8 +4021,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -4056,8 +4161,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -4197,8 +4306,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -4338,8 +4451,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -4474,8 +4591,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -4604,8 +4725,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -4734,8 +4859,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -4866,8 +4995,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -5003,8 +5136,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -5144,8 +5281,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -5277,8 +5418,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -5417,8 +5562,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -5551,8 +5700,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -5688,8 +5841,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -5830,8 +5987,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -5972,8 +6133,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -6109,8 +6274,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -6240,8 +6409,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -6371,8 +6544,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
@@ -6504,8 +6681,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -6642,8 +6823,12 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -6784,8 +6969,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    ilm.item_id             = itp.item_id
@@ -6918,8 +7107,12 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
-            ,xxcmn_stnd_unit_price_v          xsup_m
-            ,xxcmn_stnd_unit_price_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
+--            ,xxcmn_stnd_unit_price_v          xsup_m
+--            ,xxcmn_stnd_unit_price_v          xsup
+            ,xxcmn_stnd_unit_price2_v          xsup_m
+            ,xxcmn_stnd_unit_price2_v          xsup
+-- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
 -- 2008/12/18 v1.15 UPDATE START
