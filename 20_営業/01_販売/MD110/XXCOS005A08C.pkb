@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *                                                        受注明細OIFの明細行にCSVファイルの行No.をセットするように変更                                                        
  *  2011/02/01    1.24  H.Sekine         [E_本稼動_06457] 問屋CSVについて単価が0となってしまう障害を修正
  *  2011/02/21    1.25  H.Sekine         [E_本稼動_06614] 特殊商品コードが設定されている場合の出荷予定日の導出方法の変更
+ *  2012/01/10    1.26  Y.Horikawa       [E_本稼動_08893] 問屋CSV取込時、出荷予定日をNULLとするように変更
  *
  *****************************************************************************************/
 --
@@ -3937,558 +3938,560 @@ AS
 --
   END get_master_data;
 --
-  /**********************************************************************************
-   * Procedure Name   : <get_ship_due_date>
-   * Description      : <出荷予定日の導出>(A-7)
-   ***********************************************************************************/
-  PROCEDURE get_ship_due_date(
-    in_cnt                IN  NUMBER,   -- データ数
-    in_line_no            IN  NUMBER,   -- 行NO.
-    id_delivery_date      IN  DATE,     -- 納品日
-    iv_item_no            IN  VARCHAR2, -- 品目コード
--- *********** 2011/02/21 1.25 H.Sekine ADD START **********--
-    iv_tokushu_item_code  IN  VARCHAR2, -- 特殊商品コード
--- *********** 2011/02/21 1.25 H.Sekine ADD END   **********--
-    iv_delivery_code      IN  VARCHAR2, -- 配送先コード
--- *********** 2009/12/07 1.15 N.Maeda MOD START ***********--
---    iv_delivery_base_code IN  VARCHAR2, -- 納品拠点コード
-    iv_sales_base_code    IN  VARCHAR2, -- 売上拠点コード
--- *********** 2009/12/07 1.15 N.Maeda MOD  END  ***********--
-    iv_item_class_code    IN  VARCHAR2, -- 商品区分コード
-    iv_account_number     IN  VARCHAR2, -- 顧客コード
-    od_ship_due_date      OUT DATE,     -- 出荷予定日
-    ov_errbuf             OUT VARCHAR2, -- エラー・メッセージ           --# 固定 #
-    ov_retcode            OUT VARCHAR2, -- リターン・コード             --# 固定 #
-    ov_errmsg             OUT VARCHAR2) -- ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_ship_due_date'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
--- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
-    cn_type           CONSTANT NUMBER := 1;
--- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
-    -- *** ローカル変数 ***
-    ln_ret            NUMBER;
-    --
-    ld_get_deta       DATE;
-    ld_oprtn_day      DATE;
-    --
-    ln_lead_time      NUMBER;
-    ln_delivery_lt    NUMBER;
-    --
-    lv_key_info          VARCHAR2(5000);  --key情報
-    lv_table_info        VARCHAR2(50);    --作業用
-    lv_lien_no_name      VARCHAR2(50);    --作業用
-    lv_item_name         VARCHAR2(50);    --作業用
-    lv_delivery_name     VARCHAR2(50);    --作業用
-    lv_goods_name        VARCHAR2(50);    --作業用
-    lv_deldate_name      VARCHAR2(50);    --作業用
-    lv_warehous_name     VARCHAR2(50);    --作業用
-    lv_read_name         VARCHAR2(50);    --作業用
-    lv_item_class_name   VARCHAR2(50);    --作業用
--- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
-    ld_work_day     DATE;            --翌稼動日付
--- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
-    -- *** ローカル・カーソル ***
-    -- *** ローカル・レコード ***
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ***************************************
-    -- ***   出荷予定日の導出処理          ***
-    -- ***************************************
---****************************** 2009/04/06 1.5 T.Kitajima ADD START ******************************--
-    --変数の初期化
-    gt_base_code  :=  NULL;
---****************************** 2009/04/06 1.5 T.Kitajima ADD  END  ******************************--
-    ---------------------------
-    --1.物流構成アドオンマスタ
-    --配送先コード
-    ---------------------------
-    BEGIN
-      SELECT
-        xsr.delivery_whse_code        --出荷元保管場所
-      INTO
-        gt_base_code                  --出荷元保管場所
-      FROM  xxcmn_sourcing_rules xsr
---****************************** 2011/02/21 1.25 H.Sekine MOD START  ******************************--
---      WHERE xsr.item_code          =  iv_item_no        -- 1.<品目コード>
-      WHERE xsr.item_code          =  NVL( iv_tokushu_item_code , iv_item_no )   -- 1.<品目コード>
---****************************** 2011/02/21 1.25 H.Sekine MOD END    ******************************--
-      AND   xsr.ship_to_code       =  iv_delivery_code  -- 2.<配送先コード>
-      AND   xsr.start_date_active  <= id_delivery_date  -- 3.<納品日>
-      AND   xsr.end_date_active    >= id_delivery_date  -- 4.<納品日>
-      ;
-    --
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        NULL;
-      WHEN OTHERS THEN
-        lv_table_info := xxccp_common_pkg.get_msg(
-                         iv_application  => ct_xxcos_appl_short_name,
-                         iv_name         => ct_msg_get_distribution_mstr
-                       );
-        lv_lien_no_name := xxccp_common_pkg.get_msg(
-                         iv_application  => ct_xxcos_appl_short_name,
-                         iv_name         => ct_msg_get_lien_no
-                       );
-        lv_item_name := xxccp_common_pkg.get_msg(
-                         iv_application  => ct_xxcos_appl_short_name,
-                         iv_name         => ct_msg_get_itme_code
-                       );
-        lv_delivery_name := xxccp_common_pkg.get_msg(
-                         iv_application  => ct_xxcos_appl_short_name,
-                         iv_name         => ct_msg_get_delivery_code
-                       );
-        lv_goods_name := xxccp_common_pkg.get_msg(
-                         iv_application  => ct_xxcos_appl_short_name,
-                         iv_name         => ct_msg_get_delivery_date
-                       );
-        xxcos_common_pkg.makeup_key_info(
-                                       ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
-                                      ,ov_retcode     =>  lv_retcode     --リターンコード
-                                      ,ov_errmsg      =>  lv_errmsg      --ユーザ・エラー・メッセージ
-                                      ,ov_key_info    =>  lv_key_info    --編集されたキー情報
-                                      ,iv_item_name1  =>  lv_lien_no_name
-                                      ,iv_item_name2  =>  lv_item_name
-                                      ,iv_item_name3  =>  lv_delivery_name
-                                      ,iv_item_name4  =>  lv_goods_name
-                                      ,iv_data_value1 =>  in_line_no
-                                      ,iv_data_value2 =>  iv_item_no
-                                      ,iv_data_value3 =>  iv_delivery_code
-                                      ,iv_data_value4 =>  TO_CHAR(id_delivery_date,cv_yyyymmdds_format)
-                                     );
-        IF (lv_retcode = cv_status_normal) THEN
-          RAISE global_select_err_expt;
-        ELSE
-          RAISE global_api_expt;
-        END IF;
-    END;
---
-    ---------------------------
-    --2.物流構成アドオンマスタ
-    --売上拠点コード
-    ---------------------------
-    IF ( gt_base_code IS NULL ) THEN
-      BEGIN
-        SELECT
-          xsr.delivery_whse_code        --出荷元保管場所
-        INTO
-          gt_base_code                  --出荷元保管場所
-        FROM  xxcmn_sourcing_rules xsr
---************ 2011/02/21 1.25 H.Sekine MOD START***********--
---        WHERE xsr.item_code          =  iv_item_no              -- 品目コード = 品目コード
-        WHERE xsr.item_code          =  NVL( iv_tokushu_item_code , iv_item_no )       -- 1.<品目コード>
---************ 2011/02/21 1.25 H.Sekine MOD END  ***********--
--- *********** 2009/12/07 1.15 N.Maeda MOD START ***********--
---        AND   xsr.BASE_CODE          =  iv_delivery_base_code   -- 拠点コード = 納品拠点コード
-        AND   xsr.base_code          =  iv_sales_base_code      -- 拠点コード = 売上拠点コード
--- *********** 2009/12/07 1.15 N.Maeda MOD  END  ***********--
-        AND   xsr.start_date_active  <= id_delivery_date        -- 適用開始日≦納品日
-        AND   xsr.end_date_active    >= id_delivery_date;       -- 適用終了日≧納品日
-        --
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          NULL;
-        WHEN OTHERS THEN
-          lv_table_info := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_distribution_mstr
-                         );
-          lv_lien_no_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_lien_no
-                         );
-          lv_item_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_itme_code
-                         );
-          lv_delivery_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_delivery_code
-                         );
-          lv_goods_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_delivery_date
-                         );
-          xxcos_common_pkg.makeup_key_info(
-                                         ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
-                                        ,ov_retcode     =>  lv_retcode     --リターンコード
-                                        ,ov_errmsg      =>  lv_errmsg      --ユーザ・エラー・メッセージ
-                                        ,ov_key_info    =>  lv_key_info    --編集されたキー情報
-                                        ,iv_item_name1  =>  lv_lien_no_name
-                                        ,iv_item_name2  =>  lv_item_name
-                                        ,iv_item_name3  =>  lv_delivery_name
-                                        ,iv_item_name4  =>  lv_goods_name
-                                        ,iv_data_value1 =>  in_line_no
-                                        ,iv_data_value2 =>  iv_item_no
-                                        ,iv_data_value3 =>  iv_delivery_code
-                                        ,iv_data_value4 =>  TO_CHAR(id_delivery_date,cv_yyyymmdds_format)
-                                       );
-        IF (lv_retcode = cv_status_normal) THEN
-          RAISE global_select_err_expt;
-        ELSE
-          RAISE global_api_expt;
-        END IF;
-      END;
-    END IF;
---
-    ---------------------------
-    --3.物流構成アドオンマスタ
-    --配送先コード
-    ---------------------------
-    IF ( gt_base_code IS NULL ) THEN
-      BEGIN
-        SELECT
-          xsr.delivery_whse_code        --出荷元保管場所
-        INTO
-          gt_base_code                  --出荷元保管場所
-        FROM  xxcmn_sourcing_rules xsr
-        WHERE xsr.item_code          =  cv_item_z             -- 品目コード = 'ZZZZZZZ'
-        AND   xsr.ship_to_code       =  iv_delivery_code      -- <配送先コード>
-        AND   xsr.start_date_active  <= id_delivery_date      -- 適用開始日≦ 納品日
-        AND   xsr.end_date_active    >= id_delivery_date;     -- 適用終了日≧ 納品日
-        --
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          NULL;
-        WHEN OTHERS THEN
-          lv_table_info := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_distribution_mstr
-                         );
-          lv_lien_no_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_lien_no
-                         );
-          lv_item_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_itme_code
-                         );
-          lv_delivery_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_delivery_code
-                         );
-          lv_goods_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_delivery_date
-                         );
-          xxcos_common_pkg.makeup_key_info(
-                                         ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
-                                        ,ov_retcode     =>  lv_retcode     --リターンコード
-                                        ,ov_errmsg      =>  lv_errmsg      --ユーザ・エラー・メッセージ
-                                        ,ov_key_info    =>  lv_key_info    --編集されたキー情報
-                                        ,iv_item_name1  =>  lv_lien_no_name
-                                        ,iv_item_name2  =>  lv_item_name
-                                        ,iv_item_name3  =>  lv_delivery_name
-                                        ,iv_item_name4  =>  lv_goods_name
-                                        ,iv_data_value1 =>  in_line_no
-                                        ,iv_data_value2 =>  iv_item_no
-                                        ,iv_data_value3 =>  iv_delivery_code
-                                        ,iv_data_value4 =>  TO_CHAR(id_delivery_date,cv_yyyymmdds_format)
-                                       );
-        IF (lv_retcode = cv_status_normal) THEN
-          RAISE global_select_err_expt;
-        ELSE
-          RAISE global_api_expt;
-        END IF;
-      END;
-    END IF;
---
-   ---------------------------
-    --4.物流構成アドオンマスタ
-    --配送先コード
-    ---------------------------
-    IF ( gt_base_code IS NULL ) THEN
-      BEGIN
-        SELECT
-          xsr.delivery_whse_code        --出荷元保管場所
-        INTO
-          gt_base_code                  --出荷元保管場所
-        FROM  xxcmn_sourcing_rules xsr
-        WHERE xsr.item_code          =  cv_item_z               -- 品目コード = 'ZZZZZZZ'
--- *********** 2009/12/07 1.15 N.Maeda MOD START ***********--
---        AND   xsr.BASE_CODE          =  iv_delivery_base_code   -- 拠点コード = 納品拠点コード
-        AND   xsr.base_code          =  iv_sales_base_code      -- 拠点コード = 売上拠点コード
--- *********** 2009/12/07 1.15 N.Maeda MOD  END  ***********--
-        AND   xsr.start_date_active  <= id_delivery_date        -- 適用開始日≦ 納品日
-        AND   xsr.end_date_active    >= id_delivery_date;       -- 適用終了日≧ 納品日
-        --
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          RAISE global_ship_due_date_expt;
-        WHEN OTHERS THEN
-          lv_table_info := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_distribution_mstr
-                         );
-          lv_lien_no_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_lien_no
-                         );
-          lv_item_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_itme_code
-                         );
-          lv_delivery_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_delivery_code
-                         );
-          lv_goods_name := xxccp_common_pkg.get_msg(
-                           iv_application  => ct_xxcos_appl_short_name,
-                           iv_name         => ct_msg_get_delivery_date
-                         );
-          xxcos_common_pkg.makeup_key_info(
-                                         ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
-                                        ,ov_retcode     =>  lv_retcode     --リターンコード
-                                        ,ov_errmsg      =>  lv_errmsg      --ユーザ・エラー・メッセージ
-                                        ,ov_key_info    =>  lv_key_info    --編集されたキー情報
-                                        ,iv_item_name1  =>  lv_lien_no_name
-                                        ,iv_item_name2  =>  lv_item_name
-                                        ,iv_item_name3  =>  lv_delivery_name
-                                        ,iv_item_name4  =>  lv_goods_name
-                                        ,iv_data_value1 =>  in_line_no
-                                        ,iv_data_value2 =>  iv_item_no
-                                        ,iv_data_value3 =>  iv_delivery_code
-                                        ,iv_data_value4 =>  TO_CHAR(id_delivery_date,cv_yyyymmdds_format)
-                                       );
-          IF (lv_retcode = cv_status_normal) THEN
-            RAISE global_select_err_expt;
-          ELSE
-            RAISE global_api_expt;
-          END IF;
-      END;
-    END IF;
---
-    ---------------------------
-    --5.稼動日チェック
-    ---------------------------
-    --戻り値
-    ln_ret := xxwsh_common_pkg.get_oprtn_day(
-                id_date            => id_delivery_date,   -- 1.<納品日         >
-                iv_whse_code       => NULL,               -- 2.<保管倉庫コード >
-                iv_deliver_to_code => iv_delivery_code,   -- 3.<配送先コード   >
-                in_lead_time       => 0,                  -- 4.<リードタイム   >
-                iv_prod_class      => iv_item_class_code, -- 5.<商品区分コード >
-                od_oprtn_day       => ld_get_deta         -- 6.稼働日日付
-              );
-    IF (ln_ret != cv_status_normal )THEN
-      RAISE global_operation_day_err_expt;
-    END IF;
---
--- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
-    ---------------------------
-    --ログインOU切替(営業⇒生産)
-    ---------------------------
-    FND_GLOBAL.APPS_INITIALIZE(
-       user_id         => gn_user_id                 -- ユーザID
-      ,resp_id         => gn_prod_resp_id            -- 職責ID
-      ,resp_appl_id    => gn_prod_resp_appl_id       -- アプリケーションID
-    );
--- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
---
-    ---------------------------
-    --6.配送LT取得
-    ---------------------------
-    xxwsh_common910_pkg.calc_lead_time(
-      iv_code_class1                => cv_code_div_from,   -- 1.<'4' 倉庫>
-      iv_entering_despatching_code1 => gt_base_code,       -- 2.<.出荷先保管場所 >
-      iv_code_class2                => cv_code_div_to,     -- 3.<'9' 配送先>
-      iv_entering_despatching_code2 => iv_delivery_code,   -- 4.<配送先コード>
-      iv_prod_class                 => iv_item_class_code, -- 5.<商品区分コード>
-      in_transaction_type_id        => NULL,               -- 6.<???>
-      id_standard_date              => id_delivery_date,   -- 7.<納品日>
-      ov_retcode                    => lv_retcode,         -- 1.リターンコード
-      ov_errmsg_code                => lv_errbuf,          -- 2.エラーメッセージコード
-      ov_errmsg                     => lv_errmsg,          -- 3.エラーメッセージ
-      on_lead_time                  => ln_lead_time,
-      on_delivery_lt                => ln_delivery_lt
-    );
---****************************** 2009/04/06 1.5 T.Kitajima MOD START ******************************--
---    IF ( lv_errbuf != cv_status_normal ) THEN
-    IF ( lv_retcode != cv_status_normal ) THEN
---****************************** 2009/04/06 1.5 T.Kitajima MOD  END  ******************************--
-      RAISE global_delivery_lt_err_expt;
-    END IF;
---
--- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
-    ---------------------------
-    --ログインOU切替(生産⇒営業)
-    ---------------------------
-    FND_GLOBAL.APPS_INITIALIZE(
-       user_id         => gn_user_id            -- ユーザID
-      ,resp_id         => gn_resp_id            -- 職責ID
-      ,resp_appl_id    => gn_resp_appl_id       -- アプリケーションID
-    );
--- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
---
--- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
-   -- 配送LTが0であった場合、出荷予定日 = 納品日
-    IF ( ln_delivery_lt = 0 ) THEN
-      od_ship_due_date := id_delivery_date;
-    ELSE
-      ---------------------------
-      -- 出荷予定日算出用日付取得
-      ---------------------------
-      ln_ret := xxwsh_common_pkg.get_oprtn_day(
-        id_date            => id_delivery_date,   -- 1.<納品日>
-        iv_whse_code       => NULL,               -- 2.<出荷先保管場所 >
-        iv_deliver_to_code => iv_delivery_code,   -- 3.<配送先コード>
-        in_lead_time       => 0,                  -- 4.<配送LT >
-        iv_prod_class      => iv_item_class_code, -- 5.<商品区分コード >
-        in_type            => cn_type,             -- 
-        od_oprtn_day       => ld_work_day        -- 1.<翌稼働日日付>
-        );
-      IF (ln_ret != cv_status_normal )THEN
-        RAISE global_operation_day_err_expt;
-      END IF;
---
--- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
-      ---------------------------
-      --7.出荷予定日
-      ---------------------------
-      ln_ret := xxwsh_common_pkg.get_oprtn_day(
--- ****** 2009/12/28 1.17 N.Maeda MOD START ****** --
---        id_date            => id_delivery_date,   -- 1.<納品日>
-        id_date            => ld_work_day     ,   -- 1.<納品日>
--- ****** 2009/12/28 1.17 N.Maeda MOD  END  ****** --
-        iv_whse_code       => NULL,               -- 2.<出荷先保管場所 >
-        iv_deliver_to_code => iv_delivery_code,   -- 3.<配送先コード>
-        in_lead_time       => ln_delivery_lt,     -- 4.<配送LT >
-        iv_prod_class      => iv_item_class_code, -- 5.<商品区分コード >
-        od_oprtn_day       => od_ship_due_date    -- 1.<出荷予定日    >
-        );
-      IF (ln_ret != cv_status_normal )THEN
-        RAISE global_operation_day_err_expt;
-      END IF;
--- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
-    END IF;
--- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
-  EXCEPTION
-    --物流構成アドオンマスタ
-    WHEN global_ship_due_date_expt THEN
-      ov_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application   => ct_xxcos_appl_short_name,
-                      iv_name          => ct_msg_get_ship_due_chk_err,
-                      iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
-                      iv_token_value1  => gv_temp_line_no,                                                 --行番号
-                      iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
-                      iv_token_value2  => gv_temp_oder_no,                                                 --オーダーNO
-                      iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
-                      iv_token_value3  => gv_temp_line,                                                    --行No
-                      iv_token_name4   => cv_tkn_param4,                                                   --パラメータ1(トークン)
-                      iv_token_value4  => iv_item_no,                                                      --品目コード
-                      iv_token_name5   => cv_tkn_param5,                                                   --パラメータ2(トークン)
-                      iv_token_value5  => iv_delivery_code,                                                --配送コード
-                      iv_token_name6   => cv_tkn_param6,                                                   --パラメータ3(トークン)
-                      iv_token_value6  => TO_CHAR(id_delivery_date,cv_yyyymmdds_format)                    --納品日
-                    );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_warn;
-    --稼働日チェック/出荷予定日ハンドルエラー
-    WHEN global_operation_day_err_expt THEN
-      ov_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application   => ct_xxcos_appl_short_name,
-                      iv_name          => ct_msg_get_ship_func_chk_err,
-                      iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
-                      iv_token_value1  => gv_temp_line_no,                                                 --行番号
-                      iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
-                      iv_token_value2  => gv_temp_oder_no,                                                 --オーダーNO
-                      iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
-                      iv_token_value3  => gv_temp_line,                                                    --行No
-                      iv_token_name4   => cv_tkn_param4,                                                   --パラメータ4(トークン)
-                      iv_token_value4  => TO_CHAR(id_delivery_date,cv_yyyymmdds_format),                   --納品日
-                      iv_token_name5   => cv_tkn_param5,                                                   --パラメータ5(トークン)
-                      iv_token_value5  => gt_base_code,                                                    --保管倉庫コード
-                      iv_token_name6   => cv_tkn_param6,                                                   --パラメータ6(トークン)
-                      iv_token_value6  => iv_delivery_code,                                                --配送先コード
-                      iv_token_name7   => cv_tkn_param7,                                                   --パラメータ7(トークン)
-                      iv_token_value7  => iv_item_class_code,                                              --商品区分
-                      iv_token_name8   => cv_tkn_api_name,                                                 --パラメータ8(トークン)
-                      iv_token_value8  => cv_api_name_makeup_key_info                                      --API
-                    );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_warn;
-    --配送TL取得ハンドルエラー
-    WHEN global_delivery_lt_err_expt THEN
-      ov_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application   => ct_xxcos_appl_short_name,
-                      iv_name          => ct_msg_get_delivery_tl_err,
-                      iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
-                      iv_token_value1  => gv_temp_line_no,                                                 --行番号
-                      iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
-                      iv_token_value2  => gv_temp_oder_no,                                                 --オーダーNO
-                      iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
-                      iv_token_value3  => gv_temp_line,                                                    --行No
-                      iv_token_name4   => cv_tkn_param4,
-                      iv_token_value4  => cv_code_div_from,
-                      iv_token_name5   => cv_tkn_param5,
-                      iv_token_value5  => gt_base_code,
-                      iv_token_name6   => cv_tkn_param6,
-                      iv_token_value6  => cv_code_div_to,
-                      iv_token_name7   => cv_tkn_param7,
-                      iv_token_value7  => iv_delivery_code,
-                      iv_token_name8   => cv_tkn_param8,
-                      iv_token_value8  => iv_item_class_code,
-                      iv_token_name9  => cv_tkn_param9,
-                      iv_token_value9 => TO_CHAR(id_delivery_date,cv_yyyymmdds_format),
-                      iv_token_name10  => cv_tkn_api_name,
-                      iv_token_value10 => cv_api_name_calc_lead_time
-                    );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_warn;
-    --抽出エラーハンドル
-    WHEN global_select_err_expt THEN
-      ov_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => ct_xxcos_appl_short_name,
-                     iv_name         => ct_msg_get_data_err,
-                     iv_token_name1  => cv_tkn_table_name,
-                     iv_token_value1 => lv_table_info,
-                     iv_token_name2  => cv_tkn_key_data,
-                     iv_token_value2 => lv_key_info
-                  );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_error;
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END get_ship_due_date;
+--****************************** 2012/01/06 1.26 Y.Horikawa DEL START*******************************--
+-- del v1.26|  /**********************************************************************************
+-- del v1.26|   * Procedure Name   : <get_ship_due_date>
+-- del v1.26|   * Description      : <出荷予定日の導出>(A-7)
+-- del v1.26|   ***********************************************************************************/
+-- del v1.26|  PROCEDURE get_ship_due_date(
+-- del v1.26|    in_cnt                IN  NUMBER,   -- データ数
+-- del v1.26|    in_line_no            IN  NUMBER,   -- 行NO.
+-- del v1.26|    id_delivery_date      IN  DATE,     -- 納品日
+-- del v1.26|    iv_item_no            IN  VARCHAR2, -- 品目コード
+-- del v1.26|-- *********** 2011/02/21 1.25 H.Sekine ADD START **********--
+-- del v1.26|    iv_tokushu_item_code  IN  VARCHAR2, -- 特殊商品コード
+-- del v1.26|-- *********** 2011/02/21 1.25 H.Sekine ADD END   **********--
+-- del v1.26|    iv_delivery_code      IN  VARCHAR2, -- 配送先コード
+-- del v1.26|-- *********** 2009/12/07 1.15 N.Maeda MOD START ***********--
+-- del v1.26|--    iv_delivery_base_code IN  VARCHAR2, -- 納品拠点コード
+-- del v1.26|    iv_sales_base_code    IN  VARCHAR2, -- 売上拠点コード
+-- del v1.26|-- *********** 2009/12/07 1.15 N.Maeda MOD  END  ***********--
+-- del v1.26|    iv_item_class_code    IN  VARCHAR2, -- 商品区分コード
+-- del v1.26|    iv_account_number     IN  VARCHAR2, -- 顧客コード
+-- del v1.26|    od_ship_due_date      OUT DATE,     -- 出荷予定日
+-- del v1.26|    ov_errbuf             OUT VARCHAR2, -- エラー・メッセージ           --# 固定 #
+-- del v1.26|    ov_retcode            OUT VARCHAR2, -- リターン・コード             --# 固定 #
+-- del v1.26|    ov_errmsg             OUT VARCHAR2) -- ユーザー・エラー・メッセージ --# 固定 #
+-- del v1.26|  IS
+-- del v1.26|    -- ===============================
+-- del v1.26|    -- 固定ローカル定数
+-- del v1.26|    -- ===============================
+-- del v1.26|    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_ship_due_date'; -- プログラム名
+-- del v1.26|--
+-- del v1.26|--#####################  固定ローカル変数宣言部 START   ########################
+-- del v1.26|--
+-- del v1.26|    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+-- del v1.26|    lv_retcode VARCHAR2(1);     -- リターン・コード
+-- del v1.26|    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+-- del v1.26|--
+-- del v1.26|--###########################  固定部 END   ####################################
+-- del v1.26|--
+-- del v1.26|    -- ===============================
+-- del v1.26|    -- ユーザー宣言部
+-- del v1.26|    -- ===============================
+-- del v1.26|    -- *** ローカル定数 ***
+-- del v1.26|-- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
+-- del v1.26|    cn_type           CONSTANT NUMBER := 1;
+-- del v1.26|-- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
+-- del v1.26|    -- *** ローカル変数 ***
+-- del v1.26|    ln_ret            NUMBER;
+-- del v1.26|    --
+-- del v1.26|    ld_get_deta       DATE;
+-- del v1.26|    ld_oprtn_day      DATE;
+-- del v1.26|    --
+-- del v1.26|    ln_lead_time      NUMBER;
+-- del v1.26|    ln_delivery_lt    NUMBER;
+-- del v1.26|    --
+-- del v1.26|    lv_key_info          VARCHAR2(5000);  --key情報
+-- del v1.26|    lv_table_info        VARCHAR2(50);    --作業用
+-- del v1.26|    lv_lien_no_name      VARCHAR2(50);    --作業用
+-- del v1.26|    lv_item_name         VARCHAR2(50);    --作業用
+-- del v1.26|    lv_delivery_name     VARCHAR2(50);    --作業用
+-- del v1.26|    lv_goods_name        VARCHAR2(50);    --作業用
+-- del v1.26|    lv_deldate_name      VARCHAR2(50);    --作業用
+-- del v1.26|    lv_warehous_name     VARCHAR2(50);    --作業用
+-- del v1.26|    lv_read_name         VARCHAR2(50);    --作業用
+-- del v1.26|    lv_item_class_name   VARCHAR2(50);    --作業用
+-- del v1.26|-- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
+-- del v1.26|    ld_work_day     DATE;            --翌稼動日付
+-- del v1.26|-- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
+-- del v1.26|    -- *** ローカル・カーソル ***
+-- del v1.26|    -- *** ローカル・レコード ***
+-- del v1.26|--
+-- del v1.26|  BEGIN
+-- del v1.26|--
+-- del v1.26|--##################  固定ステータス初期化部 START   ###################
+-- del v1.26|--
+-- del v1.26|    ov_retcode := cv_status_normal;
+-- del v1.26|--
+-- del v1.26|--###########################  固定部 END   ############################
+-- del v1.26|--
+-- del v1.26|    -- ***************************************
+-- del v1.26|    -- ***   出荷予定日の導出処理          ***
+-- del v1.26|    -- ***************************************
+-- del v1.26|--****************************** 2009/04/06 1.5 T.Kitajima ADD START ******************************--
+-- del v1.26|    --変数の初期化
+-- del v1.26|    gt_base_code  :=  NULL;
+-- del v1.26|--****************************** 2009/04/06 1.5 T.Kitajima ADD  END  ******************************--
+-- del v1.26|    ---------------------------
+-- del v1.26|    --1.物流構成アドオンマスタ
+-- del v1.26|    --配送先コード
+-- del v1.26|    ---------------------------
+-- del v1.26|    BEGIN
+-- del v1.26|      SELECT
+-- del v1.26|        xsr.delivery_whse_code        --出荷元保管場所
+-- del v1.26|      INTO
+-- del v1.26|        gt_base_code                  --出荷元保管場所
+-- del v1.26|      FROM  xxcmn_sourcing_rules xsr
+-- del v1.26|--****************************** 2011/02/21 1.25 H.Sekine MOD START  ******************************--
+-- del v1.26|--      WHERE xsr.item_code          =  iv_item_no        -- 1.<品目コード>
+-- del v1.26|      WHERE xsr.item_code          =  NVL( iv_tokushu_item_code , iv_item_no )   -- 1.<品目コード>
+-- del v1.26|--****************************** 2011/02/21 1.25 H.Sekine MOD END    ******************************--
+-- del v1.26|      AND   xsr.ship_to_code       =  iv_delivery_code  -- 2.<配送先コード>
+-- del v1.26|      AND   xsr.start_date_active  <= id_delivery_date  -- 3.<納品日>
+-- del v1.26|      AND   xsr.end_date_active    >= id_delivery_date  -- 4.<納品日>
+-- del v1.26|      ;
+-- del v1.26|    --
+-- del v1.26|    EXCEPTION
+-- del v1.26|      WHEN NO_DATA_FOUND THEN
+-- del v1.26|        NULL;
+-- del v1.26|      WHEN OTHERS THEN
+-- del v1.26|        lv_table_info := xxccp_common_pkg.get_msg(
+-- del v1.26|                         iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                         iv_name         => ct_msg_get_distribution_mstr
+-- del v1.26|                       );
+-- del v1.26|        lv_lien_no_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                         iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                         iv_name         => ct_msg_get_lien_no
+-- del v1.26|                       );
+-- del v1.26|        lv_item_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                         iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                         iv_name         => ct_msg_get_itme_code
+-- del v1.26|                       );
+-- del v1.26|        lv_delivery_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                         iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                         iv_name         => ct_msg_get_delivery_code
+-- del v1.26|                       );
+-- del v1.26|        lv_goods_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                         iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                         iv_name         => ct_msg_get_delivery_date
+-- del v1.26|                       );
+-- del v1.26|        xxcos_common_pkg.makeup_key_info(
+-- del v1.26|                                       ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
+-- del v1.26|                                      ,ov_retcode     =>  lv_retcode     --リターンコード
+-- del v1.26|                                      ,ov_errmsg      =>  lv_errmsg      --ユーザ・エラー・メッセージ
+-- del v1.26|                                      ,ov_key_info    =>  lv_key_info    --編集されたキー情報
+-- del v1.26|                                      ,iv_item_name1  =>  lv_lien_no_name
+-- del v1.26|                                      ,iv_item_name2  =>  lv_item_name
+-- del v1.26|                                      ,iv_item_name3  =>  lv_delivery_name
+-- del v1.26|                                      ,iv_item_name4  =>  lv_goods_name
+-- del v1.26|                                      ,iv_data_value1 =>  in_line_no
+-- del v1.26|                                      ,iv_data_value2 =>  iv_item_no
+-- del v1.26|                                      ,iv_data_value3 =>  iv_delivery_code
+-- del v1.26|                                      ,iv_data_value4 =>  TO_CHAR(id_delivery_date,cv_yyyymmdds_format)
+-- del v1.26|                                     );
+-- del v1.26|        IF (lv_retcode = cv_status_normal) THEN
+-- del v1.26|          RAISE global_select_err_expt;
+-- del v1.26|        ELSE
+-- del v1.26|          RAISE global_api_expt;
+-- del v1.26|        END IF;
+-- del v1.26|    END;
+-- del v1.26|--
+-- del v1.26|    ---------------------------
+-- del v1.26|    --2.物流構成アドオンマスタ
+-- del v1.26|    --売上拠点コード
+-- del v1.26|    ---------------------------
+-- del v1.26|    IF ( gt_base_code IS NULL ) THEN
+-- del v1.26|      BEGIN
+-- del v1.26|        SELECT
+-- del v1.26|          xsr.delivery_whse_code        --出荷元保管場所
+-- del v1.26|        INTO
+-- del v1.26|          gt_base_code                  --出荷元保管場所
+-- del v1.26|        FROM  xxcmn_sourcing_rules xsr
+-- del v1.26|--************ 2011/02/21 1.25 H.Sekine MOD START***********--
+-- del v1.26|--        WHERE xsr.item_code          =  iv_item_no              -- 品目コード = 品目コード
+-- del v1.26|        WHERE xsr.item_code          =  NVL( iv_tokushu_item_code , iv_item_no )       -- 1.<品目コード>
+-- del v1.26|--************ 2011/02/21 1.25 H.Sekine MOD END  ***********--
+-- del v1.26|-- *********** 2009/12/07 1.15 N.Maeda MOD START ***********--
+-- del v1.26|--        AND   xsr.BASE_CODE          =  iv_delivery_base_code   -- 拠点コード = 納品拠点コード
+-- del v1.26|        AND   xsr.base_code          =  iv_sales_base_code      -- 拠点コード = 売上拠点コード
+-- del v1.26|-- *********** 2009/12/07 1.15 N.Maeda MOD  END  ***********--
+-- del v1.26|        AND   xsr.start_date_active  <= id_delivery_date        -- 適用開始日≦納品日
+-- del v1.26|        AND   xsr.end_date_active    >= id_delivery_date;       -- 適用終了日≧納品日
+-- del v1.26|        --
+-- del v1.26|      EXCEPTION
+-- del v1.26|        WHEN NO_DATA_FOUND THEN
+-- del v1.26|          NULL;
+-- del v1.26|        WHEN OTHERS THEN
+-- del v1.26|          lv_table_info := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_distribution_mstr
+-- del v1.26|                         );
+-- del v1.26|          lv_lien_no_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_lien_no
+-- del v1.26|                         );
+-- del v1.26|          lv_item_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_itme_code
+-- del v1.26|                         );
+-- del v1.26|          lv_delivery_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_delivery_code
+-- del v1.26|                         );
+-- del v1.26|          lv_goods_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_delivery_date
+-- del v1.26|                         );
+-- del v1.26|          xxcos_common_pkg.makeup_key_info(
+-- del v1.26|                                         ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
+-- del v1.26|                                        ,ov_retcode     =>  lv_retcode     --リターンコード
+-- del v1.26|                                        ,ov_errmsg      =>  lv_errmsg      --ユーザ・エラー・メッセージ
+-- del v1.26|                                        ,ov_key_info    =>  lv_key_info    --編集されたキー情報
+-- del v1.26|                                        ,iv_item_name1  =>  lv_lien_no_name
+-- del v1.26|                                        ,iv_item_name2  =>  lv_item_name
+-- del v1.26|                                        ,iv_item_name3  =>  lv_delivery_name
+-- del v1.26|                                        ,iv_item_name4  =>  lv_goods_name
+-- del v1.26|                                        ,iv_data_value1 =>  in_line_no
+-- del v1.26|                                        ,iv_data_value2 =>  iv_item_no
+-- del v1.26|                                        ,iv_data_value3 =>  iv_delivery_code
+-- del v1.26|                                        ,iv_data_value4 =>  TO_CHAR(id_delivery_date,cv_yyyymmdds_format)
+-- del v1.26|                                       );
+-- del v1.26|        IF (lv_retcode = cv_status_normal) THEN
+-- del v1.26|          RAISE global_select_err_expt;
+-- del v1.26|        ELSE
+-- del v1.26|          RAISE global_api_expt;
+-- del v1.26|        END IF;
+-- del v1.26|      END;
+-- del v1.26|    END IF;
+-- del v1.26|--
+-- del v1.26|    ---------------------------
+-- del v1.26|    --3.物流構成アドオンマスタ
+-- del v1.26|    --配送先コード
+-- del v1.26|    ---------------------------
+-- del v1.26|    IF ( gt_base_code IS NULL ) THEN
+-- del v1.26|      BEGIN
+-- del v1.26|        SELECT
+-- del v1.26|          xsr.delivery_whse_code        --出荷元保管場所
+-- del v1.26|        INTO
+-- del v1.26|          gt_base_code                  --出荷元保管場所
+-- del v1.26|        FROM  xxcmn_sourcing_rules xsr
+-- del v1.26|        WHERE xsr.item_code          =  cv_item_z             -- 品目コード = 'ZZZZZZZ'
+-- del v1.26|        AND   xsr.ship_to_code       =  iv_delivery_code      -- <配送先コード>
+-- del v1.26|        AND   xsr.start_date_active  <= id_delivery_date      -- 適用開始日≦ 納品日
+-- del v1.26|        AND   xsr.end_date_active    >= id_delivery_date;     -- 適用終了日≧ 納品日
+-- del v1.26|        --
+-- del v1.26|      EXCEPTION
+-- del v1.26|        WHEN NO_DATA_FOUND THEN
+-- del v1.26|          NULL;
+-- del v1.26|        WHEN OTHERS THEN
+-- del v1.26|          lv_table_info := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_distribution_mstr
+-- del v1.26|                         );
+-- del v1.26|          lv_lien_no_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_lien_no
+-- del v1.26|                         );
+-- del v1.26|          lv_item_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_itme_code
+-- del v1.26|                         );
+-- del v1.26|          lv_delivery_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_delivery_code
+-- del v1.26|                         );
+-- del v1.26|          lv_goods_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_delivery_date
+-- del v1.26|                         );
+-- del v1.26|          xxcos_common_pkg.makeup_key_info(
+-- del v1.26|                                         ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
+-- del v1.26|                                        ,ov_retcode     =>  lv_retcode     --リターンコード
+-- del v1.26|                                        ,ov_errmsg      =>  lv_errmsg      --ユーザ・エラー・メッセージ
+-- del v1.26|                                        ,ov_key_info    =>  lv_key_info    --編集されたキー情報
+-- del v1.26|                                        ,iv_item_name1  =>  lv_lien_no_name
+-- del v1.26|                                        ,iv_item_name2  =>  lv_item_name
+-- del v1.26|                                        ,iv_item_name3  =>  lv_delivery_name
+-- del v1.26|                                        ,iv_item_name4  =>  lv_goods_name
+-- del v1.26|                                        ,iv_data_value1 =>  in_line_no
+-- del v1.26|                                        ,iv_data_value2 =>  iv_item_no
+-- del v1.26|                                        ,iv_data_value3 =>  iv_delivery_code
+-- del v1.26|                                        ,iv_data_value4 =>  TO_CHAR(id_delivery_date,cv_yyyymmdds_format)
+-- del v1.26|                                       );
+-- del v1.26|        IF (lv_retcode = cv_status_normal) THEN
+-- del v1.26|          RAISE global_select_err_expt;
+-- del v1.26|        ELSE
+-- del v1.26|          RAISE global_api_expt;
+-- del v1.26|        END IF;
+-- del v1.26|      END;
+-- del v1.26|    END IF;
+-- del v1.26|--
+-- del v1.26|   ---------------------------
+-- del v1.26|    --4.物流構成アドオンマスタ
+-- del v1.26|    --配送先コード
+-- del v1.26|    ---------------------------
+-- del v1.26|    IF ( gt_base_code IS NULL ) THEN
+-- del v1.26|      BEGIN
+-- del v1.26|        SELECT
+-- del v1.26|          xsr.delivery_whse_code        --出荷元保管場所
+-- del v1.26|        INTO
+-- del v1.26|          gt_base_code                  --出荷元保管場所
+-- del v1.26|        FROM  xxcmn_sourcing_rules xsr
+-- del v1.26|        WHERE xsr.item_code          =  cv_item_z               -- 品目コード = 'ZZZZZZZ'
+-- del v1.26|-- *********** 2009/12/07 1.15 N.Maeda MOD START ***********--
+-- del v1.26|--        AND   xsr.BASE_CODE          =  iv_delivery_base_code   -- 拠点コード = 納品拠点コード
+-- del v1.26|        AND   xsr.base_code          =  iv_sales_base_code      -- 拠点コード = 売上拠点コード
+-- del v1.26|-- *********** 2009/12/07 1.15 N.Maeda MOD  END  ***********--
+-- del v1.26|        AND   xsr.start_date_active  <= id_delivery_date        -- 適用開始日≦ 納品日
+-- del v1.26|        AND   xsr.end_date_active    >= id_delivery_date;       -- 適用終了日≧ 納品日
+-- del v1.26|        --
+-- del v1.26|      EXCEPTION
+-- del v1.26|        WHEN NO_DATA_FOUND THEN
+-- del v1.26|          RAISE global_ship_due_date_expt;
+-- del v1.26|        WHEN OTHERS THEN
+-- del v1.26|          lv_table_info := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_distribution_mstr
+-- del v1.26|                         );
+-- del v1.26|          lv_lien_no_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_lien_no
+-- del v1.26|                         );
+-- del v1.26|          lv_item_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_itme_code
+-- del v1.26|                         );
+-- del v1.26|          lv_delivery_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_delivery_code
+-- del v1.26|                         );
+-- del v1.26|          lv_goods_name := xxccp_common_pkg.get_msg(
+-- del v1.26|                           iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                           iv_name         => ct_msg_get_delivery_date
+-- del v1.26|                         );
+-- del v1.26|          xxcos_common_pkg.makeup_key_info(
+-- del v1.26|                                         ov_errbuf      =>  lv_errbuf      --エラー・メッセージ
+-- del v1.26|                                        ,ov_retcode     =>  lv_retcode     --リターンコード
+-- del v1.26|                                        ,ov_errmsg      =>  lv_errmsg      --ユーザ・エラー・メッセージ
+-- del v1.26|                                        ,ov_key_info    =>  lv_key_info    --編集されたキー情報
+-- del v1.26|                                        ,iv_item_name1  =>  lv_lien_no_name
+-- del v1.26|                                        ,iv_item_name2  =>  lv_item_name
+-- del v1.26|                                        ,iv_item_name3  =>  lv_delivery_name
+-- del v1.26|                                        ,iv_item_name4  =>  lv_goods_name
+-- del v1.26|                                        ,iv_data_value1 =>  in_line_no
+-- del v1.26|                                        ,iv_data_value2 =>  iv_item_no
+-- del v1.26|                                        ,iv_data_value3 =>  iv_delivery_code
+-- del v1.26|                                        ,iv_data_value4 =>  TO_CHAR(id_delivery_date,cv_yyyymmdds_format)
+-- del v1.26|                                       );
+-- del v1.26|          IF (lv_retcode = cv_status_normal) THEN
+-- del v1.26|            RAISE global_select_err_expt;
+-- del v1.26|          ELSE
+-- del v1.26|            RAISE global_api_expt;
+-- del v1.26|          END IF;
+-- del v1.26|      END;
+-- del v1.26|    END IF;
+-- del v1.26|--
+-- del v1.26|    ---------------------------
+-- del v1.26|    --5.稼動日チェック
+-- del v1.26|    ---------------------------
+-- del v1.26|    --戻り値
+-- del v1.26|    ln_ret := xxwsh_common_pkg.get_oprtn_day(
+-- del v1.26|                id_date            => id_delivery_date,   -- 1.<納品日         >
+-- del v1.26|                iv_whse_code       => NULL,               -- 2.<保管倉庫コード >
+-- del v1.26|                iv_deliver_to_code => iv_delivery_code,   -- 3.<配送先コード   >
+-- del v1.26|                in_lead_time       => 0,                  -- 4.<リードタイム   >
+-- del v1.26|                iv_prod_class      => iv_item_class_code, -- 5.<商品区分コード >
+-- del v1.26|                od_oprtn_day       => ld_get_deta         -- 6.稼働日日付
+-- del v1.26|              );
+-- del v1.26|    IF (ln_ret != cv_status_normal )THEN
+-- del v1.26|      RAISE global_operation_day_err_expt;
+-- del v1.26|    END IF;
+-- del v1.26|--
+-- del v1.26|-- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
+-- del v1.26|    ---------------------------
+-- del v1.26|    --ログインOU切替(営業⇒生産)
+-- del v1.26|    ---------------------------
+-- del v1.26|    FND_GLOBAL.APPS_INITIALIZE(
+-- del v1.26|       user_id         => gn_user_id                 -- ユーザID
+-- del v1.26|      ,resp_id         => gn_prod_resp_id            -- 職責ID
+-- del v1.26|      ,resp_appl_id    => gn_prod_resp_appl_id       -- アプリケーションID
+-- del v1.26|    );
+-- del v1.26|-- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
+-- del v1.26|--
+-- del v1.26|    ---------------------------
+-- del v1.26|    --6.配送LT取得
+-- del v1.26|    ---------------------------
+-- del v1.26|    xxwsh_common910_pkg.calc_lead_time(
+-- del v1.26|      iv_code_class1                => cv_code_div_from,   -- 1.<'4' 倉庫>
+-- del v1.26|      iv_entering_despatching_code1 => gt_base_code,       -- 2.<.出荷先保管場所 >
+-- del v1.26|      iv_code_class2                => cv_code_div_to,     -- 3.<'9' 配送先>
+-- del v1.26|      iv_entering_despatching_code2 => iv_delivery_code,   -- 4.<配送先コード>
+-- del v1.26|      iv_prod_class                 => iv_item_class_code, -- 5.<商品区分コード>
+-- del v1.26|      in_transaction_type_id        => NULL,               -- 6.<???>
+-- del v1.26|      id_standard_date              => id_delivery_date,   -- 7.<納品日>
+-- del v1.26|      ov_retcode                    => lv_retcode,         -- 1.リターンコード
+-- del v1.26|      ov_errmsg_code                => lv_errbuf,          -- 2.エラーメッセージコード
+-- del v1.26|      ov_errmsg                     => lv_errmsg,          -- 3.エラーメッセージ
+-- del v1.26|      on_lead_time                  => ln_lead_time,
+-- del v1.26|      on_delivery_lt                => ln_delivery_lt
+-- del v1.26|    );
+-- del v1.26|--****************************** 2009/04/06 1.5 T.Kitajima MOD START ******************************--
+-- del v1.26|--    IF ( lv_errbuf != cv_status_normal ) THEN
+-- del v1.26|    IF ( lv_retcode != cv_status_normal ) THEN
+-- del v1.26|--****************************** 2009/04/06 1.5 T.Kitajima MOD  END  ******************************--
+-- del v1.26|      RAISE global_delivery_lt_err_expt;
+-- del v1.26|    END IF;
+-- del v1.26|--
+-- del v1.26|-- ************** 2009/10/30 1.13 N.Maeda ADD START ************** --
+-- del v1.26|    ---------------------------
+-- del v1.26|    --ログインOU切替(生産⇒営業)
+-- del v1.26|    ---------------------------
+-- del v1.26|    FND_GLOBAL.APPS_INITIALIZE(
+-- del v1.26|       user_id         => gn_user_id            -- ユーザID
+-- del v1.26|      ,resp_id         => gn_resp_id            -- 職責ID
+-- del v1.26|      ,resp_appl_id    => gn_resp_appl_id       -- アプリケーションID
+-- del v1.26|    );
+-- del v1.26|-- ************** 2009/10/30 1.13 N.Maeda ADD  END  ************** --
+-- del v1.26|--
+-- del v1.26|-- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
+-- del v1.26|   -- 配送LTが0であった場合、出荷予定日 = 納品日
+-- del v1.26|    IF ( ln_delivery_lt = 0 ) THEN
+-- del v1.26|      od_ship_due_date := id_delivery_date;
+-- del v1.26|    ELSE
+-- del v1.26|      ---------------------------
+-- del v1.26|      -- 出荷予定日算出用日付取得
+-- del v1.26|      ---------------------------
+-- del v1.26|      ln_ret := xxwsh_common_pkg.get_oprtn_day(
+-- del v1.26|        id_date            => id_delivery_date,   -- 1.<納品日>
+-- del v1.26|        iv_whse_code       => NULL,               -- 2.<出荷先保管場所 >
+-- del v1.26|        iv_deliver_to_code => iv_delivery_code,   -- 3.<配送先コード>
+-- del v1.26|        in_lead_time       => 0,                  -- 4.<配送LT >
+-- del v1.26|        iv_prod_class      => iv_item_class_code, -- 5.<商品区分コード >
+-- del v1.26|        in_type            => cn_type,             -- 
+-- del v1.26|        od_oprtn_day       => ld_work_day        -- 1.<翌稼働日日付>
+-- del v1.26|        );
+-- del v1.26|      IF (ln_ret != cv_status_normal )THEN
+-- del v1.26|        RAISE global_operation_day_err_expt;
+-- del v1.26|      END IF;
+-- del v1.26|--
+-- del v1.26|-- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
+-- del v1.26|      ---------------------------
+-- del v1.26|      --7.出荷予定日
+-- del v1.26|      ---------------------------
+-- del v1.26|      ln_ret := xxwsh_common_pkg.get_oprtn_day(
+-- del v1.26|-- ****** 2009/12/28 1.17 N.Maeda MOD START ****** --
+-- del v1.26|--        id_date            => id_delivery_date,   -- 1.<納品日>
+-- del v1.26|        id_date            => ld_work_day     ,   -- 1.<納品日>
+-- del v1.26|-- ****** 2009/12/28 1.17 N.Maeda MOD  END  ****** --
+-- del v1.26|        iv_whse_code       => NULL,               -- 2.<出荷先保管場所 >
+-- del v1.26|        iv_deliver_to_code => iv_delivery_code,   -- 3.<配送先コード>
+-- del v1.26|        in_lead_time       => ln_delivery_lt,     -- 4.<配送LT >
+-- del v1.26|        iv_prod_class      => iv_item_class_code, -- 5.<商品区分コード >
+-- del v1.26|        od_oprtn_day       => od_ship_due_date    -- 1.<出荷予定日    >
+-- del v1.26|        );
+-- del v1.26|      IF (ln_ret != cv_status_normal )THEN
+-- del v1.26|        RAISE global_operation_day_err_expt;
+-- del v1.26|      END IF;
+-- del v1.26|-- ****** 2009/12/28 1.17 N.Maeda ADD START ****** --
+-- del v1.26|    END IF;
+-- del v1.26|-- ****** 2009/12/28 1.17 N.Maeda ADD  END  ****** --
+-- del v1.26|  EXCEPTION
+-- del v1.26|    --物流構成アドオンマスタ
+-- del v1.26|    WHEN global_ship_due_date_expt THEN
+-- del v1.26|      ov_errmsg := xxccp_common_pkg.get_msg(
+-- del v1.26|                      iv_application   => ct_xxcos_appl_short_name,
+-- del v1.26|                      iv_name          => ct_msg_get_ship_due_chk_err,
+-- del v1.26|                      iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+-- del v1.26|                      iv_token_value1  => gv_temp_line_no,                                                 --行番号
+-- del v1.26|                      iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+-- del v1.26|                      iv_token_value2  => gv_temp_oder_no,                                                 --オーダーNO
+-- del v1.26|                      iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+-- del v1.26|                      iv_token_value3  => gv_temp_line,                                                    --行No
+-- del v1.26|                      iv_token_name4   => cv_tkn_param4,                                                   --パラメータ1(トークン)
+-- del v1.26|                      iv_token_value4  => iv_item_no,                                                      --品目コード
+-- del v1.26|                      iv_token_name5   => cv_tkn_param5,                                                   --パラメータ2(トークン)
+-- del v1.26|                      iv_token_value5  => iv_delivery_code,                                                --配送コード
+-- del v1.26|                      iv_token_name6   => cv_tkn_param6,                                                   --パラメータ3(トークン)
+-- del v1.26|                      iv_token_value6  => TO_CHAR(id_delivery_date,cv_yyyymmdds_format)                    --納品日
+-- del v1.26|                    );
+-- del v1.26|      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+-- del v1.26|      ov_retcode := cv_status_warn;
+-- del v1.26|    --稼働日チェック/出荷予定日ハンドルエラー
+-- del v1.26|    WHEN global_operation_day_err_expt THEN
+-- del v1.26|      ov_errmsg := xxccp_common_pkg.get_msg(
+-- del v1.26|                      iv_application   => ct_xxcos_appl_short_name,
+-- del v1.26|                      iv_name          => ct_msg_get_ship_func_chk_err,
+-- del v1.26|                      iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+-- del v1.26|                      iv_token_value1  => gv_temp_line_no,                                                 --行番号
+-- del v1.26|                      iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+-- del v1.26|                      iv_token_value2  => gv_temp_oder_no,                                                 --オーダーNO
+-- del v1.26|                      iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+-- del v1.26|                      iv_token_value3  => gv_temp_line,                                                    --行No
+-- del v1.26|                      iv_token_name4   => cv_tkn_param4,                                                   --パラメータ4(トークン)
+-- del v1.26|                      iv_token_value4  => TO_CHAR(id_delivery_date,cv_yyyymmdds_format),                   --納品日
+-- del v1.26|                      iv_token_name5   => cv_tkn_param5,                                                   --パラメータ5(トークン)
+-- del v1.26|                      iv_token_value5  => gt_base_code,                                                    --保管倉庫コード
+-- del v1.26|                      iv_token_name6   => cv_tkn_param6,                                                   --パラメータ6(トークン)
+-- del v1.26|                      iv_token_value6  => iv_delivery_code,                                                --配送先コード
+-- del v1.26|                      iv_token_name7   => cv_tkn_param7,                                                   --パラメータ7(トークン)
+-- del v1.26|                      iv_token_value7  => iv_item_class_code,                                              --商品区分
+-- del v1.26|                      iv_token_name8   => cv_tkn_api_name,                                                 --パラメータ8(トークン)
+-- del v1.26|                      iv_token_value8  => cv_api_name_makeup_key_info                                      --API
+-- del v1.26|                    );
+-- del v1.26|      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+-- del v1.26|      ov_retcode := cv_status_warn;
+-- del v1.26|    --配送TL取得ハンドルエラー
+-- del v1.26|    WHEN global_delivery_lt_err_expt THEN
+-- del v1.26|      ov_errmsg := xxccp_common_pkg.get_msg(
+-- del v1.26|                      iv_application   => ct_xxcos_appl_short_name,
+-- del v1.26|                      iv_name          => ct_msg_get_delivery_tl_err,
+-- del v1.26|                      iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+-- del v1.26|                      iv_token_value1  => gv_temp_line_no,                                                 --行番号
+-- del v1.26|                      iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+-- del v1.26|                      iv_token_value2  => gv_temp_oder_no,                                                 --オーダーNO
+-- del v1.26|                      iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+-- del v1.26|                      iv_token_value3  => gv_temp_line,                                                    --行No
+-- del v1.26|                      iv_token_name4   => cv_tkn_param4,
+-- del v1.26|                      iv_token_value4  => cv_code_div_from,
+-- del v1.26|                      iv_token_name5   => cv_tkn_param5,
+-- del v1.26|                      iv_token_value5  => gt_base_code,
+-- del v1.26|                      iv_token_name6   => cv_tkn_param6,
+-- del v1.26|                      iv_token_value6  => cv_code_div_to,
+-- del v1.26|                      iv_token_name7   => cv_tkn_param7,
+-- del v1.26|                      iv_token_value7  => iv_delivery_code,
+-- del v1.26|                      iv_token_name8   => cv_tkn_param8,
+-- del v1.26|                      iv_token_value8  => iv_item_class_code,
+-- del v1.26|                      iv_token_name9  => cv_tkn_param9,
+-- del v1.26|                      iv_token_value9 => TO_CHAR(id_delivery_date,cv_yyyymmdds_format),
+-- del v1.26|                      iv_token_name10  => cv_tkn_api_name,
+-- del v1.26|                      iv_token_value10 => cv_api_name_calc_lead_time
+-- del v1.26|                    );
+-- del v1.26|      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+-- del v1.26|      ov_retcode := cv_status_warn;
+-- del v1.26|    --抽出エラーハンドル
+-- del v1.26|    WHEN global_select_err_expt THEN
+-- del v1.26|      ov_errmsg := xxccp_common_pkg.get_msg(
+-- del v1.26|                     iv_application  => ct_xxcos_appl_short_name,
+-- del v1.26|                     iv_name         => ct_msg_get_data_err,
+-- del v1.26|                     iv_token_name1  => cv_tkn_table_name,
+-- del v1.26|                     iv_token_value1 => lv_table_info,
+-- del v1.26|                     iv_token_name2  => cv_tkn_key_data,
+-- del v1.26|                     iv_token_value2 => lv_key_info
+-- del v1.26|                  );
+-- del v1.26|      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+-- del v1.26|      ov_retcode := cv_status_error;
+-- del v1.26|--
+-- del v1.26|--#################################  固定例外処理部 START   ####################################
+-- del v1.26|--
+-- del v1.26|    -- *** 共通関数例外ハンドラ ***
+-- del v1.26|    WHEN global_api_expt THEN
+-- del v1.26|      ov_errmsg  := lv_errmsg;
+-- del v1.26|      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+-- del v1.26|      ov_retcode := cv_status_error;
+-- del v1.26|    -- *** 共通関数OTHERS例外ハンドラ ***
+-- del v1.26|    WHEN global_api_others_expt THEN
+-- del v1.26|      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+-- del v1.26|      ov_retcode := cv_status_error;
+-- del v1.26|    -- *** OTHERS例外ハンドラ ***
+-- del v1.26|    WHEN OTHERS THEN
+-- del v1.26|      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+-- del v1.26|      ov_retcode := cv_status_error;
+-- del v1.26|--
+-- del v1.26|--#####################################  固定部 END   ##########################################
+-- del v1.26|--
+-- del v1.26|  END get_ship_due_date;
+--****************************** 2012/01/06 1.26 Y.Horikawa DEL END*******************************--
 --
   /**********************************************************************************
    * Procedure Name   : <security_checke>
@@ -5425,44 +5428,46 @@ AS
       --
       END IF;
 --
-      IF ( lv_retcode = cv_status_normal ) AND ( iv_get_format_pat = cv_tonya_format ) THEN
-        -- --------------------------------------------------------------------
-        -- * get_ship_due_date 出荷予定日の導出                           (A-7)
-        -- --------------------------------------------------------------------
-        get_ship_due_date(
-          in_cnt                => gn_get_counter_data,   -- データ数
-          in_line_no            => lv_line_number,        -- 行NO.
-          id_delivery_date      => lod_delivery_date,     -- 納品日
-          iv_item_no            => lv_item_no,            -- 品目コード
--- *********** 2011/02/21 1.25 H.Sekine ADD START **********--
-          iv_tokushu_item_code  => lv_tokushu_item_code,  -- 特殊商品コード
--- *********** 2011/02/21 1.25 H.Sekine ADD END   **********--
-          iv_delivery_code      => lv_delivery_code,      -- 配送先コード
--- *********** 2009/12/07 1.15 N.Maeda MOD START ***********--
---          iv_delivery_base_code => lv_delivery_base_code, -- 納品拠点コード
-          iv_sales_base_code    => lv_salse_base_code,
--- *********** 2009/12/07 1.15 N.Maeda MOD  END  ***********--
-          iv_item_class_code    => lv_item_class_code,    -- 商品区分コード
-          iv_account_number     => lv_account_number,     -- 顧客コード
-          od_ship_due_date      => ld_ship_due_date,      -- 出荷予定日
-          ov_errbuf             => lv_errbuf,  -- 1.エラー・メッセージ           --# 固定 #
-          ov_retcode            => lv_retcode, -- 2.リターン・コード             --# 固定 #
-          ov_errmsg             => lv_errmsg   -- 3.ユーザー・エラー・メッセージ --# 固定 #
-        );
-        IF ( lv_retcode = cv_status_error ) THEN
-          gn_error_cnt := 1;
-          RAISE global_process_expt;
-        ELSIF ( lv_retcode = cv_status_warn ) THEN
-          gn_error_cnt := gn_error_cnt + 1;
-          --ワーニング保持
-          lv_ret_status := cv_status_warn;
-          --書き出し
-          FND_FILE.PUT_LINE(
-            which => FND_FILE.OUTPUT,
-            buff  => lv_errmsg
-          );
-        END IF;
-      END IF;
+--****************************** 2012/01/06 1.26 Y.Horikawa DEL START*******************************--
+-- del v1.26|      IF ( lv_retcode = cv_status_normal ) AND ( iv_get_format_pat = cv_tonya_format ) THEN
+-- del v1.26|        -- --------------------------------------------------------------------
+-- del v1.26|        -- * get_ship_due_date 出荷予定日の導出                           (A-7)
+-- del v1.26|        -- --------------------------------------------------------------------
+-- del v1.26|        get_ship_due_date(
+-- del v1.26|          in_cnt                => gn_get_counter_data,   -- データ数
+-- del v1.26|          in_line_no            => lv_line_number,        -- 行NO.
+-- del v1.26|          id_delivery_date      => lod_delivery_date,     -- 納品日
+-- del v1.26|          iv_item_no            => lv_item_no,            -- 品目コード
+-- del v1.26|-- *********** 2011/02/21 1.25 H.Sekine ADD START **********--
+-- del v1.26|          iv_tokushu_item_code  => lv_tokushu_item_code,  -- 特殊商品コード
+-- del v1.26|-- *********** 2011/02/21 1.25 H.Sekine ADD END   **********--
+-- del v1.26|          iv_delivery_code      => lv_delivery_code,      -- 配送先コード
+-- del v1.26|-- *********** 2009/12/07 1.15 N.Maeda MOD START ***********--
+-- del v1.26|--          iv_delivery_base_code => lv_delivery_base_code, -- 納品拠点コード
+-- del v1.26|          iv_sales_base_code    => lv_salse_base_code,
+-- del v1.26|-- *********** 2009/12/07 1.15 N.Maeda MOD  END  ***********--
+-- del v1.26|          iv_item_class_code    => lv_item_class_code,    -- 商品区分コード
+-- del v1.26|          iv_account_number     => lv_account_number,     -- 顧客コード
+-- del v1.26|          od_ship_due_date      => ld_ship_due_date,      -- 出荷予定日
+-- del v1.26|          ov_errbuf             => lv_errbuf,  -- 1.エラー・メッセージ           --# 固定 #
+-- del v1.26|          ov_retcode            => lv_retcode, -- 2.リターン・コード             --# 固定 #
+-- del v1.26|          ov_errmsg             => lv_errmsg   -- 3.ユーザー・エラー・メッセージ --# 固定 #
+-- del v1.26|        );
+-- del v1.26|        IF ( lv_retcode = cv_status_error ) THEN
+-- del v1.26|          gn_error_cnt := 1;
+-- del v1.26|          RAISE global_process_expt;
+-- del v1.26|        ELSIF ( lv_retcode = cv_status_warn ) THEN
+-- del v1.26|          gn_error_cnt := gn_error_cnt + 1;
+-- del v1.26|          --ワーニング保持
+-- del v1.26|          lv_ret_status := cv_status_warn;
+-- del v1.26|          --書き出し
+-- del v1.26|          FND_FILE.PUT_LINE(
+-- del v1.26|            which => FND_FILE.OUTPUT,
+-- del v1.26|            buff  => lv_errmsg
+-- del v1.26|          );
+-- del v1.26|        END IF;
+-- del v1.26|      END IF;
+--****************************** 2012/01/06 1.26 Y.Horikawa DEL END*******************************--
 --
       -- --------------------------------------------------------------------
       -- * security_check    セキュリティチェック処理                   (A-8)
@@ -5506,11 +5511,14 @@ AS
         IF ( iv_get_format_pat = cv_tonya_format )THEN
             lv_customer_number       := lv_account_number;          -- 9.<顧客番号（コード) (顧客コード(SEJ))>
             lv_inventory_item        := lv_item_no;                 -- 13.<在庫品目         (品目コード(SEJ))>
--- ********************* 2010/01/12 1.18 M.Uehara MOD START ********************* --
---            ld_schedule_ship_date    := ld_ship_due_date;           -- 14.<予定出荷日       (出荷予定日(SEJ))>
-            -- 出荷日が入力されている場合は出荷日、出荷日がnullの場合は出荷予定日をセット
-            ld_schedule_ship_date    := NVL( ld_shipping_date , ld_ship_due_date);  -- 14.<予定出荷日       (出荷予定日(SEJ))>
--- ********************* 2010/01/12 1.18 M.Uehara MOD END   ********************* --
+--****************************** 2012/01/06 1.26 Y.Horikawa MOD START*******************************--
+---- ********************* 2010/01/12 1.18 M.Uehara MOD START ********************* --
+----            ld_schedule_ship_date    := ld_ship_due_date;           -- 14.<予定出荷日       (出荷予定日(SEJ))>
+--            -- 出荷日が入力されている場合は出荷日、出荷日がnullの場合は出荷予定日をセット
+--            ld_schedule_ship_date    := NVL( ld_shipping_date , ld_ship_due_date);  -- 14.<予定出荷日       (出荷予定日(SEJ))>
+---- ********************* 2010/01/12 1.18 M.Uehara MOD END   ********************* --
+            ld_schedule_ship_date    := NULL;  -- 14.<予定出荷日       (出荷予定日(SEJ))>
+--****************************** 2012/01/06 1.26 Y.Horikawa MOD END*******************************--
             ln_ordered_quantity      := ln_order_roses_quantity;    -- 15.<受注数量         (発注バラ数(SEJ)>
             lv_order_quantity_uom    := lv_primary_unit_of_measure; -- 16.<受注数量単位     (基準単位(SEJ))>
 -- ********************* 2009/11/18 1.14 N.Maeda ADD START ********************* --
