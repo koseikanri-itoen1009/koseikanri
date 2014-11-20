@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A02R(body)
  * Description      : 指定された条件に紐づく入庫確認情報のリストを出力します。
  * MD.050           : 入庫未確認リスト MD050_COI_001_A02
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/09/08    1.6   H.Sasaki         [0001266]OPM品目アドオン版管理対応
  *  2009/11/27    1.7   N.Abe            [E_本稼動_00089]同一伝票番号の他拠点を抽出しない
  *  2009/12/09    1.8   N.Abe            [E_本稼動_00379]差異あり抽出方法の修正
+ *  2009/12/21    1.9   H.Sasaki         [E_本稼動_00549]出荷数量のNULL対応
  *
  *****************************************************************************************/
 --
@@ -200,10 +201,16 @@ AS
         ,CASE WHEN xsi.summary_data_flag = cv_yes
               THEN NULL ELSE xsi.difference_summary_code END          -- 工場固有記号
                                                   AS factory_unique_mark
-        ,xsi.case_in_qty                          AS case_in_qty      -- 入数
-        ,xsi.ship_case_qty                        AS ship_case_qty    -- 出庫数量ケース数
-        ,xsi.ship_singly_qty                      AS ship_singly_qty  -- 出庫数量バラ数
-        ,xsi.ship_summary_qty                     AS ship_summary_qty -- 出庫数量総バラ数
+-- == 2009/12/21 V1.9 Modified START ===============================================================
+--        ,xsi.case_in_qty                          AS case_in_qty      -- 入数
+--        ,xsi.ship_case_qty                        AS ship_case_qty    -- 出庫数量ケース数
+--        ,xsi.ship_singly_qty                      AS ship_singly_qty  -- 出庫数量バラ数
+--        ,xsi.ship_summary_qty                     AS ship_summary_qty -- 出庫数量総バラ数
+        ,NVL(xsi.case_in_qty, 0)                  AS case_in_qty      -- 入数
+        ,NVL(xsi.ship_case_qty, 0)                AS ship_case_qty    -- 出庫数量ケース数
+        ,NVL(xsi.ship_singly_qty, 0)              AS ship_singly_qty  -- 出庫数量バラ数
+        ,NVL(xsi.ship_summary_qty, 0)             AS ship_summary_qty -- 出庫数量総バラ数
+-- == 2009/12/21 V1.9 Modified END   ===============================================================
         ,CASE WHEN xsi.summary_data_flag = cv_yes
               THEN NVL(xsi.check_case_qty,0) ELSE NULL END            -- 確認数量ケース数
                                                   AS check_case_qty
@@ -273,7 +280,10 @@ AS
                   AND xsi.store_check_flag = cv_no
                  )
                  OR(iv_output_type = cv_output_div_20
-                    AND xsi.ship_summary_qty <> xsi.check_summary_qty
+-- == 2009/12/21 V1.9 Modified START ===============================================================
+--                    AND xsi.ship_summary_qty <> xsi.check_summary_qty
+                    AND NVL(xsi.ship_summary_qty, 0) <> xsi.check_summary_qty
+-- == 2009/12/21 V1.9 Modified START ===============================================================
                    )
                  OR iv_output_type = cv_output_div_30
                 )
