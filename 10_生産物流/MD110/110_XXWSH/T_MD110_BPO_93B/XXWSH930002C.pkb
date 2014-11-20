@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.12
+ * Version          : 1.13
  *
  * -------------------------------------------------------------------------------------
  * 注意事項！    HHT(xxwsh930002c)をどのように作ったか
@@ -92,6 +92,9 @@ AS
  *                                       I_S_192対応
  *                                       T_TE110_BPO_280#363対応
  *                                       課題#32,内部変更#173,174
+ *  2008/08/06    1.13 Oracle 福田 直樹  ｢出荷先｣マスタチェックエラーメッセージ項目名修正
+ *  2008/08/06    1.13 Oracle 福田 直樹  最大配送区分算出関数(get_max_ship_method)入力パラメータコード区分２
+ *                                       支給の場合の設定値不正(正しくは11なのに9をセットしている)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -286,6 +289,9 @@ AS
   gv_param1_token07_nm           CONSTANT VARCHAR2(30) := '受注品目';
   gv_param1_token08_nm           CONSTANT VARCHAR2(30) := '入庫倉庫';
   gv_param1_token09_nm           CONSTANT VARCHAR2(30) := '配送区分';
+--********** 2008/08/06 ********** ADD    START ***
+  gv_param1_token10_nm           CONSTANT VARCHAR2(30) := '出荷先';
+--********** 2008/08/06 ********** ADD    END   ***
   gv_table_token01_nm            CONSTANT VARCHAR2(30) := '受注ヘッダ(アドオン)';
   gv_table_token02_nm            CONSTANT VARCHAR2(30) := '移動依頼/指示ヘッダ(アドオン)';
   gv_date_para_1                 CONSTANT VARCHAR2(6)  := '出荷日';
@@ -5557,7 +5563,10 @@ AS
                            gv_msg_kbn          -- 'XXWSH'
                           ,gv_msg_93a_010  -- マスタチェックエラーメッセージ
                           ,gv_param1_token
-                          ,gv_param1_token05_nm                           --エラー項目名
+--********** 2008/08/06 ********** MODIFY START ***
+--                          ,gv_param1_token05_nm                           --エラー項目名
+                          ,gv_param1_token10_nm                           --エラー項目名
+--********** 2008/08/06 ********** MODIFY START ***
                           ,gv_param2_token
                           ,gr_interface_info_rec(i).delivery_no           --IF_H.配送No
                           ,gv_param3_token
@@ -8513,7 +8522,14 @@ AS
       -- 2.入出庫場所コード１
       lv_entering_despatching_code1 := gr_interface_info_rec(in_index).location_code;
       -- 3.コード区分２
-      lv_code_class2                := gv_code_class_09;
+      -- 2008/08/06 Start --------------------------------------------------------
+      --lv_code_class2                := gv_code_class_09;
+      IF (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200) THEN
+        lv_code_class2                := gv_code_class_11;  -- 支給の場合(200)
+      ELSE
+        lv_code_class2                := gv_code_class_09;  -- 出荷の場合(210,215)
+      END IF;
+      -- 2008/08/06 End ----------------------------------------------------------
       -- 4.入出庫場所コード２
       lv_entering_despatching_code2 := gr_interface_info_rec(in_index).party_site_code;
       -- 5.基準日(適用日基準日)
@@ -8990,10 +9006,15 @@ AS
       lv_code_class1                := gv_code_class_04;
       -- 2.入出庫場所コード１
       lv_entering_despatching_code1 := gr_interface_info_rec(in_index).location_code;
---
       -- 3.コード区分２
-      lv_code_class2                := gv_code_class_09;
---
+      -- 2008/08/06 Start --------------------------------------------------------
+      --lv_code_class2                := gv_code_class_09;
+      IF (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_200) THEN
+        lv_code_class2                := gv_code_class_11;  -- 支給の場合(200)
+      ELSE
+        lv_code_class2                := gv_code_class_09;  -- 出荷の場合(210,215)
+      END IF;
+      -- 2008/08/06 End ----------------------------------------------------------
       -- 4.入出庫場所コード２
       lv_entering_despatching_code2 := gr_interface_info_rec(in_index).party_site_code;
       -- 5.基準日(適用日基準日)
