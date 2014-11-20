@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A03C (body)
  * Description      : 納品確定情報データ作成(EDI)
  * MD.050           : 納品確定情報データ作成(EDI) MD050_COS_014_A03
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,8 @@ AS
  *  2009/02/20    1.6   T.Nakamura       [障害COS_110] フッタレコード作成処理実行時のエラーハンドリングを追加
  *  2009/04/02    1.7   T.Kitajima       [T1_0114] 納品拠点情報取得方法変更
  *  2009/04/27    1.8   K.Kiriu          [T1_0112] 単位項目内容不正対応
+ *  2009/06/16    1.9   T.Kitajima       [T1_1348] 行Noの結合条件変更
+ *  2009/06/16    1.9   T.Kitajima       [T1_1358] 定番特売区分0→00,1→01,2→02
  *
  *****************************************************************************************/
 --
@@ -2131,6 +2133,9 @@ AS
                     ,xel.general_add_item9                                      general_add_item9             --汎用付加項目９
                     ,xel.general_add_item10                                     general_add_item10            --汎用付加項目１０
                     ,xel.chain_peculiar_area_line                               chain_peculiar_area_line      --チェーン店固有エリア（明細）
+--****************************** 2009/06/16 1.9 T.Kitajima ADD START ******************************--
+                    ,xel.order_connection_line_number                           order_connection_line_number  --受注関連明細番号
+--****************************** 2009/06/16 1.9 T.Kitajima ADD  END  ******************************--
               FROM   xxcos_edi_headers                                          xeh                           --EDIヘッダ情報テーブル
                     ,xxcos_edi_lines                                            xel                           --EDI明細情報テーブル
               WHERE  xel.edi_header_info_id = xeh.edi_header_info_id                                          --EDIヘッダ情報ID
@@ -2145,6 +2150,9 @@ AS
                     ,oola.line_type_id                                          line_type_id                  --受注明細タイプID
                     ,oola.attribute5                                            attribute5                    --売上区分
                     ,oola.line_number                                           line_number                   --行No
+--****************************** 2009/06/16 1.9 T.Kitajima ADD START ******************************--
+                    ,oola.orig_sys_line_ref                                     orig_sys_line_ref             --外部ｼｽﾃﾑ受注明細番号
+--****************************** 2009/06/16 1.9 T.Kitajima ADD  END  ******************************--
               FROM   oe_order_headers_all                                       ooha                          --受注ヘッダ情報テーブル
                     ,oe_order_lines_all                                         oola                          --受注明細情報テーブル
               WHERE  oola.header_id       = ooha.header_id                                                    --ヘッダID
@@ -2208,7 +2216,7 @@ AS
 --        AND  xe.shop_code = xcss.chain_store_code
 --        OR   i_input_rec.store_code IS NULL AND xe.shop_code = xcss.chain_store_code
 --      )
-      AND xe.shop_code = NVL( NULL, xe.shop_code )
+      AND xe.shop_code = NVL( i_input_rec.store_code, xe.shop_code )
 --******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
       AND    NVL(TRUNC(xe.shop_delivery_date)
                 ,NVL(TRUNC(xe.center_delivery_date)
@@ -2228,7 +2236,10 @@ AS
       AND oos.description(+) = i_msg_rec.order_source
       AND oos.enabled_flag(+)     = cv_enabled_flag
       AND    oe.orig_sys_document_ref(+) = xe.order_connection_number                                         --外部システム受注番号 = 受注関連番号
-      AND    oe.line_number(+)           = xe.line_no                                                         --行No
+--****************************** 2009/06/16 1.9 T.Kitajima MOD START ******************************--
+--      AND    oe.line_number(+)           = xe.line_no                                                         --行No
+      AND    oe.orig_sys_line_ref(+)     = xe.order_connection_line_number                                    --行No
+--****************************** 2009/06/16 1.9 T.Kitajima MOD  END  ******************************--
       AND (oe.header_id IS NOT NULL
         AND ottt_h.transaction_type_id = oe.order_type_id
         AND oos.order_source_id = oe.order_source_id

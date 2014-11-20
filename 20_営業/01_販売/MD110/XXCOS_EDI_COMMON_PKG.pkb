@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcos_edi_common_pkg
+CREATE OR REPLACE PACKAGE BODY apps.xxcos_edi_common_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_edi_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  ----------------------------- ---- ----- -----------------------------------------
@@ -22,6 +22,7 @@ AS
  *  2009/03/03   1.1   H.Fujimoto       結合不具合No152
  *  2009/03/24   1.2   T.Miyata         ST障害：T1_0126
  *  2009/04/24   1.3   K.Kiriu          ST障害：T1_0112
+ *  2009/06/19   1.4   N.Maeda          [T1_1358]対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -68,7 +69,10 @@ AS
     cv_tukzik_div_tnp       CONSTANT VARCHAR2(2)  := '24';      -- 通過在庫型区分:店舗納品
     cv_flag_yes             CONSTANT VARCHAR2(1)  := 'Y';       -- フラグ:'Y'
     cv_flag_no              CONSTANT VARCHAR2(1)  := 'N';       -- フラグ:'N'
-    cv_ras_class_all        CONSTANT VARCHAR2(1)  := '0';       -- 定番特売区分:ALL
+--************************** 2009/06/19 N.Maeda Mod start *********************************--
+--    cv_ras_class_all        CONSTANT VARCHAR2(1)  := '0';       -- 定番特売区分:ALL
+    cv_ras_class_all        CONSTANT VARCHAR2(2)  := '00';      -- 定番特売区分:ALL
+--************************** 2009/06/19 N.Maeda Mod  end  *********************************--
     cv_unit_case            CONSTANT VARCHAR2(2)  := 'CS';      -- 単位:ケース
     cv_unit_bowl            CONSTANT VARCHAR2(2)  := 'BL';      -- 単位:ボール
     cv_sale_class_error     CONSTANT VARCHAR2(1)  := '1';       -- 売上区分混在エラー

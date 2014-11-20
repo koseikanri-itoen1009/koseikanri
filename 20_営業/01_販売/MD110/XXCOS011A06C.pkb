@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/04/28    1.3   K.Kiriu         [T1_0756]レコード長変更対応
  *  2009/05/28    1.4   T.Tominaga      [T1_0540]販売実績の対象データ取得カーソルのORDER BY句の変更
  *                                               ファイル出力の行Ｎｏのセット値を連番に変更
+ *  2009/06/12    1.5   N.Maeda         [T1_1356]ファイルNo出力項目修正
  *
  *****************************************************************************************/
 --
@@ -654,7 +655,10 @@ AS
     sum_standard_qty             NUMBER(10,1),                                              --(伝票計)出荷数量(バラ),(合計、バラ)
     sum_sale_amount              NUMBER(14,2),                                              --(伝票計)原価金額(出荷)
     send_code1                    hz_cust_site_uses_all.attribute4%TYPE,                    --売掛コード1(請求書)*未使用
-    send_code3                    hz_cust_site_uses_all.attribute6%TYPE                     --売掛コード3(その他)*未使用
+    send_code3                    hz_cust_site_uses_all.attribute6%TYPE,                    --売掛コード3(その他)*未使用
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD   START  *********************************************--
+    edi_forward_number           xxcmm_cust_accounts.edi_forward_number%TYPE                --EDI伝票追番
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD    END   *********************************************--
   );
 --
   -- ===============================
@@ -1944,6 +1948,9 @@ AS
              ,xsel1.sum_sale_amount                   sum_sale_amount              --売上金額サマリー
              ,xcchv.bill_cred_rec_code1               bill_cred_rec_code1          --売掛コード１（請求書）
              ,xcchv.bill_cred_rec_code3               bill_cred_rec_code3          --売掛コード３（その他）
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD   START  *********************************************--
+             ,hcan.edi_forward_number                 edi_forward_number           --EDI納品伝票追番
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD    END   *********************************************--
       FROM    xxcos_lookup_values_v     xlvv   --請求先顧客コード(顧客単位)
              ,xxcfr_cust_hierarchy_v    xcchv  --顧客マスタ階層ビュー
              ,ra_terms_vl               rtv    --支払条件
@@ -1952,12 +1959,18 @@ AS
                        ,hp.organization_name_phonetic  organization_name_phonetic  --納品先顧客名カナ
                        ,hl.state || hl.city || hl.address1 || hl.address2
                                                        address                     --都道府県+市区+住所1+住所2
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD   START  *********************************************--
+                       ,xca_2.edi_forward_number       edi_forward_number
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD    END   *********************************************--
                 FROM    hz_cust_accounts       hca
                        ,hz_parties             hp
                        ,hz_cust_acct_sites_all hcasa
                        ,hz_cust_site_uses_all  hcsua
                        ,hz_party_sites         hps
                        ,hz_locations           hl
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD   START  *********************************************--
+                       ,xxcmm_cust_accounts    xca_2
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD    END   *********************************************--
                 WHERE   hca.party_id            =  hp.party_id
                 AND     hca.cust_account_id     =  hcasa.cust_account_id
                 AND     hcasa.org_id            =  gn_org_id
@@ -1966,6 +1979,9 @@ AS
                 AND     hcsua.site_use_code     =  cv_cust_site_use_code
                 AND     hcasa.party_site_id     =  hps.party_site_id
                 AND     hps.location_id         =  hl.location_id
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD   START  *********************************************--
+                AND     xca_2.customer_id         =  hca.cust_account_id
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD    END   *********************************************--
               )                         hcan   --納品顧客
              ,( SELECT  hca.account_number             sales_base_code         --売上拠点コード
                        ,hp.party_name                  sales_base_name         --売上拠点名
@@ -2427,7 +2443,10 @@ AS
       -- ヘッダ部 --
       l_data_tab(cv_medium_class)             := gt_edi_media_class;                       -- 媒体区分
       l_data_tab(cv_data_type_code)           := gt_data_type_code;                        -- データ種コード
-      l_data_tab(cv_file_no)                  := TO_CHAR(NULL);
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD   START  *********************************************--
+      l_data_tab(cv_file_no)                  := gt_edi_sales_data(i).edi_forward_number;   -- ファイルNo.
+--      l_data_tab(cv_file_no)                  := TO_CHAR(NULL);
+--****************　2009/06/12   N.Maeda  Ver1.5   ADD    END   *********************************************--
       l_data_tab(cv_info_class)               := TO_CHAR(NULL);
       l_data_tab(cv_process_date)             := gv_f_o_date;                              -- 処理日
       l_data_tab(cv_process_time)             := gv_f_o_time;                              -- 処理時間

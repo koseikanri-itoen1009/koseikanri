@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A02R (body)
  * Description      : ピックリスト（出荷先・販売先・製品別）
  * MD.050           : ピックリスト（出荷先・販売先・製品別） MD050_COS_012_A02
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *                                                に修正
  *  2009/06/09    1.5   T.Kitajima       [T1_1375]入数が0の場合、ケース数に0設定、
  *                                                バラ数に数量を設定する。
+ *  2009/06/15    1.6   K.Kiriu          [T1_1358]定番特売区分クイックコード値変更対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -261,7 +262,10 @@ AS
   cv_exists_flag_yes        CONSTANT VARCHAR2(1)   := 'Y';            --存在あり
   cv_exists_flag_no         CONSTANT VARCHAR2(1)   := 'N';            --存在なし
   --定番特売区分
-  cv_bargain_class_all      CONSTANT VARCHAR2(1)   := '0';            --全て
+/* 2009/06/15 Ver1.6 Mod Start */
+--  cv_bargain_class_all      CONSTANT VARCHAR2(1)   := '0';            --全て
+  cv_bargain_class_all      CONSTANT VARCHAR2(2)   := '00';           --全て
+/* 2009/06/15 Ver1.6 Mod End   */
   --処理対象フラグ
   cv_target_flag_yes        CONSTANT VARCHAR2(1)   := 'Y';            --対象
   cv_target_flag_no         CONSTANT VARCHAR2(1)   := 'N';            --対象外
@@ -304,7 +308,10 @@ AS
   gv_login_chain_store_code           VARCHAR2(4);                    -- チェーン店
   gd_request_date_from                DATE;                           -- 着日(From)
   gd_request_date_to                  DATE;                           -- 着日(To)
-  gv_bargain_class                    VARCHAR2(1);                    -- 定番特売区分
+/* 2009/06/15 Ver1.6 Mod Start */
+--  gv_bargain_class                    VARCHAR2(1);                    -- 定番特売区分
+  gv_bargain_class                    fnd_lookup_values.lookup_code%TYPE;  -- 定番特売区分
+/* 2009/06/15 Ver1.6 Mod End   */
   gt_bargain_class_name               fnd_lookup_values.meaning%TYPE;
                                                                       -- 定番特売区分（ヘッダ）名称
   --初期取得
@@ -468,7 +475,10 @@ AS
     gv_login_chain_store_code := iv_login_chain_store_code;
     gd_request_date_from      := TO_DATE( iv_request_date_from, cv_fmt_datetime );
     gd_request_date_to        := TO_DATE( iv_request_date_to, cv_fmt_datetime );
-    gv_bargain_class          := SUBSTRB( iv_bargain_class, 1, 1 );
+/* 2009/06/15 Ver1.6 Mod Start */
+--    gv_bargain_class          := SUBSTRB( iv_bargain_class, 1, 1 );
+    gv_bargain_class          := iv_bargain_class;
+/* 2009/06/15 Ver1.6 Mod End   */
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述

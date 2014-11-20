@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,8 @@ AS
  *  2009/02/24    1.8   T.Nakamura       [障害COS_119] CSV出力レコード抽出条件の在庫組織IDを修正
  *  2009/04/02    1.9   T.Kitajima       [T1_0114] 納品拠点情報取得方法変更
  *  2009/04/27    1.10  K.Kiriu          [T1_0112] 単位項目内容不正対応
+ *  2009/06/17    1.11  M.Sano           [T1_1348] 行Noの結合条件変更
+ *                                       [T1_1358] 定番特売区分0→00,1→01,2→02変更
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -319,7 +321,10 @@ AS
   cv_layout_class            CONSTANT VARCHAR2(1) := xxcos_common2_pkg.gv_layout_class_order; --受注系
   cv_found                   CONSTANT VARCHAR2(1) := '0';                                     --登録
   cv_notfound                CONSTANT VARCHAR2(1) := '1';                                     --未登録
-  cv_bargain_class_all       CONSTANT VARCHAR2(1) := '0';                                     --定番特売区分(全て)
+-- 2009/06/17 M.Sano Ver.1.11 mod Start
+--  cv_bargain_class_all       CONSTANT VARCHAR2(1) := '0';                                     --定番特売区分(全て)
+  cv_bargain_class_all       CONSTANT VARCHAR2(2) := '00';                                    --定番特売区分(全て)
+-- 2009/06/17 M.Sano Ver.1.11 mod End
 --
   /**********************************************************************************
    * Procedure Name   : out_line
@@ -2056,7 +2061,10 @@ AS
               AND    ooha.order_type_id         = ottt_h.transaction_type_id                                          --受注ヘッダタイプ
               --受注明細情報テーブル抽出条件
               AND    oola.header_id             = ooha.header_id                                                      --ヘッダID
-              AND    oola.line_number           = xel.line_no                                                         --行No
+-- 2009/06/17 M.Sano Ver.1.11 mod Start
+--              AND    oola.line_number           = xel.line_no                                                         --行No
+              AND    oola.orig_sys_line_ref     = xel.order_connection_line_number                                    --外部ｼｽﾃﾑ受注明細番号 = 受注関連明細番号
+-- 2009/06/17 M.Sano Ver.1.11 mod End
               AND    oola.line_type_id          = ottt_l.transaction_type_id                                          --受注明細タイプ
               --受注理由ビュー抽出条件
               AND    ore.entity_id(+)           = oola.line_id

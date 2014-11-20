@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/05/21    1.10  M.Sano           [T1_0967] 取消済の受注明細を出力しない
  *                                       [T1_1088] 受注明細タイプ「30_値引」の出力時の項目不正対応
  *  2009/05/28    1.11  M.Sano           [T1_0968] 1明細目の伝票計不正対応
+ *  2009/06/19    1.12  N.Maeda          [T1_1158] チェーン店セキュリティービューの結合方法変更
  *
  *****************************************************************************************/
 --
@@ -2980,8 +2981,12 @@ AS
        AND   xlvv.lookup_type(+)            = ct_qc_sale_class                                                --売上区分マスタ
        AND   xlvv.lookup_code(+)            = oola.attribute5                                                 --売上区分
        --店舗セキュリティview抽出条件
-       AND   xcss.account_number(+)         = ivoh.account_number                                             --顧客コード
-       AND   xcss.user_id(+)                = i_input_rec.user_id                                             --ユーザID
+--******************************************* 2009/06/19 Ver.1.12 N.Maeda MOD START *****************************************
+--       AND   xcss.account_number(+)         = ivoh.account_number                                             --顧客コード
+--       AND   xcss.user_id(+)                = i_input_rec.user_id                                             --ユーザID
+       AND   xcss.account_number         = ivoh.account_number                                             --顧客コード
+       AND   xcss.user_id                = i_input_rec.user_id                                             --ユーザID
+--******************************************* 2009/06/19 Ver.1.12 N.Maeda MOD  END  *****************************************
        --税コードマスタ
        AND   xlvv2.lookup_type(+)           = ct_tax_class                                                    --税コードマスタ
        AND   xlvv2.attribute3(+)            = ivoh.tax_div                                                    --税区分

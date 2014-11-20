@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A04C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定データ作成 (MD050_COS_011_A04)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,8 @@ AS
  *  2009/03/10    1.2  T.Kitajima       [T1_0030]顧客品目の無効エラー対応
  *  2009/04/06    1.3  T.Kitajima       [T1_0043]顧客品目の絞り込み条件に単位を追加
  *  2009/04/28    1.4  K.Kiriu          [T1_0756]レコード長変更対応
+ *  2009/06/15    1.5  N.Maeda          [T1_1356]出力データファイルNo値修正
+ *  2009/07/08         N.Maeda          [T1_1356]レビュー指摘対応
  *
  *****************************************************************************************/
 --
@@ -565,6 +567,9 @@ AS
   gv_outbound_d         VARCHAR2(100);                                 --アウトバウンド用ディレクトリパス
   gn_bks_id             NUMBER;                                        --会計帳簿ID
   gn_org_id             NUMBER;                                        --営業単位
+--********************  2009/07/08    1.5  N.Maeda MOD Start ********************
+  gt_edi_f_number       xxcmm_cust_accounts.edi_forward_number%TYPE;   --ファイルNo.
+--********************  2009/07/08    1.5  N.Maeda MOD  End  ********************
   -- ===============================
   -- ユーザー定義グローバルRECORD型宣言
   -- ===============================
@@ -622,6 +627,11 @@ AS
     inactive_flag                mtl_customer_items.inactive_flag%TYPE,                   --顧客品目.有効フラグ
     inactive_ref_flag            mtl_customer_item_xrefs.inactive_flag%TYPE               --顧客品目相互参照.有効フラグ
 --********************  2009/03/10    1.2  T.Kitajima ADD  End  ********************
+--********************  2009/07/08    1.5  N.Maeda DEL Start ********************
+----********************  2009/06/15    1.5  N.Maeda ADD Start ********************
+--    edi_forward_number           xxcmm_cust_accounts.edi_forward_number%TYPE              --EDI伝票追番
+----********************  2009/06/15    1.5  N.Maeda ADD  End  ********************
+--********************  2009/07/08    1.5  N.Maeda DEL  End  ********************
   );
   -- ===============================
   -- ユーザー定義グローバルTABLE型
@@ -1368,6 +1378,10 @@ AS
       file   => gt_f_handle       --ファイルハンドル
      ,buffer => lv_header_output  --出力文字(ヘッダ)
     );
+-- ********************* 2009/07/08 1.5  N.Maeda MOD Start ********************--
+   -- ファイルNo.用
+   gt_edi_f_number := iv_edi_f_number;
+-- ********************* 2009/07/08 1.5  N.Maeda MOD  End  ********************--
 --
   EXCEPTION
 --
@@ -1473,12 +1487,22 @@ AS
              ,mcis.inactive_flag                      inactive_flag                --顧客品目.有効フラグ
              ,mcis.inactive_ref_flag                  inactive_ref_flag            --顧客品目相互参照.有効フラグ
 --********************  2009/03/10    1.2  T.Kitajima ADD  End  ********************
+--********************  2009/07/08    1.5  N.Maeda DEL Start ********************
+----********************  2009/06/15    1.5  N.Maeda ADD Start ********************
+--             ,hca.edi_forward_number                  edi_forward_number           --EDI伝票追番
+----********************  2009/06/15    1.5  N.Maeda ADD  End  ********************
+--********************  2009/07/08    1.5  N.Maeda DEL  End  ********************
       FROM    xxcos_edi_stc_headers   xesh    --入庫予定ヘッダ
              ,mtl_txn_request_headers mtrh    --移動オーダーヘッダ
              ,( SELECT  hca.account_number             account_number
                        ,hp.party_name                  party_name
                        ,hp.organization_name_phonetic  organization_name_phonetic
                        ,xca.cust_store_name            cust_store_name
+--********************  2009/07/08    1.5  N.Maeda DEL Start ********************
+----********************  2009/06/15    1.5  N.Maeda ADD Start ********************
+--                       ,xca.edi_forward_number         edi_forward_number
+----********************  2009/06/15    1.5  N.Maeda ADD  End  ********************
+--********************  2009/07/08    1.5  N.Maeda DEL  End  ********************
                 FROM    hz_cust_accounts    hca
                        ,xxcmm_cust_accounts xca
                        ,hz_parties          hp
@@ -1606,12 +1630,22 @@ AS
              ,NULL                                    inactive_flag                --EDI連携品目コード「顧客品目」の項目と合せるためのダミー
              ,NULL                                    inactive_ref_flag            --EDI連携品目コード「顧客品目」の項目と合せるためのダミー
 --********************  2009/03/10    1.2  T.Kitajima MOD  End  ********************
+--********************  2009/07/08    1.5  N.Maeda DEL Start ********************
+----********************  2009/06/15    1.5  N.Maeda ADD Start ********************
+--             ,hca.edi_forward_number                  edi_forward_number           --EDI伝票追番
+----********************  2009/06/15    1.5  N.Maeda ADD  End  ********************
+--********************  2009/07/08    1.5  N.Maeda DEL  End  ********************
       FROM    xxcos_edi_stc_headers   xesh    --入庫予定ヘッダ
              ,mtl_txn_request_headers mtrh    --移動オーダーヘッダ
              ,( SELECT  hca.account_number             account_number
                        ,hp.party_name                  party_name
                        ,hp.organization_name_phonetic  organization_name_phonetic
                        ,xca.cust_store_name            cust_store_name
+--********************  2009/07/08    1.5  N.Maeda DEL Start ********************
+----********************  2009/06/15    1.5  N.Maeda ADD Start ********************
+--                       ,xca.edi_forward_number         edi_forward_number
+----********************  2009/06/15    1.5  N.Maeda ADD  End  ********************
+--********************  2009/07/08    1.5  N.Maeda DEL  End  ********************
                 FROM    hz_cust_accounts    hca
                        ,xxcmm_cust_accounts xca
                        ,hz_parties          hp
@@ -2006,6 +2040,7 @@ AS
 --
     <<output_loop>>
     FOR i IN 1.. gn_target_cnt  LOOP
+--
       --==============================================================
       --データ編集
       --==============================================================
@@ -2047,7 +2082,13 @@ AS
       -- ヘッダ部 --
       l_data_tab(cv_medium_class)             := gt_edi_media_class;
       l_data_tab(cv_data_type_code)           := gt_data_type_code;
-      l_data_tab(cv_file_no)                  := TO_CHAR(NULL);
+--********************  2009/07/08    1.5  N.Maeda MOD Start ********************
+----********************  2009/06/15    1.5  N.Maeda MOD Start ********************
+----      l_data_tab(cv_file_no)                  := TO_CHAR(NULL);
+--      l_data_tab(cv_file_no)                  := TO_CHAR(gt_edi_stc_date(i).edi_forward_number);
+      l_data_tab(cv_file_no)                  := gt_edi_f_number;
+----********************  2009/06/15    1.5  N.Maeda MOD  End  ********************
+--********************  2009/07/08    1.5  N.Maeda MOD  End  ********************
       l_data_tab(cv_info_class)               := TO_CHAR(NULL);
       l_data_tab(cv_process_date)             := gv_f_o_date;
       l_data_tab(cv_process_time)             := gv_f_o_time;
@@ -2903,7 +2944,7 @@ AS
     iv_file_name      IN  VARCHAR2,     --   1.ファイル名
     iv_to_s_code      IN  VARCHAR2,     --   2.搬送先保管場所
     iv_edi_c_code     IN  VARCHAR2,     --   3.EDIチェーン店コード
-    iv_edi_f_number   IN  VARCHAR2,     --   4.EDI伝送対版
+    iv_edi_f_number   IN  VARCHAR2,     --   4.EDI伝送追番
     ov_errbuf         OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode        OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg         OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #

@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS014A05C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS014A05C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 帳票発行画面(アドオン)で指定した条件を元にEDI経由で取り込んだ在庫情報を、
  *                    帳票サーバ向けにファイルを出力します。
  * MD.050           : 在庫情報データ作成 MD050_COS_014_A05
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/02/20    1.6   T.Nakamura       [障害COS_110] フッタレコード作成処理実行時のエラーハンドリングを追加
  *  2009/04/02    1.7   T.Kitajima       [T1_0114] 納品拠点情報取得方法変更
  *  2009/05/27    1.8   K.Tsuboi         [T1_1222] 単位の取得元変更
+ *  2009/06/18    1.9   T.Kitajima       [T1_1158] 店舗コードNULL対応
  *
  *****************************************************************************************/
 --
@@ -1305,356 +1306,1125 @@ AS
                           ,i_other_rec    g_other_rtype
     )
     IS
-      SELECT
-      ------------------------------------------------------ヘッダ情報------------------------------------------------------------
-             xei.medium_class                                                 medium_class                   --媒体区分
-            ,xei.data_type_code                                               data_type_code                 --データ種コード
-            ,xei.file_no                                                      file_no                        --ファイルＮｏ
-            ,xei.info_class                                                   info_class                     --情報区分
-            ,i_other_rec.proc_date                                            process_date                   --処理日
-            ,i_other_rec.proc_time                                            process_time                   --処理時刻
---******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
---            ,i_input_rec.base_code                                              base_code                     --拠点（部門）コード
---            ,i_base_rec.base_name                                               base_name                     --拠点名（正式名）
---            ,i_base_rec.base_name_kana                                          base_name_alt                 --拠点名（カナ）
-            ,cdm.account_number                                                 base_code                     --拠点（部門）コード
-            ,DECODE( cdm.account_number
-                    ,NULL
-                    ,g_msg_rec.customer_notfound
-                    ,cdm.base_name
-             )                                                                  base_name                     --拠点名（正式名）
-            ,cdm.base_name_kana                                                 base_name_alt                 --拠点名（カナ）
---******************************************* 2009/04/02 1.8 T.Kitajima MOD  END  *************************************
-            ,xei.edi_chain_code                                               edi_chain_code                 --ＥＤＩチェーン店コード
-            ,i_chain_rec.chain_name                                           edi_chain_name                 --ＥＤＩチェーン店名（漢字）
-            ,i_chain_rec.chain_name_kana                                      edi_chain_name_alt             --ＥＤＩチェーン店名（カナ）
-            ,i_input_rec.report_code                                          report_code                    --帳票コード
-            ,i_input_rec.report_name                                          report_show_name               --帳票表示名
-            ,hca.account_number                                               customer_code                  --顧客コード
-            ,hp.party_name                                                    customer_name                  --顧客名（漢字）
-            ,hp.organization_name_phonetic                                    customer_name_alt              --顧客名（カナ）
-            ,xei.company_code                                                 company_code                   --社コード
-            ,xei.company_name_alt                                             company_name_alt               --社名（カナ）
-            ,xei.shop_code                                                    shop_code                      --店コード
-            ,NVL2( xei.shop_name_alt
-                  ,xei.shop_name_alt
-                  ,hp.organization_name_phonetic )                            shop_name_alt                  --店名（カナ）
-            ,NVL2( xei.delivery_center_code
-                  ,xei.delivery_center_code
-                  ,xca.deli_center_code )                                     delivery_center_code           --納入センターコード
-            ,NVL2( xei.delivery_center_name
-                  ,xei.delivery_center_name
-                  ,xca.deli_center_name )                                     delivery_center_name           --納入センター名（漢字）
-            ,xei.delivery_center_name_alt                                     delivery_center_name_alt       --納入センター名（カナ）
-            ,xei.whse_code                                                    whse_code                      --倉庫コード
-            ,xei.whse_name                                                    whse_name                      --倉庫名
-            ,xei.inspect_charge_name                                          inspect_charge_name            --検品担当者名（漢字）
-            ,xei.inspect_charge_name_alt                                      inspect_charge_name_alt        --検品担当者名（カナ）
-            ,xei.return_charge_name                                           return_charge_name             --返品担当者名（漢字）
-            ,xei.return_charge_name_alt                                       return_charge_name_alt         --返品担当者名（カナ）
-            ,xei.receive_charge_name                                          receive_charge_name            --受領担当者名（漢字）
-            ,xei.receive_charge_name_alt                                      receive_charge_name_alt        --受領担当者名（カナ）
-            ,TO_CHAR( xei.order_date,cv_date_fmt )                            order_date                     --発注日
-            ,TO_CHAR( xei.center_delivery_date,cv_date_fmt )                  center_delivery_date           --センター納品日
-            ,TO_CHAR( xei.center_result_delivery_date,cv_date_fmt )           center_result_delivery_date    --センター実納品日
-            ,TO_CHAR( xei.center_shipping_date,cv_date_fmt )                  center_shipping_date           --センター出庫日
-            ,TO_CHAR( xei.center_result_shipping_date,cv_date_fmt )           center_result_shipping_date    --センター実出庫日
-            ,TO_CHAR( xei.data_creation_date_edi_data,cv_date_fmt )           data_creation_date_edi_data    --データ作成日（ＥＤＩデータ中）
-            ,xei.data_creation_time_edi_data                                  data_creation_time_edi_data    --データ作成時刻（ＥＤＩデータ中）
-            ,TO_CHAR( xei.stk_date,cv_date_fmt )                              stk_date                       --在庫日付
-            ,xei.offer_vendor_code_class                                      offer_vendor_code_class        --提供企業取引先コード区分
-            ,xei.whse_vendor_code_class                                       whse_vendor_code_class         --倉庫取引先コード区分
-            ,xei.offer_cycle_class                                            offer_cycle_class              --提供サイクル区分
-            ,xei.stk_type                                                     stk_type                       --在庫種類
-            ,xei.japanese_class                                               japanese_class                 --日本語区分
-            ,xei.whse_class                                                   whse_class                     --倉庫区分
-            ,NVL2( xei.vendor_code
-                  ,xei.vendor_code
-                  ,xca.torihikisaki_code )                                    vendor_code                    --取引先コード
---******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
---            ,i_prf_rec.company_name || i_base_rec.base_name                   vendor_name                    --取引先名（漢字）
+--******************************************* 2009/06/18 1.9 T.Kitajima MOD START *************************************
+--      SELECT
+--      ------------------------------------------------------ヘッダ情報------------------------------------------------------------
+--             xei.medium_class                                                 medium_class                   --媒体区分
+--            ,xei.data_type_code                                               data_type_code                 --データ種コード
+--            ,xei.file_no                                                      file_no                        --ファイルＮｏ
+--            ,xei.info_class                                                   info_class                     --情報区分
+--            ,i_other_rec.proc_date                                            process_date                   --処理日
+--            ,i_other_rec.proc_time                                            process_time                   --処理時刻
+----******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+----            ,i_input_rec.base_code                                              base_code                     --拠点（部門）コード
+----            ,i_base_rec.base_name                                               base_name                     --拠点名（正式名）
+----            ,i_base_rec.base_name_kana                                          base_name_alt                 --拠点名（カナ）
+--            ,cdm.account_number                                                 base_code                     --拠点（部門）コード
+--            ,DECODE( cdm.account_number
+--                    ,NULL
+--                    ,g_msg_rec.customer_notfound
+--                    ,cdm.base_name
+--             )                                                                  base_name                     --拠点名（正式名）
+--            ,cdm.base_name_kana                                                 base_name_alt                 --拠点名（カナ）
+----******************************************* 2009/04/02 1.8 T.Kitajima MOD  END  *************************************
+--            ,xei.edi_chain_code                                               edi_chain_code                 --ＥＤＩチェーン店コード
+--            ,i_chain_rec.chain_name                                           edi_chain_name                 --ＥＤＩチェーン店名（漢字）
+--            ,i_chain_rec.chain_name_kana                                      edi_chain_name_alt             --ＥＤＩチェーン店名（カナ）
+--            ,i_input_rec.report_code                                          report_code                    --帳票コード
+--            ,i_input_rec.report_name                                          report_show_name               --帳票表示名
+--            ,hca.account_number                                               customer_code                  --顧客コード
+--            ,hp.party_name                                                    customer_name                  --顧客名（漢字）
+--            ,hp.organization_name_phonetic                                    customer_name_alt              --顧客名（カナ）
+--            ,xei.company_code                                                 company_code                   --社コード
+--            ,xei.company_name_alt                                             company_name_alt               --社名（カナ）
+--            ,xei.shop_code                                                    shop_code                      --店コード
+--            ,NVL2( xei.shop_name_alt
+--                  ,xei.shop_name_alt
+--                  ,hp.organization_name_phonetic )                            shop_name_alt                  --店名（カナ）
+--            ,NVL2( xei.delivery_center_code
+--                  ,xei.delivery_center_code
+--                  ,xca.deli_center_code )                                     delivery_center_code           --納入センターコード
+--            ,NVL2( xei.delivery_center_name
+--                  ,xei.delivery_center_name
+--                  ,xca.deli_center_name )                                     delivery_center_name           --納入センター名（漢字）
+--            ,xei.delivery_center_name_alt                                     delivery_center_name_alt       --納入センター名（カナ）
+--            ,xei.whse_code                                                    whse_code                      --倉庫コード
+--            ,xei.whse_name                                                    whse_name                      --倉庫名
+--            ,xei.inspect_charge_name                                          inspect_charge_name            --検品担当者名（漢字）
+--            ,xei.inspect_charge_name_alt                                      inspect_charge_name_alt        --検品担当者名（カナ）
+--            ,xei.return_charge_name                                           return_charge_name             --返品担当者名（漢字）
+--            ,xei.return_charge_name_alt                                       return_charge_name_alt         --返品担当者名（カナ）
+--            ,xei.receive_charge_name                                          receive_charge_name            --受領担当者名（漢字）
+--            ,xei.receive_charge_name_alt                                      receive_charge_name_alt        --受領担当者名（カナ）
+--            ,TO_CHAR( xei.order_date,cv_date_fmt )                            order_date                     --発注日
+--            ,TO_CHAR( xei.center_delivery_date,cv_date_fmt )                  center_delivery_date           --センター納品日
+--            ,TO_CHAR( xei.center_result_delivery_date,cv_date_fmt )           center_result_delivery_date    --センター実納品日
+--            ,TO_CHAR( xei.center_shipping_date,cv_date_fmt )                  center_shipping_date           --センター出庫日
+--            ,TO_CHAR( xei.center_result_shipping_date,cv_date_fmt )           center_result_shipping_date    --センター実出庫日
+--            ,TO_CHAR( xei.data_creation_date_edi_data,cv_date_fmt )           data_creation_date_edi_data    --データ作成日（ＥＤＩデータ中）
+--            ,xei.data_creation_time_edi_data                                  data_creation_time_edi_data    --データ作成時刻（ＥＤＩデータ中）
+--            ,TO_CHAR( xei.stk_date,cv_date_fmt )                              stk_date                       --在庫日付
+--            ,xei.offer_vendor_code_class                                      offer_vendor_code_class        --提供企業取引先コード区分
+--            ,xei.whse_vendor_code_class                                       whse_vendor_code_class         --倉庫取引先コード区分
+--            ,xei.offer_cycle_class                                            offer_cycle_class              --提供サイクル区分
+--            ,xei.stk_type                                                     stk_type                       --在庫種類
+--            ,xei.japanese_class                                               japanese_class                 --日本語区分
+--            ,xei.whse_class                                                   whse_class                     --倉庫区分
+--            ,NVL2( xei.vendor_code
+--                  ,xei.vendor_code
+--                  ,xca.torihikisaki_code )                                    vendor_code                    --取引先コード
+----******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+----            ,i_prf_rec.company_name || i_base_rec.base_name                   vendor_name                    --取引先名（漢字）
+----            ,NVL2( xei.vendor_name_alt
+----                  ,xei.vendor_name_alt
+----                  ,i_prf_rec.company_name_kana || i_base_rec.base_name_kana ) vendor_name_alt                --取引先名（カナ）
+--            ,i_prf_rec.company_name || cdm.base_name                          vendor_name                    --取引先名（漢字）
 --            ,NVL2( xei.vendor_name_alt
 --                  ,xei.vendor_name_alt
---                  ,i_prf_rec.company_name_kana || i_base_rec.base_name_kana ) vendor_name_alt                --取引先名（カナ）
-            ,i_prf_rec.company_name || cdm.base_name                          vendor_name                    --取引先名（漢字）
-            ,NVL2( xei.vendor_name_alt
-                  ,xei.vendor_name_alt
-                  ,i_prf_rec.company_name_kana || cdm.base_name_kana )        vendor_name_alt                --取引先名（カナ）
---******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
-            ,xei.check_digit_class                                            check_digit_class              --チェックデジット有無区分
-            ,xei.invoice_number                                               invoice_number                 --伝票番号
-            ,xei.check_digit                                                  check_digit                    --チェックデジット
-            ,xei.chain_peculiar_area_header                                   chain_peculiar_area_header     --チェーン店固有エリア（ヘッダ）
-      ------------------------------------------------------明細情報-------------------------------------------------------------
-            ,xei.product_code_itouen                                          product_code_itouen            --商品コード（伊藤園）
-            ,xei.product_code_other_party                                     product_code_other_party       --商品コード（先方）
-            ,CASE
--- 2009/02/17 T.Nakamura Ver.1.4 mod start
---               WHEN ( xei.uom_code  = i_prf_rec.case_uom_code ) THEN
-               WHEN ( xei.ebs_uom_code  = i_prf_rec.case_uom_code ) THEN
--- 2009/02/17 T.Nakamura Ver.1.4 mod end
-                 xsib.case_jan_code
-               ELSE
-                 iimb.attribute21
-             END                                                              jan_code                       --ＪＡＮコード
-            ,iimb.attribute22                                                 itf_code                       --ＩＴＦコード
-            ,NVL( ximb.item_name,i_msg_rec.item_notfound )                    product_name                   --商品名（漢字）
-            --,ximb.item_name                                                   product_name                   --商品名（漢字）
-            ,NVL2( xei.product_name_alt
-                  ,xei.product_name_alt
-                  ,ximb.item_name_alt )                                       product_name_alt               --商品名（カナ）
-            ,xhpcv.item_div_h_code                                            prod_class                     --商品区分
-            ,xei.active_quality_class                                         active_quality_class           --適用品質区分
-            ,xei.qty_in_case                                                  qty_in_case                    --入数
--- 2009/02/17 T.Nakamura Ver.1.4 mod start
+--                  ,i_prf_rec.company_name_kana || cdm.base_name_kana )        vendor_name_alt                --取引先名（カナ）
+----******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
+--            ,xei.check_digit_class                                            check_digit_class              --チェックデジット有無区分
+--            ,xei.invoice_number                                               invoice_number                 --伝票番号
+--            ,xei.check_digit                                                  check_digit                    --チェックデジット
+--            ,xei.chain_peculiar_area_header                                   chain_peculiar_area_header     --チェーン店固有エリア（ヘッダ）
+--      ------------------------------------------------------明細情報-------------------------------------------------------------
+--            ,xei.product_code_itouen                                          product_code_itouen            --商品コード（伊藤園）
+--            ,xei.product_code_other_party                                     product_code_other_party       --商品コード（先方）
+--            ,CASE
+---- 2009/02/17 T.Nakamura Ver.1.4 mod start
+----               WHEN ( xei.uom_code  = i_prf_rec.case_uom_code ) THEN
+--               WHEN ( xei.ebs_uom_code  = i_prf_rec.case_uom_code ) THEN
+---- 2009/02/17 T.Nakamura Ver.1.4 mod end
+--                 xsib.case_jan_code
+--               ELSE
+--                 iimb.attribute21
+--             END                                                              jan_code                       --ＪＡＮコード
+--            ,iimb.attribute22                                                 itf_code                       --ＩＴＦコード
+--            ,NVL( ximb.item_name,i_msg_rec.item_notfound )                    product_name                   --商品名（漢字）
+--            --,ximb.item_name                                                   product_name                   --商品名（漢字）
+--            ,NVL2( xei.product_name_alt
+--                  ,xei.product_name_alt
+--                  ,ximb.item_name_alt )                                       product_name_alt               --商品名（カナ）
+--            ,xhpcv.item_div_h_code                                            prod_class                     --商品区分
+--            ,xei.active_quality_class                                         active_quality_class           --適用品質区分
+--            ,xei.qty_in_case                                                  qty_in_case                    --入数
+---- 2009/02/17 T.Nakamura Ver.1.4 mod start
+----            ,xei.uom_code                                                     uom_code                       --単位
+---- 2009/05/27 K.Tsuboi Ver.1.8 mod start
+----            ,xei.ebs_uom_code                                                 uom_code                       --単位
 --            ,xei.uom_code                                                     uom_code                       --単位
--- 2009/05/27 K.Tsuboi Ver.1.8 mod start
---            ,xei.ebs_uom_code                                                 uom_code                       --単位
-            ,xei.uom_code                                                     uom_code                       --単位
--- 2009/05/27 K.Tsuboi Ver.1.8 mod end
--- 2009/02/17 T.Nakamura Ver.1.4 mod end
-            ,xei.day_average_shipping_qty                                     day_average_shipping_qty       --一日平均出荷数量
-            ,xei.stk_type_code                                                stk_type_code                  --在庫種別コード
-            ,TO_CHAR( xei.last_arrival_date,cv_date_fmt )                     last_arrival_date              --最終入荷日
-            ,TO_CHAR( xei.use_by_date,cv_date_fmt )                           use_by_date                    --賞味期限
-            ,TO_CHAR( xei.product_date,cv_date_fmt )                          product_date                   --製造日
-            ,xei.upper_limit_stk_case                                         upper_limit_stk_case           --上限在庫（ケース）
-            ,xei.upper_limit_stk_indv                                         upper_limit_stk_indv           --上限在庫（バラ）
-            ,xei.indv_order_point                                             indv_order_point               --発注点（バラ）
-            ,xei.case_order_point                                             case_order_point               --発注点（ケース）
-            ,xei.indv_prev_month_stk_qty                                      indv_prev_month_stk_qty        --前月末在庫数量（バラ）
-            ,xei.case_prev_month_stk_qty                                      case_prev_month_stk_qty        --前月末在庫数量（ケース）
-            ,xei.sum_prev_month_stk_qty                                       sum_prev_month_stk_qty         --前月在庫数量（合計）
-            ,xei.day_indv_order_qty                                           day_indv_order_qty             --発注数量（当日、バラ）
-            ,xei.day_case_order_qty                                           day_case_order_qty             --発注数量（当日、ケース）
-            ,xei.day_sum_order_qty                                            day_sum_order_qty              --発注数量（当日、合計）
-            ,xei.month_indv_order_qty                                         month_indv_order_qty           --発注数量（当月、バラ）
-            ,xei.month_case_order_qty                                         month_case_order_qty           --発注数量（当月、ケース）
-            ,xei.month_sum_order_qty                                          month_sum_order_qty            --発注数量（当月、合計）
-            ,xei.day_indv_arrival_qty                                         day_indv_arrival_qty           --入庫数量（当日、バラ）
-            ,xei.day_case_arrival_qty                                         day_case_arrival_qty           --入庫数量（当日、ケース）
-            ,xei.day_sum_arrival_qty                                          day_sum_arrival_qty            --入庫数量（当日、合計）
-            ,xei.month_arrival_count                                          month_arrival_count            --当月入荷回数
-            ,xei.month_indv_arrival_qty                                       month_indv_arrival_qty         --入庫数量（当月、バラ）
-            ,xei.month_case_arrival_qty                                       month_case_arrival_qty         --入庫数量（当月、ケース）
-            ,xei.month_sum_arrival_qty                                        month_sum_arrival_qty          --入庫数量（当月、合計）
-            ,xei.day_indv_shipping_qty                                        day_indv_shipping_qty          --出庫数量（当日、バラ）
-            ,xei.day_case_shipping_qty                                        day_case_shipping_qty          --出庫数量（当日、ケース）
-            ,xei.day_sum_shipping_qty                                         day_sum_shipping_qty           --出庫数量（当日、合計）
-            ,xei.month_indv_shipping_qty                                      month_indv_shipping_qty        --出庫数量（当月、バラ）
-            ,xei.month_case_shipping_qty                                      month_case_shipping_qty        --出庫数量（当月、ケース）
-            ,xei.month_sum_shipping_qty                                       month_sum_shipping_qty         --出庫数量（当月、合計）
-            ,xei.day_indv_destroy_loss_qty                                    day_indv_destroy_loss_qty      --破棄、ロス数量（当日、バラ）
-            ,xei.day_case_destroy_loss_qty                                    day_case_destroy_loss_qty      --破棄、ロス数量（当日、ケース）
-            ,xei.day_sum_destroy_loss_qty                                     day_sum_destroy_loss_qty       --破棄、ロス数量（当日、合計）
-            ,xei.month_indv_destroy_loss_qty                                  month_indv_destroy_loss_qty    --破棄、ロス数量（当月、バラ）
-            ,xei.month_case_destroy_loss_qty                                  month_case_destroy_loss_qty    --破棄、ロス数量（当月、ケース）
-            ,xei.month_sum_destroy_loss_qty                                   month_sum_destroy_loss_qty     --破棄、ロス数量（当月、合計）
-            ,xei.day_indv_defect_stk_qty                                      day_indv_defect_stk_qty        --不良在庫数量（当日、バラ）
-            ,xei.day_case_defect_stk_qty                                      day_case_defect_stk_qty        --不良在庫数量（当日、ケース）
-            ,xei.day_sum_defect_stk_qty                                       day_sum_defect_stk_qty         --不良在庫数量（当日、合計）
-            ,xei.month_indv_defect_stk_qty                                    month_indv_defect_stk_qty      --不良在庫数量（当月、バラ）
-            ,xei.month_case_defect_stk_qty                                    month_case_defect_stk_qty      --不良在庫数量（当月、ケース）
-            ,xei.month_sum_defect_stk_qty                                     month_sum_defect_stk_qty       --不良在庫数量（当月、合計）
-            ,xei.day_indv_defect_return_qty                                   day_indv_defect_return_qty     --不良返品数量（当日、バラ）
-            ,xei.day_case_defect_return_qty                                   day_case_defect_return_qty     --不良返品数量（当日、ケース）
-            ,xei.day_sum_defect_return_qty                                    day_sum_defect_return_qty      --不良返品数量（当日、合計）
-            ,xei.month_indv_defect_return_qty                                 month_indv_defect_return_qty   --不良返品数量（当月、バラ）
-            ,xei.month_case_defect_return_qty                                 month_case_defect_return_qty   --不良返品数量（当月、ケース）
-            ,xei.month_sum_defect_return_qty                                  month_sum_defect_return_qty    --不良返品数量（当月、合計）
-            ,xei.day_indv_defect_return_rcpt                                  day_indv_defect_return_rcpt    --不良返品受入（当日、バラ）
-            ,xei.day_case_defect_return_rcpt                                  day_case_defect_return_rcpt    --不良返品受入（当日、ケース）
-            ,xei.day_sum_defect_return_rcpt                                   day_sum_defect_return_rcpt     --不良返品受入（当日、合計）
-            ,xei.month_indv_defect_return_rcpt                                month_indv_defect_return_rcpt  --不良返品受入（当月、バラ）
-            ,xei.month_case_defect_return_rcpt                                month_case_defect_return_rcpt  --不良返品受入（当月、ケース）
-            ,xei.month_sum_defect_return_rcpt                                 month_sum_defect_return_rcpt   --不良返品受入（当月、合計）
-            ,xei.day_indv_defect_return_send                                  day_indv_defect_return_send    --不良返品発送（当日、バラ）
-            ,xei.day_case_defect_return_send                                  day_case_defect_return_send    --不良返品発送（当日、ケース）
-            ,xei.day_sum_defect_return_send                                   day_sum_defect_return_send     --不良返品発送（当日、合計）
-            ,xei.month_indv_defect_return_send                                month_indv_defect_return_send  --不良返品発送（当月、バラ）
-            ,xei.month_case_defect_return_send                                month_case_defect_return_send  --不良返品発送（当月、ケース）
-            ,xei.month_sum_defect_return_send                                 month_sum_defect_return_send   --不良返品発送（当月、合計）
-            ,xei.day_indv_quality_return_rcpt                                 day_indv_quality_return_rcpt   --良品返品受入（当日、バラ）
-            ,xei.day_case_quality_return_rcpt                                 day_case_quality_return_rcpt   --良品返品受入（当日、ケース）
-            ,xei.day_sum_quality_return_rcpt                                  day_sum_quality_return_rcpt    --良品返品受入（当日、合計）
-            ,xei.month_indv_quality_return_rcpt                               month_indv_quality_return_rcpt --良品返品受入（当月、バラ）
-            ,xei.month_case_quality_return_rcpt                               month_case_quality_return_rcpt --良品返品受入（当月、ケース）
-            ,xei.month_sum_quality_return_rcpt                                month_sum_quality_return_rcpt  --良品返品受入（当月、合計）
-            ,xei.day_indv_quality_return_send                                 day_indv_quality_return_send   --良品返品発送（当日、バラ）
-            ,xei.day_case_quality_return_send                                 day_case_quality_return_send   --良品返品発送（当日、ケース）
-            ,xei.day_sum_quality_return_send                                  day_sum_quality_return_send    --良品返品発送（当日、合計）
-            ,xei.month_indv_quality_return_send                               month_indv_quality_return_send --良品返品発送（当月、バラ）
-            ,xei.month_case_quality_return_send                               month_case_quality_return_send --良品返品発送（当月、ケース）
-            ,xei.month_sum_quality_return_send                                month_sum_quality_return_send  --良品返品発送（当月、合計）
-            ,xei.day_indv_invent_difference                                   day_indv_invent_difference     --棚卸差異（当日、バラ）
-            ,xei.day_case_invent_difference                                   day_case_invent_difference     --棚卸差異（当日、ケース）
-            ,xei.day_sum_invent_difference                                    day_sum_invent_difference      --棚卸差異（当日、合計）
-            ,xei.month_indv_invent_difference                                 month_indv_invent_difference   --棚卸差異（当月、バラ）
-            ,xei.month_case_invent_difference                                 month_case_invent_difference   --棚卸差異（当月、ケース）
-            ,xei.month_sum_invent_difference                                  month_sum_invent_difference    --棚卸差異（当月、合計）
-            ,xei.day_indv_stk_qty                                             day_indv_stk_qty               --在庫数量（当日、バラ）
-            ,xei.day_case_stk_qty                                             day_case_stk_qty               --在庫数量（当日、ケース）
-            ,xei.day_sum_stk_qty                                              day_sum_stk_qty                --在庫数量（当日、合計）
-            ,xei.month_indv_stk_qty                                           month_indv_stk_qty             --在庫数量（当月、バラ）
-            ,xei.month_case_stk_qty                                           month_case_stk_qty             --在庫数量（当月、ケース）
-            ,xei.month_sum_stk_qty                                            month_sum_stk_qty              --在庫数量（当月、合計）
-            ,xei.day_indv_reserved_stk_qty                                    day_indv_reserved_stk_qty      --保留在庫数（当日、バラ）
-            ,xei.day_case_reserved_stk_qty                                    day_case_reserved_stk_qty      --保留在庫数（当日、ケース）
-            ,xei.day_sum_reserved_stk_qty                                     day_sum_reserved_stk_qty       --保留在庫数（当日、合計）
-            ,xei.month_indv_reserved_stk_qty                                  month_indv_reserved_stk_qty    --保留在庫数（当月、バラ）
-            ,xei.month_case_reserved_stk_qty                                  month_case_reserved_stk_qty    --保留在庫数（当月、ケース）
-            ,xei.month_sum_reserved_stk_qty                                   month_sum_reserved_stk_qty     --保留在庫数（当月、合計）
-            ,xei.day_indv_cd_stk_qty                                          day_indv_cd_stk_qty            --商流在庫数量（当日、バラ）
-            ,xei.day_case_cd_stk_qty                                          day_case_cd_stk_qty            --商流在庫数量（当日、ケース）
-            ,xei.day_sum_cd_stk_qty                                           day_sum_cd_stk_qty             --商流在庫数量（当日、合計）
-            ,xei.month_indv_cd_stk_qty                                        month_indv_cd_stk_qty          --商流在庫数量（当月、バラ）
-            ,xei.month_case_cd_stk_qty                                        month_case_cd_stk_qty          --商流在庫数量（当月、ケース）
-            ,xei.month_sum_cd_stk_qty                                         month_sum_cd_stk_qty           --商流在庫数量（当月、合計）
-            ,xei.day_indv_cargo_stk_qty                                       day_indv_cargo_stk_qty         --積送在庫数量（当日、バラ）
-            ,xei.day_case_cargo_stk_qty                                       day_case_cargo_stk_qty         --積送在庫数量（当日、ケース）
-            ,xei.day_sum_cargo_stk_qty                                        day_sum_cargo_stk_qty          --積送在庫数量（当日、合計）
-            ,xei.month_indv_cargo_stk_qty                                     month_indv_cargo_stk_qty       --積送在庫数量（当月、バラ）
-            ,xei.month_case_cargo_stk_qty                                     month_case_cargo_stk_qty       --積送在庫数量（当月、ケース）
-            ,xei.month_sum_cargo_stk_qty                                      month_sum_cargo_stk_qty        --積送在庫数量（当月、合計）
-            ,xei.day_indv_adjustment_stk_qty                                  day_indv_adjustment_stk_qty    --調整在庫数量（当日、バラ）
-            ,xei.day_case_adjustment_stk_qty                                  day_case_adjustment_stk_qty    --調整在庫数量（当日、ケース）
-            ,xei.day_sum_adjustment_stk_qty                                   day_sum_adjustment_stk_qty     --調整在庫数量（当日、合計）
-            ,xei.month_indv_adjustment_stk_qty                                month_indv_adjustment_stk_qty  --調整在庫数量（当月、バラ）
-            ,xei.month_case_adjustment_stk_qty                                month_case_adjustment_stk_qty  --調整在庫数量（当月、ケース）
-            ,xei.month_sum_adjustment_stk_qty                                 month_sum_adjustment_stk_qty   --調整在庫数量（当月、合計）
-            ,xei.day_indv_still_shipping_qty                                  day_indv_still_shipping_qty    --未出荷数量（当日、バラ）
-            ,xei.day_case_still_shipping_qty                                  day_case_still_shipping_qty    --未出荷数量（当日、ケース）
-            ,xei.day_sum_still_shipping_qty                                   day_sum_still_shipping_qty     --未出荷数量（当日、合計）
-            ,xei.month_indv_still_shipping_qty                                month_indv_still_shipping_qty  --未出荷数量（当月、バラ）
-            ,xei.month_case_still_shipping_qty                                month_case_still_shipping_qty  --未出荷数量（当月、ケース）
-            ,xei.month_sum_still_shipping_qty                                 month_sum_still_shipping_qty   --未出荷数量（当月、合計）
-            ,xei.indv_all_stk_qty                                             indv_all_stk_qty               --総在庫数量（バラ）
-            ,xei.case_all_stk_qty                                             case_all_stk_qty               --総在庫数量（ケース）
-            ,xei.sum_all_stk_qty                                              sum_all_stk_qty                --総在庫数量（合計）
-            ,xei.month_draw_count                                             month_draw_count               --当月引当回数
-            ,xei.day_indv_draw_possible_qty                                   day_indv_draw_possible_qty     --引当可能数量（当日、バラ）
-            ,xei.day_case_draw_possible_qty                                   day_case_draw_possible_qty     --引当可能数量（当日、ケース）
-            ,xei.day_sum_draw_possible_qty                                    day_sum_draw_possible_qty      --引当可能数量（当日、合計）
-            ,xei.month_indv_draw_possible_qty                                 month_indv_draw_possible_qty   --引当可能数量（当月、バラ）
-            ,xei.month_case_draw_possible_qty                                 month_case_draw_possible_qty   --引当可能数量（当月、ケース）
-            ,xei.month_sum_draw_possible_qty                                  month_sum_draw_possible_qty    --引当可能数量（当月、合計）
-            ,xei.day_indv_draw_impossible_qty                                 day_indv_draw_impossible_qty   --引当不能数（当日、バラ）
-            ,xei.day_case_draw_impossible_qty                                 day_case_draw_impossible_qty   --引当不能数（当日、ケース）
-            ,xei.day_sum_draw_impossible_qty                                  day_sum_draw_impossible_qty    --引当不能数（当日、合計）
-            ,xei.day_stk_amt                                                  day_stk_amt                    --在庫金額（当日）
-            ,xei.month_stk_amt                                                month_stk_amt                  --在庫金額（当月）
-            ,xei.remarks                                                      remarks                        --備考
-            ,xei.chain_peculiar_area_line                                     chain_peculiar_area_line       --チェーン店固有エリア（明細）
-      ------------------------------------------------------フッタ情報------------------------------------------------------------
-            ,xei.invoice_day_indv_sum_stk_qty                                 invoice_day_indv_sum_stk_qty   --（計）在庫数量合計（当日、バラ）
-            ,xei.invoice_day_case_sum_stk_qty                                 invoice_day_case_sum_stk_qty   --（計）在庫数量合計（当日、ケース）
-            ,xei.invoice_day_sum_sum_stk_qty                                  invoice_day_sum_sum_stk_qty    --（計）在庫数量合計（当日、合計）
-            ,xei.invoice_month_indv_sum_stk_qty                               invoice_month_indv_sum_stk_qty --（計）在庫数量合計（当月、バラ）
-            ,xei.invoice_month_case_sum_stk_qty                               invoice_month_case_sum_stk_qty --（計）在庫数量合計（当月、ケース）
-            ,xei.invoice_month_sum_sum_stk_qty                                invoice_month_sum_sum_stk_qty  --（計）在庫数量合計（当月、合計）
-            ,xei.invoice_day_indv_cd_stk_qty                                  invoice_day_indv_cd_stk_qty    --（計）商流在庫数量（当日、バラ）
-            ,xei.invoice_day_case_cd_stk_qty                                  invoice_day_case_cd_stk_qty    --（計）商流在庫数量（当日、ケース）
-            ,xei.invoice_day_sum_cd_stk_qty                                   invoice_day_sum_cd_stk_qty     --（計）商流在庫数量（当日、合計）
-            ,xei.invoice_month_indv_cd_stk_qty                                invoice_month_indv_cd_stk_qty  --（計）商流在庫数量（当月、バラ）
-            ,xei.invoice_month_case_cd_stk_qty                                invoice_month_case_cd_stk_qty  --（計）商流在庫数量（当月、ケース）
-            ,xei.invoice_month_sum_cd_stk_qty                                 invoice_month_sum_cd_stk_qty   --（計）商流在庫数量（当月、合計）
-            ,xei.invoice_day_stk_amt                                          invoice_day_stk_amt            --（計）在庫金額（当日）
-            ,xei.invoice_month_stk_amt                                        invoice_month_stk_amt          --（計）在庫金額（当月）
-            ,xei.regular_sell_amt_sum                                         regular_sell_amt_sum           --正販金額合計
-            ,xei.rebate_amt_sum                                               rebate_amt_sum                 --割戻し金額合計
-            ,xei.collect_bottle_amt_sum                                       collect_bottle_amt_sum         --回収容器金額合計
-            ,xei.chain_peculiar_area_footer                                   chain_peculiar_area_footer     --チェーン店固有エリア（フッター）
-      --抽出条件
-      FROM   xxcos_edi_inventory                                              xei                            --EDI在庫情報テーブル
-            ,xxcmm_cust_accounts                                              xca                            --顧客マスタアドオン
-            ,hz_cust_accounts                                                 hca                            --顧客マスタ
-            ,hz_parties                                                       hp                             --パーティマスタ
-            ,ic_item_mst_b                                                    iimb                           --OPM品目マスタ
-            ,xxcmn_item_mst_b                                                 ximb                           --OPM品目マスタアドオン
-            ,mtl_system_items_b                                               msib                           --DISC品目マスタ
-            ,xxcmm_system_items_b                                             xsib                           --DISC品目マスタアドオン
-            ,xxcos_head_prod_class_v                                          xhpcv                          --本社商品区分ビュー
-            ,xxcos_chain_store_security_v                                     xcss                           --チェーン店店舗セキュリティビュー
---******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
-            ,(
-              SELECT hca.account_number                                         account_number               --顧客コード
-                    ,hp.party_name                                              base_name                    --顧客名称
-                    ,hp.organization_name_phonetic                              base_name_kana               --顧客名称(カナ)
-              FROM   hz_cust_accounts                                           hca                          --顧客マスタ
-                    ,xxcmm_cust_accounts                                        xca                          --顧客マスタアドオン
-                    ,hz_parties                                                 hp                           --パーティマスタ
-              WHERE  hca.customer_class_code = cv_cust_class_base
-              AND    xca.customer_id         = hca.cust_account_id
-              AND    hp.party_id             = hca.party_id
-             )                                                                  cdm
---******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
-    --EDI在庫情報テーブル
-    WHERE  xei.data_type_code             = i_input_rec.data_type_code                                       --データ種コード
-      AND  ( i_input_rec.info_class        IS NOT NULL                                                       --情報区分
-         AND xei.info_class               = i_input_rec.info_class
-         OR  i_input_rec.info_class        IS NULL
-      )
-      AND  ( xei.edi_chain_code           = i_input_rec.chain_code )                                         --チェーン店コード
---******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
---      AND  ( i_input_rec.store_code        IS NOT NULL                                                       --店舗コード
---         AND  xei.shop_code               = i_input_rec.store_code
---         AND  xei.shop_code = xcss.chain_store_code
---         OR   i_input_rec.store_code       IS NULL
---         AND  xei.shop_code               = xcss.chain_store_code
+---- 2009/05/27 K.Tsuboi Ver.1.8 mod end
+---- 2009/02/17 T.Nakamura Ver.1.4 mod end
+--            ,xei.day_average_shipping_qty                                     day_average_shipping_qty       --一日平均出荷数量
+--            ,xei.stk_type_code                                                stk_type_code                  --在庫種別コード
+--            ,TO_CHAR( xei.last_arrival_date,cv_date_fmt )                     last_arrival_date              --最終入荷日
+--            ,TO_CHAR( xei.use_by_date,cv_date_fmt )                           use_by_date                    --賞味期限
+--            ,TO_CHAR( xei.product_date,cv_date_fmt )                          product_date                   --製造日
+--            ,xei.upper_limit_stk_case                                         upper_limit_stk_case           --上限在庫（ケース）
+--            ,xei.upper_limit_stk_indv                                         upper_limit_stk_indv           --上限在庫（バラ）
+--            ,xei.indv_order_point                                             indv_order_point               --発注点（バラ）
+--            ,xei.case_order_point                                             case_order_point               --発注点（ケース）
+--            ,xei.indv_prev_month_stk_qty                                      indv_prev_month_stk_qty        --前月末在庫数量（バラ）
+--            ,xei.case_prev_month_stk_qty                                      case_prev_month_stk_qty        --前月末在庫数量（ケース）
+--            ,xei.sum_prev_month_stk_qty                                       sum_prev_month_stk_qty         --前月在庫数量（合計）
+--            ,xei.day_indv_order_qty                                           day_indv_order_qty             --発注数量（当日、バラ）
+--            ,xei.day_case_order_qty                                           day_case_order_qty             --発注数量（当日、ケース）
+--            ,xei.day_sum_order_qty                                            day_sum_order_qty              --発注数量（当日、合計）
+--            ,xei.month_indv_order_qty                                         month_indv_order_qty           --発注数量（当月、バラ）
+--            ,xei.month_case_order_qty                                         month_case_order_qty           --発注数量（当月、ケース）
+--            ,xei.month_sum_order_qty                                          month_sum_order_qty            --発注数量（当月、合計）
+--            ,xei.day_indv_arrival_qty                                         day_indv_arrival_qty           --入庫数量（当日、バラ）
+--            ,xei.day_case_arrival_qty                                         day_case_arrival_qty           --入庫数量（当日、ケース）
+--            ,xei.day_sum_arrival_qty                                          day_sum_arrival_qty            --入庫数量（当日、合計）
+--            ,xei.month_arrival_count                                          month_arrival_count            --当月入荷回数
+--            ,xei.month_indv_arrival_qty                                       month_indv_arrival_qty         --入庫数量（当月、バラ）
+--            ,xei.month_case_arrival_qty                                       month_case_arrival_qty         --入庫数量（当月、ケース）
+--            ,xei.month_sum_arrival_qty                                        month_sum_arrival_qty          --入庫数量（当月、合計）
+--            ,xei.day_indv_shipping_qty                                        day_indv_shipping_qty          --出庫数量（当日、バラ）
+--            ,xei.day_case_shipping_qty                                        day_case_shipping_qty          --出庫数量（当日、ケース）
+--            ,xei.day_sum_shipping_qty                                         day_sum_shipping_qty           --出庫数量（当日、合計）
+--            ,xei.month_indv_shipping_qty                                      month_indv_shipping_qty        --出庫数量（当月、バラ）
+--            ,xei.month_case_shipping_qty                                      month_case_shipping_qty        --出庫数量（当月、ケース）
+--            ,xei.month_sum_shipping_qty                                       month_sum_shipping_qty         --出庫数量（当月、合計）
+--            ,xei.day_indv_destroy_loss_qty                                    day_indv_destroy_loss_qty      --破棄、ロス数量（当日、バラ）
+--            ,xei.day_case_destroy_loss_qty                                    day_case_destroy_loss_qty      --破棄、ロス数量（当日、ケース）
+--            ,xei.day_sum_destroy_loss_qty                                     day_sum_destroy_loss_qty       --破棄、ロス数量（当日、合計）
+--            ,xei.month_indv_destroy_loss_qty                                  month_indv_destroy_loss_qty    --破棄、ロス数量（当月、バラ）
+--            ,xei.month_case_destroy_loss_qty                                  month_case_destroy_loss_qty    --破棄、ロス数量（当月、ケース）
+--            ,xei.month_sum_destroy_loss_qty                                   month_sum_destroy_loss_qty     --破棄、ロス数量（当月、合計）
+--            ,xei.day_indv_defect_stk_qty                                      day_indv_defect_stk_qty        --不良在庫数量（当日、バラ）
+--            ,xei.day_case_defect_stk_qty                                      day_case_defect_stk_qty        --不良在庫数量（当日、ケース）
+--            ,xei.day_sum_defect_stk_qty                                       day_sum_defect_stk_qty         --不良在庫数量（当日、合計）
+--            ,xei.month_indv_defect_stk_qty                                    month_indv_defect_stk_qty      --不良在庫数量（当月、バラ）
+--            ,xei.month_case_defect_stk_qty                                    month_case_defect_stk_qty      --不良在庫数量（当月、ケース）
+--            ,xei.month_sum_defect_stk_qty                                     month_sum_defect_stk_qty       --不良在庫数量（当月、合計）
+--            ,xei.day_indv_defect_return_qty                                   day_indv_defect_return_qty     --不良返品数量（当日、バラ）
+--            ,xei.day_case_defect_return_qty                                   day_case_defect_return_qty     --不良返品数量（当日、ケース）
+--            ,xei.day_sum_defect_return_qty                                    day_sum_defect_return_qty      --不良返品数量（当日、合計）
+--            ,xei.month_indv_defect_return_qty                                 month_indv_defect_return_qty   --不良返品数量（当月、バラ）
+--            ,xei.month_case_defect_return_qty                                 month_case_defect_return_qty   --不良返品数量（当月、ケース）
+--            ,xei.month_sum_defect_return_qty                                  month_sum_defect_return_qty    --不良返品数量（当月、合計）
+--            ,xei.day_indv_defect_return_rcpt                                  day_indv_defect_return_rcpt    --不良返品受入（当日、バラ）
+--            ,xei.day_case_defect_return_rcpt                                  day_case_defect_return_rcpt    --不良返品受入（当日、ケース）
+--            ,xei.day_sum_defect_return_rcpt                                   day_sum_defect_return_rcpt     --不良返品受入（当日、合計）
+--            ,xei.month_indv_defect_return_rcpt                                month_indv_defect_return_rcpt  --不良返品受入（当月、バラ）
+--            ,xei.month_case_defect_return_rcpt                                month_case_defect_return_rcpt  --不良返品受入（当月、ケース）
+--            ,xei.month_sum_defect_return_rcpt                                 month_sum_defect_return_rcpt   --不良返品受入（当月、合計）
+--            ,xei.day_indv_defect_return_send                                  day_indv_defect_return_send    --不良返品発送（当日、バラ）
+--            ,xei.day_case_defect_return_send                                  day_case_defect_return_send    --不良返品発送（当日、ケース）
+--            ,xei.day_sum_defect_return_send                                   day_sum_defect_return_send     --不良返品発送（当日、合計）
+--            ,xei.month_indv_defect_return_send                                month_indv_defect_return_send  --不良返品発送（当月、バラ）
+--            ,xei.month_case_defect_return_send                                month_case_defect_return_send  --不良返品発送（当月、ケース）
+--            ,xei.month_sum_defect_return_send                                 month_sum_defect_return_send   --不良返品発送（当月、合計）
+--            ,xei.day_indv_quality_return_rcpt                                 day_indv_quality_return_rcpt   --良品返品受入（当日、バラ）
+--            ,xei.day_case_quality_return_rcpt                                 day_case_quality_return_rcpt   --良品返品受入（当日、ケース）
+--            ,xei.day_sum_quality_return_rcpt                                  day_sum_quality_return_rcpt    --良品返品受入（当日、合計）
+--            ,xei.month_indv_quality_return_rcpt                               month_indv_quality_return_rcpt --良品返品受入（当月、バラ）
+--            ,xei.month_case_quality_return_rcpt                               month_case_quality_return_rcpt --良品返品受入（当月、ケース）
+--            ,xei.month_sum_quality_return_rcpt                                month_sum_quality_return_rcpt  --良品返品受入（当月、合計）
+--            ,xei.day_indv_quality_return_send                                 day_indv_quality_return_send   --良品返品発送（当日、バラ）
+--            ,xei.day_case_quality_return_send                                 day_case_quality_return_send   --良品返品発送（当日、ケース）
+--            ,xei.day_sum_quality_return_send                                  day_sum_quality_return_send    --良品返品発送（当日、合計）
+--            ,xei.month_indv_quality_return_send                               month_indv_quality_return_send --良品返品発送（当月、バラ）
+--            ,xei.month_case_quality_return_send                               month_case_quality_return_send --良品返品発送（当月、ケース）
+--            ,xei.month_sum_quality_return_send                                month_sum_quality_return_send  --良品返品発送（当月、合計）
+--            ,xei.day_indv_invent_difference                                   day_indv_invent_difference     --棚卸差異（当日、バラ）
+--            ,xei.day_case_invent_difference                                   day_case_invent_difference     --棚卸差異（当日、ケース）
+--            ,xei.day_sum_invent_difference                                    day_sum_invent_difference      --棚卸差異（当日、合計）
+--            ,xei.month_indv_invent_difference                                 month_indv_invent_difference   --棚卸差異（当月、バラ）
+--            ,xei.month_case_invent_difference                                 month_case_invent_difference   --棚卸差異（当月、ケース）
+--            ,xei.month_sum_invent_difference                                  month_sum_invent_difference    --棚卸差異（当月、合計）
+--            ,xei.day_indv_stk_qty                                             day_indv_stk_qty               --在庫数量（当日、バラ）
+--            ,xei.day_case_stk_qty                                             day_case_stk_qty               --在庫数量（当日、ケース）
+--            ,xei.day_sum_stk_qty                                              day_sum_stk_qty                --在庫数量（当日、合計）
+--            ,xei.month_indv_stk_qty                                           month_indv_stk_qty             --在庫数量（当月、バラ）
+--            ,xei.month_case_stk_qty                                           month_case_stk_qty             --在庫数量（当月、ケース）
+--            ,xei.month_sum_stk_qty                                            month_sum_stk_qty              --在庫数量（当月、合計）
+--            ,xei.day_indv_reserved_stk_qty                                    day_indv_reserved_stk_qty      --保留在庫数（当日、バラ）
+--            ,xei.day_case_reserved_stk_qty                                    day_case_reserved_stk_qty      --保留在庫数（当日、ケース）
+--            ,xei.day_sum_reserved_stk_qty                                     day_sum_reserved_stk_qty       --保留在庫数（当日、合計）
+--            ,xei.month_indv_reserved_stk_qty                                  month_indv_reserved_stk_qty    --保留在庫数（当月、バラ）
+--            ,xei.month_case_reserved_stk_qty                                  month_case_reserved_stk_qty    --保留在庫数（当月、ケース）
+--            ,xei.month_sum_reserved_stk_qty                                   month_sum_reserved_stk_qty     --保留在庫数（当月、合計）
+--            ,xei.day_indv_cd_stk_qty                                          day_indv_cd_stk_qty            --商流在庫数量（当日、バラ）
+--            ,xei.day_case_cd_stk_qty                                          day_case_cd_stk_qty            --商流在庫数量（当日、ケース）
+--            ,xei.day_sum_cd_stk_qty                                           day_sum_cd_stk_qty             --商流在庫数量（当日、合計）
+--            ,xei.month_indv_cd_stk_qty                                        month_indv_cd_stk_qty          --商流在庫数量（当月、バラ）
+--            ,xei.month_case_cd_stk_qty                                        month_case_cd_stk_qty          --商流在庫数量（当月、ケース）
+--            ,xei.month_sum_cd_stk_qty                                         month_sum_cd_stk_qty           --商流在庫数量（当月、合計）
+--            ,xei.day_indv_cargo_stk_qty                                       day_indv_cargo_stk_qty         --積送在庫数量（当日、バラ）
+--            ,xei.day_case_cargo_stk_qty                                       day_case_cargo_stk_qty         --積送在庫数量（当日、ケース）
+--            ,xei.day_sum_cargo_stk_qty                                        day_sum_cargo_stk_qty          --積送在庫数量（当日、合計）
+--            ,xei.month_indv_cargo_stk_qty                                     month_indv_cargo_stk_qty       --積送在庫数量（当月、バラ）
+--            ,xei.month_case_cargo_stk_qty                                     month_case_cargo_stk_qty       --積送在庫数量（当月、ケース）
+--            ,xei.month_sum_cargo_stk_qty                                      month_sum_cargo_stk_qty        --積送在庫数量（当月、合計）
+--            ,xei.day_indv_adjustment_stk_qty                                  day_indv_adjustment_stk_qty    --調整在庫数量（当日、バラ）
+--            ,xei.day_case_adjustment_stk_qty                                  day_case_adjustment_stk_qty    --調整在庫数量（当日、ケース）
+--            ,xei.day_sum_adjustment_stk_qty                                   day_sum_adjustment_stk_qty     --調整在庫数量（当日、合計）
+--            ,xei.month_indv_adjustment_stk_qty                                month_indv_adjustment_stk_qty  --調整在庫数量（当月、バラ）
+--            ,xei.month_case_adjustment_stk_qty                                month_case_adjustment_stk_qty  --調整在庫数量（当月、ケース）
+--            ,xei.month_sum_adjustment_stk_qty                                 month_sum_adjustment_stk_qty   --調整在庫数量（当月、合計）
+--            ,xei.day_indv_still_shipping_qty                                  day_indv_still_shipping_qty    --未出荷数量（当日、バラ）
+--            ,xei.day_case_still_shipping_qty                                  day_case_still_shipping_qty    --未出荷数量（当日、ケース）
+--            ,xei.day_sum_still_shipping_qty                                   day_sum_still_shipping_qty     --未出荷数量（当日、合計）
+--            ,xei.month_indv_still_shipping_qty                                month_indv_still_shipping_qty  --未出荷数量（当月、バラ）
+--            ,xei.month_case_still_shipping_qty                                month_case_still_shipping_qty  --未出荷数量（当月、ケース）
+--            ,xei.month_sum_still_shipping_qty                                 month_sum_still_shipping_qty   --未出荷数量（当月、合計）
+--            ,xei.indv_all_stk_qty                                             indv_all_stk_qty               --総在庫数量（バラ）
+--            ,xei.case_all_stk_qty                                             case_all_stk_qty               --総在庫数量（ケース）
+--            ,xei.sum_all_stk_qty                                              sum_all_stk_qty                --総在庫数量（合計）
+--            ,xei.month_draw_count                                             month_draw_count               --当月引当回数
+--            ,xei.day_indv_draw_possible_qty                                   day_indv_draw_possible_qty     --引当可能数量（当日、バラ）
+--            ,xei.day_case_draw_possible_qty                                   day_case_draw_possible_qty     --引当可能数量（当日、ケース）
+--            ,xei.day_sum_draw_possible_qty                                    day_sum_draw_possible_qty      --引当可能数量（当日、合計）
+--            ,xei.month_indv_draw_possible_qty                                 month_indv_draw_possible_qty   --引当可能数量（当月、バラ）
+--            ,xei.month_case_draw_possible_qty                                 month_case_draw_possible_qty   --引当可能数量（当月、ケース）
+--            ,xei.month_sum_draw_possible_qty                                  month_sum_draw_possible_qty    --引当可能数量（当月、合計）
+--            ,xei.day_indv_draw_impossible_qty                                 day_indv_draw_impossible_qty   --引当不能数（当日、バラ）
+--            ,xei.day_case_draw_impossible_qty                                 day_case_draw_impossible_qty   --引当不能数（当日、ケース）
+--            ,xei.day_sum_draw_impossible_qty                                  day_sum_draw_impossible_qty    --引当不能数（当日、合計）
+--            ,xei.day_stk_amt                                                  day_stk_amt                    --在庫金額（当日）
+--            ,xei.month_stk_amt                                                month_stk_amt                  --在庫金額（当月）
+--            ,xei.remarks                                                      remarks                        --備考
+--            ,xei.chain_peculiar_area_line                                     chain_peculiar_area_line       --チェーン店固有エリア（明細）
+--      ------------------------------------------------------フッタ情報------------------------------------------------------------
+--            ,xei.invoice_day_indv_sum_stk_qty                                 invoice_day_indv_sum_stk_qty   --（計）在庫数量合計（当日、バラ）
+--            ,xei.invoice_day_case_sum_stk_qty                                 invoice_day_case_sum_stk_qty   --（計）在庫数量合計（当日、ケース）
+--            ,xei.invoice_day_sum_sum_stk_qty                                  invoice_day_sum_sum_stk_qty    --（計）在庫数量合計（当日、合計）
+--            ,xei.invoice_month_indv_sum_stk_qty                               invoice_month_indv_sum_stk_qty --（計）在庫数量合計（当月、バラ）
+--            ,xei.invoice_month_case_sum_stk_qty                               invoice_month_case_sum_stk_qty --（計）在庫数量合計（当月、ケース）
+--            ,xei.invoice_month_sum_sum_stk_qty                                invoice_month_sum_sum_stk_qty  --（計）在庫数量合計（当月、合計）
+--            ,xei.invoice_day_indv_cd_stk_qty                                  invoice_day_indv_cd_stk_qty    --（計）商流在庫数量（当日、バラ）
+--            ,xei.invoice_day_case_cd_stk_qty                                  invoice_day_case_cd_stk_qty    --（計）商流在庫数量（当日、ケース）
+--            ,xei.invoice_day_sum_cd_stk_qty                                   invoice_day_sum_cd_stk_qty     --（計）商流在庫数量（当日、合計）
+--            ,xei.invoice_month_indv_cd_stk_qty                                invoice_month_indv_cd_stk_qty  --（計）商流在庫数量（当月、バラ）
+--            ,xei.invoice_month_case_cd_stk_qty                                invoice_month_case_cd_stk_qty  --（計）商流在庫数量（当月、ケース）
+--            ,xei.invoice_month_sum_cd_stk_qty                                 invoice_month_sum_cd_stk_qty   --（計）商流在庫数量（当月、合計）
+--            ,xei.invoice_day_stk_amt                                          invoice_day_stk_amt            --（計）在庫金額（当日）
+--            ,xei.invoice_month_stk_amt                                        invoice_month_stk_amt          --（計）在庫金額（当月）
+--            ,xei.regular_sell_amt_sum                                         regular_sell_amt_sum           --正販金額合計
+--            ,xei.rebate_amt_sum                                               rebate_amt_sum                 --割戻し金額合計
+--            ,xei.collect_bottle_amt_sum                                       collect_bottle_amt_sum         --回収容器金額合計
+--            ,xei.chain_peculiar_area_footer                                   chain_peculiar_area_footer     --チェーン店固有エリア（フッター）
+--      --抽出条件
+--      FROM   xxcos_edi_inventory                                              xei                            --EDI在庫情報テーブル
+--            ,xxcmm_cust_accounts                                              xca                            --顧客マスタアドオン
+--            ,hz_cust_accounts                                                 hca                            --顧客マスタ
+--            ,hz_parties                                                       hp                             --パーティマスタ
+--            ,ic_item_mst_b                                                    iimb                           --OPM品目マスタ
+--            ,xxcmn_item_mst_b                                                 ximb                           --OPM品目マスタアドオン
+--            ,mtl_system_items_b                                               msib                           --DISC品目マスタ
+--            ,xxcmm_system_items_b                                             xsib                           --DISC品目マスタアドオン
+--            ,xxcos_head_prod_class_v                                          xhpcv                          --本社商品区分ビュー
+--            ,xxcos_chain_store_security_v                                     xcss                           --チェーン店店舗セキュリティビュー
+----******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+--            ,(
+--              SELECT hca.account_number                                         account_number               --顧客コード
+--                    ,hp.party_name                                              base_name                    --顧客名称
+--                    ,hp.organization_name_phonetic                              base_name_kana               --顧客名称(カナ)
+--              FROM   hz_cust_accounts                                           hca                          --顧客マスタ
+--                    ,xxcmm_cust_accounts                                        xca                          --顧客マスタアドオン
+--                    ,hz_parties                                                 hp                           --パーティマスタ
+--              WHERE  hca.customer_class_code = cv_cust_class_base
+--              AND    xca.customer_id         = hca.cust_account_id
+--              AND    hp.party_id             = hca.party_id
+--             )                                                                  cdm
+----******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
+--    --EDI在庫情報テーブル
+--    WHERE  xei.data_type_code             = i_input_rec.data_type_code                                       --データ種コード
+--      AND  ( i_input_rec.info_class        IS NOT NULL                                                       --情報区分
+--         AND xei.info_class               = i_input_rec.info_class
+--         OR  i_input_rec.info_class        IS NULL
 --      )
-      AND  xei.shop_code                  = NVL( i_input_rec.store_code, xei.shop_code )                     --店舗コード
---******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
-      AND   TRUNC(xei.data_creation_date_edi_data)                                                           --データ作成日
-             BETWEEN TO_DATE(i_input_rec.edi_date_from, cv_date_fmt )
-             AND     TO_DATE(i_input_rec.edi_date_to  , cv_date_fmt )
-      AND  ( i_input_rec.item_class      != cv_prod_class_all                                                --商品区分
-         AND NVL( xhpcv.item_div_h_code,cv_item_div_h_code_A )
-                                          = i_input_rec.item_class
-         OR  i_input_rec.item_class       = cv_prod_class_all )
-    --顧客アドオン
-      AND  xca.chain_store_code(+)        = xei.edi_chain_code                                               --チェーン店コード
-      AND  xca.store_code(+)              = xei.shop_code                                                    --店舗コード
-    --顧客マスタ
-      AND  ( hca.cust_account_id(+)       = xca.customer_id )                                                --顧客ID
-      AND   ( hca.cust_account_id IS NOT NULL
-        AND   hca.customer_class_code IN ( cv_cust_class_chain_store, cv_cust_class_uesama )
-        OR    hca.cust_account_id IS NULL
-             )                                                                                               --顧客区分
-    --パーティマスタ
-      AND hp.party_id(+) = hca.party_id
-    --OPM品目マスタ
-      AND  iimb.item_no(+)                = xei.item_code                                                    --品目コード
-    --OPM品目アドオン
-      AND  ximb.item_id(+)                = iimb.item_id                                                     --品目ID
-      AND  NVL( xei.center_delivery_date
-              ,NVL( xei.order_date
-                   ,data_creation_date_edi_data ) )
-              BETWEEN ( NVL( ximb.start_date_active                                                          --適用開始日
-                                  ,NVL( xei.center_delivery_date
-                                       ,NVL( xei.order_date
-                                             ,data_creation_date_edi_data  ) ) ) )
-              AND     ( NVL( ximb.end_date_active                                                            --適用終了日
-                                   ,NVL( xei.center_delivery_date
-                                         ,NVL( xei.order_date
-                                             ,data_creation_date_edi_data  ) ) ) )
-    --DISC品目マスタ
-      AND  msib.segment1(+)               = xei.item_code
-      AND  msib.organization_id(+)        = i_other_rec.organization_id                                      --在庫組織ID
-    --DISC品目アドオン
-      AND  xsib.item_code(+)              = msib.segment1                                                    --品目コード
-    --商品区分VIEW
-      AND  xhpcv.segment1(+)              = iimb.item_no                                                     --品目ID
-    --店舗セキュリティVIEW
---******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
---      AND  xcss.chain_code                = i_input_rec.chain_code                                         --チェーン店コード
---      AND  xcss.user_id                   = i_input_rec.user_id                                            --ユーザID
-      AND  xcss.chain_code(+)             = xei.edi_chain_code                                               --チェーン店コード
-      AND  xcss.chain_store_code(+)       = xei.shop_code                                                    --店コード
-      AND  xcss.user_id(+)                = i_input_rec.user_id                                              --ユーザID
---******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
---******************************************* 2009/04/02 1.7 T.Kitajima ADD START *************************************
-      AND xca.delivery_base_code          = cdm.account_number(+)
---******************************************* 2009/04/02 1.7 T.Kitajima ADD  END  *************************************
+--      AND  ( xei.edi_chain_code           = i_input_rec.chain_code )                                         --チェーン店コード
+----******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+----      AND  ( i_input_rec.store_code        IS NOT NULL                                                       --店舗コード
+----         AND  xei.shop_code               = i_input_rec.store_code
+----         AND  xei.shop_code = xcss.chain_store_code
+----         OR   i_input_rec.store_code       IS NULL
+----         AND  xei.shop_code               = xcss.chain_store_code
+----      )
+--      AND  xei.shop_code                  = NVL( i_input_rec.store_code, xei.shop_code )                     --店舗コード
+----******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
+--      AND   TRUNC(xei.data_creation_date_edi_data)                                                           --データ作成日
+--             BETWEEN TO_DATE(i_input_rec.edi_date_from, cv_date_fmt )
+--             AND     TO_DATE(i_input_rec.edi_date_to  , cv_date_fmt )
+--      AND  ( i_input_rec.item_class      != cv_prod_class_all                                                --商品区分
+--         AND NVL( xhpcv.item_div_h_code,cv_item_div_h_code_A )
+--                                          = i_input_rec.item_class
+--         OR  i_input_rec.item_class       = cv_prod_class_all )
+--    --顧客アドオン
+--      AND  xca.chain_store_code(+)        = xei.edi_chain_code                                               --チェーン店コード
+--      AND  xca.store_code(+)              = xei.shop_code                                                    --店舗コード
+--    --顧客マスタ
+--      AND  ( hca.cust_account_id(+)       = xca.customer_id )                                                --顧客ID
+--      AND   ( hca.cust_account_id IS NOT NULL
+--        AND   hca.customer_class_code IN ( cv_cust_class_chain_store, cv_cust_class_uesama )
+--        OR    hca.cust_account_id IS NULL
+--             )                                                                                               --顧客区分
+--    --パーティマスタ
+--      AND hp.party_id(+) = hca.party_id
+--    --OPM品目マスタ
+--      AND  iimb.item_no(+)                = xei.item_code                                                    --品目コード
+--    --OPM品目アドオン
+--      AND  ximb.item_id(+)                = iimb.item_id                                                     --品目ID
+--      AND  NVL( xei.center_delivery_date
+--              ,NVL( xei.order_date
+--                   ,data_creation_date_edi_data ) )
+--              BETWEEN ( NVL( ximb.start_date_active                                                          --適用開始日
+--                                  ,NVL( xei.center_delivery_date
+--                                       ,NVL( xei.order_date
+--                                             ,data_creation_date_edi_data  ) ) ) )
+--              AND     ( NVL( ximb.end_date_active                                                            --適用終了日
+--                                   ,NVL( xei.center_delivery_date
+--                                         ,NVL( xei.order_date
+--                                             ,data_creation_date_edi_data  ) ) ) )
+--    --DISC品目マスタ
+--      AND  msib.segment1(+)               = xei.item_code
+--      AND  msib.organization_id(+)        = i_other_rec.organization_id                                      --在庫組織ID
+--    --DISC品目アドオン
+--      AND  xsib.item_code(+)              = msib.segment1                                                    --品目コード
+--    --商品区分VIEW
+--      AND  xhpcv.segment1(+)              = iimb.item_no                                                     --品目ID
+--    --店舗セキュリティVIEW
+----******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+----      AND  xcss.chain_code                = i_input_rec.chain_code                                         --チェーン店コード
+----      AND  xcss.user_id                   = i_input_rec.user_id                                            --ユーザID
+--      AND  xcss.chain_code(+)             = xei.edi_chain_code                                               --チェーン店コード
+--      AND  xcss.chain_store_code(+)       = xei.shop_code                                                    --店コード
+--      AND  xcss.user_id(+)                = i_input_rec.user_id                                              --ユーザID
+----******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
+----******************************************* 2009/04/02 1.7 T.Kitajima ADD START *************************************
+--      AND xca.delivery_base_code          = cdm.account_number(+)
+----******************************************* 2009/04/02 1.7 T.Kitajima ADD  END  *************************************
+      SELECT
+              xei.medium_class                                                 medium_class                   --媒体区分
+             ,xei.data_type_code                                               data_type_code                 --データ種コード
+             ,xei.file_no                                                      file_no                        --ファイルＮｏ
+             ,xei.info_class                                                   info_class                     --情報区分
+             ,i_other_rec.proc_date                                            process_date                   --処理日
+             ,i_other_rec.proc_time                                            process_time                   --処理時刻
+--******************************************* 2009/06/18 1.9 T.Kitajima MOD  START  *************************************
+--             ,cdm.account_number                                                 base_code                     --拠点（部門）コード
+--             ,DECODE( cdm.account_number
+--                     ,NULL
+--                     ,g_msg_rec.customer_notfound
+--                     ,cdm.base_name
+--              )                                                                  base_name                     --拠点名（正式名）
+--             ,cdm.base_name_kana                                                 base_name_alt                 --拠点名（カナ）
+             ,DECODE( xei.conv_customer_code
+                     ,NULL
+                     ,i_input_rec.base_code
+                     ,cdm.account_number
+              )                                                                base_code                      --拠点（部門）コード
+             ,CASE
+                WHEN ( xei.conv_customer_code IS NULL ) THEN
+                  i_input_rec.base_name
+                WHEN ( cdm.account_number IS NULL ) THEN
+                  g_msg_rec.customer_notfound
+                ELSE
+                  cdm.base_name
+              END                                                              base_name                      --拠点名（正式名）
+             ,DECODE( xei.conv_customer_code
+                     ,NULL
+                     ,i_base_rec.base_name_kana
+                     ,cdm.base_name_kana
+              )                                                                base_name_alt                  --拠点名（カナ）
+--******************************************* 2009/06/18 1.9 T.Kitajima MOD  END    *************************************
+             ,xei.edi_chain_code                                               edi_chain_code                 --ＥＤＩチェーン店コード
+             ,i_chain_rec.chain_name                                           edi_chain_name                 --ＥＤＩチェーン店名（漢字）
+             ,i_chain_rec.chain_name_kana                                      edi_chain_name_alt             --ＥＤＩチェーン店名（カナ）
+             ,i_input_rec.report_code                                          report_code                    --帳票コード
+             ,i_input_rec.report_name                                          report_show_name               --帳票表示名
+             ,xei.account_number                                               customer_code                  --顧客コード
+             ,xei.party_name                                                   customer_name                  --顧客名（漢字）
+             ,xei.organization_name_phonetic                                   customer_name_alt              --顧客名（カナ）
+             ,xei.company_code                                                 company_code                   --社コード
+             ,xei.company_name_alt                                             company_name_alt               --社名（カナ）
+             ,xei.shop_code                                                    shop_code                      --店コード
+             ,NVL2( xei.shop_name_alt
+                   ,xei.shop_name_alt
+                   ,xei.organization_name_phonetic )                           shop_name_alt                  --店名（カナ）
+             ,NVL2( xei.delivery_center_code
+                   ,xei.delivery_center_code
+                   ,xei.deli_center_code )                                     delivery_center_code           --納入センターコード
+             ,NVL2( xei.delivery_center_name
+                   ,xei.delivery_center_name
+                   ,xei.deli_center_name )                                     delivery_center_name           --納入センター名（漢字）
+             ,xei.delivery_center_name_alt                                     delivery_center_name_alt       --納入センター名（カナ）
+             ,xei.whse_code                                                    whse_code                      --倉庫コード
+             ,xei.whse_name                                                    whse_name                      --倉庫名
+             ,xei.inspect_charge_name                                          inspect_charge_name            --検品担当者名（漢字）
+             ,xei.inspect_charge_name_alt                                      inspect_charge_name_alt        --検品担当者名（カナ）
+             ,xei.return_charge_name                                           return_charge_name             --返品担当者名（漢字）
+             ,xei.return_charge_name_alt                                       return_charge_name_alt         --返品担当者名（カナ）
+             ,xei.receive_charge_name                                          receive_charge_name            --受領担当者名（漢字）
+             ,xei.receive_charge_name_alt                                      receive_charge_name_alt        --受領担当者名（カナ）
+             ,TO_CHAR( xei.order_date,cv_date_fmt )                            order_date                     --発注日
+             ,TO_CHAR( xei.center_delivery_date,cv_date_fmt )                  center_delivery_date           --センター納品日
+             ,TO_CHAR( xei.center_result_delivery_date,cv_date_fmt )           center_result_delivery_date    --センター実納品日
+             ,TO_CHAR( xei.center_shipping_date,cv_date_fmt )                  center_shipping_date           --センター出庫日
+             ,TO_CHAR( xei.center_result_shipping_date,cv_date_fmt )           center_result_shipping_date    --センター実出庫日
+             ,TO_CHAR( xei.data_creation_date_edi_data,cv_date_fmt )           data_creation_date_edi_data    --データ作成日（ＥＤＩデータ中）
+             ,xei.data_creation_time_edi_data                                  data_creation_time_edi_data    --データ作成時刻（ＥＤＩデータ中）
+             ,TO_CHAR( xei.stk_date,cv_date_fmt )                              stk_date                       --在庫日付
+             ,xei.offer_vendor_code_class                                      offer_vendor_code_class        --提供企業取引先コード区分
+             ,xei.whse_vendor_code_class                                       whse_vendor_code_class         --倉庫取引先コード区分
+             ,xei.offer_cycle_class                                            offer_cycle_class              --提供サイクル区分
+             ,xei.stk_type                                                     stk_type                       --在庫種類
+             ,xei.japanese_class                                               japanese_class                 --日本語区分
+             ,xei.whse_class                                                   whse_class                     --倉庫区分
+             ,NVL2( xei.vendor_code
+                   ,xei.vendor_code
+                   ,xei.torihikisaki_code )                                    vendor_code                    --取引先コード
+--******************************************* 2009/06/18 1.9 T.Kitajima MOD  START  *************************************
+--             ,i_prf_rec.company_name || cdm.base_name                          vendor_name                    --取引先名（漢字）
+             ,DECODE( xei.conv_customer_code
+                     ,NULL
+                     ,NULL
+                     ,i_prf_rec.company_name || cdm.base_name
+              )                                                                vendor_name                    --取引先名（漢字）
+--******************************************* 2009/06/18 1.9 T.Kitajima MOD  END    *************************************
+             ,NVL2( xei.vendor_name_alt
+                   ,xei.vendor_name_alt
+                   ,i_prf_rec.company_name_kana || cdm.base_name_kana )        vendor_name_alt                --取引先名（カナ）
+             ,xei.check_digit_class                                            check_digit_class              --チェックデジット有無区分
+             ,xei.invoice_number                                               invoice_number                 --伝票番号
+             ,xei.check_digit                                                  check_digit                    --チェックデジット
+             ,xei.chain_peculiar_area_header                                   chain_peculiar_area_header     --チェーン店固有エリア（ヘッダ）
+       ------------------------------------------------------明細情報-------------------------------------------------------------
+             ,xei.product_code_itouen                                          product_code_itouen            --商品コード（伊藤園）
+             ,xei.product_code_other_party                                     product_code_other_party       --商品コード（先方）
+             ,CASE
+                WHEN ( xei.ebs_uom_code  = i_prf_rec.case_uom_code ) THEN
+                  xsib.case_jan_code
+                ELSE
+                  iimb.attribute21
+              END                                                              jan_code                       --ＪＡＮコード
+             ,iimb.attribute22                                                 itf_code                       --ＩＴＦコード
+             ,NVL( ximb.item_name,i_msg_rec.item_notfound )                    product_name                   --商品名（漢字）
+             ,NVL2( xei.product_name_alt
+                   ,xei.product_name_alt
+                   ,ximb.item_name_alt )                                       product_name_alt               --商品名（カナ）
+             ,xhpcv.item_div_h_code                                            prod_class                     --商品区分
+             ,xei.active_quality_class                                         active_quality_class           --適用品質区分
+             ,xei.qty_in_case                                                  qty_in_case                    --入数
+             ,xei.uom_code                                                     uom_code                       --単位
+             ,xei.day_average_shipping_qty                                     day_average_shipping_qty       --一日平均出荷数量
+             ,xei.stk_type_code                                                stk_type_code                  --在庫種別コード
+             ,TO_CHAR( xei.last_arrival_date,cv_date_fmt )                     last_arrival_date              --最終入荷日
+             ,TO_CHAR( xei.use_by_date,cv_date_fmt )                           use_by_date                    --賞味期限
+             ,TO_CHAR( xei.product_date,cv_date_fmt )                          product_date                   --製造日
+             ,xei.upper_limit_stk_case                                         upper_limit_stk_case           --上限在庫（ケース）
+             ,xei.upper_limit_stk_indv                                         upper_limit_stk_indv           --上限在庫（バラ）
+             ,xei.indv_order_point                                             indv_order_point               --発注点（バラ）
+             ,xei.case_order_point                                             case_order_point               --発注点（ケース）
+             ,xei.indv_prev_month_stk_qty                                      indv_prev_month_stk_qty        --前月末在庫数量（バラ）
+             ,xei.case_prev_month_stk_qty                                      case_prev_month_stk_qty        --前月末在庫数量（ケース）
+             ,xei.sum_prev_month_stk_qty                                       sum_prev_month_stk_qty         --前月在庫数量（合計）
+             ,xei.day_indv_order_qty                                           day_indv_order_qty             --発注数量（当日、バラ）
+             ,xei.day_case_order_qty                                           day_case_order_qty             --発注数量（当日、ケース）
+             ,xei.day_sum_order_qty                                            day_sum_order_qty              --発注数量（当日、合計）
+             ,xei.month_indv_order_qty                                         month_indv_order_qty           --発注数量（当月、バラ）
+             ,xei.month_case_order_qty                                         month_case_order_qty           --発注数量（当月、ケース）
+             ,xei.month_sum_order_qty                                          month_sum_order_qty            --発注数量（当月、合計）
+             ,xei.day_indv_arrival_qty                                         day_indv_arrival_qty           --入庫数量（当日、バラ）
+             ,xei.day_case_arrival_qty                                         day_case_arrival_qty           --入庫数量（当日、ケース）
+             ,xei.day_sum_arrival_qty                                          day_sum_arrival_qty            --入庫数量（当日、合計）
+             ,xei.month_arrival_count                                          month_arrival_count            --当月入荷回数
+             ,xei.month_indv_arrival_qty                                       month_indv_arrival_qty         --入庫数量（当月、バラ）
+             ,xei.month_case_arrival_qty                                       month_case_arrival_qty         --入庫数量（当月、ケース）
+             ,xei.month_sum_arrival_qty                                        month_sum_arrival_qty          --入庫数量（当月、合計）
+             ,xei.day_indv_shipping_qty                                        day_indv_shipping_qty          --出庫数量（当日、バラ）
+             ,xei.day_case_shipping_qty                                        day_case_shipping_qty          --出庫数量（当日、ケース）
+             ,xei.day_sum_shipping_qty                                         day_sum_shipping_qty           --出庫数量（当日、合計）
+             ,xei.month_indv_shipping_qty                                      month_indv_shipping_qty        --出庫数量（当月、バラ）
+             ,xei.month_case_shipping_qty                                      month_case_shipping_qty        --出庫数量（当月、ケース）
+             ,xei.month_sum_shipping_qty                                       month_sum_shipping_qty         --出庫数量（当月、合計）
+             ,xei.day_indv_destroy_loss_qty                                    day_indv_destroy_loss_qty      --破棄、ロス数量（当日、バラ）
+             ,xei.day_case_destroy_loss_qty                                    day_case_destroy_loss_qty      --破棄、ロス数量（当日、ケース）
+             ,xei.day_sum_destroy_loss_qty                                     day_sum_destroy_loss_qty       --破棄、ロス数量（当日、合計）
+             ,xei.month_indv_destroy_loss_qty                                  month_indv_destroy_loss_qty    --破棄、ロス数量（当月、バラ）
+             ,xei.month_case_destroy_loss_qty                                  month_case_destroy_loss_qty    --破棄、ロス数量（当月、ケース）
+             ,xei.month_sum_destroy_loss_qty                                   month_sum_destroy_loss_qty     --破棄、ロス数量（当月、合計）
+             ,xei.day_indv_defect_stk_qty                                      day_indv_defect_stk_qty        --不良在庫数量（当日、バラ）
+             ,xei.day_case_defect_stk_qty                                      day_case_defect_stk_qty        --不良在庫数量（当日、ケース）
+             ,xei.day_sum_defect_stk_qty                                       day_sum_defect_stk_qty         --不良在庫数量（当日、合計）
+             ,xei.month_indv_defect_stk_qty                                    month_indv_defect_stk_qty      --不良在庫数量（当月、バラ）
+             ,xei.month_case_defect_stk_qty                                    month_case_defect_stk_qty      --不良在庫数量（当月、ケース）
+             ,xei.month_sum_defect_stk_qty                                     month_sum_defect_stk_qty       --不良在庫数量（当月、合計）
+             ,xei.day_indv_defect_return_qty                                   day_indv_defect_return_qty     --不良返品数量（当日、バラ）
+             ,xei.day_case_defect_return_qty                                   day_case_defect_return_qty     --不良返品数量（当日、ケース）
+             ,xei.day_sum_defect_return_qty                                    day_sum_defect_return_qty      --不良返品数量（当日、合計）
+             ,xei.month_indv_defect_return_qty                                 month_indv_defect_return_qty   --不良返品数量（当月、バラ）
+             ,xei.month_case_defect_return_qty                                 month_case_defect_return_qty   --不良返品数量（当月、ケース）
+             ,xei.month_sum_defect_return_qty                                  month_sum_defect_return_qty    --不良返品数量（当月、合計）
+             ,xei.day_indv_defect_return_rcpt                                  day_indv_defect_return_rcpt    --不良返品受入（当日、バラ）
+             ,xei.day_case_defect_return_rcpt                                  day_case_defect_return_rcpt    --不良返品受入（当日、ケース）
+             ,xei.day_sum_defect_return_rcpt                                   day_sum_defect_return_rcpt     --不良返品受入（当日、合計）
+             ,xei.month_indv_defect_return_rcpt                                month_indv_defect_return_rcpt  --不良返品受入（当月、バラ）
+             ,xei.month_case_defect_return_rcpt                                month_case_defect_return_rcpt  --不良返品受入（当月、ケース）
+             ,xei.month_sum_defect_return_rcpt                                 month_sum_defect_return_rcpt   --不良返品受入（当月、合計）
+             ,xei.day_indv_defect_return_send                                  day_indv_defect_return_send    --不良返品発送（当日、バラ）
+             ,xei.day_case_defect_return_send                                  day_case_defect_return_send    --不良返品発送（当日、ケース）
+             ,xei.day_sum_defect_return_send                                   day_sum_defect_return_send     --不良返品発送（当日、合計）
+             ,xei.month_indv_defect_return_send                                month_indv_defect_return_send  --不良返品発送（当月、バラ）
+             ,xei.month_case_defect_return_send                                month_case_defect_return_send  --不良返品発送（当月、ケース）
+             ,xei.month_sum_defect_return_send                                 month_sum_defect_return_send   --不良返品発送（当月、合計）
+             ,xei.day_indv_quality_return_rcpt                                 day_indv_quality_return_rcpt   --良品返品受入（当日、バラ）
+             ,xei.day_case_quality_return_rcpt                                 day_case_quality_return_rcpt   --良品返品受入（当日、ケース）
+             ,xei.day_sum_quality_return_rcpt                                  day_sum_quality_return_rcpt    --良品返品受入（当日、合計）
+             ,xei.month_indv_quality_return_rcpt                               month_indv_quality_return_rcpt --良品返品受入（当月、バラ）
+             ,xei.month_case_quality_return_rcpt                               month_case_quality_return_rcpt --良品返品受入（当月、ケース）
+             ,xei.month_sum_quality_return_rcpt                                month_sum_quality_return_rcpt  --良品返品受入（当月、合計）
+             ,xei.day_indv_quality_return_send                                 day_indv_quality_return_send   --良品返品発送（当日、バラ）
+             ,xei.day_case_quality_return_send                                 day_case_quality_return_send   --良品返品発送（当日、ケース）
+             ,xei.day_sum_quality_return_send                                  day_sum_quality_return_send    --良品返品発送（当日、合計）
+             ,xei.month_indv_quality_return_send                               month_indv_quality_return_send --良品返品発送（当月、バラ）
+             ,xei.month_case_quality_return_send                               month_case_quality_return_send --良品返品発送（当月、ケース）
+             ,xei.month_sum_quality_return_send                                month_sum_quality_return_send  --良品返品発送（当月、合計）
+             ,xei.day_indv_invent_difference                                   day_indv_invent_difference     --棚卸差異（当日、バラ）
+             ,xei.day_case_invent_difference                                   day_case_invent_difference     --棚卸差異（当日、ケース）
+             ,xei.day_sum_invent_difference                                    day_sum_invent_difference      --棚卸差異（当日、合計）
+             ,xei.month_indv_invent_difference                                 month_indv_invent_difference   --棚卸差異（当月、バラ）
+             ,xei.month_case_invent_difference                                 month_case_invent_difference   --棚卸差異（当月、ケース）
+             ,xei.month_sum_invent_difference                                  month_sum_invent_difference    --棚卸差異（当月、合計）
+             ,xei.day_indv_stk_qty                                             day_indv_stk_qty               --在庫数量（当日、バラ）
+             ,xei.day_case_stk_qty                                             day_case_stk_qty               --在庫数量（当日、ケース）
+             ,xei.day_sum_stk_qty                                              day_sum_stk_qty                --在庫数量（当日、合計）
+             ,xei.month_indv_stk_qty                                           month_indv_stk_qty             --在庫数量（当月、バラ）
+             ,xei.month_case_stk_qty                                           month_case_stk_qty             --在庫数量（当月、ケース）
+             ,xei.month_sum_stk_qty                                            month_sum_stk_qty              --在庫数量（当月、合計）
+             ,xei.day_indv_reserved_stk_qty                                    day_indv_reserved_stk_qty      --保留在庫数（当日、バラ）
+             ,xei.day_case_reserved_stk_qty                                    day_case_reserved_stk_qty      --保留在庫数（当日、ケース）
+             ,xei.day_sum_reserved_stk_qty                                     day_sum_reserved_stk_qty       --保留在庫数（当日、合計）
+             ,xei.month_indv_reserved_stk_qty                                  month_indv_reserved_stk_qty    --保留在庫数（当月、バラ）
+             ,xei.month_case_reserved_stk_qty                                  month_case_reserved_stk_qty    --保留在庫数（当月、ケース）
+             ,xei.month_sum_reserved_stk_qty                                   month_sum_reserved_stk_qty     --保留在庫数（当月、合計）
+             ,xei.day_indv_cd_stk_qty                                          day_indv_cd_stk_qty            --商流在庫数量（当日、バラ）
+             ,xei.day_case_cd_stk_qty                                          day_case_cd_stk_qty            --商流在庫数量（当日、ケース）
+             ,xei.day_sum_cd_stk_qty                                           day_sum_cd_stk_qty             --商流在庫数量（当日、合計）
+             ,xei.month_indv_cd_stk_qty                                        month_indv_cd_stk_qty          --商流在庫数量（当月、バラ）
+             ,xei.month_case_cd_stk_qty                                        month_case_cd_stk_qty          --商流在庫数量（当月、ケース）
+             ,xei.month_sum_cd_stk_qty                                         month_sum_cd_stk_qty           --商流在庫数量（当月、合計）
+             ,xei.day_indv_cargo_stk_qty                                       day_indv_cargo_stk_qty         --積送在庫数量（当日、バラ）
+             ,xei.day_case_cargo_stk_qty                                       day_case_cargo_stk_qty         --積送在庫数量（当日、ケース）
+             ,xei.day_sum_cargo_stk_qty                                        day_sum_cargo_stk_qty          --積送在庫数量（当日、合計）
+             ,xei.month_indv_cargo_stk_qty                                     month_indv_cargo_stk_qty       --積送在庫数量（当月、バラ）
+             ,xei.month_case_cargo_stk_qty                                     month_case_cargo_stk_qty       --積送在庫数量（当月、ケース）
+             ,xei.month_sum_cargo_stk_qty                                      month_sum_cargo_stk_qty        --積送在庫数量（当月、合計）
+             ,xei.day_indv_adjustment_stk_qty                                  day_indv_adjustment_stk_qty    --調整在庫数量（当日、バラ）
+             ,xei.day_case_adjustment_stk_qty                                  day_case_adjustment_stk_qty    --調整在庫数量（当日、ケース）
+             ,xei.day_sum_adjustment_stk_qty                                   day_sum_adjustment_stk_qty     --調整在庫数量（当日、合計）
+             ,xei.month_indv_adjustment_stk_qty                                month_indv_adjustment_stk_qty  --調整在庫数量（当月、バラ）
+             ,xei.month_case_adjustment_stk_qty                                month_case_adjustment_stk_qty  --調整在庫数量（当月、ケース）
+             ,xei.month_sum_adjustment_stk_qty                                 month_sum_adjustment_stk_qty   --調整在庫数量（当月、合計）
+             ,xei.day_indv_still_shipping_qty                                  day_indv_still_shipping_qty    --未出荷数量（当日、バラ）
+             ,xei.day_case_still_shipping_qty                                  day_case_still_shipping_qty    --未出荷数量（当日、ケース）
+             ,xei.day_sum_still_shipping_qty                                   day_sum_still_shipping_qty     --未出荷数量（当日、合計）
+             ,xei.month_indv_still_shipping_qty                                month_indv_still_shipping_qty  --未出荷数量（当月、バラ）
+             ,xei.month_case_still_shipping_qty                                month_case_still_shipping_qty  --未出荷数量（当月、ケース）
+             ,xei.month_sum_still_shipping_qty                                 month_sum_still_shipping_qty   --未出荷数量（当月、合計）
+             ,xei.indv_all_stk_qty                                             indv_all_stk_qty               --総在庫数量（バラ）
+             ,xei.case_all_stk_qty                                             case_all_stk_qty               --総在庫数量（ケース）
+             ,xei.sum_all_stk_qty                                              sum_all_stk_qty                --総在庫数量（合計）
+             ,xei.month_draw_count                                             month_draw_count               --当月引当回数
+             ,xei.day_indv_draw_possible_qty                                   day_indv_draw_possible_qty     --引当可能数量（当日、バラ）
+             ,xei.day_case_draw_possible_qty                                   day_case_draw_possible_qty     --引当可能数量（当日、ケース）
+             ,xei.day_sum_draw_possible_qty                                    day_sum_draw_possible_qty      --引当可能数量（当日、合計）
+             ,xei.month_indv_draw_possible_qty                                 month_indv_draw_possible_qty   --引当可能数量（当月、バラ）
+             ,xei.month_case_draw_possible_qty                                 month_case_draw_possible_qty   --引当可能数量（当月、ケース）
+             ,xei.month_sum_draw_possible_qty                                  month_sum_draw_possible_qty    --引当可能数量（当月、合計）
+             ,xei.day_indv_draw_impossible_qty                                 day_indv_draw_impossible_qty   --引当不能数（当日、バラ）
+             ,xei.day_case_draw_impossible_qty                                 day_case_draw_impossible_qty   --引当不能数（当日、ケース）
+             ,xei.day_sum_draw_impossible_qty                                  day_sum_draw_impossible_qty    --引当不能数（当日、合計）
+             ,xei.day_stk_amt                                                  day_stk_amt                    --在庫金額（当日）
+             ,xei.month_stk_amt                                                month_stk_amt                  --在庫金額（当月）
+             ,xei.remarks                                                      remarks                        --備考
+             ,xei.chain_peculiar_area_line                                     chain_peculiar_area_line       --チェーン店固有エリア（明細）
+       ------------------------------------------------------フッタ情報------------------------------------------------------------
+             ,xei.invoice_day_indv_sum_stk_qty                                 invoice_day_indv_sum_stk_qty   --（計）在庫数量合計（当日、バラ）
+             ,xei.invoice_day_case_sum_stk_qty                                 invoice_day_case_sum_stk_qty   --（計）在庫数量合計（当日、ケース）
+             ,xei.invoice_day_sum_sum_stk_qty                                  invoice_day_sum_sum_stk_qty    --（計）在庫数量合計（当日、合計）
+             ,xei.invoice_month_indv_sum_stk_qty                               invoice_month_indv_sum_stk_qty --（計）在庫数量合計（当月、バラ）
+             ,xei.invoice_month_case_sum_stk_qty                               invoice_month_case_sum_stk_qty --（計）在庫数量合計（当月、ケース）
+             ,xei.invoice_month_sum_sum_stk_qty                                invoice_month_sum_sum_stk_qty  --（計）在庫数量合計（当月、合計）
+             ,xei.invoice_day_indv_cd_stk_qty                                  invoice_day_indv_cd_stk_qty    --（計）商流在庫数量（当日、バラ）
+             ,xei.invoice_day_case_cd_stk_qty                                  invoice_day_case_cd_stk_qty    --（計）商流在庫数量（当日、ケース）
+             ,xei.invoice_day_sum_cd_stk_qty                                   invoice_day_sum_cd_stk_qty     --（計）商流在庫数量（当日、合計）
+             ,xei.invoice_month_indv_cd_stk_qty                                invoice_month_indv_cd_stk_qty  --（計）商流在庫数量（当月、バラ）
+             ,xei.invoice_month_case_cd_stk_qty                                invoice_month_case_cd_stk_qty  --（計）商流在庫数量（当月、ケース）
+             ,xei.invoice_month_sum_cd_stk_qty                                 invoice_month_sum_cd_stk_qty   --（計）商流在庫数量（当月、合計）
+             ,xei.invoice_day_stk_amt                                          invoice_day_stk_amt            --（計）在庫金額（当日）
+             ,xei.invoice_month_stk_amt                                        invoice_month_stk_amt          --（計）在庫金額（当月）
+             ,xei.regular_sell_amt_sum                                         regular_sell_amt_sum           --正販金額合計
+             ,xei.rebate_amt_sum                                               rebate_amt_sum                 --割戻し金額合計
+             ,xei.collect_bottle_amt_sum                                       collect_bottle_amt_sum         --回収容器金額合計
+             ,xei.chain_peculiar_area_footer                                   chain_peculiar_area_footer     --チェーン店固有エリア（フッター）
+        --抽出条件
+        FROM 
+             (
+               SELECT 1                                                        select_block
+                      ,xei.medium_class                                        medium_class                   --媒体区分
+                      ,xei.data_type_code                                      data_type_code                 --データ種コード
+                      ,xei.file_no                                             file_no                        --ファイルＮｏ
+                      ,xei.info_class                                          info_class                     --情報区分
+                      ,xei.edi_chain_code                                      edi_chain_code                 --ＥＤＩチェーン店コード
+                      ,xei.company_code                                        company_code                   --社コード
+                      ,xei.company_name_alt                                    company_name_alt               --社名（カナ）
+                      ,xei.shop_code                                           shop_code                      --店コード
+                      ,xei.shop_name_alt                                       shop_name_alt                  --店名（カナ）
+                      ,xei.delivery_center_code                                delivery_center_code           --納入センターコード
+                      ,xei.delivery_center_name                                delivery_center_name           --納入センター名（漢字）
+                      ,xei.delivery_center_name_alt                            delivery_center_name_alt       --納入センター名（カナ）
+                      ,xei.whse_code                                           whse_code                      --倉庫コード
+                      ,xei.whse_name                                           whse_name                      --倉庫名
+                      ,xei.inspect_charge_name                                 inspect_charge_name            --検品担当者名（漢字）
+                      ,xei.inspect_charge_name_alt                             inspect_charge_name_alt        --検品担当者名（カナ）
+                      ,xei.return_charge_name                                  return_charge_name             --返品担当者名（漢字）
+                      ,xei.return_charge_name_alt                              return_charge_name_alt         --返品担当者名（カナ）
+                      ,xei.receive_charge_name                                 receive_charge_name            --受領担当者名（漢字）
+                      ,xei.receive_charge_name_alt                             receive_charge_name_alt        --受領担当者名（カナ）
+                      ,xei.order_date                                          order_date                     --発注日
+                      ,xei.center_delivery_date                                center_delivery_date           --センター納品日
+                      ,xei.center_result_delivery_date                         center_result_delivery_date    --センター実納品日
+                      ,xei.center_shipping_date                                center_shipping_date           --センター出庫日
+                      ,xei.center_result_shipping_date                         center_result_shipping_date    --センター実出庫日
+                      ,xei.data_creation_date_edi_data                         data_creation_date_edi_data    --データ作成日（ＥＤＩデータ中）
+                      ,xei.data_creation_time_edi_data                         data_creation_time_edi_data    --データ作成時刻（ＥＤＩデータ中）
+                      ,xei.stk_date                                            stk_date                       --在庫日付
+                      ,xei.offer_vendor_code_class                             offer_vendor_code_class        --提供企業取引先コード区分
+                      ,xei.whse_vendor_code_class                              whse_vendor_code_class         --倉庫取引先コード区分
+                      ,xei.offer_cycle_class                                   offer_cycle_class              --提供サイクル区分
+                      ,xei.stk_type                                            stk_type                       --在庫種類
+                      ,xei.japanese_class                                      japanese_class                 --日本語区分
+                      ,xei.whse_class                                          whse_class                     --倉庫区分
+                      ,xei.vendor_code                                         vendor_code                    --取引先コード
+                      ,xei.vendor_name_alt                                     vendor_name_alt                --取引先名（カナ）
+                      ,xei.check_digit_class                                   check_digit_class              --チェックデジット有無区分
+                      ,xei.invoice_number                                      invoice_number                 --伝票番号
+                      ,xei.check_digit                                         check_digit                    --チェックデジット
+                      ,xei.chain_peculiar_area_header                          chain_peculiar_area_header     --チェーン店固有エリア（ヘッダ）
+                      ,xei.product_code_itouen                                 product_code_itouen            --商品コード（伊藤園）
+                      ,xei.product_code_other_party                            product_code_other_party       --商品コード（先方）
+                      ,xei.ebs_uom_code                                        ebs_uom_code                   --単位コード(EBS)
+                      ,xei.product_name_alt                                    product_name_alt               --商品名（カナ）
+                      ,xei.active_quality_class                                active_quality_class           --適用品質区分
+                      ,xei.qty_in_case                                         qty_in_case                    --入数
+                      ,xei.uom_code                                            uom_code                       --単位
+                      ,xei.day_average_shipping_qty                            day_average_shipping_qty       --一日平均出荷数量
+                      ,xei.stk_type_code                                       stk_type_code                  --在庫種別コード
+                      ,xei.last_arrival_date                                   last_arrival_date              --最終入荷日
+                      ,xei.use_by_date                                         use_by_date                    --賞味期限
+                      ,xei.product_date                                        product_date                   --製造日
+                      ,xei.upper_limit_stk_case                                upper_limit_stk_case           --上限在庫（ケース）
+                      ,xei.upper_limit_stk_indv                                upper_limit_stk_indv           --上限在庫（バラ）
+                      ,xei.indv_order_point                                    indv_order_point               --発注点（バラ）
+                      ,xei.case_order_point                                    case_order_point               --発注点（ケース）
+                      ,xei.indv_prev_month_stk_qty                             indv_prev_month_stk_qty        --前月末在庫数量（バラ）
+                      ,xei.case_prev_month_stk_qty                             case_prev_month_stk_qty        --前月末在庫数量（ケース）
+                      ,xei.sum_prev_month_stk_qty                              sum_prev_month_stk_qty         --前月在庫数量（合計）
+                      ,xei.day_indv_order_qty                                  day_indv_order_qty             --発注数量（当日、バラ）
+                      ,xei.day_case_order_qty                                  day_case_order_qty             --発注数量（当日、ケース）
+                      ,xei.day_sum_order_qty                                   day_sum_order_qty              --発注数量（当日、合計）
+                      ,xei.month_indv_order_qty                                month_indv_order_qty           --発注数量（当月、バラ）
+                      ,xei.month_case_order_qty                                month_case_order_qty           --発注数量（当月、ケース）
+                      ,xei.month_sum_order_qty                                 month_sum_order_qty            --発注数量（当月、合計）
+                      ,xei.day_indv_arrival_qty                                day_indv_arrival_qty           --入庫数量（当日、バラ）
+                      ,xei.day_case_arrival_qty                                day_case_arrival_qty           --入庫数量（当日、ケース）
+                      ,xei.day_sum_arrival_qty                                 day_sum_arrival_qty            --入庫数量（当日、合計）
+                      ,xei.month_arrival_count                                 month_arrival_count            --当月入荷回数
+                      ,xei.month_indv_arrival_qty                              month_indv_arrival_qty         --入庫数量（当月、バラ）
+                      ,xei.month_case_arrival_qty                              month_case_arrival_qty         --入庫数量（当月、ケース）
+                      ,xei.month_sum_arrival_qty                               month_sum_arrival_qty          --入庫数量（当月、合計）
+                      ,xei.day_indv_shipping_qty                               day_indv_shipping_qty          --出庫数量（当日、バラ）
+                      ,xei.day_case_shipping_qty                               day_case_shipping_qty          --出庫数量（当日、ケース）
+                      ,xei.day_sum_shipping_qty                                day_sum_shipping_qty           --出庫数量（当日、合計）
+                      ,xei.month_indv_shipping_qty                             month_indv_shipping_qty        --出庫数量（当月、バラ）
+                      ,xei.month_case_shipping_qty                             month_case_shipping_qty        --出庫数量（当月、ケース）
+                      ,xei.month_sum_shipping_qty                              month_sum_shipping_qty         --出庫数量（当月、合計）
+                      ,xei.day_indv_destroy_loss_qty                           day_indv_destroy_loss_qty      --破棄、ロス数量（当日、バラ）
+                      ,xei.day_case_destroy_loss_qty                           day_case_destroy_loss_qty      --破棄、ロス数量（当日、ケース）
+                      ,xei.day_sum_destroy_loss_qty                            day_sum_destroy_loss_qty       --破棄、ロス数量（当日、合計）
+                      ,xei.month_indv_destroy_loss_qty                         month_indv_destroy_loss_qty    --破棄、ロス数量（当月、バラ）
+                      ,xei.month_case_destroy_loss_qty                         month_case_destroy_loss_qty    --破棄、ロス数量（当月、ケース）
+                      ,xei.month_sum_destroy_loss_qty                          month_sum_destroy_loss_qty     --破棄、ロス数量（当月、合計）
+                      ,xei.day_indv_defect_stk_qty                             day_indv_defect_stk_qty        --不良在庫数量（当日、バラ）
+                      ,xei.day_case_defect_stk_qty                             day_case_defect_stk_qty        --不良在庫数量（当日、ケース）
+                      ,xei.day_sum_defect_stk_qty                              day_sum_defect_stk_qty         --不良在庫数量（当日、合計）
+                      ,xei.month_indv_defect_stk_qty                           month_indv_defect_stk_qty      --不良在庫数量（当月、バラ）
+                      ,xei.month_case_defect_stk_qty                           month_case_defect_stk_qty      --不良在庫数量（当月、ケース）
+                      ,xei.month_sum_defect_stk_qty                            month_sum_defect_stk_qty       --不良在庫数量（当月、合計）
+                      ,xei.day_indv_defect_return_qty                          day_indv_defect_return_qty     --不良返品数量（当日、バラ）
+                      ,xei.day_case_defect_return_qty                          day_case_defect_return_qty     --不良返品数量（当日、ケース）
+                      ,xei.day_sum_defect_return_qty                           day_sum_defect_return_qty      --不良返品数量（当日、合計）
+                      ,xei.month_indv_defect_return_qty                        month_indv_defect_return_qty   --不良返品数量（当月、バラ）
+                      ,xei.month_case_defect_return_qty                        month_case_defect_return_qty   --不良返品数量（当月、ケース）
+                      ,xei.month_sum_defect_return_qty                         month_sum_defect_return_qty    --不良返品数量（当月、合計）
+                      ,xei.day_indv_defect_return_rcpt                         day_indv_defect_return_rcpt    --不良返品受入（当日、バラ）
+                      ,xei.day_case_defect_return_rcpt                         day_case_defect_return_rcpt    --不良返品受入（当日、ケース）
+                      ,xei.day_sum_defect_return_rcpt                          day_sum_defect_return_rcpt     --不良返品受入（当日、合計）
+                      ,xei.month_indv_defect_return_rcpt                       month_indv_defect_return_rcpt  --不良返品受入（当月、バラ）
+                      ,xei.month_case_defect_return_rcpt                       month_case_defect_return_rcpt  --不良返品受入（当月、ケース）
+                      ,xei.month_sum_defect_return_rcpt                        month_sum_defect_return_rcpt   --不良返品受入（当月、合計）
+                      ,xei.day_indv_defect_return_send                         day_indv_defect_return_send    --不良返品発送（当日、バラ）
+                      ,xei.day_case_defect_return_send                         day_case_defect_return_send    --不良返品発送（当日、ケース）
+                      ,xei.day_sum_defect_return_send                          day_sum_defect_return_send     --不良返品発送（当日、合計）
+                      ,xei.month_indv_defect_return_send                       month_indv_defect_return_send  --不良返品発送（当月、バラ）
+                      ,xei.month_case_defect_return_send                       month_case_defect_return_send  --不良返品発送（当月、ケース）
+                      ,xei.month_sum_defect_return_send                        month_sum_defect_return_send   --不良返品発送（当月、合計）
+                      ,xei.day_indv_quality_return_rcpt                        day_indv_quality_return_rcpt   --良品返品受入（当日、バラ）
+                      ,xei.day_case_quality_return_rcpt                        day_case_quality_return_rcpt   --良品返品受入（当日、ケース）
+                      ,xei.day_sum_quality_return_rcpt                         day_sum_quality_return_rcpt    --良品返品受入（当日、合計）
+                      ,xei.month_indv_quality_return_rcpt                      month_indv_quality_return_rcpt --良品返品受入（当月、バラ）
+                      ,xei.month_case_quality_return_rcpt                      month_case_quality_return_rcpt --良品返品受入（当月、ケース）
+                      ,xei.month_sum_quality_return_rcpt                       month_sum_quality_return_rcpt  --良品返品受入（当月、合計）
+                      ,xei.day_indv_quality_return_send                        day_indv_quality_return_send   --良品返品発送（当日、バラ）
+                      ,xei.day_case_quality_return_send                        day_case_quality_return_send   --良品返品発送（当日、ケース）
+                      ,xei.day_sum_quality_return_send                         day_sum_quality_return_send    --良品返品発送（当日、合計）
+                      ,xei.month_indv_quality_return_send                      month_indv_quality_return_send --良品返品発送（当月、バラ）
+                      ,xei.month_case_quality_return_send                      month_case_quality_return_send --良品返品発送（当月、ケース）
+                      ,xei.month_sum_quality_return_send                       month_sum_quality_return_send  --良品返品発送（当月、合計）
+                      ,xei.day_indv_invent_difference                          day_indv_invent_difference     --棚卸差異（当日、バラ）
+                      ,xei.day_case_invent_difference                          day_case_invent_difference     --棚卸差異（当日、ケース）
+                      ,xei.day_sum_invent_difference                           day_sum_invent_difference      --棚卸差異（当日、合計）
+                      ,xei.month_indv_invent_difference                        month_indv_invent_difference   --棚卸差異（当月、バラ）
+                      ,xei.month_case_invent_difference                        month_case_invent_difference   --棚卸差異（当月、ケース）
+                      ,xei.month_sum_invent_difference                         month_sum_invent_difference    --棚卸差異（当月、合計）
+                      ,xei.day_indv_stk_qty                                    day_indv_stk_qty               --在庫数量（当日、バラ）
+                      ,xei.day_case_stk_qty                                    day_case_stk_qty               --在庫数量（当日、ケース）
+                      ,xei.day_sum_stk_qty                                     day_sum_stk_qty                --在庫数量（当日、合計）
+                      ,xei.month_indv_stk_qty                                  month_indv_stk_qty             --在庫数量（当月、バラ）
+                      ,xei.month_case_stk_qty                                  month_case_stk_qty             --在庫数量（当月、ケース）
+                      ,xei.month_sum_stk_qty                                   month_sum_stk_qty              --在庫数量（当月、合計）
+                      ,xei.day_indv_reserved_stk_qty                           day_indv_reserved_stk_qty      --保留在庫数（当日、バラ）
+                      ,xei.day_case_reserved_stk_qty                           day_case_reserved_stk_qty      --保留在庫数（当日、ケース）
+                      ,xei.day_sum_reserved_stk_qty                            day_sum_reserved_stk_qty       --保留在庫数（当日、合計）
+                      ,xei.month_indv_reserved_stk_qty                         month_indv_reserved_stk_qty    --保留在庫数（当月、バラ）
+                      ,xei.month_case_reserved_stk_qty                         month_case_reserved_stk_qty    --保留在庫数（当月、ケース）
+                      ,xei.month_sum_reserved_stk_qty                          month_sum_reserved_stk_qty     --保留在庫数（当月、合計）
+                      ,xei.day_indv_cd_stk_qty                                 day_indv_cd_stk_qty            --商流在庫数量（当日、バラ）
+                      ,xei.day_case_cd_stk_qty                                 day_case_cd_stk_qty            --商流在庫数量（当日、ケース）
+                      ,xei.day_sum_cd_stk_qty                                  day_sum_cd_stk_qty             --商流在庫数量（当日、合計）
+                      ,xei.month_indv_cd_stk_qty                               month_indv_cd_stk_qty          --商流在庫数量（当月、バラ）
+                      ,xei.month_case_cd_stk_qty                               month_case_cd_stk_qty          --商流在庫数量（当月、ケース）
+                      ,xei.month_sum_cd_stk_qty                                month_sum_cd_stk_qty           --商流在庫数量（当月、合計）
+                      ,xei.day_indv_cargo_stk_qty                              day_indv_cargo_stk_qty         --積送在庫数量（当日、バラ）
+                      ,xei.day_case_cargo_stk_qty                              day_case_cargo_stk_qty         --積送在庫数量（当日、ケース）
+                      ,xei.day_sum_cargo_stk_qty                               day_sum_cargo_stk_qty          --積送在庫数量（当日、合計）
+                      ,xei.month_indv_cargo_stk_qty                            month_indv_cargo_stk_qty       --積送在庫数量（当月、バラ）
+                      ,xei.month_case_cargo_stk_qty                            month_case_cargo_stk_qty       --積送在庫数量（当月、ケース）
+                      ,xei.month_sum_cargo_stk_qty                             month_sum_cargo_stk_qty        --積送在庫数量（当月、合計）
+                      ,xei.day_indv_adjustment_stk_qty                         day_indv_adjustment_stk_qty    --調整在庫数量（当日、バラ）
+                      ,xei.day_case_adjustment_stk_qty                         day_case_adjustment_stk_qty    --調整在庫数量（当日、ケース）
+                      ,xei.day_sum_adjustment_stk_qty                          day_sum_adjustment_stk_qty     --調整在庫数量（当日、合計）
+                      ,xei.month_indv_adjustment_stk_qty                       month_indv_adjustment_stk_qty  --調整在庫数量（当月、バラ）
+                      ,xei.month_case_adjustment_stk_qty                       month_case_adjustment_stk_qty  --調整在庫数量（当月、ケース）
+                      ,xei.month_sum_adjustment_stk_qty                        month_sum_adjustment_stk_qty   --調整在庫数量（当月、合計）
+                      ,xei.day_indv_still_shipping_qty                         day_indv_still_shipping_qty    --未出荷数量（当日、バラ）
+                      ,xei.day_case_still_shipping_qty                         day_case_still_shipping_qty    --未出荷数量（当日、ケース）
+                      ,xei.day_sum_still_shipping_qty                          day_sum_still_shipping_qty     --未出荷数量（当日、合計）
+                      ,xei.month_indv_still_shipping_qty                       month_indv_still_shipping_qty  --未出荷数量（当月、バラ）
+                      ,xei.month_case_still_shipping_qty                       month_case_still_shipping_qty  --未出荷数量（当月、ケース）
+                      ,xei.month_sum_still_shipping_qty                        month_sum_still_shipping_qty   --未出荷数量（当月、合計）
+                      ,xei.indv_all_stk_qty                                    indv_all_stk_qty               --総在庫数量（バラ）
+                      ,xei.case_all_stk_qty                                    case_all_stk_qty               --総在庫数量（ケース）
+                      ,xei.sum_all_stk_qty                                     sum_all_stk_qty                --総在庫数量（合計）
+                      ,xei.month_draw_count                                    month_draw_count               --当月引当回数
+                      ,xei.day_indv_draw_possible_qty                          day_indv_draw_possible_qty     --引当可能数量（当日、バラ）
+                      ,xei.day_case_draw_possible_qty                          day_case_draw_possible_qty     --引当可能数量（当日、ケース）
+                      ,xei.day_sum_draw_possible_qty                           day_sum_draw_possible_qty      --引当可能数量（当日、合計）
+                      ,xei.month_indv_draw_possible_qty                        month_indv_draw_possible_qty   --引当可能数量（当月、バラ）
+                      ,xei.month_case_draw_possible_qty                        month_case_draw_possible_qty   --引当可能数量（当月、ケース）
+                      ,xei.month_sum_draw_possible_qty                         month_sum_draw_possible_qty    --引当可能数量（当月、合計）
+                      ,xei.day_indv_draw_impossible_qty                        day_indv_draw_impossible_qty   --引当不能数（当日、バラ）
+                      ,xei.day_case_draw_impossible_qty                        day_case_draw_impossible_qty   --引当不能数（当日、ケース）
+                      ,xei.day_sum_draw_impossible_qty                         day_sum_draw_impossible_qty    --引当不能数（当日、合計）
+                      ,xei.day_stk_amt                                         day_stk_amt                    --在庫金額（当日）
+                      ,xei.month_stk_amt                                       month_stk_amt                  --在庫金額（当月）
+                      ,xei.remarks                                             remarks                        --備考
+                      ,xei.chain_peculiar_area_line                            chain_peculiar_area_line       --チェーン店固有エリア（明細）
+                      ,xei.invoice_day_indv_sum_stk_qty                        invoice_day_indv_sum_stk_qty   --（計）在庫数量合計（当日、バラ）
+                      ,xei.invoice_day_case_sum_stk_qty                        invoice_day_case_sum_stk_qty   --（計）在庫数量合計（当日、ケース）
+                      ,xei.invoice_day_sum_sum_stk_qty                         invoice_day_sum_sum_stk_qty    --（計）在庫数量合計（当日、合計）
+                      ,xei.invoice_month_indv_sum_stk_qty                      invoice_month_indv_sum_stk_qty --（計）在庫数量合計（当月、バラ）
+                      ,xei.invoice_month_case_sum_stk_qty                      invoice_month_case_sum_stk_qty --（計）在庫数量合計（当月、ケース）
+                      ,xei.invoice_month_sum_sum_stk_qty                       invoice_month_sum_sum_stk_qty  --（計）在庫数量合計（当月、合計）
+                      ,xei.invoice_day_indv_cd_stk_qty                         invoice_day_indv_cd_stk_qty    --（計）商流在庫数量（当日、バラ）
+                      ,xei.invoice_day_case_cd_stk_qty                         invoice_day_case_cd_stk_qty    --（計）商流在庫数量（当日、ケース）
+                      ,xei.invoice_day_sum_cd_stk_qty                          invoice_day_sum_cd_stk_qty     --（計）商流在庫数量（当日、合計）
+                      ,xei.invoice_month_indv_cd_stk_qty                       invoice_month_indv_cd_stk_qty  --（計）商流在庫数量（当月、バラ）
+                      ,xei.invoice_month_case_cd_stk_qty                       invoice_month_case_cd_stk_qty  --（計）商流在庫数量（当月、ケース）
+                      ,xei.invoice_month_sum_cd_stk_qty                        invoice_month_sum_cd_stk_qty   --（計）商流在庫数量（当月、合計）
+                      ,xei.invoice_day_stk_amt                                 invoice_day_stk_amt            --（計）在庫金額（当日）
+                      ,xei.invoice_month_stk_amt                               invoice_month_stk_amt          --（計）在庫金額（当月）
+                      ,xei.regular_sell_amt_sum                                regular_sell_amt_sum           --正販金額合計
+                      ,xei.rebate_amt_sum                                      rebate_amt_sum                 --割戻し金額合計
+                      ,xei.collect_bottle_amt_sum                              collect_bottle_amt_sum         --回収容器金額合計
+                      ,xei.chain_peculiar_area_footer                          chain_peculiar_area_footer     --チェーン店固有エリア（フッター）
+                      ,xei.item_code                                           item_code                      --品目コード
+                      ,hca.account_number                                      account_number                 --顧客コード
+                      ,hp.party_name                                           party_name                     --顧客名（漢字）
+                      ,hp.organization_name_phonetic                           organization_name_phonetic     --顧客名（カナ）
+                      ,xca.deli_center_code                                    deli_center_code               --納入センターコード
+                      ,xca.deli_center_name                                    deli_center_name               --納入センター名（漢字）
+                      ,xca.torihikisaki_code                                   torihikisaki_code              --取引先コード
+                      ,xca.delivery_base_code                                  delivery_base_code             --納品拠点コード
+                      ,xei.conv_customer_code                                  conv_customer_code             --換算後顧客コード
+                 FROM  xxcos_edi_inventory                                     xei                            --EDI在庫情報テーブル
+                      ,xxcmm_cust_accounts                                     xca                            --顧客マスタアドオン
+                      ,hz_cust_accounts                                        hca                            --顧客マスタ
+                      ,hz_parties                                              hp                             --パーティマスタ
+                      ,xxcos_chain_store_security_v                            xcss                           --チェーン店店舗セキュリティビュー
+                WHERE xei.conv_customer_code     IS NOT NULL
+                --顧客アドオン
+                  AND xca.chain_store_code        = xei.edi_chain_code                                        --チェーン店コード
+                  AND xca.store_code              = xei.shop_code                                             --店舗コード
+                --顧客マスタ
+                  AND ( hca.cust_account_id       = xca.customer_id )                                         --顧客ID
+                  AND hca.customer_class_code    IN ( cv_cust_class_chain_store, cv_cust_class_uesama )
+                --パーティマスタ
+                  AND hp.party_id                 = hca.party_id
+                --店舗セキュリティVIEW
+                  AND xcss.chain_code             = xei.edi_chain_code                                        --チェーン店コード
+                  AND xcss.chain_store_code       = xei.shop_code                                             --店コード
+                  AND xcss.user_id                = i_input_rec.user_id                                       --ユーザID
+               UNION
+               SELECT 2                                                        select_block
+                      ,xei.medium_class                                        medium_class                   --媒体区分
+                      ,xei.data_type_code                                      data_type_code                 --データ種コード
+                      ,xei.file_no                                             file_no                        --ファイルＮｏ
+                      ,xei.info_class                                          info_class                     --情報区分
+                      ,xei.edi_chain_code                                      edi_chain_code                 --ＥＤＩチェーン店コード
+                      ,xei.company_code                                        company_code                   --社コード
+                      ,xei.company_name_alt                                    company_name_alt               --社名（カナ）
+                      ,xei.shop_code                                           shop_code                      --店コード
+                      ,xei.shop_name_alt                                       shop_name_alt                  --店名（カナ）
+                      ,xei.delivery_center_code                                delivery_center_code           --納入センターコード
+                      ,xei.delivery_center_name                                delivery_center_name           --納入センター名（漢字）
+                      ,xei.delivery_center_name_alt                            delivery_center_name_alt       --納入センター名（カナ）
+                      ,xei.whse_code                                           whse_code                      --倉庫コード
+                      ,xei.whse_name                                           whse_name                      --倉庫名
+                      ,xei.inspect_charge_name                                 inspect_charge_name            --検品担当者名（漢字）
+                      ,xei.inspect_charge_name_alt                             inspect_charge_name_alt        --検品担当者名（カナ）
+                      ,xei.return_charge_name                                  return_charge_name             --返品担当者名（漢字）
+                      ,xei.return_charge_name_alt                              return_charge_name_alt         --返品担当者名（カナ）
+                      ,xei.receive_charge_name                                 receive_charge_name            --受領担当者名（漢字）
+                      ,xei.receive_charge_name_alt                             receive_charge_name_alt        --受領担当者名（カナ）
+                      ,xei.order_date                                          order_date                     --発注日
+                      ,xei.center_delivery_date                                center_delivery_date           --センター納品日
+                      ,xei.center_result_delivery_date                         center_result_delivery_date    --センター実納品日
+                      ,xei.center_shipping_date                                center_shipping_date           --センター出庫日
+                      ,xei.center_result_shipping_date                         center_result_shipping_date    --センター実出庫日
+                      ,xei.data_creation_date_edi_data                         data_creation_date_edi_data    --データ作成日（ＥＤＩデータ中）
+                      ,xei.data_creation_time_edi_data                         data_creation_time_edi_data    --データ作成時刻（ＥＤＩデータ中）
+                      ,xei.stk_date                                            stk_date                       --在庫日付
+                      ,xei.offer_vendor_code_class                             offer_vendor_code_class        --提供企業取引先コード区分
+                      ,xei.whse_vendor_code_class                              whse_vendor_code_class         --倉庫取引先コード区分
+                      ,xei.offer_cycle_class                                   offer_cycle_class              --提供サイクル区分
+                      ,xei.stk_type                                            stk_type                       --在庫種類
+                      ,xei.japanese_class                                      japanese_class                 --日本語区分
+                      ,xei.whse_class                                          whse_class                     --倉庫区分
+                      ,xei.vendor_code                                         vendor_code                    --取引先コード
+                      ,xei.vendor_name_alt                                     vendor_name_alt                --取引先名（カナ）
+                      ,xei.check_digit_class                                   check_digit_class              --チェックデジット有無区分
+                      ,xei.invoice_number                                      invoice_number                 --伝票番号
+                      ,xei.check_digit                                         check_digit                    --チェックデジット
+                      ,xei.chain_peculiar_area_header                          chain_peculiar_area_header     --チェーン店固有エリア（ヘッダ）
+                      ,xei.product_code_itouen                                 product_code_itouen            --商品コード（伊藤園）
+                      ,xei.product_code_other_party                            product_code_other_party       --商品コード（先方）
+                      ,xei.ebs_uom_code                                        ebs_uom_code                   --単位コード(EBS)
+                      ,xei.product_name_alt                                    product_name_alt               --商品名（カナ）
+                      ,xei.active_quality_class                                active_quality_class           --適用品質区分
+                      ,xei.qty_in_case                                         qty_in_case                    --入数
+                      ,xei.uom_code                                            uom_code                       --単位
+                      ,xei.day_average_shipping_qty                            day_average_shipping_qty       --一日平均出荷数量
+                      ,xei.stk_type_code                                       stk_type_code                  --在庫種別コード
+                      ,xei.last_arrival_date                                   last_arrival_date              --最終入荷日
+                      ,xei.use_by_date                                         use_by_date                    --賞味期限
+                      ,xei.product_date                                        product_date                   --製造日
+                      ,xei.upper_limit_stk_case                                upper_limit_stk_case           --上限在庫（ケース）
+                      ,xei.upper_limit_stk_indv                                upper_limit_stk_indv           --上限在庫（バラ）
+                      ,xei.indv_order_point                                    indv_order_point               --発注点（バラ）
+                      ,xei.case_order_point                                    case_order_point               --発注点（ケース）
+                      ,xei.indv_prev_month_stk_qty                             indv_prev_month_stk_qty        --前月末在庫数量（バラ）
+                      ,xei.case_prev_month_stk_qty                             case_prev_month_stk_qty        --前月末在庫数量（ケース）
+                      ,xei.sum_prev_month_stk_qty                              sum_prev_month_stk_qty         --前月在庫数量（合計）
+                      ,xei.day_indv_order_qty                                  day_indv_order_qty             --発注数量（当日、バラ）
+                      ,xei.day_case_order_qty                                  day_case_order_qty             --発注数量（当日、ケース）
+                      ,xei.day_sum_order_qty                                   day_sum_order_qty              --発注数量（当日、合計）
+                      ,xei.month_indv_order_qty                                month_indv_order_qty           --発注数量（当月、バラ）
+                      ,xei.month_case_order_qty                                month_case_order_qty           --発注数量（当月、ケース）
+                      ,xei.month_sum_order_qty                                 month_sum_order_qty            --発注数量（当月、合計）
+                      ,xei.day_indv_arrival_qty                                day_indv_arrival_qty           --入庫数量（当日、バラ）
+                      ,xei.day_case_arrival_qty                                day_case_arrival_qty           --入庫数量（当日、ケース）
+                      ,xei.day_sum_arrival_qty                                 day_sum_arrival_qty            --入庫数量（当日、合計）
+                      ,xei.month_arrival_count                                 month_arrival_count            --当月入荷回数
+                      ,xei.month_indv_arrival_qty                              month_indv_arrival_qty         --入庫数量（当月、バラ）
+                      ,xei.month_case_arrival_qty                              month_case_arrival_qty         --入庫数量（当月、ケース）
+                      ,xei.month_sum_arrival_qty                               month_sum_arrival_qty          --入庫数量（当月、合計）
+                      ,xei.day_indv_shipping_qty                               day_indv_shipping_qty          --出庫数量（当日、バラ）
+                      ,xei.day_case_shipping_qty                               day_case_shipping_qty          --出庫数量（当日、ケース）
+                      ,xei.day_sum_shipping_qty                                day_sum_shipping_qty           --出庫数量（当日、合計）
+                      ,xei.month_indv_shipping_qty                             month_indv_shipping_qty        --出庫数量（当月、バラ）
+                      ,xei.month_case_shipping_qty                             month_case_shipping_qty        --出庫数量（当月、ケース）
+                      ,xei.month_sum_shipping_qty                              month_sum_shipping_qty         --出庫数量（当月、合計）
+                      ,xei.day_indv_destroy_loss_qty                           day_indv_destroy_loss_qty      --破棄、ロス数量（当日、バラ）
+                      ,xei.day_case_destroy_loss_qty                           day_case_destroy_loss_qty      --破棄、ロス数量（当日、ケース）
+                      ,xei.day_sum_destroy_loss_qty                            day_sum_destroy_loss_qty       --破棄、ロス数量（当日、合計）
+                      ,xei.month_indv_destroy_loss_qty                         month_indv_destroy_loss_qty    --破棄、ロス数量（当月、バラ）
+                      ,xei.month_case_destroy_loss_qty                         month_case_destroy_loss_qty    --破棄、ロス数量（当月、ケース）
+                      ,xei.month_sum_destroy_loss_qty                          month_sum_destroy_loss_qty     --破棄、ロス数量（当月、合計）
+                      ,xei.day_indv_defect_stk_qty                             day_indv_defect_stk_qty        --不良在庫数量（当日、バラ）
+                      ,xei.day_case_defect_stk_qty                             day_case_defect_stk_qty        --不良在庫数量（当日、ケース）
+                      ,xei.day_sum_defect_stk_qty                              day_sum_defect_stk_qty         --不良在庫数量（当日、合計）
+                      ,xei.month_indv_defect_stk_qty                           month_indv_defect_stk_qty      --不良在庫数量（当月、バラ）
+                      ,xei.month_case_defect_stk_qty                           month_case_defect_stk_qty      --不良在庫数量（当月、ケース）
+                      ,xei.month_sum_defect_stk_qty                            month_sum_defect_stk_qty       --不良在庫数量（当月、合計）
+                      ,xei.day_indv_defect_return_qty                          day_indv_defect_return_qty     --不良返品数量（当日、バラ）
+                      ,xei.day_case_defect_return_qty                          day_case_defect_return_qty     --不良返品数量（当日、ケース）
+                      ,xei.day_sum_defect_return_qty                           day_sum_defect_return_qty      --不良返品数量（当日、合計）
+                      ,xei.month_indv_defect_return_qty                        month_indv_defect_return_qty   --不良返品数量（当月、バラ）
+                      ,xei.month_case_defect_return_qty                        month_case_defect_return_qty   --不良返品数量（当月、ケース）
+                      ,xei.month_sum_defect_return_qty                         month_sum_defect_return_qty    --不良返品数量（当月、合計）
+                      ,xei.day_indv_defect_return_rcpt                         day_indv_defect_return_rcpt    --不良返品受入（当日、バラ）
+                      ,xei.day_case_defect_return_rcpt                         day_case_defect_return_rcpt    --不良返品受入（当日、ケース）
+                      ,xei.day_sum_defect_return_rcpt                          day_sum_defect_return_rcpt     --不良返品受入（当日、合計）
+                      ,xei.month_indv_defect_return_rcpt                       month_indv_defect_return_rcpt  --不良返品受入（当月、バラ）
+                      ,xei.month_case_defect_return_rcpt                       month_case_defect_return_rcpt  --不良返品受入（当月、ケース）
+                      ,xei.month_sum_defect_return_rcpt                        month_sum_defect_return_rcpt   --不良返品受入（当月、合計）
+                      ,xei.day_indv_defect_return_send                         day_indv_defect_return_send    --不良返品発送（当日、バラ）
+                      ,xei.day_case_defect_return_send                         day_case_defect_return_send    --不良返品発送（当日、ケース）
+                      ,xei.day_sum_defect_return_send                          day_sum_defect_return_send     --不良返品発送（当日、合計）
+                      ,xei.month_indv_defect_return_send                       month_indv_defect_return_send  --不良返品発送（当月、バラ）
+                      ,xei.month_case_defect_return_send                       month_case_defect_return_send  --不良返品発送（当月、ケース）
+                      ,xei.month_sum_defect_return_send                        month_sum_defect_return_send   --不良返品発送（当月、合計）
+                      ,xei.day_indv_quality_return_rcpt                        day_indv_quality_return_rcpt   --良品返品受入（当日、バラ）
+                      ,xei.day_case_quality_return_rcpt                        day_case_quality_return_rcpt   --良品返品受入（当日、ケース）
+                      ,xei.day_sum_quality_return_rcpt                         day_sum_quality_return_rcpt    --良品返品受入（当日、合計）
+                      ,xei.month_indv_quality_return_rcpt                      month_indv_quality_return_rcpt --良品返品受入（当月、バラ）
+                      ,xei.month_case_quality_return_rcpt                      month_case_quality_return_rcpt --良品返品受入（当月、ケース）
+                      ,xei.month_sum_quality_return_rcpt                       month_sum_quality_return_rcpt  --良品返品受入（当月、合計）
+                      ,xei.day_indv_quality_return_send                        day_indv_quality_return_send   --良品返品発送（当日、バラ）
+                      ,xei.day_case_quality_return_send                        day_case_quality_return_send   --良品返品発送（当日、ケース）
+                      ,xei.day_sum_quality_return_send                         day_sum_quality_return_send    --良品返品発送（当日、合計）
+                      ,xei.month_indv_quality_return_send                      month_indv_quality_return_send --良品返品発送（当月、バラ）
+                      ,xei.month_case_quality_return_send                      month_case_quality_return_send --良品返品発送（当月、ケース）
+                      ,xei.month_sum_quality_return_send                       month_sum_quality_return_send  --良品返品発送（当月、合計）
+                      ,xei.day_indv_invent_difference                          day_indv_invent_difference     --棚卸差異（当日、バラ）
+                      ,xei.day_case_invent_difference                          day_case_invent_difference     --棚卸差異（当日、ケース）
+                      ,xei.day_sum_invent_difference                           day_sum_invent_difference      --棚卸差異（当日、合計）
+                      ,xei.month_indv_invent_difference                        month_indv_invent_difference   --棚卸差異（当月、バラ）
+                      ,xei.month_case_invent_difference                        month_case_invent_difference   --棚卸差異（当月、ケース）
+                      ,xei.month_sum_invent_difference                         month_sum_invent_difference    --棚卸差異（当月、合計）
+                      ,xei.day_indv_stk_qty                                    day_indv_stk_qty               --在庫数量（当日、バラ）
+                      ,xei.day_case_stk_qty                                    day_case_stk_qty               --在庫数量（当日、ケース）
+                      ,xei.day_sum_stk_qty                                     day_sum_stk_qty                --在庫数量（当日、合計）
+                      ,xei.month_indv_stk_qty                                  month_indv_stk_qty             --在庫数量（当月、バラ）
+                      ,xei.month_case_stk_qty                                  month_case_stk_qty             --在庫数量（当月、ケース）
+                      ,xei.month_sum_stk_qty                                   month_sum_stk_qty              --在庫数量（当月、合計）
+                      ,xei.day_indv_reserved_stk_qty                           day_indv_reserved_stk_qty      --保留在庫数（当日、バラ）
+                      ,xei.day_case_reserved_stk_qty                           day_case_reserved_stk_qty      --保留在庫数（当日、ケース）
+                      ,xei.day_sum_reserved_stk_qty                            day_sum_reserved_stk_qty       --保留在庫数（当日、合計）
+                      ,xei.month_indv_reserved_stk_qty                         month_indv_reserved_stk_qty    --保留在庫数（当月、バラ）
+                      ,xei.month_case_reserved_stk_qty                         month_case_reserved_stk_qty    --保留在庫数（当月、ケース）
+                      ,xei.month_sum_reserved_stk_qty                          month_sum_reserved_stk_qty     --保留在庫数（当月、合計）
+                      ,xei.day_indv_cd_stk_qty                                 day_indv_cd_stk_qty            --商流在庫数量（当日、バラ）
+                      ,xei.day_case_cd_stk_qty                                 day_case_cd_stk_qty            --商流在庫数量（当日、ケース）
+                      ,xei.day_sum_cd_stk_qty                                  day_sum_cd_stk_qty             --商流在庫数量（当日、合計）
+                      ,xei.month_indv_cd_stk_qty                               month_indv_cd_stk_qty          --商流在庫数量（当月、バラ）
+                      ,xei.month_case_cd_stk_qty                               month_case_cd_stk_qty          --商流在庫数量（当月、ケース）
+                      ,xei.month_sum_cd_stk_qty                                month_sum_cd_stk_qty           --商流在庫数量（当月、合計）
+                      ,xei.day_indv_cargo_stk_qty                              day_indv_cargo_stk_qty         --積送在庫数量（当日、バラ）
+                      ,xei.day_case_cargo_stk_qty                              day_case_cargo_stk_qty         --積送在庫数量（当日、ケース）
+                      ,xei.day_sum_cargo_stk_qty                               day_sum_cargo_stk_qty          --積送在庫数量（当日、合計）
+                      ,xei.month_indv_cargo_stk_qty                            month_indv_cargo_stk_qty       --積送在庫数量（当月、バラ）
+                      ,xei.month_case_cargo_stk_qty                            month_case_cargo_stk_qty       --積送在庫数量（当月、ケース）
+                      ,xei.month_sum_cargo_stk_qty                             month_sum_cargo_stk_qty        --積送在庫数量（当月、合計）
+                      ,xei.day_indv_adjustment_stk_qty                         day_indv_adjustment_stk_qty    --調整在庫数量（当日、バラ）
+                      ,xei.day_case_adjustment_stk_qty                         day_case_adjustment_stk_qty    --調整在庫数量（当日、ケース）
+                      ,xei.day_sum_adjustment_stk_qty                          day_sum_adjustment_stk_qty     --調整在庫数量（当日、合計）
+                      ,xei.month_indv_adjustment_stk_qty                       month_indv_adjustment_stk_qty  --調整在庫数量（当月、バラ）
+                      ,xei.month_case_adjustment_stk_qty                       month_case_adjustment_stk_qty  --調整在庫数量（当月、ケース）
+                      ,xei.month_sum_adjustment_stk_qty                        month_sum_adjustment_stk_qty   --調整在庫数量（当月、合計）
+                      ,xei.day_indv_still_shipping_qty                         day_indv_still_shipping_qty    --未出荷数量（当日、バラ）
+                      ,xei.day_case_still_shipping_qty                         day_case_still_shipping_qty    --未出荷数量（当日、ケース）
+                      ,xei.day_sum_still_shipping_qty                          day_sum_still_shipping_qty     --未出荷数量（当日、合計）
+                      ,xei.month_indv_still_shipping_qty                       month_indv_still_shipping_qty  --未出荷数量（当月、バラ）
+                      ,xei.month_case_still_shipping_qty                       month_case_still_shipping_qty  --未出荷数量（当月、ケース）
+                      ,xei.month_sum_still_shipping_qty                        month_sum_still_shipping_qty   --未出荷数量（当月、合計）
+                      ,xei.indv_all_stk_qty                                    indv_all_stk_qty               --総在庫数量（バラ）
+                      ,xei.case_all_stk_qty                                    case_all_stk_qty               --総在庫数量（ケース）
+                      ,xei.sum_all_stk_qty                                     sum_all_stk_qty                --総在庫数量（合計）
+                      ,xei.month_draw_count                                    month_draw_count               --当月引当回数
+                      ,xei.day_indv_draw_possible_qty                          day_indv_draw_possible_qty     --引当可能数量（当日、バラ）
+                      ,xei.day_case_draw_possible_qty                          day_case_draw_possible_qty     --引当可能数量（当日、ケース）
+                      ,xei.day_sum_draw_possible_qty                           day_sum_draw_possible_qty      --引当可能数量（当日、合計）
+                      ,xei.month_indv_draw_possible_qty                        month_indv_draw_possible_qty   --引当可能数量（当月、バラ）
+                      ,xei.month_case_draw_possible_qty                        month_case_draw_possible_qty   --引当可能数量（当月、ケース）
+                      ,xei.month_sum_draw_possible_qty                         month_sum_draw_possible_qty    --引当可能数量（当月、合計）
+                      ,xei.day_indv_draw_impossible_qty                        day_indv_draw_impossible_qty   --引当不能数（当日、バラ）
+                      ,xei.day_case_draw_impossible_qty                        day_case_draw_impossible_qty   --引当不能数（当日、ケース）
+                      ,xei.day_sum_draw_impossible_qty                         day_sum_draw_impossible_qty    --引当不能数（当日、合計）
+                      ,xei.day_stk_amt                                         day_stk_amt                    --在庫金額（当日）
+                      ,xei.month_stk_amt                                       month_stk_amt                  --在庫金額（当月）
+                      ,xei.remarks                                             remarks                        --備考
+                      ,xei.chain_peculiar_area_line                            chain_peculiar_area_line       --チェーン店固有エリア（明細）
+                      ,xei.invoice_day_indv_sum_stk_qty                        invoice_day_indv_sum_stk_qty   --（計）在庫数量合計（当日、バラ）
+                      ,xei.invoice_day_case_sum_stk_qty                        invoice_day_case_sum_stk_qty   --（計）在庫数量合計（当日、ケース）
+                      ,xei.invoice_day_sum_sum_stk_qty                         invoice_day_sum_sum_stk_qty    --（計）在庫数量合計（当日、合計）
+                      ,xei.invoice_month_indv_sum_stk_qty                      invoice_month_indv_sum_stk_qty --（計）在庫数量合計（当月、バラ）
+                      ,xei.invoice_month_case_sum_stk_qty                      invoice_month_case_sum_stk_qty --（計）在庫数量合計（当月、ケース）
+                      ,xei.invoice_month_sum_sum_stk_qty                       invoice_month_sum_sum_stk_qty  --（計）在庫数量合計（当月、合計）
+                      ,xei.invoice_day_indv_cd_stk_qty                         invoice_day_indv_cd_stk_qty    --（計）商流在庫数量（当日、バラ）
+                      ,xei.invoice_day_case_cd_stk_qty                         invoice_day_case_cd_stk_qty    --（計）商流在庫数量（当日、ケース）
+                      ,xei.invoice_day_sum_cd_stk_qty                          invoice_day_sum_cd_stk_qty     --（計）商流在庫数量（当日、合計）
+                      ,xei.invoice_month_indv_cd_stk_qty                       invoice_month_indv_cd_stk_qty  --（計）商流在庫数量（当月、バラ）
+                      ,xei.invoice_month_case_cd_stk_qty                       invoice_month_case_cd_stk_qty  --（計）商流在庫数量（当月、ケース）
+                      ,xei.invoice_month_sum_cd_stk_qty                        invoice_month_sum_cd_stk_qty   --（計）商流在庫数量（当月、合計）
+                      ,xei.invoice_day_stk_amt                                 invoice_day_stk_amt            --（計）在庫金額（当日）
+                      ,xei.invoice_month_stk_amt                               invoice_month_stk_amt          --（計）在庫金額（当月）
+                      ,xei.regular_sell_amt_sum                                regular_sell_amt_sum           --正販金額合計
+                      ,xei.rebate_amt_sum                                      rebate_amt_sum                 --割戻し金額合計
+                      ,xei.collect_bottle_amt_sum                              collect_bottle_amt_sum         --回収容器金額合計
+                      ,xei.chain_peculiar_area_footer                          chain_peculiar_area_footer     --チェーン店固有エリア（フッター）
+                      ,xei.item_code                                           item_code                      --品目コード
+                      ,NULL                                                    account_number                 --顧客コード
+                      ,NULL                                                    party_name                     --顧客名（漢字）
+                      ,NULL                                                    organization_name_phonetic     --顧客名（カナ）
+                      ,NULL                                                    deli_center_code               --納入センターコード
+                      ,NULL                                                    deli_center_name               --納入センター名（漢字）
+                      ,NULL                                                    torihikisaki_code              --取引先コード
+                      ,NULL                                                    delivery_base_code             --納品拠点コード
+                      ,xei.conv_customer_code                                  conv_customer_code             --換算後顧客コード
+                 FROM xxcos_edi_inventory                                      xei                            --EDI在庫情報テーブル
+                WHERE xei.conv_customer_code     IS NULL
+             )                                                                 xei                            --EDI在庫情報テーブル
+             ,ic_item_mst_b                                                    iimb                           --OPM品目マスタ
+             ,xxcmn_item_mst_b                                                 ximb                           --OPM品目マスタアドオン
+             ,mtl_system_items_b                                               msib                           --DISC品目マスタ
+             ,xxcmm_system_items_b                                             xsib                           --DISC品目マスタアドオン
+             ,xxcos_head_prod_class_v                                          xhpcv                          --本社商品区分ビュー
+             ,(
+               SELECT hca.account_number                                       account_number                 --顧客コード
+                     ,hp.party_name                                            base_name                      --顧客名称
+                     ,hp.organization_name_phonetic                            base_name_kana                 --顧客名称(カナ)
+               FROM   hz_cust_accounts                                         hca                            --顧客マスタ
+                     ,xxcmm_cust_accounts                                      xca                            --顧客マスタアドオン
+                     ,hz_parties                                               hp                             --パーティマスタ
+               WHERE  hca.customer_class_code     = cv_cust_class_base
+               AND    xca.customer_id             = hca.cust_account_id
+               AND    hp.party_id                 = hca.party_id
+              )                                                                cdm
+    --EDI在庫情報テーブル
+       WHERE xei.data_type_code                   = i_input_rec.data_type_code                                --データ種コード
+         AND (     i_input_rec.info_class        IS NOT NULL                                                  --情報区分
+               AND xei.info_class                 = i_input_rec.info_class
+               OR  i_input_rec.info_class        IS NULL
+             )
+         AND xei.edi_chain_code                   = i_input_rec.chain_code                                    --チェーン店コード
+         AND (
+              (     i_input_rec.store_code       IS NOT NULL                                                  --INパラがNOT NULL
+                AND xei.shop_code                 = i_input_rec.store_code                                    --SHOP結合
+                AND xei.select_block              = 1
+              )
+              OR
+              (
+                i_input_rec.store_code           IS  NULL
+              )
+             )
+         AND TRUNC(xei.data_creation_date_edi_data)                                                           --データ作成日
+               BETWEEN TO_DATE(i_input_rec.edi_date_from, cv_date_fmt )
+               AND     TO_DATE(i_input_rec.edi_date_to  , cv_date_fmt )
+         AND (     i_input_rec.item_class        != cv_prod_class_all                                         --商品区分
+               AND NVL( xhpcv.item_div_h_code,cv_item_div_h_code_A )
+                                                  = i_input_rec.item_class
+               OR  i_input_rec.item_class         = cv_prod_class_all
+             )
+       --OPM品目マスタ
+         AND iimb.item_no(+)                      = xei.item_code                                             --品目コード
+       --OPM品目アドオン
+         AND ximb.item_id(+)                      = iimb.item_id                                              --品目ID
+         AND NVL( xei.center_delivery_date
+                 ,NVL( xei.order_date
+                      ,data_creation_date_edi_data ) )
+             BETWEEN ( NVL( ximb.start_date_active                                                            --適用開始日
+                           ,NVL( xei.center_delivery_date
+                                ,NVL( xei.order_date
+                                     ,data_creation_date_edi_data  ) ) ) )
+             AND     ( NVL( ximb.end_date_active                                                              --適用終了日
+                           ,NVL( xei.center_delivery_date
+                                ,NVL( xei.order_date
+                                     ,data_creation_date_edi_data  ) ) ) )
+       --DISC品目マスタ
+         AND msib.segment1(+)                     = xei.item_code
+         AND msib.organization_id(+)              = i_other_rec.organization_id                               --在庫組織ID
+       --DISC品目アドオン
+         AND xsib.item_code(+)                    = msib.segment1                                             --品目コード
+       --商品区分VIEW
+         AND xhpcv.segment1(+)                    = iimb.item_no                                              --品目ID
+         AND xei.delivery_base_code               = cdm.account_number(+)
+--******************************************* 2009/06/18 1.9 T.Kitajima MOD  END  *************************************
       ;
     -- *** ローカル・レコード ***
     l_base_rec                 g_base_rtype;                                                                 --納品拠点情報
@@ -1672,6 +2442,24 @@ AS
 --
     lb_error := FALSE;
 --
+--******************************************* 2009/06/18 1.9 T.Kitajima ADD START *************************************
+    --==============================================================
+    --納品拠点情報取得
+    --==============================================================
+    BEGIN
+      SELECT hp.organization_name_phonetic  base_name_kana   --顧客名称(カナ)
+      INTO   l_base_rec.base_name_kana
+      FROM   hz_cust_accounts               hca              --顧客マスタ
+            ,hz_parties                     hp               --パーティマスタ
+      WHERE  hca.customer_class_code   = cv_cust_class_base
+      AND    hp.party_id               = hca.party_id
+      AND    hca.account_number        = g_input_rec.base_code
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        l_base_rec.base_name_kana := NULL;
+    END;
+--******************************************* 2009/06/18 1.9 T.Kitajima ADD  END  *************************************
 --******************************************* 2009/04/02 1.7 T.Kitajima DEL START *************************************
 --    --==============================================================
 --    --納品拠点情報取得

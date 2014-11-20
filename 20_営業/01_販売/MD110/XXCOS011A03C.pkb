@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS011A03C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS011A03C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2009. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,12 @@ AS
  *  2009/05/12    1.8   K.Kiriu          [T1_0677]ラベル作成対応
  *                                       [T1_0937]削除時の件数カウント対応
  *  2009/05/22    1.9   M.Sano           [T1_1073]ダミー品目時の数量項目変更対応
+ *  2009/06/11    1.10  T.Kitajima       [T1_1348]行Noの結合条件変更
+ *  2009/06/12    1.10  T.Kitajima       [T1_1350]メインカーソルソート条件変更
+ *  2009/06/12    1.10  T.Kitajima       [T1_1356]ファイルNo→顧客アドオン.EDI伝送追番
+ *  2009/06/12    1.10  T.Kitajima       [T1_1357]伝票番号数値チェック
+ *  2009/06/12    1.10  T.Kitajima       [T1_1358]定番特売区分0→00,1→01,2→02
+ *  2009/07/08    1.10  M.Sano           [T1_1357]レビュー指摘事項対応
  *
  *****************************************************************************************/
 --
@@ -100,6 +106,10 @@ AS
   global_data_check_expt    EXCEPTION;      -- データチェック時のエラー
   lock_expt                 EXCEPTION;
   PRAGMA EXCEPTION_INIT( lock_expt, -54 );  -- ロックエラー
+--****************************** 2009/06/12 1.10 T.Kitajima ADD START ******************************--
+  global_number_err_expt    EXCEPTION;
+  PRAGMA EXCEPTION_INIT( global_number_err_expt, -6502 );
+--****************************** 2009/06/12 1.10 T.Kitajima ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -182,6 +192,9 @@ AS
 /* 2009/05/12 Ver1.8 Add Start */
   cv_msg_tkn_param10    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12265';  -- EDI伝送追番(抽出条件用)
 /* 2009/05/12 Ver1.8 Add End   */
+--****************************** 2009/06/12 1.10 T.Kitajima ADD START ******************************--
+  cv_msg_slip_no_err    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12267';  -- 伝票番号数値エラー
+--****************************** 2009/06/12 1.10 T.Kitajima ADD  END  ******************************--
   -- トークンコード
   cv_tkn_in_param       CONSTANT VARCHAR2(8)   := 'IN_PARAM';          -- 入力パラメータ名
   cv_tkn_date_from      CONSTANT VARCHAR2(9)   := 'DATE_FROM';         -- 日付期間チェックの開始日
@@ -232,7 +245,10 @@ AS
   cv_medium_class_mnl   CONSTANT VARCHAR2(2)   := '01';                -- 媒体区分:手入力
   cv_position           CONSTANT VARCHAR2(3)   := '002';               -- 職位:支店長
   cv_stockout_class_00  CONSTANT VARCHAR2(2)   := '00';                -- 欠品区分:欠品なし
-  cv_sale_class_all     CONSTANT VARCHAR2(1)   := '0';                 -- 定番特売区分:両方
+--****************************** 2009/06/12 1.10 T.Kitajima MOD START ******************************--
+--  cv_sale_class_all     CONSTANT VARCHAR2(1)   := '0';                 -- 定番特売区分:両方
+  cv_sale_class_all     CONSTANT VARCHAR2(2)   := '00';                -- 定番特売区分:両方
+--****************************** 2009/06/12 1.10 T.Kitajima MOD START ******************************--
   cv_entity_code_line   CONSTANT VARCHAR2(4)   := 'LINE';              -- エンティティコード:LINE
   cv_reason_type        CONSTANT VARCHAR2(11)  := 'CANCEL_CODE';       -- 事由タイプ:取消
   cv_err_reason_code    CONSTANT VARCHAR2(2)   := 'XX';                -- エラー取消事由
@@ -1002,6 +1018,9 @@ AS
           ,xel.order_connection_line_number     order_connection_line_number   -- EDI明細情報.受注関連明細番号
           ,oola.ordered_quantity                ordered_quantity               -- 受注明細.受注数量
           ,xtrv.tax_rate                        tax_rate                       -- 消費税率ビュー.消費税率
+--****************************** 2009/06/11 1.10 T.Kitajima ADD START ******************************--
+          ,xca3.edi_forward_number              edi_forward_number             -- 顧客追加情報.EDI伝送追番
+--****************************** 2009/06/11 1.10 T.Kitajima ADD  END ******************************--
     FROM   xxcos_edi_headers                    xeh    -- EDIヘッダ情報
           ,xxcos_edi_lines                      xel    -- EDI明細情報
           ,oe_order_headers_all                 ooha   -- 受注ヘッダ
@@ -1114,7 +1133,11 @@ AS
     AND    ooha.header_id                 = oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID=受注明細.受注ﾍｯﾀﾞID
     AND    ooha.orig_sys_document_ref     = xeh.order_connection_number       -- 受注ﾍｯﾀﾞ.外部ｼｽﾃﾑ受注関連番号=EDIﾍｯﾀﾞ情報.受注関連番号
     AND    oola.orig_sys_line_ref         = xel.order_connection_line_number  -- 受注明細.外部ｼｽﾃﾑ受注明細番号=EDI明細情報.受注関連明細番号
-    AND    xel.line_no                    = oola.line_number                  -- EDI明細情報.行No=受注明細.明細番号
+--****************************** 2009/06/11 1.10 T.Kitajima MOD START ******************************--
+--    AND    xel.line_no                    = oola.line_number                  -- EDI明細情報.行No=受注明細.明細番号
+    AND    xel.order_connection_line_number
+                                          = oola.orig_sys_line_ref            -- EDI明細情報.受注関連明細番号 = 受注明細.外部ｼｽﾃﾑ受注明細番号
+--****************************** 2009/06/11 1.10 T.Kitajima MOD  END  ******************************--
     AND    oola.inventory_item_id         = msib.inventory_item_id            -- 受注明細.品目ID=Disc品目ﾏｽﾀ.品目ID
     AND    msib.segment1                  = iimb.item_no                      -- Disc品目ﾏｽﾀ.品目ｺｰﾄﾞ=OPM品目ﾏｽﾀ.品目ｺｰﾄﾞ
     AND    iimb.item_id                   = ximb.item_id                      -- OPM品目ﾏｽﾀ.品目ID=OPM品目ｱﾄﾞｵﾝ.品目ID
@@ -1131,8 +1154,15 @@ AS
     AND (( flvv1.end_date_active   IS NULL )
     OR   ( flvv1.end_date_active   >= cd_process_date ))                      -- 業務日付がFROM-TO内
     ORDER BY
-           xeh.invoice_number                 -- EDIヘッダ情報.伝票番号
-          ,xel.line_no                        -- EDI明細情報.行Ｎｏ
+--****************************** 2009/06/12 1.10 T.Kitajima MOD START ******************************--
+--           xeh.invoice_number                 -- EDIヘッダ情報.伝票番号
+--          ,xel.line_no                        -- EDI明細情報.行Ｎｏ
+           xeh.delivery_center_code            --1.EDIヘッダ情報.納入センターコード
+          ,xeh.shop_code                       --2.EDIヘッダ情報.店コード
+          ,xeh.invoice_number                  --3.EDIヘッダ情報.伝票番号
+          ,xel.line_no                         --4.EDI明細情報.行No
+          ,xel.packing_number                  --5.EDI明細情報.梱包番号
+--****************************** 2009/06/12 1.10 T.Kitajima MOD  END  ******************************--
     FOR UPDATE OF
            xeh.edi_header_info_id             -- EDIヘッダ情報
           ,xel.edi_header_info_id             -- EDI明細情報
@@ -3154,6 +3184,9 @@ AS
     lt_invoice_number  xxcos_edi_headers.invoice_number%TYPE;              -- 伝票番号
     lt_header_id       xxcos_edi_headers.edi_header_info_id%TYPE;          -- EDIヘッダ情報ID
     lt_delivery_flag   xxcos_edi_headers.edi_delivery_schedule_flag%TYPE;  -- EDI納品予定送信済フラグ
+--****************************** 2009/06/12 1.10 T.Kitajima ADD START ******************************--
+    ln_invoice_number  NUMBER;          -- 数値チェック用
+--****************************** 2009/06/12 1.10 T.Kitajima ADD  END  ******************************--
 --
     -- *** ローカル・カーソル ***
     CURSOR dummy_item_cur
@@ -3224,6 +3257,31 @@ AS
 --
     <<edit_loop>>
     FOR ln_loop_cnt IN 1 .. gn_target_cnt LOOP
+--****************************** 2009/06/12 1.10 T.Kitajima ADD START ******************************--
+      --数値チェック
+      BEGIN
+        IF INSTR( lt_invoice_number , '.' ) > 0 THEN
+          RAISE global_number_err_expt;
+        END IF;
+        ln_invoice_number := TO_NUMBER( SUBSTRB( lt_invoice_number, 1,1) );
+        ln_invoice_number := TO_NUMBER( lt_invoice_number );
+      EXCEPTION
+        WHEN global_number_err_expt THEN
+--****************************** 2009/07/08 1.10 M.Sano     ADD START ******************************--
+          gn_error_cnt := gn_error_cnt + 1;
+          gn_warn_cnt  := gn_target_cnt - gn_error_cnt;
+--****************************** 2009/07/08 1.10 M.Sano     ADD  END  ******************************--
+          ov_errmsg  := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application                                -- アプリケーション
+                          ,iv_name         => cv_msg_slip_no_err                            -- 伝票番号数値エラー
+                          ,iv_token_name1  => cv_tkn_param01                                -- 入力パラメータ名
+                          ,iv_token_value1 => lt_invoice_number                             -- 伝票番号
+                          ,iv_token_name2  => cv_tkn_param02                                -- 入力パラメータ名
+                          ,iv_token_value2 => gt_edi_order_tab(ln_loop_cnt).order_number    -- 受注番号
+                        );
+          RAISE global_api_others_expt;
+      END;
+--****************************** 2009/06/12 1.10 T.Kitajima ADD  END  ******************************--
       -- 「伝票番号」がブレイクした場合
       IF ( lt_invoice_number <> gt_edi_order_tab(ln_loop_cnt).invoice_number ) THEN
         --==============================================================
@@ -3280,7 +3338,10 @@ AS
       -- ヘッダ
       gt_data_tab(ln_data_cnt)(cv_medium_class)             := gt_edi_order_tab(ln_loop_cnt).medium_class;                      -- 媒体区分
       gt_data_tab(ln_data_cnt)(cv_data_type_code)           := gt_data_type_code;                                               -- ﾃﾞｰﾀ種ｺｰﾄﾞ
-      gt_data_tab(ln_data_cnt)(cv_file_no)                  := gt_edi_order_tab(ln_loop_cnt).file_no;                           -- ﾌｧｲﾙNo
+--****************************** 2009/06/12 1.10 T.Kitajima MOD START ******************************--
+--      gt_data_tab(ln_data_cnt)(cv_file_no)                  := gt_edi_order_tab(ln_loop_cnt).file_no;                           -- ﾌｧｲﾙNo
+      gt_data_tab(ln_data_cnt)(cv_file_no)                  := gt_edi_order_tab(ln_loop_cnt).edi_forward_number;                -- ﾌｧｲﾙNo
+--****************************** 2009/06/12 1.10 T.Kitajima MOD  END  ******************************--
       gt_data_tab(ln_data_cnt)(cv_info_class)               := gt_edi_order_tab(ln_loop_cnt).info_class;                        -- 情報区分
       gt_data_tab(ln_data_cnt)(cv_process_date)             := gv_f_o_date;                                                     -- 処理日
       gt_data_tab(ln_data_cnt)(cv_process_time)             := gv_f_o_time;                                                     -- 処理日
