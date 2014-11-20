@@ -3063,8 +3063,12 @@ AS
         ,xrart_out_ad_e_x2.rcv_rtn_number              AS voucher_no
         ,xv_out_ad_e_x2.vendor_name                    AS ukebaraisaki_name
         ,NULL                                          AS deliver_to_name
-        ,itc_out_ad_e_x2.trans_qty                     AS deliver_to_name
-        ,0                                             AS leaving_quantity
+-- 2008/12/02 Y.Yamamoto update start
+--        ,itc_out_ad_e_x2.trans_qty                     AS deliver_to_name
+--        ,0                                             AS leaving_quantity
+        ,0                                             AS stock_quantity
+        ,itc_out_ad_e_x2.trans_qty * -1                AS leaving_quantity
+-- 2008/12/02 Y.Yamamoto update end
   FROM   ic_adjs_jnl                  iaj_out_ad_e_x2                   -- OPM在庫調整ジャーナル
         ,ic_jrnl_mst                  ijm_out_ad_e_x2                   -- OPMジャーナルマスタ
         ,ic_tran_cmp                  itc_out_ad_e_x2                   -- OPM完了在庫トランザクション

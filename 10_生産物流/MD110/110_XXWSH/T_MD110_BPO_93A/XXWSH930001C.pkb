@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -113,6 +113,8 @@ AS
  *  2008/11/27    1.27 Oracle 福田 直樹  本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
  *  2008/11/28    1.28 Oracle 福田 直樹  本番障害対応(重量容積小口個数更新関数はエラーにせずROLLBACKもしない)
  *  2008/11/29    1.29 Oracle 上原 正好  本番障害対応#196(for update 文をnowaitからskip lockedに変更)
+ *  2008/12/02    1.30 Oracle 福田 直樹  本番障害対応#320(指示なし実績登録時、指示項目へのセットは行わないようにする)
+ *  2008/12/02    1.30 Oracle 福田 直樹  本番障害対応#188(A-5-3品目マスタ存在チェックの要件とmaster_data_get品目情報取得時の要件を同じにする)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1660,9 +1662,10 @@ AS
 --
         BEGIN
 --
-          -- EOSデータ種別 = 210 拠点出荷確定報告, 215 庭先出荷確定報告の場合
+          -- EOSデータ種別 = 200 有償出荷報告, 210 拠点出荷確定報告, 215 庭先出荷確定報告の場合
           -- IFされた品目は倉庫品目として検索する
           IF ((gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_210) OR
+              (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_200) OR       -- 2008/12/02 本番障害#188 Add
               (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_215)) THEN
 --
             SELECT xic5v.item_class_code                                     -- 品目区分
@@ -1713,7 +1716,7 @@ AS
             AND   xim2v_whse.item_id            = xic5v.item_id
             AND   ROWNUM                        = 1;
 --
-          -- EOSデータ種別 = 200 有償出荷報告, 220 移動出庫確定報告の場合
+          -- EOSデータ種別 = 220 移動出庫確定報告の場合
           ELSE
 --
             SELECT xic5v.item_class_code              -- 品目区分
@@ -3673,10 +3676,10 @@ AS
       AND    xshi.data_type = iv_process_object_info      --データタイプ
       AND    xshi.creation_date < (TRUNC(gd_sysdate) - (gn_purge_period -1))
       ORDER BY xshi.header_id,xsli.line_id
--- mod start 2008/11/29 ver1.29 uehara
+-- mod start uehara 本番障害#196
 --      FOR UPDATE OF xshi.header_id NOWAIT
       FOR UPDATE OF xshi.header_id SKIP LOCKED
--- mod end 2008/11/29 ver1.29 uehara
+-- mod end uehara 本番障害#196
       ;
 --
     -- *** ローカル・レコード ***
@@ -3891,10 +3894,10 @@ AS
     AND     xshi_a.eos_data_type = xshi_b.eos_data_type
     AND     xshi_a.program_update_date <> xshi_b.max_program_update_date
     ORDER BY xshi_a.header_id
--- mod start 2008/11/29 ver1.29 uehara
+-- mod start uehara 本番障害#196
 --    FOR UPDATE OF xshi_a.header_id NOWAIT
     FOR UPDATE OF xshi_a.header_id SKIP LOCKED
--- mod end 2008/11/29 ver1.29 uehara
+-- mod end uehara 本番障害#196
     ;
 --
     --IFヘッダは存在するが、IF明細が存在しない場合、警告をセットしログ出力します。
@@ -4211,10 +4214,10 @@ AS
       wk_sql := wk_sql || '          ,header_id ';          -- IF_L.ヘッダID
       wk_sql := wk_sql || '          ,orderd_item_code ';   -- IF_L.受注品目
       wk_sql := wk_sql || '          ,lot_no ';             -- IF_L.ロットNo
--- mod start 2008/11/29 ver1.29 uehara
+-- mod start uehara 本番障害#196
 --      wk_sql := wk_sql || '  FOR UPDATE OF xsli.line_id,xshi.header_id NOWAIT ';
       wk_sql := wk_sql || '  FOR UPDATE OF xsli.line_id,xshi.header_id SKIP LOCKED ';
--- mod end 2008/11/29 ver1.29 uehara
+-- mod end uehara 本番障害#196
 --
       EXECUTE IMMEDIATE wk_sql BULK COLLECT INTO gr_interface_info_rec ;
 --
@@ -6036,27 +6039,44 @@ AS
 --
         IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
           --マスタチェック[受注品目]
-          IF (lt_eos_data_type = gv_eos_data_cd_220) THEN     --移動出庫
+          -- 2008/12/02 本番障害#188 Del Start ----------------------------------------------
+          --IF (lt_eos_data_type = gv_eos_data_cd_220) THEN     --移動出庫
+          --
+          --  SELECT COUNT(ximv.item_no) item_cnt
+          --  INTO   ln_cnt
+          --  FROM   xxcmn_item_mst2_v ximv
+          --  WHERE  ximv.item_no = gr_interface_info_rec(i).orderd_item_code --OPM品目情報VIEW2.品目コード
+          --  AND    ximv.start_date_active <= gr_interface_info_rec(i).shipped_date --適用開始日<=出荷日
+          --  AND    ximv.end_date_active >= ximv.end_date_active                    --適用終了日>=出荷日
+          --  ;
+          --
+          --ELSIF (lt_eos_data_type = gv_eos_data_cd_230) THEN  --移動入庫
+          --
+          --  SELECT COUNT(ximv.item_no) item_cnt
+          --  INTO   ln_cnt
+          --  FROM   xxcmn_item_mst2_v ximv
+          --  WHERE  ximv.item_no = gr_interface_info_rec(i).orderd_item_code --OPM品目情報VIEW2.品目コード
+          --  AND ximv.start_date_active <= gr_interface_info_rec(i).arrival_date --適用開始日<=着荷日
+          --  AND ximv.end_date_active >= gr_interface_info_rec(i).arrival_date   --適用終了日>=着荷日
+          --  ;
+          --END IF;
+          -- 2008/12/02 本番障害#188 Del End ------------------------------------------------
 --
-            SELECT COUNT(ximv.item_no) item_cnt
-            INTO   ln_cnt
-            FROM   xxcmn_item_mst2_v ximv
-            WHERE  ximv.item_no = gr_interface_info_rec(i).orderd_item_code --OPM品目情報VIEW2.品目コード
-            AND    ximv.start_date_active <= gr_interface_info_rec(i).shipped_date --適用開始日<=出荷日
-            AND    ximv.end_date_active >= ximv.end_date_active                    --適用終了日>=出荷日
-            ;
---
-          ELSIF (lt_eos_data_type = gv_eos_data_cd_230) THEN  --移動入庫
---
-            SELECT COUNT(ximv.item_no) item_cnt
-            INTO   ln_cnt
-            FROM   xxcmn_item_mst2_v ximv
-            WHERE  ximv.item_no = gr_interface_info_rec(i).orderd_item_code --OPM品目情報VIEW2.品目コード
-            AND ximv.start_date_active <= gr_interface_info_rec(i).arrival_date --適用開始日<=着荷日
-            AND ximv.end_date_active >= gr_interface_info_rec(i).arrival_date   --適用終了日>=着荷日
-            ;
---
-          END IF;
+          -- 2008/12/02 本番障害#188 Add Start ----------------------------------------------
+          SELECT COUNT(xim2v.item_no) item_cnt
+          INTO   ln_cnt
+          FROM  xxcmn_item_mst2_v         xim2v
+               ,xxcmn_item_mst2_v         xim2v_whse
+               ,xxcmn_item_categories5_v  xic5v
+          WHERE xim2v.item_no            = gr_interface_info_rec(i).orderd_item_code
+          AND   xim2v.inactive_ind      <> gn_view_disable                    -- 無効フラグ
+          AND   xim2v.obsolete_class    <> gv_view_disable                    -- 廃止区分
+          AND   xim2v.start_date_active <= TRUNC(gr_interface_info_rec(i).shipped_date)
+          AND   xim2v.end_date_active   >= TRUNC(gr_interface_info_rec(i).shipped_date)
+          AND   xim2v.item_id            = xic5v.item_id
+          AND   xim2v_whse.item_id       = xim2v.whse_item_id  -- 倉庫品目ID(OPM)
+          ;
+          -- 2008/12/02 本番障害#188 Add End ------------------------------------------------
 --
           IF (ln_cnt = 0) THEN
 --
@@ -6550,13 +6570,41 @@ AS
         IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
           -- マスタチェック[受注品目]
-          SELECT COUNT(ximv.item_no) item_cnt
+          -- 2008/12/02 本番障害#188 Del Start ----------------------------------------------
+          --SELECT COUNT(ximv.item_no) item_cnt
+          --INTO   ln_cnt
+          --FROM   xxcmn_item_mst2_v ximv
+          --WHERE  ximv.item_no = gr_interface_info_rec(i).orderd_item_code --OPM品目情報VIEW2.品目コード
+          --AND    ximv.start_date_active <= gr_interface_info_rec(i).shipped_date  --適用開始日<=出荷日
+          --AND    ximv.end_date_active   >= gr_interface_info_rec(i).shipped_date  --適用終了日>=出荷日
+          --;
+          -- 2008/12/02 本番障害#188 Del End ------------------------------------------------
+--
+          -- 2008/12/02 本番障害#188 Add Start ----------------------------------------------
+          SELECT COUNT(xim2v_whse.item_no) item_cnt
           INTO   ln_cnt
-          FROM   xxcmn_item_mst2_v ximv
-          WHERE  ximv.item_no = gr_interface_info_rec(i).orderd_item_code --OPM品目情報VIEW2.品目コード
-          AND    ximv.start_date_active <= gr_interface_info_rec(i).shipped_date  --適用開始日<=出荷日
-          AND    ximv.end_date_active   >= gr_interface_info_rec(i).shipped_date  --適用終了日>=出荷日
+          FROM  (SELECT  item_id                        -- 品目ID
+                        ,item_no                        -- 品目
+                        ,whse_item_id                   -- 倉庫品目
+                        ,inventory_item_id              -- INV品目ID
+                 FROM    xxcmn_item_mst2_v
+                 WHERE   item_id           <> whse_item_id                         -- 品目と倉庫品目が違うもの
+                 AND     inactive_ind      <> gn_view_disable                      -- 無効フラグ
+                 AND     obsolete_class    <> gv_view_disable                      -- 廃止区分
+                 AND     start_date_active <= TRUNC(gr_interface_info_rec(i).shipped_date)
+                 AND     end_date_active   >= TRUNC(gr_interface_info_rec(i).shipped_date)
+                )                         xim2v         -- 出荷品目ビュー
+               ,xxcmn_item_mst2_v         xim2v_whse    -- 倉庫品目ビュー
+               ,xxcmn_item_categories5_v  xic5v
+          WHERE xim2v_whse.item_no            = gr_interface_info_rec(i).orderd_item_code
+          AND   xim2v_whse.item_id            = xim2v.whse_item_id(+)              -- IF品目が倉庫品目に設定されている出荷品目(依頼品目)
+          AND   xim2v_whse.inactive_ind      <> gn_view_disable                    -- 無効フラグ
+          AND   xim2v_whse.obsolete_class    <> gv_view_disable                    -- 廃止区分
+          AND   xim2v_whse.start_date_active <= TRUNC(gr_interface_info_rec(i).shipped_date)
+          AND   xim2v_whse.end_date_active   >= TRUNC(gr_interface_info_rec(i).shipped_date)
+          AND   xim2v_whse.item_id            = xic5v.item_id
           ;
+          -- 2008/12/02 本番障害#188 Add End ------------------------------------------------
 --
           IF (ln_cnt = 0) THEN
 --
@@ -9394,22 +9442,37 @@ AS
     gr_order_h_rec.customer_id              := gr_interface_info_rec(in_index).customer_id;
     -- 顧客
     gr_order_h_rec.customer_code            := gr_interface_info_rec(in_index).customer_code;
+--
+    -- 2008/12/02 本番障害#320 Del Start ------------------------------------
+    ---- 出荷先ID
+    --IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210) OR
+    --    (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
+    --THEN
+    --  gr_order_h_rec.deliver_to_id          := gr_interface_info_rec(in_index).deliver_to_id;
+    --END IF;
+    ---- 出荷先
+    --IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210) OR
+    --    (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
+    --THEN
+    --  gr_order_h_rec.deliver_to             := gr_interface_info_rec(in_index).party_site_code;
+    --END IF;
+    ---- 運送業者_ID
+    --gr_order_h_rec.career_id                := gr_interface_info_rec(in_index).career_id;
+    ---- 運送業者
+    --gr_order_h_rec.freight_carrier_code     := gr_interface_info_rec(in_index).freight_carrier_code;
+    -- 2008/12/02 本番障害#320 Del End --------------------------------------
+--
+    -- 2008/12/02 本番障害#320 Add Start ------------------------------------
     -- 出荷先ID
-    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210) OR
-        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
-    THEN
-      gr_order_h_rec.deliver_to_id          := gr_interface_info_rec(in_index).deliver_to_id;
-    END IF;
+    gr_order_h_rec.deliver_to_id            := NULL;
     -- 出荷先
-    IF ((gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_210) OR
-        (gr_interface_info_rec(in_index).eos_data_type = gv_eos_data_cd_215))
-    THEN
-      gr_order_h_rec.deliver_to             := gr_interface_info_rec(in_index).party_site_code;
-    END IF;
+    gr_order_h_rec.deliver_to               := NULL;
     -- 運送業者_ID
-    gr_order_h_rec.career_id                := gr_interface_info_rec(in_index).career_id;
+    gr_order_h_rec.career_id                := NULL;
     -- 運送業者
-    gr_order_h_rec.freight_carrier_code     := gr_interface_info_rec(in_index).freight_carrier_code;
+    gr_order_h_rec.freight_carrier_code     := NULL;
+    -- 2008/12/02 本番障害#320 Add End --------------------------------------
+--
     -- 顧客発注
     gr_order_h_rec.cust_po_number           := gr_interface_info_rec(in_index).cust_po_number;
     -- 依頼No
@@ -9645,7 +9708,9 @@ AS
       END IF;
 --
       -- 配送区分
-      gr_order_h_rec.shipping_method_code     := gr_interface_info_rec(in_index).shipping_method_code;
+      --gr_order_h_rec.shipping_method_code     := gr_interface_info_rec(in_index).shipping_method_code; -- 2008/12/02 本番障害#320 Del
+      gr_order_h_rec.shipping_method_code     := NULL;                                                   -- 2008/12/02 本番障害#320 Add
+--
       -- 配送区分_実績
       gr_order_h_rec.result_shipping_method_code := gr_interface_info_rec(in_index).shipping_method_code;
 --
@@ -11975,12 +12040,22 @@ AS
     -- 入庫先保管場所
     gr_mov_req_instr_h_rec.ship_to_locat_code
                                             := gr_interface_info_rec(in_index).ship_to_location;
+--
+    -- 2008/12/02 本番障害#320 Del Start --------------------------------------
+    ---- 出庫予定日
+    --gr_mov_req_instr_h_rec.schedule_ship_date
+    --                                        := gr_interface_info_rec(in_index).shipped_date;
+    ---- 入庫予定日
+    --gr_mov_req_instr_h_rec.schedule_arrival_date
+    --                                        := gr_interface_info_rec(in_index).arrival_date;
+    -- 2008/12/02 本番障害#320 Del End ----------------------------------------
+    -- 2008/12/02 本番障害#320 Add Start --------------------------------------
     -- 出庫予定日
-    gr_mov_req_instr_h_rec.schedule_ship_date
-                                            := gr_interface_info_rec(in_index).shipped_date;
+    gr_mov_req_instr_h_rec.schedule_ship_date    := NULL;
     -- 入庫予定日
-    gr_mov_req_instr_h_rec.schedule_arrival_date
-                                            := gr_interface_info_rec(in_index).arrival_date;
+    gr_mov_req_instr_h_rec.schedule_arrival_date := NULL;
+    -- 2008/12/02 本番障害#320 Add End ----------------------------------------
+--
     -- 運賃区分
     IF (NVL(gr_interface_info_rec(in_index).delivery_no,'0') <> '0') THEN
       gr_mov_req_instr_h_rec.freight_charge_class
@@ -12004,11 +12079,21 @@ AS
     gr_mov_req_instr_h_rec.delivery_no      := gr_interface_info_rec(in_index).delivery_no;
     -- 組織ID
     gr_mov_req_instr_h_rec.organization_id  := gv_master_org_id;
+--
+    -- 2008/12/02 本番障害#320 Del Start --------------------------------------
+    ---- 運送業者_ID
+    --gr_mov_req_instr_h_rec.career_id        := gr_interface_info_rec(in_index).career_id;
+    ---- 運送業者
+    --gr_mov_req_instr_h_rec.freight_carrier_code
+    --                                        := gr_interface_info_rec(in_index).freight_carrier_code;
+    -- 2008/12/02 本番障害#320 Del End ----------------------------------------
+    -- 2008/12/02 本番障害#320 Add Start --------------------------------------
     -- 運送業者_ID
-    gr_mov_req_instr_h_rec.career_id        := gr_interface_info_rec(in_index).career_id;
+    gr_mov_req_instr_h_rec.career_id            := NULL;
     -- 運送業者
-    gr_mov_req_instr_h_rec.freight_carrier_code
-                                            := gr_interface_info_rec(in_index).freight_carrier_code;
+    gr_mov_req_instr_h_rec.freight_carrier_code := NULL;
+    -- 2008/12/02 本番障害#320 Add End ----------------------------------------
+--
     -- 運送業者_ID_実績
     gr_mov_req_instr_h_rec.actual_career_id := gr_interface_info_rec(in_index).result_freight_carrier_id;
     -- 運送業者_実績
@@ -12189,9 +12274,15 @@ AS
         gr_mov_req_instr_h_rec.based_capacity := on_leaf_loading_capacity;
       END IF;
 --
+      -- 2008/12/02 本番障害#320 Del Start --------------------------------------
+      ---- 配送区分
+      --gr_mov_req_instr_h_rec.shipping_method_code
+      --                                      := gr_interface_info_rec(in_index).shipping_method_code;
+      -- 2008/12/02 本番障害#320 Del End ----------------------------------------
+      -- 2008/12/02 本番障害#320 Add Start --------------------------------------
       -- 配送区分
-      gr_mov_req_instr_h_rec.shipping_method_code
-                                            := gr_interface_info_rec(in_index).shipping_method_code;
+      gr_mov_req_instr_h_rec.shipping_method_code := NULL;
+      -- 2008/12/02 本番障害#320 Add End ----------------------------------------
 --
       -- 配送区分_実績
       gr_mov_req_instr_h_rec.actual_shipping_method_code
@@ -12478,15 +12569,17 @@ AS
       END IF;
     END IF;
 --
-    IF (gr_interface_info_rec(in_index).out_warehouse_flg = gv_flg_on)
-    THEN
-      --出庫予定日
-      gr_mov_req_instr_h_rec.schedule_ship_date
-                                            := gr_interface_info_rec(in_index).shipped_date;
-      --入庫予定日
-      gr_mov_req_instr_h_rec.schedule_arrival_date
-                                            := gr_interface_info_rec(in_index).arrival_date;
-    END IF;
+    -- 2008/12/02 本番障害#320 Del Start --------------------------------------
+    --IF (gr_interface_info_rec(in_index).out_warehouse_flg = gv_flg_on)
+    --THEN
+    --  --出庫予定日
+    --  gr_mov_req_instr_h_rec.schedule_ship_date
+    --                                        := gr_interface_info_rec(in_index).shipped_date;
+    --  --入庫予定日
+    --  gr_mov_req_instr_h_rec.schedule_arrival_date
+    --                                        := gr_interface_info_rec(in_index).arrival_date;
+    --END IF;
+    -- 2008/12/02 本番障害#320 Del End ----------------------------------------
 --
     --パレット回収枚数
     gr_mov_req_instr_h_rec.collected_pallet_qty
@@ -12668,8 +12761,8 @@ AS
 --
       UPDATE xxinv_mov_req_instr_headers xmrih
       SET xmrih.status                      = gr_mov_req_instr_h_rec.status
-         ,xmrih.schedule_ship_date          = gr_mov_req_instr_h_rec.schedule_ship_date
-         ,xmrih.schedule_arrival_date       = gr_mov_req_instr_h_rec.schedule_arrival_date
+         --,xmrih.schedule_ship_date          = gr_mov_req_instr_h_rec.schedule_ship_date     -- 2008/12/02 本番障害#320 Del
+         --,xmrih.schedule_arrival_date       = gr_mov_req_instr_h_rec.schedule_arrival_date  -- 2008/12/02 本番障害#320 Del
          ,xmrih.collected_pallet_qty        = gr_mov_req_instr_h_rec.collected_pallet_qty
          ,xmrih.out_pallet_qty              = DECODE(gr_mov_req_instr_h_rec.out_pallet_qty,NULL,xmrih.out_pallet_qty,gr_mov_req_instr_h_rec.out_pallet_qty)
          ,xmrih.in_pallet_qty               = DECODE(gr_mov_req_instr_h_rec.in_pallet_qty,NULL,xmrih.in_pallet_qty,gr_mov_req_instr_h_rec.in_pallet_qty)  

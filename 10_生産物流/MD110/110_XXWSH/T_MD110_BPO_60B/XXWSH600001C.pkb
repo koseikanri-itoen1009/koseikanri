@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/10/30    1.12 Oracle H.Itou     統合テスト指摘526
  *  2008/11/19    1.13 Oracle H.Itou     統合テスト指摘666
  *  2008/11/29    1.14 Oracle MIYATA     ロック対応 NO WAIT　を削除してWAITにする
+ *  2008/12/02    1.15 Oracle H.Itou     本番障害#220対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2030,7 +2031,10 @@ debug_log(FND_FILE.LOG,'明細用登録カウント：'||ln_detail_ins_cnt);
               
 --20080519 D.Sugahara Add 不具合No3対応->
               -- トランザクションID（ソートテーブル更新用）
-              lt_trans_id_tab(ln_detail_ins_cnt) := mixed_info_tab(ln_detail_ins_cnt).transaction_id;
+-- 2008/12/02 H.Itou Mod Start 本番障害#220 ソートテーブル更新トランザクションIDがずれているため修正。
+--              lt_trans_id_tab(ln_detail_ins_cnt) := mixed_info_tab(ln_detail_ins_cnt).transaction_id;
+              lt_trans_id_tab(ln_detail_ins_cnt) := mixed_info_tab(loop_cnt).transaction_id;
+-- 2008/12/02 H.Itou Mod End
 --20080519 D.Sugahara Add 不具合No3対応<-              
 --
 debug_log(FND_FILE.LOG,'集約NO：'||gt_int_no_lines_tab(ln_detail_ins_cnt));
