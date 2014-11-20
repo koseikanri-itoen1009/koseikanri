@@ -5,10 +5,10 @@ AS
  *
  * Package Name     : XXCSO016A05C(bosy)
  * Description      : 物件情報(自販機情報)データを情報系システムへ連携するためのＣＳＶファイルを作成します。
- *                    
+ *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
- *                    
- * Version          : 1.3
+ *
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009-03-27    1.2   N.Yabuki         【ST障害管理T1_0191_T1_0192_T1_0193_T1_0194】
  *                                        (※障害管理番号、障害内容は障害管理番号採番後に記入)
  *  2009-04-08    1.3   K.Satomura       ＳＴ障害対応(T1_0365)
+ *  2009-04-15    1.4   M.Maruyama       ＳＴ障害対応(T1_0550) メインカーソルのWHERE句を修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -111,14 +112,14 @@ AS
 /*20090327_yabuki_T1_0193 END*/
   cn_completion_kbn      CONSTANT NUMBER        := 1;               -- 作業テーブルの完了区分(完了:1)
   cv_category_kbn        CONSTANT VARCHAR2(10)  := '50';            -- 発注依頼明細情報ビューの引揚情報(引揚情報:50)
-/*20090327_yabuki_T1_0193 START*/  
+/*20090327_yabuki_T1_0193 START*/
   cv_category_kbn_new_rplc  CONSTANT VARCHAR2(10)  := '20';            -- 発注依頼明細情報ビューの新台代替情報(新台代替情報:20)
   cv_category_kbn_old_rplc  CONSTANT VARCHAR2(10)  := '40';            -- 発注依頼明細情報ビューの旧台代替情報(旧台代替情報:40)
 /*20090327_yabuki_T1_0193 END*/
   cv_withdrawal_type     CONSTANT VARCHAR2(10)  := '1:引揚';        -- 発注依頼明細情報ビューの引揚(引揚:1)
   cv_instance_status     CONSTANT VARCHAR2(50)  := 'XXCSO1_INSTANCE_STATUS';  -- クイックコードのルックアップタイプ
   cv_enabled_flag        CONSTANT VARCHAR2(50)  := 'Y';             -- クイックコードの有効フラグ
-  cv_jotai_kbn1_1        CONSTANT VARCHAR2(1)   := '1';             -- 機器状態１（1:稼働中） 
+  cv_jotai_kbn1_1        CONSTANT VARCHAR2(1)   := '1';             -- 機器状態１（1:稼働中）
   cv_jotai_kbn1_2        CONSTANT VARCHAR2(2)   := '2';             -- 機器状態１（2:滞留）
   cv_jotai_kbn1_3        CONSTANT VARCHAR2(2)   := '3';             -- 機器状態１（3:廃棄済）
   cv_instance_type_cd_1  CONSTANT VARCHAR2(1)   := '1';             -- インスタンスタイプが「1:自動販売機」
@@ -207,7 +208,7 @@ AS
   cv_debug_msg30          CONSTANT VARCHAR2(200) := '拠点(部門)          = ';
   cv_debug_msg31          CONSTANT VARCHAR2(200) := '<< 業務処理年月取得処理 >>';
   cv_debug_msg32          CONSTANT VARCHAR2(200) := '業務処理年月        = ';
-  
+
   cv_debug_msg_fnm        CONSTANT VARCHAR2(200) := 'filename = ';
   cv_debug_msg_fcls       CONSTANT VARCHAR2(200) := '<< 例外処理内でCSVファイルをクローズしました >>';
   cv_debug_msg_copn       CONSTANT VARCHAR2(200) := '<< カーソルをオープンしました >>';
@@ -368,7 +369,7 @@ AS
                  cv_debug_msg2  || lv_sysdate || CHR(10) ||
                  ''
     );
-    -- 入力パラメータなしメッセージ出力 
+    -- 入力パラメータなしメッセージ出力
     lv_init_msg   := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appl_short_name    --アプリケーション短縮名
                       ,iv_name         => cv_tkn_number_01      --メッセージコード
@@ -637,7 +638,7 @@ AS
     lv_file_dir   := iv_file_dir;       -- CSVファイル出力先
     lv_file_name  := iv_file_name;      -- CSVファイル名
     -- ========================
-    -- CSVファイル存在チェック 
+    -- CSVファイル存在チェック
     -- ========================
     UTL_FILE.FGETATTR(
                   location    => lv_file_dir
@@ -661,7 +662,7 @@ AS
       RAISE file_err_expt;
     ELSIF (lv_exists = cb_false) THEN
       -- ========================
-      -- CSVファイルオープン 
+      -- CSVファイルオープン
       -- ========================
       BEGIN
   --
@@ -953,7 +954,7 @@ AS
                 ,lv_account_number               -- 顧客コード
         FROM     xxcso_cust_accounts_v xcav      -- 顧客マスタビュー
         WHERE    xcav.cust_account_id = l_get_rec.install_account_id; -- アカウントID
-        
+
       EXCEPTION
         -- 検索結果がない場合、抽出失敗した場合
         WHEN OTHERS THEN
@@ -984,7 +985,7 @@ AS
       IF (l_get_rec.jotai_kbn1 = cv_jotai_kbn1_2) THEN
         BEGIN
         /* 2009.04.09 K.Satomura T1_0441対応 START */
-        --  SELECT MAX(xiwd.actual_work_date) max_actual_work_date 
+        --  SELECT MAX(xiwd.actual_work_date) max_actual_work_date
         --  INTO   ln_actual_work_date                       -- 滞留開始日
         --  FROM   xxcso_in_work_data xiwd                   -- 作業データテーブル
         --        ,po_requisition_headers_all prha           -- 発注依頼ヘッダテーブル
@@ -1100,11 +1101,11 @@ AS
     -- インスタンスタイプが「1:自動販売機」の場合
     IF (l_get_rec.instance_type_code = 1) THEN
       BEGIN
-        SELECT  punv.attribute2 attribute2    -- メーカーコード 
+        SELECT  punv.attribute2 attribute2    -- メーカーコード
                ,punv.attribute9 attribute9    -- 特殊機区分１
-               ,punv.attribute10 attribute10  -- 特殊機区分2 
-               ,punv.attribute11 attribute11  -- 特殊機区分3 
-               ,punv.attribute8 attribute8    -- コラム数 
+               ,punv.attribute10 attribute10  -- 特殊機区分2
+               ,punv.attribute11 attribute11  -- 特殊機区分3
+               ,punv.attribute8 attribute8    -- コラム数
         INTO    lv_attribute2                 -- メーカーコード
                ,lv_attribute9                 -- 特殊機区分1
                ,lv_attribute10                -- 特殊機区分2
@@ -1370,7 +1371,7 @@ AS
         || cv_sep_com || cv_sep_wquot || l_get_rec.vendor_model || cv_sep_wquot               -- 機種(DFF1)
         || cv_sep_com || cv_sep_wquot || l_get_rec.vendor_number || cv_sep_wquot              -- 機番(DFF2)
         || cv_sep_com || TO_CHAR(TO_DATE(l_get_rec.first_install_date,'YY/MM/DD HH24:MI:SS'),'YYYYMMDD')
-          -- 初回設置日(DFF3)  
+          -- 初回設置日(DFF3)
         || cv_sep_com || cv_sep_wquot || l_get_rec.op_request_flag || cv_sep_wquot            -- 作業依頼中フラグ(DFF4)
         || cv_sep_com || cv_sep_wquot || l_get_rec.ven_kyaku_last || cv_sep_wquot             -- 最終顧客コード
         || cv_sep_com || NVL(l_get_rec.ven_tasya_cd01,0)                                      -- 他社コード１
@@ -1528,7 +1529,7 @@ AS
 --###########################  固定部 END   ############################
 --
     -- ====================
-    -- CSVファイルクローズ 
+    -- CSVファイルクローズ
     -- ====================
     BEGIN
       UTL_FILE.FCLOSE(
@@ -1790,7 +1791,10 @@ AS
             ,xibv.last_inst_cust_code    last_inst_cust_code      -- 先月末設置先顧客コード
             ,xibv.last_jotai_kbn         last_jotai_kbn           -- 先月末機器状態
             ,xibv.last_year_month        last_year_month          -- 先月末年月
-      FROM   xxcso_install_base_v xibv where instance_id IN(104039,90043,90045);                           -- 物件マスタビュー
+      /*20090415_maruyama_T1_0550 START*/
+      FROM   xxcso_install_base_v xibv;
+--      where instance_id IN(104039,90043,90045);                           -- 物件マスタビュー
+      /*20090415_maruyama_T1_0550 END*/
     -- *** ローカル・レコード ***
     l_xibv_data_rec        xibv_data_cur%ROWTYPE;
     l_get_rec              g_value_rtype;                        -- 什器マスタデータ
@@ -1814,7 +1818,7 @@ AS
 --    gn_skip_cnt   :=0;
 --
     -- ================================
-    -- A-1.初期処理 
+    -- A-1.初期処理
     -- ================================
     init(
       ov_sysdate          => lv_sysdate,       -- システム日付
@@ -1822,14 +1826,14 @@ AS
       ov_errbuf           => lv_errbuf,        -- エラー・メッセージ            --# 固定 #
       ov_retcode          => lv_retcode,       -- リターン・コード              --# 固定 #
       ov_errmsg           => lv_errmsg         -- ユーザー・エラー・メッセージ  --# 固定 #
-    ); 
+    );
 --
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_process_expt;
     END IF;
 --
     -- =================================================
-    -- A-2.プロファイル値を取得 
+    -- A-2.プロファイル値を取得
     -- =================================================
     get_profile_info(
        ov_file_dir    => lv_file_dir    -- CSVファイル出力先
@@ -1846,7 +1850,7 @@ AS
     END IF;
 --
     -- =================================================
-    -- A-3.CSVファイルオープン 
+    -- A-3.CSVファイルオープン
     -- =================================================
 --
     open_csv_file(
@@ -2061,7 +2065,7 @@ AS
 -- UPD 20090220 Sai 関連情報抽出失敗時、警告スキップ⇒エラー中断　に変更　END
 --
         -- ========================================
-        -- A-6. 什器マスタデータCSVファイル出力 
+        -- A-6. 什器マスタデータCSVファイル出力
         -- ========================================
         create_csv_rec(
           i_get_rec        =>  l_get_rec         -- 什器マスタデータ
@@ -2095,7 +2099,7 @@ AS
              which  => FND_FILE.LOG
             ,buff   => cv_pkg_name||cv_msg_cont||
                        cv_prg_name||cv_msg_part||
-                       lv_sub_buf 
+                       lv_sub_buf
           );
       END;
 --
@@ -2122,7 +2126,7 @@ AS
     );
 --
     -- ========================================
-    -- A-7.CSVファイルクローズ  
+    -- A-7.CSVファイルクローズ
     -- ========================================
 --
     close_csv_file(
@@ -2385,7 +2389,7 @@ AS
     END IF;
 --
     -- =======================
-    -- A-8.終了処理 
+    -- A-8.終了処理
     -- =======================
     --空行の出力
     fnd_file.put_line(
