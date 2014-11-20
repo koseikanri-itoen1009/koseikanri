@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2008-06-26 1.4  伊藤ひとみ   ST#296対応
 * 2008-07-25 1.5  山本恭久     不具合指摘事項修正
 * 2008-08-20 1.6  山本恭久     ST#249対応、内部変更#167対応
+* 2008-09-24 1.7  伊藤ひとみ   統合テスト 指摘59,156対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -41,7 +42,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.4
+ * @version 1.7
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -655,6 +656,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // 出庫日(実績)、着日(実績)をセット
       OAViewObject searchVo = getXxinvMovResultsSearchVO1();
       OARow searchVoRow = (OARow)searchVo.first();
+
       // 配送Noが付与されている場合
       if (!XxcmnUtility.isBlankOrNull(movementResultsHdRow.getAttribute("DeliveryNo")))
       {
@@ -670,7 +672,29 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
           // 着日を着日(実績)へセットする
           movementResultsHdRow.setAttribute("ActualArrivalDate", movementResultsHdRow.getAttribute("ScheduleArrivalDate"));
         }
+// 2008-09-24 H.Itou add Start 統合テスト指摘59 出庫実績日がない場合、出庫予定日を出庫実績日に表示する。
+      // 配送Noがない場合
+      } else
+      { 
+        String actualFlg = (String)searchVoRow.getAttribute("ActualFlg"); // 実績データ区分
+
+        // 出庫実績メニューで起動の場合で、出庫日(実績)がNULLの場合、出庫予定日をコピー
+        if (XxcmnUtility.isBlankOrNull(movementResultsHdRow.getAttribute("ActualShipDate"))
+          && XxinvConstants.ACTUAL_FLAG_DELI.equals(actualFlg))
+        {
+          // 出庫日を出庫日(実績)へセットする
+          movementResultsHdRow.setAttribute("ActualShipDate", movementResultsHdRow.getAttribute("ScheduleShipDate"));
+        }
+        // 入庫実績メニューで起動の場合で、着日(実績)がNULLの場合、着荷予定日をコピー
+        if (XxcmnUtility.isBlankOrNull(movementResultsHdRow.getAttribute("ActualArrivalDate"))
+          && XxinvConstants.ACTUAL_FLAG_SCOC.equals(actualFlg))
+        {
+          // 着日を着日(実績)へセットする
+          movementResultsHdRow.setAttribute("ActualArrivalDate", movementResultsHdRow.getAttribute("ScheduleArrivalDate"));
+        }
+// 2008-09-24 H.Itou add End
       }
+
       searchVoRow.setAttribute("ActualShipDate", movementResultsHdRow.getAttribute("ActualShipDate"));
       searchVoRow.setAttribute("ActualArrivalDate", movementResultsHdRow.getAttribute("ActualArrivalDate"));
       // 移動指示部署、出庫元、入庫先、運送業者の名称をセット
@@ -775,6 +799,9 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
    ***************************************************************************
    */
   public void checkHdr()
+// 2008-09-24 H.Itou Add Start
+     throws OAException
+// 2008-09-24 H.Itou Add End
   {
     // OA例外リストを生成します。
     ArrayList exceptions = new ArrayList(100);
@@ -786,6 +813,15 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     String movNum        = (String)row.getAttribute("MovNum");        // 移動番号
     String movType       = (String)row.getAttribute("MovType");       // 移動タイプ
     String compActualFlg = (String)row.getAttribute("CompActualFlg"); // 実績計上フラグ
+// 2008-09-24 H.Itou Add Start 統合テスト指摘156 出庫元・入庫先同一チェック
+    String shippedLocat  = (String)row.getAttribute("ShippedLocatCode"); // 出庫元保管場所
+    String shipToLocat   = (String)row.getAttribute("ShipToLocatCode");  // 入庫先保管場所
+    // 実績データ区分VO取得
+    OAViewObject resultSearchVo = getXxinvMovResultsSearchVO1();
+    // 1行目を取得
+    OARow  resultSearchRow = (OARow)resultSearchVo.first(); 
+    String actualFlg       = (String)resultSearchRow.getAttribute("ActualFlg"); // 実績データ区分
+// 2008-09-24 H.Itou Add End
 
     // 移動番号が設定済かつ移動タイプが「積送なし」かつ実績計上済の場合
     if ((!XxcmnUtility.isBlankOrNull(movNum))
@@ -841,6 +877,14 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       }
     }
 
+// 2008-09-24 H.Itou Add Start 統合テスト指摘156 出庫元・入庫先同一チェック
+    if (!XxcmnUtility.isBlankOrNull(shippedLocat)
+     && !XxcmnUtility.isBlankOrNull(shipToLocat)
+     && shippedLocat.equals(shipToLocat))
+    {
+      throw new OAException(XxcmnConstants.APPL_XXINV, XxinvConstants.XXINV10119);
+    }
+// 2008-09-24 H.Itou Add End
   } // checkHdr
 
   /***************************************************************************
@@ -989,7 +1033,6 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 実績日を取得
     Date actualShipDate    = (Date)row.getAttribute("ActualShipDate");    // 出庫日(実績)
     Date actualArrivalDate = (Date)row.getAttribute("ActualArrivalDate"); // 着日(実績)
-
     
     // 未入力チェック
     String retCode = (String)chkUninput(vo, row, exeType, exceptions);
@@ -1045,7 +1088,6 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         // 保管倉庫の未入力チェック
         chkLocat(vo, row, exeType,exceptions);
       }
-      
     }
   } // chkInstr
 
@@ -2308,6 +2350,9 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
    ***************************************************************************
    */
   public void checkLine()
+// 2008-09-24 H.Itou Add Start
+     throws OAException
+// 2008-09-24 H.Itou Add End
   {
     // 品目格納用HashMap生成
     HashMap itemParams = new HashMap();

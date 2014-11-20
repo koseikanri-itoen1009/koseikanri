@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsLnCO
 * 概要説明   : 入出庫実績明細:検索コントローラ
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-06-11 1.2  大橋孝郎     不具合指摘事項修正
 * 2008-06-18 1.3  大橋孝郎     不具合指摘事項修正
 * 2008-08-18 1.4  山本恭久     内部変更#157対応、ST#249対応
+* 2008-09-24 1.5  伊藤ひとみ   内部変更#157バグ修正
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.webui;
@@ -32,11 +33,12 @@ import itoen.oracle.apps.xxcmn.util.XxcmnUtility;
 import itoen.oracle.apps.xxcmn.util.webui.XxcmnOAControllerImpl;
 import itoen.oracle.apps.xxinv.util.XxinvConstants;
 import itoen.oracle.apps.xxcmn.util.XxcmnConstants;
+import oracle.jbo.domain.Number;
 
 /***************************************************************************
  * 入出庫実績明細:検索コントローラです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.3
+ * @version 1.5
  ***************************************************************************
  */
 public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
@@ -113,19 +115,21 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
       if (pageContext.getParameter("Go") != null)
       {
         // 何も処理しない
-// 2008/08/18 v1.4 Y.Yamamoto Mod Start
-        // 引数設定
-        // VO初期化処理
-        am.invokeMethod("initializeHdr", setParamsHd, parameterTypesHd);
-        Serializable paramsHd[] = { searchHdrId };
-        // 検索処理
-        am.invokeMethod("doSearchHdr", paramsHd);
-
-        // VO初期化処理
-        am.invokeMethod("initializeLine", setParams, parameterTypes);
-        // 検索処理
-        am.invokeMethod("doSearchLine", setParams, parameterTypes);
-// 2008/08/18 v1.4 Y.Yamamoto Mod End
+// 2008/09/24 v1.5 H.Itou Del Start エラーの場合も検索してしまうのでprocessFormRequestで再検索を行う。
+//// 2008/08/18 v1.4 Y.Yamamoto Mod Start
+//        // 引数設定
+//        // VO初期化処理
+//        am.invokeMethod("initializeHdr", setParamsHd, parameterTypesHd);
+//        Serializable paramsHd[] = { searchHdrId };
+//        // 検索処理
+//        am.invokeMethod("doSearchHdr", paramsHd);
+//
+//        // VO初期化処理
+//        am.invokeMethod("initializeLine", setParams, parameterTypes);
+//        // 検索処理
+//        am.invokeMethod("doSearchLine", setParams, parameterTypes);
+//// 2008/08/18 v1.4 Y.Yamamoto Mod End
+// 2008/09/24 v1.5 H.Itou Del End
       } else
       {
         // VO初期化処理
@@ -306,35 +310,89 @@ public class XxinvMovementResultsLnCO extends XxcmnOAControllerImpl
                                    null, 
                                    OAException.INFORMATION, 
                                    null));
+
+// 2008/09/24 v1.5 H.Itou Add Start エラーの場合も検索してしまうのでprocessFormRequestで再検索を行う。
+            // ****************************** //
+            // *       パラメータ取得       * //
+            // ****************************** //
+            String peopleCode  = pageContext.getParameter(XxinvConstants.URL_PARAM_PEOPLE_CODE);  // 従業員区分
+            String actualFlag  = pageContext.getParameter(XxinvConstants.URL_PARAM_ACTUAL_FLAG);  // 実績データ区分
+            String productFlag = pageContext.getParameter(XxinvConstants.URL_PARAM_PRODUCT_FLAG); // 製品識別区分
+            Number searchHdrId = (Number)am.invokeMethod("getHdrId");// ヘッダID
+            String updateFlag  = pageContext.getParameter(XxinvConstants.URL_PARAM_UPDATE_FLAG);  // 更新フラグ
+
+            // AM引数型設定
+            Class[] pTypeHashMap   = { HashMap.class }; // 引数型設定(HashMap)
+      
+            // ****************************** //
+            // *  ヘッダVO初期化・検索処理  * //
+            // ****************************** //
+            // 商品区分の取得
+            String itemClass  = pageContext.getProfile("XXCMN_ITEM_DIV_SECURITY");
+            
+            HashMap pHdr = new HashMap(); // initializeHdrの引数
+            pHdr.put(XxinvConstants.URL_PARAM_PEOPLE_CODE, peopleCode);
+            pHdr.put(XxinvConstants.URL_PARAM_ACTUAL_FLAG, actualFlag);
+            pHdr.put(XxinvConstants.URL_PARAM_PRODUCT_FLAG, productFlag);
+            pHdr.put(XxinvConstants.URL_PARAM_ITEM_CLASS, itemClass);
+            pHdr.put(XxinvConstants.URL_PARAM_UPDATE_FLAG, updateFlag);
+
+            Serializable pInitializeHdr[] = { pHdr }; // initializeHdrの引数設定
+            Serializable pDoSearchHdr[] = { searchHdrId.toString() }; // doSearchHdrの引数設定
+            
+            am.invokeMethod("initializeHdr", pInitializeHdr, pTypeHashMap); // ヘッダVO初期化実行
+            am.invokeMethod("doSearchHdr", pDoSearchHdr);  // ヘッダVO検索処理
+
+            // ****************************** //
+            // *  明細VO初期化・検索処理    * //
+            // ****************************** //
+            // パラメータ用HashMap設定
+            HashMap pLine = new HashMap(); // initializeLine/doSearchLineの引数
+            pLine.put(XxinvConstants.URL_PARAM_PEOPLE_CODE, peopleCode);
+            pLine.put(XxinvConstants.URL_PARAM_ACTUAL_FLAG, actualFlag);
+            pLine.put(XxinvConstants.URL_PARAM_PRODUCT_FLAG, productFlag);
+            pLine.put(XxinvConstants.URL_PARAM_SEARCH_MOV_ID, searchHdrId.toString());
+            pLine.put(XxinvConstants.URL_PARAM_UPDATE_FLAG, updateFlag);
+
+            Serializable pInitializeLine[] = { pLine }; // initializeLineの引数設定
+            Serializable pdoSearchLine[]   = { pLine }; // doSearchLineの引数設定
+            
+            am.invokeMethod("initializeLine", pInitializeLine, pTypeHashMap); // 明細VO初期化実行
+            am.invokeMethod("doSearchLine", pdoSearchLine, pTypeHashMap);     // 明細VO検索実行
+// 2008/09/24 v1.5 H.Itou Add End
+
             // メッセージを出力し、処理終了
             if (exceptions.size() > 0)
             {
-              try
-              {
-                OAException.raiseBundledOAException(exceptions);
-              } catch(OAException oe)
-              {
-                String peopleCode  = pageContext.getParameter(XxinvConstants.URL_PARAM_PEOPLE_CODE);   // 従業員区分
-                String actualFlag  = pageContext.getParameter(XxinvConstants.URL_PARAM_ACTUAL_FLAG);   // 実績データ区分
-                String productFlag = pageContext.getParameter(XxinvConstants.URL_PARAM_PRODUCT_FLAG); // 製品識別区分
-                String updateFlag  = pageContext.getParameter(XxinvConstants.URL_PARAM_UPDATE_FLAG); // 更新フラグ
-
-                // パラメータ用HashMap設定
-                HashMap searchParams = new HashMap();
-                searchParams.put(XxinvConstants.URL_PARAM_PEOPLE_CODE, peopleCode);
-                searchParams.put(XxinvConstants.URL_PARAM_ACTUAL_FLAG, actualFlag);
-                searchParams.put(XxinvConstants.URL_PARAM_PRODUCT_FLAG, productFlag);
-                searchParams.put(XxinvConstants.URL_PARAM_SEARCH_MOV_ID, am.invokeMethod("getHdrId"));
-                searchParams.put(XxinvConstants.URL_PARAM_UPDATE_FLAG, XxinvConstants.PROCESS_FLAG_U);
-
-                pageContext.putDialogMessage(oe);
-
-                pageContext.forwardImmediatelyToCurrentPage(
-                  searchParams,
-                  true,
-                  OAWebBeanConstants.ADD_BREAD_CRUMB_NO);
-              }
-              
+// 2008/09/24 v1.5 H.Itou Del Start VO再検索時に取得するため不要
+//              try
+//              {
+// 2008/09/24 v1.5 H.Itou Del End
+              OAException.raiseBundledOAException(exceptions);
+// 2008/09/24 v1.5 H.Itou Del Start VO再検索時に取得するため不要
+//              } catch(OAException oe)
+//              {
+//                String peopleCode  = pageContext.getParameter(XxinvConstants.URL_PARAM_PEOPLE_CODE);   // 従業員区分
+//                String actualFlag  = pageContext.getParameter(XxinvConstants.URL_PARAM_ACTUAL_FLAG);   // 実績データ区分
+//                String productFlag = pageContext.getParameter(XxinvConstants.URL_PARAM_PRODUCT_FLAG); // 製品識別区分
+//                String updateFlag  = pageContext.getParameter(XxinvConstants.URL_PARAM_UPDATE_FLAG); // 更新フラグ
+//
+//                // パラメータ用HashMap設定
+//                HashMap searchParams = new HashMap();
+//                searchParams.put(XxinvConstants.URL_PARAM_PEOPLE_CODE, peopleCode);
+//                searchParams.put(XxinvConstants.URL_PARAM_ACTUAL_FLAG, actualFlag);
+//                searchParams.put(XxinvConstants.URL_PARAM_PRODUCT_FLAG, productFlag);
+//                searchParams.put(XxinvConstants.URL_PARAM_SEARCH_MOV_ID, am.invokeMethod("getHdrId"));
+//                searchParams.put(XxinvConstants.URL_PARAM_UPDATE_FLAG, XxinvConstants.PROCESS_FLAG_U);
+//
+//                pageContext.putDialogMessage(oe);
+//
+//                pageContext.forwardImmediatelyToCurrentPage(
+//                  searchParams,
+//                  true,
+//                  OAWebBeanConstants.ADD_BREAD_CRUMB_NO);
+//              }
+// 2008/09/24 v1.5 H.Itou Del End
             }
           }
 

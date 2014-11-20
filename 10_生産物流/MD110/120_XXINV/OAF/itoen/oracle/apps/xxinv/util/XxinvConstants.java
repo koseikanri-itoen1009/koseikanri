@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvConstants
 * 概要説明   : INV共通定数
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-02-21 1.0  高梨雅史     新規作成
 * 2008-06-18 1.1  大橋孝郎     不具合指摘事項修正
 * 2008-07-10 1.2  伊藤ひとみ   内部変更
+* 2008-09-24 1.3  伊藤ひとみ   統合テスト 指摘156
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.util;
@@ -16,7 +17,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * INV共通定数クラスです。
  * @author  ORACLE 高梨雅史
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxinvConstants 
@@ -167,10 +168,10 @@ public class XxinvConstants
   public static final String XXINV10161   = "APP-XXINV-10161";
   /** メッセージ：APP-XXINV-10165 ロットステータスエラーメッセージ */
   public static final String XXINV10165 = "APP-XXINV-10165";
-  // add start ver1.1
   /** メッセージ：APP-XXINV-10061 必須チェックエラーメッセージ */
-  public static final String XXINV10061 = "APP-XXINV-10061";
-  // add end ver1.1
+  public static final String XXINV10061 = "APP-XXINV-10061"; // add ver1.1
+  /** メッセージ：APP-XXINV-10119 入出庫保管倉庫エラーメッセージ */
+  public static final String XXINV10119 = "APP-XXINV-10119"; // add ver1.3
   /** トークン：SHIP_DATE */
   public static final String TOKEN_SHIP_DATE       = "SHIP_DATE";
   /** トークン：ARRIVAL_DATE */
@@ -201,10 +202,8 @@ public class XxinvConstants
   public static final String TOKEN_NAME_MOV_ACTUAL_MAKE = "移動入出庫実績登録処理";
   /** トークン名称：最大配送区分 */
   public static final String TOKEN_NAME_MAX_SHIP_METHOD = "最大配送区分";
-  // add start ver1.1
   /** トークン名称：品目 */
-  public static final String TOKEN_NAME_ITEM = "品目";
-  // add end ver1.1
+  public static final String TOKEN_NAME_ITEM = "品目";  // add ver1.1
   /** ページタイトルの固定部分 (「ファイルアップロード：　」)*/
   public static final String DISP_TEXT = "ファイルアップロード：";
   /** 参照タイプ タイプ名称 */
@@ -239,8 +238,6 @@ public class XxinvConstants
   public static final Number RETURN_NOT_EXE     = new Number(1);
   /** シーケンス : 「移動ヘッダID用」　 */
   public static final String XXINV_MOV_HDR_S1 = "xxinv_mov_hdr_s1";
-// 2008-07-10 H.Itou ADD START
   /** コンカレント名：移動入出庫実績登録処理　 */
-  public static final String CONC_NAME_XXINV570001C = "XXINV570001C";
-// 2008-07-10 H.Itou ADD END
+  public static final String CONC_NAME_XXINV570001C = "XXINV570001C";// add ver1.2
 }

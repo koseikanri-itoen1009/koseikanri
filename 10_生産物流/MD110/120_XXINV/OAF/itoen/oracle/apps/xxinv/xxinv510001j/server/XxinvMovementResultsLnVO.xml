@@ -3,7 +3,7 @@
 
 <ViewObject
    Name="XxinvMovementResultsLnVO"
-   OrderBy="MOV_LINE_ID"
+   OrderBy="LINE_NUMBER"
    BindingStyle="Oracle"
    CustomQuery="true"
    RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
@@ -69,14 +69,16 @@ SELECT ximril.mov_hdr_id         mov_hdr_id                      -- 移動ヘッダID
 FROM   xxinv_mov_req_instr_headers ximrih   -- 移動依頼/指示ヘッダ(アドオン)
       ,xxinv_mov_req_instr_lines   ximril   -- 移動依頼/指示明細(アドオン)
       ,xxcmn_item_mst2_v           xim2v    -- OPM品目情報VIEW2
-WHERE xim2v.inactive_ind <> '1'
-AND   xim2v.obsolete_class <> '1'
+WHERE ximrih.mov_hdr_id   = ximril.mov_hdr_id
+AND   ximril.item_id      = xim2v.item_id
 AND   (xim2v.start_date_active <= NVL(ximrih.actual_ship_date,ximrih.schedule_ship_date) 
 AND   NVL(xim2v.end_date_active,NVL(ximrih.actual_ship_date,ximrih.schedule_ship_date)) >= NVL(ximrih.actual_ship_date,ximrih.schedule_ship_date))
+-- 2008-09-24 H.itou Del Start 無効フラグ・廃止区分は見ない
+--AND   xim2v.inactive_ind <> '1'
+--AND   xim2v.obsolete_class <> '1'
+-- 2008-09-24 H.itou Del End
 AND   ximril.mov_hdr_id = :4
 AND   ximril.delete_flg   = 'N'
-AND   ximrih.mov_hdr_id   = ximril.mov_hdr_id
-AND   ximril.item_id      = xim2v.item_id
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

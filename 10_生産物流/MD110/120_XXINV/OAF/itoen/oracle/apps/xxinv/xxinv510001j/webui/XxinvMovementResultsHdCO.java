@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsHdCO
 * 概要説明   : 入出庫実績ヘッダ:検索コントローラ
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-11 1.0  大橋孝郎     新規作成
 * 2008-07-25 1.1  山本恭久     不具合指摘事項修正
 * 2008-08-18 1.2  山本恭久     内部変更#157対応、ST#249対応
+* 2008-09-24 1.3  伊藤ひとみ   内部変更#157のバグ対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.webui;
@@ -38,7 +39,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績ヘッダ:検索コントローラです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.0
+ * @version 1.3
  ***************************************************************************
  */
 public class XxinvMovementResultsHdCO extends XxcmnOAControllerImpl
@@ -96,6 +97,15 @@ public class XxinvMovementResultsHdCO extends XxcmnOAControllerImpl
           TransactionUnitHelper.endTransactionUnit(pageContext, XxinvConstants.TXN_XXINV510001J);
           // コミット
           am.invokeMethod("doCommit");
+
+// 2008/09/24 H.Itou Add Start
+          // ****************** //
+          // * ヘッダVO再検索 * //
+          // ****************** //
+          Serializable pDoSearchHdr[] = { searchHdrId }; // doSearchHdrの引数設定
+
+          am.invokeMethod("doSearchHdr", pDoSearchHdr);  // ヘッダVO検索実行
+// 2008/09/24 H.Itou Add End
 
           // 正常終了(更新有)の場合
           if (!XxcmnConstants.STRING_FALSE.equals(updFlag))
@@ -527,6 +537,16 @@ public class XxinvMovementResultsHdCO extends XxcmnOAControllerImpl
 
           // コミット
           am.invokeMethod("doCommit");
+
+// 2008/09/24 H.Itou Add Start
+          // ****************** //
+          // * ヘッダVO再検索 * //
+          // ****************** //
+          String searchHdrId = pageContext.getParameter("HdrId");
+          Serializable pDoSearchHdr[] = { searchHdrId }; // doSearchHdrの引数設定
+
+          am.invokeMethod("doSearchHdr", pDoSearchHdr);  // ヘッダVO検索実行
+// 2008/09/24 H.Itou Add End
 
           // 正常終了(更新有)の場合
           if (!XxcmnConstants.STRING_FALSE.equals(updFlag))

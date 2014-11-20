@@ -3,7 +3,7 @@
 
 <ViewObject
    Name="XxinvMovementResultsVO"
-   OrderBy="MOV_HDR_ID"
+   OrderBy="MOV_NUM"
    BindingStyle="Oracle"
    CustomQuery="true"
    RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
