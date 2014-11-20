@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A09C (body)
  * Description      : CSVファイルのデータアップロード
  * MD.050           : CSVファイルのデータアップロード MD050_COS_005_A09
- * Version          : 1.9
+ * Version          : 2.0
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,7 +43,7 @@ AS
  *  2010/01/07    1.9   M.Sano           [E_本稼動_00739]指定顧客以外で保管場所を設定時はエラーにするように修正。
  *                                       [E_本稼動_00740]子品目コードを設定時はエラーにするように修正。
  *                                                       品目ステータスが20,30,40以外の品目はエラーにするように修正。
- *
+ *  2010/02/12    2.0   T.Nakano         [E_本稼動_01155]単位不正エラー追加修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -333,6 +333,10 @@ AS
   ct_msg_item_status_err         CONSTANT fnd_new_messages.message_name%TYPE
                                           := 'APP-XXCOS1-11330'; --品目ステータスエラー
 --*********** 2010/01/07 1.9 M.Sano ADD END   ********** --
+--*********** 2010/02/12 2.0 T.Nakano ADD Start ********** --
+  ct_msg_item_uom_code_err       CONSTANT fnd_new_messages.message_name%TYPE
+                                          := 'APP-XXCOS1-11331'; --単位不正エラー
+--*********** 2010/02/12 2.0 T.Nakano ADD End ********** --
   --
   --トークン
   cv_tkn_profile                 CONSTANT VARCHAR2(512) := 'PROFILE';            --・プロファイル名
@@ -1747,6 +1751,10 @@ AS
     lv_exists_flag                  VARCHAR2(1);     --存在チェック用一時変数
     lt_item_status                  xxcmm_system_items_b.item_status%TYPE;   -- 品目ステータス
 --*********** 2010/01/07 1.9 M.Sano ADD End   ********** --
+--*********** 2010/02/12 2.0 T.Nakano ADD Start ********** --
+    lv_primary_uom_code             VARCHAR2(30);    --基準単位
+    lv_kansan_exists_flag           VARCHAR2(1);     --単位換算存在チェック用一時変数
+--*********** 2010/02/12 2.0 T.Nakano ADD End   ********** --
 --
     -- *** ローカル・カーソル ***
     -- *** ローカル・レコード ***
@@ -1911,10 +1919,16 @@ AS
     BEGIN
       SELECT
         mib.segment1             segment1,                     --品目コード
-        mib.inventory_item_id    inventory_item_id             --品目ID
+        mib.inventory_item_id    inventory_item_id,            --品目ID
+--*********** 2010/02/12 2.0 T.Nakano ADD Start ********** --
+        mib.primary_uom_code     primary_uom_code              --基準単位
+--*********** 2010/02/12 2.0 T.Nakano ADD End ********** --
       INTO
         lv_segment1,
-        on_inventory_item_id
+        on_inventory_item_id,
+--*********** 2010/02/12 2.0 T.Nakano ADD Start ********** --
+        lv_primary_uom_code
+--*********** 2010/02/12 2.0 T.Nakano ADD End ********** --
       FROM
         mtl_system_items_b       mib                           --品目マスタ
       WHERE mib.segment1         = g_cust_item_work_tab(in_line_no)(cn_item_code) --品目コード
@@ -2251,6 +2265,58 @@ AS
     END IF;
 --
 --*********** 2010/01/07 1.9 M.Sano ADD End   ********** --
+--*********** 2010/02/12 2.0 T.Nakano ADD Start   ********** --
+    ------------------------------------
+    -- 8.単位不正エラーチェック
+    ------------------------------------
+    -- 基準単位チェック
+    -- (品目マスタにデータ存在する場合 かつ 基準単位とCSVファイルで指定された単位が異なる場合にチェックを行う)
+    IF (on_inventory_item_id IS NOT NULL)
+      AND (lv_primary_uom_code <> lv_uom_code)
+    THEN
+      -- 単位換算チェック
+      BEGIN
+        SELECT cv_exists_flag_yes                                                           -- 存在フラグ(あり）
+        INTO   lv_kansan_exists_flag
+        FROM   mtl_uom_class_conversions  mucc                                              -- 単位換算マスタ
+        WHERE  mucc.inventory_item_id   = on_inventory_item_id                              -- 品目ID
+        AND   (mucc.from_uom_code       = lv_uom_code
+          OR
+               mucc.to_uom_code         = lv_uom_code)                                      -- 発注単位
+        AND    TRUNC(SYSDATE)           < TRUNC(NVL(mucc.disable_date,SYSDATE+1))           -- 無効日
+        AND    ROWNUM = 1
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+        WHEN OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+      -- 単位不正エラーチェック
+      -- 発注単位が品目マスタの基準単位、または単位換算マスタの基準単位か変換先単位に無かった場合は以下の処理を実行
+      IF (lv_kansan_exists_flag IS NULL) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => ct_xxcos_appl_short_name,
+                        iv_name         => ct_msg_item_uom_code_err,
+                        iv_token_name1  => cv_tkn_line_no,
+                        iv_token_value1 => TO_CHAR( in_line_no, cv_format ),                     -- 行No
+                        iv_token_name2  => cv_tkn_cust_code,
+                        iv_token_value2 => g_cust_item_work_tab(in_line_no)(cn_cust_code),       -- 顧客コード
+                        iv_token_name3  => cv_tkn_cust_item_code,
+                        iv_token_value3 => g_cust_item_work_tab(in_line_no)(cn_cust_item_code),  -- 顧客品目コード
+                        iv_token_name4  => cv_tkn_item_code,
+                        iv_token_value4 => g_cust_item_work_tab(in_line_no)(cn_item_code),       -- 品目コード
+                        iv_token_name5  => cv_tkn_ordered_uom_code,
+                        iv_token_value5 => g_cust_item_work_tab(in_line_no)(cn_ordering_unit)    -- 単位
+                      );
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT,
+          buff   => lv_errmsg -- ユーザー・エラーメッセージ
+        );
+        ov_retcode := cv_status_warn;
+      END IF;
+    END IF;
+--*********** 2010/02/12 2.0 T.Nakano ADD End   ********** --
 --
   EXCEPTION
 --
