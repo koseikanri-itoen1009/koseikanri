@@ -43,7 +43,15 @@ SELECT
       , oola.schedule_ship_date                   出荷予定日
       , oola.request_date                         納品予定日
       , oola.ordered_item                         受注品目
-      , xhkv.品目名                               品目摘要
+-- 2009/12/25 T.Yoshimoto Mod Start
+--      , xhkv.品目名                               品目摘要
+      ,(select xhkv.品目名
+        from xxsky_品目マスタ_基本_v   xhkv
+        where xhkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhkv.適用開始日
+                            AND xhkv.適用終了日
+       ) 品目摘要
+-- 2009/12/25 T.Yoshimoto Mod End
       , oola.order_quantity_uom                   単位
       , oola.ordered_quantity                     数量
       , oola.attribute8                           "時間指定（From）"
@@ -51,26 +59,107 @@ SELECT
       , oola.attribute7                           備考
       , oola.attribute4                           検収予定日
       , oola.attribute6                           子コード
-      , xhkv.ケース入数                           入数
-      -- ココからは案
-      , xhwkv.商品区分                            商品区分
-      , xhwkv.商品区分名                          商品区分名
-      , xhwkv.本社商品区分                        本社商品区分
-      , xhwkv.本社商品区分名                      本社商品区分名
-      , xhwkv.品目区分                            品目区分
-      , xhwkv.品目区分名                          品目区分名
-      , xhkv.商品種別                             商品種別
-      , xhkv.商品種別名                           商品種別名
-      , xhkv.重量容積区分                         重量容積区分
-      , xhkv.重量容積区分名                       重量容積区分名
-      , xhkv.重量                                 重量
-      , xhkv.容積                                 容積
+-- 2009/12/25 T.Yoshimoto Mod Start
+--      , xhkv.ケース入数                           入数
+--      , xhwkv.商品区分                            商品区分
+--      , xhwkv.商品区分名                          商品区分名
+--      , xhwkv.本社商品区分                        本社商品区分
+--      , xhwkv.本社商品区分名                      本社商品区分名
+--      , xhwkv.品目区分                            品目区分
+--      , xhwkv.品目区分名                          品目区分名
+      ,(select xhkv.ケース入数
+        from xxsky_品目マスタ_基本_v   xhkv
+        where xhkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhkv.適用開始日
+                            AND xhkv.適用終了日
+       ) 入数
+      ,(select xhwkv.商品区分
+        from xxsky_品目カテゴリ割当_基本_v   xhwkv
+        where xhwkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhwkv.適用開始日
+                            AND xhwkv.適用終了日
+       ) 商品区分
+      ,(select xhwkv.商品区分名
+        from xxsky_品目カテゴリ割当_基本_v   xhwkv
+        where xhwkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhwkv.適用開始日
+                            AND xhwkv.適用終了日
+       ) 商品区分名
+      ,(select xhwkv.本社商品区分
+        from xxsky_品目カテゴリ割当_基本_v   xhwkv
+        where xhwkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhwkv.適用開始日
+                            AND xhwkv.適用終了日
+       ) 本社商品区分
+      ,(select xhwkv.本社商品区分名
+        from xxsky_品目カテゴリ割当_基本_v   xhwkv
+        where xhwkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhwkv.適用開始日
+                            AND xhwkv.適用終了日
+       ) 本社商品区分名
+      ,(select xhwkv.品目区分
+        from xxsky_品目カテゴリ割当_基本_v   xhwkv
+        where xhwkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhwkv.適用開始日
+                            AND xhwkv.適用終了日
+       ) 品目区分
+      ,(select xhwkv.品目区分名
+        from xxsky_品目カテゴリ割当_基本_v   xhwkv
+        where xhwkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhwkv.適用開始日
+                            AND xhwkv.適用終了日
+       ) 品目区分名
+--      , xhkv.商品種別                             商品種別
+--      , xhkv.商品種別名                           商品種別名
+--      , xhkv.重量容積区分                         重量容積区分
+--      , xhkv.重量容積区分名                       重量容積区分名
+--      , xhkv.重量                                 重量
+--      , xhkv.容積                                 容積
+      ,(select xhkv.商品種別
+        from xxsky_品目マスタ_基本_v   xhkv
+        where xhkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhkv.適用開始日
+                            AND xhkv.適用終了日
+       ) 商品種別
+      ,(select xhkv.商品種別名
+        from xxsky_品目マスタ_基本_v   xhkv
+        where xhkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhkv.適用開始日
+                            AND xhkv.適用終了日
+       ) 商品種別名
+      ,(select xhkv.重量容積区分
+        from xxsky_品目マスタ_基本_v   xhkv
+        where xhkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhkv.適用開始日
+                            AND xhkv.適用終了日
+       ) 重量容積区分
+      ,(select xhkv.重量容積区分名
+        from xxsky_品目マスタ_基本_v   xhkv
+        where xhkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhkv.適用開始日
+                            AND xhkv.適用終了日
+       ) 重量容積区分名
+      ,(select xhkv.重量
+        from xxsky_品目マスタ_基本_v   xhkv
+        where xhkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhkv.適用開始日
+                            AND xhkv.適用終了日
+       ) 重量
+      ,(select xhkv.容積
+        from xxsky_品目マスタ_基本_v   xhkv
+        where xhkv.品目コード = oola.ordered_item
+        AND   oola.request_date BETWEEN xhkv.適用開始日
+                            AND xhkv.適用終了日
+       ) 容積
+-- 2009/12/25 T.Yoshimoto Mod End
 FROM
         oe_order_headers_all            ooha
       , oe_order_lines_all              oola
       , mtl_secondary_inventories       msi
-      , xxsky_品目マスタ_基本_v         xhkv
-      , xxsky_品目カテゴリ割当_基本_v   xhwkv
+-- 2009/12/25 T.Yoshimoto Del Start
+--      , xxsky_品目マスタ_基本_v         xhkv
+--      , xxsky_品目カテゴリ割当_基本_v   xhwkv
+-- 2009/12/25 T.Yoshimoto Del End
       -- 顧客情報
       , xxcmn_cust_accounts2_v          xca2v
       -- 明細タイプ
@@ -85,12 +174,14 @@ AND   ooha.org_id         = oola.org_id
 AND oola.subinventory     = msi.secondary_inventory_name
 AND oola.ship_from_org_id = msi.organization_id
 -- 品目マスタ
-AND   oola.ordered_item = xhkv.品目コード
-AND   ooha.request_date BETWEEN xhkv.適用開始日
-                            AND xhkv.適用終了日
-AND   oola.ordered_item = xhwkv.品目コード
-AND   ooha.request_date BETWEEN xhwkv.適用開始日
-                            AND xhwkv.適用終了日
+-- 2009/12/25 T.Yoshimoto Del Start
+--AND   oola.ordered_item = xhkv.品目コード
+--AND   ooha.request_date BETWEEN xhkv.適用開始日
+--                            AND xhkv.適用終了日
+--AND   oola.ordered_item = xhwkv.品目コード
+--AND   ooha.request_date BETWEEN xhwkv.適用開始日
+--                            AND xhwkv.適用終了日
+-- 2009/12/25 T.Yoshimoto Del End
 -- 顧客情報
 AND   ooha.sold_to_org_id       = xca2v.cust_account_id
 AND   ooha.request_date BETWEEN xca2v.start_date_active
