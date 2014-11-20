@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A05R(body)
  * Description      : 引取計画立案表出力ワーク登録
  * MD.050           : 引取計画立案表 MD050_COP_004_A05
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/12/29    1.0  SCS.Kikuchi       新規作成
  *  2009/03/04    1.1  SCS.Kikuchi       SVF結合対応
  *  2009/04/28    1.2  SCS.Kikuchi       T1_0645,T1_0838対応
+ *  2009/06/10    1.3  SCS.Kikuchi       T1_1411対応
  *
  *****************************************************************************************/
 --
@@ -872,8 +873,10 @@ AS
       g_forecast_planning_rec.delivery_forecast_quantity  := 
             num_edit( ( ln_standard_qty / g_header_data_tbl(in_header_index).ope_days_this_month_prevday )
                    *  ( g_header_data_tbl(in_header_index).ope_days_this_month
---                      - g_header_data_tbl(in_header_index).ope_days_this_month_prevday )
-                      - g_header_data_tbl(in_header_index).ope_days_this_month_prevday + 1 )
+--20090610_Ver1.3_T1_1411_SCS.Kikuchi_MOD_START
+                      - g_header_data_tbl(in_header_index).ope_days_this_month_prevday )
+--                      - g_header_data_tbl(in_header_index).ope_days_this_month_prevday + 1 )
+--20090610_Ver1.3_T1_1411_SCS.Kikuchi_MOD_END
               );
     END IF;
 
