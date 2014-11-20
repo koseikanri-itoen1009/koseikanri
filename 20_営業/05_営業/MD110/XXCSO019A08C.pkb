@@ -7,7 +7,7 @@ AS
  * Description      : 要求の発行画面から、営業員ごとに指定日を含む月の1日～指定日まで
  *                    訪問実績の無い顧客を表示します。
  * MD.050           : MD050_CSO_019_A08_未訪問顧客一覧表
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009-05-14    1.4   Makoto.Ohtsuki   【T1_0790】出力条件の変更
  *  2009-05-20    1.5   Makoto.Ohtsuki   ＳＴ障害対応(T1_0696)
  *  2009-06-03    1.6   Kazuo.Satomura   ＳＴ障害対応(T1_0696 SQLERRMを削除)
+ *  2009-06-04    1.7   Kazuo.Satomura   ＳＴ障害対応(T1_1329)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -813,7 +814,12 @@ AS
       -- ワークテーブル出力
       UPDATE  xxcso_rep_novisit
         SET   total_count = in_emp_cnt
-        WHERE employee_number = iv_employee_number;
+        /* 2009.06.04 K.Satomura T1_1329対応 START */
+        --WHERE employee_number = iv_employee_number;
+        WHERE employee_number = iv_employee_number
+        AND   request_id      = cn_request_id
+        ;
+        /* 2009.06.04 K.Satomura T1_1329対応 END */
     EXCEPTION
       WHEN OTHERS THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
