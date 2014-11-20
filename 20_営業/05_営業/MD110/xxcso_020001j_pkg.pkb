@@ -37,6 +37,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/23    1.0   H.Ogawa          新規作成
+ *  2008/03/23    1.1   N.Yanagitaira    [障害T1_0163]承認時契約先update処理修正
+ *  2008/04/06    1.2   N.Yanagitaira    [障害T1_0316]回送先レコード更新処理修正
  *
  *****************************************************************************************/
 --
@@ -338,8 +340,10 @@ AS
           -- 次の回送先を見つけ、決裁状態区分を処理中に設定する
           UPDATE  xxcso_sp_decision_sends
           SET     approval_state_type = cv_approval_state_during
-                 ,approval_date       = NULL
-                 ,approval_content    = NULL
+-- 20090406_N.Yanagitaira T1_0316 Del START
+--                 ,approval_date       = NULL
+--                 ,approval_content    = NULL
+-- 20090406_N.Yanagitaira T1_0316 Del END
                  ,last_updated_by     = fnd_global.user_id
                  ,last_update_date    = SYSDATE
                  ,last_update_login   = fnd_global.login_id
@@ -411,8 +415,10 @@ AS
           -- 次の回送先を見つけ、決裁状態区分を処理中に設定する
           UPDATE  xxcso_sp_decision_sends
           SET     approval_state_type = cv_approval_state_during
-                 ,approval_date       = NULL
-                 ,approval_content    = NULL
+-- 20090406_N.Yanagitaira T1_0316 Del START
+--                 ,approval_date       = NULL
+--                 ,approval_content    = NULL
+-- 20090406_N.Yanagitaira T1_0316 Del END
                  ,last_updated_by     = fnd_global.user_id
                  ,last_update_date    = SYSDATE
                  ,last_update_login   = fnd_global.login_id
@@ -576,6 +582,26 @@ AS
 --
     END LOOP send_loop;
 --
+-- 20090406_N.Yanagitaira T1_0316 Add START
+    -- 回送先の社員番号に*を入力した場合、決裁日／決済内容／決済コメントを初期化する
+    UPDATE  xxcso_sp_decision_sends
+    SET     approval_date       = NULL
+           ,approval_content    = NULL
+           ,approval_comment    = NULL
+    WHERE   sp_decision_send_id IN
+            (
+              SELECT xsds.sp_decision_send_id
+              FROM   xxcso_sp_decision_headers xsdh
+                    ,xxcso_sp_decision_sends   xsds
+              WHERE  xsdh.sp_decision_header_id  = ln_sp_decision_header_id
+              AND    xsdh.status                <> cv_status_enabled
+              AND    xsds.sp_decision_header_id  = xsdh.sp_decision_header_id
+              AND    xsds.approve_code           = cv_approve_init
+              AND    xsds.approval_state_type    IN (cv_approval_state_none, cv_approval_state_during)
+            )
+    ;
+-- 20090406_N.Yanagitaira T1_0316 Add END
+--
     -- まだ後ろに承認者がいるかどうかを確認する
     IF ( lv_operation_mode = cv_operation_approve ) THEN
 --
@@ -638,6 +664,9 @@ AS
         -- マスタ連携APIからのIDをセットする（契約先）
         UPDATE  xxcso_sp_decision_custs
         SET     customer_id                = ln_contract_customer_id
+-- 20090323_N.Yanagitaira T1_0163 Add START
+               ,same_install_account_flag  = 'N'
+-- 20090323_N.Yanagitaira T1_0163 Add END
         WHERE   sp_decision_header_id      = ln_sp_decision_header_id
         AND     sp_decision_customer_class = '2'
         ;
