@@ -7,7 +7,7 @@ AS
  * Description      : 請求更新処理
  * MD.050           : 運賃計算（月次）   T_MD050_BPO_740
  * MD.070           : 請求更新           T_MD070_BPO_74B
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/10/21    1.2  Oracle 野村 正幸  T_S_571対応
  *  2008/11/07    1.3  Oracle 野村 正幸  統合#552、553対応
  *  2008/12/18    1.4  野村 正幸         本番#42対応
+ *  2009/01/08    1.5  野村 正幸         本番#42対応
  *
  *****************************************************************************************/
 --
@@ -1791,6 +1792,48 @@ AS
     -- PL/SQL表の初期化
     gt_masters_tbl.DELETE;
     gt_billing_tbl.DELETE;
+--
+-- ##### 20090108 Ver.1.5 本番#960対応 START #####
+  i_bil_bil_mst_id_tab.DELETE;        -- 請求先アドオンマスタID
+  i_bil_bil_code_tab.DELETE;          -- 請求先コード
+  i_bil_bil_name_tab.DELETE;          -- 請求先名
+  i_bil_bil_date_tab.DELETE;          -- 請求年月
+  i_bil_post_no_tab.DELETE;           -- 郵便番号
+  i_bil_address_tab.DELETE;           -- 住所
+  i_bil_tel_no_tab.DELETE;            -- 電話番号
+  i_bil_fax_no_tab.DELETE;            -- FAX番号
+  i_bil_my_tran_dt_tab.DELETE;        -- 振込日
+  i_bil_cn_set_dt_tab.DELETE;         -- 支払条件設定日
+  i_bil_lt_mt_chrg_amt_tab.DELETE;    -- 前月請求額
+  i_bil_amt_adjt_tab.DELETE;          -- 調整額
+  i_bil_amt_rcp_my_tab.DELETE;        -- 今回入金額
+  i_bil_blc_crd_fw_tab.DELETE;        -- 繰越額
+  i_bil_chrg_amt_tab.DELETE;          -- 今回請求金額
+  i_bil_chrg_amt_ttl_tab.DELETE;      -- 請求金額合計
+  i_bil_month_sales_tab.DELETE;       -- 今月売上額
+  i_bil_consumption_tax_tab.DELETE;   -- 消費税
+  i_bil_cn_chrg_tab.DELETE;           -- 通行料等
+--
+  u_bil_bil_mst_id_tab.DELETE;        -- 請求先アドオンマスタID
+  u_bil_bil_code_tab.DELETE;          -- 請求先コード
+  u_bil_bil_name_tab.DELETE;          -- 請求先名
+  u_bil_bil_date_tab.DELETE;          -- 請求年月
+  u_bil_post_no_tab.DELETE;           -- 郵便番号
+  u_bil_address_tab.DELETE;           -- 住所
+  u_bil_tel_no_tab.DELETE;            -- 電話番号
+  u_bil_fax_no_tab.DELETE;            -- FAX番号
+  u_bil_my_tran_dt_tab.DELETE;        -- 振込日
+  u_bil_cn_set_dt_tab.DELETE;         -- 支払条件設定日
+  u_bil_lt_mt_chrg_amt_tab.DELETE;    -- 前月請求額
+  u_bil_amt_rcp_my_tab.DELETE;        -- 今回入金額
+  u_bil_amt_adjt_tab.DELETE;          -- 調整額
+  u_bil_blc_crd_fw_tab.DELETE;        -- 繰越額
+  u_bil_chrg_amt_tab.DELETE;          -- 今回請求金額
+  u_bil_chrg_amt_ttl_tab.DELETE;      -- 請求金額合計
+  u_bil_month_sales_tab.DELETE;       -- 今月売上額
+  u_bil_consumption_tax_tab.DELETE;   -- 消費税
+  u_bil_cn_chrg_tab.DELETE;           -- 通行料等
+-- ##### 20090108 Ver.1.5 本番#960対応 END   #####
 --
   EXCEPTION
 --
