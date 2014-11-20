@@ -28,7 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/2/6      1.0   R.Matusita       新規作成
  *  2008/12/02    1.1   H.Marushita      数量ゼロの取引別ロット原価を抽出対象外とする。
- *  2008/12/03    1.2   H.Marushita      数量ゼロの取引別ロット原価をロット別原価に登録する。
+ *  2008/12/05    1.2   H.Marushita      本番435対応
  *
  *****************************************************************************************/
 --
@@ -217,8 +217,10 @@ AS
     WHERE NOT EXISTS
     (SELECT 'X'
      FROM ic_lots_mst ilm
-     WHERE xtlc.lot_id = ilm.lot_id)  -- OPMロットマスタ
+     WHERE xtlc.item_id = ilm.item_id
+     AND   xtlc.lot_id  = ilm.lot_id)  -- OPMロットマスタ
     ;
+    
 --
   EXCEPTION
 --
@@ -313,25 +315,6 @@ AS
       AND   xtlc.trans_qty > 0
 -- 2008/12/02 ADD END
       GROUP BY xtlc.item_id, xtlc.item_code ,xtlc.lot_id ,xtlc.lot_num
--- 2008/12/03 ADD START
-      UNION
-      SELECT  xtlc.item_id               item_id         -- 品目ID
-            , xtlc.item_code             item_code       -- 品目コード
-            , xtlc.lot_id                lot_id          -- ロットID
-            , xtlc.lot_num               lot_num         -- ロットNo
-            , SUM(1) trans_qty -- 取引数量
-            , SUM(NVL(xtlc.unit_price,0)) price     -- 単価*数量（=取引金額）
-      FROM    xxcmn_txn_lot_cost xtlc              -- 取引別ロット別原価（アドオン）
-      WHERE xtlc.trans_qty  = 0 
-      AND   xtlc.unit_price > 0
-      AND   NOT EXISTS
-      (SELECT 'X'
-       FROM xxcmn_lot_cost xlc            -- ロット別原価（アドオン）
-       WHERE xtlc.item_id   = xlc.item_id
-       AND   xtlc.lot_id    = xlc.lot_id
-      )
-      GROUP BY xtlc.item_id, xtlc.item_code ,xtlc.lot_id ,xtlc.lot_num
--- 2008/12/03 ADD END
       ;
 --
     -- 更新用
@@ -351,19 +334,6 @@ AS
       AND   xtlc.trans_qty > 0
 -- 2008/12/02 ADD END
       GROUP BY xtlc.item_id, xtlc.item_code ,xtlc.lot_id ,xtlc.lot_num
--- 2008/12/03 ADD START
-      UNION
-      SELECT  xtlc.item_id               item_id   -- 品目ID
-            , xtlc.lot_id                lot_id    -- ロットID
-            , SUM(1) trans_qty -- 取引数量
-            , SUM(NVL(xtlc.unit_price,0)) price     -- 単価*数量（=取引金額）
-      FROM    xxcmn_txn_lot_cost xtlc              -- 取引別ロット別原価（アドオン）
-            , xxcmn_lot_cost xlc                   -- ロット別原価（アドオン）
-      WHERE xtlc.item_id   = xlc.item_id
-      AND   xtlc.lot_id    = xlc.lot_id
-      AND   xtlc.trans_qty = 0 and xtlc.unit_price > 0
-      GROUP BY xtlc.item_id, xtlc.item_code ,xtlc.lot_id ,xtlc.lot_num
--- 2008/12/02 ADD END
       ;
     -- *** ローカル・レコード ***
 --
@@ -592,6 +562,55 @@ AS
            ,program_update_date     = SYSDATE                      -- プログラム更新日
         WHERE item_id   = gt_item_id_upd_tab(ln_cnt)               -- 品目ID
         AND   lot_id    = gt_lot_id_upd_tab(ln_cnt);               -- ロットID
+--
+    -- ======================================
+    -- 在庫調整等作成ロット実際原価反映
+    -- ======================================
+        INSERT INTO xxcmn_lot_cost(
+          item_id
+        , item_code
+        , lot_id
+        , lot_num
+        , trans_qty
+        , unit_ploce
+        , created_by
+        , creation_date
+        , last_updated_by
+        , last_update_date
+        , last_update_login
+        , request_id
+        , program_application_id
+        , program_id
+        , program_update_date
+        ) SELECT 
+         iim.item_id
+        ,iim.item_no
+        ,ilm.lot_id
+        ,ilm.lot_no
+        ,ilm.trans_cnt
+        ,to_number(ilm.attribute7) AS unit_price
+        ,ln_user_id                             -- 作成者
+        ,SYSDATE                                -- 作成日
+        ,ln_user_id                             -- 最終更新者
+        ,SYSDATE                                -- 最終更新日
+        ,ln_login_id                            -- 最終更新ログイン
+        ,ln_conc_request_id                     -- 要求ID
+        ,ln_prog_appl_id                        -- コンカレント・プログラム・アプリケーションID
+        ,ln_conc_program_id                     -- コンカレント・プログラムID
+        ,SYSDATE                                -- プログラム更新日
+        FROM 
+         ic_lots_mst ilm
+        ,ic_item_mst_b iim
+        WHERE ilm.lot_id > 0  -- デフォルトロットを除く
+        AND TO_NUMBER(NVL(ilm.attribute7,0)) <> 0 -- 実際原価が設定されているもの
+        AND iim.item_id = ilm.item_id
+        AND NOT EXISTS (
+          SELECT 1 
+          FROM  xxcmn_lot_cost xlc
+          WHERE xlc.item_id = ilm.item_id
+          AND   xlc.lot_id  = ilm.lot_id
+        );
+--
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################

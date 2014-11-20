@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.11
+ * Version          : 1.13
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -42,6 +42,8 @@ AS
  *  2008/11/19    1.9   N.Yoshida        移行データ検証不具合対応
  *  2008/11/28    1.10  N.Yoshida        本番#182対応
  *  2008/12/04    1.11  N.Yoshida        本番#389対応
+ *  2008/12/05    1.12  A.Shiina         本番#500対応
+ *  2008/12/05    1.13  A.Shiina         本番#473対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -156,6 +158,10 @@ AS
    ,stnd_unit_price  xxcmn_stnd_unit_price_v.stnd_unit_price%TYPE   -- 標準原価
    ,j_amt            NUMBER                                         -- 実際単価 * 数量
    ,s_amt            NUMBER                                         -- 仕入単価(ロット) * 数量
+-- 2008/12/05 v1.13 ADD START
+   ,commission_tax   NUMBER                                         -- 消費税等(口銭)
+   ,payment_tax      NUMBER                                         -- 消費税等(支払)
+-- 2008/12/05 v1.13 ADD END
    ,c_tax            NUMBER                                         -- 消費税
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
@@ -1408,7 +1414,10 @@ AS
       || '      ,SUM(mst.powder_price)     / DECODE(SUM(mst.trans_qty),0,1,SUM(mst.trans_qty)) AS powder_price '
       || '      ,SUM(mst.commission_price) / DECODE(SUM(mst.trans_qty),0,1,SUM(mst.trans_qty)) AS commission_price '
 -- 2008/10/28 H.Itou Mod End
-      || '      ,SUM(mst.commission_price * mst.trans_qty) AS c_amt '
+-- 2008/12/05 v1.13 UPDATE START
+--      || '      ,SUM(mst.commission_price * mst.trans_qty) AS c_amt '
+      || '      ,SUM(mst.commission_price) AS c_amt '
+-- 2008/12/05 v1.13 UPDATE END
       || '      ,SUM(mst.assessment)       AS assessment '
 -- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
 --      || '      ,SUM(mst.stnd_unit_price)   / SUM(mst.trans_qty) AS stnd_unit_price '
@@ -1421,6 +1430,15 @@ AS
 --      || '      ,SUM(mst.purchases_price * mst.trans_qty) AS s_amt '
 --      || '      ,SUM(mst.purchases_price) AS s_amt '
       || '      ,SUM(mst.powder_price) AS s_amt '
+-- 2008/12/05 v1.13 ADD START
+      || '      ,SUM(ROUND((mst.commission_price * :para_lkup_code) /100)) AS commission_tax '
+      || '      ,SUM( '
+                -- 支払金額消費税
+      || '            ROUND(NVL(mst.powder_price, ''' || gn_zero || ''') * :para_lkup_code / 100)'
+                -- 口銭金額消費税
+      || '          - ROUND(NVL(mst.commission_price, ''' || gn_zero || ''')  * :para_lkup_code / 100) '
+      || '           ) AS payment_tax '
+-- 2008/12/05 v1.13 ADD END
       || '      ,:para_lkup_code              AS c_tax ';
 --
     -- ----------------------------------------------------
@@ -1457,9 +1475,13 @@ AS
       || '            ,ROUND(NVL(pla.unit_price, :para_zero) '
       || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS powder_price '
 --      || '             ,NVL(plla.attribute4, :para_zero) AS commission_price '
-      || '            ,ROUND(NVL(plla.attribute4, :para_zero) '
-      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS commission_price '
-      || '             ,NVL(plla.attribute7, :para_zero) AS assessment '
+-- 2008/12/06 MOD START
+--      || '            ,ROUND(NVL(plla.attribute4, :para_zero) '
+--      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS commission_price '
+--      || '             ,NVL(plla.attribute7, :para_zero) AS assessment '
+      || '            ,TO_NUMBER(NVL(plla.attribute5, :para_zero)) AS commission_price '
+      || '            ,TO_NUMBER(NVL(plla.attribute8, :para_zero)) AS assessment '
+-- 2008/12/06 MOD END
 -- 2008/11/29 v1.10 UPDATE END
 -- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
 --      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
@@ -1655,7 +1677,7 @@ AS
 --      || '           ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price, :para_zero)) AS commission_price '
       || '      ,ROUND(NVL(xrrt.kousen_rate_or_unit_price, :para_zero) '
       || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS commission_price '
-      || '             ,TO_CHAR(NVL(xrrt.fukakin_price, :para_zero)) AS assessment '
+      || '             ,NVL(xrrt.fukakin_price, :para_zero) AS assessment '
 -- 2008/11/29 v1.10 UPDATE END
 -- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
 --      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
@@ -1900,6 +1922,11 @@ AS
                   || lv_adji
                   || lv_group
                   || lv_order   USING  lt_lkup_code
+-- 2008/12/05 ADD START
+                                      ,lt_lkup_code
+                                      ,lt_lkup_code
+                                      ,lt_lkup_code
+-- 2008/12/05 ADD END
                                       ,cv_zero
                                       ,cv_zero
                                       ,cv_zero
@@ -2182,7 +2209,10 @@ AS
       on_sum_commission_price := on_sum_commission_price + ROUND(it_data_rec.c_amt);
     END IF;
     -- 消費税等(口銭)
-    ln_commission_tax_amount := ROUND(it_data_rec.c_amt * ln_tax);
+-- 2008/12/05 v1.13 UPDATE START
+--    ln_commission_tax_amount := ROUND(it_data_rec.c_amt * ln_tax);
+    ln_commission_tax_amount := it_data_rec.commission_tax;
+-- 2008/12/05 v1.13 UPDATE END
     IF ( ln_commission_tax_amount IS NOT NULL ) THEN
       iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
       iot_xml_data_table(iot_xml_idx).tag_name  := 'commission_tax_amount' ;
@@ -2210,7 +2240,7 @@ AS
     END IF;
     -- 支払
     ln_payment :=
-      ln_order_amount - NVL(ln_commission_amount,gn_zero) - NVL(it_data_rec.assessment,gn_zero);
+      ln_order_amount - NVL(ROUND(it_data_rec.c_amt),gn_zero) - NVL(it_data_rec.assessment,gn_zero);
     IF ( ln_payment IS NOT NULL ) THEN
       iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
       iot_xml_data_table(iot_xml_idx).tag_name  := 'payment' ;
@@ -2219,7 +2249,10 @@ AS
       on_sum_payment := on_sum_payment + ln_payment;
     END IF;
     -- 消費税等(支払)
-    ln_payment_amount_tax := ROUND(ln_payment * ln_tax);
+-- 2008/12/05 v1.13 UPDATE START
+--    ln_payment_amount_tax := ROUND(ln_payment * ln_tax);
+    ln_payment_amount_tax := it_data_rec.payment_tax;
+-- 2008/12/05 v1.13 UPDATE END
     IF ( ln_payment_amount_tax IS NOT NULL ) THEN
       iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
       iot_xml_data_table(iot_xml_idx).tag_name  := 'payment_amount_tax' ;
@@ -2229,7 +2262,10 @@ AS
         on_sum_payment_amount_tax + ln_payment_amount_tax;
     END IF;
     -- 支払金額
-    ln_payment_amount := ln_payment + ln_payment_amount_tax;
+-- 2008/12/05 v1.12 UPDATE START
+--    ln_payment_amount := ln_payment + ln_payment_amount_tax;
+    ln_payment_amount := NVL(ln_payment,gn_zero) + NVL(ln_payment_amount_tax,gn_zero);
+-- 2008/12/05 v1.12 UPDATE END
     IF ( ln_payment_amount IS NOT NULL ) THEN
       iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
       iot_xml_data_table(iot_xml_idx).tag_name  := 'payment_amount' ;

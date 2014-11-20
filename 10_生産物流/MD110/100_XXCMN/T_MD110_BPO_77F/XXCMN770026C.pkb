@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *                                           修正箇所確認の際は前Verと差分比較すること
  *  2008/11/12    1.13  N.Yoshida        移行データ検証不具合対応(履歴削除)
  *  2008/12/02    1.14  A.Shiina         本番#207対応
+ *  2008/12/08    1.15  N.Yoshida        本番障害数値あわせ対応(受注ヘッダの最新フラグを追加)
  *
  *****************************************************************************************/
 --
@@ -908,6 +909,7 @@ AS
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
@@ -999,6 +1001,7 @@ AS
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
@@ -1090,6 +1093,7 @@ AS
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
@@ -1184,6 +1188,7 @@ AS
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
@@ -1276,6 +1281,7 @@ AS
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
@@ -1371,6 +1377,7 @@ AS
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
@@ -1470,6 +1477,7 @@ AS
     || ' AND itp.completed_ind = 1' -- 完了フラグ
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
@@ -1567,6 +1575,7 @@ AS
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
@@ -1656,6 +1665,7 @@ AS
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
@@ -1746,6 +1756,7 @@ AS
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
@@ -1838,6 +1849,7 @@ AS
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
@@ -1929,6 +1941,7 @@ AS
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
@@ -2023,6 +2036,7 @@ AS
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
@@ -2120,6 +2134,7 @@ AS
     || ' AND itp.completed_ind = 1' 
 --    || ' AND itp.trans_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
 --    || ' AND itp.trans_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
+    || ' AND xoha.latest_external_flag = ''Y'''
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 

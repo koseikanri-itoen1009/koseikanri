@@ -7,7 +7,7 @@ AS
  * Description      : édì¸éÊà¯ñæç◊ï\
  * MD.050           : óLèûéxããí†ï[Issue1.0(T_MD050_BPO_360)
  * MD.070           : óLèûéxããí†ï[Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -54,6 +54,8 @@ AS
  *  2008/11/06    1.16  Y.Yamamoto       ìùçáéwìE#471ëŒâûÅAT_S_430ëŒâû
  *  2008/12/02    1.17  H.Marushita      ñ{î‘è·äQ#348ëŒâû
  *  2008/12/03    1.18  H.Marushita      ñ{î‘è·äQ#374ëŒâû
+ *  2008/12/05    1.19  A.Shiina         ñ{î‘è·äQ#499,#506ëŒâû
+ *  2008/12/07    1.20  N.Yoshida        ñ{î‘è·äQ#533ëŒâû
  *
  *****************************************************************************************/
 --
@@ -175,12 +177,18 @@ AS
      ,item_sht        xxcmn_item_mst2_v.item_short_name%TYPE                --ïiñ⁄ó™èÃ
      ,futai_code      xxpo_rcv_and_rtn_txns.futai_code%TYPE                 --ïtë—
      ,kobiki_rate     xxpo_rcv_and_rtn_txns.kobiki_rate%TYPE                --ï≤à¯ó¶
-     ,kobikigo        xxpo_rcv_and_rtn_txns.kobki_converted_unit_price%TYPE --ï≤à¯å„íPâø
+-- 2008/12/05 v1.19 UPDATE START
+--     ,kobikigo        xxpo_rcv_and_rtn_txns.kobki_converted_unit_price%TYPE --ï≤à¯å„íPâø
+     ,kobikigo        NUMBER                                                --ï≤à¯å„íPâø
+-- 2008/12/05 v1.19 UPDATE END
      ,kousen_price    xxpo_rcv_and_rtn_txns.kousen_price%TYPE               --óaÇËå˚ëKã‡äz
      ,fukakin_price   xxpo_rcv_and_rtn_txns.fukakin_price%TYPE              --ïäâ€ã‡äz
      ,lot_no          ic_lots_mst.lot_no%TYPE                               --ÉçÉbÉgno
      ,quantity        xxpo_rcv_and_rtn_txns.quantity%TYPE           --éÛì¸ï‘ïiêîó 
-     ,unit_price      xxpo_rcv_and_rtn_txns.unit_price%TYPE                 --íPâø
+-- 2008/12/05 v1.19 UPDATE START
+--     ,unit_price      xxpo_rcv_and_rtn_txns.unit_price%TYPE                 --íPâø
+     ,unit_price      NUMBER                                                --íPâø
+-- 2008/12/05 v1.19 UPDATE END
      ,kousen_type     xxpo_rcv_and_rtn_txns.kousen_type%TYPE                --å˚ëKãÊï™
      ,kousen_name     fnd_lookup_values.meaning%TYPE                        --å˚ëKãÊï™ñº
      ,kousen          xxpo_rcv_and_rtn_txns.kousen_rate_or_unit_price%TYPE  --å˚ëK
@@ -872,13 +880,22 @@ AS
 --        ||                                  ' , pll.attribute2), 0)) kobikigo'
         || ' , ROUND(SUM(ROUND(NVL(DECODE(xrart.txns_type , ' 
         ||                 cv_type_nasi || ' , xrart.kobki_converted_unit_price , ' 
-        ||                 cv_type_hen  || ' , xrart.kobki_converted_unit_price , pll.attribute2), 0) '
+-- 2008/12/05 v1.19 UPDATE START
+--        ||                 cv_type_hen  || ' , xrart.kobki_converted_unit_price , pll.attribute2), 0) '
+        ||                 cv_type_hen  || ' , xrart.kobki_converted_unit_price , pl.unit_price), 0) '
+-- 2008/12/05 v1.19 UPDATE END
         || '          *  NVL(DECODE(xrart.txns_type , ' 
         ||                 cv_type_nasi ||' ,xrart.quantity * -1, ' 
         ||                 cv_type_hen  ||' ,xrart.quantity * -1, xrart.quantity) , 0),0) ) '
-        || '      /  SUM(NVL(DECODE(xrart.txns_type , ' 
+-- 2008/12/07 v1.20 UPDATE START
+--        || '      /  SUM(NVL(DECODE(xrart.txns_type , ' 
+        || '      /  DECODE(SUM(NVL(DECODE(xrart.txns_type , ' 
         ||                 cv_type_nasi ||' ,xrart.quantity * -1, '
-        ||                 cv_type_hen  ||' ,xrart.quantity * -1, xrart.quantity) , 0)),2) kobikigo '
+        ||                 cv_type_hen  ||' ,xrart.quantity * -1, xrart.quantity) , 0)),0,1, '
+        || '                SUM(NVL(DECODE(xrart.txns_type , ' 
+        ||                 cv_type_nasi ||' ,xrart.quantity * -1, '
+        ||                 cv_type_hen  ||' ,xrart.quantity * -1, xrart.quantity) , 0))),2) kobikigo '
+-- 2008/12/07 v1.20 UPDATE END
         -- 2008/12/02 MOD END
         || ' , SUM(NVL(DECODE(xrart.txns_type , ' || cv_type_nasi ||' ,xrart.kousen_price * -1'
         ||                                  ' , ' || cv_type_hen  ||' ,xrart.kousen_price * -1'
@@ -909,7 +926,10 @@ AS
         -- 2008/12/02 ADD START ã‡äzéZèoí«â¡
         || ' , SUM(ROUND(NVL(DECODE(xrart.txns_type , ' 
         ||           cv_type_nasi || ' , xrart.kobki_converted_unit_price , ' 
-        ||           cv_type_hen  || ' , xrart.kobki_converted_unit_price , pll.attribute2), 0) '
+-- 2008/12/05 v1.19 UPDATE START
+--        ||           cv_type_hen  || ' , xrart.kobki_converted_unit_price , pll.attribute2), 0) '
+        ||           cv_type_hen  || ' , xrart.kobki_converted_unit_price , pl.unit_price), 0) '
+-- 2008/12/05 v1.19 UPDATE END
         || '    *  NVL(DECODE(xrart.txns_type , ' 
         ||           cv_type_nasi ||' ,xrart.quantity * -1,' 
         ||           cv_type_hen  ||' ,xrart.quantity * -1, xrart.quantity) , 0),0) ) gaku '
@@ -917,7 +937,10 @@ AS
         -- 2008/12/02 ADD START è¡îÔê≈åvéZí«â¡
         || ' , SUM(ROUND(ROUND(NVL(DECODE(xrart.txns_type , ' 
         ||           cv_type_nasi || ' , xrart.kobki_converted_unit_price , ' 
-        ||           cv_type_hen  || ' , xrart.kobki_converted_unit_price , pll.attribute2), 0) '
+-- 2008/12/05 v1.19 UPDATE START
+--        ||           cv_type_hen  || ' , xrart.kobki_converted_unit_price , pll.attribute2), 0) '
+        ||           cv_type_hen  || ' , xrart.kobki_converted_unit_price , pl.unit_price), 0) '
+-- 2008/12/05 v1.19 UPDATE END
         || '    *  NVL(DECODE(xrart.txns_type , ' 
         ||           cv_type_nasi ||' ,xrart.quantity * -1,' 
         ||           cv_type_hen  ||' ,xrart.quantity * -1, xrart.quantity) , 0),0)  '
@@ -988,7 +1011,10 @@ AS
         ||       ' , pll.attribute1)          kobiki_rate '  --ï≤à¯ó¶
         || ',DECODE( xrart.txns_type ,'|| cv_type_nasi ||', xrart.kobki_converted_unit_price '
         ||                          ','|| cv_type_hen  ||', xrart.kobki_converted_unit_price '
-        ||       ' , pll.attribute2)          kobikigo '     --ï≤à¯å„íPâø
+-- 2008/12/05 v1.19 UPDATE START
+--        ||       ' , pll.attribute2)          kobikigo '     --ï≤à¯å„íPâø
+        ||       ' , pl.unit_price)          kobikigo '     --ï≤à¯å„íPâø
+-- 2008/12/05 v1.19 UPDATE END
         || ',DECODE( xrart.txns_type ,' || cv_type_nasi  || ', xrart.kousen_price * -1 '
         ||                          ',' || cv_type_hen   || ', xrart.kousen_price * -1 '
         ||       ' , pll.attribute5)          kousen_price ' --óaÇËå˚ëKã‡äz
@@ -1004,9 +1030,14 @@ AS
         || ',DECODE(xrart.txns_type,'  || cv_type_hen  || ', xrart.rcv_rtn_quantity * -1 '
         || ', xrart.rcv_rtn_quantity))  quantity '  --éÛì¸ï‘ïiêîó 
        -- 2008/12/02 MOD END
-        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.unit_price '
-        ||                          ','|| cv_type_hen  || ', xrart.unit_price '
-        ||       ' , pl.attribute8)           unit_price '   --íPâø'
+-- 2008/12/05 v1.19 UPDATE START
+--        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.unit_price '
+--        ||                          ','|| cv_type_hen  || ', xrart.unit_price '
+--        ||       ' , pl.attribute8)           unit_price '   --íPâø'
+        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.kobki_converted_price '
+        ||                          ','|| cv_type_hen  || ', xrart.kobki_converted_price '
+        ||       ' , pl.unit_price)           unit_price '   --íPâø'
+-- 2008/12/05 v1.19 UPDATE END
         || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', flv_u_kosen.lookup_code '
         ||                          ','|| cv_type_hen  || ', flv_u_kosen.lookup_code '
         ||       ' , flv_p_kosen.lookup_code) kousen_name '  --å˚ëKãÊï™
@@ -1038,19 +1069,25 @@ AS
         ||                                                ', xrart.quantity)  *  '
         || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', xrart.kobki_converted_unit_price '
         ||                          ','|| cv_type_hen  ||', xrart.kobki_converted_unit_price '
-        ||       ' , pll.attribute2),0) gaku '
+-- 2008/12/05 v1.19 UPDATE START
+--        ||       ' , pll.attribute2),0) gaku '
+        ||       ' , pl.unit_price),0) gaku '
+-- 2008/12/05 v1.19 UPDATE END
         -- è¡îÔê≈äzåvéZ
         || ',ROUND(ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
         ||                                cv_type_hen  || ', xrart.quantity * -1  '
         ||                                                ', xrart.quantity)  *  '
         || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', xrart.kobki_converted_unit_price '
         ||                          ','|| cv_type_hen  ||', xrart.kobki_converted_unit_price '
-        ||       ' , pll.attribute2),0)  * '
+-- 2008/12/05 v1.19 UPDATE START
+--        ||       ' , pll.attribute2),0)  * '
+        ||       ' , pl.unit_price),0)  * '
+-- 2008/12/05 v1.19 UPDATE END
         || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
         || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   siire_tax '
         || ',ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.kousen_rate_or_unit_price '
         ||                          ','|| cv_type_hen  || ', xrart.kousen_rate_or_unit_price '
-        ||       ' , pll.attribute4) * '
+        ||       ' , pll.attribute5) * '
         || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
         || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   kousen_tax '
         -- 2008/12/02 ADD END

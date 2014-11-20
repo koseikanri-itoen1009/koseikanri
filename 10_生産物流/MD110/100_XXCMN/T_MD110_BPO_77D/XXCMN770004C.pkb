@@ -7,7 +7,7 @@ AS
  * Description      : Žó•¥‚»‚Ì‘¼ŽÀÑƒŠƒXƒg
  * MD.050/070       : ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD050_BPO_770)
  *                    ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/11/29    1.13  N.Yoshida        –{”Ô#210‘Î‰ž
  *  2008/12/03    1.14  H.Itou           –{”Ô#384‘Î‰ž
  *  2008/12/04    1.15  T.Miyata         –{”Ô#454‘Î‰ž
+ *  2008/12/08    1.16  T.Ohashi         –{”ÔáŠQ”’l‚ ‚í‚¹‘Î‰ž
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -745,6 +746,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -877,6 +879,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -967,6 +970,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -1096,6 +1100,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -1271,6 +1276,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -1403,6 +1409,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -1498,6 +1505,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -1633,6 +1641,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -1806,6 +1815,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -1896,6 +1906,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -2071,6 +2082,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -2168,6 +2180,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -2354,6 +2367,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -2450,6 +2464,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
       AND    xoha.req_status         = '08'
@@ -2628,6 +2643,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -2722,6 +2738,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -2907,6 +2924,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -3013,6 +3031,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -3186,6 +3205,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -3276,6 +3296,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -3456,6 +3477,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -3557,6 +3579,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -3698,6 +3721,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -3826,6 +3850,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -4192,6 +4217,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -4280,6 +4306,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -5439,6 +5466,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
       AND    xoha.header_id          = ooha.header_id
@@ -5547,6 +5575,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
       AND    xoha.header_id          = ooha.header_id
@@ -5800,6 +5829,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
       AND    xoha.req_status         IN ('04','08')
@@ -5933,6 +5963,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
       AND    xoha.req_status         = '04'
@@ -6024,6 +6055,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -6154,6 +6186,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -6330,6 +6363,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -6463,6 +6497,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -6559,6 +6594,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -6695,6 +6731,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -6869,6 +6906,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -6960,6 +6998,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -7136,6 +7175,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -7234,6 +7274,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -7421,6 +7462,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -7518,6 +7560,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
       AND    xoha.req_status         = '08'
@@ -7697,6 +7740,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -7792,6 +7836,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -7978,6 +8023,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -8085,6 +8131,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -8259,6 +8306,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -8350,6 +8398,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -8531,6 +8580,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -8633,6 +8683,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -8776,6 +8827,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -8905,6 +8957,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -9274,6 +9327,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -9363,6 +9417,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
 -- 2008/11/11 v1.11 UPDATE END
@@ -10533,6 +10588,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
       AND    xoha.header_id          = ooha.header_id
@@ -10642,6 +10698,7 @@ AS
 -- 2008/11/11 v1.11 UPDATE START
 --      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
 --      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date       >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
       AND    xoha.arrival_date       <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
       AND    xoha.header_id          = ooha.header_id

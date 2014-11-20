@@ -46,6 +46,7 @@ AS
  *  2008/11/13    1.11  A.Shiina         移行データ検証不具合対応
  *  2008/11/19    1.12  N.Yoshida        移行データ検証不具合対応
  *  2008/11/29    1.13  N.Yoshida        本番#213、214対応
+ *  2008/12/08    1.14  N.Yoshida        本番障害対応 受注ヘッダアドオンで最新フラグYを追加
  *
  *****************************************************************************************/
 --
@@ -517,6 +518,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -637,6 +641,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
 --      AND    xoha.req_status         IN ('04','08')
       AND    xoha.req_status         = '08'
       AND    ilm.item_id             = itp.item_id
@@ -760,6 +767,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -888,6 +898,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -1016,6 +1029,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -1139,6 +1155,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
@@ -1290,6 +1309,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xrpm.doc_type           = 'OMSO'
       AND    xrpm.dealings_div       = '104'
@@ -1373,6 +1395,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
@@ -1530,6 +1555,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.line_id            = wdd.source_line_id
@@ -1648,6 +1676,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.doc_type           = 'OMSO'
@@ -1783,6 +1814,9 @@ AS
       AND    otta.attribute1         = '1'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    xrpm.doc_type           = 'OMSO'
       AND    xrpm.dealings_div       IN ('110','111')
@@ -1864,6 +1898,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
@@ -1991,6 +2028,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -2112,6 +2152,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
 --      AND    xoha.req_status         IN ('04','08')
       AND    xoha.req_status         = '08'
       AND    ilm.item_id             = itp.item_id
@@ -2236,6 +2279,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -2365,6 +2411,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -2494,6 +2543,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -2618,6 +2670,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
@@ -2770,6 +2825,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xrpm.doc_type           = 'OMSO'
       AND    xrpm.dealings_div       = '104'
@@ -2854,6 +2912,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
@@ -3012,6 +3073,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.line_id            = wdd.source_line_id
@@ -3131,6 +3195,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.doc_type           = 'OMSO'
@@ -3267,6 +3334,9 @@ AS
       AND    otta.attribute1         = '1'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    xrpm.doc_type           = 'OMSO'
       AND    xrpm.dealings_div       IN ('110','111')
@@ -3349,6 +3419,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
@@ -3477,6 +3550,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -3598,6 +3674,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
 --      AND    xoha.req_status         IN ('04','08')
       AND    xoha.req_status         = '08'
       AND    ilm.item_id             = itp.item_id
@@ -3722,6 +3801,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -3851,6 +3933,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -3980,6 +4065,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -4104,6 +4192,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
@@ -4256,6 +4347,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xrpm.doc_type           = 'OMSO'
       AND    xrpm.dealings_div       = '104'
@@ -4340,6 +4434,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
@@ -4498,6 +4595,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.line_id            = wdd.source_line_id
@@ -4617,6 +4717,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.doc_type           = 'OMSO'
@@ -4753,6 +4856,9 @@ AS
       AND    otta.attribute1         = '1'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    xrpm.doc_type           = 'OMSO'
       AND    xrpm.dealings_div       IN ('110','111')
@@ -4835,6 +4941,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
@@ -4963,6 +5072,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -5085,6 +5197,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
 --      AND    xoha.req_status         IN ('04','08')
       AND    xoha.req_status         = '08'
       AND    ilm.item_id             = itp.item_id
@@ -5210,6 +5325,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -5340,6 +5458,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -5470,6 +5591,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
       AND    iimb.item_no            = xola.request_item_code
@@ -5595,6 +5719,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
@@ -5748,6 +5875,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xrpm.doc_type           = 'OMSO'
       AND    xrpm.dealings_div       = '104'
@@ -5833,6 +5963,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id
@@ -5992,6 +6125,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.line_id            = wdd.source_line_id
@@ -6112,6 +6248,9 @@ AS
       AND    otta.attribute1         = '2'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '08'
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.doc_type           = 'OMSO'
@@ -6249,6 +6388,9 @@ AS
       AND    otta.attribute1         = '1'
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    xrpm.doc_type           = 'OMSO'
       AND    xrpm.dealings_div       IN ('110','111')
@@ -6332,6 +6474,9 @@ AS
       AND    itp.completed_ind       = 1
       AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
       AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- ADD START 1.14
+      AND  xoha.latest_external_flag = 'Y'
+-- ADD END 1.14
       AND    xoha.req_status         = '04'
       AND    ilm.item_id             = itp.item_id
       AND    ilm.lot_id              = itp.lot_id

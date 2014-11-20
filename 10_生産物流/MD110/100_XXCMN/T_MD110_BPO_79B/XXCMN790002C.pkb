@@ -7,7 +7,7 @@ AS
  * Description      : 半製品原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 半製品原価計算処理 T_MD070_BPO_79B
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/07/03    1.4   Marushita        ST不具合314対応
  *  2008/09/05    1.5   Oracle 山根 一浩 PT 3-1_19-2指摘67_01対応
  *  2008/10/27    1.6   H.Itou           T_S_500対応
+ *  2008/12/05    1.7   H.Marushita      本番435対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -348,11 +349,12 @@ AS
       SELECT  ximv.item_id              item_id             -- 品目ID
             , itp.lot_id                lot_id              -- ロットID
             , SUM(itp.trans_qty)        trans_qty           -- 投入数量
-            , xtlc.unit_price           unit_price          -- 単価
+            , NVL(xtlc.unit_price, TO_NUMBER(ilm.attribute7))           unit_price          -- 単価
       FROM    ic_tran_pnd               itp                 -- 保留在庫トランザクション
             , xxcmn_item_mst_v          ximv                -- OPM品目情報View
             , xxcmn_txn_lot_cost        xtlc                -- 取引別ロット別原価（アドオン）
-            , xxcmn_item_categories4_v  xic                 -- OPM品目カテゴリ割当情報VIEW4
+            , xxcmn_item_categories5_v  xic                 -- OPM品目カテゴリ割当情報VIEW4
+            , ic_lots_mst               ilm
       WHERE itp.doc_id            =   batch_id              -- バッチID
       AND   itp.doc_type          =   gv_doc_type_prod      -- 文書タイプ：生産
       AND   itp.completed_ind     =   gn_completion         -- 完了区分：完了
@@ -360,14 +362,18 @@ AS
       AND   itp.reverse_id        IS NULL
       AND   itp.item_id           =   ximv.item_id          -- 品目ID
       AND   ximv.cost_manage_code =   gv_real_cost_price    -- 原価管理区分：実際原価
+      AND   itp.doc_type          =   xtlc.doc_type(+)      -- 文書タイプ：生産
+      AND   itp.doc_id            =   xtlc.doc_id(+)
       AND   itp.item_id           =   xtlc.item_id(+)       -- 品目ID
       AND   itp.lot_id            =   xtlc.lot_id(+)        -- ロットID
+      AND   itp.item_id           =   ilm.item_id
+      AND   itp.lot_id            =   ilm.lot_id
       AND   itp.item_id           =   xic.item_id           -- 品目ID
       AND   xic.item_class_code   <>  cv_item_div_material  -- 品目区分：資材以外
       GROUP BY 
               ximv.item_id
             , itp.lot_id
-            , xtlc.unit_price
+            , NVL(xtlc.unit_price, TO_NUMBER(ilm.attribute7))
       UNION ALL
       SELECT  ximv.item_id                item_id           -- 品目ID
             , itp.lot_id                  lot_id            -- ロットID

@@ -222,7 +222,7 @@ AS
       AND     xtlc.lot_id  = ilm.lot_id
               -- *** 抽出条件 *** --
       AND     ilm.creation_date >= gd_opening_date  -- 会計期間開始日以降に作成されたロットデータ
-      FOR UPDATE NOWAIT
+      FOR UPDATE OF xtlc.item_id,xtlc.lot_id NOWAIT
       ;
 -- 2008/10/27 H.Itou Mod End
 --

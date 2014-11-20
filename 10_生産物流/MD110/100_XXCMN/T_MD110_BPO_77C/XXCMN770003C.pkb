@@ -1,5 +1,4 @@
-create or replace
-PACKAGE BODY xxcmn770003c
+create or replace PACKAGE BODY xxcmn770003c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -8,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.12
+ * Version          : 1.14
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -49,6 +48,8 @@ AS
  *  2008/11/04    1.10  N.Yoshida        移行リハ暫定対応
  *  2008/11/12    1.11  N.Fukuda         統合指摘#634対応(移行データ検証不具合対応)
  *  2008/11/19    1.12  N.Yoshida        I_S_684対応、移行データ検証不具合対応
+ *  2008/12/08    1.13  H.Marushita      本番数値検証受注ヘッダ最新フラグおよび標準原価計算修正
+ *  2008/12/08    1.14  A.Shiina         本番#562対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -982,7 +983,10 @@ AS
             ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
-            ,xrpm.rcv_pay_div           pay_div
+-- 2008/12/08 v1.14 UPDATE START
+--            ,xrpm.rcv_pay_div           pay_div
+            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+-- 2008/12/08 v1.14 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -1265,6 +1269,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    wdd.delivery_detail_id  = itp.line_detail_id
@@ -1343,6 +1348,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    rsl.shipment_header_id  = itp.doc_id
@@ -1697,7 +1703,10 @@ AS
             ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
-            ,xrpm.rcv_pay_div           pay_div
+-- 2008/12/08 v1.14 UPDATE START
+--            ,xrpm.rcv_pay_div           pay_div
+            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+-- 2008/12/08 v1.14 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -1977,6 +1986,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    wdd.delivery_detail_id  = itp.line_detail_id
@@ -2054,6 +2064,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    rsl.shipment_header_id  = itp.doc_id
@@ -2415,7 +2426,10 @@ AS
             ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
-            ,xrpm.rcv_pay_div           pay_div
+-- 2008/12/08 v1.14 UPDATE START
+--            ,xrpm.rcv_pay_div           pay_div
+            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+-- 2008/12/08 v1.14 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -2701,6 +2715,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    wdd.delivery_detail_id  = itp.line_detail_id
@@ -2780,6 +2795,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    rsl.shipment_header_id  = itp.doc_id
@@ -3139,7 +3155,10 @@ AS
             ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
-            ,xrpm.rcv_pay_div           pay_div
+-- 2008/12/08 v1.14 UPDATE START
+--            ,xrpm.rcv_pay_div           pay_div
+            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+-- 2008/12/08 v1.14 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -3422,6 +3441,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    wdd.delivery_detail_id  = itp.line_detail_id
@@ -3500,6 +3520,7 @@ AS
             ,ic_whse_mst                      iwm
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    rsl.shipment_header_id  = itp.doc_id
@@ -3850,7 +3871,10 @@ AS
             ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
-            ,xrpm.rcv_pay_div           pay_div
+-- 2008/12/08 v1.14 UPDATE START
+--            ,xrpm.rcv_pay_div           pay_div
+            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+-- 2008/12/08 v1.14 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -4126,6 +4150,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    wdd.delivery_detail_id  = itp.line_detail_id
@@ -4202,6 +4227,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    rsl.shipment_header_id  = itp.doc_id
@@ -4547,7 +4573,10 @@ AS
             ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
-            ,xrpm.rcv_pay_div           pay_div
+-- 2008/12/08 v1.14 UPDATE START
+--            ,xrpm.rcv_pay_div           pay_div
+            ,TO_CHAR(TO_NUMBER(xrpm.rcv_pay_div) * TO_NUMBER(cv_min)) pay_div
+-- 2008/12/08 v1.14 UPDATE END
             ,iimb.item_id               item_id
             ,iimb.item_no               item_code
             ,ximb.item_short_name       item_name
@@ -4820,6 +4849,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    wdd.delivery_detail_id  = itp.line_detail_id
@@ -4895,6 +4925,7 @@ AS
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = cn_one
+      AND    xoha.latest_external_flag = 'Y'
       AND    xoha.arrival_date      >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    xoha.arrival_date      <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
       AND    rsl.shipment_header_id  = itp.doc_id
@@ -6009,19 +6040,23 @@ AS
 -- 2008/08/28 v1.8 UPDATE END
       --金額加算
       END IF;*/
-      IF ( gt_main_data(in_pos).cost_div = gc_cost_ac ) THEN
+-- 2008/12/06 MOD START 実際原価、標準原価ともに金額計算を実施する。
+--      IF ( gt_main_data(in_pos).cost_div = gc_cost_ac ) THEN
+--        amt(ln_col_pos) := amt(ln_col_pos)
+--                          + ROUND( in_unit_price * gt_main_data(in_pos).trans_qty);
+--        /*IF ( gt_main_data(in_pos).pay_div = cv_one ) THEN
+--          amt(ln_col_pos) := amt(ln_col_pos)
+--                          + ( in_unit_price * gt_main_data(in_pos).trans_qty);
+--        ELSE
+--          amt(ln_col_pos) := amt(ln_col_pos)
+--                          + ( in_unit_price * gt_main_data(in_pos).trans_qty * cn_min);
+--        END IF;*/
+--      ELSE
+--        amt(ln_col_pos) := cn_zero;
+--      END IF;
         amt(ln_col_pos) := amt(ln_col_pos)
                           + ROUND( in_unit_price * gt_main_data(in_pos).trans_qty);
-        /*IF ( gt_main_data(in_pos).pay_div = cv_one ) THEN
-          amt(ln_col_pos) := amt(ln_col_pos)
-                          + ( in_unit_price * gt_main_data(in_pos).trans_qty);
-        ELSE
-          amt(ln_col_pos) := amt(ln_col_pos)
-                          + ( in_unit_price * gt_main_data(in_pos).trans_qty * cn_min);
-        END IF;*/
-      ELSE
-        amt(ln_col_pos) := cn_zero;
-      END IF;
+-- 2008/12/06 MOD END
       -- 2008/11/4 modify yoshida 暫定ロジック end
     END IF;
 --
@@ -6267,44 +6302,47 @@ AS
         -- =========================================
         prc_set_xml('Z', 'hamaoka_qty',    qty(gc_hamaoka_num));
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'hamaoka_amt',  ROUND(qty(gc_hamaoka_num) * in_price));
-        ELSE
-          prc_set_xml('Z', 'hamaoka_amt',  amt(gc_hamaoka_num));
-        END IF;
+--2008/12/06 MOD START
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'hamaoka_amt',  ROUND(qty(gc_hamaoka_num) * in_price));
+--        ELSE
+--          prc_set_xml('Z', 'hamaoka_amt',  amt(gc_hamaoka_num));
+--        END IF;
+	    prc_set_xml('Z', 'hamaoka_amt',  amt(gc_hamaoka_num));
+--2008/12/06 MOD END
 --
         -- =========================================
         -- 品種移動
         -- =========================================
         prc_set_xml('Z', 'rec_kind_qty',   qty(gc_rec_kind_num));
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'rec_kind_amt',   ROUND(qty(gc_rec_kind_num) * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'rec_kind_amt',   ROUND(qty(gc_rec_kind_num) * in_price));
+--        ELSE
           prc_set_xml('Z', 'rec_kind_amt',   amt(gc_rec_kind_num));
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- 倉庫移動
         -- =========================================
         prc_set_xml('Z', 'rec_whse_qty',   qty(gc_rec_whse_num));
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'rec_whse_amt',   ROUND(qty(gc_rec_whse_num) * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'rec_whse_amt',   ROUND(qty(gc_rec_whse_num) * in_price));
+--        ELSE
           prc_set_xml('Z', 'rec_whse_amt',   amt(gc_rec_whse_num));
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- その他
         -- =========================================
         prc_set_xml('Z', 'rec_etc_qty',    qty(gc_rec_etc_num));
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'rec_etc_amt',    ROUND(qty(gc_rec_etc_num) * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'rec_etc_amt',    ROUND(qty(gc_rec_etc_num) * in_price));
+--        ELSE
           prc_set_xml('Z', 'rec_etc_amt',    amt(gc_rec_etc_num));
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- 受払合計
@@ -6314,17 +6352,17 @@ AS
                                         +  qty(gc_rec_whse_num)
                                         +  qty(gc_rec_etc_num));
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'rec_total_amt',  ROUND(qty(gc_hamaoka_num)  * in_price)
-                                          +  ROUND(qty(gc_rec_kind_num) * in_price)
-                                          +  ROUND(qty(gc_rec_whse_num) * in_price)
-                                          +  ROUND(qty(gc_rec_etc_num)  * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'rec_total_amt',  ROUND(qty(gc_hamaoka_num)  * in_price)
+--                                          +  ROUND(qty(gc_rec_kind_num) * in_price)
+--                                          +  ROUND(qty(gc_rec_whse_num) * in_price)
+--                                          +  ROUND(qty(gc_rec_etc_num)  * in_price));
+--        ELSE
           prc_set_xml('Z', 'rec_total_amt',  amt(gc_hamaoka_num)
                                           +  amt(gc_rec_kind_num)
                                           +  amt(gc_rec_whse_num)
                                           +  amt(gc_rec_etc_num));
-        END IF;
+--        END IF;
 --
         -- ===================================================
         -- 払出
@@ -6334,99 +6372,99 @@ AS
         -- =========================================
         prc_set_xml('Z', 'resale_qty',     qty(gc_resale_num));
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'resale_amt',     ROUND(qty(gc_resale_num) * in_price));
-        ELSE
+--       IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'resale_amt',     ROUND(qty(gc_resale_num) * in_price));
+--        ELSE
           prc_set_xml('Z', 'resale_amt',     amt(gc_resale_num) );
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- 廃却
         -- =========================================
         prc_set_xml('Z', 'aband_qty',      qty(gc_aband_num) );
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'aband_amt' ,     ROUND(qty(gc_aband_num) * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'aband_amt' ,     ROUND(qty(gc_aband_num) * in_price));
+--        ELSE
           prc_set_xml('Z', 'aband_amt' ,     amt(gc_aband_num) );
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- 見本
         -- =========================================
         prc_set_xml('Z', 'sample_qty',     qty(gc_sample_num) );
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'sample_amt',     ROUND(qty(gc_sample_num) * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--         prc_set_xml('Z', 'sample_amt',     ROUND(qty(gc_sample_num) * in_price));
+--        ELSE
           prc_set_xml('Z', 'sample_amt',     amt(gc_sample_num) );
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- 総務払出
         -- =========================================
         prc_set_xml('Z', 'admin_qty',      qty(gc_admin_num) );
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'admin_amt',      ROUND(qty(gc_admin_num)  * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'admin_amt',      ROUND(qty(gc_admin_num)  * in_price));
+--        ELSE
           prc_set_xml('Z', 'admin_amt',      amt(gc_admin_num) );
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- 経理払出
         -- =========================================
         prc_set_xml('Z', 'acnt_qty',       qty(gc_acnt_num));
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'acnt_amt',       ROUND(qty(gc_acnt_num) * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'acnt_amt',       ROUND(qty(gc_acnt_num) * in_price));
+--        ELSE
           prc_set_xml('Z', 'acnt_amt',       amt(gc_acnt_num) );
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- 品種移動
         -- =========================================
         prc_set_xml('Z', 'dis_kind_qty',   qty(gc_dis_kind_num) );
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'dis_kind_amt',   ROUND(qty(gc_dis_kind_num) * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'dis_kind_amt',   ROUND(qty(gc_dis_kind_num) * in_price));
+--        ELSE
           prc_set_xml('Z', 'dis_kind_amt',   amt(gc_dis_kind_num) );
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- 倉庫移動
         -- =========================================
         prc_set_xml('Z', 'dis_whse_qty',   qty(gc_dis_whse_num));
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'dis_whse_amt',  ROUND(qty(gc_dis_whse_num) * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'dis_whse_amt',  ROUND(qty(gc_dis_whse_num) * in_price));
+--        ELSE
           prc_set_xml('Z', 'dis_whse_amt',   amt(gc_dis_whse_num) );
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- その他
         -- =========================================
         prc_set_xml('Z', 'dis_etc_qty',    qty(gc_dis_etc_num) );
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'dis_etc_amt',    ROUND(qty(gc_dis_etc_num)  * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'dis_etc_amt',    ROUND(qty(gc_dis_etc_num)  * in_price));
+--        ELSE
           prc_set_xml('Z', 'dis_etc_amt',    amt(gc_dis_etc_num) );
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- 棚卸減耗
         -- =========================================
         prc_set_xml('Z', 'inv_he_qty',     qty(gc_inv_he_num));
 --
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'inv_he_amt',     ROUND(qty(gc_inv_he_num) * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'inv_he_amt',     ROUND(qty(gc_inv_he_num) * in_price));
+--        ELSE
           prc_set_xml('Z', 'inv_he_amt',     amt(gc_inv_he_num));
-        END IF;
+--        END IF;
 --
         -- =========================================
         -- 払出合計
@@ -6440,17 +6478,17 @@ AS
                                         + qty(gc_dis_whse_num)
                                         + qty(gc_dis_etc_num)
                                         + qty(gc_inv_he_num));
-        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-          prc_set_xml('Z', 'dis_total_amt', ROUND(qty(gc_resale_num)   * in_price)
-                                          + ROUND(qty(gc_aband_num)    * in_price)
-                                          + ROUND(qty(gc_sample_num)   * in_price)
-                                          + ROUND(qty(gc_admin_num)    * in_price)
-                                          + ROUND(qty(gc_acnt_num)     * in_price)
-                                          + ROUND(qty(gc_dis_kind_num) * in_price)
-                                          + ROUND(qty(gc_dis_whse_num) * in_price)
-                                          + ROUND(qty(gc_dis_etc_num)  * in_price)
-                                          + ROUND(qty(gc_inv_he_num)   * in_price));
-        ELSE
+--        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+--          prc_set_xml('Z', 'dis_total_amt', ROUND(qty(gc_resale_num)   * in_price)
+--                                          + ROUND(qty(gc_aband_num)    * in_price)
+--                                          + ROUND(qty(gc_sample_num)   * in_price)
+--                                          + ROUND(qty(gc_admin_num)    * in_price)
+--                                          + ROUND(qty(gc_acnt_num)     * in_price)
+--                                          + ROUND(qty(gc_dis_kind_num) * in_price)
+--                                          + ROUND(qty(gc_dis_whse_num) * in_price)
+--                                          + ROUND(qty(gc_dis_etc_num)  * in_price)
+--                                          + ROUND(qty(gc_inv_he_num)   * in_price));
+--        ELSE
           prc_set_xml('Z', 'dis_total_amt', amt(gc_resale_num)
                                           + amt(gc_aband_num)
                                           + amt(gc_sample_num)
@@ -6460,7 +6498,7 @@ AS
                                           + amt(gc_dis_whse_num)
                                           + amt(gc_dis_etc_num)
                                           + amt(gc_inv_he_num));
-        END IF;
+--        END IF;
 -- 2008/10/22 v1.09 ADD START
         prc_set_xml('T', '/g_line');
 -- 2008/10/22 v1.09 ADD START
