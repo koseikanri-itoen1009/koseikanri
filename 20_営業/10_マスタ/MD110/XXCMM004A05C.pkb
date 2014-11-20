@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A05C(body)
  * Description      : 品目一括登録ワークテーブルに取込まれた品目一括登録データを品目テーブルに登録します。
  * MD.050           : 品目一括登録 CMM_004_A05
- * Version          : Issue3.12
+ * Version          : Issue3.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2010/01/04    1.18  Shigeto.Niki     E_本稼動_00614 以下項目について親品目の値を継承しないように修正
  *                                                      重量/体積,ITFコード,配数,段数,商品分類,ボール入数
  *  2010/02/25    1.19  Shigeto.Niki     E_本稼動_01589 品目カテゴリ割当(バラ茶区分)の固定値セットを解除
+ *  2010/03/09    1.20  Y.Kuboshima      E_本稼動_01619 項目：適用開始日の追加
  *
  *****************************************************************************************/
 --
@@ -188,6 +189,9 @@ AS
   cv_msg_xxcmm_00493     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00493';                              -- 項目数値不正エラー
 -- 2009/10/14 Ver1.13 障害0001370 add end by Y.Kuboshima
 --
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add start by Y.Kuboshima
+  cv_msg_xxcmm_00494     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00494';                              -- 適用開始日未来日付エラー
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add end by Y.Kuboshima
   -- トークン
   cv_tkn_value           CONSTANT VARCHAR2(20)  := 'VALUE';                                         --
   cv_tkn_ng_profile      CONSTANT VARCHAR2(20)  := 'NG_PROFILE';                                    --
@@ -223,6 +227,10 @@ AS
   cv_tkn_item_prd        CONSTANT VARCHAR2(20)  := 'ITEM_PRD_CLASS';                                -- 商品製品区分
   cv_tkn_par_item_prd    CONSTANT VARCHAR2(25)  := 'PARENT_ITEM_PRD_CLASS';                         -- 商品製品区分(親)
 -- End
+--
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add start by Y.Kuboshima
+  cv_tkn_apply_date      CONSTANT VARCHAR2(20)  := 'APPLY_DATE';                                    -- 適用開始日
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add end by Y.Kuboshima
 --
   -- アプリケーション短縮名
   cv_appl_name_xxcmm     CONSTANT VARCHAR2(5)   := 'XXCMM';                                         --
@@ -609,6 +617,10 @@ AS
   gv_fact_pg                VARCHAR2(4);                                                            -- XXCMM:工場群コード初期値
   gv_acnt_pg                VARCHAR2(4);                                                            -- XXCMM:経理部用群コード初期値
 -- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
+--
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add start by Y.Kuboshima
+  gd_apply_date             DATE;                                                                   -- 適用開始日：日付型変換後
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add end by Y.Kuboshima
   --
   -- ===============================
   -- ユーザー定義例外
@@ -1729,7 +1741,7 @@ AS
     l_opm_item_rec.ont_pricing_qty_source   := 0;                                                   -- 価格設定ソース
 -- End
 --    l_opm_item_rec.alloc_category_id        := NULL;                                                -- 割当カテゴリID
---    Z.customs_category_id      := NULL;                                                -- カスタム・カテゴリID
+--    l_opm_item_rec.customs_category_id      := NULL;                                                -- カスタム・カテゴリID
 --    l_opm_item_rec.frt_category_id          := NULL;                                                -- 運送カテゴリID
 --    l_opm_item_rec.gl_category_id           := NULL;                                                -- GLカテゴリID
 --    l_opm_item_rec.inv_category_id          := NULL;                                                -- 在庫カテゴリID
@@ -2180,7 +2192,11 @@ AS
       ln_cmpnt_cost := NULL;
       --
       <<cmpnt_loop>>
-      FOR opmcost_cmpnt_rec IN opmcost_cmpnt_cur( gd_process_date ) LOOP
+-- 2010/03/09 Ver1.20 E_本稼動_01619 modify start by Y.Kuboshima
+-- 業務日付 -> 適用開始日に変更
+--      FOR opmcost_cmpnt_rec IN opmcost_cmpnt_cur( gd_process_date ) LOOP
+      FOR opmcost_cmpnt_rec IN opmcost_cmpnt_cur( gd_apply_date ) LOOP
+-- 2010/03/09 Ver1.20 E_本稼動_01619 modify end by Y.Kuboshima
         -- 原価の取得
         CASE opmcost_cmpnt_rec.cost_cmpntcls_code
 --Ver1.12  2009/07/07  Mod  0000364対応
@@ -2398,7 +2414,11 @@ AS
         xxcmm_system_items_b_hst_s.NEXTVAL        -- 品目変更履歴ID
        ,ln_item_id                                -- 品目ID
        ,i_wk_item_rec.item_code                   -- 品目コード
-       ,gd_process_date                           -- 適用日（適用開始日）
+-- 2010/03/09 Ver1.20 E_本稼動_01619 modify start by Y.Kuboshima
+-- 業務日付 -> 適用開始日に変更
+--       ,gd_process_date                           -- 適用日（適用開始日）
+       ,gd_apply_date                             -- 適用開始日
+-- 2010/03/09 Ver1.20 E_本稼動_01619 modify end by Y.Kuboshima
        ,cv_no                                     -- 適用有無(N固定)
        ,cn_itm_status_regist                      -- 品目ステータス(本登録固定)
 -- Ver.1.5 20090224 Mod START
@@ -2591,48 +2611,91 @@ AS
     l_validate_item_tab(3)  := i_wk_item_rec.item_name;               -- 正式名
     l_validate_item_tab(4)  := i_wk_item_rec.item_short_name;         -- 略称
     l_validate_item_tab(5)  := i_wk_item_rec.item_name_alt;           -- カナ名
-    l_validate_item_tab(6)  := i_wk_item_rec.item_status;             -- 品目ステータス
-    l_validate_item_tab(7)  := i_wk_item_rec.sales_target_flag;       -- 売上対象区分
-    l_validate_item_tab(8)  := i_wk_item_rec.parent_item_code;        -- 親商品コード
-    l_validate_item_tab(9)  := i_wk_item_rec.case_inc_num;            -- ケース入数
--- Ver1.8  2009/05/18 Add  T1_0906 ケース換算入数を追加
-    l_validate_item_tab(10) := i_wk_item_rec.case_conv_inc_num;       -- ケース換算入数
--- End
-    l_validate_item_tab(11) := i_wk_item_rec.item_um;                 -- 基準単位
-    l_validate_item_tab(12) := i_wk_item_rec.item_product_class;      -- 商品製品区分
-    l_validate_item_tab(13) := i_wk_item_rec.rate_class;              -- 率区分
-    l_validate_item_tab(14) := i_wk_item_rec.net;                     -- NET
-    l_validate_item_tab(15) := i_wk_item_rec.weight_volume;           -- 重量／体積
-    l_validate_item_tab(16) := i_wk_item_rec.jan_code;                -- JANコード
-    l_validate_item_tab(17) := i_wk_item_rec.nets;                    -- 内容量
-    l_validate_item_tab(18) := i_wk_item_rec.nets_uom_code;           -- 内容量単位
-    l_validate_item_tab(19) := i_wk_item_rec.inc_num;                 -- 内訳入数
-    l_validate_item_tab(20) := i_wk_item_rec.case_jan_code;           -- ケースJANコード
-    l_validate_item_tab(21) := i_wk_item_rec.hon_product_class;       -- 本社商品区分
-    l_validate_item_tab(22) := i_wk_item_rec.baracha_div;             -- バラ茶区分
-    l_validate_item_tab(23) := i_wk_item_rec.itf_code;                -- ITFコード
-    l_validate_item_tab(24) := i_wk_item_rec.product_class;           -- 商品分類
-    l_validate_item_tab(25) := i_wk_item_rec.palette_max_cs_qty;      -- 配数
-    l_validate_item_tab(26) := i_wk_item_rec.palette_max_step_qty;    -- 段数
-    l_validate_item_tab(27) := i_wk_item_rec.bowl_inc_num;            -- ボール入数
-    l_validate_item_tab(28) := i_wk_item_rec.sale_start_date;         -- 発売開始日
-    l_validate_item_tab(29) := i_wk_item_rec.vessel_group;            -- 容器群
-    l_validate_item_tab(30) := i_wk_item_rec.new_item_div;            -- 新商品区分
-    l_validate_item_tab(31) := i_wk_item_rec.acnt_group;              -- 経理群
-    l_validate_item_tab(32) := i_wk_item_rec.acnt_vessel_group;       -- 経理容器群
-    l_validate_item_tab(33) := i_wk_item_rec.brand_group;             -- ブランド群
-    l_validate_item_tab(34) := i_wk_item_rec.policy_group;            -- 政策群
-    l_validate_item_tab(35) := i_wk_item_rec.list_price;              -- 定価
-    l_validate_item_tab(36) := i_wk_item_rec.standard_price_1;        -- 原料(標準原価)
-    l_validate_item_tab(37) := i_wk_item_rec.standard_price_2;        -- 再製費(標準原価)
-    l_validate_item_tab(38) := i_wk_item_rec.standard_price_3;        -- 資材費(標準原価)
-    l_validate_item_tab(39) := i_wk_item_rec.standard_price_4;        -- 包装費(標準原価)
-    l_validate_item_tab(40) := i_wk_item_rec.standard_price_5;        -- 外注管理費(標準原価)
-    l_validate_item_tab(41) := i_wk_item_rec.standard_price_6;        -- 保管費(標準原価)
-    l_validate_item_tab(42) := i_wk_item_rec.standard_price_7;        -- その他経費(標準原価)
-    l_validate_item_tab(43) := i_wk_item_rec.business_price;          -- 営業原価
-    l_validate_item_tab(44) := i_wk_item_rec.renewal_item_code;       -- リニューアル元商品コード
-    l_validate_item_tab(45) := i_wk_item_rec.sp_supplier_code;        -- 専門店仕入先コード
+-- 2010/03/09 Ver1.20 E_本稼動_01619 modigy start by Y.Kuboshima
+--    l_validate_item_tab(6)  := i_wk_item_rec.item_status;             -- 品目ステータス
+--    l_validate_item_tab(7)  := i_wk_item_rec.sales_target_flag;       -- 売上対象区分
+--    l_validate_item_tab(8)  := i_wk_item_rec.parent_item_code;        -- 親商品コード
+--    l_validate_item_tab(9)  := i_wk_item_rec.case_inc_num;            -- ケース入数
+---- Ver1.8  2009/05/18 Add  T1_0906 ケース換算入数を追加
+--    l_validate_item_tab(10) := i_wk_item_rec.case_conv_inc_num;       -- ケース換算入数
+---- End
+--    l_validate_item_tab(11) := i_wk_item_rec.item_um;                 -- 基準単位
+--    l_validate_item_tab(12) := i_wk_item_rec.item_product_class;      -- 商品製品区分
+--    l_validate_item_tab(13) := i_wk_item_rec.rate_class;              -- 率区分
+--    l_validate_item_tab(14) := i_wk_item_rec.net;                     -- NET
+--    l_validate_item_tab(15) := i_wk_item_rec.weight_volume;           -- 重量／体積
+--    l_validate_item_tab(16) := i_wk_item_rec.jan_code;                -- JANコード
+--    l_validate_item_tab(17) := i_wk_item_rec.nets;                    -- 内容量
+--    l_validate_item_tab(18) := i_wk_item_rec.nets_uom_code;           -- 内容量単位
+--    l_validate_item_tab(19) := i_wk_item_rec.inc_num;                 -- 内訳入数
+--    l_validate_item_tab(20) := i_wk_item_rec.case_jan_code;           -- ケースJANコード
+--    l_validate_item_tab(21) := i_wk_item_rec.hon_product_class;       -- 本社商品区分
+--    l_validate_item_tab(22) := i_wk_item_rec.baracha_div;             -- バラ茶区分
+--    l_validate_item_tab(23) := i_wk_item_rec.itf_code;                -- ITFコード
+--    l_validate_item_tab(24) := i_wk_item_rec.product_class;           -- 商品分類
+--    l_validate_item_tab(25) := i_wk_item_rec.palette_max_cs_qty;      -- 配数
+--    l_validate_item_tab(26) := i_wk_item_rec.palette_max_step_qty;    -- 段数
+--    l_validate_item_tab(27) := i_wk_item_rec.bowl_inc_num;            -- ボール入数
+--    l_validate_item_tab(28) := i_wk_item_rec.sale_start_date;         -- 発売開始日
+--    l_validate_item_tab(29) := i_wk_item_rec.vessel_group;            -- 容器群
+--    l_validate_item_tab(30) := i_wk_item_rec.new_item_div;            -- 新商品区分
+--    l_validate_item_tab(31) := i_wk_item_rec.acnt_group;              -- 経理群
+--    l_validate_item_tab(32) := i_wk_item_rec.acnt_vessel_group;       -- 経理容器群
+--    l_validate_item_tab(33) := i_wk_item_rec.brand_group;             -- ブランド群
+--    l_validate_item_tab(34) := i_wk_item_rec.policy_group;            -- 政策群
+--    l_validate_item_tab(35) := i_wk_item_rec.list_price;              -- 定価
+--    l_validate_item_tab(36) := i_wk_item_rec.standard_price_1;        -- 原料(標準原価)
+--    l_validate_item_tab(37) := i_wk_item_rec.standard_price_2;        -- 再製費(標準原価)
+--    l_validate_item_tab(38) := i_wk_item_rec.standard_price_3;        -- 資材費(標準原価)
+--    l_validate_item_tab(39) := i_wk_item_rec.standard_price_4;        -- 包装費(標準原価)
+--    l_validate_item_tab(40) := i_wk_item_rec.standard_price_5;        -- 外注管理費(標準原価)
+--    l_validate_item_tab(41) := i_wk_item_rec.standard_price_6;        -- 保管費(標準原価)
+--    l_validate_item_tab(42) := i_wk_item_rec.standard_price_7;        -- その他経費(標準原価)
+--    l_validate_item_tab(43) := i_wk_item_rec.business_price;          -- 営業原価
+--    l_validate_item_tab(44) := i_wk_item_rec.renewal_item_code;       -- リニューアル元商品コード
+--    l_validate_item_tab(45) := i_wk_item_rec.sp_supplier_code;        -- 専門店仕入先コード
+    l_validate_item_tab(6)  := i_wk_item_rec.apply_date;              -- 適用開始日
+    l_validate_item_tab(7)  := i_wk_item_rec.item_status;             -- 品目ステータス
+    l_validate_item_tab(8)  := i_wk_item_rec.sales_target_flag;       -- 売上対象区分
+    l_validate_item_tab(9)  := i_wk_item_rec.parent_item_code;        -- 親商品コード
+    l_validate_item_tab(10) := i_wk_item_rec.case_inc_num;            -- ケース入数
+    l_validate_item_tab(11) := i_wk_item_rec.case_conv_inc_num;       -- ケース換算入数
+    l_validate_item_tab(12) := i_wk_item_rec.item_um;                 -- 基準単位
+    l_validate_item_tab(13) := i_wk_item_rec.item_product_class;      -- 商品製品区分
+    l_validate_item_tab(14) := i_wk_item_rec.rate_class;              -- 率区分
+    l_validate_item_tab(15) := i_wk_item_rec.net;                     -- NET
+    l_validate_item_tab(16) := i_wk_item_rec.weight_volume;           -- 重量／体積
+    l_validate_item_tab(17) := i_wk_item_rec.jan_code;                -- JANコード
+    l_validate_item_tab(18) := i_wk_item_rec.nets;                    -- 内容量
+    l_validate_item_tab(19) := i_wk_item_rec.nets_uom_code;           -- 内容量単位
+    l_validate_item_tab(20) := i_wk_item_rec.inc_num;                 -- 内訳入数
+    l_validate_item_tab(21) := i_wk_item_rec.case_jan_code;           -- ケースJANコード
+    l_validate_item_tab(22) := i_wk_item_rec.hon_product_class;       -- 本社商品区分
+    l_validate_item_tab(23) := i_wk_item_rec.baracha_div;             -- バラ茶区分
+    l_validate_item_tab(24) := i_wk_item_rec.itf_code;                -- ITFコード
+    l_validate_item_tab(25) := i_wk_item_rec.product_class;           -- 商品分類
+    l_validate_item_tab(26) := i_wk_item_rec.palette_max_cs_qty;      -- 配数
+    l_validate_item_tab(27) := i_wk_item_rec.palette_max_step_qty;    -- 段数
+    l_validate_item_tab(28) := i_wk_item_rec.bowl_inc_num;            -- ボール入数
+    l_validate_item_tab(29) := i_wk_item_rec.sale_start_date;         -- 発売開始日
+    l_validate_item_tab(30) := i_wk_item_rec.vessel_group;            -- 容器群
+    l_validate_item_tab(31) := i_wk_item_rec.new_item_div;            -- 新商品区分
+    l_validate_item_tab(32) := i_wk_item_rec.acnt_group;              -- 経理群
+    l_validate_item_tab(33) := i_wk_item_rec.acnt_vessel_group;       -- 経理容器群
+    l_validate_item_tab(34) := i_wk_item_rec.brand_group;             -- ブランド群
+    l_validate_item_tab(35) := i_wk_item_rec.policy_group;            -- 政策群
+    l_validate_item_tab(36) := i_wk_item_rec.list_price;              -- 定価
+    l_validate_item_tab(37) := i_wk_item_rec.standard_price_1;        -- 原料(標準原価)
+    l_validate_item_tab(38) := i_wk_item_rec.standard_price_2;        -- 再製費(標準原価)
+    l_validate_item_tab(39) := i_wk_item_rec.standard_price_3;        -- 資材費(標準原価)
+    l_validate_item_tab(40) := i_wk_item_rec.standard_price_4;        -- 包装費(標準原価)
+    l_validate_item_tab(41) := i_wk_item_rec.standard_price_5;        -- 外注管理費(標準原価)
+    l_validate_item_tab(42) := i_wk_item_rec.standard_price_6;        -- 保管費(標準原価)
+    l_validate_item_tab(43) := i_wk_item_rec.standard_price_7;        -- その他経費(標準原価)
+    l_validate_item_tab(44) := i_wk_item_rec.business_price;          -- 営業原価
+    l_validate_item_tab(45) := i_wk_item_rec.renewal_item_code;       -- リニューアル元商品コード
+    l_validate_item_tab(46) := i_wk_item_rec.sp_supplier_code;        -- 専門店仕入先コード
+-- 2010/03/09 Ver1.20 E_本稼動_01619 modigy end by Y.Kuboshima
     --
     -- カウンタの初期化
     ln_check_cnt := 0;
@@ -2680,6 +2743,11 @@ AS
       END IF;
     END LOOP validate_column_loop;
     --
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add start by Y.Kuboshima
+    -- 適用開始日をDATE型に変換
+    gd_apply_date := TO_DATE(i_wk_item_rec.apply_date, cv_date_fmt_std);
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add end by Y.Kuboshima
+--
     IF ( lv_check_flag = cv_status_normal ) THEN
       --==============================================================
       -- A-4.2 品目存在チェック
@@ -3399,11 +3467,41 @@ AS
         lv_check_flag := cv_status_error;
       END IF;
       --
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add start by Y.Kuboshima
+    --
+    --==============================================================
+    -- A-4.10 適用開始日
+    --==============================================================
+    lv_step := 'A-4.10';
+    -- 適用開始日 > 業務日付の場合はエラーとする
+    IF (gd_apply_date > gd_process_date) THEN
+      -- 適用開始日未来日付エラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
+                    ,iv_name         => cv_msg_xxcmm_00494                          -- メッセージコード
+                    ,iv_token_name1  => cv_tkn_input_line_no                        -- トークンコード1
+                    ,iv_token_value1 => i_wk_item_rec.line_no                       -- トークン値1
+                    ,iv_token_name2  => cv_tkn_input_item_code                      -- トークンコード2
+                    ,iv_token_value2 => i_wk_item_rec.item_code                     -- トークン値2
+                    ,iv_token_name3  => cv_tkn_apply_date                           -- トークンコード3
+                    ,iv_token_value3 => i_wk_item_rec.apply_date                    -- トークン値3
+                   );
+      -- メッセージ出力
+      xxcmm_004common_pkg.put_message(
+        iv_message_buff => lv_errmsg
+       ,ov_errbuf       => lv_errbuf
+       ,ov_retcode      => lv_retcode
+       ,ov_errmsg       => lv_errmsg
+      );
+      lv_check_flag := cv_status_error;
+    END IF;
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add end by Y.Kuboshima
+--
 -- 2010/01/04 Ver1.18 障害E_本稼動_00614 add start by Shigeto.Niki
       --==============================================================
-      -- A-4.10 ITFコードチェック
+      -- A-4.11 ITFコードチェック
       --==============================================================
-      lv_step := 'A-4.10';
+      lv_step := 'A-4.11';
       -- 半角チェック
       IF ( xxccp_common_pkg.chk_single_byte( i_wk_item_rec.itf_code ) <> TRUE ) THEN
         -- 半角チェックエラー
@@ -3430,10 +3528,10 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.11 商品分類チェック
+      -- A-4.12 商品分類チェック
       -- 本登録時必須項目ではないため、値が入っている場合チェックを行います。
       --==============================================================
-      lv_step := 'A-4.11';
+      lv_step := 'A-4.12';
       IF ( i_wk_item_rec.product_class IS NOT NULL ) THEN
         -- LOOKUP表存在チェック
         -- 初期化
@@ -3456,9 +3554,9 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.12 配数、段数チェック
+      -- A-4.13 配数、段数チェック
       --==============================================================
-      lv_step := 'A-4.12.1';
+      lv_step := 'A-4.13.1';
       IF ( i_wk_item_rec.hon_product_class IS NOT NULL ) THEN
         -- 本社商品区分が「2:ドリンク」の場合、配数、段数は必須となります。
         IF ( TO_NUMBER(i_wk_item_rec.hon_product_class) = cn_hon_prod_drink ) THEN
@@ -3490,7 +3588,7 @@ AS
         END IF;
       END IF;
       --
-      lv_step := 'A-4.12.2';
+      lv_step := 'A-4.13.2';
       -- 配数
       -- 配数がNOT NULLかつ、0以下の場合
       -- ※配数のNULLチェックは後続で行うため、ここではNULLチェックは行わない
@@ -3550,9 +3648,9 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.13 重量／体積チェック
+      -- A-4.14 重量／体積チェック
       --==============================================================
-      lv_step := 'A-4.13';
+      lv_step := 'A-4.14';
       IF ( i_wk_item_rec.weight_volume IS NULL ) THEN
         IF ( lv_required_item IS NULL ) THEN
           lv_required_item := cv_weight_volume;
@@ -3587,13 +3685,13 @@ AS
 -- Ver1.8  2009/05/18 Add  T1_0317 品目コード先頭１バイトが'5'または'6'の場合、2:製品 を設定
 --                         T1_0322 子品目で商品製品区分導出時に親品目の商品製品区分との比較処理を追加
       --==============================================================
-      -- A-4.16 商品製品区分チェック
+      -- A-4.17 商品製品区分チェック
       -- 親品目時チェック(子品目は親値継承)
       -- 2009/05/15 追記
       --  子品目は親値を継承させるが、ルール通り設定される必要あり
       --  導出した商品製品区分と親品目の商品製品区分が異なる場合エラーとする
       --==============================================================
-      lv_step := 'A-4.16';
+      lv_step := 'A-4.17';
       -- 品目コード体系で商品製品区分値を変更します。
       IF ( SUBSTRB(i_wk_item_rec.item_code, 1, 2 ) = '00' ) THEN
         lv_category_val := TO_CHAR(cn_item_prod_prod);
@@ -3613,10 +3711,10 @@ AS
       --==============================================================
       IF ( i_wk_item_rec.item_code = i_wk_item_rec.parent_item_code ) THEN
         --==============================================================
-        -- A-4.14 売上対象チェック
+        -- A-4.15 売上対象チェック
         -- 親品目時チェック(子品目は無条件で「0:売上対象外」となるためチェックしません。)
         --==============================================================
-        lv_step := 'A-4.14.1';
+        lv_step := 'A-4.15.1';
         IF ( i_wk_item_rec.sales_target_flag IS NOT NULL ) THEN
           -- 初期化
           l_lookup_rec := NULL;
@@ -3636,7 +3734,7 @@ AS
             lv_check_flag := cv_status_error;
           END IF;
           --
-          lv_step := 'A-4.14.2';
+          lv_step := 'A-4.15.2';
           -- 売上対象のLOOKUP表存在時
           IF ( lv_retcode = cv_status_normal ) THEN
             -- 売上対象が「1:売上対象」の場合、率区分が「1:率計算」はエラーチェック
@@ -3665,10 +3763,10 @@ AS
         END IF;
         --
         --==============================================================
-        -- A-4.15 基準単位チェック
+        -- A-4.16 基準単位チェック
         -- 親品目時チェック(子品目は親値継承)
         --==============================================================
-        lv_step := 'A-4.15';
+        lv_step := 'A-4.16';
         IF ( i_wk_item_rec.item_um IS NOT NULL ) THEN
 -- 2009/09/07 Ver1.15 障害0000948 modify start by Y.Kuboshima
 --          -- 本、kg以外はエラー
@@ -3764,10 +3862,10 @@ AS
 -- End
         --
         --==============================================================
-        -- A-4.17 率区分チェック
+        -- A-4.18 率区分チェック
         -- 親品目時チェック(子品目は親値継承)
         --==============================================================
-        lv_step := 'A-4.17';
+        lv_step := 'A-4.18';
         IF ( i_wk_item_rec.rate_class IS NOT NULL ) THEN
           -- LOOKUP表存在チェック
           -- 初期化
@@ -3790,10 +3888,10 @@ AS
         END IF;
         --
         --==============================================================
-        -- A-4.18 内容量単位チェック
+        -- A-4.19 内容量単位チェック
         -- 親品目時チェック(子品目は親値継承)
         --==============================================================
-        lv_step := 'A-4.18';
+        lv_step := 'A-4.19';
         IF ( i_wk_item_rec.nets_uom_code IS NOT NULL ) THEN
           -- LOOKUP表存在チェック
           -- 初期化
@@ -3819,10 +3917,10 @@ AS
         END IF;
         --
         --==============================================================
-        -- A-4.19 本社商品区分チェック
+        -- A-4.20 本社商品区分チェック
         -- 親品目時チェック(子品目は親値継承)
         --==============================================================
-        lv_step := 'A-4.19';        
+        lv_step := 'A-4.20';        
         IF ( i_wk_item_rec.hon_product_class IS NOT NULL ) THEN
           -- 本社商品区分情報を変数にセット
           l_item_ctg_rec.category_set_name := cv_categ_set_hon_prod;
@@ -3841,11 +3939,11 @@ AS
         END IF;
         --
         --==============================================================
-        -- A-4.20 バラ茶区分チェック
+        -- A-4.21 バラ茶区分チェック
         -- 親品目時チェック(子品目は親値継承)
         -- 本社商品区分「1:リーフ」の場合チェックします。※「2:ドリンク」の場合は「0:その他」をセットします。
         --==============================================================
-        lv_step := 'A-4.20';
+        lv_step := 'A-4.21';
 -- 2010/02/25 Ver1.19 E_本稼動_01589 modify start by Shigeto.Niki
 --        IF ( i_wk_item_rec.hon_product_class IS NOT NULL ) THEN
 --          IF ( TO_NUMBER(i_wk_item_rec.hon_product_class) = cn_hon_prod_leaf ) THEN
@@ -3891,10 +3989,10 @@ AS
 -- 2010/02/25 Ver1.19 E_本稼動_01589 modify end by Shigeto.Niki
         --
         --==============================================================
-        -- A-4.21 JANコードチェック
+        -- A-4.22 JANコードチェック
         -- 親品目時チェック(子品目は親値継承)
         --==============================================================
-        lv_step := 'A-4.21';
+        lv_step := 'A-4.22';
         -- 半角チェック
 -- Ver1.7  2009/04/10  Mod  障害T1_0215 対応
 --ito->※最終的にはxxccp_common_pkgになる予定
@@ -3925,10 +4023,10 @@ AS
         END IF;
         --
         --==============================================================
-        -- A-4.22 ケースJANコードチェック
+        -- A-4.23 ケースJANコードチェック
         -- 親品目時チェック(子品目は親値継承)
         --==============================================================
-        lv_step := 'A-4.22';
+        lv_step := 'A-4.23';
         -- 半角チェック
 -- Ver1.7  2009/04/10  Mod  障害T1_0215 対応
 --ito->※最終的にはxxccp_common_pkgになる予定
@@ -4058,10 +4156,10 @@ AS
 -- 2010/01/04 Ver1.18 障害E_本稼動_00614 delete end by Shigeto.Niki
         --
         --==============================================================
-        -- A-4.23 政策群チェック
+        -- A-4.24 政策群チェック
         -- 親品目時チェック(子品目は親値継承)
         --==============================================================
-        lv_step := 'A-4.23';
+        lv_step := 'A-4.24';
         IF ( i_wk_item_rec.policy_group IS NOT NULL ) THEN
           -- 政策群情報を変数にセット
           l_item_ctg_rec.category_set_name := cv_categ_set_seisakugun;
@@ -4081,11 +4179,11 @@ AS
         END IF;
         --
         --==============================================================
-        -- A-4.24 容器群チェック
+        -- A-4.25 容器群チェック
         -- 親品目時チェック(子品目は親値継承)
         -- 本登録時必須項目ではないため、値が入っている場合チェックを行います。
         --==============================================================
-        lv_step := 'A-4.24';
+        lv_step := 'A-4.25';
         IF ( i_wk_item_rec.vessel_group IS NOT NULL ) THEN
           -- LOOKUP表存在チェック
           -- 初期化
@@ -4108,11 +4206,11 @@ AS
         END IF;
         --
         --==============================================================
-        -- A-4.25 新商品区分チェック
+        -- A-4.26 新商品区分チェック
         -- 親品目時チェック(子品目は親値継承)
         -- 本登録時必須項目ではないため、値が入っている場合チェックを行います。
         --==============================================================
-        lv_step := 'A-4.25';
+        lv_step := 'A-4.26';
         IF ( i_wk_item_rec.new_item_div IS NOT NULL ) THEN
           -- LOOKUP表存在チェック
           -- 初期化
@@ -4135,11 +4233,11 @@ AS
         END IF;
         --
         --==============================================================
-        -- A-4.26 経理群チェック
+        -- A-4.27 経理群チェック
         -- 親品目時チェック(子品目は親値継承)
         -- 本登録時必須項目ではないため、値が入っている場合チェックを行います。
         --==============================================================
-        lv_step := 'A-4.26';
+        lv_step := 'A-4.27';
         IF ( i_wk_item_rec.acnt_group IS NOT NULL ) THEN
           -- LOOKUP表存在チェック
           -- 初期化
@@ -4162,11 +4260,11 @@ AS
         END IF;
         --
         --==============================================================
-        -- A-4.27 経理容器群チェック
+        -- A-4.28 経理容器群チェック
         -- 親品目時チェック(子品目は親値継承)
         -- 本登録時必須項目ではないため、値が入っている場合チェックを行います。
         --==============================================================
-        lv_step := 'A-4.27';
+        lv_step := 'A-4.28';
         IF ( i_wk_item_rec.acnt_vessel_group IS NOT NULL ) THEN
           -- LOOKUP表存在チェック
           -- 初期化
@@ -4189,11 +4287,11 @@ AS
         END IF;
         --
         --==============================================================
-        -- A-4.28 ブランド群チェック
+        -- A-4.29 ブランド群チェック
         -- 親品目時チェック(子品目は親値継承)
         -- 本登録時必須項目ではないため、値が入っている場合チェックを行います。
         --==============================================================
-        lv_step := 'A-4.28';
+        lv_step := 'A-4.29';
         IF ( i_wk_item_rec.brand_group IS NOT NULL ) THEN
           -- LOOKUP表存在チェック
           -- 初期化
@@ -4216,10 +4314,10 @@ AS
         END IF;
         --
         --==============================================================
-        -- A-4.29 標準原価チェック
+        -- A-4.30 標準原価チェック
         -- 親品目時チェック(子品目は親値継承)
         --==============================================================
-        lv_step := 'A-4.29';
+        lv_step := 'A-4.30';
         -- 7つの合計値が整数でない場合はエラーとします。
         IF   ( i_wk_item_rec.standard_price_1 IS NOT NULL )
           OR ( i_wk_item_rec.standard_price_2 IS NOT NULL )
@@ -4340,13 +4438,13 @@ AS
 -- Ver1.8  2009/05/18 Add  T1_0322 子品目で商品製品区分導出時に親品目の商品製品区分との比較処理を追加
       ELSE
         --==============================================================
-        -- A-4.32 商品製品区分チェック
+        -- A-4.33 商品製品区分チェック
         --==============================================================
         -- 子品目時のチェック処理
         -- 商品製品区分が品目コードによって導出されている場合
-        lv_step := 'A-4.32.1';
+        lv_step := 'A-4.33.1';
         IF ( lv_category_val IS NOT NULL ) THEN
-          lv_step := 'A-4.32.2';
+          lv_step := 'A-4.33.2';
           ----------------------------------------------------
           -- 導出した商品製品区分と親の製品商品区分を比較
           ----------------------------------------------------
@@ -4393,11 +4491,11 @@ AS
       END IF;
       --
       --==============================================================
-      -- A-4.30 専門店仕入先チェック
+      -- A-4.31 専門店仕入先チェック
       -- 商品製品区分が「1:商品」の場合、子品目は親値継承
       -- 商品製品区分が「2:製品」の場合、親子ともLOOKUP表存在チェックを行います。
       --==============================================================
-      lv_step := 'A-4.30.1';
+      lv_step := 'A-4.31.1';
       -- 専門店仕入先 IS NULL時
       IF ( i_wk_item_rec.sp_supplier_code IS NULL ) THEN
         -- 親品目時
@@ -4429,7 +4527,7 @@ AS
         --
       -- 専門店仕入先 IS NOT NULL時
       ELSE
-        lv_step := 'A-4.30.2';
+        lv_step := 'A-4.31.2';
         -- LOOKUP表存在チェック
         -- 初期化
         l_lookup_rec := NULL;
@@ -4459,9 +4557,9 @@ AS
     IF ( i_wk_item_rec.item_code <> i_wk_item_rec.parent_item_code ) THEN
       --
       --==============================================================
-      -- A-4.33 バラ茶区分(親値取得)
+      -- A-4.34 バラ茶区分(親値取得)
       --==============================================================
-      lv_step := 'A-4.33';
+      lv_step := 'A-4.34';
       OPEN get_categ_cur( i_wk_item_rec.parent_item_code, cv_categ_set_baracha_div );
       --
       FETCH get_categ_cur INTO l_item_ctg_rec.bd_category_id, l_item_ctg_rec.bd_category_set_id;
@@ -4469,9 +4567,9 @@ AS
       CLOSE get_categ_cur;
       --
       --==============================================================
-      -- A-4.34 マーケ用群コード(親値取得)
+      -- A-4.35 マーケ用群コード(親値取得)
       --==============================================================
-      lv_step := 'A-4.34';
+      lv_step := 'A-4.35';
       OPEN get_categ_cur( i_wk_item_rec.parent_item_code, cv_categ_set_mark_pg );
       --
       FETCH get_categ_cur INTO l_item_ctg_rec.mgc_category_id, l_item_ctg_rec.mgc_category_set_id;
@@ -4479,9 +4577,9 @@ AS
       CLOSE get_categ_cur;
       --
       --==============================================================
-      -- A-4.35 群コード(親値取得)
+      -- A-4.36 群コード(親値取得)
       --==============================================================
-      lv_step := 'A-4.35';
+      lv_step := 'A-4.36';
       OPEN get_categ_cur( i_wk_item_rec.parent_item_code, cv_categ_set_gun_code );
       --
       FETCH get_categ_cur INTO l_item_ctg_rec.pg_category_id, l_item_ctg_rec.pg_category_set_id;
@@ -4660,6 +4758,7 @@ AS
       lv_check_flag := cv_status_error;
     END IF;
 -- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
+--
     --
     --==============================================================
     -- A-4.44 処理件数加算
@@ -4753,6 +4852,9 @@ AS
                 ,TRIM(xwibr.item_name)               AS item_name               -- 正式名
                 ,TRIM(xwibr.item_short_name)         AS item_short_name         -- 略称
                 ,TRIM(xwibr.item_name_alt)           AS item_name_alt           -- カナ名
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add start by Y.Kuboshima
+                ,TRIM(xwibr.apply_date)              AS apply_date              -- 適用開始日
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add end by Y.Kuboshima
                 ,TRIM(xwibr.item_status)             AS item_status             -- 品目ステータス
                 ,TRIM(xwibr.sales_target_flag)       AS sales_target_flag       -- 売上対象区分
                 ,TRIM(xwibr.parent_item_code)        AS parent_item_code        -- 親商品コード
@@ -5158,6 +5260,9 @@ AS
          ,item_name                     -- 正式名
          ,item_short_name               -- 略称
          ,item_name_alt                 -- カナ名
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add start by Y.Kuboshima
+         ,apply_date                    -- 適用開始日
+-- 2010/03/09 Ver1.20 E_本稼動_01619 add end by Y.Kuboshima
          ,item_status                   -- 品目ステータス
          ,sales_target_flag             -- 売上対象区分
          ,parent_item_code              -- 親商品コード
@@ -5217,48 +5322,91 @@ AS
          ,l_wk_item_tab(3)              -- 正式名
          ,l_wk_item_tab(4)              -- 略称
          ,l_wk_item_tab(5)              -- カナ名
-         ,l_wk_item_tab(6)              -- 品目ステータス
-         ,l_wk_item_tab(7)              -- 売上対象区分
-         ,l_wk_item_tab(8)              -- 親商品コード
-         ,l_wk_item_tab(9)              -- ケース入数
--- Ver1.8  2009/05/18 Add  T1_0906 ケース換算入数を追加
-         ,l_wk_item_tab(10)             -- ケース換算入数
--- End
-         ,l_wk_item_tab(11)             -- 基準単位
-         ,l_wk_item_tab(12)             -- 商品製品区分
-         ,l_wk_item_tab(13)             -- 率区分
-         ,l_wk_item_tab(14)             -- NET
-         ,l_wk_item_tab(15)             -- 重量／体積
-         ,l_wk_item_tab(16)             -- JANコード
-         ,l_wk_item_tab(17)             -- 内容量
-         ,l_wk_item_tab(18)             -- 内容量単位
-         ,l_wk_item_tab(19)             -- 内訳入数
-         ,l_wk_item_tab(20)             -- ケースJANコード
-         ,l_wk_item_tab(21)             -- 本社商品区分
-         ,l_wk_item_tab(22)             -- バラ茶区分
-         ,l_wk_item_tab(23)             -- ITFコード
-         ,l_wk_item_tab(24)             -- 商品分類
-         ,l_wk_item_tab(25)             -- 配数
-         ,l_wk_item_tab(26)             -- 段数
-         ,l_wk_item_tab(27)             -- ボール入数
-         ,l_wk_item_tab(28)             -- 発売開始日
-         ,l_wk_item_tab(29)             -- 容器群
-         ,l_wk_item_tab(30)             -- 新商品区分
-         ,l_wk_item_tab(31)             -- 経理群
-         ,l_wk_item_tab(32)             -- 経理容器群
-         ,l_wk_item_tab(33)             -- ブランド群
-         ,l_wk_item_tab(34)             -- 政策群
-         ,l_wk_item_tab(35)             -- 定価
-         ,l_wk_item_tab(36)             -- 原料(標準原価)
-         ,l_wk_item_tab(37)             -- 再製費(標準原価)
-         ,l_wk_item_tab(38)             -- 資材費(標準原価)
-         ,l_wk_item_tab(39)             -- 包装費(標準原価)
-         ,l_wk_item_tab(40)             -- 外注管理費(標準原価)
-         ,l_wk_item_tab(41)             -- 保管費(標準原価)
-         ,l_wk_item_tab(42)             -- その他経費(標準原価)
-         ,l_wk_item_tab(43)             -- 営業原価
-         ,l_wk_item_tab(44)             -- リニューアル元商品コード
-         ,l_wk_item_tab(45)             -- 専門店仕入先コード
+-- 2010/03/09 Ver1.20 E_本稼動_01619 modify start by Y.Kuboshima
+--         ,l_wk_item_tab(6)              -- 品目ステータス
+--         ,l_wk_item_tab(7)              -- 売上対象区分
+--         ,l_wk_item_tab(8)              -- 親商品コード
+--         ,l_wk_item_tab(9)              -- ケース入数
+---- Ver1.8  2009/05/18 Add  T1_0906 ケース換算入数を追加
+--         ,l_wk_item_tab(10)             -- ケース換算入数
+---- End
+--         ,l_wk_item_tab(11)             -- 基準単位
+--         ,l_wk_item_tab(12)             -- 商品製品区分
+--         ,l_wk_item_tab(13)             -- 率区分
+--         ,l_wk_item_tab(14)             -- NET
+--         ,l_wk_item_tab(15)             -- 重量／体積
+--         ,l_wk_item_tab(16)             -- JANコード
+--         ,l_wk_item_tab(17)             -- 内容量
+--         ,l_wk_item_tab(18)             -- 内容量単位
+--         ,l_wk_item_tab(19)             -- 内訳入数
+--         ,l_wk_item_tab(20)             -- ケースJANコード
+--         ,l_wk_item_tab(21)             -- 本社商品区分
+--         ,l_wk_item_tab(22)             -- バラ茶区分
+--         ,l_wk_item_tab(23)             -- ITFコード
+--         ,l_wk_item_tab(24)             -- 商品分類
+--         ,l_wk_item_tab(25)             -- 配数
+--         ,l_wk_item_tab(26)             -- 段数
+--         ,l_wk_item_tab(27)             -- ボール入数
+--         ,l_wk_item_tab(28)             -- 発売開始日
+--         ,l_wk_item_tab(29)             -- 容器群
+--         ,l_wk_item_tab(30)             -- 新商品区分
+--         ,l_wk_item_tab(31)             -- 経理群
+--         ,l_wk_item_tab(32)             -- 経理容器群
+--         ,l_wk_item_tab(33)             -- ブランド群
+--         ,l_wk_item_tab(34)             -- 政策群
+--         ,l_wk_item_tab(35)             -- 定価
+--         ,l_wk_item_tab(36)             -- 原料(標準原価)
+--         ,l_wk_item_tab(37)             -- 再製費(標準原価)
+--         ,l_wk_item_tab(38)             -- 資材費(標準原価)
+--         ,l_wk_item_tab(39)             -- 包装費(標準原価)
+--         ,l_wk_item_tab(40)             -- 外注管理費(標準原価)
+--         ,l_wk_item_tab(41)             -- 保管費(標準原価)
+--         ,l_wk_item_tab(42)             -- その他経費(標準原価)
+--         ,l_wk_item_tab(43)             -- 営業原価
+--         ,l_wk_item_tab(44)             -- リニューアル元商品コード
+--         ,l_wk_item_tab(45)             -- 専門店仕入先コード
+         ,l_wk_item_tab(6)              -- 適用開始日
+         ,l_wk_item_tab(7)              -- 品目ステータス
+         ,l_wk_item_tab(8)              -- 売上対象区分
+         ,l_wk_item_tab(9)              -- 親商品コード
+         ,l_wk_item_tab(10)             -- ケース入数
+         ,l_wk_item_tab(11)             -- ケース換算入数
+         ,l_wk_item_tab(12)             -- 基準単位
+         ,l_wk_item_tab(13)             -- 商品製品区分
+         ,l_wk_item_tab(14)             -- 率区分
+         ,l_wk_item_tab(15)             -- NET
+         ,l_wk_item_tab(16)             -- 重量／体積
+         ,l_wk_item_tab(17)             -- JANコード
+         ,l_wk_item_tab(18)             -- 内容量
+         ,l_wk_item_tab(19)             -- 内容量単位
+         ,l_wk_item_tab(20)             -- 内訳入数
+         ,l_wk_item_tab(21)             -- ケースJANコード
+         ,l_wk_item_tab(22)             -- 本社商品区分
+         ,l_wk_item_tab(23)             -- バラ茶区分
+         ,l_wk_item_tab(24)             -- ITFコード
+         ,l_wk_item_tab(25)             -- 商品分類
+         ,l_wk_item_tab(26)             -- 配数
+         ,l_wk_item_tab(27)             -- 段数
+         ,l_wk_item_tab(28)             -- ボール入数
+         ,l_wk_item_tab(29)             -- 発売開始日
+         ,l_wk_item_tab(30)             -- 容器群
+         ,l_wk_item_tab(31)             -- 新商品区分
+         ,l_wk_item_tab(32)             -- 経理群
+         ,l_wk_item_tab(33)             -- 経理容器群
+         ,l_wk_item_tab(34)             -- ブランド群
+         ,l_wk_item_tab(35)             -- 政策群
+         ,l_wk_item_tab(36)             -- 定価
+         ,l_wk_item_tab(37)             -- 原料(標準原価)
+         ,l_wk_item_tab(38)             -- 再製費(標準原価)
+         ,l_wk_item_tab(39)             -- 資材費(標準原価)
+         ,l_wk_item_tab(40)             -- 包装費(標準原価)
+         ,l_wk_item_tab(41)             -- 外注管理費(標準原価)
+         ,l_wk_item_tab(42)             -- 保管費(標準原価)
+         ,l_wk_item_tab(43)             -- その他経費(標準原価)
+         ,l_wk_item_tab(44)             -- 営業原価
+         ,l_wk_item_tab(45)             -- リニューアル元商品コード
+         ,l_wk_item_tab(46)             -- 専門店仕入先コード
+-- 2010/03/09 Ver1.20 E_本稼動_01619 modify end by Y.Kuboshima
          ,cn_created_by                 -- 作成者
          ,cd_creation_date              -- 作成日
          ,cn_last_updated_by            -- 最終更新者

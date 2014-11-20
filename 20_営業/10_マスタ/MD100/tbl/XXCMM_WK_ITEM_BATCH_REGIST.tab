@@ -7,6 +7,9 @@ CREATE TABLE xxcmm.xxcmm_wk_item_batch_regist
     item_name                      VARCHAR2(100),
     item_short_name                VARCHAR2(100),
     item_name_alt                  VARCHAR2(100),
+-- Ver1.2  2010/03/08  Add E_本稼動_01619対応
+    apply_date                     VARCHAR2(100),
+-- End
     item_status                    VARCHAR2(100),
     sales_target_flag              VARCHAR2(100),
     parent_item_code               VARCHAR2(100),
@@ -76,6 +79,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_short_name        IS '略
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_name_alt          IS 'カナ名'
 /
+-- Ver1.2  2010/03/08  Add E_本稼動_01619対応
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.apply_date             IS '適用開始日'
+/
+-- End
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_status            IS '品目ステータス'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.sales_target_flag      IS '売上対象区分'
