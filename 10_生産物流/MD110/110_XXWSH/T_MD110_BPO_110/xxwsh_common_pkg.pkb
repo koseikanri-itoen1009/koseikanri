@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.18
+ * Version                : 1.19
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *                                                     運賃区分「1」の時･･･重量積載効率/容積積載効率  処理で取得した値に更新
  *                                                     運賃区分「1」でない時･･･重量積載効率/容積積載効率/基本重量/基本容積/配送区分 NULLに更新
  *                                                     常に更新･･･積載重量合計/積載容積合計/パレット合計枚数/小口個数
+ *  2008/08/11   1.19  Oracle 伊藤ひとみ[同一依頼No検索関数]変更要求#174 実績計上済区分Yのデータが1件もない場合は、エラーを返す。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1102,9 +1103,18 @@ AS
         AND    max_order_headers.max_date          =  xoha.last_update_date
         ;
 --
+-- 2008/08/11 H.Itou Add Start  変更要求#174 受注ヘッダIDを取得できない場合はエラーを返す。
+      IF (on_order_header_id IS NULL) THEN
+        RETURN gn_status_error;
+      END IF;
+-- 2008/08/11 H.Itou Add End
+--
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
-          NULL;
+-- 2008/08/11 H.Itou Mod Start  変更要求#174 実績計上済区分がYのデータがない場合はエラーを返す。
+--          NULL;
+          RETURN gn_status_error;
+-- 2008/08/11 H.Itou Mod End
 --
       END;
 --
