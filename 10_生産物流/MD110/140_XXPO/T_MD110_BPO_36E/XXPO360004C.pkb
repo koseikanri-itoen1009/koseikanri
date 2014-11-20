@@ -7,7 +7,7 @@ AS
  * Description      : 仕入明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  *                  : 有償支給帳票Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.9
+ * Version          : 1.11
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -46,6 +46,10 @@ AS
  *                                       、１つの明細の情報が２件以上されないよう修正。
  *  2008/06/16    1.9   I.Higa           TEMP領域エラー回避のため、xxpo_categories_vを２つ以上使用
  *                                       しないようにする
+ *  2008/06/25    1.10  T.Endou          特定文字列を出力しようとすると、エラーとなり帳票が出力
+ *                                       されない現象への対応
+ *  2008/06/25    1.11  Y.Ishikawa       総数は、数量(QUANTITY)ではなく受入返品数量
+ *                                       (RCV_RTN_QUANTITY)をセットする
  *
  *****************************************************************************************/
 --
@@ -286,7 +290,7 @@ AS
 --
     --データの場合
     IF (ic_type = 'D') THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;
@@ -677,22 +681,22 @@ AS
               || ' xvsv.vendor_site_code      AS factry_code,'
               || ' TO_NUMBER(pla.attribute4)  AS in_cnt,'            -- 在庫入数
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
-              || ' (rcrt.quantity * '  || cn_sts_num   || ' ),'
-              || ' rcrt.quantity )    AS   total_cnt,'                          -- 数量
+              || ' (rcrt.rcv_rtn_quantity * '  || cn_sts_num   || ' ),'
+              || ' rcrt.rcv_rtn_quantity )    AS   total_cnt,'                  -- 数量
               || ' rcrt.rcv_rtn_uom           AS   rtn_uom, '                   -- 単位
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
               || ' rcrt.kobki_converted_unit_price,'
               || ' pla.unit_price) AS   unit_price, '                -- 単価
               || ' ROUND(DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
               || ' , DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
-              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
-              || ' , rcrt.quantity ) * '
+              || ' , ( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) '
+              || ' , rcrt.rcv_rtn_quantity ) * '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
               || ' rcrt.kobki_converted_unit_price,'
               || ' pla.unit_price) , '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''''
-              || ' , ( rcrt.quantity * ' || cn_sts_num || ' ) '
-              || ' , rcrt.quantity ) * '
+              || ' , ( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) '
+              || ' , rcrt.rcv_rtn_quantity ) * '
               || ' DECODE( rcrt.txns_type, ''' || cv_sts_num_2 || ''','
               || ' rcrt.kobki_converted_unit_price,'
               || ' pla.unit_price) ), ' || cn_sts_num_zero
@@ -879,10 +883,10 @@ AS
                 || ' rcrt.rcv_rtn_number        AS  order_no,'
                 || ' NULL                       AS  factry_code,'
                 || ' rcrt.conversion_factor     AS  in_cnt,'
-                || ' rcrt.quantity * ' || cn_sts_num || ' AS total_cnt,'
+                || ' rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' AS total_cnt,'
                 || ' rcrt.rcv_rtn_uom           AS  rtn_uom,'
                 || ' rcrt.kobki_converted_unit_price  AS  unit_price,'
-                || ' ROUND((( rcrt.quantity * ' || cn_sts_num || ' ) * ( '
+                || ' ROUND((( rcrt.rcv_rtn_quantity * ' || cn_sts_num || ' ) * ( '
                 || ' rcrt.kobki_converted_unit_price )),' || cn_sts_num_zero || ' )'
                 || ' AS amount_pay,'
                 || ' NULL                       AS  deliver_dist,'
