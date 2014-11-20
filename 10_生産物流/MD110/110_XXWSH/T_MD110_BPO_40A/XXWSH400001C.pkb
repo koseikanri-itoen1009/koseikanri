@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2008/11/19    1.16  Oracle 伊藤ひとみ  統合テスト指摘683対応
  *  2008/11/20    1.17  Oracle 伊藤ひとみ  統合テスト指摘141,658対応
  *  2009/01/08    1.18  Oracle 伊藤ひとみ  本番障害#894対応
+ *  2009/01/30    1.19  SCS    伊藤ひとみ  本番障害#994対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -798,14 +799,17 @@ AS
 --
     -- WHOカラム取得
     gn_created_by     := FND_GLOBAL.USER_ID;           -- 作成者
-    gd_creation_date  := gd_sysdate;                   -- 作成日
+--    gd_creation_date  := gd_sysdate;                   -- 作成日
+    gd_creation_date  := SYSDATE;                   -- 作成日
     gn_last_upd_by    := FND_GLOBAL.USER_ID;           -- 最終更新日
-    gd_last_upd_date  := gd_sysdate;                   -- 最終更新者
+--    gd_last_upd_date  := gd_sysdate;                   -- 最終更新者
+    gd_last_upd_date  := SYSDATE;                   -- 最終更新者
     gn_last_upd_login := FND_GLOBAL.LOGIN_ID;          -- 最終更新ログイン
     gn_request_id     := FND_GLOBAL.CONC_REQUEST_ID;   -- 要求ID
     gn_prog_appl_id   := FND_GLOBAL.PROG_APPL_ID;      -- プログラムアプリケーションID
     gn_prog_id        := FND_GLOBAL.CONC_PROGRAM_ID;   -- プログラムID
-    gd_prog_upd_date  := gd_sysdate;                   -- プログラム更新日
+--    gd_prog_upd_date  := gd_sysdate;                   -- プログラム更新日
+    gd_prog_upd_date  := SYSDATE;                   -- プログラム更新日
 --
     --------------------------------------------------
     -- クイックコードから出荷依頼ステータス情報取得 --
@@ -914,6 +918,12 @@ AS
                                                       ,5000);
         RAISE global_api_expt;
     END;
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応 クローズ最大年月は変わらないので、A-1で取得する。
+    ----------------------------------------------
+    -- クローズの最大年月取得
+    ----------------------------------------------
+    gv_opm_c_p := xxcmn_common_pkg.get_opminv_close_period;
+-- 2009/01/30 H.Itou Add End
 --
   EXCEPTION
 --
@@ -1143,7 +1153,9 @@ AS
             ,xcv.party_number               AS freight_carrier_code -- 運送業者
 -- 2008/08/19 H.Itou Add End
       FROM  mrp_forecast_designators  mfds   -- フォーキャスト名        T
-           ,mrp_forecast_items        mfi    -- フォーキャスト品目      T
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応 品目IDはフォーキャスト日付から取得できるため、削除。
+--           ,mrp_forecast_items        mfi    -- フォーキャスト品目      T
+-- 2009/01/30 H.Itou Add End
            ,mrp_forecast_dates        mfd    -- フォーキャスト日付      T
            ,xxcmn_item_locations_v   xilv    -- OPM保管場所情報         V
            ,xxcmn_cust_accounts_v    xcav    -- 顧客情報                V
@@ -1163,12 +1175,19 @@ AS
 -- 2008/07/30 Mod ↓
       AND   mfds.attribute2                     = xilv.segment1            -- 保管倉庫コード
       AND   mfds.forecast_designator            = mfd.forecast_designator  -- フォーキャスト名
-      AND   mfi.forecast_designator             = mfds.forecast_designator -- フォーキャスト名
+-- 2009/01/30 H.Itou Del Start 本番障害#994対応
+--      AND   mfi.forecast_designator             = mfds.forecast_designator -- フォーキャスト名
+-- 2009/01/30 H.Itou Del End
       AND   TO_CHAR(mfd.forecast_date,'YYYYMM') = gr_param.yyyymm          -- 入力Ｐ[対象年月]
       AND   mfd.organization_id                 = mfds.organization_id     -- 組織ID
-      AND   mfds.organization_id                = mfi.organization_id      -- 組織ID
-      AND   mfd.inventory_item_id               = mfi.inventory_item_id    -- 品目ID
-      AND   ximv.inventory_item_id              = mfi.inventory_item_id    -- 品目ID
+-- 2009/01/30 H.Itou Del Start 本番障害#994対応
+--      AND   mfds.organization_id                = mfi.organization_id      -- 組織ID
+--      AND   mfd.inventory_item_id               = mfi.inventory_item_id    -- 品目ID
+-- 2009/01/30 H.Itou Del End
+-- 2009/01/30 H.Itou Mod Start 本番障害#994対応
+--      AND   ximv.inventory_item_id              = mfi.inventory_item_id    -- 品目ID
+      AND   ximv.inventory_item_id              = mfd.inventory_item_id    -- 品目ID
+-- 2009/01/30 H.Itou Mod End 本番障害#994対応
       AND   xcav.account_number                 = mfds.attribute3          -- 拠点
       AND   xcav.customer_class_code            = gv_1                     -- 顧客区分
       AND   xcav.order_auto_code                = gv_1                     -- 出荷依頼自動作成区分
@@ -1285,47 +1304,54 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -----------------------------------------------------------------------------------
-    -- 1.共通関数「稼働日算出関数」にて『着荷予定日』が稼働日かであるかチェック      --
-    -----------------------------------------------------------------------------------
-    ln_result := xxwsh_common_pkg.get_oprtn_day
-                                (
-                                  gt_to_plan(gn_i).for_date   -- 日付           in 着荷予定日
-                                 ,NULL                        -- 保管倉庫コード in NULL
-                                 ,gt_to_plan(gn_i).ship_t_no  -- 配送先コード   in 配送先
-                                 ,0                           -- リードタイム   in 0
-                                 ,gt_to_plan(gn_i).skbn       -- 商品区分       in 商品区分(リーフ)
-                                 ,gd_work_day                 -- 稼働日日付    out 稼働日
-                                );
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応
+    -- 明細番号[1]の場合のみヘッダ単位チェックの数値を取得する。2明細目以降は1明細目の値を参照。
+    IF (gn_line_number = 1) THEN
+-- 2009/01/30 H.Itou Add End
+      -----------------------------------------------------------------------------------
+      -- 1.共通関数「稼働日算出関数」にて『着荷予定日』が稼働日かであるかチェック      --
+      -----------------------------------------------------------------------------------
+      ln_result := xxwsh_common_pkg.get_oprtn_day
+                                  (
+                                    gt_to_plan(gn_i).for_date   -- 日付           in 着荷予定日
+                                   ,NULL                        -- 保管倉庫コード in NULL
+                                   ,gt_to_plan(gn_i).ship_t_no  -- 配送先コード   in 配送先
+                                   ,0                           -- リードタイム   in 0
+                                   ,gt_to_plan(gn_i).skbn       -- 商品区分       in 商品区分(リーフ)
+                                   ,gd_work_day                 -- 稼働日日付    out 稼働日
+                                  );
 --
 -- 2008/11/20 H.Itou Add Start 統合テスト指摘658
-    -- 共通関数エラー時、エラー
-    IF (ln_result = gn_status_error) THEN
+      -- 共通関数エラー時、エラー
+      IF (ln_result = gn_status_error) THEN
+  --
+        -- エラーリスト作成
+        pro_err_list_make
+          (
+            iv_kind         => gv_tkn_msg_err            --  in 種別   'エラー'
+           ,iv_dec          => gv_tkn_msg_hfn            --  in 確定   '-'
+           ,iv_req_no       => gv_req_no                 --  in 依頼No
+           ,iv_kyoten       => gt_to_plan(gn_i).ktn      --  in 管轄拠点
+           ,iv_item         => gt_to_plan(gn_i).item_no  --  in 品目
+           ,in_qty          => gt_to_plan(gn_i).amount   --  in 数量
+           ,iv_ship_date    => gv_tkn_msg_hfn            --  in 出庫日  '-'
+           ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
+                                                         --  in 着日
+           ,iv_err_msg      => lv_errmsg                 --  in エラーメッセージ
+           ,iv_err_clm      => gv_tkn_msg26              --  in エラー項目
+           ,ov_errbuf       => lv_errbuf                 -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode                -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg                 -- out ユーザー・エラー・メッセージ
+          );
+        -- 共通エラーメッセージ 終了ST エラー登録
+        gv_err_sts := gv_status_error;
 --
-      -- エラーリスト作成
-      pro_err_list_make
-        (
-          iv_kind         => gv_tkn_msg_err            --  in 種別   'エラー'
-         ,iv_dec          => gv_tkn_msg_hfn            --  in 確定   '-'
-         ,iv_req_no       => gv_req_no                 --  in 依頼No
-         ,iv_kyoten       => gt_to_plan(gn_i).ktn      --  in 管轄拠点
-         ,iv_item         => gt_to_plan(gn_i).item_no  --  in 品目
-         ,in_qty          => gt_to_plan(gn_i).amount   --  in 数量
-         ,iv_ship_date    => gv_tkn_msg_hfn            --  in 出庫日  '-'
-         ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
-                                                       --  in 着日
-         ,iv_err_msg      => lv_errmsg                 --  in エラーメッセージ
-         ,iv_err_clm      => gv_tkn_msg26              --  in エラー項目
-         ,ov_errbuf       => lv_errbuf                 -- out エラー・メッセージ
-         ,ov_retcode      => lv_retcode                -- out リターン・コード
-         ,ov_errmsg       => lv_errmsg                 -- out ユーザー・エラー・メッセージ
-        );
-      -- 共通エラーメッセージ 終了ST エラー登録
-      gv_err_sts := gv_status_error;
---
-      RAISE err_header_expt;
-    END IF;
+        RAISE err_header_expt;
+      END IF;
 -- 2008/11/20 H.Itou Add End
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応
+    END IF;
+-- 2009/01/30 H.Itou Add End
 --
     -- 稼働日ではない場合、ワーニング
 -- 2008/11/20 H.Itou Mod Start 統合テスト指摘658
@@ -1360,90 +1386,104 @@ AS
     -----------------------------------------------------------------------------------------------
     -- 2.共通関数「リードタイム算出」にて『引取変更リードタイム』『配送リードタイム』取得        --
     -----------------------------------------------------------------------------------------------
-    xxwsh_common910_pkg.calc_lead_time
-                                (
-                                  gv_4                       -- コード区分From   in 倉庫'4'
-                                 ,gt_to_plan(gn_i).ship_fr   -- 入出庫区分From   in 出荷元
-                                 ,gv_9                       -- コード区分To     in 配送先'9'
-                                 ,gt_to_plan(gn_i).ship_t_no -- 入出庫区分To     in 配送先
-                                 ,gt_to_plan(gn_i).skbn      -- 商品区分         in 商品区分(リーフ)
-                                 ,gv_odr_type                -- 出庫形態ID       in 受注タイプID
-                                 ,gt_to_plan(gn_i).for_date  -- 基準日           in 着荷予定日
-                                 ,lv_retcode                 -- リターン・コード
-                                 ,lv_errmsg_code             -- エラー・メッセージ・コード
-                                 ,lv_errmsg                  -- ユーザー・エラー・メッセージ
-                                 ,gv_leadtime                -- 生産物流LT/引取変更LT
-                                 ,gv_delivery_lt             -- 配送リードタイム
-                                );
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応
+    -- 明細番号[1]の場合のみヘッダ単位チェックの数値を取得する。2明細目以降は1明細目の値を参照。
+    IF (gn_line_number = 1) THEN
+-- 2009/01/30 H.Itou Add End
+      xxwsh_common910_pkg.calc_lead_time
+                                  (
+                                    gv_4                       -- コード区分From   in 倉庫'4'
+                                   ,gt_to_plan(gn_i).ship_fr   -- 入出庫区分From   in 出荷元
+                                   ,gv_9                       -- コード区分To     in 配送先'9'
+                                   ,gt_to_plan(gn_i).ship_t_no -- 入出庫区分To     in 配送先
+                                   ,gt_to_plan(gn_i).skbn      -- 商品区分         in 商品区分(リーフ)
+                                   ,gv_odr_type                -- 出庫形態ID       in 受注タイプID
+                                   ,gt_to_plan(gn_i).for_date  -- 基準日           in 着荷予定日
+                                   ,lv_retcode                 -- リターン・コード
+                                   ,lv_errmsg_code             -- エラー・メッセージ・コード
+                                   ,lv_errmsg                  -- ユーザー・エラー・メッセージ
+                                   ,gv_leadtime                -- 生産物流LT/引取変更LT
+                                   ,gv_delivery_lt             -- 配送リードタイム
+                                  );
 --
-    -- 共通関数エラー時、エラー
-    IF (lv_retcode = gv_1) THEN
+      -- 共通関数エラー時、エラー
+      IF (lv_retcode = gv_1) THEN
 --
-      -- エラーリスト作成
-      pro_err_list_make
-        (
-          iv_kind         => gv_tkn_msg_err            --  in 種別   'エラー'
-         ,iv_dec          => gv_tkn_msg_hfn            --  in 確定   '-'
-         ,iv_req_no       => gv_req_no                 --  in 依頼No
-         ,iv_kyoten       => gt_to_plan(gn_i).ktn      --  in 管轄拠点
-         ,iv_item         => gt_to_plan(gn_i).item_no  --  in 品目
-         ,in_qty          => gt_to_plan(gn_i).amount   --  in 数量
-         ,iv_ship_date    => gv_tkn_msg_hfn            --  in 出庫日  '-'
-         ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
-                                                       --  in 着日
-         ,iv_err_msg      => lv_errmsg                 --  in エラーメッセージ
-         ,iv_err_clm      => gv_tkn_msg_7              --  in エラー項目
-         ,ov_errbuf       => lv_errbuf                 -- out エラー・メッセージ
-         ,ov_retcode      => lv_retcode                -- out リターン・コード
-         ,ov_errmsg       => lv_errmsg                 -- out ユーザー・エラー・メッセージ
-        );
-      -- 共通エラーメッセージ 終了ST エラー登録
-      gv_err_sts := gv_status_error;
+        -- エラーリスト作成
+        pro_err_list_make
+          (
+            iv_kind         => gv_tkn_msg_err            --  in 種別   'エラー'
+           ,iv_dec          => gv_tkn_msg_hfn            --  in 確定   '-'
+           ,iv_req_no       => gv_req_no                 --  in 依頼No
+           ,iv_kyoten       => gt_to_plan(gn_i).ktn      --  in 管轄拠点
+           ,iv_item         => gt_to_plan(gn_i).item_no  --  in 品目
+           ,in_qty          => gt_to_plan(gn_i).amount   --  in 数量
+           ,iv_ship_date    => gv_tkn_msg_hfn            --  in 出庫日  '-'
+           ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
+                                                         --  in 着日
+           ,iv_err_msg      => lv_errmsg                 --  in エラーメッセージ
+           ,iv_err_clm      => gv_tkn_msg_7              --  in エラー項目
+           ,ov_errbuf       => lv_errbuf                 -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode                -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg                 -- out ユーザー・エラー・メッセージ
+          );
+        -- 共通エラーメッセージ 終了ST エラー登録
+        gv_err_sts := gv_status_error;
 --
-      RAISE err_header_expt;
+        RAISE err_header_expt;
+      END IF;
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応
     END IF;
+-- 2009/01/30 H.Itou Add End
 --
     ----------------------------------------------------------------------------
     -- 3.共通関数「稼働日算出関数」にて『出荷予定日』算出                     --
     ----------------------------------------------------------------------------
-    ln_result := xxwsh_common_pkg.get_oprtn_day
-                                  (
-                                    gt_to_plan(gn_i).for_date -- 日付           in 着荷予定日
-                                   ,gt_to_plan(gn_i).ship_fr  -- 保管倉庫コード in 出荷元
-                                   ,NULL                      -- 配送先コード   in NULL
-                                   ,gv_delivery_lt            -- リードタイム   in 配送リードタイム
-                                   ,gt_to_plan(gn_i).skbn     -- 商品区分       in 商品区分(リーフ)
-                                   ,gd_ship_day               -- 稼働日日付    out 出荷予定日
-                                  );
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応
+    -- 明細番号[1]の場合のみヘッダ単位チェックの数値を取得する。2明細目以降は1明細目の値を参照。
+    IF (gn_line_number = 1) THEN
+-- 2009/01/30 H.Itou Add End
+      ln_result := xxwsh_common_pkg.get_oprtn_day
+                                    (
+                                      gt_to_plan(gn_i).for_date -- 日付           in 着荷予定日
+                                     ,gt_to_plan(gn_i).ship_fr  -- 保管倉庫コード in 出荷元
+                                     ,NULL                      -- 配送先コード   in NULL
+                                     ,gv_delivery_lt            -- リードタイム   in 配送リードタイム
+                                     ,gt_to_plan(gn_i).skbn     -- 商品区分       in 商品区分(リーフ)
+                                     ,gd_ship_day               -- 稼働日日付    out 出荷予定日
+                                    );
 --
 -- 2008/11/20 H.Itou Add Start 統合テスト指摘658
-    -- 共通関数エラー時、エラー
-    IF (ln_result = gn_status_error) THEN
+      -- 共通関数エラー時、エラー
+      IF (ln_result = gn_status_error) THEN
 --
-      -- エラーリスト作成
-      pro_err_list_make
-        (
-          iv_kind         => gv_tkn_msg_err            --  in 種別   'エラー'
-         ,iv_dec          => gv_tkn_msg_hfn            --  in 確定   '-'
-         ,iv_req_no       => gv_req_no                 --  in 依頼No
-         ,iv_kyoten       => gt_to_plan(gn_i).ktn      --  in 管轄拠点
-         ,iv_item         => gt_to_plan(gn_i).item_no  --  in 品目
-         ,in_qty          => gt_to_plan(gn_i).amount   --  in 数量
-         ,iv_ship_date    => gv_tkn_msg_hfn            --  in 出庫日  '-'
-         ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
-                                                       --  in 着日
-         ,iv_err_msg      => lv_errmsg                 --  in エラーメッセージ
-         ,iv_err_clm      => gv_tkn_msg26              --  in エラー項目
-         ,ov_errbuf       => lv_errbuf                 -- out エラー・メッセージ
-         ,ov_retcode      => lv_retcode                -- out リターン・コード
-         ,ov_errmsg       => lv_errmsg                 -- out ユーザー・エラー・メッセージ
-        );
-      -- 共通エラーメッセージ 終了ST エラー登録
-      gv_err_sts := gv_status_error;
+        -- エラーリスト作成
+        pro_err_list_make
+          (
+            iv_kind         => gv_tkn_msg_err            --  in 種別   'エラー'
+           ,iv_dec          => gv_tkn_msg_hfn            --  in 確定   '-'
+           ,iv_req_no       => gv_req_no                 --  in 依頼No
+           ,iv_kyoten       => gt_to_plan(gn_i).ktn      --  in 管轄拠点
+           ,iv_item         => gt_to_plan(gn_i).item_no  --  in 品目
+           ,in_qty          => gt_to_plan(gn_i).amount   --  in 数量
+           ,iv_ship_date    => gv_tkn_msg_hfn            --  in 出庫日  '-'
+           ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
+                                                         --  in 着日
+           ,iv_err_msg      => lv_errmsg                 --  in エラーメッセージ
+           ,iv_err_clm      => gv_tkn_msg26              --  in エラー項目
+           ,ov_errbuf       => lv_errbuf                 -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode                -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg                 -- out ユーザー・エラー・メッセージ
+          );
+        -- 共通エラーメッセージ 終了ST エラー登録
+        gv_err_sts := gv_status_error;
 --
-      RAISE err_header_expt;
-    END IF;
+        RAISE err_header_expt;
+      END IF;
 -- 2008/11/20 H.Itou Add End
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応
+    END IF;
+-- 2009/01/30 H.Itou Add End
 --
     ----------------------------------------------------------------------------
     -- 4.稼働日日付(出荷予定日)がシステム日付より過去かどうかの判定           --
@@ -1476,47 +1516,54 @@ AS
     ----------------------------------------------------------------------------
     -- 5.共通関数「稼働日算出関数」にて『過去稼働日』算出                     --
     ----------------------------------------------------------------------------
-    ln_result := xxwsh_common_pkg.get_oprtn_day
-                          (
-                            gd_ship_day                -- 日付           in 出荷予定日
-                           ,NULL                       -- 保管倉庫コード in NULL
-                           ,gt_to_plan(gn_i).ship_t_no -- 配送先コード   in 配送先
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応
+    -- 明細番号[1]の場合のみヘッダ単位チェックの数値を取得する。2明細目以降は1明細目の値を参照。
+    IF (gn_line_number = 1) THEN
+-- 2009/01/30 H.Itou Add End
+      ln_result := xxwsh_common_pkg.get_oprtn_day
+                            (
+                              gd_ship_day                -- 日付           in 出荷予定日
+                             ,NULL                       -- 保管倉庫コード in NULL
+                             ,gt_to_plan(gn_i).ship_t_no -- 配送先コード   in 配送先
 -- 2008/11/20 H.Itou Add Start 統合テスト指摘141
---                           ,gv_delivery_lt             -- リードタイム   in 生産物流LT/引取変更LT
-                           ,gv_leadtime                -- リードタイム   in 生産物流LT/引取変更LT
+--                             ,gv_delivery_lt             -- リードタイム   in 生産物流LT/引取変更LT
+                             ,gv_leadtime                -- リードタイム   in 生産物流LT/引取変更LT
 -- 2008/11/20 H.Itou Add End
-                           ,gt_to_plan(gn_i).skbn      -- 商品区分       in 商品区分(リーフ)
-                           ,gd_past_day                -- 稼働日日付    out 引取変更LTの過去日
-                           );
+                             ,gt_to_plan(gn_i).skbn      -- 商品区分       in 商品区分(リーフ)
+                             ,gd_past_day                -- 稼働日日付    out 引取変更LTの過去日
+                             );
 --
 -- 2008/11/20 H.Itou Add Start 統合テスト指摘658
-    -- 共通関数エラー時、エラー
-    IF (ln_result = gn_status_error) THEN
+      -- 共通関数エラー時、エラー
+      IF (ln_result = gn_status_error) THEN
 --
-      -- エラーリスト作成
-      pro_err_list_make
-        (
-          iv_kind         => gv_tkn_msg_err            --  in 種別   'エラー'
-         ,iv_dec          => gv_tkn_msg_hfn            --  in 確定   '-'
-         ,iv_req_no       => gv_req_no                 --  in 依頼No
-         ,iv_kyoten       => gt_to_plan(gn_i).ktn      --  in 管轄拠点
-         ,iv_item         => gt_to_plan(gn_i).item_no  --  in 品目
-         ,in_qty          => gt_to_plan(gn_i).amount   --  in 数量
-         ,iv_ship_date    => gv_tkn_msg_hfn            --  in 出庫日  '-'
-         ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
-                                                       --  in 着日
-         ,iv_err_msg      => lv_errmsg                 --  in エラーメッセージ
-         ,iv_err_clm      => gv_tkn_msg26              --  in エラー項目
-         ,ov_errbuf       => lv_errbuf                 -- out エラー・メッセージ
-         ,ov_retcode      => lv_retcode                -- out リターン・コード
-         ,ov_errmsg       => lv_errmsg                 -- out ユーザー・エラー・メッセージ
-        );
-      -- 共通エラーメッセージ 終了ST エラー登録
-      gv_err_sts := gv_status_error;
+        -- エラーリスト作成
+        pro_err_list_make
+          (
+            iv_kind         => gv_tkn_msg_err            --  in 種別   'エラー'
+           ,iv_dec          => gv_tkn_msg_hfn            --  in 確定   '-'
+           ,iv_req_no       => gv_req_no                 --  in 依頼No
+           ,iv_kyoten       => gt_to_plan(gn_i).ktn      --  in 管轄拠点
+           ,iv_item         => gt_to_plan(gn_i).item_no  --  in 品目
+           ,in_qty          => gt_to_plan(gn_i).amount   --  in 数量
+           ,iv_ship_date    => gv_tkn_msg_hfn            --  in 出庫日  '-'
+           ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
+                                                         --  in 着日
+           ,iv_err_msg      => lv_errmsg                 --  in エラーメッセージ
+           ,iv_err_clm      => gv_tkn_msg26              --  in エラー項目
+           ,ov_errbuf       => lv_errbuf                 -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode                -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg                 -- out ユーザー・エラー・メッセージ
+          );
+        -- 共通エラーメッセージ 終了ST エラー登録
+        gv_err_sts := gv_status_error;
 --
-      RAISE err_header_expt;
-    END IF;
+        RAISE err_header_expt;
+      END IF;
 -- 2008/11/20 H.Itou Add End
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応
+    END IF;
+-- 2009/01/30 H.Itou Add End
     ----------------------------------------------------------------------------
     -- 6.稼働日日付(引取変更LTの過去日)がシステム日付より過去かどうかの判定   --
     ----------------------------------------------------------------------------
@@ -1551,57 +1598,66 @@ AS
     ----------------------------------------------------------------------------
     -- 7.共通関数「最大配送区分算出関数」にて『最大配送区分』算出             --
     ----------------------------------------------------------------------------
-    ln_result := xxwsh_common_pkg.get_max_ship_method
-                             (
-                               gv_4                        -- コード区分1       in 倉庫'4'
-                              ,gt_to_plan(gn_i).ship_fr    -- 入出庫場所コード1 in 出荷元
-                              ,gv_9                        -- コード区分2       in 配送先'9'
-                              ,gt_to_plan(gn_i).ship_t_no  -- 入出庫場所コード2 in 配送先
-                              ,gt_to_plan(gn_i).skbn       -- 商品区分          in 商品区分(リーフ)
-                              ,gt_to_plan(gn_i).wei_kbn    -- 重量容積区分      in 重量容積区分
-                              ,NULL                        -- 自動配車対象区分  in NULL
-                              ,gd_ship_day                 -- 基準日            in 出荷予定日
-                              ,gv_max_kbn                  -- 最大配送区分     out 最大配送区分
-                              ,gn_drink_we                 -- ドリンク積載重量 out ドリンク積載重量
-                              ,gn_leaf_we                  -- リーフ積載重量   out リーフ積載重量
-                              ,gn_drink_ca                 -- ドリンク積載容積 out ドリンク積載容積
-                              ,gn_leaf_ca                  -- リーフ積載容積   out リーフ積載容積
-                              ,gn_prt_max                  -- パレット最大枚数 out パレット最大枚数
-                             );
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応
+    -- 明細番号[1]の場合のみヘッダ単位チェックの数値を取得する。2明細目以降は1明細目の値を参照。
+    IF (gn_line_number = 1) THEN
+-- 2009/01/30 H.Itou Add End
+      ln_result := xxwsh_common_pkg.get_max_ship_method
+                               (
+                                 gv_4                        -- コード区分1       in 倉庫'4'
+                                ,gt_to_plan(gn_i).ship_fr    -- 入出庫場所コード1 in 出荷元
+                                ,gv_9                        -- コード区分2       in 配送先'9'
+                                ,gt_to_plan(gn_i).ship_t_no  -- 入出庫場所コード2 in 配送先
+                                ,gt_to_plan(gn_i).skbn       -- 商品区分          in 商品区分(リーフ)
+                                ,gt_to_plan(gn_i).wei_kbn    -- 重量容積区分      in 重量容積区分
+                                ,NULL                        -- 自動配車対象区分  in NULL
+                                ,gd_ship_day                 -- 基準日            in 出荷予定日
+                                ,gv_max_kbn                  -- 最大配送区分     out 最大配送区分
+                                ,gn_drink_we                 -- ドリンク積載重量 out ドリンク積載重量
+                                ,gn_leaf_we                  -- リーフ積載重量   out リーフ積載重量
+                                ,gn_drink_ca                 -- ドリンク積載容積 out ドリンク積載容積
+                                ,gn_leaf_ca                  -- リーフ積載容積   out リーフ積載容積
+                                ,gn_prt_max                  -- パレット最大枚数 out パレット最大枚数
+                               );
 --
-    -- 最大配送区分算出関数が正常ではない場合、エラー
-    IF (ln_result = 1) THEN
+      -- 最大配送区分算出関数が正常ではない場合、エラー
+      IF (ln_result = 1) THEN
 --
-      -- エラーリスト作成
-      pro_err_list_make
-        (
-          iv_kind         => gv_tkn_msg_err                     --  in 種別   'エラー'
-         ,iv_dec          => gv_tkn_msg_hfn                     --  in 確定   '-'
-         ,iv_req_no       => gv_req_no                          --  in 依頼No
-         ,iv_kyoten       => gt_to_plan(gn_i).ktn               --  in 管轄拠点
-         ,iv_item         => gt_to_plan(gn_i).item_no           --  in 品目
-         ,in_qty          => gt_to_plan(gn_i).amount            --  in 数量
-         ,iv_ship_date    => TO_CHAR(gd_ship_day,'YYYY/MM/DD')  --  in 出庫日 [出荷予定日]
-         ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
-                                                                --  in 着日
-         ,iv_err_msg      => gv_tkn_msg_10                      --  in エラーメッセージ
-         ,iv_err_clm      => gv_tkn_msg_hfn                     --  in エラー項目  '-'
-         ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
-         ,ov_retcode      => lv_retcode                         -- out リターン・コード
-         ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
-        );
-      -- 共通エラーメッセージ 終了ST  エラー登録
-      gv_err_sts := gv_status_error;
+        -- エラーリスト作成
+        pro_err_list_make
+          (
+            iv_kind         => gv_tkn_msg_err                     --  in 種別   'エラー'
+           ,iv_dec          => gv_tkn_msg_hfn                     --  in 確定   '-'
+           ,iv_req_no       => gv_req_no                          --  in 依頼No
+           ,iv_kyoten       => gt_to_plan(gn_i).ktn               --  in 管轄拠点
+           ,iv_item         => gt_to_plan(gn_i).item_no           --  in 品目
+           ,in_qty          => gt_to_plan(gn_i).amount            --  in 数量
+           ,iv_ship_date    => TO_CHAR(gd_ship_day,'YYYY/MM/DD')  --  in 出庫日 [出荷予定日]
+           ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
+                                                                  --  in 着日
+           ,iv_err_msg      => gv_tkn_msg_10                      --  in エラーメッセージ
+           ,iv_err_clm      => gv_tkn_msg_hfn                     --  in エラー項目  '-'
+           ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode                         -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
+          );
+        -- 共通エラーメッセージ 終了ST  エラー登録
+        gv_err_sts := gv_status_error;
 --
-      RAISE err_header_expt;
+        RAISE err_header_expt;
+      END IF;
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応
     END IF;
+-- 2009/01/30 H.Itou Add End
 --
     ----------------------------------------------------------------------------
     -- 8.共通関数「OPM在庫会計期間 CLOSE年月取得関数」にて                    --
     --   『出荷予定日』の会計期間がOpenされているかチェック                   --
     ----------------------------------------------------------------------------
-    -- クローズの最大年月取得
-    gv_opm_c_p := xxcmn_common_pkg.get_opminv_close_period;
+-- 2009/01/30 H.Itou Del Start 本番障害#994対応 クローズ最大年月は変わらないので、A-1で取得する。
+--    -- クローズの最大年月取得
+--    gv_opm_c_p := xxcmn_common_pkg.get_opminv_close_period;
+-- 2009/01/30 H.Itou Del End
 --
     -- 出荷予定日がOPM在庫会計期間でクローズの場合
 -- 2008/10/09 H.Itou Mod Start クローズ年月と同じ年月の場合もエラー
@@ -1622,7 +1678,8 @@ AS
          ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
                                                                 --  in 着日
          ,iv_err_msg      => gv_tkn_msg_11                      --  in エラーメッセージ
-         ,iv_err_clm      => gd_ship_day                        --  in エラー項目  [出荷予定日]
+--         ,iv_err_clm      => gd_ship_day                        --  in エラー項目  [出荷予定日]
+         ,iv_err_clm      => TO_CHAR(gd_ship_day,'YYYY/MM/DD')  --  in エラー項目 [出荷予定日]
          ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
          ,ov_retcode      => lv_retcode                         -- out リターン・コード
          ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
@@ -3977,6 +4034,11 @@ AS
 -- 2008/11/19 H.Itou Add Start 統合テスト指摘683
         lv_header_create_flag := gv_0;   -- ヘッダ作成フラグ ON
 -- 2008/11/19 H.Itou Add End
+-- 2009/01/30 H.Itou Add Start 本番障害#994対応
+        -- 初回レコード時、｢拠点｣｢出荷元｣｢着荷予定日｣｢重量容積区分｣のうち、１つでも異なる場合
+        -- 明細番号は[1]セット
+        gn_line_number := 1;
+-- 2009/01/30 H.Itou Add End
         ---------------------------------------------
         -- 受注ヘッダアドオンID シーケンス取得     --
         ---------------------------------------------
