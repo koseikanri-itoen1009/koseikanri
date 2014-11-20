@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *  2009-12-18    1.12  Daisuke.Abe      E_本稼動_00536対応
  *  2010-01-06    1.13  Kazuyo.Hosoi     E_本稼動_00890,00891対応
  *  2010-01-20    1.14  Daisuke.Abe      E_本稼動_01176対応
+ *  2010-02-05    1.15  Daisuke.Abe      E_本稼動_01537対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1945,69 +1946,74 @@ AS
       --
       /* 2009.10.15 D.Abe 0001537対応 START */
       --IF (lt_customer_id IS NULL) THEN
-      IF (lt_destinations_rec.supplier_id IS NULL) THEN
+      /* 2010.02.05 D.Abe E_本稼動_01537対応 START */
+      --IF (lt_destinations_rec.supplier_id IS NULL) THEN
+      /* 2010.02.05 D.Abe E_本稼動_01537対応 END */
       /* 2009.10.15 D.Abe 0001537対応 END */
-        -- 顧客ＩＤがNULLの場合のみ顧客ＩＤ・仕入先ＩＤを更新する。
-        BEGIN
-          UPDATE xxcso_sp_decision_custs xsd -- ＳＰ専決顧客テーブル
-          SET    xsd.customer_id            = lt_vendor_id              -- 顧客ＩＤ
-                ,xsd.last_updated_by        = cn_last_updated_by        -- 最終更新者
-                ,xsd.last_update_date       = cd_last_update_date       -- 最終更新日
-                ,xsd.last_update_login      = cn_last_update_login      -- 最終更新ログイン
-                ,xsd.request_id             = cn_request_id             -- 要求ID
-                ,xsd.program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
-                ,xsd.program_id             = cn_program_id             -- コンカレント・プログラムID
-                ,xsd.program_update_date    = cd_program_update_date    -- プログラム更新日
-          WHERE xsd.sp_decision_customer_id = lt_sp_decision_customer_id
-          ;
-          --
-        EXCEPTION
-          WHEN OTHERS THEN
-            lv_errbuf := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                           ,iv_name         => cv_tkn_number_02         -- メッセージコード
-                           ,iv_token_name1  => cv_tkn_action            -- トークンコード1
-                           ,iv_token_value1 => cv_tkn_value_sp_dec_cust -- トークン値1
-                           ,iv_token_name2  => cv_tkn_error_message     -- トークンコード2
-                           ,iv_token_value2 => SQLERRM                  -- トークン値2
-                        );
-            --
-            RAISE global_api_expt;
-            --
-        END;
+      -- 顧客ＩＤがNULLの場合のみ顧客ＩＤ・仕入先ＩＤを更新する。
+      BEGIN
+        UPDATE xxcso_sp_decision_custs xsd -- ＳＰ専決顧客テーブル
+        SET    xsd.customer_id            = lt_vendor_id              -- 顧客ＩＤ
+              ,xsd.last_updated_by        = cn_last_updated_by        -- 最終更新者
+              ,xsd.last_update_date       = cd_last_update_date       -- 最終更新日
+              ,xsd.last_update_login      = cn_last_update_login      -- 最終更新ログイン
+              ,xsd.request_id             = cn_request_id             -- 要求ID
+              ,xsd.program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+              ,xsd.program_id             = cn_program_id             -- コンカレント・プログラムID
+              ,xsd.program_update_date    = cd_program_update_date    -- プログラム更新日
+        WHERE xsd.sp_decision_customer_id = lt_sp_decision_customer_id
+        ;
         --
-        -- ================================
-        -- 送付先仕入先ＩＤ更新
-        -- ================================
-        BEGIN
-          UPDATE xxcso_destinations xde -- 送付先テーブル
-          SET    xde.supplier_id            = lt_vendor_id              -- 仕入先ＩＤ
-                ,xde.last_updated_by        = cn_last_updated_by        -- 最終更新者
-                ,xde.last_update_date       = cd_last_update_date       -- 最終更新日
-                ,xde.last_update_login      = cn_last_update_login      -- 最終更新ログイン
-                ,xde.request_id             = cn_request_id             -- 要求ID
-                ,xde.program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
-                ,xde.program_id             = cn_program_id             -- コンカレント・プログラムID
-                ,xde.program_update_date    = cd_program_update_date    -- プログラム更新日
-          WHERE xde.delivery_id = lt_destinations_rec.delivery_id -- 送付先ＩＤ
-          ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_02         -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action            -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_sp_dec_cust -- トークン値1
+                         ,iv_token_name2  => cv_tkn_error_message     -- トークンコード2
+                         ,iv_token_value2 => SQLERRM                  -- トークン値2
+                      );
           --
-        EXCEPTION
-          WHEN OTHERS THEN
-            lv_errbuf := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                           ,iv_name         => cv_tkn_number_02         -- メッセージコード
-                           ,iv_token_name1  => cv_tkn_action            -- トークンコード1
-                           ,iv_token_value1 => cv_tkn_value_destination -- トークン値1
-                           ,iv_token_name2  => cv_tkn_error_message     -- トークンコード2
-                           ,iv_token_value2 => SQLERRM                  -- トークン値2
-                        );
-            --
-            RAISE global_api_expt;
-            --
-        END;
+          RAISE global_api_expt;
+          --
+      END;
+      --
+      -- ================================
+      -- 送付先仕入先ＩＤ更新
+      -- ================================
+      BEGIN
+        UPDATE xxcso_destinations xde -- 送付先テーブル
+        SET    xde.supplier_id            = lt_vendor_id              -- 仕入先ＩＤ
+              ,xde.last_updated_by        = cn_last_updated_by        -- 最終更新者
+              ,xde.last_update_date       = cd_last_update_date       -- 最終更新日
+              ,xde.last_update_login      = cn_last_update_login      -- 最終更新ログイン
+              ,xde.request_id             = cn_request_id             -- 要求ID
+              ,xde.program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+              ,xde.program_id             = cn_program_id             -- コンカレント・プログラムID
+              ,xde.program_update_date    = cd_program_update_date    -- プログラム更新日
+        WHERE xde.delivery_id = lt_destinations_rec.delivery_id -- 送付先ＩＤ
+        ;
         --
-      END IF;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_02         -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action            -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_destination -- トークン値1
+                         ,iv_token_name2  => cv_tkn_error_message     -- トークンコード2
+                         ,iv_token_value2 => SQLERRM                  -- トークン値2
+                      );
+          --
+          RAISE global_api_expt;
+          --
+      END;
+      --
+      /* 2010.02.05 D.Abe E_本稼動_01537対応 START */
+      --END IF;
+      /* 2010.02.05 D.Abe E_本稼動_01537対応 END */
+
       --
       /* 2009.04.27 K.Satomura T1_0766対応 START */
       IF (lt_destinations_rec.delivery_div = ct_delivery_div_bm1) THEN
