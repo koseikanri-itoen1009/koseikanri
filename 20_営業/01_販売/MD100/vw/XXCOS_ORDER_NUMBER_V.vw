@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/01    1.0   K.Atsushiba      新規作成
+ *  2009/06/04    1.1   T.Miyata         T1_1314対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_order_number_v (
   order_number,                         -- 受注番号
@@ -17,8 +18,8 @@ CREATE OR REPLACE VIEW xxcos_order_number_v (
 )
 AS
   SELECT DISTINCT
-         ooha.order_number                      order_number
-         ,ooha.shipping_instructions            shipping_instructions
+         ooha.order_number                               order_number
+         ,SUBSTRB( ooha.shipping_instructions, 1, 20 )   shipping_instructions
   FROM   oe_order_headers_all                   ooha               -- 受注ヘッダ
         ,oe_order_lines_all                     oola               -- 受注明細
         ,hz_cust_accounts                       hca                -- 顧客マスタ
