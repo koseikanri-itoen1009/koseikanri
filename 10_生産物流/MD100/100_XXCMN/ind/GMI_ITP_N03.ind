@@ -1,0 +1,1 @@
+CREATE INDEX gmi.gmi_itp_n03 ON gmi.ic_tran_pnd( doc_type,trans_date ) TABLESPACE apps_ts_tx_idx;

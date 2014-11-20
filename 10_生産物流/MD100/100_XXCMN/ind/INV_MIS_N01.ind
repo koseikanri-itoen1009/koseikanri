@@ -1,0 +1,1 @@
+CREATE INDEX inv.inv_mis_n01 ON inv.mtl_system_items_b( reservable_type ) TABLESPACE apps_ts_tx_idx;
