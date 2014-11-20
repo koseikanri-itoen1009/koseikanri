@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS007A02C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS007A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,8 @@ AS
  *                                       [0000064] 受注DFF項目追加に伴う、連携項目追加
  *                                       [0000434] PT対応
  *  2009/07/28    1.9   M.Sano           [0000434] PT対応(修正漏れ対応)
+ *  2009/09/11    1.10  K.Kiriu          [0001211] 消費税関連項目取得基準日修正
+ *                                       [0001345] PT対応
  *
  *****************************************************************************************/
 --
@@ -440,7 +442,11 @@ AS
     tax_class                     xxcos_sales_exp_headers.consumption_tax_class%type  -- 消費税区分
     , tax_code                    xxcos_sales_exp_headers.tax_code%type               -- 税コード
     , tax_rate                    xxcos_sales_exp_headers.tax_rate%type               -- 税率
-    , tax_include                 fnd_lookup_values.attribute5%TYPE                   -- 内税フラグ
+/* 2009/09/10 Ver1.10 Mod Start */
+--    , tax_include                 fnd_lookup_values.attribute5%TYPE                   -- 内税フラグ
+    , start_date_active           fnd_lookup_values.start_date_active%type            -- 適用開始日
+    , end_date_active             fnd_lookup_values.end_date_active%type              -- 適用終了日
+/* 2009/09/10 Ver1.10 Mod End   */
   );
 --
   -- 消費税区分
@@ -485,8 +491,10 @@ AS
   --消費税コード
   TYPE g_tax_sub_ttype
         IS TABLE OF tax_rtype INDEX BY BINARY_INTEGER;
-  TYPE g_tax_ttype
-        IS TABLE OF tax_rtype INDEX BY xxcos_sales_exp_headers.consumption_tax_class%type;
+/* 2009/09/11 Ver1.10 Del Start */
+--  TYPE g_tax_ttype
+--        IS TABLE OF tax_rtype INDEX BY xxcos_sales_exp_headers.consumption_tax_class%type;
+/* 2009/09/11 Ver1.10 Del End   */
   --受注明細データ
   TYPE order_line_data_ttype IS TABLE OF order_line_data_rtype INDEX BY BINARY_INTEGER;
 --
@@ -497,8 +505,11 @@ AS
   g_sale_class_tab            g_sale_class_ttype;             -- 売上区分
   g_red_black_flag_sub_tab    g_red_black_flag_sub_ttype;     -- 赤黒フラグ
   g_red_black_flag_tab        g_red_black_flag_ttype;         -- 赤黒フラグ
-  g_tax_sub_tab               g_tax_sub_ttype;                -- 消費税コード
-  g_tax_tab                   g_tax_ttype;                    -- 消費税コード
+/* 2009/09/11 Ver1.10 Mod Start */
+--  g_tax_sub_tab               g_tax_sub_ttype;                -- 消費税コード
+--  g_tax_tab                   g_tax_ttype;                    -- 消費税コード
+  g_tax_tab                   g_tax_sub_ttype;                -- 消費税コード
+/* 2009/09/11 Ver1.10 Mod End   */
   g_order_data_tab            g_n_order_data_ttype;           -- 受注データ
   g_order_data_sort_tab       g_v_order_data_ttype;           -- 受注データ(ソート後)
   g_sale_hdr_tab              g_sale_results_headers_ttype;   -- 販売実績ヘッダ
@@ -852,48 +863,59 @@ AS
     --==================================
     BEGIN
 --
-      SELECT
-        tax_code_mst.tax_class    AS tax_class    -- 消費税区分
-      , tax_code_mst.tax_code     AS tax_code     -- 税コード
-      , avtab.tax_rate            AS tax_rate     -- 税率
-      , tax_code_mst.tax_include  AS tax_include  -- 内税フラグ
+/* 2009/09/11 Ver1.10 Mod Start */
+--      SELECT
+--        tax_code_mst.tax_class    AS tax_class    -- 消費税区分
+--      , tax_code_mst.tax_code     AS tax_code     -- 税コード
+--      , avtab.tax_rate            AS tax_rate     -- 税率
+--      , tax_code_mst.tax_include  AS tax_include  -- 内税フラグ
+--      BULK COLLECT INTO
+--        g_tax_sub_tab
+--      FROM
+--        ar_vat_tax_all_b          avtab           -- 税コードマスタ
+--        ,(
+--          SELECT
+--              flv.attribute3      AS tax_class    -- 消費税区分
+--            , flv.attribute2      AS tax_code     -- 税コード
+--            , flv.attribute5      AS tax_include  -- 内税フラグ
+--          FROM
+---- 2009/07/28 Ver.1.9 M.Sano Del Start
+----            fnd_application       fa,
+----            fnd_lookup_types      flt,
+---- 2009/07/28 Ver.1.9 M.Sano Del End
+--            fnd_lookup_values     flv
+--          WHERE
+---- 2009/07/28 Ver.1.9 M.Sano Mod Start
+----              fa.application_id           = flt.application_id
+----          AND flt.lookup_type             = flv.lookup_type
+----          AND fa.application_short_name   = cv_xxcos_appl_short_nm
+----          AND flv.lookup_type             = ct_qct_tax_type
+--              flv.lookup_type             = ct_qct_tax_type
+---- 2009/07/28 Ver.1.9 M.Sano Mod End
+--         AND flv.start_date_active      <= gd_process_date
+--          AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--          AND flv.enabled_flag            = ct_yes_flg
+---- 2009/07/08 Ver.1.9 M.Sano Mod Start
+----          AND flv.language                = USERENV( 'LANG' )
+--          AND flv.language                = ct_lang
+---- 2009/07/08 Ver.1.9 M.Sano Mod End
+--        ) tax_code_mst
+--      WHERE
+--        tax_code_mst.tax_code     = avtab.tax_code
+--        AND avtab.start_date     <= gd_process_date
+--        AND gd_process_date      <= NVL( avtab.end_date, gd_max_date )
+--        AND enabled_flag          = ct_yes_flg
+--        AND avtab.set_of_books_id = gn_gl_id;       -- GL会計帳簿ID
+      SELECT  xtv.tax_class                           tax_class         -- 消費税区分
+             ,xtv.tax_code                            tax_code          -- 税コード
+             ,xtv.tax_rate                            tax_rate          -- 税率
+             ,xtv.start_date_active                   start_date_active -- 適用開始日
+             ,NVL( xtv.end_date_active, gd_max_date)  end_date_active   -- 適用終了日
       BULK COLLECT INTO
-        g_tax_sub_tab
-      FROM
-        ar_vat_tax_all_b          avtab           -- 税コードマスタ
-        ,(
-          SELECT
-              flv.attribute3      AS tax_class    -- 消費税区分
-            , flv.attribute2      AS tax_code     -- 税コード
-            , flv.attribute5      AS tax_include  -- 内税フラグ
-          FROM
--- 2009/07/28 Ver.1.9 M.Sano Del Start
---            fnd_application       fa,
---            fnd_lookup_types      flt,
--- 2009/07/28 Ver.1.9 M.Sano Del End
-            fnd_lookup_values     flv
-          WHERE
--- 2009/07/28 Ver.1.9 M.Sano Mod Start
---              fa.application_id           = flt.application_id
---          AND flt.lookup_type             = flv.lookup_type
---          AND fa.application_short_name   = cv_xxcos_appl_short_nm
---          AND flv.lookup_type             = ct_qct_tax_type
-              flv.lookup_type             = ct_qct_tax_type
--- 2009/07/28 Ver.1.9 M.Sano Mod End
-          AND flv.start_date_active      <= gd_process_date
-          AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-          AND flv.enabled_flag            = ct_yes_flg
--- 2009/07/08 Ver.1.9 M.Sano Mod Start
---          AND flv.language                = USERENV( 'LANG' )
-          AND flv.language                = ct_lang
--- 2009/07/08 Ver.1.9 M.Sano Mod End
-        ) tax_code_mst
-      WHERE
-        tax_code_mst.tax_code     = avtab.tax_code
-        AND avtab.start_date     <= gd_process_date
-        AND gd_process_date      <= NVL( avtab.end_date, gd_max_date )
-        AND enabled_flag          = ct_yes_flg
-        AND avtab.set_of_books_id = gn_gl_id;       -- GL会計帳簿ID
+        g_tax_tab
+      FROM   xxcos_tax_v xtv
+      WHERE  xtv.set_of_books_id = gn_gl_id; -- GL会計帳簿ID
+/* 2009/09/11 Ver1.10 Mod End   */
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -904,9 +926,11 @@ AS
         RAISE global_select_data_expt;
     END;
 --
-    FOR i IN 1..g_tax_sub_tab.COUNT LOOP
-      g_tax_tab(g_tax_sub_tab(i).tax_class) := g_tax_sub_tab(i);
-    END LOOP;
+/* 2009/09/11 Ver1.10 Del Start */
+--    FOR i IN 1..g_tax_sub_tab.COUNT LOOP
+--      g_tax_tab(g_tax_sub_tab(i).tax_class) := g_tax_sub_tab(i);
+--    END LOOP;
+/* 2009/09/11 Ver1.10 Del End   */
 --
     --==================================
     -- 消費税区分特定情報
@@ -1045,6 +1069,18 @@ AS
 --
 --
     SELECT
+/* 2009/09/11 Ver1.10 Add Start */
+      /*+
+        LEADING(ooha)
+        USE_NL(oola ooha xca ottth otttl ottth ottal msi)
+        USE_NL(ooha xchv)
+        USE_NL(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
+        INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
+        INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
+        INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
+        INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
+      */
+/* 2009/09/11 Ver1.10 Add End   */
       ooha.header_id                          AS header_id                  -- 受注ヘッダID
       , oola.line_id                          AS line_id                    -- 受注明細ID
       , ottth.name                            AS order_type                 -- 受注タイプ
@@ -1185,6 +1221,11 @@ AS
       AND NOT EXISTS (
 -- 2009/07/08 Ver.1.9 M.Sano Mod  End 
                                     SELECT
+/* 2009/09/11 Ver1.10 Add Start */
+                                      /*+
+                                        USE_NL(flv)
+                                      */
+/* 2009/09/11 Ver1.10 Add End   */
                                       flv.lookup_code
                                     FROM
 -- 2009/07/28 Ver.1.9 M.Sano Del Start
@@ -1216,6 +1257,11 @@ AS
                   'X'
                 FROM (
                      SELECT
+/* 2009/09/11 Ver1.10 Add Start */
+                         /*+
+                           USE_NL(flv)
+                         */
+/* 2009/09/11 Ver1.10 Add End   */
                          flv.attribute1 AS subinventory
                        , flv.attribute2 AS order_type
                        , flv.attribute3 AS line_type
@@ -1558,17 +1604,33 @@ AS
 --
 --
     --==================================
-    -- 4.税率
+    -- 4.税率、税コード
     --==================================
-    IF ( g_tax_tab.EXISTS(io_order_rec.consumption_tax_class) ) THEN
+/* 2009/09/11 Ver1.10 Mod Start */
+--    IF ( g_tax_tab.EXISTS(io_order_rec.consumption_tax_class) ) THEN
 --
-      io_order_rec.tax_rate := NVL(g_tax_tab(io_order_rec.consumption_tax_class).tax_rate, 0);
+--      io_order_rec.tax_rate := NVL(g_tax_tab(io_order_rec.consumption_tax_class).tax_rate, 0);
 --
-    ELSE
+--    ELSE
 --
-      io_order_rec.tax_rate := 0;
+--      io_order_rec.tax_rate := 0;
 --
-    END IF;
+--    END IF;
+
+    FOR i IN 1..g_tax_tab.COUNT LOOP
+      IF ( g_tax_tab(i).tax_class = io_order_rec.consumption_tax_class )
+        AND ( g_tax_tab(i).start_date_active <= io_order_rec.inspect_date )
+        AND ( g_tax_tab(i).end_date_active   >= io_order_rec.inspect_date )
+      THEN
+         io_order_rec.tax_rate  := NVL(g_tax_tab(i).tax_rate, 0);  -- 税率
+         io_order_rec.tax_code  := g_tax_tab(i).tax_code;          -- 税コード
+         EXIT;
+      ELSE
+        io_order_rec.tax_rate  := 0;
+        io_order_rec.tax_code  := NULL;
+      END IF;
+    END LOOP;
+/* 2009/09/11 Ver1.10 Mod End   */
 --
 --
     --==================================
@@ -1776,14 +1838,16 @@ AS
 /* 2009/05/18 Ver1.5 Del End   */
 --
 --
-    --==================================
-    -- 10.税コード取得
-    --==================================
-    IF ( g_tax_tab.EXISTS(io_order_rec.consumption_tax_class) ) THEN
-      io_order_rec.tax_code := g_tax_tab(io_order_rec.consumption_tax_class).tax_code;
-    ELSE
-      io_order_rec.tax_code := NULL;
-    END IF;
+/* 2009/09/11 Ver1.10 Del Start */
+--    --==================================
+--    -- 10.税コード取得
+--    --==================================
+--    IF ( g_tax_tab.EXISTS(io_order_rec.consumption_tax_class) ) THEN
+--      io_order_rec.tax_code := g_tax_tab(io_order_rec.consumption_tax_class).tax_code;
+--    ELSE
+--      io_order_rec.tax_code := NULL;
+--    END IF;
+/* 2009/09/11 Ver1.10 Del End   */
 --
     --==================================
     -- 11.売上区分
