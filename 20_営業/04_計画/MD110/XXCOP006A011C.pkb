@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP006A011C(body)
  * Description      : 横持計画
  * MD.050           : 横持計画 MD050_COP_006_A01
- * Version          : 3.0
+ * Version          : 3.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2009/11/17    2.9   Y.Goto           I_E_479_015
  *  2009/11/19    2.10  Y.Goto           I_E_479_017
  *  2009/11/30    3.0   Y.Goto           I_E_479_019(横持計画パラレル化対応、アプリPT対応、プログラムIDの変更)
+ *  2009/12/17    3.1   Y.Goto           E_本稼動_00519
  *
  *****************************************************************************************/
 --
@@ -132,6 +133,9 @@ AS
   not_need_expt             EXCEPTION;     -- 計画不要例外
   outside_scope_expt        EXCEPTION;     -- 対象外例外
   lot_skip_expt             EXCEPTION;     -- ロットスキップ例外
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+  manufacture_skip_expt     EXCEPTION;     -- 製造年月日スキップ例外
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
 --
   PRAGMA EXCEPTION_INIT(nested_loop_expt, -01436);
 --
@@ -498,10 +502,15 @@ AS
     ,lot_quantity             xxcop_loct_inv.loct_onhand%TYPE                   --ロット引当数(ロット)
     ,freshness_quantity       xxcop_loct_inv.loct_onhand%TYPE                   --鮮度条件別在庫数(合計)
     ,plan_bal_quantity        xxcop_loct_inv.loct_onhand%TYPE                   --鮮度条件別バランス計画数(合計)
-    ,adjust_quantity          xxcop_loct_inv.loct_onhand%TYPE                   --過不足在庫数
+    ,adjust_quantity          xxcop_loct_inv.loct_onhand%TYPE                   --過不足数
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+    ,plan_lot_quantity        xxcop_loct_inv.loct_onhand%TYPE                   --ロット計画数
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
     ,stock_proc_flag          VARCHAR2(1)                                       --鮮度条件別在庫計算フラグ
     ,adjust_proc_flag         VARCHAR2(1)                                       --バランス計算フラグ
-    ,proc_flag                VARCHAR2(1)                                       --計画対象フラグ(Y/N)
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--    ,proc_flag                VARCHAR2(1)                                       --計画対象フラグ(Y/N)
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
   );
   --計画ロットコレクション型
   TYPE g_lot_ttype IS TABLE OF g_lot_rtype
@@ -1528,6 +1537,10 @@ AS
           --ロット情報のクリア
           io_xwypo_tab(ln_xwypo_idx).manufacture_date := NULL;
           io_xwypo_tab(ln_xwypo_idx).lot_status       := NULL;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+          io_xwypo_tab(ln_xwypo_idx).before_lot_stock := io_xwypo_tab(ln_xwypo_idx).before_stock;
+          io_xwypo_tab(ln_xwypo_idx).after_lot_stock  := io_xwypo_tab(ln_xwypo_idx).after_stock;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
           -- ===============================
           -- B-25．横持計画出力ワークテーブル登録
           -- ===============================
@@ -1615,12 +1628,16 @@ AS
     ln_surpluses_quantity     NUMBER;         --移動元倉庫の余剰在庫数
     ln_lot_supplies_quantity  NUMBER;         --補充可能数(製造年月日合計)
     ln_div_quantity           NUMBER;         --按分在庫数
-    ln_adjust_quantity        NUMBER;         --ロット過不足在庫数
+    ln_adjust_quantity        NUMBER;         --ロット過不足数
     ln_plan_lot_quantity      NUMBER;         --ロット計画数合計
     ln_require_quantity       NUMBER;         --補充要求数
     ln_require_shipping_pace  NUMBER;         --出荷ペースの合計(補充要求数)
     ln_supplies_quantity      NUMBER;         --補充可能数(補充要求数按分計算)
-    ln_lot_count              NUMBER;         --
+    ln_lot_count              NUMBER;         --同一ロットの件数
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+    ln_condition_count        NUMBER;         --ロットが鮮度条件に合致した件数
+    ln_condition_idx          NUMBER;         --鮮度条件に合致した鮮度条件のINDEX
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
     lv_stock_proc_flag        VARCHAR2(1);
     lv_stock_filled_flag      VARCHAR2(1);
     ln_filled_quantity        NUMBER;         --鮮度条件に引当されたロット在庫数合計
@@ -1793,6 +1810,10 @@ AS
     ln_require_shipping_pace  := NULL;
     ln_supplies_quantity      := NULL;
     ln_lot_count              := NULL;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+    ln_condition_count        := NULL;
+    ln_condition_idx          := NULL;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
     lv_stock_proc_flag        := NULL;
     lv_stock_filled_flag      := NULL;
     ln_filled_quantity        := NULL;
@@ -1818,6 +1839,9 @@ AS
 --
     --初期化
     ln_lot_count := 0;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+    ln_condition_count := 0;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
     ln_lot_supplies_quantity := 0;
     ln_surpluses_quantity := 0;
 --
@@ -1841,6 +1865,7 @@ AS
                           || TO_CHAR(l_xliv_rec.manufacture_date, cv_date_format) || ','
                           || TO_CHAR(l_xliv_rec.expiration_date , cv_date_format) || ','
                           || l_xliv_rec.lot_no                                    || ','
+                          || ln_condition_count                                   || ','
         );
 --
         IF (l_xliv_rec.record_class = 0) THEN
@@ -1861,15 +1886,17 @@ AS
               l_ship_lot_tab(ln_ship_idx).freshness_quantity := NVL(l_ship_lot_tab(ln_ship_idx).freshness_quantity, 0);
               l_ship_lot_tab(ln_ship_idx).plan_bal_quantity  := NVL(l_ship_lot_tab(ln_ship_idx).plan_bal_quantity, 0);
               l_ship_lot_tab(ln_ship_idx).adjust_quantity    := NVL(l_ship_lot_tab(ln_ship_idx).adjust_quantity, 0);
-              --鮮度条件別在庫が横持後在庫まで引当されていない場合、フラグをYESにする
-              IF (io_gbqt_tab(ln_ship_idx).after_stock > l_ship_lot_tab(ln_ship_idx).freshness_quantity) THEN
-                l_ship_lot_tab(ln_ship_idx).stock_proc_flag  := cv_planning_yes;
-                l_ship_lot_tab(ln_ship_idx).adjust_proc_flag := cv_planning_yes;
-              ELSE
-                l_ship_lot_tab(ln_ship_idx).stock_proc_flag  := cv_planning_no;
-                l_ship_lot_tab(ln_ship_idx).adjust_proc_flag := cv_planning_no;
-                l_ship_lot_tab(ln_ship_idx).adjust_quantity  := 0;
-              END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--              --鮮度条件別在庫が横持後在庫まで引当されていない場合、フラグをYESにする
+--              IF (io_gbqt_tab(ln_ship_idx).after_stock > l_ship_lot_tab(ln_ship_idx).freshness_quantity) THEN
+--                l_ship_lot_tab(ln_ship_idx).stock_proc_flag  := cv_planning_yes;
+--                l_ship_lot_tab(ln_ship_idx).adjust_proc_flag := cv_planning_yes;
+--              ELSE
+--                l_ship_lot_tab(ln_ship_idx).stock_proc_flag  := cv_planning_no;
+--                l_ship_lot_tab(ln_ship_idx).adjust_proc_flag := cv_planning_no;
+--                l_ship_lot_tab(ln_ship_idx).adjust_quantity  := 0;
+--              END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
               --鮮度条件基準日取得関数
               l_ship_lot_tab(ln_ship_idx).critical_date := (
                 xxcop_common_pkg2.get_critical_date_f(
@@ -1886,6 +1913,12 @@ AS
               IF (i_ship_rec.target_date > l_ship_lot_tab(ln_ship_idx).critical_date) THEN
                 l_ship_lot_tab(ln_ship_idx).stock_proc_flag  := cv_planning_no;
                 l_ship_lot_tab(ln_ship_idx).adjust_proc_flag := cv_planning_no;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+              ELSE
+                l_ship_lot_tab(ln_ship_idx).stock_proc_flag  := cv_planning_yes;
+                l_ship_lot_tab(ln_ship_idx).adjust_proc_flag := cv_planning_yes;
+                ln_condition_count := ln_condition_count + 1;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
               END IF;
 --
               --デバックメッセージ出力(初期化)
@@ -1914,21 +1947,23 @@ AS
               l_rcpt_lot_tab(ln_rcpt_idx).freshness_quantity := NVL(l_rcpt_lot_tab(ln_rcpt_idx).freshness_quantity, 0);
               l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity  := NVL(l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity, 0);
               l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity    := NVL(l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity, 0);
-              --鮮度条件別在庫が横持前在庫まで引当されていない場合、フラグをYESにする
-              IF (io_xwypo_tab(ln_rcpt_idx).before_stock <> l_rcpt_lot_tab(ln_rcpt_idx).freshness_quantity) THEN
-                l_rcpt_lot_tab(ln_rcpt_idx).stock_proc_flag  := cv_planning_yes;
-              ELSE
-                l_rcpt_lot_tab(ln_rcpt_idx).stock_proc_flag  := cv_planning_no;
-              END IF;
-              --鮮度条件別在庫が横持前在庫まで引当されていない場合、または
-              --ロット別計画数がバランス計画数まで引当されていない場合、フラグをYESにする
-              IF   (io_xwypo_tab(ln_rcpt_idx).before_stock     <> l_rcpt_lot_tab(ln_rcpt_idx).freshness_quantity)
-                OR (io_xwypo_tab(ln_rcpt_idx).plan_bal_quantity > l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity) THEN
-                l_rcpt_lot_tab(ln_rcpt_idx).adjust_proc_flag := cv_planning_yes;
-              ELSE
-                l_rcpt_lot_tab(ln_rcpt_idx).adjust_proc_flag := cv_planning_no;
-                l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity  := 0;
-              END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--              --鮮度条件別在庫が横持前在庫まで引当されていない場合、フラグをYESにする
+--              IF (io_xwypo_tab(ln_rcpt_idx).before_stock <> l_rcpt_lot_tab(ln_rcpt_idx).freshness_quantity) THEN
+--                l_rcpt_lot_tab(ln_rcpt_idx).stock_proc_flag  := cv_planning_yes;
+--              ELSE
+--                l_rcpt_lot_tab(ln_rcpt_idx).stock_proc_flag  := cv_planning_no;
+--              END IF;
+--              --鮮度条件別在庫が横持前在庫まで引当されていない場合、または
+--              --ロット別計画数がバランス計画数まで引当されていない場合、フラグをYESにする
+--              IF   (io_xwypo_tab(ln_rcpt_idx).before_stock     <> l_rcpt_lot_tab(ln_rcpt_idx).freshness_quantity)
+--                OR (io_xwypo_tab(ln_rcpt_idx).plan_bal_quantity > l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity) THEN
+--                l_rcpt_lot_tab(ln_rcpt_idx).adjust_proc_flag := cv_planning_yes;
+--              ELSE
+--                l_rcpt_lot_tab(ln_rcpt_idx).adjust_proc_flag := cv_planning_no;
+--                l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity  := 0;
+--              END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
               io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity    := 0;
               --鮮度条件基準日取得関数
               l_rcpt_lot_tab(ln_rcpt_idx).critical_date := (
@@ -1942,6 +1977,28 @@ AS
                   ,id_expiration_date        => l_xliv_rec.expiration_date
                 )
               );
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+              --鮮度条件が一致しない場合は対象外
+              IF (io_xwypo_tab(ln_rcpt_idx).receipt_date > l_rcpt_lot_tab(ln_rcpt_idx).critical_date) THEN
+                l_rcpt_lot_tab(ln_rcpt_idx).stock_proc_flag  := cv_planning_no;
+                l_rcpt_lot_tab(ln_rcpt_idx).adjust_proc_flag := cv_planning_no;
+              ELSE
+                --鮮度条件別在庫が横持前在庫まで引当されていない場合、フラグをYESにする
+                --横持前在庫が正値の場合、横持前在庫＞鮮度条件別在庫まで
+                --横持前在庫が負値の場合、横持前在庫＜鮮度条件別在庫まで
+                IF ((io_xwypo_tab(ln_rcpt_idx).before_stock > 0)
+                    AND (io_xwypo_tab(ln_rcpt_idx).before_stock > l_rcpt_lot_tab(ln_rcpt_idx).freshness_quantity))
+                  OR ((io_xwypo_tab(ln_rcpt_idx).before_stock < 0)
+                    AND (io_xwypo_tab(ln_rcpt_idx).before_stock < l_rcpt_lot_tab(ln_rcpt_idx).freshness_quantity))
+                THEN
+                  l_rcpt_lot_tab(ln_rcpt_idx).stock_proc_flag  := cv_planning_yes;
+                ELSE
+                  l_rcpt_lot_tab(ln_rcpt_idx).stock_proc_flag  := cv_planning_no;
+                END IF;
+                l_rcpt_lot_tab(ln_rcpt_idx).adjust_proc_flag := cv_planning_yes;
+                ln_condition_count := ln_condition_count + 1;
+              END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
 --
               --デバックメッセージ出力(初期化)
               xxcop_common_pkg.put_debug_message(
@@ -1962,47 +2019,66 @@ AS
             END LOOP rcpt_critical_date_loop;
           END IF;
           ln_lot_count := ln_lot_count + 1;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+          --鮮度条件に合致しない場合、スキップ
+          IF (ln_condition_count = 0) THEN
+            RAISE lot_skip_expt;
+          END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
 --
           IF (i_ship_rec.loct_id = l_xliv_rec.loct_id) THEN
             -- ===============================
             -- 移動元倉庫のロット
             -- ===============================
             --ロット在庫を出荷ペースの比率で鮮度条件別在庫に按分
-            ln_lot_quantity := l_xliv_rec.loct_onhand;
-            lv_stock_filled_flag := cv_planning_no;
-            ln_filled_quantity   := 0;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--            ln_lot_quantity := l_xliv_rec.loct_onhand;
+--            lv_stock_filled_flag := cv_planning_no;
+--            ln_filled_quantity   := 0;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
             <<ship_div_lot_stock_loop>>
             LOOP
               --初期化
               lv_stock_proc_flag  := cv_planning_yes;
               ln_shipping_pace    := 0;
               ln_balance_quantity := 0;
-              ln_lot_quantity     := l_xliv_rec.loct_onhand - ln_filled_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_START
+--              ln_lot_quantity     := l_xliv_rec.loct_onhand - ln_filled_quantity;
+              ln_lot_quantity     := l_xliv_rec.loct_onhand;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_END
               --鮮度条件に合致する出荷ペースを集計
               <<ship_div_lot_summary_loop>>
               FOR ln_ship_idx IN io_gbqt_tab.FIRST .. io_gbqt_tab.LAST LOOP
-                IF (lv_stock_filled_flag = cv_planning_yes)
-                  AND (l_ship_lot_tab(ln_ship_idx).stock_proc_flag = cv_planning_omit)
-                THEN
-                  l_ship_lot_tab(ln_ship_idx).stock_proc_flag := cv_planning_yes;
-                END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--                IF (lv_stock_filled_flag = cv_planning_yes)
+--                  AND (l_ship_lot_tab(ln_ship_idx).stock_proc_flag = cv_planning_omit)
+--                THEN
+--                  l_ship_lot_tab(ln_ship_idx).stock_proc_flag := cv_planning_yes;
+--                END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
                 IF (l_ship_lot_tab(ln_ship_idx).stock_proc_flag = cv_planning_yes) THEN
-                  --鮮度条件に合致した場合
-                  IF (i_ship_rec.target_date <= l_ship_lot_tab(ln_ship_idx).critical_date) THEN
-                    --鮮度条件に合致した出荷ペース合計
-                    ln_shipping_pace := ln_shipping_pace + io_gbqt_tab(ln_ship_idx).shipping_pace;
-                    --ロット在庫数＋過不足在庫数の合計
-                    ln_lot_quantity := ln_lot_quantity + l_ship_lot_tab(ln_ship_idx).adjust_quantity;
-                  ELSE
-                    l_ship_lot_tab(ln_ship_idx).stock_proc_flag := cv_planning_no;
-                  END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--                  --鮮度条件に合致した場合
+--                  IF (i_ship_rec.target_date <= l_ship_lot_tab(ln_ship_idx).critical_date) THEN
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
+                  --鮮度条件に合致した出荷ペース合計
+                  ln_shipping_pace := ln_shipping_pace + io_gbqt_tab(ln_ship_idx).shipping_pace;
+                  --ロット在庫数＋過不足数の合計
+                  ln_lot_quantity := ln_lot_quantity + l_ship_lot_tab(ln_ship_idx).adjust_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--                  ELSE
+--                    l_ship_lot_tab(ln_ship_idx).stock_proc_flag := cv_planning_no;
+--                  END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
                 END IF;
               END LOOP ship_div_lot_summary_loop;
               --ロットが全ての鮮度条件に合致しない場合、計算を終了
               IF (ln_shipping_pace = 0) THEN
                 EXIT ship_div_lot_stock_loop;
               END IF;
-              lv_stock_filled_flag := cv_planning_no;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--              lv_stock_filled_flag := cv_planning_no;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
               --出荷ペースの比率で鮮度条件別在庫に按分
               <<ship_div_balance_loop>>
               FOR ln_ship_idx IN io_gbqt_tab.FIRST .. io_gbqt_tab.LAST LOOP
@@ -2015,21 +2091,23 @@ AS
                                                );
                   l_ship_lot_tab(ln_ship_idx).lot_quantity := ln_lot_freshness_quantity
                                                             - l_ship_lot_tab(ln_ship_idx).adjust_quantity;
-                  --横持後在庫数が上限
-                  l_ship_lot_tab(ln_ship_idx).lot_quantity := LEAST(l_ship_lot_tab(ln_ship_idx).lot_quantity
-                                                                  , io_gbqt_tab(ln_ship_idx).after_stock
-                                                                  - l_ship_lot_tab(ln_ship_idx).freshness_quantity
-                                                              );
-                  --鮮度条件別在庫数が横持前在庫まで引当できた場合、鮮度条件1から再計算する。
-                  IF ( io_gbqt_tab(ln_ship_idx).after_stock = l_ship_lot_tab(ln_ship_idx).freshness_quantity
-                                                            + l_ship_lot_tab(ln_ship_idx).lot_quantity)
-                  THEN
-                    lv_stock_proc_flag   := cv_planning_no;
-                    lv_stock_filled_flag := cv_planning_yes;
-                    ln_filled_quantity := ln_filled_quantity + l_ship_lot_tab(ln_ship_idx).lot_quantity;
-                    l_ship_lot_tab(ln_ship_idx).stock_proc_flag := cv_planning_no;
-                    EXIT ship_div_balance_loop;
-                  END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--                  --横持後在庫数が上限
+--                  l_ship_lot_tab(ln_ship_idx).lot_quantity := LEAST(l_ship_lot_tab(ln_ship_idx).lot_quantity
+--                                                                  , io_gbqt_tab(ln_ship_idx).after_stock
+--                                                                  - l_ship_lot_tab(ln_ship_idx).freshness_quantity
+--                                                              );
+--                  --鮮度条件別在庫数が横持前在庫まで引当できた場合、鮮度条件1から再計算する。
+--                  IF ( io_gbqt_tab(ln_ship_idx).after_stock = l_ship_lot_tab(ln_ship_idx).freshness_quantity
+--                                                            + l_ship_lot_tab(ln_ship_idx).lot_quantity)
+--                  THEN
+--                    lv_stock_proc_flag   := cv_planning_no;
+--                    lv_stock_filled_flag := cv_planning_yes;
+--                    ln_filled_quantity := ln_filled_quantity + l_ship_lot_tab(ln_ship_idx).lot_quantity;
+--                    l_ship_lot_tab(ln_ship_idx).stock_proc_flag := cv_planning_no;
+--                    EXIT ship_div_balance_loop;
+--                  END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
                   --ロット別バランス計画数の合計
                   ln_balance_quantity := ln_balance_quantity + l_ship_lot_tab(ln_ship_idx).lot_quantity;
                   --鮮度条件別在庫に引当したロット在庫数を減算
@@ -2049,7 +2127,10 @@ AS
               END IF;
             END LOOP ship_div_lot_stock_loop;
             --引当されていないロット在庫補数
-            ln_lot_supplies_quantity := l_xliv_rec.loct_onhand - ln_balance_quantity - ln_filled_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_START
+--            ln_lot_supplies_quantity := l_xliv_rec.loct_onhand - ln_balance_quantity - ln_filled_quantity;
+            ln_lot_supplies_quantity := l_xliv_rec.loct_onhand - ln_balance_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_END
 --
           ELSE
             -- ===============================
@@ -2059,6 +2140,9 @@ AS
             ln_lot_quantity := l_xliv_rec.loct_onhand;
             lv_stock_filled_flag := cv_planning_no;
             ln_filled_quantity   := 0;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+            ln_condition_idx     := NULL;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
             <<rcpt_div_lot_stock_loop>>
             LOOP
               --初期化
@@ -2077,16 +2161,26 @@ AS
                     l_rcpt_lot_tab(ln_rcpt_idx).stock_proc_flag := cv_planning_yes;
                   END IF;
                   IF (l_rcpt_lot_tab(ln_rcpt_idx).stock_proc_flag = cv_planning_yes) THEN
-                    --鮮度条件に合致した場合
-                    IF (io_xwypo_tab(ln_rcpt_idx).receipt_date <= l_rcpt_lot_tab(ln_rcpt_idx).critical_date) THEN
-                      --鮮度条件に合致した出荷ペース合計
-                      ln_shipping_pace := ln_shipping_pace + io_xwypo_tab(ln_rcpt_idx).shipping_pace;
-                      --ロット在庫数＋過不足在庫数の合計
-                      ln_lot_quantity := ln_lot_quantity + l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity;
-                    ELSE
-                      l_rcpt_lot_tab(ln_rcpt_idx).stock_proc_flag := cv_planning_no;
-                    END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--                    --鮮度条件に合致した場合
+--                    IF (io_xwypo_tab(ln_rcpt_idx).receipt_date <= l_rcpt_lot_tab(ln_rcpt_idx).critical_date) THEN
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
+                    --鮮度条件に合致した出荷ペース合計
+                    ln_shipping_pace := ln_shipping_pace + io_xwypo_tab(ln_rcpt_idx).shipping_pace;
+                    --ロット在庫数＋過不足数の合計
+                    ln_lot_quantity := ln_lot_quantity + l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--                    ELSE
+--                      l_rcpt_lot_tab(ln_rcpt_idx).stock_proc_flag := cv_planning_no;
+--                    END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
                   END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+                  --合致している鮮度条件のINDEXを保持
+                  IF (l_rcpt_lot_tab(ln_rcpt_idx).adjust_proc_flag = cv_planning_yes) THEN
+                    ln_condition_idx := NVL( ln_condition_idx, ln_rcpt_idx);
+                  END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
                 END IF;
               END LOOP rcpt_div_proc_loop;
               --ロットが鮮度条件に合致しない場合、計算を終了
@@ -2142,13 +2236,31 @@ AS
                 EXIT rcpt_div_lot_stock_loop;
               END IF;
             END LOOP rcpt_div_lot_stock_loop;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+            --鮮度条件別在庫に案分しなかった在庫数を加算
+            IF (ln_condition_idx IS NOT NULL) THEN
+              l_rcpt_lot_tab(ln_condition_idx).lot_quantity := NVL(l_rcpt_lot_tab(ln_condition_idx).lot_quantity, 0)
+                                                             + l_xliv_rec.loct_onhand
+                                                             - ln_filled_quantity
+                                                             - ln_balance_quantity;
+            END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
           END IF;
         ELSE
           --合計レコード
           --ロット在庫数が全て0の場合、スキップ
           IF (ln_lot_count = 0) THEN
-            RAISE lot_skip_expt;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_START
+--            RAISE lot_skip_expt;
+            RAISE manufacture_skip_expt;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_END
           END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+          --鮮度条件に合致しない場合、スキップ
+          IF (ln_condition_count = 0) THEN
+            RAISE manufacture_skip_expt;
+          END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
           -- ===============================
           -- ロット計画数の計算
           -- ===============================
@@ -2167,22 +2279,26 @@ AS
             --鮮度条件別ロット在庫数が引当されていない場合、0をセット
             l_ship_lot_tab(ln_ship_idx).lot_quantity := NVL(l_ship_lot_tab(ln_ship_idx).lot_quantity, 0);
             IF (l_ship_lot_tab(ln_ship_idx).adjust_proc_flag = cv_planning_yes) THEN
-              --鮮度条件に合致した場合
-              IF (i_ship_rec.target_date <= l_ship_lot_tab(ln_ship_idx).critical_date) THEN
-                --横持後在庫まで引当された場合、対象外とする
-                IF (io_gbqt_tab(ln_ship_idx).after_stock > l_ship_lot_tab(ln_ship_idx).freshness_quantity
-                                                         + l_ship_lot_tab(ln_ship_idx).lot_quantity)
-                THEN
-                  --出荷ペースの合計を集計
-                  ln_total_shipping_pace := ln_total_shipping_pace + io_gbqt_tab(ln_ship_idx).shipping_pace;
-                  --ロット在庫数の合計を集計
-                  ln_total_lot_quantity := ln_total_lot_quantity + l_ship_lot_tab(ln_ship_idx).lot_quantity;
-                ELSE
-                  l_ship_lot_tab(ln_ship_idx).adjust_proc_flag := cv_planning_no;
-                END IF;
-              ELSE
-                l_ship_lot_tab(ln_ship_idx).adjust_proc_flag := cv_planning_no;
-              END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--              --鮮度条件に合致した場合
+--              IF (i_ship_rec.target_date <= l_ship_lot_tab(ln_ship_idx).critical_date) THEN
+--                --横持後在庫まで引当された場合、対象外とする
+--                IF (io_gbqt_tab(ln_ship_idx).after_stock > l_ship_lot_tab(ln_ship_idx).freshness_quantity
+--                                                         + l_ship_lot_tab(ln_ship_idx).lot_quantity)
+--                THEN
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
+              --出荷ペースの合計を集計
+              ln_total_shipping_pace := ln_total_shipping_pace + io_gbqt_tab(ln_ship_idx).shipping_pace;
+              --ロット在庫数の合計を集計
+              ln_total_lot_quantity := ln_total_lot_quantity + l_ship_lot_tab(ln_ship_idx).lot_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--                ELSE
+--                  l_ship_lot_tab(ln_ship_idx).adjust_proc_flag := cv_planning_no;
+--                END IF;
+--              ELSE
+--                l_ship_lot_tab(ln_ship_idx).adjust_proc_flag := cv_planning_no;
+--              END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
             END IF;
           END LOOP ship_proc_summary_loop;
 --
@@ -2191,15 +2307,19 @@ AS
             --鮮度条件別ロット在庫数が引当されていない場合、0をセット
             l_rcpt_lot_tab(ln_rcpt_idx).lot_quantity := NVL(l_rcpt_lot_tab(ln_rcpt_idx).lot_quantity, 0);
             IF (l_rcpt_lot_tab(ln_rcpt_idx).adjust_proc_flag = cv_planning_yes) THEN
-              --鮮度条件に合致した場合
-              IF (io_xwypo_tab(ln_rcpt_idx).receipt_date <= l_rcpt_lot_tab(ln_rcpt_idx).critical_date) THEN
-                --出荷ペースの合計を集計
-                ln_total_shipping_pace := ln_total_shipping_pace + io_xwypo_tab(ln_rcpt_idx).shipping_pace;
-                --ロット在庫数の合計を集計
-                ln_total_lot_quantity := ln_total_lot_quantity + l_rcpt_lot_tab(ln_rcpt_idx).lot_quantity;
-              ELSE
-                l_rcpt_lot_tab(ln_rcpt_idx).adjust_proc_flag := cv_planning_no;
-              END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--              --鮮度条件に合致した場合
+--              IF (io_xwypo_tab(ln_rcpt_idx).receipt_date <= l_rcpt_lot_tab(ln_rcpt_idx).critical_date) THEN
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
+              --出荷ペースの合計を集計
+              ln_total_shipping_pace := ln_total_shipping_pace + io_xwypo_tab(ln_rcpt_idx).shipping_pace;
+              --ロット在庫数の合計を集計
+              ln_total_lot_quantity := ln_total_lot_quantity + l_rcpt_lot_tab(ln_rcpt_idx).lot_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--              ELSE
+--                l_rcpt_lot_tab(ln_rcpt_idx).adjust_proc_flag := cv_planning_no;
+--              END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
             END IF;
           END LOOP rcpt_proc_summary_loop;
 --
@@ -2214,7 +2334,7 @@ AS
           );
 --
           --
-          -- (2) 鮮度条件別ロット在庫の過不足在庫数を計算
+          -- (2) 鮮度条件別ロット在庫の過不足数を計算
           --
           <<ship_proc_adjust_loop>>
           FOR ln_ship_idx IN io_gbqt_tab.FIRST .. io_gbqt_tab.LAST LOOP
@@ -2225,22 +2345,25 @@ AS
                                     * io_gbqt_tab(ln_ship_idx).shipping_pace
                                     / ln_total_shipping_pace
                                  );
-              --過不足在庫数の計算
+              --過不足数の計算
               ln_adjust_quantity := l_ship_lot_tab(ln_ship_idx).lot_quantity - ln_div_quantity;
-              --古いロットの過不足在庫数を加算
+              --古いロットの過不足数を加算
               l_ship_lot_tab(ln_ship_idx).adjust_quantity := l_ship_lot_tab(ln_ship_idx).adjust_quantity
                                                            + ln_adjust_quantity;
-              --調整したロット在庫数を減算
+              --案分在庫数を減算
               ln_total_lot_quantity := ln_total_lot_quantity - ln_div_quantity;
               ln_total_shipping_pace := ln_total_shipping_pace - io_gbqt_tab(ln_ship_idx).shipping_pace;
-                ln_surpluses_quantity:= ln_surpluses_quantity
-                                      + LEAST(GREATEST(l_ship_lot_tab(ln_ship_idx).adjust_quantity, 0)
-                                            , GREATEST(ln_adjust_quantity, 0)
-                                        );
+              ln_surpluses_quantity := ln_surpluses_quantity
+                                     + LEAST(GREATEST(l_ship_lot_tab(ln_ship_idx).adjust_quantity, 0)
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_START
+--                                           , GREATEST(ln_adjust_quantity, 0)
+                                           , GREATEST(l_ship_lot_tab(ln_ship_idx).lot_quantity, 0)
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_END
+                                       );
             END IF;
           END LOOP ship_proc_adjust_loop;
 --
-          --移動先倉庫の過不足在庫数は引当在庫数＋補充可能数
+          --移動先倉庫の過不足数は引当在庫数＋補充可能数
           ln_total_lot_quantity := ln_total_lot_quantity + ln_lot_supplies_quantity;
           --補充可能数に移動元倉庫の余剰数を加算
           ln_lot_supplies_quantity := ln_lot_supplies_quantity + ln_surpluses_quantity;
@@ -2253,24 +2376,41 @@ AS
                                     * io_xwypo_tab(ln_rcpt_idx).shipping_pace
                                     / ln_total_shipping_pace
                                  );
-              --過不足在庫数の計算
+              --過不足数の計算
               ln_adjust_quantity := l_rcpt_lot_tab(ln_rcpt_idx).lot_quantity - ln_div_quantity;
-              --古いロットの過不足在庫数を加算(バランス計画数が上限)
-              l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity := GREATEST(l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity
-                                                                    + ln_adjust_quantity
-                                                                    , l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity
-                                                                    - io_xwypo_tab(ln_rcpt_idx).plan_bal_quantity
-                                                             );
-              --調整したロット在庫数を減算
+              --古いロットの過不足数を加算
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_START
+--              l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity := GREATEST(l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity
+--                                                                    + ln_adjust_quantity
+--                                                                    , l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity
+--                                                                    - io_xwypo_tab(ln_rcpt_idx).plan_bal_quantity
+--                                                             );
+              l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity := l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity
+                                                           + ln_adjust_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_END
+              --案分在庫数を減算
               ln_total_lot_quantity := ln_total_lot_quantity - ln_div_quantity;
               ln_total_shipping_pace := ln_total_shipping_pace - io_xwypo_tab(ln_rcpt_idx).shipping_pace;
               IF (ln_lot_supplies_quantity > 0) THEN
                 IF (l_xliv_rec.manufacture_date >= NVL(it_sy_manufacture_date, l_xliv_rec.manufacture_date)) THEN
-                  --過不足在庫数がマイナスの場合、ロットバランス計画数を設定、補充要求数に加算
-                  IF (l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity < 0) THEN
-                    io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity := l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity * -1;
-                    ln_plan_lot_quantity := ln_plan_lot_quantity + io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity;
-                  END IF;
+                  --過不足数がマイナスの場合、ロットバランス計画数を設定、補充要求数に加算
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_START
+--                  IF (l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity < 0) THEN
+--                    io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity := l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity * -1;
+                  --計画数を計算
+                  l_rcpt_lot_tab(ln_rcpt_idx).plan_lot_quantity :=
+                    GREATEST(LEAST(l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity * -1
+                                 , io_xwypo_tab(ln_rcpt_idx).plan_bal_quantity
+                                 - l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity
+                             )
+                           , 0
+                    );
+                  io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity := l_rcpt_lot_tab(ln_rcpt_idx).plan_lot_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_END
+                  ln_plan_lot_quantity := ln_plan_lot_quantity + io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_START
+--                  END IF;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_DEL_END
                 END IF;
               END IF;
             END IF;
@@ -2286,7 +2426,7 @@ AS
           );
 --
           --
-          -- (3) 過不足在庫数がマイナスの倉庫でロット計画数を計算
+          -- (3) 過不足数がマイナスの倉庫でロット計画数を計算
           --
           IF (ln_lot_supplies_quantity > 0) THEN
             --開始製造年月日以降のロットで計画数を計算
@@ -2305,7 +2445,10 @@ AS
                     --ロット計画数が0より大きい場合
                     IF (io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity > 0) THEN
                       --補充要求数合計
-                      ln_require_quantity := ln_require_quantity + l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_START
+--                      ln_require_quantity := ln_require_quantity + l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity;
+                      ln_require_quantity := ln_require_quantity - l_rcpt_lot_tab(ln_rcpt_idx).plan_lot_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_END
                       --出荷ペース合計
                       ln_require_shipping_pace := ln_require_shipping_pace + io_xwypo_tab(ln_rcpt_idx).shipping_pace;
                     END IF;
@@ -2324,12 +2467,18 @@ AS
                                      * io_xwypo_tab(ln_rcpt_idx).shipping_pace
                                      / ln_require_shipping_pace
                                  )
-                               - l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_START
+--                               - l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity
+                               + l_rcpt_lot_tab(ln_rcpt_idx).plan_lot_quantity
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_END
                                , 0
                         );
                       --調整したロット在庫数を減算
                       ln_supplies_quantity := ln_supplies_quantity - io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity;
-                      ln_require_quantity  := ln_require_quantity  - l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_START
+--                      ln_require_quantity  := ln_require_quantity  - l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity;
+                      ln_require_quantity  := ln_require_quantity  + l_rcpt_lot_tab(ln_rcpt_idx).plan_lot_quantity;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_END
                       ln_require_shipping_pace := ln_require_shipping_pace - io_xwypo_tab(ln_rcpt_idx).shipping_pace;
                       ln_plan_lot_quantity := ln_plan_lot_quantity + io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity;
                     END IF;
@@ -2343,7 +2492,7 @@ AS
           xxcop_common_pkg.put_debug_message(
              iov_debug_mode => gv_debug_mode
             ,iv_value       => cv_indent_4 || cv_prg_name || ':'
-                            || 'proc_lot_balance(4):'
+                            || 'proc_lot_balance(3):'
                             || ln_lot_supplies_quantity   || ','
                             || ln_plan_lot_quantity       || ','
                             || ln_supplies_quantity       || ','
@@ -2361,7 +2510,7 @@ AS
                                     );
             --移動元倉庫の過不足数から減算した在庫数を計画数合計から減算
             ln_plan_lot_quantity := ln_plan_lot_quantity - ln_supplies_quantity;
-            --過不足在庫数を減算
+            --過不足数を減算
             l_ship_lot_tab(ln_ship_idx).adjust_quantity := l_ship_lot_tab(ln_ship_idx).adjust_quantity
                                                          - ln_supplies_quantity;
             --鮮度条件別ロット在庫数を鮮度条件別在庫数に加算
@@ -2460,7 +2609,7 @@ AS
             --バランス計画数にロット計画数を加算
             l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity := l_rcpt_lot_tab(ln_rcpt_idx).plan_bal_quantity
                                                            + io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity;
-            --過不足在庫数を加算
+            --過不足数を加算
             l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity := l_rcpt_lot_tab(ln_rcpt_idx).adjust_quantity
                                                          + io_xwypo_tab(ln_rcpt_idx).plan_lot_quantity;
             --鮮度条件別ロット在庫数を鮮度条件別在庫数に加算
@@ -2510,6 +2659,9 @@ AS
           -- (5) 初期化
           --
           ln_lot_count := 0;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+          ln_condition_count := 0;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
           ln_total_lot_quantity := 0;
           ln_lot_supplies_quantity := 0;
           ln_surpluses_quantity := 0;
@@ -2517,6 +2669,14 @@ AS
       EXCEPTION
         WHEN lot_skip_expt THEN
           NULL;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+        WHEN manufacture_skip_expt THEN
+          ln_lot_count := 0;
+          ln_condition_count := 0;
+          ln_total_lot_quantity := 0;
+          ln_lot_supplies_quantity := 0;
+          ln_surpluses_quantity := 0;
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
       END;
     END LOOP xliv_loop;
     CLOSE xliv_cur;
@@ -8790,6 +8950,52 @@ AS
                 ,xsv.item_id
                 ,xsv.freshness_condition
       )
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+      , xwypo_rcpt_lot_vw AS (
+        SELECT xwypov.transaction_id                              transaction_id
+              ,xwypov.request_id                                  request_id
+              ,xwypov.receipt_date                                receipt_date
+              ,xwypov.rcpt_loct_id                                rcpt_loct_id
+              ,xwypov.item_id                                     item_id
+              ,xwypov.freshness_condition                         freshness_condition
+              ,xwypov.manufacture_date                            manufacture_date
+              ,MIN(xwypov.before_lot_stock)                       before_lot_stock
+        FROM (
+          SELECT xwypo.transaction_id                             transaction_id
+                ,xwypo.request_id                                 request_id
+                ,xwypo.shipping_date                              shipping_date
+                ,xwypo.receipt_date                               receipt_date
+                ,xwypo.ship_loct_id                               ship_loct_id
+                ,xwypo.rcpt_loct_id                               rcpt_loct_id
+                ,xwypo.item_id                                    item_id
+                ,xwypo.freshness_condition                        freshness_condition
+                ,xwypo.assignment_set_type                        assignment_set_type
+                ,xwypo.manufacture_date                           manufacture_date
+                ,SUM(xwypo.before_lot_stock)                      before_lot_stock
+          FROM xxcop_wk_yoko_plan_output    xwypo
+          WHERE xwypo.transaction_id      = gn_transaction_id
+            AND xwypo.request_id          = cn_request_id
+            AND xwypo.manufacture_date   IS NOT NULL
+          GROUP BY xwypo.transaction_id
+                  ,xwypo.request_id
+                  ,xwypo.shipping_date
+                  ,xwypo.receipt_date
+                  ,xwypo.ship_loct_id
+                  ,xwypo.rcpt_loct_id
+                  ,xwypo.item_id
+                  ,xwypo.freshness_condition
+                  ,xwypo.assignment_set_type
+                  ,xwypo.manufacture_date
+        ) xwypov
+        GROUP BY xwypov.transaction_id
+                ,xwypov.request_id
+                ,xwypov.receipt_date
+                ,xwypov.rcpt_loct_id
+                ,xwypov.item_id
+                ,xwypov.freshness_condition
+                ,xwypov.manufacture_date
+      )
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
       SELECT xwypo.rowid                                        xwypo_rowid
             ,xwypo.transaction_id                               transaction_id
             ,xwypo.request_id                                   request_id
@@ -8804,17 +9010,20 @@ AS
             ,xwypo.safety_stock_quantity                        safety_stock_quantity
             ,xwypo.max_stock_quantity                           max_stock_quantity
             ,xwypo.before_stock                                 before_stock
-            ,SUM(xwypo.before_lot_stock) OVER (PARTITION BY xwypo.transaction_id
-                                                           ,xwypo.request_id
-                                                           ,xwypo.shipping_date
-                                                           ,xwypo.receipt_date
-                                                           ,xwypo.ship_loct_id
-                                                           ,xwypo.rcpt_loct_id
-                                                           ,xwypo.item_id
-                                                           ,xwypo.freshness_condition
-                                                           ,xwypo.assignment_set_type
-                                                           ,xwypo.manufacture_date
-                                         )                     before_lot_stock
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_START
+--            ,SUM(xwypo.before_lot_stock) OVER (PARTITION BY xwypo.transaction_id
+--                                                           ,xwypo.request_id
+--                                                           ,xwypo.shipping_date
+--                                                           ,xwypo.receipt_date
+--                                                           ,xwypo.ship_loct_id
+--                                                           ,xwypo.rcpt_loct_id
+--                                                           ,xwypo.item_id
+--                                                           ,xwypo.freshness_condition
+--                                                           ,xwypo.assignment_set_type
+--                                                           ,xwypo.manufacture_date
+--                                         )                      before_lot_stock
+            ,NVL(xrlv.before_lot_stock, xwypo.before_lot_stock) before_lot_stock
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_MOD_END
             ,SUM(xwypo.plan_lot_quantity) OVER (PARTITION BY xwypo.transaction_id
                                                             ,xwypo.request_id
                                                             ,xwypo.shipping_date
@@ -8870,6 +9079,9 @@ AS
             ,xrsv.supply_status                                 supply_status
       FROM xxcop_wk_yoko_plan_output    xwypo
           ,xwypo_rcpt_supply_vw         xrsv
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+          ,xwypo_rcpt_lot_vw            xrlv
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
       WHERE xwypo.transaction_id      = gn_transaction_id
         AND xwypo.request_id          = cn_request_id
         AND xwypo.transaction_id      = xrsv.transaction_id
@@ -8878,6 +9090,15 @@ AS
         AND xwypo.rcpt_loct_id        = xrsv.rcpt_loct_id
         AND xwypo.item_id             = xrsv.item_id
         AND xwypo.freshness_condition = xrsv.freshness_condition
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_START
+        AND xwypo.transaction_id      = xrlv.transaction_id(+)
+        AND xwypo.request_id          = xrlv.request_id(+)
+        AND xwypo.receipt_date        = xrlv.receipt_date(+)
+        AND xwypo.rcpt_loct_id        = xrlv.rcpt_loct_id(+)
+        AND xwypo.item_id             = xrlv.item_id(+)
+        AND xwypo.freshness_condition = xrlv.freshness_condition(+)
+        AND xwypo.manufacture_date    = xrlv.manufacture_date(+)
+--20091217_Ver3.1_E_本稼動_00519_SCS.Goto_ADD_END
     ;
 --
     -- *** ローカル・レコード ***
