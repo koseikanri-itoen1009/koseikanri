@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.17
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -52,6 +52,8 @@ AS
  *  2008/12/08    1.15  N.Yoshida        本番障害数値あわせ対応(受注ヘッダの最新フラグを追加)
  *  2008/12/13    1.16  A.Shiina         本番#428対応
  *  2008/12/13    1.17  N.Yoshida        本番#428対応(再対応)
+ *  2008/12/16    1.18  A.Shiina         本番#749対応
+ *  2008/12/16    1.19  A.Shiina         本番#754対応
  *
  *****************************************************************************************/
 --
@@ -442,6 +444,10 @@ AS
 --
     -- 個人選択の場合、名称を取得する
     ELSIF ( ir_param.party_code IS NOT NULL ) THEN
+-- 2008/12/16 ADD START
+     -- 出荷の場合
+     IF (ir_param.rcv_pay_div IN ('102', '101', '112')) THEN
+-- 2008/12/16 ADD END
       BEGIN
         SELECT SUBSTRB( xpv.party_short_name, 1, 20)
         INTO   ir_param.party_name
@@ -453,6 +459,24 @@ AS
         WHEN NO_DATA_FOUND THEN
           NULL;
       END;
+-- 2008/12/16 ADD START
+     -- 有償の場合
+     ELSIF (ir_param.rcv_pay_div IN ('103', '105', '108')) THEN
+      BEGIN
+        SELECT SUBSTRB( xvv.vendor_short_name, 1, 20)
+        INTO   ir_param.party_name
+        FROM   xxcmn_vendors_v xvv
+        WHERE  xvv.segment1 = ir_param.party_code
+        AND    ROWNUM           = 1;
+      EXCEPTION
+        -- データなし
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
+--
+     END IF;
+--
+-- 2008/12/16 ADD END
     END IF;
 --
     -- ====================================================
@@ -1084,6 +1108,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1199,6 +1226,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1312,6 +1342,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1425,6 +1458,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1540,6 +1576,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1658,6 +1697,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1780,6 +1822,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -1903,6 +1948,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2014,6 +2062,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2126,6 +2177,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''04''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2237,6 +2291,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2351,6 +2408,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = itp.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2468,6 +2528,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
@@ -2588,6 +2651,9 @@ AS
     || ' AND xoha.arrival_date >= FND_DATE.STRING_TO_DATE(''' || ir_param.proc_from    || ''',''yyyymm'')'
     || ' AND xoha.arrival_date < ADD_MONTHS( FND_DATE.STRING_TO_DATE(''' || ir_param.proc_to    || ''',''yyyymm''),1)'
     || ' AND xoha.req_status = ''08''' 
+-- 2008/12/16 v1.19 ADD START
+    || ' AND xoha.amount_fix_class = ''1''' 
+-- 2008/12/16 v1.19 ADD END
     || ' AND gic1.item_id = iimb2.item_id' 
     || ' AND gic1.category_set_id = ''' || cn_prod_class_id    || ''''
     || ' AND gic1.category_id = mcb1.category_id' 
