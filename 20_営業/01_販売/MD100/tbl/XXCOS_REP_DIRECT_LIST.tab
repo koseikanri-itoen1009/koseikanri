@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_REP_DIRECT_LIST
  * Description : 直送受注例外データリスト帳票ワークテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2009/01/30    1.0   SCS T.Miyata   新規作成
+ *  2009/01/30    1.0   SCS T.Miyata     新規作成
+ *  2009/10/07    1.1   SCS K.Satomura   【0001378】帳票ワークテーブルの桁あふれ対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_DIRECT_LIST 
@@ -17,9 +18,14 @@ CREATE TABLE XXCOS.XXCOS_REP_DIRECT_LIST
     RECORD_ID                      NUMBER            NOT NULL,             --レコードID
     BASE_CODE                      VARCHAR2(4),                            --拠点コード
     BASE_NAME                      VARCHAR2(40),                           --拠点名称
-    ORDER_NUMBER                   NUMBER(9),                              --受注番号
-    ORDER_LINE_NO                  NUMBER(2,0),                            --受注明細No.
-    LINE_NO                        NUMBER(2,0),                            --明細No.
+    /* 2009.10.07 Ver1.1 0001378対応 START */
+    --ORDER_NUMBER                   NUMBER(9),                              --受注番号
+    --ORDER_LINE_NO                  NUMBER(2,0),                            --受注明細No.
+    --LINE_NO                        NUMBER(2,0),                            --明細No.
+    ORDER_NUMBER                   NUMBER                                  --受注番号
+    ORDER_LINE_NO                  NUMBER                                  --受注明細No.
+    LINE_NO                        NUMBER                                  --明細No.
+    /* 2009.10.07 Ver1.1 0001378対応 END */
     DELIVER_REQUESTED_NO           VARCHAR2(12),                           --出荷依頼No
     DELIVER_FROM_WHSE_NUMBER       VARCHAR2(10),                           --出荷元倉庫番号
     DELIVER_FROM_WHSE_NAME         VARCHAR2(20),                           --出荷元倉庫名
@@ -30,10 +36,17 @@ CREATE TABLE XXCOS.XXCOS_REP_DIRECT_LIST
     SCHEDULE_DLV_DATE              DATE,                                   --納品予定日
     SCHEDULE_INSPECT_DATE          DATE,                                   --検収予定日
     ARRIVAL_DATE                   DATE,                                   --着日
-    ORDER_QUANTITY                 NUMBER(11,2),                           --受注数
-    DELIVER_ACTUAL_QUANTITY        NUMBER(11,2),                           --出荷実績数
+    /* 2009.10.07 Ver1.1 0001378対応 START */
+    --ORDER_QUANTITY                 NUMBER(11,2),                           --受注数
+    --DELIVER_ACTUAL_QUANTITY        NUMBER(11,2),                           --出荷実績数
+    ORDER_QUANTITY                 NUMBER(13,2),                           --受注数
+    DELIVER_ACTUAL_QUANTITY        NUMBER(13,2),                           --出荷実績数
+    /* 2009.10.07 Ver1.1 0001378対応 END */
     UOM_CODE                       VARCHAR2(3),                            --単位
-    OUTPUT_QUANTITY                NUMBER(11,2),                           --差異数
+    /* 2009.10.07 Ver1.1 0001378対応 START */
+    --OUTPUT_QUANTITY                NUMBER(11,2),                           --差異数
+    OUTPUT_QUANTITY                NUMBER(13,2),                           --差異数
+    /* 2009.10.07 Ver1.1 0001378対応 END */
     DATA_CLASS                     VARCHAR2(1),                            --データ区分
     CREATED_BY                     NUMBER(15,0)      NOT NULL,             --作成者
     CREATION_DATE                  DATE NOT NULL,                          --作成日
