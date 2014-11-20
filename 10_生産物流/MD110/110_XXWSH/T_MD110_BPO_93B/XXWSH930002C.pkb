@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.14
+ * Version          : 1.15
  *
  * -------------------------------------------------------------------------------------
  * 注意事項！    HHT(xxwsh930002c)をどのように作ったか
@@ -101,6 +101,7 @@ AS
  *  2008/08/13    1.14 Oracle 福田 直樹  内部変更#176対応(出荷/支給のとき着荷日の未来日チェックはしない)
  *  2008/08/13    1.14 Oracle 福田 直樹  内部変更#177対応(出荷日/着荷日の逆転チェック追加対応)
  *  2008/08/18    1.14 Oracle 福田 直樹  TE080_930指摘#32対応(指示にあって実績にない品目は実績0で更新する)
+ *  2008/09/01    1.15 Oracle 福田 直樹  TE080_930指摘#38対応(指示なし実績を取り込めるようにする)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -677,6 +678,7 @@ AS
     -- 仕入先サイト名
     vendor_site_code            xxcmn_vendor_sites2_v.vendor_site_code%TYPE,
     -- 外部倉庫flag (1:外部倉庫の場合、0：外部倉庫でない)
+    -- ※93Bの場合は、(1:内部倉庫の指示なし実績、0：左記以外) 2008/09/01 TE080_930指摘#38
     out_warehouse_flg           VARCHAR2(1),
     -- エラーflag (1:エラーの場合、0:正常)
     err_flg                     VARCHAR2(1),
@@ -4220,131 +4222,135 @@ AS
 --
   END get_warehouse_results_info;
 --
---*HHT*******************************************************************************************
---*HHT* /**********************************************************************************
---*HHT*  * Procedure Name   : out_warehouse_number_check
---*HHT*  * Description      : 外部倉庫発番チェック プロシージャ (A-4)
---*HHT*  ***********************************************************************************/
---*HHT*  PROCEDURE out_warehouse_number_check(
---*HHT*    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
---*HHT*    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
---*HHT*    ov_errmsg     OUT NOCOPY VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
---*HHT*  )
---*HHT*  IS
---*HHT*    -- ===============================
---*HHT*    -- 固定ローカル定数
---*HHT*    -- ===============================
---*HHT*    cv_prg_name   CONSTANT VARCHAR2(100) := 'out_warehouse_number_check'; -- プログラム名
---*HHT*--
---*HHT*--#####################  固定ローカル変数宣言部 START   ########################
---*HHT*--
---*HHT*    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
---*HHT*    lv_retcode VARCHAR2(1);     -- リターン・コード
---*HHT*    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---*HHT*--
---*HHT*--###########################  固定部 END   ####################################
---*HHT*--
---*HHT*    -- ===============================
---*HHT*    -- ユーザー宣言部
---*HHT*    -- ===============================
---*HHT*    -- *** ローカル定数 ***
---*HHT*--
---*HHT*    -- *** ローカル変数 ***
---*HHT*    ln_count NUMBER;
---*HHT*--
---*HHT*    -- *** ローカル・カーソル ***
---*HHT*--
---*HHT*    -- *** ローカル・レコード ***
---*HHT*--
---*HHT*  BEGIN
---*HHT*--
---*HHT*--##################  固定ステータス初期化部 START   ###################
---*HHT*--
---*HHT*    ov_retcode := gv_status_normal;
---*HHT*--
---*HHT*--###########################  固定部 END   ############################
---*HHT*--
---*HHT*    -- ***************************************
---*HHT*    -- ***        実処理の記述             ***
---*HHT*    -- ***       共通関数の呼び出し        ***
---*HHT*    -- ***************************************
---*HHT*    <<out_warehouse_number_check>>
---*HHT*    FOR i IN 1..gr_interface_info_rec.COUNT LOOP
---*HHT*--
---*HHT*      -- 業務種別判定
---*HHT*      -- EOSデータ種別 = 200 有償出荷報告, 210 拠点出荷確定報告, 215 庭先出荷確定報告, 220 移動出庫確定報告
---*HHT*      -- 適用開始日・終了日を出荷日にて判定
---*HHT*      IF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) OR
---*HHT*          (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210) OR
---*HHT*          (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215) OR
---*HHT*          (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220))
---*HHT*      THEN
---*HHT*--
---*HHT*        -- OPM保管場所マスタ／保管倉庫コードよりチェック
---*HHT*        SELECT COUNT(xilv2.inventory_location_id) cnt
---*HHT*        INTO   ln_count
---*HHT*        FROM   xxcmn_item_locations2_v xilv2
---*HHT*        WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
---*HHT*        AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).shipped_date) -- 組織有効開始日
---*HHT*        AND    ((xilv2.date_to IS NULL)
---*HHT*         OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).shipped_date)))  -- 組織有効終了日
---*HHT*        AND    xilv2.disable_date IS NULL   -- 無効日
---*HHT*        ;
---*HHT*--
---*HHT*      END IF;
---*HHT*--
---*HHT*      -- EOSデータ種別 = 230:移動入庫確定報告
---*HHT*      -- 適用開始日・終了日を着荷日にて判定
---*HHT*      IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230) THEN
---*HHT*--
---*HHT*        -- OPM保管場所マスタ／保管倉庫コードよりチェック
---*HHT*        SELECT COUNT(xilv2.inventory_location_id) cnt
---*HHT*        INTO   ln_count
---*HHT*        FROM   xxcmn_item_locations2_v xilv2
---*HHT*        WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
---*HHT*        AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).arrival_date) -- 組織有効開始日
---*HHT*        AND    ((xilv2.date_to IS NULL)
---*HHT*         OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).arrival_date)))  -- 組織有効終了日
---*HHT*        AND    xilv2.disable_date IS NULL   -- 無効日
---*HHT*        ;
---*HHT*--
---*HHT*      END IF;
---*HHT*--
---*HHT*      -- 存在する場合は、外部倉庫発番となる
---*HHT*      IF (ln_count > 0) THEN
---*HHT*--
---*HHT*        gr_interface_info_rec(i).out_warehouse_flg := gv_flg_on;
---*HHT*--
---*HHT*      END IF;
---*HHT*--
---*HHT*    END LOOP out_warehouse_number_check;
---*HHT*--
---*HHT*    --==============================================================
---*HHT*    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
---*HHT*    --==============================================================
---*HHT*--
---*HHT*  EXCEPTION
---*HHT*--
---*HHT*--#################################  固定例外処理部 START   ####################################
---*HHT*--
---*HHT*    -- *** 共通関数例外ハンドラ ***
---*HHT*    WHEN global_api_expt THEN
---*HHT*      ov_errmsg  := lv_errmsg;
---*HHT*      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
---*HHT*      ov_retcode := gv_status_error;
---*HHT*    -- *** 共通関数OTHERS例外ハンドラ ***
---*HHT*    WHEN global_api_others_expt THEN
---*HHT*      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
---*HHT*      ov_retcode := gv_status_error;
---*HHT*    -- *** OTHERS例外ハンドラ ***
---*HHT*    WHEN OTHERS THEN
---*HHT*      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
---*HHT*      ov_retcode := gv_status_error;
---*HHT*--
---*HHT*--#####################################  固定部 END   ##########################################
---*HHT*--
---*HHT*  END out_warehouse_number_check;
---*HHT**********************************************************************************************************
+  -- 2008/09/01 TE080_930指摘#38 Add Start -----------------------------------------------------
+ /**********************************************************************************
+  * Procedure Name   : out_warehouse_number_check
+  * Description      : 外部倉庫発番チェック プロシージャ (A-4)
+  ***********************************************************************************/
+  PROCEDURE out_warehouse_number_check(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'out_warehouse_number_check'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_count NUMBER;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    <<out_warehouse_number_check>>
+    FOR i IN 1..gr_interface_info_rec.COUNT LOOP
+--
+      -- 2008/09/01 TE080_930指摘#38 Del Start --------------------------------------------------------------
+      ---- 業務種別判定
+      ---- EOSデータ種別 = 200 有償出荷報告, 210 拠点出荷確定報告, 215 庭先出荷確定報告, 220 移動出庫確定報告
+      ---- 適用開始日・終了日を出荷日にて判定
+      --IF ((gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_200) OR
+      --    (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210) OR
+      --    (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215) OR
+      --    (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_220))
+      --THEN
+      --
+      --  -- OPM保管場所マスタ／保管倉庫コードよりチェック
+      --  SELECT COUNT(xilv2.inventory_location_id) cnt
+      --  INTO   ln_count
+      --  FROM   xxcmn_item_locations2_v xilv2
+      --  WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
+      --  AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).shipped_date) -- 組織有効開始日
+      --  AND    ((xilv2.date_to IS NULL)
+      --   OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).shipped_date)))  -- 組織有効終了日
+      --  AND    xilv2.disable_date IS NULL   -- 無効日
+      --  ;
+      --
+      --END IF;
+      --
+      ---- EOSデータ種別 = 230:移動入庫確定報告
+      ---- 適用開始日・終了日を着荷日にて判定
+      --IF (gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_230) THEN
+      --
+      --  -- OPM保管場所マスタ／保管倉庫コードよりチェック
+      --  SELECT COUNT(xilv2.inventory_location_id) cnt
+      --  INTO   ln_count
+      --  FROM   xxcmn_item_locations2_v xilv2
+      --  WHERE  xilv2.segment1 = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
+      --  AND    xilv2.date_from  <=  TRUNC(gr_interface_info_rec(i).arrival_date) -- 組織有効開始日
+      --  AND    ((xilv2.date_to IS NULL)
+      --   OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).arrival_date)))  -- 組織有効終了日
+      --  AND    xilv2.disable_date IS NULL   -- 無効日
+      --  ;
+      --
+      --END IF;
+      -- 2008/09/01 TE080_930指摘#38 Del End --------------------------------------------------------------
+--
+      ---- 存在する場合は、外部倉庫発番となる                                   -- 2008/09/01 TE080_930指摘#38 Del
+      --IF (ln_count > 0) THEN                                                  -- 2008/09/01 TE080_930指摘#38 Del
+      -- 受注ソース参照の上4桁='9600'のデータは、指示なし実績を意味する         -- 2008/09/01 TE080_930指摘#38 Add
+      IF (SUBSTRB(gr_interface_info_rec(i).order_source_ref,1,4) = '9600') THEN -- 2008/09/01 TE080_930指摘#38 Add
+--
+        gr_interface_info_rec(i).out_warehouse_flg := gv_flg_on;
+--
+      END IF;
+--
+    END LOOP out_warehouse_number_check;
+--
+    --==============================================================
+    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END out_warehouse_number_check;
+  -- 2008/09/01 TE080_930指摘#38 Add End -------------------------------------------------------
 --
  /**********************************************************************************
   * Procedure Name   : err_chk_delivno
@@ -4474,9 +4480,15 @@ AS
 --
           -- 受注ソース（業者発番）と配送No            の矛盾がある為、エラー
           -- 受注ソース            と配送No（業者発番）の矛盾がある為、エラー
-          IF ((ln_warehouse_count = 0) AND (gr_interface_info_rec(i).out_warehouse_flg =  gv_flg_on)) OR
-             ((ln_warehouse_count > 0) AND (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on)) 
-          THEN
+--
+          -- 2008/09/01 TE080_930指摘#38 Del Start --------------------------------------------------------
+          --IF ((ln_warehouse_count = 0) AND (gr_interface_info_rec(i).out_warehouse_flg =  gv_flg_on)) OR
+          --   ((ln_warehouse_count > 0) AND (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on)) THEN
+          -- 2008/09/01 TE080_930指摘#38 Del End ----------------------------------------------------------
+--
+          -- 2008/09/01 TE080_930指摘#38 Add Start --------------------------------------------------------
+          IF ( (ln_warehouse_count > 0) AND (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on) ) THEN
+          -- 2008/09/01 TE080_930指摘#38 Add End ----------------------------------------------------------
 --
             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
                            gv_msg_kbn                                 -- 'XXWSH'
@@ -6060,10 +6072,8 @@ AS
 --
         IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
---*HHT*
---*HHT*   -- 配送Noと移動Noの組み合わせチェック。(外部倉庫発番の場合実施しない)
---*HHT*   IF (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on) THEN
---*HHT*
+          -- 配送Noと移動Noの組み合わせチェック。(外部倉庫発番の場合実施しない) -- 2008/09/01 TE080_930指摘#38 Add
+          IF (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on) THEN     -- 2008/09/01 TE080_930指摘#38 Add
 --
             --チェック有無をIF_H.運賃区分で判定
             IF (gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1) THEN
@@ -6120,9 +6130,7 @@ AS
 --
             END IF;
 --
---*HHT*
---*HHT*   END IF;
---*HHT*
+          END IF;
 --
         END IF;
 --
@@ -6472,10 +6480,8 @@ AS
 --
         IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
---*HHT*
---*HHT*   -- 配送Noと移動Noの組み合わせチェック。(外部倉庫発番の場合実施しない)
---*HHT*   IF (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on) THEN
---*HHT*
+          -- 配送Noと移動Noの組み合わせチェック。(外部倉庫発番の場合実施しない) -- 2008/09/01 TE080_930指摘#38 Add
+          IF (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on) THEN     -- 2008/09/01 TE080_930指摘#38 Add
 --
             --チェック有無をIF_H.運賃区分で判定
             IF (gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1) THEN
@@ -6531,9 +6537,7 @@ AS
 --
             END IF;
 --
---*HHT*
---*HHT*   END IF;
---*HHT*
+          END IF;
 --
         END IF;
 --
@@ -6542,9 +6546,7 @@ AS
           -- 受注ヘッダアドオン.有償金額確定区分=確定の場合、エラーとします。
           IF (lt_eos_data_type = gv_eos_data_cd_200) THEN  --支給
 --
---*HHT*
---*HHT*     IF (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on) THEN
---*HHT*
+            IF (gr_interface_info_rec(i).out_warehouse_flg <> gv_flg_on) THEN -- 2008/09/01 TE080_930指摘#38 Add
 --
               SELECT COUNT(xoha.request_no) item_cnt
               INTO   ln_cnt
@@ -6589,9 +6591,7 @@ AS
 --
               END IF;
 --
---*HHT*
---*HHT*     END IF;
---*HHT*
+            END IF;
 --
           END IF;
 --
@@ -16654,20 +16654,20 @@ debug_log(FND_FILE.LOG,'　　　受注実績数量の設定 プロシージャ：ord_results_quant
       RAISE global_process_expt;
     END IF;
 --
---*HHT**************************************************************************
---*HHT*    -- ===============================
---*HHT*    -- 外部倉庫発番チェック プロシージャ (A-4)
---*HHT*    -- ===============================
---*HHT*    out_warehouse_number_check(
---*HHT*      lv_errbuf,              -- エラー・メッセージ           --# 固定 #
---*HHT*      lv_retcode,             -- リターン・コード             --# 固定 #
---*HHT*      lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
---*HHT*    );
---*HHT*--
---*HHT*    IF (lv_retcode = gv_status_error) THEN
---*HHT*      RAISE global_process_expt;
---*HHT*    END IF;
---*HHT**************************************************************************
+    -- 2008/09/01 TE080_930指摘#38 Add Start ----------------------------------
+    -- ===============================
+    -- 外部倉庫発番チェック プロシージャ (A-4)
+    -- ===============================
+    out_warehouse_number_check(
+      lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+      lv_retcode,             -- リターン・コード             --# 固定 #
+      lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+    -- 2008/09/01 TE080_930指摘#38 Add End -------------------------------------
 --
     -- ===============================
     -- エラーチェック_配送No単位 プロシージャ (A-5-1)
