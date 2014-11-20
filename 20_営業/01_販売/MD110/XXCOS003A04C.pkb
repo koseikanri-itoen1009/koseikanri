@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A04C(body)
  * Description      : ベンダ納品実績IF出力
  * MD.050           : ベンダ納品実績IF出力 MD050_COS_003_A04
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -14,7 +14,9 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  init                       A-1．初期処理
  *  proc_threshold             A-4． 閾値抽出
- *  proc_new_item_select       A-7．コラムの最新品目抽出
+-- 2011/03/31 Ver.1.9 S.Ochiai DEL Start
+-- *  proc_new_item_select       A-7．コラムの最新品目抽出
+-- 2011/03/31 Ver.1.9 S.Ochiai DEL End
  *  proc_month_qty             A-9．月販数、基準在庫数導出
  *  proc_sales_days           A-10．販売日数導出
  *  proc_hot_warn             A-11．ホット警告残数導出
@@ -40,6 +42,7 @@ AS
  *  2009/07/24   1.6    M.Sano           [SCS障害No.0000691対応]コラム変更、H/C区分変更時のホット警告残数変更
  *  2009/08/20   1.7    M.Sano           [SCS障害No.0000867対応]PT考慮
  *  2009/10/14   1.8    K.Satomura       [SCS障害No.0001525対応]補充率桁あふれ対応
+ *  2011/04/14   1.9    S.Ochiai         [障害No.E_本稼動_00184対応]同一VD、同一コラムに対する、複数商品の納品対応
  *
  *****************************************************************************************/
 --
@@ -119,6 +122,9 @@ AS
   cv_quot                 CONSTANT VARCHAR2(1)  := '"';            -- コーテーション
   cv_hot_type             CONSTANT VARCHAR2(1)  := '3';            -- ホットコールド区分がＨＯＴ
   cv_warehouse            CONSTANT VARCHAR2(20) := '1';
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD Start
+  cv_blank_c              CONSTANT VARCHAR2(7) := 'BLANK_C';       -- VDコラムマスタ:品目コードNULL
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD End
   
   cn_lock_error_code      CONSTANT NUMBER       := -54;
   cv_msg_no_data_tran     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00003';    --対象データ無しエラー
@@ -133,6 +139,10 @@ AS
   cv_tkn_dir_path         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10662';    -- HHTアウトバウンド用ディレクトリパス
   cv_tkn_vend_h_filename  CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10801';    -- ベンダ納品実績ヘッダファイル名
   cv_tkn_vend_l_filename  CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10802';    -- ベンダ納品実績明細ファイル名
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD Start
+  cv_tkn_orga_code        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10048';    -- 在庫組織コード
+  cv_msg_orga             CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10024';    -- 在庫組織ID取得エラー
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD End
 
   cv_tkn_cust_code        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10853';    -- 顧客コード
   cv_tkn_item_code        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10803';    -- 品目コード
@@ -194,6 +204,9 @@ AS
   gv_msg_tkn_dir_path         fnd_new_messages.message_text%TYPE   ;--HHTアウトバウンド用ディレクトリパス
   gv_msg_tkn_vend_h_filename  fnd_new_messages.message_text%TYPE   ;--ベンダ納品実績ヘッダファイル
   gv_msg_tkn_vend_l_filename  fnd_new_messages.message_text%TYPE   ;--ベンダ納品実績明細ファイル 
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD Start
+  gv_msg_tkn_orga_code        fnd_new_messages.message_text%TYPE   ;--在庫組織コード
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD End
   
   gv_customer_number          xxcos_unit_price_mst_work.customer_number%TYPE;
   gv_tkn_lock_table           fnd_new_messages.message_text%TYPE   ;
@@ -226,6 +239,10 @@ AS
   gn_sales_qty_2              NUMBER;                                     --2件目の売上数
   gn_sales_qty_3              NUMBER;                                     --3件目の売上数
   gn_replacement_rate         NUMBER;                                     --補充率
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD Start
+  gv_orga_code                VARCHAR(100);                               --在庫組織コード格納用
+  gn_orga_id                  NUMBER;                                     --在庫組織ID格納用
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD End
 
   --ファイル出力変数
   gv_deli_h_file_data         VARCHAR2(1000) ;                            --ベンダ納品実績ヘッダファイル出力用
@@ -298,8 +315,19 @@ AS
   IS
     SELECT xmvc.column_no            column_no             --コラムNo
           ,xmvc.inventory_quantity   inventory_quantity    --基準在庫数
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD Start
+          ,msib.segment1             item_code             --品目コード
+          ,xmvc.hot_cold             hot_cold              --ホット/コールド区分
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD End
     FROM   xxcoi_mst_vd_column       xmvc                  --ベンダコラムマスタ
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD Start
+          ,mtl_system_items_b        msib                  --品目マスタ
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD End
     WHERE  xmvc.customer_id = main_rec.cust_account_id
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD Start
+    AND    msib.inventory_item_id(+) = xmvc.item_id
+    AND    msib.organization_id(+)   = gn_orga_id
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD End
     ORDER BY
            xmvc.column_no
     ;
@@ -317,6 +345,9 @@ AS
       WHERE  xvdl.customer_number = main_rec.account_number
       AND    xvdl.column_num      = column_rec.column_no
       AND    xvdl.dlv_date        IN(gd_dlv_date_1,gd_dlv_date_2,gd_dlv_date_3)
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD Start
+      AND    xvdl.item_code       = NVL(gv_item_code, cv_blank_c)
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD End
       GROUP BY xvdl.dlv_date
       ORDER BY xvdl.dlv_date DESC
       )
@@ -616,7 +647,38 @@ AS
                                            );
       RAISE global_api_others_expt;
     END IF;
-
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD Start
+    --==============================================================
+    -- 在庫組織IDの取得
+    --==============================================================
+    --在庫組織コード取得
+    gv_orga_code := FND_PROFILE.VALUE( cv_organization_code );
+--
+    -- プロファイル取得エラーの場合
+    IF ( gv_orga_code IS NULL ) THEN
+      --
+      ov_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                          , cv_msg_pro
+                                          , cv_tkn_profile
+                                          , cv_tkn_orga_code
+                                           );
+      --
+      RAISE global_api_others_expt;
+      --
+    END IF;
+    --
+    --在庫組織ID取得
+    gn_orga_id := xxcoi_common_pkg.get_organization_id( gv_orga_code );
+--
+    -- 在庫組織ID取得エラーの場合
+    IF ( gn_orga_id IS NULL ) THEN
+      --
+      ov_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_orga );
+      --
+      RAISE global_api_others_expt;
+      --
+    END IF;
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD End
 --
   EXCEPTION
     WHEN file_open_expt THEN
@@ -778,130 +840,132 @@ AS
 --
   END proc_threshold;
 --
-
-  /**********************************************************************************
-   * Procedure Name   : proc_new_item_select
-   * Description      : A-7．コラムの最新品目抽出
-   ***********************************************************************************/
-  PROCEDURE proc_new_item_select(
-    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_new_item_select'; -- プログラム名
+-- 2011/04/14 Ver.1.9 S.Ochiai DEL Start
 --
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    SELECT xvdl.item_code      item_code
-          ,xvdl.hot_cold_type  hot_cold_type
-          ,a.dlv_date_time     dlv_date_time
-    INTO   gv_item_code
-          ,gv_hot_cold_type
-          ,gt_dlv_date_time
-    FROM   xxcos_vd_deliv_lines xvdl
-          ,(SELECT MAX(dlv_date_time) dlv_date_time
-                  ,customer_number
-                  ,dlv_date
-                  ,column_num
-            FROM   xxcos_vd_deliv_lines
-            WHERE  customer_number = main_rec.account_number
-            AND    dlv_date        = header_rec.dlv_date
-            AND    column_num      = column_rec.column_no
-            GROUP BY customer_number
-                    ,dlv_date
-                    ,column_num
-           ) a
-    WHERE  xvdl.customer_number = a.customer_number
-    AND    xvdl.column_num      = a.column_num
-    AND    xvdl.dlv_date        = a.dlv_date
-    AND    xvdl.dlv_date_time   = a.dlv_date_time
-    ;
---
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      xxcos_common_pkg.makeup_key_info(ov_errbuf      => lv_errbuf                  --エラー・メッセージ
-                                      ,ov_retcode     => lv_retcode                 --リターン・コード
-                                      ,ov_errmsg      => lv_errmsg                  --ユーザー・エラー・メッセージ
-                                      ,ov_key_info    => gv_key_info                --キー情報
-                                      ,iv_item_name1  => gv_msg_tkn_cust_code       --項目名称1
-                                      ,iv_data_value1 => main_rec.account_number    --データの値1
-                                      ,iv_item_name2  => gv_msg_tkn_column_no       --項目名称2
-                                      ,iv_data_value2 => column_rec.column_no       --データの値2
-                                      ,iv_item_name3  => gv_msg_tkn_dlv_date        --項目名称3
-                                      ,iv_data_value3 => header_rec.dlv_date  --データの値3                                                                                                                      
-                                      );
-      
-      ov_errmsg := xxccp_common_pkg.get_msg(cv_application
-                                          , cv_msg_select_err
-                                          , cv_tkn_table_name
-                                          , gv_msg_tkn_vd_deliv_l
-                                          , cv_tkn_key_data
-                                          , gv_key_info
-                                          );
-      FND_FILE.PUT_LINE(
-                        which  => FND_FILE.OUTPUT
-                       ,buff   => ov_errmsg --エラーメッセージ
-                       );                                          
-                       
-      FND_FILE.PUT_LINE(
-                        which  => FND_FILE.LOG
-                       ,buff   => lv_errbuf --エラーメッセージ
-                       );
-      ov_errmsg := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg;
-      FND_FILE.PUT_LINE(
-                        which  => FND_FILE.LOG
-                       ,buff   => ov_errmsg --エラーメッセージ
-                       );
-      ov_retcode := cv_status_warn;
---
---#####################################  固定部 END   ##########################################
---
-  END proc_new_item_select;
---
+--  /**********************************************************************************
+--   * Procedure Name   : proc_new_item_select
+--   * Description      : A-7．コラムの最新品目抽出
+--   ***********************************************************************************/
+--  PROCEDURE proc_new_item_select(
+--    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+--    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_new_item_select'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+----
+--    -- *** ローカル変数 ***
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    SELECT xvdl.item_code      item_code
+--          ,xvdl.hot_cold_type  hot_cold_type
+--          ,a.dlv_date_time     dlv_date_time
+--    INTO   gv_item_code
+--          ,gv_hot_cold_type
+--          ,gt_dlv_date_time
+--    FROM   xxcos_vd_deliv_lines xvdl
+--          ,(SELECT MAX(dlv_date_time) dlv_date_time
+--                  ,customer_number
+--                  ,dlv_date
+--                  ,column_num
+--            FROM   xxcos_vd_deliv_lines
+--            WHERE  customer_number = main_rec.account_number
+--            AND    dlv_date        = header_rec.dlv_date
+--            AND    column_num      = column_rec.column_no
+--            GROUP BY customer_number
+--                    ,dlv_date
+--                    ,column_num
+--           ) a
+--    WHERE  xvdl.customer_number = a.customer_number
+--    AND    xvdl.column_num      = a.column_num
+--    AND    xvdl.dlv_date        = a.dlv_date
+--    AND    xvdl.dlv_date_time   = a.dlv_date_time
+--    ;
+----
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      xxcos_common_pkg.makeup_key_info(ov_errbuf      => lv_errbuf                  --エラー・メッセージ
+--                                      ,ov_retcode     => lv_retcode                 --リターン・コード
+--                                      ,ov_errmsg      => lv_errmsg                  --ユーザー・エラー・メッセージ
+--                                      ,ov_key_info    => gv_key_info                --キー情報
+--                                      ,iv_item_name1  => gv_msg_tkn_cust_code       --項目名称1
+--                                      ,iv_data_value1 => main_rec.account_number    --データの値1
+--                                      ,iv_item_name2  => gv_msg_tkn_column_no       --項目名称2
+--                                      ,iv_data_value2 => column_rec.column_no       --データの値2
+--                                      ,iv_item_name3  => gv_msg_tkn_dlv_date        --項目名称3
+--                                      ,iv_data_value3 => header_rec.dlv_date  --データの値3                                                                                                                      
+--                                      );
+--      
+--      ov_errmsg := xxccp_common_pkg.get_msg(cv_application
+--                                          , cv_msg_select_err
+--                                          , cv_tkn_table_name
+--                                          , gv_msg_tkn_vd_deliv_l
+--                                          , cv_tkn_key_data
+--                                          , gv_key_info
+--                                          );
+--      FND_FILE.PUT_LINE(
+--                        which  => FND_FILE.OUTPUT
+--                       ,buff   => ov_errmsg --エラーメッセージ
+--                       );                                          
+--                       
+--      FND_FILE.PUT_LINE(
+--                        which  => FND_FILE.LOG
+--                       ,buff   => lv_errbuf --エラーメッセージ
+--                       );
+--      ov_errmsg := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg;
+--      FND_FILE.PUT_LINE(
+--                        which  => FND_FILE.LOG
+--                       ,buff   => ov_errmsg --エラーメッセージ
+--                       );
+--      ov_retcode := cv_status_warn;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END proc_new_item_select;
+----
+-- 2011/04/14 Ver.1.9 S.Ochiai DEL End
 --
   /**********************************************************************************
    * Procedure Name   : proc_month_qty
@@ -953,7 +1017,10 @@ AS
     WHERE  xvdl.customer_number = main_rec.account_number
     AND    xvdl.column_num      = column_rec.column_no
     AND    xvdl.dlv_date        > ADD_MONTHS(gd_standard_date, -1)
-    AND    xvdl.item_code       = gv_item_code
+-- 2011/04/14 Ver.1.9 S.Ochiai MOD Start
+--    AND    xvdl.item_code       = gv_item_code
+    AND    xvdl.item_code       = NVL(gv_item_code, cv_blank_c)
+-- 2011/04/14 Ver.1.9 S.Ochiai MOD End
     ;
 --
 --
@@ -1027,7 +1094,10 @@ AS
     FROM   xxcos_vd_deliv_lines xvdl                       --ベンダ納品実績情報明細テーブル
     WHERE  xvdl.customer_number = main_rec.account_number
     AND    xvdl.column_num      = column_rec.column_no
-    AND    xvdl.item_code       = gv_item_code
+-- 2011/04/14 Ver.1.9 S.Ochiai MOD Start
+--    AND    xvdl.item_code       = gv_item_code
+    AND    xvdl.item_code       = NVL(gv_item_code, cv_blank_c)
+-- 2011/04/14 Ver.1.9 S.Ochiai MOD End
     ;
     
     IF ld_min_dlv_date > ADD_MONTHS(gd_standard_date ,-1) THEN
@@ -1151,7 +1221,10 @@ AS
                FROM   xxcos_vd_deliv_lines xvdl_m                         -- (TABLE)ベンダ納品明細
                WHERE  xvdl_m.customer_number = main_rec.account_number
                AND    xvdl_m.column_num      = column_rec.column_no
-               AND    xvdl_m.item_code      <> gv_item_code
+-- 2011/04/14 Ver.1.9 S.Ochiai MOD Start
+--               AND    xvdl_m.item_code      <> gv_item_code
+               AND    xvdl_m.item_code      <> NVL(gv_item_code, cv_blank_c)
+-- 2011/04/14 Ver.1.9 S.Ochiai MOD End
              ) xvdl_v
       WHERE  xvdl.customer_number = main_rec.account_number
       AND    xvdl.column_num      = column_rec.column_no
@@ -1179,7 +1252,10 @@ AS
                FROM   xxcos_vd_deliv_lines xvdl_m
                WHERE  xvdl_m.customer_number = main_rec.account_number
                AND    xvdl_m.column_num      = column_rec.column_no
-               AND    xvdl_m.item_code       = gv_item_code
+-- 2011/04/14 Ver.1.9 S.Ochiai MOD Start
+--               AND    xvdl_m.item_code       = gv_item_code
+               AND    xvdl_m.item_code       = NVL(gv_item_code, cv_blank_c)
+-- 2011/04/14 Ver.1.9 S.Ochiai MOD End
                AND    xvdl_m.hot_cold_type  <> gv_hot_cold_type
              ) xvdl_v
       WHERE  xvdl.customer_number = main_rec.account_number
@@ -1208,7 +1284,10 @@ AS
       WHERE  xvdl.customer_number = main_rec.account_number
       AND    xvdl.column_num      = column_rec.column_no
       AND    xvdl.dlv_date        > (gd_standard_date - gv_hot_stock_days)
-      AND    xvdl.item_code       = gv_item_code
+-- 2011/04/14 Ver.1.9 S.Ochiai MOD Start
+--      AND    xvdl.item_code       = gv_item_code
+      AND    xvdl.item_code       = NVL(gv_item_code, cv_blank_c)
+-- 2011/04/14 Ver.1.9 S.Ochiai MOD End
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1614,6 +1693,10 @@ AS
               gn_replacement_rate        := NULL;
 -- 2009/07/15 Ver.1.5 Mod End
               column_rec := column_rec_d;
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD Start
+              gv_item_code     := column_rec.item_code;
+              gv_hot_cold_type := column_rec.hot_cold;
+-- 2011/04/14 Ver.1.9 S.Ochiai ADD End
               ln_column_cnt := ln_column_cnt + 1;
               -- ==================================================
               --A-6．ベンダ納品実績情報明細テーブルデータ抽出
@@ -1625,18 +1708,20 @@ AS
                 
                 gn_tran_count := gn_tran_count + 1;
                 ln_line_count := ln_line_count + 1; --A-8．売上数サマリ処理用　カウント
-                -- ==================================================
-                --A-7．コラムの最新品目抽出
-                -- ==================================================
-                proc_new_item_select(
-                                     lv_errbuf   -- エラー・メッセージ           --# 固定 #
-                                    ,lv_retcode  -- リターン・コード             --# 固定 #
-                                    ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
-                                    );
-                IF (lv_retcode <> cv_status_normal) THEN
-                  RAISE tran_in_expt;
-                END IF;
-        
+-- 2011/04/14 Ver.1.9 S.Ochiai DEL Start
+--                -- ==================================================
+--                --A-7．コラムの最新品目抽出
+--                -- ==================================================
+--                proc_new_item_select(
+--                                     lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--                                    ,lv_retcode  -- リターン・コード             --# 固定 #
+--                                    ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+--                                    );
+--                IF (lv_retcode <> cv_status_normal) THEN
+--                  RAISE tran_in_expt;
+--                END IF;
+--        
+-- 2011/04/14 Ver.1.9 S.Ochiai DEL End
                 -- ==================================================
                 --A-8．売上数サマリ (と明細売上数の設定)
                 -- ==================================================
