@@ -31,7 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-12-24    1.0   Kenji.Sai        新規作成
  *  2009-03-17    1.1   K.Boku           【結合障害68】日(項目)先頭０埋め
- *
+ *  2009-04-27    1.2   K.Satomura       システムテスト障害対応(T1_0578)
  *****************************************************************************************/
 -- 
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -957,7 +957,12 @@ AS
                program_application_id = cn_program_application_id,
                program_id             = cn_program_id,
                program_update_date    = cd_program_update_date,
-               sales_plan_day_amt     = g_store_month_data_tab(ln_loop_cnt).sales_plan_amt,
+               /* 2009.04.27 K.Satomura T1_0578対応 START */
+               --sales_plan_day_amt     = g_store_month_data_tab(ln_loop_cnt).sales_plan_amt,
+               sales_plan_day_amt     = DECODE(g_store_month_data_tab(ln_loop_cnt).sales_plan_amt
+                                              ,0 ,NULL
+                                              ,g_store_month_data_tab(ln_loop_cnt).sales_plan_amt),
+               /* 2009.04.27 K.Satomura T1_0578対応 END */
                update_func_div        = cv_upd_kbn_sales_day
         WHERE  account_number         = g_store_month_data_tab(ln_loop_cnt).account_number
           AND  base_code              = g_store_month_data_tab(ln_loop_cnt).sales_base_code
