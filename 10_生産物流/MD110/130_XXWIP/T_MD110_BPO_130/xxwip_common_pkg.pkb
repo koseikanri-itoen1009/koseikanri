@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.6
+ * Version                : 1.7
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/06/25   1.4   Oracle 二瓶 大輔 システムテスト不具合対応#75
  *  2008/06/27   1.5   Oracle 二瓶 大輔 結合テスト不具合対応(原料追加関数修正)
  *  2008/07/02   1.6   Oracle 伊藤ひとみ システムテスト不具合対応#343(荒茶製造情報取得関数修正)
+ *  2008/07/10   1.7   Oracle 二瓶 大輔 システムテスト不具合対応#315(在庫単価取得関数修正)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -162,12 +163,12 @@ AS
   gt_line_type_goods  CONSTANT gme_material_details.line_type%TYPE := 1;    -- ラインタイプ：1（完成品）
   gt_line_type_sub    CONSTANT gme_material_details.line_type%TYPE := 2;    -- ラインタイプ：2（副産物）
   -- OPM保留在庫トランザクション.完了フラグ
-  gt_completed_ind_com CONSTANT ic_tran_pnd.completed_ind%TYPE     := '1';  -- 完了フラグ：1（完了）
+  gt_completed_ind_com   CONSTANT ic_tran_pnd.completed_ind%TYPE         := '1';  -- 完了フラグ：1（完了）
   -- 品質検査結果
-  gt_qt_status_mi     CONSTANT fnd_lookup_values.lookup_code%TYPE := '10';  -- 品質検査結果 10:未判定
+  gt_qt_status_mi        CONSTANT fnd_lookup_values.lookup_code%TYPE     := '10'; -- 品質検査結果 10:未判定
   -- 検査種別
-  gt_inspect_class_gme   CONSTANT xxwip_qt_inspection.inspect_class%TYPE := '1'; -- 検査種別：1（生産）
-  gt_inspect_class_po    CONSTANT xxwip_qt_inspection.inspect_class%TYPE := '2'; -- 検査種別：2（発注仕入）
+  gt_inspect_class_gme   CONSTANT xxwip_qt_inspection.inspect_class%TYPE := '1';  -- 検査種別：1（生産）
+  gt_inspect_class_po    CONSTANT xxwip_qt_inspection.inspect_class%TYPE := '2';  -- 検査種別：2（発注仕入）
   -- 品目区分
   gv_item_type_mtl       CONSTANT VARCHAR2(1) := '1'; -- 品目区分  1:原料
   gv_item_type_shz       CONSTANT VARCHAR2(1) := '2'; -- 品目区分  2:資材
@@ -2164,20 +2165,32 @@ AS
       INTO   ln_co_prod_price
       FROM   gme_material_details gmd  -- 生産原料詳細
             ,ic_tran_pnd          itp  -- OPM保留在庫トランザクション
-            ,cm_cmpt_dtl          ccd  -- 品目原価マスタ
-            ,cm_cmpt_mst_b        ccmb -- コンポーネント区分マスタ
+-- 2008/07/10 D.Nihei MOD START 
+--            ,cm_cmpt_dtl          ccd  -- 品目原価マスタ
+--            ,cm_cmpt_mst_b        ccmb -- コンポーネント区分マスタ
+            ,(SELECT cc.calendar_code          calendar_code
+                    ,cc.item_id                item_id
+                    ,NVL(SUM(cc.cmpnt_cost),0) cmpnt_cost
+              FROM  cm_cmpt_dtl cc
+              WHERE cc.whse_code =   fnd_profile.value(gv_prof_cost_price)
+              GROUP BY calendar_code,item_id ) ccd          -- 標準原価マスタ
+-- 2008/07/10 D.Nihei MOD START 
             ,cm_cldr_dtl          ccdt -- 原価カレンダ
       WHERE  gmd.material_detail_id  = itp.line_id
       AND    itp.reverse_id          IS NULL
       AND    itp.delete_mark         = gn_delete_mark_off
       AND    itp.lot_id              > gn_default_lot_id
       AND    itp.line_type           = gn_co_prod
-      AND    ccd.cost_cmpntcls_id    = ccmb.cost_cmpntcls_id
-      AND    ccmb.cost_cmpntcls_code = gv_cmpnt_code_gen
+-- 2008/07/10 D.Nihei DEL START 
+--      AND    ccd.cost_cmpntcls_id    = ccmb.cost_cmpntcls_id
+--      AND    ccmb.cost_cmpntcls_code = gv_cmpnt_code_gen
+-- 2008/07/10 D.Nihei DEL END 
       AND    ccd.calendar_code       = ccdt.calendar_code
       AND    ccdt.start_date        <= NVL(FND_DATE.STRING_TO_DATE(gmd.attribute11, 'YYYY/MM/DD') , TRUNC(SYSDATE))
       AND    ccdt.end_date          >= NVL(FND_DATE.STRING_TO_DATE(gmd.attribute11, 'YYYY/MM/DD') , TRUNC(SYSDATE))
-      AND    ccd.whse_code           = fnd_profile.value(gv_prof_cost_price)
+-- 2008/07/10 D.Nihei DEL START 
+--      AND    ccd.whse_code           = fnd_profile.value(gv_prof_cost_price)
+-- 2008/07/10 D.Nihei DEL END 
       AND    itp.item_id             = ccd.item_id
       AND    itp.doc_id              = it_batch_id
       AND    itp.completed_ind       = gv_flg_on
@@ -2234,7 +2247,11 @@ AS
     IF (ln_prod_price = 0) THEN
       RAISE skip_expt;
     ELSE
-      lr_lot_mst.attribute7 := NVL(TO_CHAR(ROUND((NVL(ln_invest_price, 0) + NVL(ln_co_prod_price, 0)) / NVL(ln_prod_price, 0), 2)), '0');
+-- 2008/07/10 D.Nihei MOD START 
+--      lr_lot_mst.attribute7 := NVL(TO_CHAR(ROUND((NVL(ln_invest_price, 0) + NVL(ln_co_prod_price, 0)) / NVL(ln_prod_price, 0), 2)), '0');
+      -- 在庫単価 = 投入計 - 副産物 / 出来高数
+      lr_lot_mst.attribute7 := NVL(TO_CHAR(ROUND((NVL(ln_invest_price, 0) - NVL(ln_co_prod_price, 0)) / NVL(ln_prod_price, 0), 2)), '0');
+-- 2008/07/10 D.Nihei MOD END 
     END IF;
 --
     update_lot_dff_api(

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptAMImpl
 * 概要説明   : 受入実績作成:受入実績作成アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-05-23 1.1  吉元強樹     内部課題#42、結合不具合ログ#1,2を対応
 * 2008-06-11 1.2  吉元強樹     ST不具合ログ#72を対応
 * 2008-06-26 1.3  北寒寺正夫   結合テスト指摘No02対応
+* 2008-07-08 1.4  二瓶大輔     変更要求#91対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.server;
@@ -45,7 +46,7 @@ import itoen.oracle.apps.xxpo.util.XxpoUtility;
 /***************************************************************************
  * 受入実績作成:受入実績作成アプリケーションモジュールです。
  * @author  SCS 吉元 強樹
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -859,8 +860,12 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
 
       // 明細.金額確定フラグを取得
       String moneyDecisionFlag = (String)orderDetailsTabVORow.getAttribute("MoneyDecisionFlag");
-      // 明細.原価管理区分を取得
-      String costManageCode = (String)orderDetailsTabVORow.getAttribute("CostManageCode");
+// 20080708 Mod D.Nihei Start
+//      // 明細.原価管理区分を取得
+//      String costManageCode = (String)orderDetailsTabVORow.getAttribute("CostManageCode");
+      // 明細.品目区分を取得
+      String itemClassCode = (String)orderDetailsTabVORow.getAttribute("ItemClassCode");
+// 20080708 Mod D.Nihei End
 
       // ***************************************** //
       // * 金額確定フラグによる製造日項目制御    * //
@@ -878,8 +883,12 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
         // 発注明細の摘要を読取専用に変更
         orderDetailsTabVORow.setAttribute("OrderDetailDescReadOnly", Boolean.TRUE);
 
-      // 品目の原価管理区分が実勢(0)以外の場合
-      } else if (!XxpoConstants.COST_MANAGE_CODE_R.equals(costManageCode))
+// 20080708 Mod D.Nihei Start
+//      // 品目の原価管理区分が実勢(0)以外の場合
+//      } else if (!XxpoConstants.COST_MANAGE_CODE_R.equals(costManageCode))
+      // 品目の品目区分が「5：製品」の場合
+      } else if (XxpoConstants.ITEM_CLASS_PROD.equals(itemClassCode))
+// 20080708 Mod D.Nihei End
       {
 
         // 発注明細の製造日を読取専用に変更
@@ -892,7 +901,9 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
       // ************************************ //
       boolean conversionFlag = false;
       String prodClassCode = (String)orderDetailsTabVORow.getAttribute("ProdClassCode");
-      String itemClassCode = (String)orderDetailsTabVORow.getAttribute("ItemClassCode");
+// 20080708 Del D.Nihei Start
+//      String itemClassCode = (String)orderDetailsTabVORow.getAttribute("ItemClassCode");
+// 20080708 Del D.Nihei End
       String convUnit      = (String)orderDetailsTabVORow.getAttribute("ConvUnit");
 
       // 換算有無チェックを実施

@@ -7,6 +7,7 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-23 1.0  高梨雅史      新規作成
+* 2008-07-10 1.1  伊藤ひとみ    仕様変更#20 アプリケーション短縮名を動的に取得するように変更
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv990001j.server;
@@ -127,30 +128,63 @@ public class XxinvFileUploadAMImpl extends XxcmnOAApplicationModuleImpl
       OADBTransaction trans = getOADBTransaction();
       // プロシージャ
       StringBuffer sb = new StringBuffer(100);
+// 2008-07-10 H.Itou MOD START アプリケーション短縮名は動的に取得する。
+//      sb.append("BEGIN ");
+//      sb.append("  fnd_global.apps_initialize(:1, :2, :3); ");
+//      sb.append("  :4 := fnd_request.submit_request( ");
+//      sb.append("          'XXINV'  ");
+//      sb.append("           lt_application_short_name  "); // アプリケーション短縮名
+//      sb.append("         , :5      ");
+//      sb.append("         , NULL    ");
+//      sb.append("         , SYSDATE ");
+//      sb.append("         , FALSE   ");
+//      sb.append("         , :6      ");
+//      sb.append("         , :7 );   ");
+//      sb.append("END; ");
+      sb.append("DECLARE ");
+      sb.append("  lt_application_short_name  fnd_application.application_short_name%TYPE; ");
       sb.append("BEGIN ");
-      sb.append("  fnd_global.apps_initialize(:1, :2, :3); ");
-      sb.append("  :4 := fnd_request.submit_request( ");
-      sb.append("          'XXINV'  ");
-      sb.append("         , :5      ");
+      sb.append("  SELECT fa.application_short_name              ");
+      sb.append("  INTO   lt_application_short_name              ");
+      sb.append("  FROM   fnd_concurrent_programs fcp            "); // コンカレントプログラム
+      sb.append("        ,fnd_application         fa             "); // アプリケーション
+      sb.append("  WHERE  fcp.application_id = fa.application_id ");
+      sb.append("  AND    fcp.concurrent_program_name = :1;      "); // コンカレント名
+      sb.append("  fnd_global.apps_initialize(:2, :3, :4); ");
+      sb.append("  :5 := fnd_request.submit_request( ");
+      sb.append("           lt_application_short_name  "); // アプリケーション短縮名
+      sb.append("         , :6      ");
       sb.append("         , NULL    ");
       sb.append("         , SYSDATE ");
       sb.append("         , FALSE   ");
-      sb.append("         , :6      ");
-      sb.append("         , :7 );   ");
+      sb.append("         , :7      ");
+      sb.append("         , :8 );   ");
       sb.append("END; ");
+// 2008-07-10 H.Itou MOD END
       stmt = trans.createCallableStatement(sb.toString(), 0);
+// 2008-07-10 H.Itou MOD START
       // バインド変数に値をセットする
-      stmt.setInt(1, trans.getUserId());
-      stmt.setInt(2, trans.getResponsibilityId());
-      stmt.setInt(3, trans.getResponsibilityApplicationId());
-      stmt.registerOutParameter(4, Types.BIGINT);
-      stmt.setString(5, "" + concName);
-      stmt.setLong(6, fileId.longValue());
-      stmt.setString(7, "" + formatPattern);
-
+//      stmt.setInt(1, trans.getUserId());
+//      stmt.setInt(2, trans.getResponsibilityId());
+//      stmt.setInt(3, trans.getResponsibilityApplicationId());
+//      stmt.registerOutParameter(4, Types.BIGINT);
+//      stmt.setString(5, "" + concName);
+//      stmt.setLong(6, fileId.longValue());
+//      stmt.setString(7, "" + formatPattern);
+      stmt.setString(1, "" + concName);
+      stmt.setInt(2, trans.getUserId());
+      stmt.setInt(3, trans.getResponsibilityId());
+      stmt.setInt(4, trans.getResponsibilityApplicationId());
+      stmt.registerOutParameter(5, Types.BIGINT);
+      stmt.setString(6, "" + concName);
+      stmt.setLong(7, fileId.longValue());
+      stmt.setString(8, "" + formatPattern);
+// 2008-07-10 H.Itou MOD END
       // プロシージャの実行
       stmt.execute();
-      return stmt.getLong(4);
+// 2008-07-10 H.Itou MOD START
+      return stmt.getLong(5);
+// 2008-07-10 H.Itou MOD END
     } catch(SQLException e)
     {
       // ログ出力

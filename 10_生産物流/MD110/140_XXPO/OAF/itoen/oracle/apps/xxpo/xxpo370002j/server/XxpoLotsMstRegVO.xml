@@ -285,7 +285,7 @@ AND   ilm.lot_id        = :1
    <ViewAttribute
       Name="Attribute18"
       IsPersistent="false"
-      Precision="50"
+      Precision="40"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
       AliasName="ATTRIBUTE18"

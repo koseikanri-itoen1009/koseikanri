@@ -186,7 +186,10 @@ AS
               , xilv.inventory_location_id                                                                  inventory_location_id
 -- 2008/06/11 D.Nihei MOD START 
 --              , xxcmn_common_pkg.get_stock_qty( xilv.inventory_location_id, gmd.item_id, lot.nise_lot_id )  enabled_qty
-              , xxcmn_common_pkg.get_can_enc_qty( xilv.inventory_location_id, gmd.item_id, lot.nise_lot_id, TO_DATE(gmdh.attribute22, 'YYYY/MM/DD')-1 )   enabled_qty
+-- 2008/07/10 D.Nihei MOD START 
+--              , xxcmn_common_pkg.get_can_enc_qty( xilv.inventory_location_id, gmd.item_id, lot.nise_lot_id, TO_DATE(gmdh.attribute22, 'YYYY/MM/DD')-1 )   enabled_qty
+              , xxcmn_common_pkg.get_can_enc_qty( xilv.inventory_location_id, gmd.item_id, lot.nise_lot_id, TO_DATE(gmdh.attribute22, 'YYYY/MM/DD') )   enabled_qty
+-- 2008/07/10 D.Nihei MOD END 
 -- 2008/06/11 D.Nihei MOD END 
               FROM
                 xxcmn_item_locations_v          xilv   -- ï€ä«ëqå…
