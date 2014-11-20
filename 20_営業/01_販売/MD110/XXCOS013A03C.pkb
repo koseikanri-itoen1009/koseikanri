@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.11
+ * Version          : 1.12
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -41,6 +41,7 @@ AS
  *                                                連携フラグ更新処理追加(ワーニングエラー('W')、処理対象外('S'))
  *  2009/11/17    1.11  M.Sano           [E_T4_00213]OIFにセットする税コードのセット方法修正
  *                                       [E_T4_00216]返品,返品修正対応
+ *  2009/12/29    1.12  N.Maeda          [E_本稼動_00697] 処理条件を検収日⇒納品日に変更
  *
  *****************************************************************************************/
 --
@@ -459,7 +460,10 @@ AS
     AND ( xseh.gl_interface_flag             = cv_n_flag
           OR xseh.gl_interface_flag          = cv_w_flag )
 -- ***************** 2009/10/07 1.10 N.Maeda MOD  END  ***************** --
-    AND xseh.inspect_date                   <= gd_process_date
+-- ***************** 2009/12/29 1.12 N.Maeda MOD START ***************** --
+--    AND xseh.inspect_date                   <= gd_process_date
+    AND xseh.delivery_date                   <= gd_process_date
+-- ***************** 2009/12/29 1.12 N.Maeda MOD  END  ***************** --
     AND xsel.item_code                      <> gv_var_elec_item_cd
     AND hca.account_number                   = xseh.ship_to_customer_code
     AND xchv.ship_account_number             = xseh.ship_to_customer_code
@@ -3130,7 +3134,10 @@ AS
         WHERE
           xseh.gl_interface_flag      = cv_n_flag
         AND
-          xseh.inspect_date           <= gd_process_date
+-- ***************** 2009/12/29 1.12 N.Maeda MOD START ***************** --
+--          xseh.inspect_date           <= gd_process_date
+          xseh.delivery_date          <= gd_process_date
+-- ***************** 2009/12/29 1.12 N.Maeda MOD  END  ***************** --
           ;
       EXCEPTION
         WHEN OTHERS THEN
