@@ -8,7 +8,7 @@ AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -112,6 +112,7 @@ AS
  *  2009/05/19   1.23 Oracle 丸下        本番#1437対応
  *  2009/05/20   1.24 Oracle 丸下        本番#1341対応
  *  2009/10/08   1.25 Oracle 吉元 強樹   本番#1648対応
+ *  2010/03/03   1.26 SCS    宮川真理子  E_本稼動_01616対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2022,6 +2023,9 @@ AS
       AND papf.PERSON_ID   = paaf.PERSON_ID
       AND paaf.LOCATION_ID = hla.LOCATION_ID
       AND SYSDATE BETWEEN papf.effective_start_date AND NVL(papf.effective_end_date,SYSDATE)
+-- 2010/03/03 v1.26 M.Miyagawa Add Start E_本稼動_01616対応
+      AND SYSDATE BETWEEN paaf.effective_start_date AND NVL(paaf.effective_end_date,SYSDATE)
+-- 2010/03/03 v1.26 M.Miyagawa Add End
       ;
 --
   EXCEPTION
