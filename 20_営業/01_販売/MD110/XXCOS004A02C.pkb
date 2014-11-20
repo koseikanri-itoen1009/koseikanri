@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/02/24    1.6   T.kitajima       パラメータのログファイル出力対応
  *  2009/03/30    1.7   T.kitajima       [T1_0189]販売実績明細.納品明細番号の採番方法変更
  *  2009/04/20    1.8   T.kitajima       [T1_0657]データ取得0件エラー→警告終了へ
+ *  2009/04/28    1.9   N.Maeda          [T1_0769]数量系、金額系の算出方法の修正
  *
  *****************************************************************************************/
 --
@@ -259,6 +260,10 @@ AS
   ct_deliver_slip_div       CONSTANT  xxcos_sales_exp_headers.dlv_invoice_class%TYPE
                                       := '1';                              --1:納品
   cn_dmy                    CONSTANT  NUMBER := 0;
+--******************************* 2009/04/28 1.9 N.Maeda ADD START **************************************************************
+  cn_quantity_num           CONSTANT  NUMBER := 1;                         --数量系固定値(1)
+  cn_differ_business_cost   CONSTANT  NUMBER := 0;                         --差異品目営業原価(0)
+--******************************* 2009/04/28 1.9 N.Maeda ADD  END  **************************************************************
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1296,14 +1301,22 @@ AS
         gt_tab_sales_exp_lines(ln_m).standard_qty                 := ln_after_quantity;                                  --基準数量
         gt_tab_sales_exp_lines(ln_m).dlv_uom_code                 := gt_tab_work_data(ln_i).uom_code;                    --納品単位
         gt_tab_sales_exp_lines(ln_m).standard_uom_code            := gt_tab_work_data(ln_i).uom_code;                    --基準単位
-        gt_tab_sales_exp_lines(ln_m).dlv_unit_price               := gt_tab_work_data(ln_i).item_price;                  --納品単価
-        gt_tab_sales_exp_lines(ln_m).standard_unit_price_excluded := gt_tab_work_data(ln_i).item_price;                  --税抜基準単価
-        gt_tab_sales_exp_lines(ln_m).standard_unit_price          := gt_tab_work_data(ln_i).item_price;                  --基準単価
+--******************************* 2009/04/28 1.9 N.Maeda MOD START **************************************************************
+--        gt_tab_sales_exp_lines(ln_m).dlv_unit_price               := gt_tab_work_data(ln_i).item_price;                  --納品単価
+--        gt_tab_sales_exp_lines(ln_m).standard_unit_price_excluded := gt_tab_work_data(ln_i).item_price;                  --税抜基準単価
+--        gt_tab_sales_exp_lines(ln_m).standard_unit_price          := gt_tab_work_data(ln_i).item_price;                  --基準単価
         gt_tab_sales_exp_lines(ln_m).business_cost                := gt_tab_work_data(ln_i).business_cost;               --営業原価
         gt_tab_sales_exp_lines(ln_m).sale_amount                  := ROUND(gt_tab_work_data(ln_i).item_sales_amount *
                                                                            (gt_tab_work_data(ln_i).digestion_calc_rate / 100),0);
                                                                                                                          --売上金額
         gt_tab_sales_exp_lines(ln_m).pure_amount                  := gt_tab_sales_exp_lines(ln_m).sale_amount;           --本体金額
+        gt_tab_sales_exp_lines(ln_m).dlv_unit_price               :=
+                            TRUNC( ( gt_tab_sales_exp_lines(ln_m).sale_amount / gt_tab_sales_exp_lines(ln_m).dlv_qty ) , 2 );  --納品単価
+        gt_tab_sales_exp_lines(ln_m).standard_unit_price_excluded :=
+                            TRUNC( ( gt_tab_sales_exp_lines(ln_m).pure_amount / gt_tab_sales_exp_lines(ln_m).dlv_qty ) , 2 );  --税抜基準単価
+        gt_tab_sales_exp_lines(ln_m).standard_unit_price          :=
+                            TRUNC( ( gt_tab_sales_exp_lines(ln_m).sale_amount / gt_tab_sales_exp_lines(ln_m).standard_qty ) , 2 ); --基準単価
+--******************************* 2009/04/28 1.9 N.Maeda MOD  END  **************************************************************
         --赤黒フラグ取得
         IF ( gt_tab_sales_exp_lines(ln_m).sale_amount < 0 ) THEN
           gt_tab_sales_exp_lines(ln_m).red_black_flag             := ct_red_black_flag_0;                                --赤
@@ -1430,16 +1443,24 @@ AS
               gt_tab_sales_exp_lines(ln_m).red_black_flag             := ct_red_black_flag_1;                              --黒
             END IF;
             gt_tab_sales_exp_lines(ln_m).item_code                    := gv_item_code;                                     --品目コード
-            gt_tab_sales_exp_lines(ln_m).dlv_qty                      := 0;                                                --納品数量
-            gt_tab_sales_exp_lines(ln_m).standard_qty                 := 0;                                                --基準数量
+--******************************* 2009/04/28 1.9 N.Maeda MOD START **************************************************************
+--            gt_tab_sales_exp_lines(ln_m).dlv_qty                      := 0;                                                --納品数量
+--            gt_tab_sales_exp_lines(ln_m).standard_qty                 := 0;                                                --基準数量
+            gt_tab_sales_exp_lines(ln_m).dlv_qty                      := ln_difference_money;                              --納品数量
+            gt_tab_sales_exp_lines(ln_m).standard_qty                 := ln_difference_money;                              --基準数量
             gt_tab_sales_exp_lines(ln_m).dlv_uom_code                 := gv_item_unit;                                     --納品単位
             gt_tab_sales_exp_lines(ln_m).standard_uom_code            := gv_item_unit;                                     --基準単位
-            gt_tab_sales_exp_lines(ln_m).dlv_unit_price               := ln_difference_money;                              --納品単価
-            gt_tab_sales_exp_lines(ln_m).standard_unit_price_excluded := ln_difference_money;                              --税抜基準単価
-            gt_tab_sales_exp_lines(ln_m).standard_unit_price          := ln_difference_money;                              --基準単価
-            gt_tab_sales_exp_lines(ln_m).business_cost                := ln_difference_money;                              --営業原価
+--            gt_tab_sales_exp_lines(ln_m).dlv_unit_price               := ln_difference_money;                              --納品単価
+--            gt_tab_sales_exp_lines(ln_m).standard_unit_price_excluded := ln_difference_money;                              --税抜基準単価
+            gt_tab_sales_exp_lines(ln_m).dlv_unit_price               := cn_quantity_num;                                  --納品単価
+            gt_tab_sales_exp_lines(ln_m).standard_unit_price_excluded := cn_quantity_num;                                  --税抜基準単価
+--            gt_tab_sales_exp_lines(ln_m).standard_unit_price          := ln_difference_money;                              --基準単価
+--            gt_tab_sales_exp_lines(ln_m).business_cost                := ln_difference_money ;                             --営業原価
+            gt_tab_sales_exp_lines(ln_m).standard_unit_price          := cn_quantity_num;                                  --基準単価
+            gt_tab_sales_exp_lines(ln_m).business_cost                := cn_differ_business_cost;                          --営業原価
             gt_tab_sales_exp_lines(ln_m).sale_amount                  := ln_difference_money;                              --売上金額
             gt_tab_sales_exp_lines(ln_m).pure_amount                  := ln_difference_money;                              --本体金額
+--******************************* 2009/04/28 1.9 N.Maeda MOD  END  **************************************************************
             gt_tab_sales_exp_lines(ln_m).tax_amount                   := 0;                                                --消費税金額
             gt_tab_sales_exp_lines(ln_m).cash_and_card                := 0;                                                --現金/カード併用額
             gt_tab_sales_exp_lines(ln_m).ship_from_subinventory_code  := NULL;                                             --出荷元保管場所
