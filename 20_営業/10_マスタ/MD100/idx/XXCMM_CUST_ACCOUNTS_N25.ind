@@ -1,0 +1,1 @@
+CREATE INDEX xxcmm.XXCMM_CUST_ACCOUNTS_N25 ON xxcmm_cust_accounts(receiv_base_code) TABLESPACE XXIDX2;
