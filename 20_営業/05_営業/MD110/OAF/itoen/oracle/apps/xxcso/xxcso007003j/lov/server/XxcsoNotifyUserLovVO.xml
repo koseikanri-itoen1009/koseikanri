@@ -11,34 +11,29 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT  xev.employee_number
-       ,xev.full_name
-       ,xxcso_util_common_pkg.get_emp_parameter(
-          xev.position_name_new
-         ,xev.position_name_old
-         ,xev.issue_date
-         ,xxcso_util_common_pkg.get_online_sysdate
-        ) position_name
-       ,xxcso_util_common_pkg.get_emp_parameter(
-          xev.work_base_code_new
-         ,xev.work_base_code_old
-         ,xev.issue_date
-         ,xxcso_util_common_pkg.get_online_sysdate
-        ) work_base_code
-       ,xxcso_util_common_pkg.get_emp_parameter(
-          xev.work_base_name_new
-         ,xev.work_base_name_old
-         ,xev.issue_date
-         ,xxcso_util_common_pkg.get_online_sysdate
-        ) work_base_name
-       ,xev.user_name
-       ,xxcso_util_common_pkg.get_emp_parameter(
-          xev.position_sort_code_new
-         ,xev.position_sort_code_old
-         ,xev.issue_date
-         ,xxcso_util_common_pkg.get_online_sysdate
-        ) position_sort_code
-FROM    xxcso_employees_v2  xev
+SELECT xev.employee_number        employee_number
+      ,xev.full_name              full_name
+      ,xev.position_name_new      position_name
+      ,xev.work_base_code_new     work_base_code
+      ,xab.base_name              work_base_name
+      ,xev.user_name              user_name
+      ,xev.position_sort_code_new position_sort_code
+FROM   xxcso_employees_v2 xev
+      ,xxcso_aff_base_v2  xab
+WHERE  TO_DATE(xev.issue_date,'YYYYMMDD') <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND    xab.base_code = xev.work_base_code_new
+UNION ALL
+SELECT xev.employee_number        employee_number
+      ,xev.full_name              full_name
+      ,xev.position_name_old      position_name
+      ,xev.work_base_code_old     work_base_code
+      ,xab.base_name              work_base_name
+      ,xev.user_name              user_name
+      ,xev.position_sort_code_old position_sort_code
+FROM   xxcso_employees_v2  xev
+      ,xxcso_aff_base_v2   xab
+WHERE  TO_DATE(xev.issue_date,'YYYYMMDD') > TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND    xab.base_code = xev.work_base_code_old
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />

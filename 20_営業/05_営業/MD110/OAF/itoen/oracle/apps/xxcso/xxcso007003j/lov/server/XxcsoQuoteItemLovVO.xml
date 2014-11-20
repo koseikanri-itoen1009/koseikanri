@@ -11,66 +11,121 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT  xiiv.inventory_item_id
-       ,xiiv.inventory_item_code
-       ,xiiv.item_short_name
-       ,xiiv.case_inc_num
-       ,xqh.quote_number
-       ,xqh.quote_revision_number
-       ,xqh.publish_date
-       ,xiiv.jan_code
-       ,xiiv.itf_code
-       ,xql.quote_start_date
-       ,TO_CHAR(
-          DECODE(xql.this_time_deliv_price
+SELECT xii.inventory_item_id
+      ,xii.inventory_item_code
+      ,xii.item_short_name
+      ,xii.case_inc_num
+      ,xqh.quote_number
+      ,xqh.quote_revision_number
+      ,xqh.publish_date
+      ,xii.jan_code
+      ,xii.itf_code
+      ,xql.quote_start_date
+      ,TO_CHAR(
+         DECODE(xql.this_time_deliv_price
            ,NULL, xql.usually_deliv_price
            ,xql.this_time_deliv_price
-          )
+         )
          ,'FM99G990D90'
-        ) deliv_price
-       ,TO_CHAR(
+       ) deliv_price
+      ,TO_CHAR(
          DECODE(xqh.store_price_tax_type
            ,1, DECODE(xql.this_time_store_sale_price
-                ,NULL, xql.usually_store_sale_price
-                ,xql.this_time_store_sale_price
+                 ,NULL, xql.usually_store_sale_price
+                 ,xql.this_time_store_sale_price
                )
            ,NULL
-          )
+         )
          ,'FM999G990D90'
-        ) store_sales_price
-       ,TO_CHAR(
+       ) store_sales_price
+      ,TO_CHAR(
          DECODE(xqh.store_price_tax_type
            ,2, DECODE(xql.this_time_store_sale_price
-                ,NULL, xql.usually_store_sale_price
-                ,xql.this_time_store_sale_price
+                 ,NULL, xql.usually_store_sale_price
+                 ,xql.this_time_store_sale_price
                )
            ,NULL
-          )
+         )
          ,'FM999G990D90'
-        ) store_sales_price_inc_tax
-       ,TO_CHAR(
-          xxcso_007003j_pkg.get_quotation_price(
-            xql.quote_line_id
-          )
+       ) store_sales_price_inc_tax
+      ,TO_CHAR(
+         xxcso_007003j_pkg.get_quotation_price(
+           xql.quote_line_id
+         )
          ,'FM99G990D90'
-        ) quotation_price
-       ,xql.remarks
-       ,DECODE(xqh.quote_submit_name
-         ,NULL,xcav.party_name
-         ,xqh.quote_submit_name
-        ) quote_submit_name
-       ,'DeleteEnabled' deleted_enabled_value
-       ,xql.quote_line_id
-FROM    xxcso_quote_headers       xqh
-       ,xxcso_quote_lines         xql
-       ,xxcso_inventory_items_v2  xiiv
-       ,xxcso_cust_accounts_v     xcav
-WHERE   xqh.quote_type            = '1'
-  AND   xqh.status                = '2'
-  AND   xql.quote_header_id       = xqh.quote_header_id
-  AND   xiiv.inventory_item_id    = xql.inventory_item_id
-  AND   xiiv.item_status IN ('20','30','40','50')
-  AND   xcav.account_number       = xqh.account_number
+       ) quotation_price
+      ,xql.remarks
+      ,xqh.quote_submit_name
+      ,'DeleteEnabled' deleted_enabled_value
+      ,xql.quote_line_id
+FROM   xxcso_quote_headers      xqh
+      ,xxcso_quote_lines        xql
+      ,xxcso_inventory_items_v2 xii
+WHERE  xqh.quote_type        = '1'
+AND    xqh.status            = '2'
+AND    xqh.quote_submit_name IS NOT NULL
+AND    xql.quote_header_id   = xqh.quote_header_id
+AND    xii.inventory_item_id = xql.inventory_item_id
+AND    xii.item_status       IN ('20','30','40','50')
+UNION ALL
+SELECT xii.inventory_item_id
+      ,xii.inventory_item_code
+      ,xii.item_short_name
+      ,xii.case_inc_num
+      ,xqh.quote_number
+      ,xqh.quote_revision_number
+      ,xqh.publish_date
+      ,xii.jan_code
+      ,xii.itf_code
+      ,xql.quote_start_date
+      ,TO_CHAR(
+         DECODE(xql.this_time_deliv_price
+           ,NULL, xql.usually_deliv_price
+           ,xql.this_time_deliv_price
+         )
+         ,'FM99G990D90'
+       ) deliv_price
+      ,TO_CHAR(
+         DECODE(xqh.store_price_tax_type
+           ,1, DECODE(xql.this_time_store_sale_price
+                 ,NULL, xql.usually_store_sale_price
+                 ,xql.this_time_store_sale_price
+               )
+           ,NULL
+         )
+         ,'FM999G990D90'
+       ) store_sales_price
+      ,TO_CHAR(
+         DECODE(xqh.store_price_tax_type
+           ,2, DECODE(xql.this_time_store_sale_price
+                 ,NULL, xql.usually_store_sale_price
+                 ,xql.this_time_store_sale_price
+               )
+           ,NULL
+         )
+         ,'FM999G990D90'
+       ) store_sales_price_inc_tax
+      ,TO_CHAR(
+         xxcso_007003j_pkg.get_quotation_price(
+           xql.quote_line_id
+         )
+         ,'FM99G990D90'
+       ) quotation_price
+      ,xql.remarks
+      ,xca.party_name quote_submit_name
+      ,'DeleteEnabled' deleted_enabled_value
+      ,xql.quote_line_id
+FROM   xxcso_quote_headers      xqh
+      ,xxcso_quote_lines        xql
+      ,xxcso_inventory_items_v2 xii
+      ,xxcso_cust_accounts_v    xca
+WHERE  xqh.quote_type        = '1'
+AND    xqh.status            = '2'
+AND    xqh.quote_submit_name IS NULL
+AND    xql.quote_header_id   = xqh.quote_header_id
+AND    xii.inventory_item_id = xql.inventory_item_id
+AND    xii.item_status       IN ('20','30','40','50')
+AND    xca.account_number    = xqh.account_number
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
