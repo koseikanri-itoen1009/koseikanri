@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）原料・資材・半製品
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77A)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2008/11/13    1.16  N.Fukuda         統合指摘#634対応(移行データ検証不具合対応)
  *  2008/11/17    1.17  A.Shiina         月首･月末在庫不具合修正
  *  2008/11/19    1.18  N.Yoshida        I_S_684対応、移行データ検証不具合対応
+ *  2008/11/25    1.19  A.Shiina         本番指摘52対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -12764,6 +12765,9 @@ NULL;
       ln_amt            NUMBER DEFAULT 0;--当月項目金額
       ib_stock          BOOLEAN DEFAULT TRUE;
       ib_print          BOOLEAN DEFAULT FALSE;
+-- 2008/11/25 v1.19 ADD START
+      ib_zero           BOOLEAN DEFAULT TRUE;
+-- 2008/11/25 v1.19 ADD END
 --
     BEGIN
       -- =====================================================
@@ -12855,6 +12859,13 @@ NULL;
           ln_end_stock_qty  :=  ln_end_stock_qty  - qty(i);--数量
           ln_end_stock_amt  :=  ln_end_stock_amt  - ln_amt;--金額
         END IF;
+-- 2008/11/25 v1.19 ADD START
+--
+        IF ((NVL(qty(i), 0) <> 0) OR (NVL(amt(i), 0) <> 0))THEN
+          ib_zero := FALSE;
+        END IF;
+--
+-- 2008/11/25 v1.19 ADD END
       END LOOP  field_edit_loop;
 --
       IF  (ib_print = FALSE) THEN
@@ -12926,6 +12937,24 @@ NULL;
         END IF;
       END IF;
 --
+-- 2008/11/25 v1.19 ADD START
+      -- 当月受払・月首・棚卸の数量・金額が全てゼロの場合
+      IF (
+            (ib_zero = TRUE)
+              AND (ln_inv_qty = 0)
+                AND (ln_inv_amt = 0)
+                  AND (ln_stock_qty = 0)
+                    AND (ln_stock_amt = 0)
+          ) THEN
+      ------------------------------
+      -- 出力判定用タグ
+      ------------------------------
+        prc_xml_add('flg', 'D', '1');
+      ELSE
+        prc_xml_add('flg', 'D', '0');
+      END IF;
+--
+-- 2008/11/25 v1.19 ADD END
       IF  (ib_print = TRUE) THEN
         prc_xml_add( '/g_item', 'T');
       END IF;
