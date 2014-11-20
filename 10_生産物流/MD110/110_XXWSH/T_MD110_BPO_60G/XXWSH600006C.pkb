@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理ロック対応
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -22,6 +22,8 @@ AS
  *  2008/12/20    1.1  M.Hokkanji       本番障害#738
  *  2009/01/16    1.2  M.Nomura         本番障害#900
  *  2009/01/27    1.3  H.Itou           本番障害#1028
+ *  2009/02/17    1.4  M.Nomura         本番障害#1176
+ *
  *****************************************************************************************/
 --
 
@@ -170,29 +172,56 @@ AS
 --                              and aa.module = 'XXWSH600001C')
 --               and b.lmode = 6;
 --
+-- ##### 20090217 Ver.1.4 本番#1176対応 START #####
     -- gv$sesson、gv$lockを参照するように修正
+--    CURSOR lock_cur
+--      IS
+--        SELECT b.id1, a.sid, a.serial#, b.type , a.inst_id , a.module , a.action
+--              ,decode(b.lmode 
+--                     ,1,'null' , 2,'row share', 3,'row exclusive' 
+--                     ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
+--        FROM gv$session a
+--           , gv$lock    b
+--        WHERE a.sid = b.sid
+--        AND a.module <> 'XXWSH600001C'
+--        AND (b.id1, b.id2) in (SELECT d.id1
+--                                     ,d.id2
+--                               FROM gv$lock d 
+--                               WHERE d.id1     =b.id1 
+--                               AND   d.id2     =b.id2 
+--                               AND   d.request > 0) 
+--        AND   b.id1 IN (SELECT bb.id1
+--                      FROM   gv$session aa
+--                            , gv$lock bb
+--                      WHERE  aa.lockwait = bb.kaddr 
+--                      AND    aa.module   = 'XXWSH600001C')
+--        AND b.lmode = 6;
+    -- RAC構成対応SQL
     CURSOR lock_cur
       IS
-        SELECT b.id1, a.sid, a.serial#, b.type , a.inst_id , a.module , a.action
-              ,decode(b.lmode 
-                     ,1,'null' , 2,'row share', 3,'row exclusive' 
-                     ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
-        FROM gv$session a
-           , gv$lock    b
-        WHERE a.sid = b.sid
-        AND a.module <> 'XXWSH600001C'
-        AND (b.id1, b.id2) in (SELECT d.id1
-                                     ,d.id2
-                               FROM gv$lock d 
-                               WHERE d.id1     =b.id1 
-                               AND   d.id2     =b.id2 
-                               AND   d.request > 0) 
-        AND   b.id1 IN (SELECT bb.id1
-                      FROM   gv$session aa
-                            , gv$lock bb
-                      WHERE  aa.lockwait = bb.kaddr 
-                      AND    aa.module   = 'XXWSH600001C')
-        AND b.lmode = 6;
+        SELECT lok.id1            id1
+             , lok_sess.inst_id   inst_id
+             , lok_sess.sid       sid
+             , lok_sess.serial#   serial#
+             , lok.type           type
+             , lok_sess.module    module
+             , lok_sess.action    action
+        FROM   gv$lock    lok
+             , gv$session lok_sess
+             , gv$lock    req
+             , gv$session req_sess
+        WHERE lok.inst_id = lok_sess.inst_id
+          AND lok.sid     = lok_sess.sid
+          AND lok.lmode   = 6
+          AND req.inst_id = req_sess.inst_id
+          AND req.sid     = req_sess.sid
+          AND (   req.inst_id <> lok.inst_id
+               OR req.sid     <> lok.sid)
+          AND req.id1 = lok.id1
+          AND req.id2 = lok.id2
+          AND req_sess.module = 'XXWSH600001C'; 
+--
+-- ##### 20090217 Ver.1.4 本番#1176対応 END   #####
 --
 -- ##### 20090116 Ver.1.2 本番#900対応 END   #####
 --
@@ -210,7 +239,10 @@ AS
 -- ##### 20090116 Ver.1.2 本番#900対応 START #####
 --    EXIT WHEN (lv_phase = 'Y' OR lv_staus = '1');
     -- コンカレントが完了するまで処理を継続する
-    EXIT WHEN (lv_phase = 'Y');
+-- ##### 20090217 Ver.1.4 本番#1176対応 START #####
+-- 終了判定の場所変更
+--    EXIT WHEN (lv_phase = 'Y');
+-- ##### 20090217 Ver.1.4 本番#1176対応 END   #####
 -- ##### 20090116 Ver.1.2 本番#900対応 END   #####
     --子コンカレント完了を取得
     BEGIN
@@ -223,6 +255,11 @@ AS
           lv_phase := 'Y';
         NULL;
     END;
+--
+-- ##### 20090217 Ver.1.4 本番#1176対応 START #####
+    -- コンカレントが完了するまで処理を継続する
+    EXIT WHEN (lv_phase = 'Y');
+-- ##### 20090217 Ver.1.4 本番#1176対応 END   #####
 --
     --ロック解除の開始
     FOR lock_rec IN lock_cur LOOP
