@@ -8,7 +8,7 @@ AS
  *                    回送先にワークフロー通知を送付します。
  * MD.050           : MD050_CSO_020_A02_通知・承認ワークフロー機能
  *
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009-02-27          Noriyuki.Yabuki  ワークフロー用APIの名称を小文字から大文字に修正
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *  2009-06-29    1.2   Kazuo.Satomura   統合テスト障害対応(0000209)
+ *  2009-10-21    1.3   Daisuke.Abe      E_T4_00050対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -136,6 +137,14 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name CONSTANT VARCHAR2(100) := 'init'; -- プロシージャ名
+
+    /* 2009.10.21 D.Abe E_T4_00050対応 START */
+    ct_item_type    CONSTANT VARCHAR2(30) := 'XXCSO020'; -- アイテムタイプ
+    ct_item_name    CONSTANT VARCHAR2(30) := 'XXCSO_SP_DECISION_HEADER_ID'; -- アイテム項目名
+    ct_wf_status_o  CONSTANT VARCHAR2(30) := 'OPEN';   -- 通知ステータス
+    ct_wf_status_c  CONSTANT VARCHAR2(30) := 'CLOSED'; -- 通知ステータス
+    /* 2009.10.21 D.Abe E_T4_00050対応 END */
+
     --
     --#####################  固定ローカル変数宣言部 START   ########################
     --
@@ -152,8 +161,14 @@ AS
     cv_nm_sp_decision_header_id CONSTANT VARCHAR2(30) := 'ＳＰ専決ヘッダＩＤ';
     cv_nm_send_employee_number  CONSTANT VARCHAR2(30) := '回送元従業員番号';
     cv_nm_dest_employee_number  CONSTANT VARCHAR2(30) := '回送先従業員番号';
+    /* 2009.10.21 D.Abe E_T4_00050対応 START */
+    cv_nm_wf_notifications      CONSTANT VARCHAR2(30) := '通知クローズ処理';
+    /* 2009.10.21 D.Abe E_T4_00050対応 END */
     --
     -- *** ローカル変数 ***
+    /* 2009.10.21 D.Abe E_T4_00050対応 START */
+    lt_login_user_name fnd_user.user_name%TYPE;    -- ログインユーザー名
+    /* 2009.10.21 D.Abe E_T4_00050対応 END */
     --
     -- *** ローカル例外 ***
     input_parameter_expt  EXCEPTION;
@@ -234,6 +249,59 @@ AS
       --
       RAISE global_api_expt;
     END IF;
+    /* 2009.10.21 D.Abe E_T4_00050対応 START */
+    --
+    -- ============================
+    -- ログインユーザ名取得処理
+    -- ============================
+    BEGIN
+      lt_login_user_name := NULL;
+      SELECT USER_NAME
+      INTO   lt_login_user_name
+      FROM   FND_USER
+      WHERE  USER_ID = fnd_global.user_id
+      ;
+      --
+    EXCEPTION
+      WHEN OTHERS THEN
+        NULL;
+    END;
+    -- ============================
+    -- 既存ワークフロー通知クローズ処理
+    -- ============================
+    BEGIN
+      UPDATE wf_notifications wn
+      SET    status   = ct_wf_status_c,
+             end_date = SYSDATE,
+             responder = lt_login_user_name
+      WHERE  EXISTS(SELECT 1
+                    FROM   wf_item_attribute_values  wiav
+                          ,wf_item_activity_statuses wias
+                    WHERE  wiav.item_type     = wias.item_type
+                    AND    wiav.item_key      = wias.item_key
+                    AND    wiav.item_type     = ct_item_type
+                    AND    wiav.name          = ct_item_name
+                    AND    wiav.number_value  = it_sp_decision_header_id
+                    AND    wn.notification_id = wias.notification_id)
+      AND    wn.status = ct_wf_status_o
+      ;
+      --
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- その他の例外の場合
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                     , iv_name         => cv_tkn_number_05          -- メッセージコード
+                     , iv_token_name1  => cv_tkn_func_nm            -- トークンコード1
+                     , iv_token_value1 => cv_nm_wf_notifications    -- トークン値1
+                     , iv_token_name2  => cv_tkn_err_msg            -- トークンコード2
+                     , iv_token_value2 => SQLERRM                   -- トークン値2
+                    );
+        --
+        RAISE global_api_expt;
+        --
+    END;
+    /* 2009.10.21 D.Abe E_T4_00050対応 END */
     --
   EXCEPTION
     --
