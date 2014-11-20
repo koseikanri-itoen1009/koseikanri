@@ -80,6 +80,7 @@ AS
  *  2008/05/27    1.3   Oracle 丸下 博宣 内部変更要求No122対応
  *  2008/06/23    1.4   Oracle 山根 一浩 不具合No259対応
  *  2008/07/07    1.5   Oracle 山根 一浩 I_S_192対応
+ *  2008/08/08    1.6   Oracle 山根 一浩 ST不具合修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -9791,89 +9792,96 @@ AS
         RAISE check_sub_main_expt;
       END IF;
 --
-      -- ===============================
-      -- 顧客データ処理開始
-      -- ===============================
-      IF (is_row_status_nomal(lr_cust_sts_rec)) THEN
+--2008/08/08 Add ↓
+      -- 顧客コード入力あり
+      IF (lr_masters_rec.party_num IS NOT NULL) THEN
+--2008/08/08 Add ↑
+        -- ===============================
+        -- 顧客データ処理開始
+        -- ===============================
+        IF (is_row_status_nomal(lr_cust_sts_rec)) THEN
 --
-        -- 顧客コードチェック(A-7)
-        check_party_num(lr_cust_sts_rec,
-                        lr_masters_rec,
-                        lv_errbuf,
-                        lv_retcode,
-                        lv_errmsg);
+          -- 顧客コードチェック(A-7)
+          check_party_num(lr_cust_sts_rec,
+                          lr_masters_rec,
+                          lv_errbuf,
+                          lv_retcode,
+                          lv_errmsg);
 --
-        IF (lv_retcode = gv_status_error) THEN
-          RAISE check_sub_main_expt;
-        END IF;
-      END IF;
---
-      IF (is_row_status_nomal(lr_cust_sts_rec)) THEN
---
-        -- 更新区分チェック(登録・更新・削除)
-        check_proc_code(lr_masters_rec.k_proc_code,
-                        lr_cust_sts_rec,
-                        lv_errbuf,
-                        lv_retcode,
-                        lv_errmsg);
---
-        IF (lv_retcode = gv_status_error) THEN
-          RAISE check_sub_main_expt;
-        END IF;
-      END IF;
---
-      IF (is_row_status_nomal(lr_cust_sts_rec)) THEN
---
-        -- 顧客登録情報格納(A-8)
-        IF (lr_masters_rec.proc_code = gn_proc_insert) THEN
-          lt_cust_ins(ln_cust_ins_cnt) := lr_masters_rec;
-          ln_cust_ins_cnt := ln_cust_ins_cnt + 1;
---
-        -- 顧客更新情報格納(A-9)
-        ELSIF (lr_masters_rec.proc_code = gn_proc_update) THEN
-          lt_cust_upd(ln_cust_upd_cnt) := lr_masters_rec;
-          ln_cust_upd_cnt := ln_cust_upd_cnt + 1;
-        END IF;
-      END IF;
---
-      -- 正常件数をカウントアップ
-      IF (is_row_status_nomal(lr_cust_sts_rec)) THEN
-        gn_c_normal_cnt := gn_c_normal_cnt + 1;
---
-      ELSE
-        -- 警告件数をカウントアップ
-        IF (is_row_status_warn(lr_cust_sts_rec)) THEN
-          IF ((lr_masters_rec.k_proc_code = gn_proc_insert)
-           AND (lr_masters_rec.party_num IS NOT NULL)) THEN
-            lr_cust_sts_rec.file_level_status := gn_data_status_nomal;
-            gn_c_normal_cnt := gn_c_normal_cnt + 1;
-          ELSE
-            gn_c_warn_cnt := gn_c_warn_cnt + 1;
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE check_sub_main_expt;
           END IF;
+        END IF;
 --
-        -- 異常件数をカウントアップ
+        IF (is_row_status_nomal(lr_cust_sts_rec)) THEN
+--
+          -- 更新区分チェック(登録・更新・削除)
+          check_proc_code(lr_masters_rec.k_proc_code,
+                          lr_cust_sts_rec,
+                          lv_errbuf,
+                          lv_retcode,
+                          lv_errmsg);
+--
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE check_sub_main_expt;
+          END IF;
+        END IF;
+--
+        IF (is_row_status_nomal(lr_cust_sts_rec)) THEN
+--
+          -- 顧客登録情報格納(A-8)
+          IF (lr_masters_rec.proc_code = gn_proc_insert) THEN
+            lt_cust_ins(ln_cust_ins_cnt) := lr_masters_rec;
+            ln_cust_ins_cnt := ln_cust_ins_cnt + 1;
+--
+          -- 顧客更新情報格納(A-9)
+          ELSIF (lr_masters_rec.proc_code = gn_proc_update) THEN
+            lt_cust_upd(ln_cust_upd_cnt) := lr_masters_rec;
+            ln_cust_upd_cnt := ln_cust_upd_cnt + 1;
+          END IF;
+        END IF;
+--
+        -- 正常件数をカウントアップ
+        IF (is_row_status_nomal(lr_cust_sts_rec)) THEN
+          gn_c_normal_cnt := gn_c_normal_cnt + 1;
+--
         ELSE
-          gn_c_error_cnt := gn_c_error_cnt +1;
-        END IF;
-      END IF;
+          -- 警告件数をカウントアップ
+          IF (is_row_status_warn(lr_cust_sts_rec)) THEN
+            IF ((lr_masters_rec.k_proc_code = gn_proc_insert)
+             AND (lr_masters_rec.party_num IS NOT NULL)) THEN
+              lr_cust_sts_rec.file_level_status := gn_data_status_nomal;
+              gn_c_normal_cnt := gn_c_normal_cnt + 1;
+            ELSE
+              gn_c_warn_cnt := gn_c_warn_cnt + 1;
+            END IF;
 --
-      -- ログに設定しない
-      IF ((is_row_status_warn(lr_cust_sts_rec))
-      AND (lr_cust_sts_rec.row_err_message IS NULL)) THEN
-        NULL;
-      ELSE
-        -- ログ出力用データの格納(顧客)
-        add_c_report(lr_cust_sts_rec,
-                     lr_masters_rec,
-                     lt_cust_report_tbl,
-                     lv_errbuf,
-                     lv_retcode,
-                     lv_errmsg);
---
-        IF (lv_retcode = gv_status_error) THEN
-          RAISE check_sub_main_expt;
+          -- 異常件数をカウントアップ
+          ELSE
+            gn_c_error_cnt := gn_c_error_cnt +1;
+          END IF;
         END IF;
+--
+        -- ログに設定しない
+        IF ((is_row_status_warn(lr_cust_sts_rec))
+        AND (lr_cust_sts_rec.row_err_message IS NULL)) THEN
+          NULL;
+        ELSE
+          -- ログ出力用データの格納(顧客)
+          add_c_report(lr_cust_sts_rec,
+                       lr_masters_rec,
+                       lt_cust_report_tbl,
+                       lv_errbuf,
+                       lv_retcode,
+                       lv_errmsg);
+--
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE check_sub_main_expt;
+          END IF;
+        END IF;
+--2008/08/08 Add ↓
       END IF;
+--2008/08/08 Add ↑
 --
       -- ===============================
       -- 配送先データ処理開始
@@ -9888,6 +9896,7 @@ AS
       IF (lv_retcode = gv_status_error) THEN
         RAISE check_sub_main_expt;
       END IF;
+--
 --
       IF (is_row_status_nomal(lr_site_sts_rec)) THEN
 --
@@ -9982,10 +9991,13 @@ AS
     -- ===============================
 --
     -- データの反映(エラーなし)
+/* 2008/08/08 Mod ↓
     IF ((is_file_status_nomal(lr_party_sts_rec))
     AND (is_file_status_nomal(lr_cust_sts_rec))
     AND (is_file_status_nomal(lr_site_sts_rec))) THEN
+2008/08/08 Mod ↓ */
 --
+    IF (is_file_status_nomal(lr_party_sts_rec)) THEN
       -- ===============================
       -- 拠点反映処理(A-14)
       -- ===============================
@@ -10003,7 +10015,9 @@ AS
       IF (lv_retcode <> gv_status_normal) THEN
         RAISE check_sub_main_expt;
       END IF;
+    END IF;
 --
+    IF (is_file_status_nomal(lr_cust_sts_rec)) THEN
       -- ===============================
       -- 顧客反映処理(A-15)
       -- ===============================
@@ -10019,7 +10033,9 @@ AS
       IF (lv_retcode <> gv_status_normal) THEN
         RAISE check_sub_main_expt;
       END IF;
+    END IF;
 --
+    IF (is_file_status_nomal(lr_site_sts_rec)) THEN
       -- ===============================
       -- 配送先反映処理(A-16)
       -- ===============================
