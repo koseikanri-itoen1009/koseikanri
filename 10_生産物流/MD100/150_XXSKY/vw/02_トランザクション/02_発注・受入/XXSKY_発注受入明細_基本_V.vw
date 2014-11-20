@@ -221,39 +221,236 @@ SELECT
                   )
           --[ 発注依頼データ  END ]
         UNION ALL
+-- 2010/07/16 T.Yoshimoto Del Start E_本稼動_03772
+--          --========================================================================
+--          -- 発注・受入データ （受入実績区分 = '1'）
+--          --========================================================================
+--          SELECT
+--                  PO.po_number                              po_number                     --発注番号
+--                 ,NVL( XRART.rcv_rtn_number, 'Dummy' )      rcv_rtn_number                --受入返品番号（受入実績データが存在しない場合は 'Dummy' 固定）
+--                 ,PO.line_num                               line_num                      --明細番号
+--                 ,PO.item_id                                item_id                       --品目ID(OPM品目ID)
+--                 ,PO.unit_price                             unit_price                    --単価
+--                 ,PO.quantity                               quantity                      --数量
+--                 ,PO.lot_no                                 lot_no                        --ロット番号
+--                 ,PO.factory_code                           factory_code                  --工場コード
+--                 ,PO.futai_code                             futai_code                    --付帯コード
+--                 ,PO.pack_qty                               pack_qty                      --在庫入数
+--                 ,0                                         request_qty                   --依頼数量
+--                 ,NULL                                      request_uom                   --依頼数量単位コード
+--                 ,PO.vendor_dlvr_date                       vendor_dlvr_date              --仕入先出荷日
+--                 ,PO.vendor_dlvr_qty                        vendor_dlvr_qty               --仕入先出荷数量
+--                 ,PO.rcv_qty                                rcv_qty                       --受入数量
+--                 ,PO.purchase_amt                           purchase_amt                  --仕入定価
+--                 ,PO.date_reserved                          date_reserved                 --日付指定
+--                 ,PO.order_uom                              order_uom                     --発注単位
+--                 ,PO.order_qty                              order_qty                     --発注数量
+--                 ,PO.party_dlvr_to                          party_dlvr_to                 --相手先在庫入庫先
+--                 ,PO.fix_qty_flg                            fix_qty_flg                   --数量確定フラグ
+--                 ,PO.fix_amt_flg                            fix_amt_flg                   --金額確定フラグ
+--                 ,PO.cancel_flg                             cancel_flg                    --取消フラグ
+--                 ,PO.description                            description                   --摘要
+--                 ,PO.h_created_by                           h_created_by                  --発注_作成者
+--                 ,PO.h_creation_date                        h_creation_date               --発注_作成日
+--                 ,PO.h_last_updated_by                      h_last_updated_by             --発注_最終更新者
+--                 ,PO.h_last_update_date                     h_last_update_date            --発注_最終更新日
+--                 ,PO.h_last_update_login                    h_last_update_login           --発注_最終更新ログイン
+--                 ,XRART.txns_date                           u_txns_date                   --受入実績日
+--                 ,XRART.uom                                 u_uom                         --受入単位
+--                 ,XRART.rcv_rtn_quantity                    u_rcv_rtn_quantity            --受入返品数量
+--                 ,XRART.rcv_rtn_uom                         u_rcv_rtn_uom                 --受入返品単位
+--                 ,XRART.conversion_factor                   u_conversion_factor           --受入返品換算入数
+--                 ,TO_NUMBER( PLLA.attribute1 )              kobiki_rate                   --粉引率
+--                 ,TO_NUMBER( PLLA.attribute2 )              kobki_converted_unit_price    --粉引後単価
+--                 ,PLLA.attribute3                           kousen_type                   --口銭区分
+--                 ,TO_NUMBER( PLLA.attribute4 )              kousen_rate_or_unit_price     --口銭
+--                 ,TO_NUMBER( PLLA.attribute5 )              kousen_price                  --預り口銭金額
+--                 ,PLLA.attribute6                           fukakin_type                  --賦課金区分
+--                 ,TO_NUMBER( PLLA.attribute7 )              fukakin_rate_or_unit_price    --賦課金
+--                 ,TO_NUMBER( PLLA.attribute8 )              fukakin_price                 --賦課金額
+---- 2009-03-10 H.Iida MOD START 本番障害#1131
+----                 ,NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( PO.rcv_qty, 0 )
+----                                                            kobki_converted_price         --粉引後金額（粉引後単価×受入数量）
+---- 2009-12-28 Y.Fukami MOD START 本稼動障害#696
+----                 ,NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( XRART.quantity, 0 )
+--                 ,ROUND(NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( XRART.quantity, 0 ))
+---- 2009-12-28 Y.Fukami MOD END
+--                                                            kobki_converted_price         --粉引後金額（粉引後単価×受入返品実績(アドオン).数量）
+---- 2009-03-10 H.Iida MOD END
+--                 ,XRART.created_by                          u_created_by                  --受入_作成者
+--                 ,XRART.creation_date                       u_creation_date               --受入_作成日
+--                 ,XRART.last_updated_by                     u_last_updated_by             --受入_最終更新者
+--                 ,XRART.last_update_date                    u_last_update_date            --受入_最終更新日
+--                 ,XRART.last_update_login                   u_last_update_login           --受入_最終更新ログイン
+--                 --名称取得用基準日
+--                 ,PO.deliver_date                           deliver_date                  --納入日
+--            FROM
+--                 (
+--                    --受入返品アドオンと外部結合を行う為、副問い合わせとする
+--                    SELECT
+--                            PHA.po_header_id                po_header_id                  --発注ヘッダID
+--                           ,PLA.po_line_id                  po_line_id                    --発注明細ID
+--                           ,PHA.segment1                    po_number                     --発注番号
+--                           ,PLA.line_num                    line_num                      --明細番号
+--                           ,IIMB.item_id                    item_id                       --品目ID(OPM品目ID)
+--                           ,PLA.unit_price                  unit_price                    --単価
+--                           ,PLA.quantity                    quantity                      --数量
+--                           ,PLA.attribute1                  lot_no                        --ロット番号
+--                           ,PLA.attribute2                  factory_code                  --工場コード
+--                           ,PLA.attribute3                  futai_code                    --付帯コード
+--                           ,TO_NUMBER( PLA.attribute4  )    pack_qty                      --在庫入数
+--                           ,TO_DATE( PLA.attribute5 )       vendor_dlvr_date              --仕入先出荷日
+--                           ,TO_NUMBER( PLA.attribute6  )    vendor_dlvr_qty               --仕入先出荷数量
+--                           ,TO_NUMBER( PLA.attribute7  )    rcv_qty                       --受入数量
+--                           ,TO_NUMBER( PLA.attribute8  )    purchase_amt                  --仕入定価
+--                           ,TO_DATE( PLA.attribute9 )       date_reserved                 --日付指定
+--                           ,PLA.attribute10                 order_uom                     --発注単位
+--                           ,TO_NUMBER( PLA.attribute11 )    order_qty                     --発注数量
+--                           ,PLA.attribute12                 party_dlvr_to                 --相手先在庫入庫先
+--                           ,PLA.attribute13                 fix_qty_flg                   --数量確定フラグ
+--                           ,PLA.attribute14                 fix_amt_flg                   --金額確定フラグ
+--                           ,PLA.cancel_flag                 cancel_flg                    --取消フラグ
+--                           ,PLA.attribute15                 description                   --摘要
+--                           ,PLA.created_by                  h_created_by                  --発注_作成者
+--                           ,PLA.creation_date               h_creation_date               --発注_作成日
+--                           ,PLA.last_updated_by             h_last_updated_by             --発注_最終更新者
+--                           ,PLA.last_update_date            h_last_update_date            --発注_最終更新日
+--                           ,PLA.last_update_login           h_last_update_login           --発注_最終更新ログイン
+--                            --名称取得用基準日
+--                           ,TO_DATE( PHA.attribute4 )       deliver_date                  --納入日
+--                      FROM
+--                            po_headers_all                  PHA                           --発注ヘッダ
+--                           ,po_lines_all                    PLA                           --発注明細
+--                           ,mtl_system_items_b              MSIB                          --INV品目マスタ(OPM品目ID変換用)
+--                           ,ic_item_mst_b                   IIMB                          --OPM品目マスタ(OPM品目ID変換用)
+--                     WHERE
+--                       --発注ヘッダとの結合
+--                            PHA.po_header_id                = PLA.po_header_id
+--                       --INV品目ID⇒OPM品目ID 変換
+--                       AND  PLA.item_id                     = MSIB.inventory_item_id
+--                       AND  MSIB.organization_id            = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+--                       AND  MSIB.segment1                   = IIMB.item_no
+--                 )                                          PO                            --発注データ
+--                 ,po_line_locations_all                     PLLA                          --発注納入明細
+--                 ,xxpo_rcv_and_rtn_txns                     XRART                         --受入返品実績(アドオン)
+--           WHERE
+--             --発注納入明細との結合（【粉引率】以下の項目は受入返品実績のデータではなくこちらを使用する）
+--                  PO.po_header_id                           = PLLA.po_header_id
+--             AND  PO.po_line_id                             = PLLA.po_line_id
+--             --受入返品実績アドオン   ⇒発注止まり（受入実績データ無し）のデータも取得する為、外部結合
+--             AND  XRART.txns_type(+)                        = '1'                         -- 実績区分:'1:受入'
+--             AND  PO.po_number                              = XRART.rcv_rtn_number(+)
+--             AND  PO.line_num                               = XRART.source_document_line_num(+)
+--          --[ 発注依頼データ  END ]
+-- 2010/07/16 T.Yoshimoto Del End E_本稼動_03772
+-- 2010/07/16 T.Yoshimoto Add Start E_本稼動_03772
           --========================================================================
-          -- 発注・受入データ （受入実績区分 = '1'）
+          -- 発注・受入実績なしデータ(数量確定フラグ = 'N')
           --========================================================================
           SELECT
-                  PO.po_number                              po_number                     --発注番号
-                 ,NVL( XRART.rcv_rtn_number, 'Dummy' )      rcv_rtn_number                --受入返品番号（受入実績データが存在しない場合は 'Dummy' 固定）
-                 ,PO.line_num                               line_num                      --明細番号
-                 ,PO.item_id                                item_id                       --品目ID(OPM品目ID)
-                 ,PO.unit_price                             unit_price                    --単価
-                 ,PO.quantity                               quantity                      --数量
-                 ,PO.lot_no                                 lot_no                        --ロット番号
-                 ,PO.factory_code                           factory_code                  --工場コード
-                 ,PO.futai_code                             futai_code                    --付帯コード
-                 ,PO.pack_qty                               pack_qty                      --在庫入数
+                  PHA.segment1                              po_number                     --発注番号
+                 ,'Dummy'                                   rcv_rtn_number                --受入返品番号（受入実績データが存在しない場合は 'Dummy' 固定）
+                 ,PLA.line_num                              line_num                      --明細番号
+                 ,IIMB.item_id                              item_id                       --品目ID(OPM品目ID)
+                 ,PLA.unit_price                            unit_price                    --単価
+                 ,PLA.quantity                              quantity                      --数量
+                 ,PLA.attribute1                            lot_no                        --ロット番号
+                 ,PLA.attribute2                            factory_code                  --工場コード
+                 ,PLA.attribute3                            futai_code                    --付帯コード
+                 ,TO_NUMBER( PLA.attribute4  )              pack_qty                      --在庫入数
                  ,0                                         request_qty                   --依頼数量
                  ,NULL                                      request_uom                   --依頼数量単位コード
-                 ,PO.vendor_dlvr_date                       vendor_dlvr_date              --仕入先出荷日
-                 ,PO.vendor_dlvr_qty                        vendor_dlvr_qty               --仕入先出荷数量
-                 ,PO.rcv_qty                                rcv_qty                       --受入数量
-                 ,PO.purchase_amt                           purchase_amt                  --仕入定価
-                 ,PO.date_reserved                          date_reserved                 --日付指定
-                 ,PO.order_uom                              order_uom                     --発注単位
-                 ,PO.order_qty                              order_qty                     --発注数量
-                 ,PO.party_dlvr_to                          party_dlvr_to                 --相手先在庫入庫先
-                 ,PO.fix_qty_flg                            fix_qty_flg                   --数量確定フラグ
-                 ,PO.fix_amt_flg                            fix_amt_flg                   --金額確定フラグ
-                 ,PO.cancel_flg                             cancel_flg                    --取消フラグ
-                 ,PO.description                            description                   --摘要
-                 ,PO.h_created_by                           h_created_by                  --発注_作成者
-                 ,PO.h_creation_date                        h_creation_date               --発注_作成日
-                 ,PO.h_last_updated_by                      h_last_updated_by             --発注_最終更新者
-                 ,PO.h_last_update_date                     h_last_update_date            --発注_最終更新日
-                 ,PO.h_last_update_login                    h_last_update_login           --発注_最終更新ログイン
+                 ,TO_DATE( PLA.attribute5 )                 vendor_dlvr_date              --仕入先出荷日
+                 ,TO_NUMBER( PLA.attribute6  )              vendor_dlvr_qty               --仕入先出荷数量
+                 ,TO_NUMBER( PLA.attribute7  )              rcv_qty                       --受入数量
+                 ,TO_NUMBER( PLA.attribute8  )              purchase_amt                  --仕入定価
+                 ,TO_DATE( PLA.attribute9 )                 date_reserved                 --日付指定
+                 ,PLA.attribute10                           order_uom                     --発注単位
+                 ,TO_NUMBER( PLA.attribute11 )              order_qty                     --発注数量
+                 ,PLA.attribute12                           party_dlvr_to                 --相手先在庫入庫先
+                 ,PLA.attribute13                           fix_qty_flg                   --数量確定フラグ
+                 ,PLA.attribute14                           fix_amt_flg                   --金額確定フラグ
+                 ,PLA.cancel_flag                           cancel_flg                    --取消フラグ
+                 ,PLA.attribute15                           description                   --摘要
+                 ,PLA.created_by                            h_created_by                  --発注_作成者
+                 ,PLA.creation_date                         h_creation_date               --発注_作成日
+                 ,PLA.last_updated_by                       h_last_updated_by             --発注_最終更新者
+                 ,PLA.last_update_date                      h_last_update_date            --発注_最終更新日
+                 ,PLA.last_update_login                     h_last_update_login           --発注_最終更新ログイン
+                 ,NULL                                      u_txns_date                   --受入実績日
+                 ,NULL                                      u_uom                         --受入単位
+                 ,0                                         u_rcv_rtn_quantity            --受入返品数量
+                 ,NULL                                      u_rcv_rtn_uom                 --受入返品単位
+                 ,NULL                                      u_conversion_factor           --受入返品換算入数
+                 ,TO_NUMBER( PLLA.attribute1 )              kobiki_rate                   --粉引率
+                 ,TO_NUMBER( PLLA.attribute2 )              kobki_converted_unit_price    --粉引後単価
+                 ,PLLA.attribute3                           kousen_type                   --口銭区分
+                 ,TO_NUMBER( PLLA.attribute4 )              kousen_rate_or_unit_price     --口銭
+                 ,TO_NUMBER( PLLA.attribute5 )              kousen_price                  --預り口銭金額
+                 ,PLLA.attribute6                           fukakin_type                  --賦課金区分
+                 ,TO_NUMBER( PLLA.attribute7 )              fukakin_rate_or_unit_price    --賦課金
+                 ,TO_NUMBER( PLLA.attribute8 )              fukakin_price                 --賦課金額
+                 ,0                                         kobki_converted_price         --粉引後金額（粉引後単価×受入返品実績(アドオン).数量）
+                 ,NULL                                      u_created_by                  --受入_作成者
+                 ,NULL                                      u_creation_date               --受入_作成日
+                 ,NULL                                      u_last_updated_by             --受入_最終更新者
+                 ,NULL                                      u_last_update_date            --受入_最終更新日
+                 ,NULL                                      u_last_update_login           --受入_最終更新ログイン
+                 --名称取得用基準日
+                 ,TO_DATE( PHA.attribute4 )                 deliver_date                  --納入日
+            FROM
+                  po_headers_all                            PHA                           --発注ヘッダ
+                 ,po_lines_all                              PLA                           --発注明細
+                 ,mtl_system_items_b                        MSIB                          --INV品目マスタ(OPM品目ID変換用)
+                 ,ic_item_mst_b                             IIMB                          --OPM品目マスタ(OPM品目ID変換用)
+                 ,po_line_locations_all                     PLLA                          --発注納入明細
+           WHERE
+             --発注ヘッダとの結合
+                  PHA.po_header_id                = PLA.po_header_id
+             AND  PHA.attribute1                  IN ('15','20','25','99')
+             AND  PLA.attribute13                 = 'N'
+             --INV品目ID⇒OPM品目ID 変換
+             AND  PLA.item_id                     = MSIB.inventory_item_id
+             AND  MSIB.organization_id            = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+             AND  MSIB.segment1                   = IIMB.item_no
+             --発注納入明細との結合（【粉引率】以下の項目は受入返品実績のデータではなくこちらを使用する）
+             AND  PHA.po_header_id                = PLLA.po_header_id
+             AND  PLA.po_line_id                  = PLLA.po_line_id
+          --[ 発注・受入実績なしデータ  END ]
+        UNION ALL
+          --========================================================================
+          -- 受入実績データ （受入実績区分 = '1'）(数量確定フラグ = 'Y')
+          --========================================================================
+          SELECT
+                  PHA.segment1                              po_number                     --発注番号
+                 ,XRART.rcv_rtn_number                      rcv_rtn_number                --受入返品番号
+                 ,PLA.line_num                              line_num                      --明細番号
+                 ,IIMB.item_id                              item_id                       --品目ID(OPM品目ID)
+                 ,PLA.unit_price                            unit_price                    --単価
+                 ,PLA.quantity                              quantity                      --数量
+                 ,PLA.attribute1                            lot_no                        --ロット番号
+                 ,PLA.attribute2                            factory_code                  --工場コード
+                 ,PLA.attribute3                            futai_code                    --付帯コード
+                 ,TO_NUMBER( PLA.attribute4  )              pack_qty                      --在庫入数
+                 ,0                                         request_qty                   --依頼数量
+                 ,NULL                                      request_uom                   --依頼数量単位コード
+                 ,TO_DATE( PLA.attribute5 )                 vendor_dlvr_date              --仕入先出荷日
+                 ,TO_NUMBER( PLA.attribute6  )              vendor_dlvr_qty               --仕入先出荷数量
+                 ,TO_NUMBER( PLA.attribute7  )              rcv_qty                       --受入数量
+                 ,TO_NUMBER( PLA.attribute8  )              purchase_amt                  --仕入定価
+                 ,TO_DATE( PLA.attribute9 )                 date_reserved                 --日付指定
+                 ,PLA.attribute10                           order_uom                     --発注単位
+                 ,TO_NUMBER( PLA.attribute11 )              order_qty                     --発注数量
+                 ,PLA.attribute12                           party_dlvr_to                 --相手先在庫入庫先
+                 ,PLA.attribute13                           fix_qty_flg                   --数量確定フラグ
+                 ,PLA.attribute14                           fix_amt_flg                   --金額確定フラグ
+                 ,PLA.cancel_flag                           cancel_flg                    --取消フラグ
+                 ,PLA.attribute15                           description                   --摘要
+                 ,PLA.created_by                            h_created_by                  --発注_作成者
+                 ,PLA.creation_date                         h_creation_date               --発注_作成日
+                 ,PLA.last_updated_by                       h_last_updated_by             --発注_最終更新者
+                 ,PLA.last_update_date                      h_last_update_date            --発注_最終更新日
+                 ,PLA.last_update_login                     h_last_update_login           --発注_最終更新ログイン
                  ,XRART.txns_date                           u_txns_date                   --受入実績日
                  ,XRART.uom                                 u_uom                         --受入単位
                  ,XRART.rcv_rtn_quantity                    u_rcv_rtn_quantity            --受入返品数量
@@ -263,84 +460,75 @@ SELECT
                  ,TO_NUMBER( PLLA.attribute2 )              kobki_converted_unit_price    --粉引後単価
                  ,PLLA.attribute3                           kousen_type                   --口銭区分
                  ,TO_NUMBER( PLLA.attribute4 )              kousen_rate_or_unit_price     --口銭
-                 ,TO_NUMBER( PLLA.attribute5 )              kousen_price                  --預り口銭金額
+                 -- 口銭金額
+                 ,CASE
+                    -- 口銭区分が「率」の場合
+                    WHEN PLLA.attribute3 = '2' THEN
+                      -- 預かり口銭金額＝単価*数量*口銭/100
+                      TRUNC(TO_NUMBER( PLA.attribute8  ) * 
+                                       NVL(XRART.quantity, 0) * NVL(TO_NUMBER( PLLA.attribute4 ), 0) / 100 )
+                    -- 口銭区分が「円」の場合
+                    WHEN PLLA.attribute3 = '1' THEN
+                      -- 預り口銭金額＝口銭*数量
+                      TRUNC( NVL(TO_NUMBER( PLLA.attribute4 ), 0) * NVL(XRART.quantity, 0))
+                    -- 口銭区分が「無」の場合
+                    ELSE
+                      0
+                  END                                       kousen_price                  --預り口銭金額
                  ,PLLA.attribute6                           fukakin_type                  --賦課金区分
                  ,TO_NUMBER( PLLA.attribute7 )              fukakin_rate_or_unit_price    --賦課金
-                 ,TO_NUMBER( PLLA.attribute8 )              fukakin_price                 --賦課金額
--- 2009-03-10 H.Iida MOD START 本番障害#1131
---                 ,NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( PO.rcv_qty, 0 )
---                                                            kobki_converted_price         --粉引後金額（粉引後単価×受入数量）
--- 2009-12-28 Y.Fukami MOD START 本稼動障害#696
---                 ,NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( XRART.quantity, 0 )
+                 -- 賦課金額
+                 ,CASE
+                    -- 賦課金区分が「率」の場合
+                    WHEN PLLA.attribute6 = '2' THEN
+                      -- 粉引額＝単価 * 数量 * 粉引率 / 100
+                      -- 賦課金額＝（単価 * 数量 - 粉引額）* 賦課率 / 100
+                      TRUNC(
+                        ( TO_NUMBER( PLA.attribute8  ) * NVL(XRART.quantity, 0) - 
+                          ( TO_NUMBER( PLA.attribute8  ) * NVL(XRART.quantity, 0) * 
+                            NVL(TO_NUMBER( PLLA.attribute1 ),0) / 100)) * TO_NUMBER( PLLA.attribute7 ) / 100)
+                    -- 賦課金区分が「円」の場合
+                    WHEN PLLA.attribute6 = '1' THEN
+                      -- 賦課金額＝賦課金*数量
+                      TRUNC( NVL(TO_NUMBER( PLLA.attribute7 ),0) * NVL(XRART.quantity, 0) )
+                    -- 賦課金区分が「無」の場合
+                    ELSE
+                      0
+                  END                                       fukakin_price                 --賦課金額
                  ,ROUND(NVL( TO_NUMBER( PLLA.attribute2 ), 0 ) * NVL( XRART.quantity, 0 ))
--- 2009-12-28 Y.Fukami MOD END
                                                             kobki_converted_price         --粉引後金額（粉引後単価×受入返品実績(アドオン).数量）
--- 2009-03-10 H.Iida MOD END
                  ,XRART.created_by                          u_created_by                  --受入_作成者
                  ,XRART.creation_date                       u_creation_date               --受入_作成日
                  ,XRART.last_updated_by                     u_last_updated_by             --受入_最終更新者
                  ,XRART.last_update_date                    u_last_update_date            --受入_最終更新日
                  ,XRART.last_update_login                   u_last_update_login           --受入_最終更新ログイン
                  --名称取得用基準日
-                 ,PO.deliver_date                           deliver_date                  --納入日
+                 ,TO_DATE( PHA.attribute4 )                 deliver_date                  --納入日
             FROM
-                 (
-                    --受入返品アドオンと外部結合を行う為、副問い合わせとする
-                    SELECT
-                            PHA.po_header_id                po_header_id                  --発注ヘッダID
-                           ,PLA.po_line_id                  po_line_id                    --発注明細ID
-                           ,PHA.segment1                    po_number                     --発注番号
-                           ,PLA.line_num                    line_num                      --明細番号
-                           ,IIMB.item_id                    item_id                       --品目ID(OPM品目ID)
-                           ,PLA.unit_price                  unit_price                    --単価
-                           ,PLA.quantity                    quantity                      --数量
-                           ,PLA.attribute1                  lot_no                        --ロット番号
-                           ,PLA.attribute2                  factory_code                  --工場コード
-                           ,PLA.attribute3                  futai_code                    --付帯コード
-                           ,TO_NUMBER( PLA.attribute4  )    pack_qty                      --在庫入数
-                           ,TO_DATE( PLA.attribute5 )       vendor_dlvr_date              --仕入先出荷日
-                           ,TO_NUMBER( PLA.attribute6  )    vendor_dlvr_qty               --仕入先出荷数量
-                           ,TO_NUMBER( PLA.attribute7  )    rcv_qty                       --受入数量
-                           ,TO_NUMBER( PLA.attribute8  )    purchase_amt                  --仕入定価
-                           ,TO_DATE( PLA.attribute9 )       date_reserved                 --日付指定
-                           ,PLA.attribute10                 order_uom                     --発注単位
-                           ,TO_NUMBER( PLA.attribute11 )    order_qty                     --発注数量
-                           ,PLA.attribute12                 party_dlvr_to                 --相手先在庫入庫先
-                           ,PLA.attribute13                 fix_qty_flg                   --数量確定フラグ
-                           ,PLA.attribute14                 fix_amt_flg                   --金額確定フラグ
-                           ,PLA.cancel_flag                 cancel_flg                    --取消フラグ
-                           ,PLA.attribute15                 description                   --摘要
-                           ,PLA.created_by                  h_created_by                  --発注_作成者
-                           ,PLA.creation_date               h_creation_date               --発注_作成日
-                           ,PLA.last_updated_by             h_last_updated_by             --発注_最終更新者
-                           ,PLA.last_update_date            h_last_update_date            --発注_最終更新日
-                           ,PLA.last_update_login           h_last_update_login           --発注_最終更新ログイン
-                            --名称取得用基準日
-                           ,TO_DATE( PHA.attribute4 )       deliver_date                  --納入日
-                      FROM
-                            po_headers_all                  PHA                           --発注ヘッダ
-                           ,po_lines_all                    PLA                           --発注明細
-                           ,mtl_system_items_b              MSIB                          --INV品目マスタ(OPM品目ID変換用)
-                           ,ic_item_mst_b                   IIMB                          --OPM品目マスタ(OPM品目ID変換用)
-                     WHERE
-                       --発注ヘッダとの結合
-                            PHA.po_header_id                = PLA.po_header_id
-                       --INV品目ID⇒OPM品目ID 変換
-                       AND  PLA.item_id                     = MSIB.inventory_item_id
-                       AND  MSIB.organization_id            = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
-                       AND  MSIB.segment1                   = IIMB.item_no
-                 )                                          PO                            --発注データ
+                  po_headers_all                            PHA                           --発注ヘッダ
+                 ,po_lines_all                              PLA                           --発注明細
+                 ,mtl_system_items_b                        MSIB                          --INV品目マスタ(OPM品目ID変換用)
+                 ,ic_item_mst_b                             IIMB                          --OPM品目マスタ(OPM品目ID変換用)
                  ,po_line_locations_all                     PLLA                          --発注納入明細
                  ,xxpo_rcv_and_rtn_txns                     XRART                         --受入返品実績(アドオン)
            WHERE
+             --発注ヘッダとの結合
+                  PHA.po_header_id                = PLA.po_header_id
+             AND  PHA.attribute1                  IN ('25','30','35')
+             AND  PLA.attribute13                 = 'Y'
+             --INV品目ID⇒OPM品目ID 変換
+             AND  PLA.item_id                     = MSIB.inventory_item_id
+             AND  MSIB.organization_id            = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+             AND  MSIB.segment1                   = IIMB.item_no
              --発注納入明細との結合（【粉引率】以下の項目は受入返品実績のデータではなくこちらを使用する）
-                  PO.po_header_id                           = PLLA.po_header_id
-             AND  PO.po_line_id                             = PLLA.po_line_id
-             --受入返品実績アドオン   ⇒発注止まり（受入実績データ無し）のデータも取得する為、外部結合
-             AND  XRART.txns_type(+)                        = '1'                         -- 実績区分:'1:受入'
-             AND  PO.po_number                              = XRART.rcv_rtn_number(+)
-             AND  PO.line_num                               = XRART.source_document_line_num(+)
-          --[ 発注依頼データ  END ]
+             AND  PHA.po_header_id                = PLLA.po_header_id
+             AND  PLA.po_line_id                  = PLLA.po_line_id
+             --受入返品実績アドオン
+             AND  XRART.txns_type                 = '1'                         -- 実績区分:'1:受入'
+             AND  PHA.segment1                    = XRART.rcv_rtn_number
+             AND  PLA.line_num                    = XRART.source_document_line_num
+          --[ 受入実績データ  END ]
+-- 2010/07/16 T.Yoshimoto Add End E_本稼動_03772
         UNION ALL
           --========================================================================
           -- 発注あり返品データ （受入実績区分 = '2'）
