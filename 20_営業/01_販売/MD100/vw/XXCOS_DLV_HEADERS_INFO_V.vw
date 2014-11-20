@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_headers_info_v
  * Description     : 納品伝票ヘッダ情報ビュー
- * Version         : 1.4
+ * Version         : 1.5
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -15,6 +15,7 @@
  *  2009/06/03    1.2   K.Kiriu          [T1_1269]パフォーマンス対応
  *  2009/07/06    1.3   T.Miyata         [0000409]パフォーマンス対応
  *  2009/08/03    1.4   K.Kiriu          [0000872]パフォーマンス対応
+ *  2009/09/01    1.5   K.Kiriu          [0000929]有効訪問件数のカウント方法変更対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_dlv_headers_info_v
 (
@@ -135,8 +136,12 @@ SELECT
        xdh.program_id,
        xdh.program_update_date
        ,custadd.customer_id customer_id                            --明細のコラムNO結合のため
-       ,xsv.party_id
-       ,xsv.resource_id
+/* 2009/09/01 Mod Start */
+--       ,xsv.party_id
+--       ,xsv.resource_id
+       ,NULL                                                      --有効訪問は新規登録時のみの為
+       ,NULL                                                      --有効訪問は新規登録時のみの為
+/* 2009/09/01 Mod End   */
 FROM
        xxcos_dlv_headers    xdh,                                  --納品ヘッダテーブル
        xxcmm_cust_accounts  custadd,                              --顧客アドオン
