@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           :  MD050_CSO_016_A04_情報系-EBSインターフェース：
  *                     (OUT)訪問実績データ
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009-09-09    1.7   Daisuke.Abe      統合テスト障害対応(0001323)
  *  2009-10-07    1.8   Daisuke.Abe      障害対応(0001454)
  *  2009-10-23    1.9   Daisuke.Abe      障害対応(E_T4_00056)
+ *  2009-11-24    1.10  Daisuke.Abe      障害対応(E_本稼動_00026)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1210,35 +1211,54 @@ AS
     -- 販売実績ヘッダーテーブル・販売実績明細テーブル抽出
     -- =====================================================
     BEGIN
+      /* 2009.11.24 D.Abe E_本稼動_00026対応 START */
+      --SELECT (SELECT COUNT(xsv1.sold_out_class) sold_out_class1
+      --        FROM   xxcso_sales_v xsv1  -- 売上実績ビュー
+      --        WHERE  xsv1.sold_out_class = cv_sld_out_clss1
+      --        AND    xsv1.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
+      --        /* 2009.05.21 K.Satomura T1_1036対応 START */
+      --        --AND    xsv1.cancel_correct_class IS NULL
+      --        AND    xsv1.digestion_ln_number = 0
+      --        /* 2009.05.21 K.Satomura T1_1036対応 END */
+      --        ) missing_column_number                            -- 欠品コラム数
+      --      ,(SELECT COUNT(xsv2.sold_out_class) sold_out_class2
+      --        FROM   xxcso_sales_v xsv2  -- 売上実績ビュー
+      --        WHERE  xsv2.sold_out_class = cv_sld_out_clss2
+      --        AND    xsv2.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
+      --        /* 2009.05.21 K.Satomura T1_1036対応 START */
+      --        --AND    xsv2.cancel_correct_class IS NULL
+      --        AND    xsv2.digestion_ln_number = 0
+      --        /* 2009.05.21 K.Satomura T1_1036対応 END */
+      --        ) active_column_number                             -- 有効コラム数
+      --        /* 2009.04.22 K.Satomrua T1_0478対応 START */
+      --       --,(SELECT SUM(xsv3.sold_out_time) sold_out_time
+      --      ,(SELECT SUM(NVL(xsv3.sold_out_time, 0)) sold_out_time
+      --        /* 2009.04.22 K.Satomrua T1_0478対応 END */
+      --        FROM   xxcso_sales_v  xsv3  -- 売上実績ビュー
+      --        WHERE  xsv3.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
+      --        /* 2009.05.21 K.Satomura T1_1036対応 START */
+      --        --AND    xsv3.cancel_correct_class IS NULL
+      --        AND    xsv3.digestion_ln_number = 0
+      --        /* 2009.05.21 K.Satomura T1_1036対応 END */
+      --        ) missing_part_time                                -- 欠品時間
       SELECT (SELECT COUNT(xsv1.sold_out_class) sold_out_class1
-              FROM   xxcso_sales_v xsv1  -- 売上実績ビュー
+              FROM   xxcso_sales_of_task_v xsv1  -- 有効訪問販売実績ビュー
               WHERE  xsv1.sold_out_class = cv_sld_out_clss1
               AND    xsv1.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
-              /* 2009.05.21 K.Satomura T1_1036対応 START */
-              --AND    xsv1.cancel_correct_class IS NULL
               AND    xsv1.digestion_ln_number = 0
-              /* 2009.05.21 K.Satomura T1_1036対応 END */
               ) missing_column_number                            -- 欠品コラム数
             ,(SELECT COUNT(xsv2.sold_out_class) sold_out_class2
-              FROM   xxcso_sales_v xsv2  -- 売上実績ビュー
+              FROM   xxcso_sales_of_task_v xsv2  -- 有効訪問販売実績ビュー
               WHERE  xsv2.sold_out_class = cv_sld_out_clss2
               AND    xsv2.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
-              /* 2009.05.21 K.Satomura T1_1036対応 START */
-              --AND    xsv2.cancel_correct_class IS NULL
               AND    xsv2.digestion_ln_number = 0
-              /* 2009.05.21 K.Satomura T1_1036対応 END */
               ) active_column_number                             -- 有効コラム数
-              /* 2009.04.22 K.Satomrua T1_0478対応 START */
-             --,(SELECT SUM(xsv3.sold_out_time) sold_out_time
             ,(SELECT SUM(NVL(xsv3.sold_out_time, 0)) sold_out_time
-              /* 2009.04.22 K.Satomrua T1_0478対応 END */
-              FROM   xxcso_sales_v  xsv3  -- 売上実績ビュー
+              FROM   xxcso_sales_of_task_v  xsv3  -- 有効訪問販売実績ビュー
               WHERE  xsv3.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
-              /* 2009.05.21 K.Satomura T1_1036対応 START */
-              --AND    xsv3.cancel_correct_class IS NULL
               AND    xsv3.digestion_ln_number = 0
-              /* 2009.05.21 K.Satomura T1_1036対応 END */
               ) missing_part_time                                -- 欠品時間
+      /* 2009.11.24 D.Abe E_本稼動_00026対応 END */
              ,xsv.change_out_time_100  change_out_time_100      -- つり銭切れ時間(100円)
              ,xsv.change_out_time_10   change_out_time_10       -- つり銭切れ時間(10円)
       INTO  ln_missing_column_number
@@ -1246,7 +1266,10 @@ AS
            ,ln_missing_part_time
            ,lt_change_out_time_100
            ,lt_change_out_time_10
-      FROM  xxcso_sales_v  xsv   -- 売上実績ビュー
+      /* 2009.11.24 D.Abe E_本稼動_00026対応 START */
+      --FROM  xxcso_sales_v  xsv   -- 売上実績ビュー
+      FROM  xxcso_sales_of_task_v  xsv   -- 有効訪問販売実績ビュー
+      /* 2009.11.24 D.Abe E_本稼動_00026対応 END */
       WHERE xsv.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
         /* 2009.05.21 K.Satomura T1_1036対応 START */
         --AND xsv.cancel_correct_class IS NULL

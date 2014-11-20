@@ -7,7 +7,7 @@ AS
  * Description      : 指定した営業員の指定した日の１時間ごとの訪問実績(訪問先)を表示します。
  *                    １週間前の訪問実績を同様に表示して比較の対象とします。
  * MD.050           : MD050_CSO_019_A07_営業員別訪問実績表
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *  2009-05-20    1.4   Makoto.Ohtsuki   ＳＴ障害対応(T1_0696)
  *  2009-06-03    1.5   Kazuo.Satomura   ＳＴ障害対応(T1_0696 SQLERRMを削除)
+ *  2009-11-25    1.6   Kazuo.Satomura   E_本稼動_00026対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -155,6 +156,9 @@ AS
   gn_last_total_count_12    NUMBER(10) DEFAULT 0;         -- 軒数計１２(前週)
 --
   gn_cnt                    NUMBER DEFAULT 0;             -- 配列用カウンタ
+  /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
+  gn_resource_id NUMBER; -- リソースＩＤ
+  /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -555,11 +559,17 @@ AS
                       xrv2.work_base_name_old  -- 勤務地拠点名（旧）
                     END
                ) work_base_name                -- 勤務地拠点名
+             /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
+             ,xrv2.resource_id                 -- リソースＩＤ
+             /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
       INTO    lt_employee_number
              ,lt_last_name
              ,lt_first_name
              ,lv_work_base_code
              ,lv_work_base_name
+             /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
+             ,gn_resource_id
+             /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
       FROM   xxcso_resources_v2 xrv2           -- リソースマスタ(最新)VIEW
       WHERE (CASE WHEN xrv2.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
                     xrv2.work_base_code_new  -- 勤務地拠点コード（新）
@@ -1911,7 +1921,10 @@ AS
     -- 営業員別時間別訪問実績 抽出カーソル 
     CURSOR get_vst_rslts_data_cur(
               id_vst_dt   IN  DATE     -- 処理日
-             ,iv_emp_num  IN VARCHAR2  -- 従業員コード
+             /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
+             --,iv_emp_num  IN VARCHAR2  -- 従業員コード
+             ,in_resource_id IN NUMBER -- リソースＩＤ
+             /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
            )
     IS
       SELECT  xvsrv.actual_end_date  actual_end_date -- 実績終了日
@@ -1919,12 +1932,19 @@ AS
              ,xcav.account_number    account_number  -- 顧客コード
              ,xcav.party_name        party_name      -- 顧客名称
       FROM    xxcso_cust_accounts_v       xcav           -- 顧客マスタVIEW
-             ,xxcso_resources_v2          xrv2           -- リソースマスタ(最新)VIEW
+             /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
+             --,xxcso_resources_v2          xrv2           -- リソースマスタ(最新)VIEW
+             /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
              ,xxcso_visit_sales_results_v xvsrv          -- 訪問売上実績VIEW
       WHERE  TRUNC(xvsrv.actual_end_date) = id_vst_dt
-        AND  xvsrv.owner_id               = xrv2.resource_id
+        /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
+        --AND  xvsrv.owner_id               = xrv2.resource_id
+        AND  xvsrv.owner_id               = in_resource_id
+        /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
         AND  xvsrv.party_id               = xcav.party_id
-        AND  xrv2.employee_number         = iv_emp_num
+        /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
+        --AND  xrv2.employee_number         = iv_emp_num
+        /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
         AND  ((xcav.customer_class_code    = cv_cstmr_cls_cd10
                 AND xcav.customer_status    IN (cv_cstmr_sttus25, cv_cstmr_sttus30,
                                                   cv_cstmr_sttus40, cv_cstmr_sttus50))
@@ -2024,7 +2044,10 @@ AS
       -- カーソルオープン
       OPEN  get_vst_rslts_data_cur(
                id_vst_dt   => ld_vst_dt          -- 処理日
-              ,iv_emp_num  => iv_employee_number -- 従業員コード
+              /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
+              --,iv_emp_num  => iv_employee_number -- 従業員コード
+              ,in_resource_id => gn_resource_id -- リソースＩＤ
+              /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
             );
 --
       <<get_vst_slsemp_data_loop2>>
