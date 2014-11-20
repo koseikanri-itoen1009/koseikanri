@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A01C(spec)
  * Description      : 組み戻し・残高取消・保留情報(CSVファイル)の取込処理
  * MD.050           : 残高更新Excelアップロード MD050_COK_016_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/05/29    1.2   M.Hiruta         [障害T1_1139] 日付条件を変更し、過去分のデータを処理できるよう変更
  *  2010/01/20    1.3   K.Kiriu          [E_本稼動_01115]残高更新を拠点で処理可、１仕入先の複数処理を可能とできるよう変更
  *  2010/03/19    1.4   S.Moriyama       [E_本稼動_01897]組み戻し時に元伝票番号、連携日時のクリアを行うように変更
+ *  2011/02/22    1.5   T.Ishiwata       [E_本稼動_05408]年次切替対応
  *
  *****************************************************************************************/
 --
@@ -142,6 +143,10 @@ AS
   cv_errmsg_10457   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10477';                 -- 残高取消組み合わせチェックエラー（拠点）
   cv_errmsg_10458   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10478';                 -- 金額未確定チェックエラー（拠点）
 -- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
+  cv_errmsg_10487   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10487';                 -- 残高取消組み合わせチェックエラー2（拠点）
+  cv_errmsg_10488   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10488';                 -- 保留顧客組み合わせチェックエラーメッセージ（拠点）
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
   -- メッセージトークン定義
   cv_tkn_file_id    CONSTANT VARCHAR2(7)  := 'FILE_ID';                          -- ファイルIDトークン
   cv_tkn_format     CONSTANT VARCHAR2(6)  := 'FORMAT';                           -- ファイルパターントークン
@@ -153,6 +158,9 @@ AS
   cv_tkn_pay_date   CONSTANT VARCHAR2(8)  := 'PAY_DATE';                         -- 支払日トークン
   cv_tkn_pay_amt    CONSTANT VARCHAR2(10) := 'PAY_AMOUNT';                       -- 支払金額トークン
   cv_tkn_count      CONSTANT VARCHAR2(5)  := 'COUNT';                            -- 件数出力トークン
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
+  cv_tkn_pbase_code CONSTANT VARCHAR2(19) := 'PAST_SALE_BASE_CODE';              -- 前月売上拠点トークン
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
   -- プロファイル定義
   cv_dept_act_code  CONSTANT VARCHAR2(20) := 'XXCOK1_AFF2_DEPT_ACT';             -- 業務管理部部門コード
   cv_prof_org_id    CONSTANT VARCHAR2(30) := 'ORG_ID';                           -- 組織ID
@@ -415,11 +423,18 @@ AS
     IS
       SELECT xbb.rowid AS row_id -- 販手残高ROWID
       FROM   xxcok_backmargin_balance xbb -- 販手残高テーブル
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
+            ,xxcmm_cust_accounts      xca -- 顧客追加情報
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
       WHERE  xbb.supplier_code       = iv_vendor_code
       AND    xbb.expect_payment_date <= id_pay_date
       AND    xbb.resv_flag           IS NULL
       AND    xbb.fb_interface_status = cv_fb_if_type0
-      AND    xbb.base_code           = gv_dept_bel_code
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD START
+--      AND    xbb.base_code           = gv_dept_bel_code
+      AND    xbb.cust_code           = xca.customer_code
+      AND    xca.past_sale_base_code = gv_dept_bel_code
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
       AND    xbb.cust_code           = iv_customer_code
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
 -- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
@@ -433,7 +448,14 @@ AS
     IS
       SELECT xbb.bm_balance_id AS bm_balance_id -- 販手残高ID
       FROM   xxcok_backmargin_balance xbb -- 販手残高テーブル
-      WHERE  xbb.base_code            = iv_base_code
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
+            ,xxcmm_cust_accounts      xca -- 顧客追加情報
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCST.Ishiwata UPD START
+--      WHERE  xbb.base_code            = iv_base_code
+      WHERE  xbb.cust_code            = xca.customer_code
+      AND    xca.past_sale_base_code  = iv_base_code
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
       AND    xbb.cust_code            = iv_customer_code
 -- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
 --      AND    xbb.expect_payment_date  = id_pay_date
@@ -784,7 +806,15 @@ AS
               ,xbb.program_application_id = cn_prg_appl_id            -- プログラムアプリID
               ,xbb.program_id             = cn_program_id             -- プログラムID
               ,xbb.program_update_date    = SYSDATE                   -- プログラム更新日
-        WHERE  xbb.base_code            = gv_dept_bel_code
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD START
+--        WHERE  xbb.base_code            = gv_dept_bel_code
+        WHERE  EXISTS
+                   ( SELECT 'X'
+                     FROM   xxcmm_cust_accounts xca
+                     WHERE  xca.past_sale_base_code = gv_dept_bel_code
+                       AND  xca.customer_code        = xbb.cust_code
+                   )
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
         AND    xbb.cust_code            = it_check_data(in_index).customer_code
 -- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
 --        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
@@ -805,7 +835,15 @@ AS
               ,xbb.program_application_id = cn_prg_appl_id            -- プログラムアプリID
               ,xbb.program_id             = cn_program_id             -- プログラムID
               ,xbb.program_update_date    = SYSDATE                   -- プログラム更新日
-        WHERE  xbb.base_code            = gv_dept_bel_code
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD START
+--        WHERE  xbb.base_code            = gv_dept_bel_code
+        WHERE  EXISTS
+                   ( SELECT 'X'
+                     FROM   xxcmm_cust_accounts xca
+                     WHERE  xca.past_sale_base_code = gv_dept_bel_code
+                       AND  xca.customer_code        = xbb.cust_code
+                   )
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
         AND    xbb.cust_code            = it_check_data(in_index).customer_code
 -- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
 --        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
@@ -978,8 +1016,16 @@ AS
       FROM   xxcok_backmargin_balance xbb
             ,po_vendors               pvs
             ,po_vendor_sites_all      pva
-      WHERE  xbb.base_code                                        = iv_base_code
-      AND    xbb.cust_code                                        = iv_customer_code
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
+            ,xxcmm_cust_accounts      xca -- 顧客追加情報
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD START
+--      WHERE  xbb.base_code                                        = iv_base_code
+--      AND    xbb.cust_code                                        = iv_customer_code
+      WHERE  xbb.cust_code                                        = iv_customer_code
+      AND    xca.past_sale_base_code                              = iv_base_code
+      AND    xbb.cust_code                                        = xca.customer_code
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
 -- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
 --      AND    xbb.expect_payment_date                              = TRUNC( id_pay_date )
       AND    xbb.expect_payment_date                             <= TRUNC( id_pay_date )
@@ -2214,32 +2260,57 @@ AS
                 ,ln_pay_sum_amt   -- 支払予定額
                 ,ln_amt_nofix_cnt -- 金額未確定件数
           FROM   xxcok_backmargin_balance xbb  -- 販手残高
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
+                ,xxcmm_cust_accounts      xca -- 顧客追加情報
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD END
           WHERE  xbb.supplier_code       = lv_vendor_code
           AND    xbb.expect_payment_date <= TRUNC( ld_pay_date )
           AND    xbb.resv_flag           IS NULL
           AND    xbb.fb_interface_status = cv_zero
-          AND    xbb.base_code           = gv_dept_bel_code
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD START
+--          AND    xbb.base_code           = gv_dept_bel_code
           AND    xbb.cust_code           = lv_customer_code
+          AND    xbb.cust_code           = xca.customer_code
+          AND    xca.past_sale_base_code = gv_dept_bel_code
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
           GROUP BY xbb.supplier_code
                   ,xbb.cust_code;
         EXCEPTION
           -- 販手残高存在チェック
           WHEN NO_DATA_FOUND THEN
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD START
             -- 妥当性チェックエラーメッセージ取得
+--            lv_out_msg := xxccp_common_pkg.get_msg(
+--                             iv_application  => cv_ap_type_xxcok
+--                            ,iv_name         => cv_errmsg_10457
+--                            ,iv_token_name1  => cv_tkn_vend_code
+--                            ,iv_token_value1 => lv_vendor_code
+--                            ,iv_token_name2  => cv_tkn_cust_code
+--                            ,iv_token_value2 => lv_customer_code
+--                            ,iv_token_name3  => cv_tkn_pay_date
+--                            ,iv_token_value3 => ld_pay_date
+--                            ,iv_token_name4  => cv_tkn_pay_amt
+--                            ,iv_token_value4 => ln_pay_amount
+--                            ,iv_token_name5  => cv_tkn_row_num
+--                            ,iv_token_value5 => in_index
+--                          );
             lv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => cv_ap_type_xxcok
-                            ,iv_name         => cv_errmsg_10457
+                            ,iv_name         => cv_errmsg_10487
                             ,iv_token_name1  => cv_tkn_vend_code
                             ,iv_token_value1 => lv_vendor_code
-                            ,iv_token_name2  => cv_tkn_cust_code
-                            ,iv_token_value2 => lv_customer_code
-                            ,iv_token_name3  => cv_tkn_pay_date
-                            ,iv_token_value3 => ld_pay_date
-                            ,iv_token_name4  => cv_tkn_pay_amt
-                            ,iv_token_value4 => ln_pay_amount
-                            ,iv_token_name5  => cv_tkn_row_num
-                            ,iv_token_value5 => in_index
+                            ,iv_token_name2  => cv_tkn_pbase_code
+                            ,iv_token_value2 => gv_dept_bel_code
+                            ,iv_token_name3  => cv_tkn_cust_code
+                            ,iv_token_value3 => lv_customer_code
+                            ,iv_token_name4  => cv_tkn_pay_date
+                            ,iv_token_value4 => ld_pay_date
+                            ,iv_token_name5  => cv_tkn_pay_amt
+                            ,iv_token_value5 => ln_pay_amount
+                            ,iv_token_name6  => cv_tkn_row_num
+                            ,iv_token_value6 => in_index
                           );
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
             -- 妥当性チェックエラーメッセージ出力
             lb_retcode := xxcok_common_pkg.put_message_f(
                              in_which      => FND_FILE.OUTPUT -- 出力区分
@@ -2452,17 +2523,31 @@ AS
         END LOOP;
         -- 販手残高チェック
         IF ( customer_bm_chk_cur2%ROWCOUNT = cn_zero ) THEN
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD START
           -- 妥当性チェックエラーメッセージ取得
+--          lv_out_msg := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_ap_type_xxcok
+--                          ,iv_name         => cv_errmsg_10242
+--                          ,iv_token_name1  => cv_tkn_cust_code
+--                          ,iv_token_value1 => lv_customer_code
+--                          ,iv_token_name2  => cv_tkn_pay_date
+--                          ,iv_token_value2 => ld_pay_date
+--                          ,iv_token_name3  => cv_tkn_row_num
+--                          ,iv_token_value3 => in_index
+--                        );
           lv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => cv_ap_type_xxcok
-                          ,iv_name         => cv_errmsg_10242
-                          ,iv_token_name1  => cv_tkn_cust_code
-                          ,iv_token_value1 => lv_customer_code
-                          ,iv_token_name2  => cv_tkn_pay_date
-                          ,iv_token_value2 => ld_pay_date
-                          ,iv_token_name3  => cv_tkn_row_num
-                          ,iv_token_value3 => in_index
+                          ,iv_name         => cv_errmsg_10488
+                          ,iv_token_name1  => cv_tkn_pbase_code
+                          ,iv_token_value1 => gv_dept_bel_code
+                          ,iv_token_name2  => cv_tkn_cust_code
+                          ,iv_token_value2 => lv_customer_code
+                          ,iv_token_name3  => cv_tkn_pay_date
+                          ,iv_token_value3 => ld_pay_date
+                          ,iv_token_name4  => cv_tkn_row_num
+                          ,iv_token_value4 => in_index
                         );
+-- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
           -- 妥当性チェックエラーメッセージ出力
           lb_retcode := xxcok_common_pkg.put_message_f(
                            in_which      => FND_FILE.OUTPUT -- 出力区分

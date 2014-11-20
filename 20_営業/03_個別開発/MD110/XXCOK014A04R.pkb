@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *                                                            1顧客に前月・当月の2レコード存在する場合、締め・支払日共に最新の日付を設定
  *  2010/01/27    1.11  SCS K.Kiriu      [障害E_本稼動_01176] 口座種別追加に伴う口座種別名取得元クイックコード変更
  *  2011/01/24    1.12  SCS S.Niki       [障害E_本稼動_06199] パフォーマンス改善対応
+ *  2011/03/15    1.13  SCS S.Niki       [障害E_本稼動_05408,05409] 年次切替対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -434,7 +435,14 @@ AS
           FROM   xxcok_backmargin_balance  xbb    -- 販手残高テーブル
                 ,po_vendors                pv     -- 仕入先マスタ
                 ,po_vendor_sites_all       pvsa   -- 仕入先サイト
-          WHERE  xbb.base_code                                 = NVL( gv_selling_base_code ,xbb.base_code)
+-- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki ADD START
+                ,xxcmm_cust_accounts       xca    -- 顧客追加情報
+-- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki ADD END
+-- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki UPD START
+--          WHERE  xbb.base_code                                 = NVL( gv_selling_base_code ,xbb.base_code)
+          WHERE  xbb.cust_code                                 = xca.customer_code
+          AND    xca.past_sale_base_code                       = NVL( gv_selling_base_code ,xca.past_sale_base_code)
+-- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki UPD END
           AND    xbb.expect_payment_date                      <= gd_payment_date
           AND    xbb.supplier_code                             = pv.segment1
           AND    pv.vendor_id                                  = pvsa.vendor_id
@@ -500,8 +508,15 @@ AS
                                               */
                                               xbb2.supplier_code            -- 仕入先コード
                                        FROM   xxcok_backmargin_balance xbb2 -- 販手残高テーブル
+-- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki ADD START
+                                             ,xxcmm_cust_accounts      xca  -- 顧客追加情報
+-- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki ADD END
                                        WHERE  xbb2.expect_payment_date <= gd_payment_date
-                                       AND    xbb2.base_code = NVL( gv_selling_base_code ,xbb2.base_code )
+-- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki UPD START
+--                                       AND    xbb2.base_code = NVL( gv_selling_base_code ,xbb2.base_code )
+                                       AND    xbb2.cust_code     = xca.customer_code
+                                       AND    xca.past_sale_base_code = NVL( gv_selling_base_code ,xca.past_sale_base_code)
+-- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki UPD END
                                   )
           AND    xbb.expect_payment_date                      <= gd_payment_date
           AND    xbb.supplier_code                             = pv.segment1

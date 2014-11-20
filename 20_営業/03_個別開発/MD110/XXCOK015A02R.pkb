@@ -7,7 +7,7 @@ AS
  * Description      : 手数料を現金支払する際の支払案内書（領収書付き）を
  *                    各売上計上拠点で印刷します。
  * MD.050           : 支払案内書印刷（領収書付き） MD050_COK_015_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/05/29    1.2   K.Yamaguchi      [障害T1_1261]販手残高テーブル更新項目追加
  *  2009/09/10    1.3   S.Moriyama       [障害0000060]住所の桁数変更対応
  *  2009/10/14    1.4   S.Moriyama       [変更依頼I_E_573]仕入先名称、住所の設定内容変更対応
+ *  2011/02/02    1.5   M.Watanabe       [E_本稼動_05408,05409]年次切替対応
  *
  *****************************************************************************************/
   --==================================================
@@ -172,6 +173,9 @@ AS
       FROM xxcok_backmargin_balance     xbb  -- 販手残高テーブル
          , po_vendors                   pv   -- 仕入先マスタ
          , po_vendor_sites_all          pvsa -- 仕入先サイトマスタ
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS M.Watanabe ADD START
+         , xxcmm_cust_accounts          xca  -- 顧客追加情報
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS M.Watanabe ADD END
       WHERE xbb.supplier_code                = pv.segment1
         AND pv.vendor_id                     = pvsa.vendor_id
         AND xbb.expect_payment_amt_tax       > 0
@@ -180,7 +184,11 @@ AS
         AND pvsa.hold_all_payments_flag      = cv_n
         AND pvsa.org_id                      = gn_org_id
         AND pvsa.attribute4                  = cv_bm_type_4
-        AND xbb.base_code                    = gv_param_base_code
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS M.Watanabe UPD START
+--        AND xbb.base_code                    = gv_param_base_code
+        AND xbb.cust_code                    = xca.customer_code
+        AND xca.past_sale_base_code          = gv_param_base_code
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS M.Watanabe UPD END
         AND xbb.supplier_code                = gv_param_vendor_code
         AND ( pvsa.inactive_date             < gd_process_date OR pvsa.inactive_date IS NULL )
       FOR UPDATE OF xbb.bm_balance_id NOWAIT
@@ -681,8 +689,14 @@ AS
                     AND hps.location_id      = hl.location_id
                     AND hcasa.org_id        = gn_org_id
                 )                            hca
-           WHERE xbb.base_code                    = hca.base_code
-             AND xbb.supplier_code                = pv.segment1
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS M.Watanabe ADD START
+              , xxcmm_cust_accounts          xca  -- 顧客追加情報
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS M.Watanabe ADD END
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS M.Watanabe UPD START
+--           WHERE xbb.base_code                    = hca.base_code
+--             AND xbb.supplier_code                = pv.segment1
+             WHERE xbb.supplier_code                = pv.segment1
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS M.Watanabe UPD END
              AND pv.vendor_id                     = pvsa.vendor_id
              AND pvsa.org_id                      = gn_org_id
              AND pvsa.attribute4                  = cv_bm_type_4
@@ -691,7 +705,12 @@ AS
              AND xbb.resv_flag                   IS NULL
              AND xbb.publication_date            IS NULL
              AND pvsa.hold_all_payments_flag      = cv_n
-             AND xbb.base_code                    = gv_param_base_code
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS M.Watanabe UPD START
+--             AND xbb.base_code                    = gv_param_base_code
+             AND xbb.cust_code                    = xca.customer_code
+             AND xca.past_sale_base_code          = gv_param_base_code
+             AND xca.sale_base_code               = hca.base_code
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS M.Watanabe UPD END
              AND xbb.supplier_code                = NVL( gv_param_vendor_code, xbb.supplier_code )
              AND ( pvsa.inactive_date             < gd_process_date OR pvsa.inactive_date IS NULL )
            GROUP BY xbb.supplier_code

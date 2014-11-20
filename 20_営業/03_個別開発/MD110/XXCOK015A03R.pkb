@@ -7,7 +7,7 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2010/04/06    1.9   K.Yamaguchi      [障害E_本稼動_01897] 現金持参のシステムテストで発覚した障害
  *                                                            振込手数料負担者が設定されていない場合を考慮
  *  2011/01/05    1.10  S.Niki           [障害E_本稼動_01950] ソート順を本部コード、売上拠点コード、初回取引日、顧客コードに変更
+ *  2011/03/28    1.11  S.Ochiai         [障害E_本稼動_05408,05409] 年次切替対応
  *
  *****************************************************************************************/
   --==================================================
@@ -167,6 +168,9 @@ AS
   --==================================================
   CURSOR g_summary_cur IS
     SELECT xrbpd.payment_code                     AS payment_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
+         , xrbpd.contact_base_code                AS contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD END
          , SUM( xrbpd.selling_amt )               AS selling_amt_sum
          , gv_prompt_bm                           AS bm_index_1
          , SUM( CASE
@@ -241,6 +245,9 @@ AS
     FROM xxcok_rep_bm_pg_detail    xrbpd
     WHERE xrbpd.request_id = cn_request_id
     GROUP BY xrbpd.payment_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
+            ,xrbpd.contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
             ,xrbpd.org_slip_number
             ,xrbpd.payment_date_wk
@@ -565,6 +572,9 @@ AS
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
       WHERE xrbpd.request_id       = cn_request_id
         AND xrbpd.payment_code     = g_summary_tab(i).payment_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
+        AND xrbpd.contact_base_code = g_summary_tab(i).contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD END
 -- 2010/04/06 Ver.1.9 [障害E_本稼動_01897] SCS K.Yamaguchi UPD START
 ---- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
 --        AND NVL(xrbpd.org_slip_number,'X') = NVL(g_summary_tab(i).org_slip_number,'X')
@@ -826,11 +836,17 @@ AS
                         ELSE xdv.attribute9 -- 本部コード(新)
                       END
               FROM    xx03_departments_v  xdv -- 部門ビュー
-              WHERE   xdv.flex_value  = xcbs.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--              WHERE   xdv.flex_value  = xcbs.base_code
+              WHERE   xdv.flex_value  = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
                 AND   ROWNUM = 1
            )                                                    AS selling_base
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
-         , xcbs.base_code                                       AS selling_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--         , xcbs.base_code                                       AS selling_base_code
+         , hca3.base_code                                       AS selling_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS selling_base_name
          , SUBSTR( hca3.base_name , 1 , 20 )                    AS selling_base_name
@@ -958,7 +974,10 @@ AS
       AND xcbs.supplier_code           = xbb.supplier_code
       AND xcbs.closing_date            = xbb.closing_date
       AND xcbs.expect_payment_date     = xbb.expect_payment_date
-      AND xcbs.base_code               = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--      AND xcbs.base_code               = hca3.base_code
+      AND xbb.base_code                = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
       AND xcbs.delivery_cust_code      = hca1.cust_code
       AND xcbs.supplier_code           = pv.segment1
       AND pv.vendor_id                 = pvsa.vendor_id
@@ -1022,7 +1041,10 @@ AS
            , xcbs.delivery_cust_code
            , hca1.cust_name
            , hca3.base_area_code
-           , xcbs.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--           , xcbs.base_code
+           , hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
            , hca3.base_name
            , xcbs.calc_type
            , flv2.calc_type_sort
@@ -1197,11 +1219,17 @@ AS
                         ELSE xdv.attribute9 -- 本部コード(新)
                       END
               FROM    xx03_departments_v  xdv -- 部門ビュー
-              WHERE   xdv.flex_value  = xcbs.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--              WHERE   xdv.flex_value  = xcbs.base_code
+              WHERE   xdv.flex_value  = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
                 AND   ROWNUM = 1
            )                                                    AS selling_base
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
-         , xcbs.base_code                                       AS selling_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--         , xcbs.base_code                                       AS selling_base_code
+         , hca3.base_code                                       AS selling_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS selling_base_name
          , SUBSTR( hca3.base_name , 1 , 20 )                    AS selling_base_name
@@ -1329,7 +1357,10 @@ AS
       AND xcbs.supplier_code           = xbb.supplier_code
       AND xcbs.closing_date            = xbb.closing_date
       AND xcbs.expect_payment_date     = xbb.expect_payment_date
-      AND xcbs.base_code               = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--      AND xcbs.base_code               = hca3.base_code
+      AND xbb.base_code                = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
       AND xcbs.delivery_cust_code      = hca1.cust_code
       AND xcbs.supplier_code           = pv.segment1
       AND pv.vendor_id                 = pvsa.vendor_id
@@ -1384,7 +1415,10 @@ AS
            , xcbs.delivery_cust_code
            , hca1.cust_name
            , hca3.base_area_code
-           , xcbs.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--           , xcbs.base_code
+           , hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
            , hca3.base_name
            , xcbs.calc_type
            , flv2.calc_type_sort
@@ -1515,20 +1549,32 @@ AS
                         ELSE xdv.attribute9 -- 本部コード(新)
                       END
               FROM    xx03_departments_v  xdv -- 部門ビュー
-              WHERE   xdv.flex_value  = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--              WHERE   xdv.flex_value  = hca3.base_code
+              WHERE   xdv.flex_value  = hca1.contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
                 AND   ROWNUM = 1
            )                                                    AS contact_base
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
-         , hca3.base_code                                       AS contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--         , hca3.base_code                                       AS contact_base_code
+         , hca1.contact_base_code                               AS contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS contact_base_name
 --         , hca3.base_address1                                   AS contact_addr_1
 --         , hca3.base_address2                                   AS contact_addr_2
 --         , hca3.base_phone_num                                  AS contact_phone_no
-         , SUBSTR( hca3.base_name , 1 , 20 )                    AS contact_base_name
-         , SUBSTR( hca3.base_address1 , 1 , 20 )                AS contact_addr_1
-         , SUBSTR( hca3.base_address1 , 21, 20 )                AS contact_addr_2
-         , SUBSTRB( hca3.base_phone_num , 1 ,15 )               AS contact_phone_no
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--         , SUBSTR( hca3.base_name , 1 , 20 )                    AS contact_base_name
+--         , SUBSTR( hca3.base_address1 , 1 , 20 )                AS contact_addr_1
+--         , SUBSTR( hca3.base_address1 , 21, 20 )                AS contact_addr_2
+--         , SUBSTRB( hca3.base_phone_num , 1 ,15 )               AS contact_phone_no
+         , SUBSTR( hca2.contact_name , 1 , 20 )                 AS contact_base_name
+         , SUBSTR( hca2.contact_address1 , 1 , 20 )             AS contact_addr_1
+         , SUBSTR( hca2.contact_address1 , 21, 20 )             AS contact_addr_2
+         , SUBSTRB( hca2.contact_phone_num , 1 ,15 )            AS contact_phone_no
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
          , NULL                                                 AS selling_amt_sum
          , NULL                                                 AS bm_index_1
@@ -1559,11 +1605,17 @@ AS
                         ELSE xdv.attribute9 -- 本部コード(新)
                       END
               FROM    xx03_departments_v  xdv -- 部門ビュー
-              WHERE   xdv.flex_value  = xcbs.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--              WHERE   xdv.flex_value  = xcbs.base_code
+              WHERE   xdv.flex_value  = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
                 AND   ROWNUM = 1
            )                                                    AS selling_base
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
-         , xcbs.base_code                                       AS selling_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--         , xcbs.base_code                                       AS selling_base_code
+         , hca3.base_code                                       AS selling_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS selling_base_name
          , SUBSTR( hca3.base_name , 1 , 20 )                    AS selling_base_name
@@ -1622,6 +1674,10 @@ AS
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
                 , xca.start_tran_date            AS start_tran_date
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
+                , xca.past_sale_base_code        AS base_code
+                , xca.sale_base_code             AS contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD END
            FROM hz_cust_accounts            hca       -- 顧客マスタ
               , hz_parties                  hp        -- パーティマスタ
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
@@ -1632,6 +1688,26 @@ AS
              AND xca.customer_id     = hca.cust_account_id
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
          )                        hca1
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
+       , ( SELECT hca.account_number             AS contact_code
+                , hp.party_name                  AS contact_name
+                , hl.address3                    AS contact_area_code
+                ,    hl.city
+                  || hl.address1
+                  || hl.address2                 AS contact_address1
+                , hl.address_lines_phonetic      AS contact_phone_num
+           FROM hz_cust_accounts            hca       -- 顧客マスタ
+              , hz_cust_acct_sites_all      hcasa     -- 顧客所在地マスタ
+              , hz_parties                  hp        -- パーティマスタ
+              , hz_party_sites              hps       -- パーティサイトマスタ
+              , hz_locations                hl        -- 顧客事業所マスタ
+           WHERE hca.cust_account_id = hcasa.cust_account_id
+             AND hca.party_id        = hp.party_id
+             AND hcasa.party_site_id = hps.party_site_id
+             AND hps.location_id     = hl.location_id
+             AND hcasa.org_id        = gn_org_id
+         )                        hca2
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD END
        , ( SELECT hca.account_number             AS base_code
                 , hp.party_name                  AS base_name
                 , hl.address3                    AS base_area_code
@@ -1677,8 +1753,14 @@ AS
       AND xcbs.supplier_code           = xbb.supplier_code
       AND xcbs.closing_date            = xbb.closing_date
       AND xcbs.expect_payment_date     = xbb.expect_payment_date
-      AND xcbs.base_code               = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--      AND xcbs.base_code               = hca3.base_code
+      AND xbb.base_code                = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
       AND xcbs.delivery_cust_code      = hca1.cust_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
+      AND hca2.contact_code            = hca1.contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD END
       AND xcbs.supplier_code           = pv.segment1
       AND pv.vendor_id                 = pvsa.vendor_id
       AND ( pvsa.inactive_date         > gd_process_date OR pvsa.inactive_date IS NULL )
@@ -1686,7 +1768,10 @@ AS
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_3
-      AND xbb.base_code                = gv_param_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--      AND xbb.base_code                = gv_param_base_code
+      AND hca1.base_code                = gv_param_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2010/03/02 Ver.1.8 [障害E_本稼動_01299] SCS S.Moriyama REPAIR START
 --      AND xbb.balance_cancel_date BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
 --                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
@@ -1718,18 +1803,29 @@ AS
            , SUBSTR( pvsa.attribute1, 21, 20 )
 -- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
-           , hca3.base_code
-           , hca3.base_name
-           , hca3.base_area_code
-           , hca3.base_address1
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--           , hca3.base_code
+--           , hca3.base_name
+--           , hca3.base_area_code
+--           , hca3.base_address1
+           , hca1.contact_base_code
+           , hca2.contact_name
+           , hca2.contact_address1
+           , hca2.contact_phone_num
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama DEL START
 --           , hca3.base_address2
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama DEL END
-           , hca3.base_phone_num
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai DEL START
+--           , hca3.base_phone_num
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai DEL END
            , xcbs.delivery_cust_code
            , hca1.cust_name
            , hca3.base_area_code
-           , xcbs.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--           , xcbs.base_code
+           , hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
            , hca3.base_name
            , xcbs.calc_type
            , flv2.calc_type_sort
@@ -1860,20 +1956,32 @@ AS
                         ELSE xdv.attribute9 -- 本部コード(新)
                       END
               FROM    xx03_departments_v  xdv -- 部門ビュー
-              WHERE   xdv.flex_value  = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--              WHERE   xdv.flex_value  = hca3.base_code
+              WHERE   xdv.flex_value  = hca1.contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
                 AND   ROWNUM = 1
            )                                                    AS contact_base
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
-         , hca3.base_code                                       AS contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--         , hca3.base_code                                       AS contact_base_code
+         , hca1.contact_base_code                               AS contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS contact_base_name
 --         , hca3.base_address1                                   AS contact_addr_1
 --         , hca3.base_address2                                   AS contact_addr_2
 --         , hca3.base_phone_num                                  AS contact_phone_no
-         , SUBSTR( hca3.base_name , 1 ,20 )                     AS contact_base_name
-         , SUBSTR( hca3.base_address1 ,  1 , 20 )               AS contact_addr_1
-         , SUBSTR( hca3.base_address1 , 21 , 20 )               AS contact_addr_2
-         , SUBSTRB( hca3.base_phone_num , 1 , 15 )              AS contact_phone_no
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--         , SUBSTR( hca3.base_name , 1 , 20 )                    AS contact_base_name
+--         , SUBSTR( hca3.base_address1 , 1 , 20 )                AS contact_addr_1
+--         , SUBSTR( hca3.base_address1 , 21, 20 )                AS contact_addr_2
+--         , SUBSTRB( hca3.base_phone_num , 1 ,15 )               AS contact_phone_no
+         , SUBSTR( hca2.contact_name , 1 , 20 )                 AS contact_base_name
+         , SUBSTR( hca2.contact_address1 , 1 , 20 )             AS contact_addr_1
+         , SUBSTR( hca2.contact_address1 , 21, 20 )             AS contact_addr_2
+         , SUBSTRB( hca2.contact_phone_num , 1 ,15 )            AS contact_phone_no
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD END
          , NULL                                                 AS selling_amt_sum
          , NULL                                                 AS bm_index_1
@@ -1904,11 +2012,17 @@ AS
                         ELSE xdv.attribute9 -- 本部コード(新)
                       END
               FROM    xx03_departments_v  xdv -- 部門ビュー
-              WHERE   xdv.flex_value  = xcbs.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--              WHERE   xdv.flex_value  = xcbs.base_code
+              WHERE   xdv.flex_value  = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
                 AND   ROWNUM = 1
            )                                                    AS selling_base
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki UPD END
-         , xcbs.base_code                                       AS selling_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--         , xcbs.base_code                                       AS selling_base_code
+         , hca3.base_code                                       AS selling_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPD START
 --         , hca3.base_name                                       AS selling_base_name
          , SUBSTR( hca3.base_name , 1 , 20 )                    AS selling_base_name
@@ -1967,6 +2081,10 @@ AS
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
                 , xca.start_tran_date            AS start_tran_date
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
+                , xca.past_sale_base_code        AS base_code
+                , xca.sale_base_code             AS contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD END
            FROM hz_cust_accounts            hca       -- 顧客マスタ
               , hz_parties                  hp        -- パーティマスタ
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
@@ -1977,6 +2095,26 @@ AS
              AND xca.customer_id     = hca.cust_account_id
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
          )                        hca1
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
+       , ( SELECT hca.account_number             AS contact_code
+                , hp.party_name                  AS contact_name
+                , hl.address3                    AS contact_area_code
+                ,    hl.city
+                  || hl.address1
+                  || hl.address2                 AS contact_address1
+                , hl.address_lines_phonetic      AS contact_phone_num
+           FROM hz_cust_accounts            hca       -- 顧客マスタ
+              , hz_cust_acct_sites_all      hcasa     -- 顧客所在地マスタ
+              , hz_parties                  hp        -- パーティマスタ
+              , hz_party_sites              hps       -- パーティサイトマスタ
+              , hz_locations                hl        -- 顧客事業所マスタ
+           WHERE hca.cust_account_id = hcasa.cust_account_id
+             AND hca.party_id        = hp.party_id
+             AND hcasa.party_site_id = hps.party_site_id
+             AND hps.location_id     = hl.location_id
+             AND hcasa.org_id        = gn_org_id
+         )                        hca2
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD END
        , ( SELECT hca.account_number             AS base_code
                 , hp.party_name                  AS base_name
                 , hl.address3                    AS base_area_code
@@ -2022,8 +2160,14 @@ AS
       AND xcbs.supplier_code           = xbb.supplier_code
       AND xcbs.closing_date            = xbb.closing_date
       AND xcbs.expect_payment_date     = xbb.expect_payment_date
-      AND xcbs.base_code               = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--      AND xcbs.base_code               = hca3.base_code
+      AND xbb.base_code                = hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
       AND xcbs.delivery_cust_code      = hca1.cust_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
+      AND hca2.contact_code            = hca1.contact_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD END
       AND xcbs.supplier_code           = pv.segment1
       AND pv.vendor_id                 = pvsa.vendor_id
       AND ( pvsa.inactive_date         > gd_process_date OR pvsa.inactive_date IS NULL )
@@ -2031,7 +2175,10 @@ AS
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_4
-      AND xbb.base_code                = gv_param_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--      AND xbb.base_code                = gv_param_base_code
+      AND hca1.base_code               = gv_param_base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
       AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
@@ -2057,18 +2204,29 @@ AS
            , SUBSTR( pvsa.attribute1, 21, 20 )
 -- 2009/10/14 Ver.1.6 [変更依頼I_E_573] SCS S.Moriyama UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama UPS END
-           , hca3.base_code
-           , hca3.base_name
-           , hca3.base_area_code
-           , hca3.base_address1
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--           , hca3.base_code
+--           , hca3.base_name
+--           , hca3.base_area_code
+--           , hca3.base_address1
+           , hca1.contact_base_code
+           , hca2.contact_name
+           , hca2.contact_address1
+           , hca2.contact_phone_num
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama DEL START
 --           , hca3.base_address2
 -- 2009/09/10 Ver.1.5 [障害0000060] SCS S.Moriyama DEL END
-           , hca3.base_phone_num
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai DEL START
+--           , hca3.base_phone_num
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai DEL END
            , xcbs.delivery_cust_code
            , hca1.cust_name
            , hca3.base_area_code
-           , xcbs.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
+--           , xcbs.base_code
+           , hca3.base_code
+-- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
            , hca3.base_name
            , xcbs.calc_type
            , flv2.calc_type_sort

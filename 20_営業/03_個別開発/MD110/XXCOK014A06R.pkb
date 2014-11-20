@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A06R(body)
  * Description      : 条件別販手販協計算処理実行時に販手条件マスタ未登録の販売実績をエラーリストに出力
  * MD.050           : 自販機販手条件エラーリスト MD050_COK_014_A06
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/03/25    1.2   S.Kayahara       最終行にスラッシュ追加
  *  2009/03/02    1.3   K.Yamaguchi      [障害T1_0510] 売上拠点情報取得SQL文の不足対応
  *  2009/09/01    1.4   S.Moriyama       [障害0001230] OPM品目マスタ取得条件追加
+ *  2011/02/02    1.5   S.Ochiai         [障害E_本稼動_05408] 年次切替対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -151,7 +152,17 @@ AS
     iv_bace_code IN  VARCHAR2 DEFAULT NULL                        -- 拠点コード(入力パラメータ)
   )
   IS
-    SELECT xbce.base_code            AS base_code                 -- 拠点コード
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS S.Ochiai UPD START
+--    SELECT xbce.base_code            AS base_code                 -- 拠点コード
+    SELECT /*+
+               PUSH_PRED(ITEM)
+               LEADING  (XBCE XCA)
+               USE_NL   (XBCE XCA)
+               INDEX    (XBCE XXCOK_BM_CONTRACT_ERR_N02)
+               INDEX    (XCA  XXCMM_CUST_ACCOUNTS_N06)
+           */
+           xbce.base_code            AS base_code                 -- 拠点コード
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS S.Ochiai UPD END
          , xbce.cust_code            AS cust_code                 -- 顧客コード
          , xbce.item_code            AS item_code                 -- 品目コード
          , xbce.container_type_code  AS container_type_code       -- 容器コード
@@ -161,6 +172,9 @@ AS
          , item.item_short_name      AS item_short_name           -- 品目・略名
          , cont.container_name       AS container_name            -- 容器名
     FROM   xxcok_bm_contract_err     xbce                         -- 販手条件エラーテーブル
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS S.Ochiai ADD START
+         , xxcmm_cust_accounts       xca                          -- 顧客追加情報
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS S.Ochiai ADD END
          , ( SELECT msib.segment1         AS item_code            -- 品目コード
                   , ximb.item_short_name  AS item_short_name      -- 品目・略名
              FROM   mtl_system_items_b    msib                    -- 品目マスタ
@@ -182,7 +196,11 @@ AS
              FROM   xxcmn_lookup_values_v xlvv                    -- クイックコード
              WHERE  xlvv.lookup_type      = cv_token_yoki_kubun
            ) cont
-    WHERE  xbce.base_code            = NVL( iv_bace_code , xbce.base_code )
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS S.Ochiai UPD START
+--    WHERE  xbce.base_code            = NVL( iv_bace_code , xbce.base_code )
+    WHERE  xbce.cust_code            = xca.customer_code
+    AND    xca.past_sale_base_code   = NVL( iv_bace_code ,xca.past_sale_base_code)
+-- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS S.Ochiai UPD END
     AND    xbce.item_code            = item.item_code(+)
     AND    xbce.container_type_code  = cont.container_type_code(+)
     ORDER BY
