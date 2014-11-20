@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A11C (body)
  * Description      : 受注一覧ファイル出力（EDI用）（本部確認用）
  * MD.050           : 受注一覧ファイル出力 <MD050_COS_009_A11>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  * 2012/12/26    1.0   K.Onotsuka       新規作成[E_本稼働_08657対応]
+ * 2013/05/27    1.1   K.Nakamura       [E_本稼働_10732対応]
  *
  *****************************************************************************************/
 --
@@ -126,6 +127,9 @@ AS
   cv_msg_flag_out                CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-14606';    --EDI納品予定送信済フラグ名称（対象外）
   --日付フォーマット
   cv_yyyy_mm_dd                  CONSTANT  VARCHAR2(10)  :=  'YYYY/MM/DD';            --YYYY/MM/DD型
+-- 2013/05/27 Ver1.1 Add Start
+  cv_yyyy_mm_ddhh24miss          CONSTANT  VARCHAR2(30)  :=  'YYYY/MM/DD HH24:MI:SS'; --YYYY/MM/DD HH24:MI:SS型
+-- 2013/05/27 Ver1.1 Add End
   --クイックコード参照用
   --使用可能フラグ定数
   ct_enabled_flg_y               CONSTANT  fnd_lookup_values.enabled_flag%TYPE
@@ -194,16 +198,24 @@ AS
       ,TO_CHAR(xeh.process_date, cv_yyyy_mm_dd)
                                              AS process_date                 -- 処理日
       ,xeh.process_time                      AS process_time                 -- 処理時刻
-      ,xeh.base_code                         AS base_code                    -- 拠点（部門）コード
-      ,xeh.base_name                         AS base_name                    -- 拠点名（正式名）
+-- 2013/05/27 Ver1.1 Mod Start
+--      ,xeh.base_code                         AS base_code                    -- 拠点（部門）コード
+--      ,xeh.base_name                         AS base_name                    -- 拠点名（正式名）
+      ,xtolc.delivery_base_code              AS base_code                    -- 拠点（部門）コード
+      ,xtolc.delivery_base_name              AS base_name                    -- 拠点名（正式名）
+-- 2013/05/27 Ver1.1 Mod End
       ,xeh.edi_chain_code                    AS edi_chain_code               -- ＥＤＩチェーン店コード
       ,xeh.edi_chain_name                    AS edi_chain_name               -- ＥＤＩチェーン店名（漢字）
       ,xeh.chain_code                        AS chain_code                   -- チェーン店コード
       ,xeh.chain_name                        AS chain_name                   -- チェーン店名（漢字）
       ,xeh.report_code                       AS report_code                  -- 帳票コード
       ,xeh.report_show_name                  AS report_show_name             -- 帳票表示名
-      ,xeh.customer_code                     AS customer_code                -- 顧客コード
-      ,xeh.customer_name                     AS customer_name                -- 顧客名（漢字）
+-- 2013/05/27 Ver1.1 Mod Start
+--      ,xeh.customer_code                     AS customer_code                -- 顧客コード
+--      ,xeh.customer_name                     AS customer_name                -- 顧客名（漢字）
+      ,xtolc.customer_code                   AS customer_code                -- 顧客コード
+      ,xtolc.customer_name                   AS customer_name                -- 顧客名（漢字）
+-- 2013/05/27 Ver1.1 Mod End
       ,xeh.company_code                      AS company_code                 -- 社コード
       ,xeh.company_name                      AS company_name                 -- 社名（漢字）
       ,xeh.company_name_alt                  AS company_name_alt             -- 社名（カナ）
@@ -234,7 +246,10 @@ AS
       ,xeh.other_party_order_number          AS other_party_order_number     -- 相手先発注番号
       ,xeh.invoice_number                    AS invoice_number               -- 伝票番号
       ,xeh.check_digit                       AS check_digit                  -- チェックデジット
-      ,xeh.order_no_ebs                      AS order_no_ebs                 -- 受注Ｎｏ（ＥＢＳ）
+-- 2013/05/27 Ver1.1 Mod Start
+--      ,xeh.order_no_ebs                      AS order_no_ebs                 -- 受注Ｎｏ（ＥＢＳ）
+      ,ooha.order_number                     AS order_no_ebs                 -- 受注Ｎｏ（ＥＢＳ）
+-- 2013/05/27 Ver1.1 Mod End
       ,xeh.ar_sale_class                     AS ar_sale_class                -- 特売区分
       ,xeh.delivery_classe                   AS delivery_classe              -- 配送区分
       ,xeh.opportunity_no                    AS opportunity_no               -- 便Ｎｏ
@@ -294,7 +309,10 @@ AS
       ,xel.line_no                           AS line_no                      -- 行Ｎｏ
       ,xel.stockout_class                    AS stockout_class               -- 欠品区分
       ,xel.stockout_reason                   AS stockout_reason              -- 欠品理由
-      ,xel.product_code_itouen               AS product_code_itouen          -- 商品コード（伊藤園）
+-- 2013/05/27 Ver1.1 Mod Start
+--      ,xel.product_code_itouen               AS product_code_itouen          -- 商品コード（伊藤園）
+      ,oola.ordered_item                     AS product_code_itouen          -- 商品コード（伊藤園）
+-- 2013/05/27 Ver1.1 Mod End
       ,xel.product_code1                     AS product_code1                -- 商品コード１
       ,xel.product_code2                     AS product_code2                -- 商品コード２
       ,xel.jan_code                          AS jan_code                     -- ＪＡＮコード
@@ -362,6 +380,16 @@ AS
                ,cv_y
        )                                     AS output_flag                  -- 出力済フラグ
       ,oos.name                              AS order_source_name            -- 受注ソース名
+-- 2013/05/27 Ver1.1 Add Start
+      ,TO_CHAR(xeh.creation_date, cv_yyyy_mm_ddhh24miss)
+                                             AS creation_date                -- データ作成日
+      ,xeh.order_connection_number           AS order_connection_number      -- 受注関連番号
+      ,xtolc.tsukagatazaiko_div              AS tsukagatazaiko_div           -- 通過在庫型区分
+      ,oola.flow_status_code                 AS flow_status_code             -- 明細ステータス
+      ,oola.subinventory                     AS subinventory                 -- 保管場所
+      ,TO_CHAR(ooha.booked_date, cv_yyyy_mm_dd)
+                                             AS booked_date                  -- 記帳日
+-- 2013/05/27 Ver1.1 Add End
     FROM
        oe_order_headers_all      ooha    -- 受注ヘッダ
       ,oe_order_lines_all        oola    -- 受注明細
@@ -451,7 +479,7 @@ AS
            (
                  --受注ヘッダ.納品予定日≧パラメータ.納品日（FROM）
                  TRUNC( ooha.request_date ) >= icp_ordered_date_h_from
-                 --受注ヘッダ.納品日予定日≦パラメータ.納品日（TO）
+                 --受注ヘッダ.納品予定日≦パラメータ.納品日（TO）
              AND TRUNC( ooha.request_date ) <= icp_ordered_date_h_to
            )
         )
@@ -465,7 +493,7 @@ AS
        xtolc.delivery_base_code  -- 納品拠点
       ,xtolc.chain_store_code    -- チェーン店コード
       ,xtolc.store_code          -- 店舗コード
-      ,ooha.request_date         -- 納品日(ヘッダ)
+      ,ooha.request_date         -- 納品予定日(ヘッダ)
       ,ooha.cust_po_number       -- 顧客発注番号
       ,ooha.order_number         -- 受注番号
       ,oola.line_number          -- 受注明細番号
@@ -944,9 +972,26 @@ AS
              ,xca.delivery_base_code  delivery_base_code
              ,xca.chain_store_code    chain_store_code
              ,xca.store_code          store_code
+-- 2013/05/27 Ver1.1 Add Start
+             ,hp2.party_name          customer_name
+             ,hp1.party_name          delivery_base_name
+             ,xca.tsukagatazaiko_div  tsukagatazaiko_div
+-- 2013/05/27 Ver1.1 Add End
       FROM   xxcmm_cust_accounts xca
+-- 2013/05/27 Ver1.1 Add Start
+            ,hz_cust_accounts    hca1
+            ,hz_cust_accounts    hca2
+            ,hz_parties          hp1
+            ,hz_parties          hp2
+-- 2013/05/27 Ver1.1 Add End
       WHERE  xca.delivery_base_code = icp_delivery_base_code
       AND    xca.chain_store_code   = icp_chain_code
+-- 2013/05/27 Ver1.1 Add Start
+      AND    xca.delivery_base_code = hca1.account_number
+      AND    hca1.party_id          = hp1.party_id
+      AND    xca.customer_id        = hca2.cust_account_id
+      AND    hca2.party_id          = hp2.party_id
+-- 2013/05/27 Ver1.1 Add End
       ;
 --
     -- *** ローカル・レコード ***
@@ -990,6 +1035,11 @@ AS
             ,delivery_base_code
             ,chain_store_code
             ,store_code
+-- 2013/05/27 Ver1.1 Add Start
+            ,customer_name
+            ,delivery_base_name
+            ,tsukagatazaiko_div
+-- 2013/05/27 Ver1.1 Add End
           )
           VALUES(  lt_tmp_cust_tab(i).customer_id
                   ,lt_tmp_cust_tab(i).customer_code
@@ -1001,6 +1051,11 @@ AS
                   ,lt_tmp_cust_tab(i).delivery_base_code
                   ,lt_tmp_cust_tab(i).chain_store_code
                   ,lt_tmp_cust_tab(i).store_code
+-- 2013/05/27 Ver1.1 Add Start
+                  ,lt_tmp_cust_tab(i).customer_name
+                  ,lt_tmp_cust_tab(i).delivery_base_name
+                  ,lt_tmp_cust_tab(i).tsukagatazaiko_div
+-- 2013/05/27 Ver1.1 Add End
           );
         END LOOP data_tem_cust_output;
       ELSE
@@ -1068,6 +1123,11 @@ AS
           ,delivery_base_code
           ,chain_store_code
           ,store_code
+-- 2013/05/27 Ver1.1 Add Start
+          ,customer_name
+          ,delivery_base_name
+          ,tsukagatazaiko_div
+-- 2013/05/27 Ver1.1 Add End
         )
         SELECT  xca.customer_id         customer_id
                ,xca.customer_code       customer_code
@@ -1079,8 +1139,25 @@ AS
                ,xca.delivery_base_code  delivery_base_code
                ,xca.chain_store_code    chain_store_code
                ,xca.store_code          store_code
+-- 2013/05/27 Ver1.1 Add Start
+               ,hp2.party_name          customer_name
+               ,hp1.party_name          delivery_base_name
+               ,xca.tsukagatazaiko_div  tsukagatazaiko_div
+-- 2013/05/27 Ver1.1 Add End
         FROM    xxcmm_cust_accounts xca
+-- 2013/05/27 Ver1.1 Add Start
+               ,hz_cust_accounts    hca1
+               ,hz_cust_accounts    hca2
+               ,hz_parties          hp1
+               ,hz_parties          hp2
+-- 2013/05/27 Ver1.1 Add End
         WHERE   xca.chain_store_code = iv_chain_code
+-- 2013/05/27 Ver1.1 Add Start
+        AND     xca.delivery_base_code = hca1.account_number
+        AND     hca1.party_id          = hp1.party_id
+        AND     xca.customer_id        = hca2.cust_account_id
+        AND     hca2.party_id          = hp2.party_id
+-- 2013/05/27 Ver1.1 Add End
         ;
       ELSE
         --取得した自拠点が納品拠点でも売上拠点のどちらでもない場合、警告終了
@@ -1270,7 +1347,6 @@ AS
 --
     -- *** ローカル・レコード ***
 --
-    -- *** ローカル・テーブル ***
     lt_head_tab g_head_ttype;
   BEGIN
 --
@@ -1479,6 +1555,14 @@ AS
                       || lv_delimit || gt_out_file_tab(i).general_succeeded_item10     -- 汎用引継ぎ項目１０
                       || lv_delimit || gt_out_file_tab(i).output_flag                  -- 出力済フラグ
                       || lv_delimit || gt_out_file_tab(i).order_source_name            -- 受注ソース名
+-- 2013/05/27 Ver1.1 Add Start
+                      || lv_delimit || gt_out_file_tab(i).creation_date                -- データ作成日
+                      || lv_delimit || gt_out_file_tab(i).order_connection_number      -- 受注関連番号
+                      || lv_delimit || gt_out_file_tab(i).tsukagatazaiko_div           -- 通過在庫型区分
+                      || lv_delimit || gt_out_file_tab(i).flow_status_code             -- 明細ステータス
+                      || lv_delimit || gt_out_file_tab(i).subinventory                 -- 保管場所
+                      || lv_delimit || gt_out_file_tab(i).booked_date                  -- 記帳日
+-- 2013/05/27 Ver1.1 Add End
                       ;
 --
       --データを出力
