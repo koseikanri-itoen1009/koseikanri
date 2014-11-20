@@ -7,7 +7,7 @@ AS
  * Description      : ’ ‡–â‰®—pŒ©Ï“ü—Í‰æ–Ê‚©‚çAŒ©Ï”Ô†A”Å–ˆ‚ÉŒ©Ï‘‚ğ  
  *                    ’ •[‚Éo—Í‚µ‚Ü‚·B
  * MD.050           : MD050_CSO_017_A04_Œ©Ï‘i’ ‡–â‰®—pjPDFo—Í
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009-05-20    1.6   Makoto.Ohtsuki   ‚r‚sáŠQ‘Î‰(T1_0696)
  *  2009-06-17    1.7   Daisuke.Abe      ‚r‚sáŠQ‘Î‰(T1_1257)
  *  2009-07-30    1.8   Daisuke.Abe      SCSáŠQ‘Î‰(0000806)
+ *  2009-12-16    1.9   Daisuke.Abe      E_–{‰Ò“®_00501
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -1568,10 +1569,10 @@ AS
             l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
                                                                 - l_get_quote_dt_rec.this_time_net_price;
           -- ¡‰ñ‚m‚d‚s‰¿Ši‚ª0ˆÈ‰º‚Ìê‡
-/* 2009.07.30 D.Abe 0000806‘Î‰ START */
+          /* 2009.07.30 D.Abe 0000806‘Î‰ START */
           ELSE
 --          ELSIF (l_get_quote_dt_rec.this_time_net_price <= 0) THEN
-/* 2009.07.30 D.Abe 0000806‘Î‰ END */
+          /* 2009.07.30 D.Abe 0000806‘Î‰ END */
 
             -- ’Êí‚m‚d‚s‰¿Ši‚ª0‚æ‚è‘å‚«‚¢ê‡
             IF (l_get_quote_dt_rec.usuall_net_price > 0) THEN
@@ -1585,22 +1586,35 @@ AS
         ELSE
           -- ¡‰ñ‚m‚d‚s‰¿Ši‚ª0‚æ‚è‘å‚«‚¢ê‡
           IF (l_get_quote_dt_rec.this_time_net_price > 0) THEN
-            l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
+            /* 2009.12.16 D.Abe E_–{‰Ò“®_00501‘Î‰ START */
+            --l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
+            l_rp_qte_lst_data_rec.line_payment_condition   := (l_get_quote_dt_rec.quotation_price / 
+                                                                  l_rp_qte_lst_data_rec.inc_num)
+            /* 2009.12.16 D.Abe E_–{‰Ò“®_00501‘Î‰ END */
                                                                 - (l_get_quote_dt_rec.this_time_net_price / 
                                                                   l_rp_qte_lst_data_rec.inc_num);
           -- ¡‰ñ‚m‚d‚s‰¿Ši‚ª0ˆÈ‰º‚Ìê‡
-/* 2009.07.30 D.Abe 0000806‘Î‰ START */
-            ELSE
+          /* 2009.07.30 D.Abe 0000806‘Î‰ START */
+          ELSE
 --          ELSIF (l_get_quote_dt_rec.this_time_net_price <= 0) THEN
-/* 2009.07.30 D.Abe 0000806‘Î‰ END */
+          /* 2009.07.30 D.Abe 0000806‘Î‰ END */
             -- ’Êí‚m‚d‚s‰¿Ši‚ª0‚æ‚è‘å‚«‚¢ê‡
             IF (l_get_quote_dt_rec.usuall_net_price > 0) THEN
-              l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
+              /* 2009.12.16 D.Abe E_–{‰Ò“®_00501‘Î‰ START */
+              --l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price
+              l_rp_qte_lst_data_rec.line_payment_condition   := (l_get_quote_dt_rec.quotation_price / 
+                                                                  l_rp_qte_lst_data_rec.inc_num)
+              /* 2009.12.16 D.Abe E_–{‰Ò“®_00501‘Î‰ END */
                                                                   - (l_get_quote_dt_rec.usuall_net_price / 
                                                                   l_rp_qte_lst_data_rec.inc_num);
             -- ’Êí‚m‚d‚s‰¿Ši‚ª0ˆÈ‰º‚Ìê‡
             ELSIF (l_get_quote_dt_rec.usuall_net_price <= 0) THEN
-              l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price - 0;
+              /* 2009.12.16 D.Abe E_–{‰Ò“®_00501‘Î‰ START */
+              --l_rp_qte_lst_data_rec.line_payment_condition   := l_get_quote_dt_rec.quotation_price - 0;
+              l_rp_qte_lst_data_rec.line_payment_condition   := (l_get_quote_dt_rec.quotation_price / 
+                                                                l_rp_qte_lst_data_rec.inc_num)
+                                                                 - 0;
+              /* 2009.12.16 D.Abe E_–{‰Ò“®_00501‘Î‰ END */
             END IF;
           END IF; -- –¾×x•¥ğŒ
         END IF;
