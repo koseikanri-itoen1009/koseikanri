@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK018A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：ARインターフェイス（AR I/F）販売物流 MD050_COK_018_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ------------------------------       ----------------------------------------------------------
@@ -33,6 +33,8 @@ AS
  *  2009/4/14     1.3   M.Hiruta         [障害T1_0396]請求取引OIFへ登録する仕訳計上日を締め日に変更
  *                                                    AR会計期間有効チェックの処理日を締め日に変更
  *                                       [障害T1_0503]請求取引OIFへ登録する請求先IDと出荷先IDを正確な値に変更
+ *  2009/4/15     1.4   M.Hiruta         [障害T1_0554]出荷先顧客サイトID・請求先顧客情報・請求先顧客サイトIDを
+ *                                                    取得する際の抽出条件を変更
  *
  *****************************************************************************************/
 --
@@ -1067,7 +1069,10 @@ AS
       SELECT hcasa.cust_acct_site_id AS cust_acct_site_id                       -- 顧客サイトID
       INTO   gn_ship_address_id
       FROM   hz_cust_acct_sites_all  hcasa                                      -- 顧客サイトマスタ
-      WHERE  hcasa.cust_account_id   = gn_ship_account_id;                      -- 顧客ID = 出荷先顧客ID
+      WHERE  hcasa.cust_account_id   = gn_ship_account_id                       -- 出荷先顧客ID
+-- Start 2009/04/15 Ver_1.4 T1_0554 M.Hiruta
+      AND    hcasa.org_id            = gn_org_id;                               -- 組織ID
+-- End   2009/04/15 Ver_1.4 T1_0554 M.Hiruta
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1080,7 +1085,10 @@ AS
       SELECT xhv.bill_account_id     AS bill_account_id                         -- 請求先顧客ID
       INTO   gn_bill_account_id
       FROM   xxcfr_cust_hierarchy_v  xhv                                        -- 顧客階層ビュー
-      WHERE  xhv.bill_account_number = i_discnt_amount_rec.demand_to_cust_code; -- 顧客コード = 請求顧客コード
+      WHERE  xhv.bill_account_number = i_discnt_amount_rec.demand_to_cust_code  -- 請求顧客コード
+-- Start 2009/04/15 Ver_1.4 T1_0554 M.Hiruta
+      AND    xhv.ship_account_number = i_discnt_amount_rec.delivery_cust_code;  -- 納品顧客コード
+-- End   2009/04/15 Ver_1.4 T1_0554 M.Hiruta
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1093,7 +1101,10 @@ AS
       SELECT hcasa.cust_acct_site_id AS cust_acct_site_id                       -- 顧客サイトID
       INTO   gn_bill_address_id
       FROM   hz_cust_acct_sites_all  hcasa                                      -- 顧客サイトマスタ
-      WHERE  hcasa.cust_account_id   = gn_bill_account_id;                      -- 顧客サイトID = 請求先顧客ID
+      WHERE  hcasa.cust_account_id   = gn_bill_account_id                       -- 請求先顧客ID
+-- Start 2009/04/15 Ver_1.4 T1_0554 M.Hiruta
+      AND    hcasa.org_id            = gn_org_id;                               -- 組織ID
+-- End   2009/04/15 Ver_1.4 T1_0554 M.Hiruta
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
