@@ -34,7 +34,6 @@ AND     EXISTS (SELECT 1
                 FROM xxcso_resource_custs_V2 xrcv
                 WHERE xcav.account_number  = xrcv.account_number
         )
-AND     ROWNUM <= 100
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
