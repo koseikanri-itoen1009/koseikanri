@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/02    1.00  SCS 濱中 亮一    初回作成
+ *  2009/07/23    1.1   SCS T.KANEDA     T3時障害0000837対応
  *
  *****************************************************************************************/
 --
@@ -228,6 +229,9 @@ AS
     id_payment_date         IN         DATE,                -- 入金日
     iv_payment_class        IN         VARCHAR2,            -- 入金区分
     ov_receipt_method_id    OUT        VARCHAR2,            -- 支払方法ID
+-- Modify 2009.07.23 Ver1.1 Start
+    ov_receipt_name         OUT        VARCHAR2,            -- 支払方法名
+-- Modify 2009.07.23 Ver1.1 End
     ov_errbuf               OUT NOCOPY VARCHAR2,            -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT NOCOPY VARCHAR2,            -- リターン・コード             --# 固定 #
     ov_errmsg               OUT NOCOPY VARCHAR2)            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -283,6 +287,9 @@ AS
 --
       -- 支払方法IDセット
       ov_receipt_method_id := lt_receipt_method_id;
+-- Modify 2009.07.23 Ver1.1 Start
+      ov_receipt_name := lt_name;
+-- Modify 2009.07.23 Ver1.1 End
 --
     EXCEPTION
       WHEN OTHERS THEN  -- 取得時エラー
@@ -348,6 +355,9 @@ AS
     in_customer_number IN  VARCHAR2,   -- 顧客コード
     in_cust_account_id IN  NUMBER,     -- 顧客ID
     in_receipt_id      IN  NUMBER,     -- 支払方法ID
+-- Modify 2009.07.23 Ver1.1 Start
+    in_receipt_name    IN  VARCHAR2,   -- 支払方法ID
+-- Modify 2009.07.23 Ver1.1 End
     id_payment_date    IN  DATE,       -- 入金日
     ov_errbuf          OUT VARCHAR2,   -- エラー・メッセージ           --# 固定 #
     ov_retcode         OUT VARCHAR2,   -- リターン・コード             --# 固定 #
@@ -422,7 +432,10 @@ AS
                               ,in_customer_number
                                  -- 顧客コード
                               ,cv_tkn_meathod     -- トークン'RECEIPT_MEATHOD'
-                              ,in_customer_number
+-- Modify 2009.07.23 Ver1.1 Start
+--                              ,in_customer_number
+                              ,in_receipt_name
+-- Modify 2009.07.23 Ver1.1 End
                                  -- 支払方法
                               ,cv_tkn_date        -- トークン'RECEIPT_DATE'
                               ,TO_CHAR(id_payment_date, 'YYYY/MM/DD')
@@ -678,6 +691,9 @@ AS
 --
     -- *** ローカル変数 ***
     lt_receipt_id  ar_receipt_methods.receipt_method_id%TYPE;  -- 支払方法ID
+-- Modify 2009.07.23 Ver1.1 Start
+    lt_receipt_name  ar_receipt_methods.name%TYPE;  -- 支払方法ID
+-- Modify 2009.07.23 Ver1.1 End
     lv_warning_flg VARCHAR2(1) := 'N';                         -- 警告フラグ
 --
     -- ===============================
@@ -790,6 +806,9 @@ AS
           ,payment_rec.payment_date     -- 入金日
           ,payment_rec.payment_class    -- 入金区分
           ,lt_receipt_id                -- 支払方法ID
+-- Modify 2009.07.23 Ver1.1 Start
+          ,lt_receipt_name              -- 支払方法名
+-- Modify 2009.07.23 Ver1.1 End
           ,lv_errbuf                    -- エラー・メッセージ           --# 固定 #
           ,lv_retcode                   -- リターン・コード             --# 固定 #
           ,lv_errmsg                    -- ユーザー・エラー・メッセージ --# 固定 #
@@ -806,6 +825,9 @@ AS
             ,payment_rec.customer_number  -- 顧客コード
             ,payment_rec.cust_account_id  -- 顧客ID
             ,lt_receipt_id                -- 支払方法ID
+-- Modify 2009.07.23 Ver1.1 Start
+            ,lt_receipt_name              -- 支払方法名
+-- Modify 2009.07.23 Ver1.1 End
             ,payment_rec.payment_date     -- 入金日
             ,lv_errbuf                    -- エラー・メッセージ           --# 固定 #
             ,lv_retcode                   -- リターン・コード             --# 固定 #
