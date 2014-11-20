@@ -141,6 +141,9 @@ SELECT   iimb.item_no                      AS item_no                       -- •
         ,baracha_div_category_id           AS baracha_div_category_id       -- ƒoƒ‰’ƒ‹æ•ªƒJƒeƒSƒŠID
         ,baracha_div_category_set_id       AS baracha_div_category_set_id   -- ƒoƒ‰’ƒ‹æ•ªƒJƒeƒSƒŠƒZƒbƒgID
 -- 2009/06/15 áŠQT1_1366 add end by Yutaka.Kuboshima
+-- 2012/08/29 E_–{‰Ò“®_09591 add start by T.Makuta
+        ,iimb.attribute19                  AS freshness_condition           -- ‘N“xğŒ
+-- 2012/08/29 E_–{‰Ò“®_09591 add end by T.Makuta
 FROM     ic_item_mst_b      iimb        -- OPM•i–Úƒ}ƒXƒ^
         ,xxcmn_item_mst_b   ximb        -- OPM•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
         ,xxcmm_system_items_b xsib      -- Disc•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
@@ -592,4 +595,8 @@ COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.BARACHA_DIV_CATEGORY IS 'ƒoƒ‰’ƒ‹æ•ªƒJ
 COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.BARACHA_DIV_CATEGORY_ID IS 'ƒoƒ‰’ƒ‹æ•ªƒJƒeƒSƒŠID'
 /
 COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.BARACHA_DIV_CATEGORY_SET_ID IS 'ƒoƒ‰’ƒ‹æ•ªƒJƒeƒSƒŠƒZƒbƒgID'
+/
+-- 2012/08/29 E_–{‰Ò“®_09591 add start by T.Makuta
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.FRESHNESS_CONDITION IS '‘N“xğŒ'
+-- 2012/08/29 E_–{‰Ò“®_09591 add end by T.Makuta
 /
