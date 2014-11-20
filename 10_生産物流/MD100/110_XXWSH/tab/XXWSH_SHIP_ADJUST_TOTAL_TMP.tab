@@ -10,7 +10,6 @@ CREATE TABLE xxwsh.xxwsh_ship_adjust_total_tmp
   confirm_subtotal_quantity   NUMBER(12,3),
   monthly_plan_quantity       NUMBER(12,3),
   monthly_confirm_quantity    NUMBER(12,3),
-  output_flag                 VARCHAR2(7),
   CONSTRAINT xxwsh_ship_adjust_total_tmp_pk PRIMARY KEY ( head_sales_branch, item_code, arrival_date )
   USING INDEX TABLESPACE XXIDX
 ) ;
@@ -25,5 +24,4 @@ COMMENT ON COLUMN xxwsh.xxwsh_ship_adjust_total_tmp.plan_subtotal_quantity     I
 COMMENT ON COLUMN xxwsh.xxwsh_ship_adjust_total_tmp.confirm_subtotal_quantity  IS '予実数（累計）' ;
 COMMENT ON COLUMN xxwsh.xxwsh_ship_adjust_total_tmp.monthly_plan_quantity      IS '計画数（月間）' ;
 COMMENT ON COLUMN xxwsh.xxwsh_ship_adjust_total_tmp.monthly_confirm_quantity   IS '予実数（月間）' ;
-COMMENT ON COLUMN xxwsh.xxwsh_ship_adjust_total_tmp.output_flag                IS '出力フラグ' ;
 COMMENT ON TABLE xxwsh.xxwsh_ship_adjust_total_tmp IS '出荷調整表集計中間テーブル' ;

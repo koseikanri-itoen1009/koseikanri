@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/12/09    1.9   Akiyoshi Shiina       本番#607対応
  *  2008/12/22    1.10  Takao Ohashi          本番#640対応
  *  2008/12/24    1.11  Masayoshi Uehara      本番#640対応
+ *  2008/12/25    1.12  Masayoshi Uehara      本番#640対応取消(ver1.11は残し、ver1.9をver1.12に更新)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -357,11 +358,6 @@ AS
   TYPE i_confirm_monthly_quantity                                        -- 予実数（月間）
     IS TABLE OF xxwsh_ship_adjust_total_tmp.confirm_quantity%TYPE
     INDEX BY BINARY_INTEGER;
--- add start ver1.10
-  TYPE i_output_flag                                                     -- 出力フラグ
-    IS TABLE OF xxwsh_ship_adjust_total_tmp.output_flag%TYPE
-    INDEX BY BINARY_INTEGER;
--- add end ver1.10
 --
   -- 出荷調整表バケット中間テーブル
   TYPE i_bucket_date
@@ -396,9 +392,6 @@ AS
   gt_i_confirm_subtotal_quantity    i_confirm_subtotal_quantity;         -- 予実数（累計）
   gt_i_plan_monthly_quantity        i_plan_monthly_quantity;             -- 計画数（月間）
   gt_i_confirm_monthly_quantity     i_confirm_monthly_quantity;          -- 予実数（月間）
--- add start ver1.10
-  gt_i_output_flag                  i_output_flag;                       -- 出力フラグ
--- add start ver1.10
   -- 出荷調整表バケット中間テーブル(FORALLでのINSERT用)
   gt_i_bucket_data                      i_bucket_date;                   -- バケット日付
 --
@@ -664,9 +657,6 @@ AS
   PROCEDURE prc_create_xml_data
     (
       iv_syori_kbn      IN  VARCHAR2                 -- 処理区分
--- 2008/12/24 add start ver1.11 M_Uehara
-     ,id_arrival_date   IN  DATE                     -- 着日
--- 2008/12/24 add end ver1.11 M_Uehara
      ,it_chosei_data    IN  type_chosei_data_tbl     -- 出荷調整表情報
      ,ov_errbuf         OUT NOCOPY VARCHAR2          -- エラー・メッセージ           --# 固定 #
      ,ov_retcode        OUT NOCOPY VARCHAR2          -- リターン・コード             --# 固定 #
@@ -894,13 +884,9 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'arrival_date';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
--- 2008/12/24 mod start ver1.11 M_Uehara
-        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR( id_arrival_date
+        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR( it_chosei_data(l_cnt).arrival_date
                                                            ,gv_date_format2);
 --
---        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR( it_chosei_data(l_cnt).arrival_date
---                                                           ,gv_date_format2);
--- 2008/12/24 mod end ver1.12 M_Uehara
         -- 【データ】出庫元コード
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'syukkomoto_cd';
@@ -1148,40 +1134,14 @@ AS
           ,xsatt.item_code                    AS item_code                  -- 品目コード
           ,xsatt.item_name                    AS item_name                  -- 品目名
           ,xsatt.arrival_date                 AS arrival_date               -- 着日
--- mod start ver1.10
---          ,xsatt.plan_quantity                AS plan_quantity              -- 計画数（着日）
-          ,CASE
-             WHEN (xsatt.output_flag = '2') THEN
-               xsatt.plan_quantity
-             ELSE
-               0
-             END                              AS plan_quantity              -- 計画数（着日）
---          ,xsatt.confirm_quantity             AS confirm_quantity           -- 予実数（着日）
-          ,CASE
-             WHEN (xsatt.output_flag = '2') THEN
-               xsatt.confirm_quantity
-             ELSE
-               0
-             END                              AS confirm_quantity           -- 予実数（着日）
---          ,xsatt.plan_subtotal_quantity       AS plan_subtotal_quantity     -- 計画数（累計）
-          ,CASE
-             WHEN (xsatt.output_flag IN('1','2')) THEN
-               xsatt.plan_subtotal_quantity
-             ELSE
-               0
-             END                              AS plan_subtotal_quantity     -- 計画数（累計）
---          ,xsatt.confirm_subtotal_quantity    AS confirm_subtotal_quantity  -- 予実数（累計）
-          ,CASE
-             WHEN (xsatt.output_flag IN('1','2')) THEN
-               xsatt.confirm_subtotal_quantity
-             ELSE
-               0
-             END                              AS confirm_subtotal_quantity  -- 予実数（累計）
+          ,xsatt.plan_quantity                AS plan_quantity              -- 計画数（着日）
+          ,xsatt.confirm_quantity             AS confirm_quantity           -- 予実数（着日）
+          ,xsatt.plan_subtotal_quantity       AS plan_subtotal_quantity     -- 計画数（累計）
+          ,xsatt.confirm_subtotal_quantity    AS confirm_subtotal_quantity  -- 予実数（累計）
           ,xsatt.monthly_plan_quantity        AS monthly_plan_quantity      -- 計画数（月間）
           ,xsatt.monthly_confirm_quantity     AS monthly_confirm_quantity   -- 予実数（月間）
           ,xsaat.plan_quantity                AS zensha_plan_quantity       -- 計画数（全社）
           ,xsaat.confirm_quantity             AS zensha_confirm_quantity    -- 予実数（全社）
--- mod end ver1.10
 --
     BULK COLLECT INTO ot_chosei_data
 --
@@ -1192,10 +1152,7 @@ AS
     WHERE
     ------------------------------------------------------------------------
     -- 出荷調整表集計中間テーブル
--- mod start ver1.10
---        xsatt.arrival_date                        = id_arrival_date
-        xsatt.output_flag                         IN('1','2','3')
--- mod end ver1.10
+        xsatt.arrival_date                        = id_arrival_date
     ------------------------------------------------------------------------
     -- 出荷調整表全社中間テーブル
     AND xsatt.item_code                           = xsaat.item_code(+)
@@ -1316,11 +1273,7 @@ AS
    ***********************************************************************************/
   PROCEDURE prc_get_drink_subtotal_data
     (
--- mod start ver1.10
-      id_arrival_date   IN         DATE              -- 着日
---      ov_errbuf         OUT NOCOPY VARCHAR2          -- エラー・メッセージ           --# 固定 #
-     ,ov_errbuf         OUT NOCOPY VARCHAR2          -- エラー・メッセージ           --# 固定 #
--- mod end ver1.10
+      ov_errbuf         OUT NOCOPY VARCHAR2          -- エラー・メッセージ           --# 固定 #
      ,ov_retcode        OUT NOCOPY VARCHAR2          -- リターン・コード             --# 固定 #
      ,ov_errmsg         OUT NOCOPY VARCHAR2          -- ユーザー・エラー・メッセージ  --# 固定 #
     )
@@ -1343,11 +1296,6 @@ AS
     lt_drink_total_mon_data           type_drink_total_mon_tbl;
     -- 取得データ数
     ln_cnt                            NUMBER DEFAULT 0;
--- add start ver1.10
-    lt_pre_head_sales_branch          xxwsh_ship_adjust_days_tmp.head_sales_branch%TYPE;
-    lt_pre_item_code                  xxwsh_ship_adjust_days_tmp.item_code%TYPE;
-    lb_bre_flag                       BOOLEAN;
--- add end ver1.10
 --
   BEGIN
 --
@@ -1369,38 +1317,15 @@ AS
     BULK COLLECT INTO lt_drink_total_mon_data
 --
     FROM xxwsh_ship_adjust_days_tmp   xsadt                       -- 出荷調整表日別中間テーブル
--- add start ver1.10
-    ORDER BY xsadt.head_sales_branch,xsadt.item_code,xsadt.arrival_date -- 拠点コード,品目コード,着日
--- add end ver1.10
     ;
 --
     -- ====================================================
     -- データ登録
     -- ====================================================
     ln_cnt := lt_drink_total_mon_data.COUNT;
--- add start ver1.10
-    -- 前回拠点コード
-    lt_pre_head_sales_branch := NULL;
-    -- 前回品目コード
-    lt_pre_item_code         := NULL; 
-    -- ブレイクフラグ
-    lb_bre_flag              := TRUE;
--- add end ver1.10
 --
     -- FORALLで使用できるようにレコード変数を分割格納する
     FOR ln_move_cnt IN 1..ln_cnt LOOP
--- add start ver1.10
-      IF (lt_pre_head_sales_branch <> lt_drink_total_mon_data(ln_move_cnt).head_sales_branch) THEN
---
-        lb_bre_flag              := TRUE;
-        lt_pre_item_code         := NULL;
-        lt_pre_head_sales_branch := NULL;
-      ELSIF (lt_pre_item_code <> lt_drink_total_mon_data(ln_move_cnt).item_code) THEN
---
-        lb_bre_flag      := TRUE;
-        lt_pre_item_code := NULL;
-      END IF;
--- add end ver1.10
       gt_i_head_sales_branch(ln_move_cnt)                                    -- 拠点コード
         := lt_drink_total_mon_data(ln_move_cnt).head_sales_branch;
       gt_i_item_code(ln_move_cnt)                                            -- 品目コード
@@ -1409,39 +1334,6 @@ AS
         := lt_drink_total_mon_data(ln_move_cnt).item_name;
       gt_i_arrival_date(ln_move_cnt)                                         -- 着日
         := lt_drink_total_mon_data(ln_move_cnt).arrival_date;
--- add start ver1.10
-      gt_i_output_flag(ln_move_cnt)                                               -- 出力フラグ
-        := '0';
-      IF (lb_bre_flag
-        AND  id_arrival_date = gt_i_arrival_date(ln_move_cnt)) THEN
-        gt_i_output_flag(ln_move_cnt) := '2';
-        lb_bre_flag                   := FALSE;
-      ELSIF (lt_pre_item_code = gt_i_item_code(ln_move_cnt)
-        AND lb_bre_flag
-        AND id_arrival_date < gt_i_arrival_date(ln_move_cnt)) THEN
-        gt_i_output_flag(ln_move_cnt - 1) := '1';
-        lb_bre_flag                       := FALSE;
-      ELSIF (lb_bre_flag
-        AND id_arrival_date < gt_i_arrival_date(ln_move_cnt)) THEN
-        gt_i_output_flag(ln_move_cnt) := '3';
-        lb_bre_flag                       := FALSE;
-      END IF;
--- add end ver1.10
--- 2008/12/24 add start ver1.11 M_Uehara
-      IF (ln_move_cnt > 1) THEN
-        IF (gt_i_item_code(ln_move_cnt - 1) <> gt_i_item_code(ln_move_cnt)
-          AND id_arrival_date > gt_i_arrival_date(ln_move_cnt - 1)) THEN
-          gt_i_output_flag(ln_move_cnt - 1) := '1';
-        END IF;
-      END IF;
-      IF (ln_move_cnt = ln_cnt
-        AND id_arrival_date > gt_i_arrival_date(ln_move_cnt)) THEN
-        gt_i_output_flag(ln_move_cnt) := '1';
-      ELSIF (ln_move_cnt = ln_cnt
-        AND id_arrival_date < gt_i_arrival_date(ln_move_cnt)) THEN
-        gt_i_output_flag(ln_move_cnt) := '3';
-      END IF;
--- 2008/12/24 add end ver1.11 M_Uehara
       gt_i_plan_quantity(ln_move_cnt)                                        -- 計画数（着日）
         := lt_drink_total_mon_data(ln_move_cnt).plan_quantity;
       gt_i_confirm_quantity(ln_move_cnt)                                     -- 予実数（着日）
@@ -1454,10 +1346,6 @@ AS
         := lt_drink_total_mon_data(ln_move_cnt).plan_monthly_quantity;
       gt_i_confirm_monthly_quantity(ln_move_cnt)                             -- 予実数（月間）
         := lt_drink_total_mon_data(ln_move_cnt).confirm_monthly_quantity;
--- add start ver1.10
-      lt_pre_head_sales_branch := gt_i_head_sales_branch(ln_move_cnt);
-      lt_pre_item_code         := gt_i_item_code(ln_move_cnt);
--- add end ver1.10
     END LOOP;
 --
     FORALL ln_move_cnt IN 1..ln_cnt
@@ -1471,10 +1359,7 @@ AS
         plan_subtotal_quantity,                    -- 計画数（累計）
         confirm_subtotal_quantity,                 -- 予実数（累計）
         monthly_plan_quantity,                     -- 計画数（月間）
--- mod start ver1.10
---        monthly_confirm_quantity                   -- 予実数（月間）
-        monthly_confirm_quantity,                  -- 予実数（月間）
-        output_flag                                -- 出力フラグ
+        monthly_confirm_quantity                   -- 予実数（月間）
       )VALUES(
         gt_i_head_sales_branch(ln_move_cnt),
         gt_i_item_code(ln_move_cnt),
@@ -1485,10 +1370,7 @@ AS
         gt_i_plan_subtotal_quantity(ln_move_cnt),
         gt_i_confirm_subtotal_quantity(ln_move_cnt),
         gt_i_plan_monthly_quantity(ln_move_cnt),
---        gt_i_confirm_monthly_quantity(ln_move_cnt)
-        gt_i_confirm_monthly_quantity(ln_move_cnt),
-        gt_i_output_flag(ln_move_cnt)
--- mod end ver1.10
+        gt_i_confirm_monthly_quantity(ln_move_cnt)
       );
 --
   EXCEPTION
@@ -2553,11 +2435,7 @@ AS
       -- ドリンク累計数算出処理
       -- ====================================================
       prc_get_drink_subtotal_data(
--- mod start ver1.10
-          id_arrival_date      =>     id_arrival_date      -- 着日
---          ov_errbuf            =>     lv_errbuf            -- エラー・メッセージ
-         ,ov_errbuf            =>     lv_errbuf            -- エラー・メッセージ
--- mod end ver1.10
+          ov_errbuf            =>     lv_errbuf            -- エラー・メッセージ
          ,ov_retcode           =>     lv_retcode           -- リターン・コード
          ,ov_errmsg            =>     lv_errmsg            -- ユーザー・エラー・メッセージ
       );
@@ -2590,9 +2468,6 @@ AS
       -- ====================================================
       prc_create_xml_data(
           iv_syori_kbn         =>     iv_syori_kbn       -- 処理区分
--- 2008/12/24 add start ver1.11 M_Uehara
-         ,id_arrival_date      =>     id_arrival_date    -- 着日
--- 2008/12/24 add end ver1.11 M_Uehara
          ,it_chosei_data       =>     lt_chosei_data     -- 出荷調整表データ
          ,ov_errbuf            =>     lv_errbuf          -- エラー・メッセージ
          ,ov_retcode           =>     lv_retcode         -- リターン・コード
@@ -2918,11 +2793,7 @@ AS
    ***********************************************************************************/
   PROCEDURE prc_get_leaf_total_mon_data
     (
--- mod start ver1.10
---      ov_errbuf         OUT NOCOPY VARCHAR2          -- エラー・メッセージ           --# 固定 #
-      id_arrival_date   IN         DATE              -- 着日
-     ,ov_errbuf         OUT NOCOPY VARCHAR2          -- エラー・メッセージ           --# 固定 #
--- mod end ver1.10
+      ov_errbuf         OUT NOCOPY VARCHAR2          -- エラー・メッセージ           --# 固定 #
      ,ov_retcode        OUT NOCOPY VARCHAR2          -- リターン・コード             --# 固定 #
      ,ov_errmsg         OUT NOCOPY VARCHAR2          -- ユーザー・エラー・メッセージ  --# 固定 #
     )
@@ -2948,11 +2819,6 @@ AS
     lt_leaf_subtotal_monthly_data        type_leaf_total_mon_tbl;
     -- 取得レコード数
     ln_cnt                               NUMBER DEFAULT 0;
--- add start ver1.10
-    lt_pre_head_sales_branch             xxwsh_ship_adjust_days_tmp.head_sales_branch%TYPE;
-    lt_pre_item_code                     xxwsh_ship_adjust_days_tmp.item_code%TYPE;
-    lb_bre_flag                          BOOLEAN;
--- add end ver1.10
 --
   BEGIN
 --
@@ -2985,10 +2851,7 @@ AS
     BULK COLLECT INTO lt_leaf_subtotal_monthly_data
 --
     FROM   xxwsh_ship_adjust_days_tmp   xsadt               -- 出荷調整表日別中間テーブル
--- mod start ver1.10
---    ORDER BY xsadt.arrival_date                             -- 着日
-    ORDER BY xsadt.head_sales_branch,xsadt.item_code,xsadt.arrival_date  -- 拠点コード,品目コード,着日
--- mod end ver1.10
+    ORDER BY xsadt.arrival_date                             -- 着日
     ;
 --
     -- ====================================================
@@ -2996,26 +2859,8 @@ AS
     -- ====================================================
     ln_cnt := lt_leaf_subtotal_monthly_data.COUNT;
 --
-    -- 前回拠点コード
-    lt_pre_head_sales_branch := NULL;
-    -- 前回品目コード
-    lt_pre_item_code         := NULL; 
-    -- ブレイクフラグ
-    lb_bre_flag              := TRUE;
     -- FORALLで使用できるようにレコード変数を分割格納する
     FOR ln_move_cnt IN 1..ln_cnt LOOP
--- add start ver1.10
-      IF (lt_pre_head_sales_branch <> lt_leaf_subtotal_monthly_data(ln_move_cnt).head_sales_branch) THEN
---
-        lb_bre_flag              := TRUE;
-        lt_pre_item_code         := NULL;
-        lt_pre_head_sales_branch := NULL;
-      ELSIF (lt_pre_item_code <> lt_leaf_subtotal_monthly_data(ln_move_cnt).item_code) THEN
---
-        lb_bre_flag      := TRUE;
-        lt_pre_item_code := NULL;
-      END IF;
--- add end ver1.10
       gt_i_head_sales_branch(ln_move_cnt)                                         -- 拠点コード
         := lt_leaf_subtotal_monthly_data(ln_move_cnt).head_sales_branch;
       gt_i_item_code(ln_move_cnt)                                                 -- 品目コード
@@ -3024,39 +2869,6 @@ AS
         := lt_leaf_subtotal_monthly_data(ln_move_cnt).item_name;
       gt_i_arrival_date(ln_move_cnt)                                              -- 着日
         := lt_leaf_subtotal_monthly_data(ln_move_cnt).arrival_date;
--- add start ver1.10
-      gt_i_output_flag(ln_move_cnt)                                               -- 出力フラグ
-        := '0';
-      IF (lb_bre_flag
-        AND  id_arrival_date = gt_i_arrival_date(ln_move_cnt)) THEN
-        gt_i_output_flag(ln_move_cnt) := '2';
-        lb_bre_flag                   := FALSE;
-      ELSIF (lt_pre_item_code = gt_i_item_code(ln_move_cnt)
-        AND lb_bre_flag
-        AND id_arrival_date < gt_i_arrival_date(ln_move_cnt)) THEN
-        gt_i_output_flag(ln_move_cnt - 1) := '1';
-        lb_bre_flag                       := FALSE;
-      ELSIF (lb_bre_flag
-        AND id_arrival_date < gt_i_arrival_date(ln_move_cnt)) THEN
-        gt_i_output_flag(ln_move_cnt) := '3';
-        lb_bre_flag                       := FALSE;
-      END IF;
--- add end ver1.10
--- 2008/12/24 add start ver1.11 M_Uehara
-      IF (ln_move_cnt > 1) THEN
-        IF (gt_i_item_code(ln_move_cnt - 1) <> gt_i_item_code(ln_move_cnt)
-          AND id_arrival_date > gt_i_arrival_date(ln_move_cnt - 1)) THEN
-          gt_i_output_flag(ln_move_cnt - 1) := '1';
-        END IF;
-      END IF;
-      IF (ln_move_cnt = ln_cnt
-        AND id_arrival_date > gt_i_arrival_date(ln_move_cnt)) THEN
-        gt_i_output_flag(ln_move_cnt) := '1';
-      ELSIF (ln_move_cnt = ln_cnt
-        AND id_arrival_date < gt_i_arrival_date(ln_move_cnt)) THEN
-        gt_i_output_flag(ln_move_cnt) := '3';
-      END IF;
--- 2008/12/24 add end ver1.11 M_Uehara
       gt_i_plan_quantity(ln_move_cnt)                                             -- 計画数（着日）
         := lt_leaf_subtotal_monthly_data(ln_move_cnt).plan_quantity;
       gt_i_confirm_quantity(ln_move_cnt)                                          -- 予実数（着日）
@@ -3069,10 +2881,6 @@ AS
         := lt_leaf_subtotal_monthly_data(ln_move_cnt).plan_monthly_quantity;
       gt_i_confirm_monthly_quantity(ln_move_cnt)                                  -- 予実数（月間）
         := lt_leaf_subtotal_monthly_data(ln_move_cnt).confirm_monthly_quantity;
--- add start ver1.10
-      lt_pre_head_sales_branch := gt_i_head_sales_branch(ln_move_cnt);
-      lt_pre_item_code         := gt_i_item_code(ln_move_cnt);
--- add end ver1.10
     END LOOP;
 --
     FORALL ln_move_cnt IN 1..ln_cnt
@@ -3086,10 +2894,7 @@ AS
         plan_subtotal_quantity,                    -- 計画数（累計）
         confirm_subtotal_quantity,                 -- 予実数（累計）
         monthly_plan_quantity,                     -- 計画数（月間）
--- mod start ver1.10
---        monthly_confirm_quantity                   -- 予実数（月間）
-        monthly_confirm_quantity,                  -- 予実数（月間）
-        output_flag                                -- 出力フラグ
+        monthly_confirm_quantity                   -- 予実数（月間）
       )VALUES(
         gt_i_head_sales_branch(ln_move_cnt),
         gt_i_item_code(ln_move_cnt),
@@ -3100,10 +2905,7 @@ AS
         gt_i_plan_subtotal_quantity(ln_move_cnt),
         gt_i_confirm_subtotal_quantity(ln_move_cnt),
         gt_i_plan_monthly_quantity(ln_move_cnt),
---        gt_i_confirm_monthly_quantity(ln_move_cnt)
-        gt_i_confirm_monthly_quantity(ln_move_cnt),
-        gt_i_output_flag(ln_move_cnt)
--- mod end ver1.10
+        gt_i_confirm_monthly_quantity(ln_move_cnt)
       );
 --
   EXCEPTION
@@ -3828,11 +3630,7 @@ AS
       -- リーフ累計数・月間数算出処理
       -- ====================================================
       prc_get_leaf_total_mon_data(
--- mod start ver1.10
-          id_arrival_date    =>     id_arrival_date      -- 着日
---          ov_errbuf          =>     lv_errbuf            -- エラー・メッセージ
-         ,ov_errbuf          =>     lv_errbuf            -- エラー・メッセージ
--- mod end ver1.10
+          ov_errbuf          =>     lv_errbuf            -- エラー・メッセージ
          ,ov_retcode         =>     lv_retcode           -- リターン・コード
          ,ov_errmsg          =>     lv_errmsg            -- ユーザー・エラー・メッセージ
       );
@@ -3886,9 +3684,6 @@ AS
       -- ====================================================
       prc_create_xml_data(
           iv_syori_kbn         =>     iv_syori_kbn       -- 処理区分
--- 2008/12/24 add start ver1.11 M_Uehara
-         ,id_arrival_date      =>     id_arrival_date    -- 着日
--- 2008/12/24 add end ver1.11 M_Uehara
          ,it_chosei_data       =>     lt_chosei_data     -- 出荷調整表データ
          ,ov_errbuf            =>     lv_errbuf          -- エラー・メッセージ
          ,ov_retcode           =>     lv_retcode         -- リターン・コード
