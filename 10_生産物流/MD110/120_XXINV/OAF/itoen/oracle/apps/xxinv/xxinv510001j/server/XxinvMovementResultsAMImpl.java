@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-12 1.0  大橋孝郎     新規作成
 * 2008-06-11 1.2  大橋孝郎     不具合指摘事項修正
 * 2008-06-18 1.3  大橋孝郎     不具合指摘事項修正
+* 2008-06-26 1.4  伊藤ひとみ   ST#296対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -38,7 +39,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -2228,7 +2229,13 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                                  makeHdrVORow.getAttribute("DbInPalletQty"))))       // パレット枚数(入)：パレット枚数(入)(DB)
       {
         resultsSearchRow.setAttribute("ExeFlag", "1");
+// 2008-06-26 H.Ito Mod Start
+      // ヘッダに変更があった場合、出庫実績ロット画面、入庫実績ロット画面遷移不可。
+      } else
+      {
+        resultsSearchRow.setAttribute("ExeFlag", null);
       }
+// 2008-06-26 H.Ito Mod End
       String exeFlg     = (String)resultsSearchRow.getAttribute("ExeFlag");
 
       // キーに値をセット
