@@ -1,0 +1,5 @@
+ALTER TABLE XXCOK.XXCOK_TMP_014A01C_CUSTDATA
+MODIFY (
+  receiv_discount_rate NUMBER
+)
+/
