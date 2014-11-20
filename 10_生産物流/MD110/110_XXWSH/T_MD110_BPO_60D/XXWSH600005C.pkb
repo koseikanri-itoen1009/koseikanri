@@ -7,7 +7,7 @@ AS
  * Description      : 確定ブロック処理
  * MD.050           : 出荷依頼 T_MD050_BPO_601
  * MD.070           : 確定ブロック処理  T_MD070_BPO_60D
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/08/07    1.5  Oracle 大橋孝郎   結合出荷テスト(出荷追加_30)修正
  *  2008/09/04    1.6  Oracle 野村正幸   統合#45 対応
  *  2008/09/10    1.7  Oracle 福田直樹   統合#45の再修正(配送L/Tに関する条件をLT2に入れ忘れ)
+ *  2008/12/01    1.8  Oracle 伊藤ひとみ 本番#148対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -64,6 +65,8 @@ AS
   gv_conc_name     VARCHAR2(30);
   gv_conc_status   VARCHAR2(30);
 --
+  gn_warn_cnt      NUMBER;                    -- スキップ件数
+--
 --################################  固定部 END   ##################################
 --
 --##########################  固定共通例外宣言部 START  ###########################
@@ -82,6 +85,10 @@ AS
   -- ===============================
   -- ユーザー定義例外
   -- ===============================
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+  --*** スキップ例外 ***
+  skip_expt                 EXCEPTION;
+-- 2008/12/01 H.Itou Add End
   --*** 処理対象データなし例外 ***
   global_no_data_found_expt EXCEPTION;
 -- ##### 20080616 1.1 結合障害 #9対応 START #####
@@ -176,6 +183,8 @@ AS
 -- add start 1.5
   gv_d1_whse_flg_1            CONSTANT VARCHAR2(1) :=  '1';    -- D+1倉庫フラグ「対象」
 -- add end 1.5
+  -- レコードタイプ
+  gv_record_type_code_plan    CONSTANT VARCHAR2(2) :=  '10';   -- 指示
   -- エラーメッセージ
   gv_output_msg               CONSTANT VARCHAR2(100) := 'APP-XXWSH-01701';
                                                              -- 出力件数
@@ -193,6 +202,10 @@ AS
                                                              -- 処理対象データなしエラー
   gv_profile_err              CONSTANT VARCHAR2(100) := 'APP-XXWSH-11857';
                                                              -- プロファイル取得エラー
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+  gv_check_line_err2          CONSTANT VARCHAR2(100) := 'APP-XXWSH-11858';
+                                                             -- 配車済・引当処理済チェックエラー２
+-- 2008/12/01 H.Itou Add End
   gv_cnst_tkn_para            CONSTANT VARCHAR2(100) := 'PARAMETER';
                                                              -- 入力パラメータ名
   gv_cnst_tkn_para2           CONSTANT VARCHAR2(100) := 'PARAMETER2';
@@ -207,6 +220,8 @@ AS
                                                              -- 配送No
   gv_cnst_tkn_request_no      CONSTANT VARCHAR2(100) := 'REQUEST_NO';
                                                              -- 依頼No
+  gv_cnst_tkn_item_no         CONSTANT VARCHAR2(100) := 'ITEM_NO';
+                                                             -- 品目No
   -- トークン
   gv_tkn_item_div_security    CONSTANT VARCHAR2(100) := 'XXCMN：商品区分(セキュリティ)';
   gv_tkn_dept_code            CONSTANT VARCHAR2(100) := '部署';
@@ -228,6 +243,9 @@ AS
   gv_tkn_carrier_err          CONSTANT VARCHAR2(100) := '配車エラー';
   gv_tkn_reserved_carrier_err CONSTANT VARCHAR2(100) := '引当及び配車エラー';
   gv_tkn_mixed_prod_err       CONSTANT VARCHAR2(100) := '出荷依頼製品混在';
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+  gv_tkn_reserved02_err       CONSTANT VARCHAR2(100) := '引当エラー２';
+-- 2008/12/01 H.Itou Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -281,6 +299,9 @@ AS
      ,reserved_quantity NUMBER     -- 引当数
      ,lot_ctl           VARCHAR2(2)   -- ロット管理区分
      ,item_class_code   VARCHAR2(2)   -- 品目区分
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+     ,item_code         xxcmn_item_mst_v.item_no%TYPE -- 品目NO
+-- 2008/12/01 H.Itou Add End
     ) ;
   TYPE rec_get_data_line_tab IS TABLE OF rec_get_data_line INDEX BY PLS_INTEGER;
 --
@@ -317,11 +338,15 @@ AS
   gn_cnt_prod             NUMBER ;   -- 製品件数
   gn_cnt_no_prod          NUMBER ;   -- 製品以外件数
   gn_cnt_upd              NUMBER ;   -- 更新用データ件数
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+  gn_cnt_chk_data         NUMBER ;   -- チェック済データ格納カウント
+-- 2008/12/01 H.Itou Add End
   gn_cnt_upd_ship         NUMBER ;   -- 出荷更新件数
   gn_cnt_upd_prov         NUMBER ;   -- 支給更新件数
   gn_cnt_upd_move         NUMBER ;   -- 移動更新件数
   gv_data_found_flg       VARCHAR2(3) ;   -- 処理対象データありフラグ
   gv_err_flg_resv         VARCHAR2(3) ;   -- 引当エラーフラグ
+  gv_err_flg_resv2        VARCHAR2(3) ;   -- 引当エラーフラグ２
   gv_err_flg_whse         VARCHAR2(3) ;   -- 倉庫エラーフラグ
   gv_err_flg_carr         VARCHAR2(3) ;   -- 配車エラーフラグ
   gv_war_flg_carr_mixed   VARCHAR2(3) ;   -- 配車出荷依頼製品混在ワーニングフラグ
@@ -2334,6 +2359,9 @@ AS
            , NVL(xola.reserved_quantity,0) AS reserved_quantity    -- 引当数
            , ximv.lot_ctl               AS lot_ctl    -- ロット管理区分
            , xicv.item_class_code       AS item_class_code      -- 品目区分
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+           , xola.shipping_item_code    AS item_code            -- 品目NO
+-- 2008/12/01 H.Itou Add End
       FROM xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,xxcmn_item_mst2_v          ximv      -- ＯＰＭ品目情報VIEW2
           ,xxcmn_item_categories5_v   xicv      -- ＯＰＭ品目カテゴリ割当情報VIEW5
@@ -2367,6 +2395,9 @@ AS
            , NVL(xmril.reserved_quantity,0)            AS reserved_quantity    -- 引当数
            , ximv.lot_ctl                              AS lot_ctl              -- ロット管理区分
            , gr_chk_header_data_tab(ln_cnt).item_class AS item_class_code      -- 品目区分
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+           , xmril.item_code                           AS item_code            -- 品目NO
+-- 2008/12/01 H.Itou Add End
       FROM xxinv_mov_req_instr_lines    xmril     -- 移動依頼/指示明細アドオン
           ,xxcmn_item_mst2_v            ximv      -- ＯＰＭ品目情報VIEW2
       WHERE
@@ -2491,6 +2522,7 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+    ln_lot_cnt NUMBER;
 --
     -- *** ローカル・カーソル ***
 --
@@ -2508,6 +2540,37 @@ AS
     -- ***************************************
     -- ***        実処理の記述             ***
     -- ***************************************
+-- 2008/12/01 H.Itou Add Start 本番#148
+    -- 引当数に値がある場合
+    IF (gr_chk_line_data_tab(gn_cnt_line).reserved_quantity IS NOT NULL) THEN
+      -- 移動ロット詳細(指示)があるかチェック
+      SELECT COUNT(1) cnt  -- 移動ロット詳細(指示)件数
+      INTO   ln_lot_cnt
+      FROM   xxinv_mov_lot_details  xmld -- 移動ロット詳細
+      WHERE  xmld.mov_line_id      = gr_chk_line_data_tab(gn_cnt_line).order_line_id -- 明細ID
+      AND    xmld.record_type_code = gv_record_type_code_plan                        -- 指示
+      AND    ROWNUM                = 1
+      ;
+--
+      -- 移動ロット詳細(指示)がない場合
+      IF (ln_lot_cnt = 0) THEN
+        -- エラーメッセージ取得
+        lv_errmsg := xxcmn_common_pkg.get_msg(
+                       gv_cons_msg_kbn_wsh  -- アプリケーション名:XXWSH
+                      ,gv_check_line_err2   -- メッセージコード:引当処理済チェックエラー
+                      ,gv_cnst_tkn_check_kbn,   gv_tkn_reserved02_err                        -- トークンCHECK_KBN:引当エラー２
+                      ,gv_cnst_tkn_delivery_no, gr_chk_header_data_tab(ln_cnt).delivery_no   -- トークンDELIVERY_NO:配送No
+                      ,gv_cnst_tkn_request_no,  gr_chk_header_data_tab(ln_cnt).request_no    -- トークンREQUEST_NO:依頼No
+                      ,gv_cnst_tkn_item_no,     gr_chk_line_data_tab(gn_cnt_line).item_code  -- トークンITEM_NO:品目No
+                      );
+        -- 警告メッセージ出力
+        FND_FILE.PUT_LINE( FND_FILE.OUTPUT, lv_errmsg );
+        gv_err_flg_resv2 := gc_onoff_div_on; -- 引当エラーフラグ2をONにする。
+        RAISE skip_expt;
+      END IF;
+    END IF;
+--
+-- 2008/12/01 H.Itou Add End
     -- データ区分が'1'出荷依頼
     IF (((gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order)
       -- 品目区分が'5'製品
@@ -2539,6 +2602,12 @@ AS
 --
   EXCEPTION
 --
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+    WHEN skip_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_warn;  -- 終了ステータス：警告
+-- 2008/12/01 H.Itou Add End
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
@@ -2790,14 +2859,27 @@ AS
     ---------------------------------------------------------
     -- チェック済データ格納用レコード変数に格納
     ---------------------------------------------------------
-    gr_checked_data_tab(ln_cnt).data_class   := gr_chk_header_data_tab(ln_cnt).data_class;
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+    gn_cnt_chk_data := gn_cnt_chk_data + 1;
+-- 2008/12/01 H.Itou Add End
+-- 2008/12/01 H.Itou Mod Start 本番障害#148
+--    gr_checked_data_tab(ln_cnt).data_class   := gr_chk_header_data_tab(ln_cnt).data_class;
+--                                                                                  -- データ区分
+--    gr_checked_data_tab(ln_cnt).delivery_no  := gr_chk_header_data_tab(ln_cnt).delivery_no;
+--                                                                                  -- 配送NO
+--    gr_checked_data_tab(ln_cnt).request_no   := gr_chk_header_data_tab(ln_cnt).request_no;
+--                                                                                  -- 依頼NO
+--    gr_checked_data_tab(ln_cnt).notif_status := gr_chk_header_data_tab(ln_cnt).notif_status;
+--                                                                                  -- 通知ステータス
+    gr_checked_data_tab(gn_cnt_chk_data).data_class   := gr_chk_header_data_tab(ln_cnt).data_class;
                                                                                   -- データ区分
-    gr_checked_data_tab(ln_cnt).delivery_no  := gr_chk_header_data_tab(ln_cnt).delivery_no;
+    gr_checked_data_tab(gn_cnt_chk_data).delivery_no  := gr_chk_header_data_tab(ln_cnt).delivery_no;
                                                                                   -- 配送NO
-    gr_checked_data_tab(ln_cnt).request_no   := gr_chk_header_data_tab(ln_cnt).request_no;
+    gr_checked_data_tab(gn_cnt_chk_data).request_no   := gr_chk_header_data_tab(ln_cnt).request_no;
                                                                                   -- 依頼NO
-    gr_checked_data_tab(ln_cnt).notif_status := gr_chk_header_data_tab(ln_cnt).notif_status;
+    gr_checked_data_tab(gn_cnt_chk_data).notif_status := gr_chk_header_data_tab(ln_cnt).notif_status;
                                                                                   -- 通知ステータス
+-- 2008/12/01 H.Itou Mod End 本番障害#148
 --
   EXCEPTION
 --
@@ -3195,13 +3277,20 @@ AS
     gv_prov_ship_date_from       := 0;
     gv_prov_ship_date_to         := 0;
     gn_cnt_upd         := 0;                    -- 更新用データ件数
+    gn_cnt_chk_data    := 0;                    -- チェック済データ格納カウント
     gn_cnt_upd_ship    := 0;                    -- 出荷更新件数
     gn_cnt_upd_prov    := 0;                    -- 支給更新件数
     gn_cnt_upd_move    := 0;                    -- 移動更新件数
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+    gn_warn_cnt        := 0;                    -- 警告件数
+-- 2008/12/01 H.Itou Add End
     gr_chk_header_data_tab.DELETE;
     -- エラーフラグの初期化
     gv_data_found_flg     := gc_onoff_div_off;   -- 処理対象データありフラグ
     gv_err_flg_resv       := gc_onoff_div_off;   -- 引当エラーフラグ
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+    gv_err_flg_resv2      := gc_onoff_div_off;   -- 引当エラーフラグ2
+-- 2008/12/01 H.Itou Add End
     gv_err_flg_carr       := gc_onoff_div_off;   -- 配車エラーフラグ
     gv_war_flg_carr_mixed := gc_onoff_div_off;   -- 配車出荷依頼製品混在ワーニングフラグ
     gv_err_flg_whse       := gc_onoff_div_off;   -- 倉庫エラーフラグ
@@ -3351,6 +3440,9 @@ AS
 --
       -- エラーフラグの初期化
       gv_err_flg_resv := gc_onoff_div_off;       -- 引当エラーフラグ
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+      gv_err_flg_resv2 := gc_onoff_div_off;      -- 引当エラーフラグ2
+-- 2008/12/01 H.Itou Add End
       gv_err_flg_carr := gc_onoff_div_off;       -- 配車エラーフラグ
       gv_war_flg_carr_mixed := gc_onoff_div_off; -- 配車出荷依頼製品混在ワーニングフラグ
 --
@@ -3376,50 +3468,40 @@ AS
             RAISE global_process_expt;
           ELSIF (lv_retcode = gv_status_warn) THEN
             ov_retcode := lv_retcode;
+-- 2008/12/01 H.Itou Mod Start 本番障害#148
+--          END IF;
+          -- 正常の場合、D-6の処理実行。
+          ELSE
+-- 2008/12/01 H.Itou Mod End
+            -- ===============================================
+            -- D-6  出荷明細 製品混在チェック処理
+            -- ===============================================
+            chk_mixed_prod(
+              ln_cnt,             --
+              lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+              lv_retcode,         -- リターン・コード             --# 固定 #
+              lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            IF (lv_retcode = gv_status_error) THEN
+              --(エラー処理)
+              RAISE global_process_expt;
+            ELSIF (lv_retcode = gv_status_warn) THEN
+              ov_retcode := lv_retcode;
+            END IF;
+-- 2008/12/01 H.Itou Mod Start 本番障害#148
           END IF;
---
-          -- ===============================================
-          -- D-6  出荷明細 製品混在チェック処理
-          -- ===============================================
-          chk_mixed_prod(
-            ln_cnt,             --
-            lv_errbuf,          -- エラー・メッセージ           --# 固定 #
-            lv_retcode,         -- リターン・コード             --# 固定 #
-            lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-          IF (lv_retcode = gv_status_error) THEN
-            --(エラー処理)
-            RAISE global_process_expt;
-          ELSIF (lv_retcode = gv_status_warn) THEN
-            ov_retcode := lv_retcode;
-          END IF;
+-- 2008/12/01 H.Itou Mod End
         END LOOP line_loop;
       END IF;
 --
-      -- ===============================================
-      -- D-7  配車済チェック処理
-      -- ===============================================
-      chk_carrier(
-        ln_cnt,             --
-        lv_errbuf,          -- エラー・メッセージ           --# 固定 #
-        lv_retcode,         -- リターン・コード             --# 固定 #
-        lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode = gv_status_error) THEN
-        --(エラー処理)
-        RAISE global_process_expt;
-      ELSIF (lv_retcode = gv_status_warn) THEN
-        ov_retcode := lv_retcode;
-      END IF;
---
-      ---------------------------------------------------------
-      -- 引当エラーフラグがOFFかつ配車エラーフラグがOFFの場合
-      ---------------------------------------------------------
-      IF ((gv_err_flg_resv = gc_onoff_div_off) AND (gv_err_flg_carr = gc_onoff_div_off)) THEN
+-- 2008/12/01 H.Itou Add Start 本番障害#148
+      -- 引当エラーフラグ２がONの場合、後続処理(確定処理)実行
+      IF (gv_err_flg_resv2 = gc_onoff_div_off) THEN
+-- 2008/12/01 H.Itou Add End
         -- ===============================================
-        -- D-8  チェック済データ PL/SQL表格納処理
+        -- D-7  配車済チェック処理
         -- ===============================================
-        set_checked_data(
+        chk_carrier(
           ln_cnt,             --
           lv_errbuf,          -- エラー・メッセージ           --# 固定 #
           lv_retcode,         -- リターン・コード             --# 固定 #
@@ -3431,83 +3513,106 @@ AS
         ELSIF (lv_retcode = gv_status_warn) THEN
           ov_retcode := lv_retcode;
         END IF;
-      -- ===============================================
-      -- D-9  チェックエラーログ 出力処理
-      -- ===============================================
-      ---------------------------------------------------------
-      -- 引当エラーフラグがONの場合
-      ---------------------------------------------------------
-      ELSIF ((gv_err_flg_resv = gc_onoff_div_on) AND (gv_err_flg_carr = gc_onoff_div_off)) THEN
-        lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
-                                     gv_cons_msg_kbn_wsh -- 'XXWSH'
-                                    ,gv_check_line_err   -- 引当処理済チェックエラー
-                                    ,gv_cnst_tkn_check_kbn    -- トークン'CHECK_KBN'
-                                    ,gv_tkn_reserved_err   -- '引当エラー'
-                                    ,gv_cnst_tkn_delivery_no -- トークン'DELIVERY_NO'
-                                    ,gr_chk_header_data_tab(ln_cnt).delivery_no   -- '配送No'
-                                    ,gv_cnst_tkn_request_no  -- トークン'REQUEST_NO'
-                                    ,gr_chk_header_data_tab(ln_cnt).request_no)   -- '依頼No'
-                                    ,1
-                                    ,5000);
-        -- メッセージ出力
-        FND_FILE.PUT_LINE( FND_FILE.OUTPUT, lv_errmsg );
-        ov_retcode := gv_status_warn; -- 終了ステータス：警告
-      ---------------------------------------------------------
-      -- 配車エラーフラグがONの場合
-      ---------------------------------------------------------
-      ELSIF ((gv_err_flg_resv = gc_onoff_div_off) AND (gv_err_flg_carr = gc_onoff_div_on)) THEN
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                     gv_cons_msg_kbn_wsh -- 'XXWSH'
-                                    ,gv_check_line_err   -- 引当処理済チェックエラー
-                                    ,gv_cnst_tkn_check_kbn    -- トークン'CHECK_KBN'
-                                    ,gv_tkn_carrier_err   -- '配車エラー'
-                                    ,gv_cnst_tkn_delivery_no -- トークン'DELIVERY_NO'
-                                    ,gr_chk_header_data_tab(ln_cnt).delivery_no   -- '配送No'
-                                    ,gv_cnst_tkn_request_no  -- トークン'REQUEST_NO'
-                                    ,gr_chk_header_data_tab(ln_cnt).request_no)   -- '依頼No'
-                                    ,1
-                                    ,5000);
-        -- メッセージ出力
-        FND_FILE.PUT_LINE( FND_FILE.OUTPUT, lv_errmsg );
-        ov_retcode := gv_status_warn; -- 終了ステータス：警告
-      ---------------------------------------------------------
-      -- 引当エラーフラグがONかつ配車エラーフラグがONの場合
-      ---------------------------------------------------------
-      ELSIF ((gv_err_flg_resv = gc_onoff_div_on) AND (gv_err_flg_carr = gc_onoff_div_on)) THEN
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                     gv_cons_msg_kbn_wsh -- 'XXWSH'
-                                    ,gv_check_line_err   -- 引当処理済チェックエラー
-                                    ,gv_cnst_tkn_check_kbn    -- トークン'CHECK_KBN'
-                                    ,gv_tkn_reserved_carrier_err   -- '引当及び配車エラー'
-                                    ,gv_cnst_tkn_delivery_no -- トークン'DELIVERY_NO'
-                                    ,gr_chk_header_data_tab(ln_cnt).delivery_no   -- '配送No'
-                                    ,gv_cnst_tkn_request_no  -- トークン'REQUEST_NO'
-                                    ,gr_chk_header_data_tab(ln_cnt).request_no)   -- '依頼No'
-                                    ,1
-                                    ,5000);
-        -- メッセージ出力
-        FND_FILE.PUT_LINE( FND_FILE.OUTPUT, lv_errmsg );
-        ov_retcode := gv_status_warn; -- 終了ステータス：警告
+  --
+        ---------------------------------------------------------
+        -- 引当エラーフラグがOFFかつ配車エラーフラグがOFFの場合
+        ---------------------------------------------------------
+        IF ((gv_err_flg_resv = gc_onoff_div_off) AND (gv_err_flg_carr = gc_onoff_div_off)) THEN
+          -- ===============================================
+          -- D-8  チェック済データ PL/SQL表格納処理
+          -- ===============================================
+          set_checked_data(
+            ln_cnt,             --
+            lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+            lv_retcode,         -- リターン・コード             --# 固定 #
+            lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF (lv_retcode = gv_status_error) THEN
+            --(エラー処理)
+            RAISE global_process_expt;
+          ELSIF (lv_retcode = gv_status_warn) THEN
+            ov_retcode := lv_retcode;
+          END IF;
+        -- ===============================================
+        -- D-9  チェックエラーログ 出力処理
+        -- ===============================================
+        ---------------------------------------------------------
+        -- 引当エラーフラグがONの場合
+        ---------------------------------------------------------
+        ELSIF ((gv_err_flg_resv = gc_onoff_div_on) AND (gv_err_flg_carr = gc_onoff_div_off)) THEN
+          lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+                                       gv_cons_msg_kbn_wsh -- 'XXWSH'
+                                      ,gv_check_line_err   -- 引当処理済チェックエラー
+                                      ,gv_cnst_tkn_check_kbn    -- トークン'CHECK_KBN'
+                                      ,gv_tkn_reserved_err   -- '引当エラー'
+                                      ,gv_cnst_tkn_delivery_no -- トークン'DELIVERY_NO'
+                                      ,gr_chk_header_data_tab(ln_cnt).delivery_no   -- '配送No'
+                                      ,gv_cnst_tkn_request_no  -- トークン'REQUEST_NO'
+                                      ,gr_chk_header_data_tab(ln_cnt).request_no)   -- '依頼No'
+                                      ,1
+                                      ,5000);
+          -- メッセージ出力
+          FND_FILE.PUT_LINE( FND_FILE.OUTPUT, lv_errmsg );
+          ov_retcode := gv_status_warn; -- 終了ステータス：警告
+        ---------------------------------------------------------
+        -- 配車エラーフラグがONの場合
+        ---------------------------------------------------------
+        ELSIF ((gv_err_flg_resv = gc_onoff_div_off) AND (gv_err_flg_carr = gc_onoff_div_on)) THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                       gv_cons_msg_kbn_wsh -- 'XXWSH'
+                                      ,gv_check_line_err   -- 引当処理済チェックエラー
+                                      ,gv_cnst_tkn_check_kbn    -- トークン'CHECK_KBN'
+                                      ,gv_tkn_carrier_err   -- '配車エラー'
+                                      ,gv_cnst_tkn_delivery_no -- トークン'DELIVERY_NO'
+                                      ,gr_chk_header_data_tab(ln_cnt).delivery_no   -- '配送No'
+                                      ,gv_cnst_tkn_request_no  -- トークン'REQUEST_NO'
+                                      ,gr_chk_header_data_tab(ln_cnt).request_no)   -- '依頼No'
+                                      ,1
+                                      ,5000);
+          -- メッセージ出力
+          FND_FILE.PUT_LINE( FND_FILE.OUTPUT, lv_errmsg );
+          ov_retcode := gv_status_warn; -- 終了ステータス：警告
+        ---------------------------------------------------------
+        -- 引当エラーフラグがONかつ配車エラーフラグがONの場合
+        ---------------------------------------------------------
+        ELSIF ((gv_err_flg_resv = gc_onoff_div_on) AND (gv_err_flg_carr = gc_onoff_div_on)) THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                       gv_cons_msg_kbn_wsh -- 'XXWSH'
+                                      ,gv_check_line_err   -- 引当処理済チェックエラー
+                                      ,gv_cnst_tkn_check_kbn    -- トークン'CHECK_KBN'
+                                      ,gv_tkn_reserved_carrier_err   -- '引当及び配車エラー'
+                                      ,gv_cnst_tkn_delivery_no -- トークン'DELIVERY_NO'
+                                      ,gr_chk_header_data_tab(ln_cnt).delivery_no   -- '配送No'
+                                      ,gv_cnst_tkn_request_no  -- トークン'REQUEST_NO'
+                                      ,gr_chk_header_data_tab(ln_cnt).request_no)   -- '依頼No'
+                                      ,1
+                                      ,5000);
+          -- メッセージ出力
+          FND_FILE.PUT_LINE( FND_FILE.OUTPUT, lv_errmsg );
+          ov_retcode := gv_status_warn; -- 終了ステータス：警告
+        END IF;
+        ---------------------------------------------------------
+        -- 配車出荷依頼製品混在ワーニングフラグがONの場合
+        ---------------------------------------------------------
+        IF (gv_war_flg_carr_mixed = gc_onoff_div_on) THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                       gv_cons_msg_kbn_wsh -- 'XXWSH'
+                                      ,gv_check_line_err   -- 引当処理済チェックエラー
+                                      ,gv_cnst_tkn_check_kbn    -- トークン'CHECK_KBN'
+                                      ,gv_tkn_mixed_prod_err   -- '出荷依頼製品混在'
+                                      ,gv_cnst_tkn_delivery_no -- トークン'DELIVERY_NO'
+                                      ,gr_chk_header_data_tab(ln_cnt).delivery_no   -- '配送No'
+                                      ,gv_cnst_tkn_request_no  -- トークン'REQUEST_NO'
+                                      ,gr_chk_header_data_tab(ln_cnt).request_no)   -- '依頼No'
+                                      ,1
+                                      ,5000);
+          -- メッセージ出力
+          FND_FILE.PUT_LINE( FND_FILE.OUTPUT, lv_errmsg );
+          ov_retcode := gv_status_warn; -- 終了ステータス：警告
+        END IF;
+-- 2008/12/01 H.Itou Add Start 本番障害#148
       END IF;
-      ---------------------------------------------------------
-      -- 配車出荷依頼製品混在ワーニングフラグがONの場合
-      ---------------------------------------------------------
-      IF (gv_war_flg_carr_mixed = gc_onoff_div_on) THEN
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                     gv_cons_msg_kbn_wsh -- 'XXWSH'
-                                    ,gv_check_line_err   -- 引当処理済チェックエラー
-                                    ,gv_cnst_tkn_check_kbn    -- トークン'CHECK_KBN'
-                                    ,gv_tkn_mixed_prod_err   -- '出荷依頼製品混在'
-                                    ,gv_cnst_tkn_delivery_no -- トークン'DELIVERY_NO'
-                                    ,gr_chk_header_data_tab(ln_cnt).delivery_no   -- '配送No'
-                                    ,gv_cnst_tkn_request_no  -- トークン'REQUEST_NO'
-                                    ,gr_chk_header_data_tab(ln_cnt).request_no)   -- '依頼No'
-                                    ,1
-                                    ,5000);
-        -- メッセージ出力
-        FND_FILE.PUT_LINE( FND_FILE.OUTPUT, lv_errmsg );
-        ov_retcode := gv_status_warn; -- 終了ステータス：警告
-      END IF;
+-- 2008/12/01 H.Itou Add End
 --
     END LOOP header_loop;
 --
@@ -3781,9 +3886,9 @@ AS
     -- 処理件数
     -------------------------------------------------------
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '処理件数' ) ;
-    FND_FILE.PUT_LINE( FND_FILE.OUTPUT,'  出荷：' || TO_CHAR( gn_cnt_upd_ship,'FM999,999,990' ) ) ;
-    FND_FILE.PUT_LINE( FND_FILE.OUTPUT,'  支給：' || TO_CHAR( gn_cnt_upd_prov,'FM999,999,990' ) ) ;
-    FND_FILE.PUT_LINE( FND_FILE.OUTPUT,'  移動：' || TO_CHAR( gn_cnt_upd_move,'FM999,999,990' ) ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT,'  出荷    ：' || TO_CHAR( gn_cnt_upd_ship,'FM999,999,990' ) ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT,'  支給    ：' || TO_CHAR( gn_cnt_upd_prov,'FM999,999,990' ) ) ;
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT,'  移動    ：' || TO_CHAR( gn_cnt_upd_move,'FM999,999,990' ) ) ;
 --
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, gv_sep_msg ) ;   --区切り文字列出力
 --
