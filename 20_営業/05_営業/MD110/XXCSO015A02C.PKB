@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *                                                      6バイトで切捨てする
  *  2010-02-17    1.24  T.Maruyama       E_本稼動_01603
  *  2010-03-08    1.25  K.Hosoi          E_本稼動_01838対応
+ *  2010-04-05    1.26  T.Yoshimoto      E_本稼動_02102対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1111,10 +1112,22 @@ AS
     -- 作業区分が新台設置、新台代替時
     IF (ln_job_kbn = cn_work_kbn1 OR ln_job_kbn = cn_work_kbn3) THEN
       BEGIN
-        SELECT punvl.un_number
+        /* 2010.04.05 1.26 T.Yoshimoto E_本稼動_02102対応 Mod START */
+        --SELECT punvl.un_number
+        --INTO   lv_vendor_mode1
+        --FROM   po_un_numbers_vl punvl
+        --WHERE  punvl.un_number_id = ln_un_number_id
+--
+        SELECT punv.un_number
         INTO   lv_vendor_mode1
-        FROM   po_un_numbers_vl punvl
-        WHERE  punvl.un_number_id = ln_un_number_id
+        FROM   po_headers ph
+              ,po_lines pl
+              ,po_un_numbers_vl punv
+        WHERE  pl.po_header_id   = ph.po_header_id
+        AND    punv.un_number_id = pl.un_number_id
+        AND    ph.segment1       = TO_CHAR(io_get_data_rec.po_header_num) --発注番号
+        AND    pl.line_num       = io_get_data_rec.po_line_num            --発注明細番号
+        /* 2010.04.05 1.26 T.Yoshimoto E_本稼動_02102対応 Mod END */
         ;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
