@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上実績振替情報の作成（振替割合） 販売物流 MD050_COK_008_A06
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -50,6 +50,10 @@ AS
  *                                                      金額を寄せるよう修正
  *                                                    2.振替割合が均等である場合、顧客コードの若いレコードへ
  *                                                      金額を寄せるよう修正
+ *  2009/06/04    1.4   M.Hiruta         [障害T1_1325]振戻データ作成処理で作成されるデータの日付を、
+ *                                                    振戻対象データの日付に基づいて取得するよう変更
+ *                                                    1.振戻データが先月データである場合⇒先月末日付
+ *                                                    2.振戻データが当月データである場合⇒業務処理日付
  *
  *****************************************************************************************/
   -- ===============================
@@ -1418,7 +1422,7 @@ AS
       GROUP BY
 -- Start 2009/04/02 Ver_1.2 T1_0115 M.Hiruta
 --             TO_CHAR(xseh.inspect_date , 'YYYYMM' )     -- 売上計上日（検収日）
-             TO_CHAR(xseh.delivery_date , 'YYYYMM' )    -- 売上計上日（検収日）
+             TO_CHAR(xseh.delivery_date , 'YYYYMM' )    -- 売上計上日（納品日）
 -- End   2009/04/02 Ver_1.2 T1_0115 M.Hiruta
            , xseh.sales_base_code                       -- 売上振替元拠点コード
            , xseh.ship_to_customer_code                 -- 売上振替元顧客コード
@@ -2034,7 +2038,7 @@ AS
     CLOSE update_lock_cur;
 --
     -- ===============================
-    -- 2.売上実績振替情報テーブル更新（更新に失敗して場合は例外処理へ遷移）
+    -- 2.売上実績振替情報テーブル更新（更新に失敗した場合は例外処理へ遷移）
     -- ===============================
     BEGIN
       UPDATE xxcok_selling_trns_info xsti
@@ -2166,7 +2170,19 @@ AS
                 , xsti.selling_trns_type              -- selling_trns_type
                 , xsti.slip_no                        -- slip_no
                 , xsti.detail_no                      -- detail_no
-                , xsti.selling_date                   -- selling_date
+-- Start 2009/06/04 Ver_1.4 T1_1325 M.Hiruta
+--                , xsti.selling_date                   -- selling_date
+                , (
+                  CASE
+                    WHEN xsti.selling_date BETWEEN TO_DATE( gv_past_month , 'YYYYMM' )
+                                               AND LAST_DAY( TO_DATE( gv_past_month , 'YYYYMM' ) )THEN
+                      LAST_DAY(ADD_MONTHS(gd_process_date,-1))
+                    WHEN  xsti.selling_date BETWEEN TO_DATE( gv_current_month , 'YYYYMM' )
+                                               AND LAST_DAY( TO_DATE( gv_current_month , 'YYYYMM' ) )THEN
+                      gd_process_date
+                  END
+                  )
+-- End   2009/06/04 Ver_1.4 T1_1325 M.Hiruta
                 , xsti.selling_type                   -- selling_type
                 , selling_return_type                 -- selling_return_type
                 , xsti.delivery_slip_type             -- delivery_slip_type
