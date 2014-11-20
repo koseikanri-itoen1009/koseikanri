@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -75,6 +75,7 @@ AS
  *  2009/06/23    1.17  N.Maeda          [T1_1438] 排他制御処理修正
  *  2009/08/06    1.18  N.Maeda          [0000424] PT考慮
  *  2009/08/10    1.18  N.Maeda          [0000424] レビュー指摘対応
+ *  2009/08/12    1.19  N.Maeda          [0001010] 従業員情報取得条件追加
  *
  *****************************************************************************************/
 --
@@ -3548,14 +3549,28 @@ AS
           -- 納品拠点の導出
           -- ===================
           BEGIN
-            SELECT rin_v.base_code  --拠点コード
-            INTO lt_dlv_base_code
-            FROM xxcos_rs_info_v rin_v   --従業員情報view
-            WHERE rin_v.employee_number = lt_dlv_by_code
-    /*--==============2009/2/3-START=========================--*/
-            AND   NVL( rin_v.effective_start_date, lt_dlv_date ) <= lt_dlv_date
-            AND   NVL( rin_v.effective_end_date, lt_dlv_date ) >= lt_dlv_date;
-    /*--==============2009/2/3-END=========================--*/
+--************* 2009/08/12 N.Maeda Var1.19 MOD START ***************************************
+            SELECT rin_v.base_code  base_code -- 拠点コード
+            INTO   lt_dlv_base_code
+            FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+            WHERE  rin_v.employee_number = lt_dlv_by_code
+            AND    NVL( rin_v.effective_start_date     , lt_dlv_date )  <= lt_dlv_date
+            AND    NVL( rin_v.effective_end_date       , lt_dlv_date )  >= lt_dlv_date
+            AND    NVL( rin_v.per_effective_start_date , lt_dlv_date )  <= lt_dlv_date
+            AND    NVL( rin_v.per_effective_end_date   , lt_dlv_date )  >= lt_dlv_date
+            AND    NVL( rin_v.paa_effective_start_date , lt_dlv_date )  <= lt_dlv_date
+            AND    NVL( rin_v.paa_effective_end_date   , lt_dlv_date )  >= lt_dlv_date
+            ;
+--
+--            SELECT rin_v.base_code  --拠点コード
+--            INTO lt_dlv_base_code
+--            FROM xxcos_rs_info_v rin_v   --従業員情報view
+--            WHERE rin_v.employee_number = lt_dlv_by_code
+--    /*--==============2009/2/3-START=========================--*/
+--            AND   NVL( rin_v.effective_start_date, lt_dlv_date ) <= lt_dlv_date
+--            AND   NVL( rin_v.effective_end_date, lt_dlv_date ) >= lt_dlv_date;
+--    /*--==============2009/2/3-END=========================--*/
+--************* 2009/08/12 N.Maeda Var1.19 MOD  END  ***************************************
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               -- ログ出力
@@ -6381,14 +6396,27 @@ AS
           -- 納品拠点の導出
           -- ===================
           BEGIN
-            SELECT rin_v.base_code  --拠点コード
-            INTO lt_dlv_base_code
-            FROM xxcos_rs_info_v rin_v   --従業員情報view
-            WHERE rin_v.employee_number = lt_dlv_by_code
-    /*--==============2009/2/3-START=========================--*/
-            AND   NVL( rin_v.effective_start_date, lt_dlv_date ) <= lt_dlv_date
-            AND   NVL( rin_v.effective_end_date, lt_dlv_date )  >= lt_dlv_date;
-    /*--==============2009/2/3-END=========================--*/
+--************* 2009/08/12 N.Maeda Var1.19 MOD START ***************************************
+            SELECT rin_v.base_code  base_code -- 拠点コード
+            INTO   lt_dlv_base_code
+            FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+            WHERE  rin_v.employee_number = lt_dlv_by_code
+            AND    NVL( rin_v.effective_start_date     , lt_dlv_date )  <= lt_dlv_date
+            AND    NVL( rin_v.effective_end_date       , lt_dlv_date )  >= lt_dlv_date
+            AND    NVL( rin_v.per_effective_start_date , lt_dlv_date )  <= lt_dlv_date
+            AND    NVL( rin_v.per_effective_end_date   , lt_dlv_date )  >= lt_dlv_date
+            AND    NVL( rin_v.paa_effective_start_date , lt_dlv_date )  <= lt_dlv_date
+            AND    NVL( rin_v.paa_effective_end_date   , lt_dlv_date )  >= lt_dlv_date
+            ;
+--            SELECT rin_v.base_code  --拠点コード
+--            INTO lt_dlv_base_code
+--            FROM xxcos_rs_info_v rin_v   --従業員情報view
+--            WHERE rin_v.employee_number = lt_dlv_by_code
+--    /*--==============2009/2/3-START=========================--*/
+--            AND   NVL( rin_v.effective_start_date, lt_dlv_date ) <= lt_dlv_date
+--            AND   NVL( rin_v.effective_end_date, lt_dlv_date )  >= lt_dlv_date;
+--    /*--==============2009/2/3-END=========================--*/
+--************* 2009/08/12 N.Maeda Var1.19 MOD  END  ***************************************
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
                 -- ログ出力          
@@ -9166,14 +9194,28 @@ AS
           -- 納品拠点の導出
           -- ===================
           BEGIN
-            SELECT rin_v.base_code  --拠点コード
-            INTO lt_dlv_base_code
-            FROM xxcos_rs_info_v rin_v   --従業員情報view
-            WHERE rin_v.employee_number = lt_dlv_by_code
-    /*--==============2009/2/3-START=========================--*/
-            AND   NVL( rin_v.effective_start_date, lt_dlv_date) <= lt_dlv_date
-            AND   NVL( rin_v.effective_end_date, lt_dlv_date)  >= lt_dlv_date;
-    /*--==============2009/2/3-END=========================--*/
+--************* 2009/08/12 N.Maeda Var1.19 MOD START ***************************************
+            SELECT rin_v.base_code  base_code -- 拠点コード
+            INTO   lt_dlv_base_code
+            FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+            WHERE  rin_v.employee_number = lt_dlv_by_code
+            AND    NVL( rin_v.effective_start_date     , lt_dlv_date )  <= lt_dlv_date
+            AND    NVL( rin_v.effective_end_date       , lt_dlv_date )  >= lt_dlv_date
+            AND    NVL( rin_v.per_effective_start_date , lt_dlv_date )  <= lt_dlv_date
+            AND    NVL( rin_v.per_effective_end_date   , lt_dlv_date )  >= lt_dlv_date
+            AND    NVL( rin_v.paa_effective_start_date , lt_dlv_date )  <= lt_dlv_date
+            AND    NVL( rin_v.paa_effective_end_date   , lt_dlv_date )  >= lt_dlv_date
+            ;
+--
+--            SELECT rin_v.base_code  --拠点コード
+--            INTO lt_dlv_base_code
+--            FROM xxcos_rs_info_v rin_v   --従業員情報view
+--            WHERE rin_v.employee_number = lt_dlv_by_code
+--    /*--==============2009/2/3-START=========================--*/
+--            AND   NVL( rin_v.effective_start_date, lt_dlv_date) <= lt_dlv_date
+--            AND   NVL( rin_v.effective_end_date, lt_dlv_date)  >= lt_dlv_date;
+--    /*--==============2009/2/3-END=========================--*/
+--************* 2009/08/12 N.Maeda Var1.19 MOD  END  ***************************************
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
                 -- ログ出力
