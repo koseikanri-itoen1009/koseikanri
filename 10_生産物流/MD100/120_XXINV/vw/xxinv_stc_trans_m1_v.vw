@@ -419,6 +419,9 @@ AS
   AND    xmld_in_pr.document_type_code      = '40'    -- 生産指示
   AND    xmld_in_pr.record_type_code        = '10'    -- 指示
   AND    xmld_in_pr.lot_id                  = ilm_in_pr.lot_id
+-- 2009/05/27 H.Itou Add Start 本番障害#1500
+  AND    xmld_in_pr.item_id                 = ilm_in_pr.item_id
+-- 2009/05/27 H.Itou Add End
 -- 2008/10/28 Y.Yamamoto v1.1 update start
 -- 2008/11/19 Y.Yamamoto v1.2 update start
 --  AND    NOT EXISTS( SELECT 1
@@ -994,6 +997,9 @@ AS
   AND    xmld_out_om2.record_type_code                 = '10'      -- 指示
   AND    ilm_out_om2.item_id                           = iimb2_out_om2.item_id
   AND    xmld_out_om2.lot_id                           = ilm_out_om2.lot_id
+-- 2009/05/27 H.Itou Add Start 本番障害#1500
+  AND    xmld_out_om2.item_id                          = ilm_out_om2.item_id
+-- 2009/05/27 H.Itou Add End
   AND    xoha_out_om2.req_status                       = '07'      -- 受領済
   AND    NVL( xoha_out_om2.actual_confirm_class, 'N' ) = 'N'       -- 実績未計上
   AND    xoha_out_om2.latest_external_flag             = 'Y'       -- ON
