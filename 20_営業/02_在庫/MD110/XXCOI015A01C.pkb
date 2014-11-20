@@ -1,13 +1,12 @@
-create or replace
-PACKAGE BODY XXCOI015A01C
+create or replace PACKAGE BODY XXCOI015A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2009. All rights reserved.
  *
  * Package Name     : XXCOI015A01C(body)
  * Description      : 取引インタフェースの処理
- * MD.050           : 
- * Version          : 1.0
+ * MD.050           : MD050_COI_015_A01_資材取引OIFワーカー起動
+ * Version          : 1.1
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -28,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/07/07    1.0   H.Sasaki         新規作成
+ *  2009/10/09    1.1   H.Sasaki         [E_最終移行リハ_00458]FETCH方法の変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -503,7 +503,10 @@ AS
     -- ===============================================
     -- 資材取引OIFテーブル登録処理
     -- ===============================================
-    FORALL ln_cnt IN gt_mtl_trans_oif.FIRST .. gt_mtl_trans_oif.LAST SAVE EXCEPTIONS
+-- == 2009/10/08 V1.1 Modified START ===============================================================
+--    FORALL ln_cnt IN gt_mtl_trans_oif.FIRST .. gt_mtl_trans_oif.LAST SAVE EXCEPTIONS
+    FORALL ln_cnt IN 1 .. gn_target_cnt SAVE EXCEPTIONS
+-- == 2009/10/08 V1.1 Modified END   ===============================================================
       UPDATE  mtl_transactions_interface
       SET     transaction_header_id     =   gt_header_id_tbl(ln_cnt)
              ,lock_flag                 =   cn_lock_flag_1
@@ -606,6 +609,9 @@ AS
     --
     lt_trans_header_id    mtl_transactions_interface.transaction_header_id%TYPE;    -- 資材取引OIFヘッダID
     lv_compare_base_code  mtl_secondary_inventories.attribute7%TYPE;                -- 変更比較用拠点コード
+-- == 2009/10/08 V1.1 Added START ===============================================================
+    ln_cnt          NUMBER  :=  0;
+-- == 2009/10/08 V1.1 Added END   ===============================================================
 --
     -- ===============================
     -- ローカル・カーソル
@@ -623,6 +629,9 @@ AS
       AND       mti.organization_id     =   msi.organization_id
       ORDER BY  msi.attribute7 ASC
       FOR UPDATE OF mti.transaction_header_id;          -- 資材取引OIFをロック
+-- == 2009/10/08 V1.1 Added START ===============================================================
+    trans_oif_data_rec    cur_trans_oif_data%ROWTYPE;
+-- == 2009/10/08 V1.1 Added END   ===============================================================
 --
   BEGIN
 --##################  固定ステータス初期化部 START   ###################
@@ -635,28 +644,47 @@ AS
     -- 資材取引OIFテーブル情報取得
     -- ===============================================
     OPEN cur_trans_oif_data;
-    -- バルクフェッチ
-    FETCH cur_trans_oif_data BULK COLLECT INTO gt_mtl_trans_oif;
-    -- カーソルクローズ
-    CLOSE cur_trans_oif_data;
-    --
-    -- 対象件数
-    gn_target_cnt :=  gt_mtl_trans_oif.COUNT;
+-- == 2009/10/08 V1.1 Delete START ===============================================================
+--    -- バルクフェッチ
+--    FETCH cur_trans_oif_data BULK COLLECT INTO gt_mtl_trans_oif;
+--    -- カーソルクローズ
+--    CLOSE cur_trans_oif_data;
+--    --
+--    -- 対象件数
+--    gn_target_cnt :=  gt_mtl_trans_oif.COUNT;
+-- == 2009/10/08 V1.1 Delete END   ===============================================================
 --
     -- ===============================================
     -- 資材取引OIFヘッダID取得
     -- ===============================================
+-- == 2009/10/08 V1.1 Modified START ===============================================================
+--    <<get_header_id_loop>>
+--    FOR ln_cnt IN 1 .. gn_target_cnt LOOP
+--      -- レコード型にデータを設定
+--      gt_rowid_tbl(ln_cnt)      :=  gt_mtl_trans_oif(ln_cnt).row_id;
+--      gt_base_code_tbl(ln_cnt)  :=  gt_mtl_trans_oif(ln_cnt).base_code;
+--      -- 拠点コード毎に、資材取引OIFヘッダIDを設定
+--      IF (   (ln_cnt = 1)
+--          OR (lv_compare_base_code <> gt_mtl_trans_oif(ln_cnt).base_code)
+--         )
+--      THEN
+--
     <<get_header_id_loop>>
-    FOR ln_cnt IN 1 .. gn_target_cnt LOOP
+    LOOP
+      FETCH cur_trans_oif_data  INTO  trans_oif_data_rec;
+      EXIT WHEN cur_trans_oif_data%NOTFOUND;
+      gn_target_cnt :=  gn_target_cnt + 1;
+      ln_cnt        :=  ln_cnt + 1;
+      --
       -- レコード型にデータを設定
-      gt_rowid_tbl(ln_cnt)      :=  gt_mtl_trans_oif(ln_cnt).row_id;
-      gt_base_code_tbl(ln_cnt)  :=  gt_mtl_trans_oif(ln_cnt).base_code;
-      
+      gt_rowid_tbl(ln_cnt)      :=  trans_oif_data_rec.row_id;
+      gt_base_code_tbl(ln_cnt)  :=  trans_oif_data_rec.base_code;
       -- 拠点コード毎に、資材取引OIFヘッダIDを設定
       IF (   (ln_cnt = 1)
-          OR (lv_compare_base_code <> gt_mtl_trans_oif(ln_cnt).base_code)
+          OR (lv_compare_base_code <> trans_oif_data_rec.base_code)
          )
       THEN
+-- == 2009/10/08 V1.1 Modified END   ===============================================================
         -- 資材取引OIFヘッダIDを取得
         SELECT  mtl_material_transactions_s.NEXTVAL
         INTO    lt_trans_header_id
@@ -665,14 +693,21 @@ AS
         gt_header_id_tbl(ln_cnt)  :=  lt_trans_header_id;
         --
       ELSE
-        -- 
+        --
         gt_header_id_tbl(ln_cnt)  :=  lt_trans_header_id;
       END IF;
       --
       -- 変更比較用拠点コードを保持
-      lv_compare_base_code  :=  gt_mtl_trans_oif(ln_cnt).base_code;
+-- == 2009/10/08 V1.1 Modified START ===============================================================
+--      lv_compare_base_code  :=  gt_mtl_trans_oif(ln_cnt).base_code;
+      lv_compare_base_code  :=  trans_oif_data_rec.base_code;
+-- == 2009/10/08 V1.1 Modified END   ===============================================================
       --
     END LOOP get_header_id_loop;
+    --
+-- == 2009/10/08 V1.1 Added START ===============================================================
+    CLOSE cur_trans_oif_data;
+-- == 2009/10/08 V1.1 Added END   ===============================================================
     --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -852,7 +887,10 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    IF (gt_mtl_trans_oif.COUNT <> 0) THEN
+-- == 2009/10/08 V1.1 Modified START ===============================================================
+--    IF (gt_mtl_trans_oif.COUNT <> 0) THEN
+    IF (gn_target_cnt <> 0) THEN
+-- == 2009/10/08 V1.1 Modified END   ===============================================================
       -- 資材取引OIFデータが取得された場合、以下を実行
       --
       -- ===============================================
@@ -945,7 +983,7 @@ AS
     lv_errmsg        VARCHAR2(5000) DEFAULT NULL;              -- ユーザーエラーメッセージ
     lv_outmsg        VARCHAR2(5000) DEFAULT NULL;              -- メッセージ変数
     lv_message_code  VARCHAR2(100)  DEFAULT NULL;              -- メッセージコード
-    
+
 --
   BEGIN
     -- ===============================================
@@ -1079,7 +1117,7 @@ AS
     );
 --
     -- ============================
-    --  空行出力  
+    --  空行出力
     -- ============================
     FND_FILE.PUT_LINE(
       which  => FND_FILE.OUTPUT
