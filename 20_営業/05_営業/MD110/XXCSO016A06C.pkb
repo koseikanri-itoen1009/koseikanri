@@ -3,12 +3,12 @@ AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Package Name     : XXCSO016A06C(spec)
+ * Package Name     : XXCSO016A06C(body)
  * Description      : 物件(自販機)の移動履歴情報を情報系システムに送信するためのCSVファイルを作成します。
  *                    
  * MD.050           : MD050_CSO_016_A06_情報系-EBSインターフェース：(OUT)什器移動明細
  *                    
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009-01-21    1.0   Syoei.Kin        新規作成
  *  2009-02-24    1.1   K.Sai            レビュー後対応 
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
+ *  2009-06-15    1.3   Kazuyo.Hosoi     T1_1240対応
  *
  *****************************************************************************************/
 --
@@ -101,8 +102,10 @@ AS
   cn_job_kbn_8           CONSTANT NUMBER        := 8;               -- 什器移動区分(8[是正])
   cn_job_kbn_15          CONSTANT NUMBER        := 15;              -- 什器移動区分(15[転送])
   cn_job_kbn_16          CONSTANT NUMBER        := 16;              -- 什器移動区分(16[転売])
-  cn_job_kbn_17          CONSTANT NUMBER        := 17;              -- 什器移動区分(17[廃棄引取])
-    
+  /* 2009.06.09 K.Hosoi T1_1240 対応 START */
+--  cn_job_kbn_17          CONSTANT NUMBER        := 17;              -- 什器移動区分(17[廃棄引取])
+  cn_job_kbn_dspsl_lv    CONSTANT NUMBER        := 18;              -- 什器移動区分(18[廃棄引取])
+  /* 2009.06.09 K.Hosoi T1_1240 対応 END */
 --
   -- メッセージコード
   cv_tkn_number_01    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00011';     -- 業務処理日付取得エラーメッセージ
@@ -1002,11 +1005,15 @@ AS
         RAISE select_error_expt;
       END;
     END IF;
+    /* 2009.06.09 K.Hosoi T1_1240 対応 START */
     -- 物件コード2がNULLでない場合
-    -- 什器移動区分=(3[新台代替], 4[旧台代替],5[引揚], 15[転送], 16[転売], 17[廃棄引取])の場合
+--    -- 什器移動区分=(3[新台代替], 4[旧台代替],5[引揚], 15[転送], 16[転売], 17[廃棄引取])の場合
+    -- 什器移動区分=(3[新台代替], 4[旧台代替],5[引揚], 15[転送], 16[転売], 18[廃棄引取])の場合
     IF ((l_get_rec.install_code2 IS NOT NULL)
           AND (l_get_rec.job_kbn IN (cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5,
-                                     cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_17)) ) THEN
+--                                     cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_17)) ) THEN
+                                     cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_dspsl_lv)) ) THEN
+    /* 2009.06.09 K.Hosoi T1_1240 対応 END */
       BEGIN
         SELECT xca.sale_base_code         -- 拠点(部門)コード(引揚用)
         INTO   lv_sale_base_code_w
@@ -1458,7 +1465,10 @@ AS
                 xiwd.actual_work_date 
                 WHEN (xiwd.job_kbn IN(cn_job_kbn_15,cn_job_kbn_16)) THEN
                 xiwd.withdrawal_date 
-                WHEN (xiwd.job_kbn IN(cn_job_kbn_17)) THEN
+    /* 2009.06.09 K.Hosoi T1_1240 対応 START */
+--                WHEN (xiwd.job_kbn IN(cn_job_kbn_17)) THEN
+                WHEN (xiwd.job_kbn IN(cn_job_kbn_dspsl_lv)) THEN
+    /* 2009.06.09 K.Hosoi T1_1240 対応 END */
                 xiwd.disposal_approval_date
               END) year_month_day
              ,xiwd.install_code1 install_code1              -- 物件コード1
@@ -1467,7 +1477,10 @@ AS
              ,xiwd.delete_flag delete_flag                  -- 削除フラグ
       FROM xxcso_in_work_data xiwd                          -- 作業データテーブル
       WHERE xiwd.job_kbn IN (cn_job_kbn_1,cn_job_kbn_2,cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5,
-                             cn_job_kbn_6,cn_job_kbn_8,cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_17)
+    /* 2009.06.09 K.Hosoi T1_1240 対応 START */
+--                             cn_job_kbn_6,cn_job_kbn_8,cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_17)
+                             cn_job_kbn_6,cn_job_kbn_8,cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_dspsl_lv)
+    /* 2009.06.09 K.Hosoi T1_1240 対応 END */
         AND TRUNC(xiwd.last_update_date) BETWEEN ld_from_value AND ld_to_value;
     -- *** ローカル・レコード ***
     l_xiwd_data_rec        xiwd_data_cur%ROWTYPE;
