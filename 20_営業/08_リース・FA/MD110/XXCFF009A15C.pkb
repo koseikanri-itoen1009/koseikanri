@@ -1,4 +1,5 @@
-CREATE OR REPLACE PACKAGE BODY XXCFF009A15C
+create or replace
+PACKAGE BODY XXCFF009A15C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -26,7 +27,11 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/13    1.0   SCS奥河          main新規作成
- *
+ *  2009/03/17    1.1   SCS礒崎          [T1_0062]対応
+ *                                       ①リース管理情報の出力で支払回数が72回以上の場合、
+ *                                         出力しない制御がない。
+ *                                       ②リース料、支払日の順番が逆になっている。
+ *                                       ③リース種類の文字数は短縮名を設定する。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -138,7 +143,8 @@ AS
             ,xcl.second_charge                           AS second_charge                     --15.2回目以降月額リース料_リース料
             ,xcl.second_tax_charge                       AS second_tax_charge                 --16.2回目以降消費税額_リース料
             ,xcl.second_total_charge                     AS second_total_charge               --17.2回目以降計_リース料
-            ,xlkv.lease_kind_name                        AS lease_kind_name                   --18.リース種類名称
+          --,xlkv.lease_kind_name                        AS lease_kind_name                   --18.リース種類名称
+            ,xlkv.book_type_code_if                      AS lease_kind_name                   --18.リース種類名称
             ,xcl.original_cost                           AS original_cost                     --19.取得価額
             ,DECODE(xcl.lease_kind,0,SUM(NVL(xpp.fin_debt,0)),0)         AS fin_debt          --20.ＦＩＮリース債務額
             ,DECODE(xcl.lease_kind,0,SUM(NVL(xpp.fin_interest_due,0)),0) AS fin_interest_due  --21.ＦＩＮリース支払利息
@@ -187,7 +193,8 @@ AS
             ,xcl.second_charge          --15.2回目以降月額リース料_リース料
             ,xcl.second_tax_charge      --16.2回目以降消費税額_リース料
             ,xcl.second_total_charge    --17.2回目以降計_リース料
-            ,xlkv.lease_kind_name       --18.リース種類名称
+         -- ,xlkv.lease_kind_name       --18.リース種類名称
+            ,xlkv.book_type_code_if     --18.リース種類名称
             ,xcl.original_cost          --19.取得価額
             ,xcl.lease_kind
             ,xcl.calc_interested_rate   --23.計算利子率
@@ -604,20 +611,24 @@ AS
           CLOSE get_payment_cur;
           IF gn_payment_cnt = 0 THEN
               FOR ln_cnt IN 1..72 LOOP
-                lv_csv_text       := lv_csv_text  ||  cv_delimiter;                                          -- 支払日
                 lv_csv_text       := lv_csv_text  ||  cv_delimiter;                                          -- リース料＋リース料_消費税
+                lv_csv_text       := lv_csv_text  ||  cv_delimiter;                                          -- 支払日
               END LOOP;
           ELSE
               <<out_loop>>
               FOR ln_cnt IN gt_payment_data.FIRST..gt_payment_data.LAST LOOP
-                  lv_csv_text     := lv_csv_text  ||  gt_payment_data(ln_cnt).payment_date || cv_delimiter;  -- 支払日
-                  lv_csv_text     := lv_csv_text  ||  gt_payment_data(ln_cnt).lease_charge || cv_delimiter;  -- リース料＋リース料_消費税
+               -- lv_csv_text     := lv_csv_text  ||  gt_payment_data(ln_cnt).payment_date || cv_delimiter;  -- 支払日
+               -- lv_csv_text     := lv_csv_text  ||  gt_payment_data(ln_cnt).lease_charge || cv_delimiter;  -- リース料＋リース料_消費税
+                  IF ( ln_cnt <= 72 ) THEN 
+                    lv_csv_text   := lv_csv_text  ||  gt_payment_data(ln_cnt).lease_charge || cv_delimiter;  -- リース料＋リース料_消費税
+                    lv_csv_text   := lv_csv_text  ||  gt_payment_data(ln_cnt).payment_date || cv_delimiter;  -- 支払日
+                  END IF;  
               END LOOP out_loop;
               IF  gn_payment_cnt < 72 THEN
                   ln_count := gn_payment_cnt + 1;
                   FOR ln_cnt IN ln_count..72 LOOP
-                      lv_csv_text := lv_csv_text  ||  cv_delimiter;                                          -- 支払日
                       lv_csv_text := lv_csv_text  ||  cv_delimiter;                                          -- リース料＋リース料_消費税
+                      lv_csv_text := lv_csv_text  ||  cv_delimiter;                                          -- 支払日
                   END LOOP; 
               END IF;
           END IF;
