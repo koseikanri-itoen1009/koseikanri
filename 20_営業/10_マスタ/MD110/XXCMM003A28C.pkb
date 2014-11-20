@@ -25,6 +25,7 @@ AS
  *  2009/01/07    1.0   中村 祐基        新規作成
  *  2009/03/09    1.1   中村 祐基        ファイル出力先プロファイル名称変更
  *  2009/10/08    1.2   仁木 重人        障害I_E_542、E_T3_00469対応
+ *  2009/10/20    1.3   久保島 豊        障害0001350対応
  *
  *****************************************************************************************/
 --
@@ -209,14 +210,12 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE init_err_expt;
     END IF;
-
 --
 -- 2009/10/08 Ver1.2 add start by Shigeto.Niki
       -- 業務日付をYYYYMMDD形式で取得します
       gv_process_date := TO_CHAR(xxccp_common_pkg2.get_process_date,'YYYYMMDD');
 -- 2009/10/08 Ver1.2 add end by Shigeto.Niki
 --
-
   EXCEPTION
     WHEN init_err_expt THEN                           --*** 初期処理例外 ***
       ov_errmsg  := lv_errmsg;
@@ -386,6 +385,18 @@ AS
     cv_su_customer        CONSTANT VARCHAR2(2)     := '12';                     --顧客区分・上様顧客
     cv_trust_corp         CONSTANT VARCHAR2(2)     := '13';                     --顧客区分・法人管理先
     cv_ar_manage          CONSTANT VARCHAR2(2)     := '14';                     --顧客区分・売掛管理先顧客
+-- 2009/10/20 Ver1.3 add start by Y.Kuboshima
+    cv_kyoten_kbn         CONSTANT VARCHAR2(2)     := '1';                      --顧客区分・拠点
+    cv_tenpo_kbn          CONSTANT VARCHAR2(2)     := '15';                     --顧客区分・店舗営業
+    cv_tonya_kbn          CONSTANT VARCHAR2(2)     := '16';                     --顧客区分・問屋帳合先
+    cv_keikaku_kbn        CONSTANT VARCHAR2(2)     := '17';                     --顧客区分・計画立案様
+    cv_seikyusho_kbn      CONSTANT VARCHAR2(2)     := '20';                     --顧客区分・請求書用
+    cv_tokatu_kbn         CONSTANT VARCHAR2(2)     := '21';                     --顧客区分・統括請求書用
+    cv_language_ja        CONSTANT VARCHAR2(2)     := 'JA';                     --言語・日本語
+    cv_ship_to            CONSTANT VARCHAR2(7)     := 'SHIP_TO';                --使用目的・出荷先
+    cv_list_type_prl      CONSTANT VARCHAR2(3)     := 'PRL';                    --価格表リストタイプ・PRL
+    cv_a_flag             CONSTANT VARCHAR2(2)     := 'A';                      --ステータス・A
+-- 2009/10/20 Ver1.3 add end by Y.Kuboshima
     cv_yes_output         CONSTANT VARCHAR2(1)     := 'Y';                      --出力有無・有
     cv_no_output          CONSTANT VARCHAR2(1)     := 'N';                      --出力有無・無
     cv_corp_no_data       CONSTANT VARCHAR2(20)    := '顧客法人情報未登録。';   --顧客法人情報未設定
@@ -409,6 +420,9 @@ AS
     lv_payment_term                VARCHAR2(100)   := NULL;                     --ローカル変数・支払条件
     lv_payment_term_second         VARCHAR2(100)   := NULL;                     --ローカル変数・第2支払条件
     lv_payment_term_third          VARCHAR2(100)   := NULL;                     --ローカル変数・第3支払条件
+-- 2009/10/20 Ver1.3 add start by Y.Kuboshima
+    lv_price_list                  qp_list_headers_tl.name%TYPE;                --ローカル変数・価格表
+-- 2009/10/20 Ver1.3 add end by Y.Kuboshima
 --
     -- ===============================
     -- ローカル・カーソル
@@ -431,7 +445,10 @@ AS
                hcsu.payment_term_id                   payment_term_id,      --支払条件
                hcsu.attribute2                        payment_term_second,  --第2支払条件
                hcsu.attribute3                        payment_term_third,   --第3支払条件
-               hcsu.attribute1                        invoice_class,        --請求書発行区分
+-- 2009/10/20 Ver1.3 modify start by Y.Kuboshima
+--               hcsu.attribute1                        invoice_class,        --請求書発行区分
+               xca.invoice_printing_unit              invoice_class,        --請求書印刷単位
+-- 2009/10/20 Ver1.3 modify end by Y.Kuboshima
                hcsu.attribute8                        invoice_sycle,        --請求書発行サイクル
                hcsu.attribute7                        invoice_form,         --請求書出力形式
                hcsu.attribute4                        ar_invoice_code,      --売掛コード１（請求書）
@@ -456,6 +473,17 @@ AS
                xca.chain_store_code                   chain_store_code,     --チェーン店コード（ＥＤＩ）
                xca.store_code                         store_code,           --店舗コード
                xca.business_low_type                  business_low_type     --業態（小分類）
+-- 2009/10/20 Ver1.3 add start by Y.Kuboshima
+              ,xca.invoice_code                       invoice_code          --請求書用コード
+              ,xca.industry_div                       industry_div          --業種
+              ,xca.bill_base_code                     bill_base_code        --請求拠点
+              ,xca.receiv_base_code                   receiv_base_code      --入金拠点
+              ,xca.delivery_base_code                 delivery_base_code    --納品拠点
+              ,xca.selling_transfer_div               selling_transfer_div  --売上実績振替
+              ,xca.card_company                       card_company          --カード会社
+              ,xca.wholesale_ctrl_code                wholesale_ctrl_code   --問屋管理コード
+              ,hcas.cust_acct_site_id                 cust_acct_site_id     --顧客所在地ＩＤ
+-- 2009/10/20 Ver1.3 add end by Y.Kuboshima
       FROM     hz_cust_accounts     hca,
                hz_cust_acct_sites   hcas,
                hz_cust_site_uses    hcsu,
@@ -467,7 +495,7 @@ AS
                        ffv.attribute6 attribute6,
 -- 2009/10/08 Ver1.2 add start by Shigeto.Niki
                        ffv.attribute9 attribute9,
--- 2009/10/08 Ver1.2 add end by Shigeto.Niki                       
+-- 2009/10/08 Ver1.2 add end by Shigeto.Niki
                        ffv.attribute7 attribute7
                 FROM   fnd_flex_value_sets  ffvs,
                        fnd_flex_values      ffv
@@ -489,10 +517,20 @@ AS
       AND      (hcsu.attribute4          = iv_ar_invoice_grp_code OR iv_ar_invoice_grp_code IS NULL)
       AND      (hcsu.attribute5          = iv_ar_location_code    OR iv_ar_location_code    IS NULL)
       AND      (hcsu.attribute6          = iv_ar_others_code      OR iv_ar_others_code      IS NULL)
-      AND      (((hca.customer_class_code IN (cv_customer, cv_ar_manage)) AND (xca.sales_chain_code    = iv_sales_chain_code))
+-- 2009/10/20 Ver1.3 modify start by Y.Kuboshima
+--      AND      (((hca.customer_class_code IN (cv_customer, cv_ar_manage)) AND (xca.sales_chain_code    = iv_sales_chain_code))
+--      OR       (iv_sales_chain_code    IS NULL))
+--      AND      (((hca.customer_class_code IN (cv_customer, cv_ar_manage)) AND (xca.delivery_chain_code = iv_delivery_chain_code))
+--      OR       (iv_delivery_chain_code IS NULL))
+      -- 顧客区分'12','15','16'追加
+      AND      (((hca.customer_class_code IN (cv_customer, cv_su_customer, cv_ar_manage, cv_tenpo_kbn, cv_tonya_kbn))
+        AND      (xca.sales_chain_code    = iv_sales_chain_code))
       OR       (iv_sales_chain_code    IS NULL))
-      AND      (((hca.customer_class_code IN (cv_customer, cv_ar_manage)) AND (xca.delivery_chain_code = iv_delivery_chain_code))
+      -- 顧客区分'12','15','16'追加
+      AND      (((hca.customer_class_code IN (cv_customer, cv_su_customer, cv_ar_manage, cv_tenpo_kbn, cv_tonya_kbn))
+        AND      (xca.delivery_chain_code = iv_delivery_chain_code))
       OR       (iv_delivery_chain_code IS NULL))
+-- 2009/10/20 Ver1.3 modify end by Y.Kuboshima
       AND      (((hca.customer_class_code IN (cv_customer, cv_ar_manage)) AND (xca.policy_chain_code   = iv_policy_chain_code))
       OR       (iv_policy_chain_code   IS NULL))
       AND      (((hca.customer_class_code IN (cv_customer, cv_ar_manage)) AND (xca.chain_store_code    = iv_chain_store_edi))
@@ -507,6 +545,10 @@ AS
                                                    hz_party_sites     hpsiv
                                             WHERE  hcasiv.cust_account_id = hca.cust_account_id
                                             AND    hcasiv.party_site_id   = hpsiv.party_site_id)
+-- 2009/10/20 Ver1.3 add start by Y.Kuboshima
+      AND      hca.customer_class_code <> cv_kyoten_kbn
+      AND      hcsu.status               = cv_a_flag
+-- 2009/10/20 Ver1.3 add end by Y.Kuboshima
       ORDER BY main_base_code, customer_code
       ;
 --
@@ -550,6 +592,28 @@ AS
     -- 支払条件チェックカーソルレコード型
     get_payment_term_rec  get_payment_term_cur%ROWTYPE;
 --
+-- 2009/10/20 Ver1.3 add start by Y.Kuboshima
+    -- 価格表取得カーソル
+    CURSOR get_price_list_cur(
+      in_cust_acct_site_id IN NUMBER)
+    IS
+      SELECT qlht.name price_list
+      FROM   hz_cust_site_uses  hcsu
+            ,qp_list_headers_tl qlht
+            ,qp_list_headers_b  qlhb
+      WHERE  hcsu.price_list_id     = qlhb.list_header_id
+      AND    qlht.list_header_id    = qlhb.list_header_id
+      AND    qlht.source_lang       = cv_language_ja
+      AND    qlht.language          = cv_language_ja
+      AND    qlhb.orig_org_id       = fnd_global.org_id
+      AND    qlhb.list_type_code    = cv_list_type_prl
+      AND    hcsu.site_use_code     = cv_ship_to
+      AND    hcsu.cust_acct_site_id = in_cust_acct_site_id
+      ;
+    -- 価格表チェックカーソルレコード型
+    get_price_list_rec  get_price_list_cur%ROWTYPE;
+-- 2009/10/20 Ver1.3 add end by Y.Kuboshima
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -575,7 +639,12 @@ AS
       -- 企業コード取得・パラメータチェック
       -- ===============================
       IF   (cust_data_rec.customer_class_code = cv_customer
-        OR  cust_data_rec.customer_class_code = cv_ar_manage)
+        OR  cust_data_rec.customer_class_code = cv_ar_manage
+-- 2009/10/20 Ver1.3 add start by Y.Kuboshima
+        OR  cust_data_rec.customer_class_code = cv_su_customer
+        OR  cust_data_rec.customer_class_code = cv_tenpo_kbn
+        OR  cust_data_rec.customer_class_code = cv_tonya_kbn)
+-- 2009/10/20 Ver1.3 add end by Y.Kuboshima
       THEN
         IF (cust_data_rec.sales_chain_code IS NOT NULL) THEN
           << sales_kigyou_loop >>
@@ -619,6 +688,19 @@ AS
           END;
         END IF;
 --
+-- 2009/10/20 Ver1.3 add start by Y.Kuboshima
+        --顧客区分'10','12'の場合
+        IF (cust_data_rec.customer_class_code IN (cv_customer, cv_su_customer)) THEN
+          -- ===============================
+          -- 価格表マスタ取得
+          -- ===============================
+          << price_list_loop >>
+          FOR get_price_list_rec IN get_price_list_cur( cust_data_rec.cust_acct_site_id )
+          LOOP
+            lv_price_list := get_price_list_rec.price_list;
+          END LOOP price_list_loop;
+        END IF;
+-- 2009/10/20 Ver1.3 add end by Y.Kuboshima
         -- ===============================
         -- 出力値設定
         -- ===============================
@@ -635,7 +717,9 @@ AS
           cust_data_rec.ar_invoice_code      := NULL;
           cust_data_rec.ar_location_code     := NULL;
           cust_data_rec.ar_others_code       := NULL;
-          cust_data_rec.invoice_class        := NULL;
+-- 2009/10/20 Ver1.3 delete start by Y.Kuboshima
+--          cust_data_rec.invoice_class        := NULL;
+-- 2009/10/20 Ver1.3 delete end by Y.Kuboshima
           cust_data_rec.invoice_sycle        := NULL;
           cust_data_rec.invoice_form         := NULL;
           cust_data_rec.payment_term_id      := NULL;
@@ -645,14 +729,57 @@ AS
         IF   (cust_data_rec.customer_class_code <> cv_customer
           AND cust_data_rec.customer_class_code <> cv_ar_manage)
         THEN
-          cust_data_rec.sales_chain_code     := NULL;
-          lv_sales_kigyou_code               := NULL;
-          cust_data_rec.delivery_chain_code  := NULL;
-          lv_delivery_kigyou_code            := NULL;
+-- 2009/10/20 Ver1.3 delete start by Y.Kuboshima
+--          cust_data_rec.sales_chain_code     := NULL;
+--          lv_sales_kigyou_code               := NULL;
+--          cust_data_rec.delivery_chain_code  := NULL;
+--          lv_delivery_kigyou_code            := NULL;
+-- 2009/10/20 Ver1.3 delete end by Y.Kuboshima
           cust_data_rec.policy_chain_code    := NULL;
           cust_data_rec.chain_store_code     := NULL;
           cust_data_rec.store_code           := NULL;
         END IF;
+        --
+-- 2009/10/20 Ver1.3 add start by Y.Kuboshima
+        -- 顧客区分'10','12','14','15','16'以外の場合
+        IF (cust_data_rec.customer_class_code NOT IN (cv_customer, cv_su_customer, cv_ar_manage, cv_tenpo_kbn, cv_tonya_kbn)) THEN
+          -- チェーン店コード（販売先）,企業コード（販売先）,チェーン店コード（納品先）,企業コード（納品先）にNULLをセット
+          cust_data_rec.sales_chain_code     := NULL;
+          lv_sales_kigyou_code               := NULL;
+          cust_data_rec.delivery_chain_code  := NULL;
+          lv_delivery_kigyou_code            := NULL;
+        END IF;
+        --
+        -- 顧客区分'10','12','13','14','15','16','17'以外の場合
+        IF (cust_data_rec.customer_class_code NOT IN (cv_customer, cv_su_customer, cv_trust_corp, cv_ar_manage, cv_tenpo_kbn, cv_tonya_kbn, cv_keikaku_kbn)) THEN
+          -- 業態(小分類),業種,売上実績振替,問屋管理コードにNULLをセット
+          cust_data_rec.business_low_type    := NULL;
+          cust_data_rec.industry_div         := NULL;
+          cust_data_rec.selling_transfer_div := NULL;
+          cust_data_rec.wholesale_ctrl_code  := NULL;
+        END IF;
+        --
+        -- 顧客区分'10','12','14','20','21'以外の場合
+        IF (cust_data_rec.customer_class_code NOT IN (cv_customer, cv_su_customer, cv_ar_manage, cv_seikyusho_kbn, cv_tokatu_kbn)) THEN
+          -- 請求拠点にNULLをセット
+          cust_data_rec.bill_base_code       := NULL;
+        END IF;
+        --
+        -- 顧客区分'10','12','14'以外の場合
+        IF (cust_data_rec.customer_class_code NOT IN (cv_customer, cv_su_customer, cv_ar_manage)) THEN
+          -- 入金拠点,納品拠点にNULLをセット
+          cust_data_rec.receiv_base_code     := NULL;
+          cust_data_rec.delivery_base_code   := NULL;
+        END IF;
+        --
+        -- 顧客区分'10'以外の場合
+        IF (cust_data_rec.customer_class_code <> cv_customer) THEN
+          -- カード会社,請求書用コードにNULLをセット
+          cust_data_rec.card_company         := NULL;
+          cust_data_rec.invoice_code         := NULL;
+        END IF;
+        --
+-- 2009/10/20 Ver1.3 add end by Y.Kuboshima
 --
         --売上拠点名称取得
         << seles_base_name_loop >>
@@ -705,7 +832,7 @@ AS
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_invoice_code,1,12);     --売掛コード１（請求書）
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_location_code,1,12);    --売掛コード２（事業所）
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_others_code,1,12);      --売掛コード３（その他）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_class,1,1);        --請求書発行区分
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_class,1,1);        --請求書印刷区分
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_sycle,1,1);        --請求書発行サイクル
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_form,1,1);         --請求書出力形式
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_payment_term,1,8);                    --支払条件
@@ -725,6 +852,17 @@ AS
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address1,1,240);           --住所1
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address2,1,240);           --住所2
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address3,1,5);             --地区コード
+-- 2009/10/20 Ver1.3 add start by Y.Kuboshima
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_code,1,9);         --請求書用コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.industry_div,1,2);         --業種
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.bill_base_code,1,4);       --請求拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.receiv_base_code,1,4);     --入金拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_base_code,1,4);   --納品拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.selling_transfer_div,1,4); --売上実績振替
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.card_company,1,9);         --カード会社
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.wholesale_ctrl_code,1,9);  --問屋管理コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_price_list,1,240);                    --価格表
+-- 2009/10/20 Ver1.3 add end by Y.Kuboshima
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information,1,100);                   --情報欄
 --
         --文字列出力
@@ -760,6 +898,9 @@ AS
       lv_payment_term         := NULL;
       lv_payment_term_second  := NULL;
       lv_payment_term_third   := NULL;
+-- 2009/10/20 Ver1.3 add start by Y.Kuboshima
+      lv_price_list           := NULL;
+-- 2009/10/20 Ver1.3 add end by Y.Kuboshima
 --
     END LOOP cust_for_loop;
 --
