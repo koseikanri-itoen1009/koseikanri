@@ -1,0 +1,15 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Synonym Name : XXCOI_INV_RCP_DAILY_TMP
+ * Description  : 日次在庫一時表（シノニム）
+ * Version      : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2011/01/06    1.0   H.Sasaki         新規作成
+ *
+ ************************************************************************/
+  CREATE OR REPLACE SYNONYM "APPS"."XXCOI_INV_RCP_DAILY_TMP" FOR "XXCOI"."XXCOI_INV_RCP_DAILY_TMP";
