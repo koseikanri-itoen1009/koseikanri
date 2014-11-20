@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -104,6 +104,8 @@ AS
  *                                          (入力チェック区分=07 作業関連情報入力チェック)
  *                                        ・引揚の場合にチェックしているVD購買依頼時の3営業日ルールをコメントアウト。
  *                                          (入力チェック区分=10 引揚関連情報入力チェック2)
+ *  2010-12-07    1.31 K.Kiriu           【E_本稼動_05751】
+ *                                        ・廃棄決裁時の機器状態３のチェックを「NULL、予定無し、廃棄予定以外の場合エラー」に変更
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -3649,9 +3651,16 @@ AS
       --
     END IF;
     --
-    -- 機器状態３（廃棄情報）がNULLまたは「廃棄申請中」以外の場合
+    -- 機器状態３（廃棄情報）がNULLまたは「予定無」「廃棄予定」以外の場合
     IF ( i_instance_rec.jotai_kbn3 IS NULL )
-      OR ( i_instance_rec.jotai_kbn3 <> cv_jotai_kbn3_ablsh_appl )
+    /* 2010.12.07 K.Kiriu E_本稼動_05751対応 START */
+--      OR ( i_instance_rec.jotai_kbn3 <> cv_jotai_kbn3_ablsh_appl )
+      OR (
+           ( i_instance_rec.jotai_kbn3 <> cv_jotai_kbn3_non_schdl )
+           AND
+           ( i_instance_rec.jotai_kbn3 <> cv_jotai_kbn3_ablsh_pln )
+         )
+    /* 2010.12.07 K.Kiriu E_本稼動_05751対応 END */
     THEN
       lv_errbuf2 := xxccp_common_pkg.get_msg(
                         iv_application  => cv_sales_appl_short_name   -- アプリケーション短縮名
