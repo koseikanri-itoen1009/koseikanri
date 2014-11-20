@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_headers_info_v
  * Description     : ”[•i“`•[ƒwƒbƒ_î•ñƒrƒ…[
- * Version         : 1.2
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2009/04/09    1.1   K.kiriu          [T1_0248]•S‰Ý“XHHT‹æ•ª‚Æ•S‰Ý“X‰æ–ÊŽí•Ê‚Ì•s®‡C³
  *                                       [T1_0259]”[•iŽÒ‚ÌŒ‹‡•s³‘Î‰ž
  *  2009/06/03    1.2   K.Kiriu          [T1_1269]ƒpƒtƒH[ƒ}ƒ“ƒX‘Î‰ž
+ *  2009/07/06    1.3   T.Miyata         [0000409]ƒpƒtƒH[ƒ}ƒ“ƒX‘Î‰ž
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_dlv_headers_info_v
 (
@@ -214,7 +215,7 @@ FROM
        WHERE   xlvv.lookup_type = 'XXCOS1_INPUT_CLASS'
        AND     xlvv.attribute1  = 'Y'
 /* 2009/06/03 Ver1.2 Mod End   */
-       ) ic,                                                      
+       ) ic,
        (
        --•S‰Ý“X‰æ–ÊŽí•Ê
 /* 2009/06/03 Ver1.2 Mod Start */
@@ -269,33 +270,54 @@ AND    hp.party_id         = xsv.party_id
 /* 2009/04/09 Ver1.1 Del Start */
 --AND    xdh.dlv_by_code     = xsv.employee_number   --2009/01/09’Ç‰Á
 /* 2009/04/09 Ver1.1 Del End   */
-/* 2009/06/03 Ver1.2 Mod Start   */
---AND    (xdh.dlv_date >=  
---  NVL(xsv.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
---AND    xdh.dlv_date <=  
---  NVL(xsv.effective_end_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
---OR
---       add_months( xdh.dlv_date, -1 ) >=  
---       NVL(xsv.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
---AND    add_months( xdh.dlv_date, -1 ) <=  
---       NVL(xsv.effective_end_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+/* 2009/07/06 Ver1.3 Mod Start   */
+--/* 2009/06/03 Ver1.2 Mod Start   */
+----AND    (xdh.dlv_date >=  
+----  NVL(xsv.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+----AND    xdh.dlv_date <=  
+----  NVL(xsv.effective_end_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+----OR
+----       add_months( xdh.dlv_date, -1 ) >=  
+----       NVL(xsv.effective_start_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+----AND    add_months( xdh.dlv_date, -1 ) <=  
+----       NVL(xsv.effective_end_date,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+----       )
+----AND    xdh.card_sale_class = csc.lookup_code(+)
+----AND    xdh.input_class IN (
+----        ic.lookup_code
+----       )
+--AND    (
+--         xdh.dlv_date >=
+--           NVL( xsv.effective_start_date, FND_DATE.STRING_TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
+--         AND
+--         xdh.dlv_date <=  
+--           NVL( xsv.effective_end_date, FND_DATE.STRING_TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
+--       OR
+--         add_months( xdh.dlv_date, -1 ) >=  
+--           NVL( xsv.effective_start_date, FND_DATE.STRING_TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
+--         AND
+--         add_months( xdh.dlv_date, -1 ) <=  
+--           NVL( xsv.effective_end_date, FND_DATE.STRING_TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
 --       )
---AND    xdh.card_sale_class = csc.lookup_code(+)
---AND    xdh.input_class IN (
---        ic.lookup_code
---       )
+--AND    xdh.card_sale_class  = csc.lookup_code
+--AND    pd.process_date     >= NVL(csc.start_date_active, pd.process_date)
+--AND    pd.process_date     <= NVL(csc.end_date_active, pd.process_date)
+--AND    xdh.input_class      = ic.lookup_code
+--AND    pd.process_date     >= NVL(ic.start_date_active, pd.process_date)
+--AND    pd.process_date     <= NVL(ic.end_date_active, pd.process_date)
+--/* 2009/06/03 Ver1.2 Mod End   */
 AND    (
          xdh.dlv_date >=
-           NVL( xsv.effective_start_date, FND_DATE.STRING_TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
+           NVL( xsv.effective_start_date, TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
          AND
          xdh.dlv_date <=  
-           NVL( xsv.effective_end_date, FND_DATE.STRING_TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
+           NVL( xsv.effective_end_date, TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
        OR
          add_months( xdh.dlv_date, -1 ) >=  
-           NVL( xsv.effective_start_date, FND_DATE.STRING_TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
+           NVL( xsv.effective_start_date, TO_DATE( '1900/01/01', 'YYYY/MM/DD' ) )
          AND
          add_months( xdh.dlv_date, -1 ) <=  
-           NVL( xsv.effective_end_date, FND_DATE.STRING_TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
+           NVL( xsv.effective_end_date, TO_DATE( '9999/12/31', 'YYYY/MM/DD' ) )
        )
 AND    xdh.card_sale_class  = csc.lookup_code
 AND    pd.process_date     >= NVL(csc.start_date_active, pd.process_date)
@@ -303,7 +325,7 @@ AND    pd.process_date     <= NVL(csc.end_date_active, pd.process_date)
 AND    xdh.input_class      = ic.lookup_code
 AND    pd.process_date     >= NVL(ic.start_date_active, pd.process_date)
 AND    pd.process_date     <= NVL(ic.end_date_active, pd.process_date)
-/* 2009/06/03 Ver1.2 Mod End   */
+/* 2009/07/06 Ver1.3 Mod End   */
 /* 2009/04/09 Ver1.1 Mod Start */
 --AND  ( xdh.department_screen_class IS NULL    --2009/02/06’Ç‰Á Žd—l•ÏX‚Ì‚½‚ß
 --       OR

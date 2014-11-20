@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_lines_info_v
  * Description     : 納品伝票明細情報ビュー
- * Version         : 1.2
+ * Version         : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2009/02/18    1.1   T.Tyou           受注NO（EBS）を追加
  *  2009/05/28    1.2   K.Kiriu          [T1_1119]明細番号(EBS)を追加
  *  2009/06/09    1.3   K.Kiriu          [T1_1382]基準在庫数量取得不具合の修正
+ *  2009/07/06    1.4   T.Miyata         [0000409]パフォーマンス対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_dlv_lines_info_v (
   order_no_hht
@@ -82,10 +83,13 @@ SELECT
        xdl.replenish_number replenish_number,                      --補充数（DB値）
        abs(xdl.cash_and_card) abs_cash_and_card,                   --現金・カード併用額（画面用:絶対値）
        xdl.cash_and_card cash_and_card,                            --現金・カード併用額（DB値）
-/* 2009/06/09 Ver1.3 Mod Start */
---       CASE WHEN xdh.dlv_date < xxccp_common_pkg2.get_process_date THEN
-       CASE WHEN TO_CHAR( xdh.dlv_date, 'YYYYMM' ) < TO_CHAR( xxccp_common_pkg2.get_process_date, 'YYYYMM') THEN
-/* 2009/06/09 Ver1.3 Mod End   */
+/* 2009/07/06 Ver1.4 Mod Start */
+--/* 2009/06/09 Ver1.3 Mod Start */
+----       CASE WHEN xdh.dlv_date < xxccp_common_pkg2.get_process_date THEN
+--       CASE WHEN TO_CHAR( xdh.dlv_date, 'YYYYMM' ) < TO_CHAR( xxccp_common_pkg2.get_process_date, 'YYYYMM') THEN
+       CASE WHEN TRUNC( xdh.dlv_date, 'MM' ) < TRUNC( xxccp_common_pkg2.get_process_date, 'MM') THEN
+--/* 2009/06/09 Ver1.3 Mod End   */
+/* 2009/07/06 Ver1.4 Mod End   */
          xmvc.last_month_inventory_quantity
        ELSE
          xmvc.inventory_quantity
@@ -118,58 +122,85 @@ FROM
        xxcmn_item_mst_b      cmn_mst,
        (
        --売上区分
+/* 2009/07/06 Ver1.4 Mod Start */
+--       SELECT look_val.lookup_code lookup_code
+--             ,look_val.meaning meaning
+--       FROM    fnd_lookup_values     look_val,
+--               fnd_lookup_types_tl   types_tl,
+--               fnd_lookup_types      types,
+--               fnd_application_tl    appl,
+--               fnd_application       app
+--       WHERE   appl.application_id   = types.application_id
+--       AND     look_val.language     = 'JA'
+--       AND     appl.language         = 'JA'
+--       AND     types_tl.lookup_type  = look_val.lookup_type
+--       AND     app.application_id    = appl.application_id
+--       AND     look_val.lookup_type = 'XXCOS1_SALE_CLASS'
+--       AND     app.application_short_name = 'XXCOS'
+--       AND     types.lookup_type = types_tl.lookup_type
+--       AND     types.security_group_id = types_tl.security_group_id
+--       AND     types.view_application_id = types_tl.view_application_id
+--       AND     types_tl.language = userenv('LANG')
+--       AND     xxccp_common_pkg2.get_process_date      >= 
+--         NVL(look_val.start_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+--       AND     xxccp_common_pkg2.get_process_date      <= 
+--         NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
        SELECT look_val.lookup_code lookup_code
              ,look_val.meaning meaning
-       FROM    fnd_lookup_values     look_val,
-               fnd_lookup_types_tl   types_tl,
-               fnd_lookup_types      types,
-               fnd_application_tl    appl,
-               fnd_application       app
-       WHERE   appl.application_id   = types.application_id
-       AND     look_val.language     = 'JA'
-       AND     appl.language         = 'JA'
-       AND     types_tl.lookup_type  = look_val.lookup_type
-       AND     app.application_id    = appl.application_id
+       FROM    fnd_lookup_values     look_val
+       WHERE   look_val.language     = 'JA'
        AND     look_val.lookup_type = 'XXCOS1_SALE_CLASS'
-       AND     app.application_short_name = 'XXCOS'
-       AND     types.lookup_type = types_tl.lookup_type
-       AND     types.security_group_id = types_tl.security_group_id
-       AND     types.view_application_id = types_tl.view_application_id
-       AND     types_tl.language = userenv('LANG')
        AND     xxccp_common_pkg2.get_process_date      >= 
-         NVL(look_val.start_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+         NVL(look_val.start_date_active,TO_DATE( '1900/01/01', 'YYYY/MM/DD' ))
        AND     xxccp_common_pkg2.get_process_date      <= 
-         NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+         NVL(look_val.end_date_active,TO_DATE( '9999/12/31', 'YYYY/MM/DD' ))
+/* 2009/07/06 Ver1.4 Mod End   */
        AND     look_val.enabled_flag = 'Y'
-       ORDER BY look_val.lookup_code
+/* 2009/07/06 Ver1.4 Delete Start */
+--       ORDER BY look_val.lookup_code
+/* 2009/07/06 Ver1.4 Delete End   */
        ) sc,
        (
        --H/C区分
+/* 2009/07/06 Ver1.4 Mod Start */
+--       SELECT look_val.lookup_code lookup_code
+--             ,look_val.meaning meaning
+--       FROM    fnd_lookup_values     look_val,
+--               fnd_lookup_types_tl   types_tl,
+--               fnd_lookup_types      types,
+--               fnd_application_tl    appl,
+--               fnd_application       app
+--       WHERE   appl.application_id   = types.application_id
+--       AND     look_val.language     = 'JA'
+--       AND     appl.language         = 'JA'
+--       AND     types_tl.lookup_type  = look_val.lookup_type
+--       AND     app.application_id    = appl.application_id
+--       AND     look_val.lookup_type = 'XXCOS1_HC_CLASS'
+--       AND     app.application_short_name = 'XXCOS'
+--       AND     types.lookup_type = types_tl.lookup_type
+--       AND     types.security_group_id = types_tl.security_group_id
+--       AND     types.view_application_id = types_tl.view_application_id
+--       AND     types_tl.language = userenv('LANG')
+--       AND     look_val.attribute1 = 'Y'
+--       AND     xxccp_common_pkg2.get_process_date      >= 
+--         NVL(look_val.start_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+--       AND     xxccp_common_pkg2.get_process_date      <= 
+--         NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
        SELECT look_val.lookup_code lookup_code
              ,look_val.meaning meaning
-       FROM    fnd_lookup_values     look_val,
-               fnd_lookup_types_tl   types_tl,
-               fnd_lookup_types      types,
-               fnd_application_tl    appl,
-               fnd_application       app
-       WHERE   appl.application_id   = types.application_id
-       AND     look_val.language     = 'JA'
-       AND     appl.language         = 'JA'
-       AND     types_tl.lookup_type  = look_val.lookup_type
-       AND     app.application_id    = appl.application_id
+       FROM    fnd_lookup_values     look_val
+       WHERE   look_val.language     = 'JA'
        AND     look_val.lookup_type = 'XXCOS1_HC_CLASS'
-       AND     app.application_short_name = 'XXCOS'
-       AND     types.lookup_type = types_tl.lookup_type
-       AND     types.security_group_id = types_tl.security_group_id
-       AND     types.view_application_id = types_tl.view_application_id
-       AND     types_tl.language = userenv('LANG')
        AND     look_val.attribute1 = 'Y'
        AND     xxccp_common_pkg2.get_process_date      >= 
-         NVL(look_val.start_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MIN_DATE'),'YYYY/MM/DD'))
+         NVL(look_val.start_date_active,TO_DATE( '1900/01/01', 'YYYY/MM/DD' ))
        AND     xxccp_common_pkg2.get_process_date      <= 
-         NVL(look_val.end_date_active,FND_DATE.STRING_TO_DATE(FND_PROFILE.VALUE('XXCOS1_MAX_DATE'),'YYYY/MM/DD'))
+         NVL(look_val.end_date_active,TO_DATE( '9999/12/31', 'YYYY/MM/DD' ))
+/* 2009/07/06 Ver1.4 Mod End   */
        AND     look_val.enabled_flag = 'Y'
-       ORDER BY look_val.lookup_code
+/* 2009/07/06 Ver1.4 Delete Start */
+--       ORDER BY look_val.lookup_code
+/* 2009/07/06 Ver1.4 Delete End   */
        ) hac,
        xxcoi_mst_vd_column    xmvc
        , hz_cust_accounts     cust                                                                                            
