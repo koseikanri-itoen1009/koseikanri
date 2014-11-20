@@ -51,7 +51,7 @@ AS
   AND   mct.language = USERENV('LANG')
   AND   mcb.enabled_flag = 'Y'
   AND   NVL(mcb.disable_date,xpcdv.process_date) <= xpcdv.process_date
-  AND   fifs.id_flex_structure_code = 'XXCA_SGUN_CODE'
+  AND   fifs.id_flex_structure_code = 'XXCMN_SGUN_CODE'
   AND   fifs.application_id = 401 
   AND   fifs.id_flex_code = 'MCAT'
   AND   fifs.id_flex_num = mcsb.structure_id
