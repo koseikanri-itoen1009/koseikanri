@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 *                              外部ユーザーの場合、表示された取引先コードで検索できない。
 * 2008-05-21      伊藤ひとみ   内部変更要求対応(#104)
 * 2008-07-11 1.1  二瓶大輔     ST#421対応
+* 2008-07-22 1.2  伊藤ひとみ   内部課題#32対応 換算ありの場合、ケース入数がNULLまたは0はエラー
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -466,6 +467,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     // システム日付を取得
     Date currentDate = getOADBTransaction().getCurrentDBDate();
 // 2008-07-11 D.Nihei ADD END
+// 2008-07-22 H.Itou  ADD START
+    Number conversionFactor = (Number)vendorSupplyMakeRow.getAttribute("ConversionFactor"); // 換算入数
+// 2008-07-22 H.Itou  ADD END
     
     // 生産日必須チェック
     if (XxcmnUtility.isBlankOrNull(manufacturedDate)) 
@@ -531,7 +535,22 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
                             itemCode,
                             XxcmnConstants.APPL_XXPO,         
                             XxpoConstants.XXPO10002));
+                            
+// 2008-07-22 H.Itou  ADD START
+    // 品目のケース入数チェック NULLか0以下はエラー
+    } else if (XxcmnUtility.isBlankOrNull(conversionFactor)
+      || (XxcmnUtility.intValue(conversionFactor) <= 0))
+    {
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,          
+                            vendorSupplyMakeVo.getName(),
+                            vendorSupplyMakeRow.getKey(),
+                            "ItemCode",
+                            itemCode,
+                            XxcmnConstants.APPL_XXCMN,         
+                            XxcmnConstants.XXCMN10603));
     }
+// 2008-07-22 H.Itou  ADD END
 
     // 品目区分が5：製品の場合、製造日、固有記号必須
     if (XxpoConstants.ITEM_CLASS_PROD.equals(itemClassCode)) 

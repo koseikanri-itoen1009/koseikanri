@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcmnConstants
 * 概要説明   : 共通定数クラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2007-12-11 1.0  二瓶大輔     新規作成
+* 2008-07-22 1.1  伊藤ひとみ   内部課題#32対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcmn.util;
@@ -50,6 +51,14 @@ public class XxcmnConstants
   public static final String XXCMN00025   = "APP-XXCMN-00025";
   /** メッセージ：APP-XXCMN-00026 マイナス在庫チェックワーニングメッセージ */
   public static final String XXCMN00026   = "APP-XXCMN-00026";
+// 2008-07-22 H.Itou Add START
+  /** メッセージ：APP-XXCMN-10603 ケース入数エラー(トークン:なし) */
+  public static final String XXCMN10603   = "APP-XXCMN-10603";
+  /** メッセージ：APP-XXCMN-10604 ケース入数エラー(トークン:REQUEST_NO,ITEM_NO) */
+  public static final String XXCMN10604   = "APP-XXCMN-10604";
+  /** メッセージ：APP-XXCMN-10605 ケース入数エラー(トークン:ITEM_NO) */
+  public static final String XXCMN10605   = "APP-XXCMN-10605";
+// 2008-07-22 H.Itou Add END
   /** トークン：LOCATION */
   public static final String TOKEN_LOCATION     = "LOCATION";
   /** トークン：LOT */
@@ -70,6 +79,12 @@ public class XxcmnConstants
   public static final String TOKEN_TABLE        = "TABLE";
   /** トークン：KEY */
   public static final String TOKEN_KEY          = "KEY";
+// 2008-07-22 H.Itou Add START
+  /** トークン：REQUEST_NO */
+  public static final String TOKEN_REQUEST_NO   = "REQUEST_NO";
+  /** トークン：ITEM_NO */
+  public static final String TOKEN_ITEM_NO      = "ITEM_NO";
+// 2008-07-22 H.Itou Add END
   /** URL：ホーム画面 */
   public static final String URL_OAHOMEPAGE     = "OAHOMEPAGE";
   /** 定数：TRUE */
