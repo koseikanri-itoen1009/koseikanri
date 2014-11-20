@@ -20,6 +20,8 @@ HISTORY
             <oa:messageStyledText id="ItemShortName" dataType="VARCHAR2" viewName="XxcsoInventoryItemSearchLovVO1" viewAttr="ItemShortName" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso017001j/attributesets/XxcsoQuoteSalesRegistAttrSets/InventoryItemNameColHdr"/>
             <oa:formValue id="InventoryItemId" viewName="XxcsoInventoryItemSearchLovVO1" viewAttr="InventoryItemId" dataType="NUMBER"/>
             <oa:formValue id="BusinessPrice" viewName="XxcsoInventoryItemSearchLovVO1" viewAttr="BusinessPrice" dataType="NUMBER"/>
+            <oa:formValue id="CaseIncNum" dataType="NUMBER" viewName="XxcsoInventoryItemSearchLovVO1" viewAttr="CaseIncNum"/>
+            <oa:formValue id="BowlIncNum" dataType="NUMBER" viewName="XxcsoInventoryItemSearchLovVO1" viewAttr="BowlIncNum"/>
          </ui:contents>
       </oa:table>
    </ui:contents>

@@ -323,6 +323,8 @@ HISTORY
                                           <lovMap id="InventoryNameLovMap" lovItem="ItemShortName" resultTo="InventoryItemName"/>
                                           <lovMap id="InventoryItemIdLovMap" lovItem="InventoryItemId" resultTo="InventoryItemId"/>
                                           <lovMap id="BusinessPriceLovMap" lovItem="BusinessPrice" resultTo="BusinessPrice"/>
+                                          <lovMap id="CaseIncNumLovMap" lovItem="CaseIncNum" resultTo="CaseIncNum" criteriaFrom="CaseIncNum"/>
+                                          <lovMap id="BowlIncNumLovMap" lovItem="BowlIncNum" resultTo="BowlIncNum" criteriaFrom="BowlIncNum"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                  </ui:contents>
@@ -418,6 +420,8 @@ HISTORY
                               <oa:formValue id="InventoryItemId" viewAttr="InventoryItemId" dataType="NUMBER"/>
                               <oa:formValue id="BusinessPrice" viewAttr="BusinessPrice" dataType="NUMBER"/>
                               <oa:formValue id="InventoryItemName" viewAttr="ItemShortName"/>
+                              <oa:formValue id="BowlIncNum" viewAttr="BowlIncNum" dataType="NUMBER"/>
+                              <oa:formValue id="CaseIncNum" viewAttr="CaseIncNum" dataType="NUMBER"/>
                            </ui:contents>
                            <ui:tableActions>
                               <oa:flowLayout id="QuoteBodyFlRN">
