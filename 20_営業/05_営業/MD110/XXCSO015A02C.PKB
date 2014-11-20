@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2010-04-05    1.26  T.Yoshimoto      E_本稼動_02102対応
  *  2010-05-10    1.26  D.Abe            E_本稼動_02598対応
  *  2011-02-02    1.28  N.Horigome       E_本稼動_02369対応
+ *  2011-06-23    1.29  K.Kiriu          E_本稼動_07712対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -839,15 +840,20 @@ AS
     cv_account1_info   CONSTANT VARCHAR2(100) := '顧客マスタサイトビューの新設置先顧客情報';
     cv_account2_info   CONSTANT VARCHAR2(100) := '顧客マスタサイトビューの現設置先顧客情報';
     cv_salebase_info   CONSTANT VARCHAR2(100) := '顧客マスタビューの売上拠点コード';
-    cv_emplbase_info   CONSTANT VARCHAR2(100) := '従業員マスタビューの勤務地拠点コード';
+   /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del START */
+--    cv_emplbase_info   CONSTANT VARCHAR2(100) := '従業員マスタビューの勤務地拠点コード';
+   /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del END */
     cv_syozokum_info   CONSTANT VARCHAR2(100) := '所属マスタの事業所電話番号';
     /* 2009.12.21 K.Hosoi E_本稼動_00563対応 START */
     cv_temp_info       CONSTANT VARCHAR2(100) := '情報テンプレートの顧客関連情報';
     /* 2009.12.21 K.Hosoi E_本稼動_00563対応 END */
-    /* 2009.08.10 K.Satomura 0000662対応 START */
-    cv_new_eigyoin_info CONSTANT VARCHAR2(100) := '新設置先顧客担当営業員';
-    cv_now_eigyoin_info CONSTANT VARCHAR2(100) := '現設置先顧客担当営業員';
-    /* 2009.08.10 K.Satomura 0000662対応 END */
+    /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Mod START */
+--    /* 2009.08.10 K.Satomura 0000662対応 START */
+--    cv_new_eigyoin_info CONSTANT VARCHAR2(100) := '新設置先顧客担当営業員';
+--    cv_now_eigyoin_info CONSTANT VARCHAR2(100) := '現設置先顧客担当営業員';
+--    /* 2009.08.10 K.Satomura 0000662対応 END */
+    cv_account_emp_info CONSTANT VARCHAR2(100) := '営業員担当顧客ビューの従業員番号';
+    /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Mod END */
     /* 2009.05.22 K.Satomura T1_1142対応 START */
     cn_phone_num_max_legth CONSTANT NUMBER        := 6; -- 電話番号最大桁数
     cv_phone_old           CONSTANT VARCHAR2(100) := '現設置先';
@@ -966,7 +972,13 @@ AS
     lv_work_company_code       xxcso_requisition_lines_v.work_company_code%TYPE;        -- 作業会社コード
     lv_work_location_code      xxcso_requisition_lines_v.work_location_code%TYPE;       -- 事業所コード
     ln_un_number_id            NUMBER;                  -- 機種ID
-    ln_created_by              NUMBER;                  -- 作成者
+    /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del START */
+--    ln_created_by              NUMBER;                  -- 作成者
+    /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del END */
+    /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+    lt_empoyee_number          xxcso_employees_v.employee_number%TYPE;                  -- 顧客担当営業員
+    lt_emp_customer_code       xxcso_cust_acct_sites_v.account_number%TYPE;             -- 顧客コード(顧客営業担当取得用)
+    /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
     /* 2009.04.10 K.Satomura T1_0492対応 START */
     --lv_cur_phone_number        VARCHAR2(20);            -- 編集用電話番号
     --lv_new_phone_number        VARCHAR2(20);            -- 編集用電話番号
@@ -1024,8 +1036,10 @@ AS
   ln_un_number_id        := io_get_data_rec.un_number_id;
   -- 物件コード２
   lv_install_code2       := io_get_data_rec.install_code2;
-  -- 作成者
-  ln_created_by          := io_get_data_rec.created_by;
+  /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del START */
+--  -- 作成者
+--  ln_created_by          := io_get_data_rec.created_by;
+  /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del END */
   -- 作業会社コード
   lv_work_company_code   := io_get_data_rec.work_company_code;
   -- 事業所コード
@@ -1469,93 +1483,95 @@ AS
         lv_new_full_name := cv_astrsk;
       END IF;
       /* 2009.12.21 K.Hosoi E_本稼動_00563対応 END */
-      /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
-      -- 依頼部署の格納      
-      BEGIN
-        SELECT (
-                 CASE
-                   /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-                   --WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd') <= ld_date THEN
-                   WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd') <= ld_reqst_date THEN
-                   /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
-                     xev.work_base_code_new  -- 勤務地拠点コード(新)
-                   /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
-                   --WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd')  > ld_date THEN
-                   WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd')  > ld_reqst_date THEN
-                   /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
-                     xev.work_base_code_old  -- 勤務地拠点コード(旧)
-                   WHEN xev.issue_date IS NULL THEN
-                     xev.work_base_code_old  -- 勤務地拠点コード(旧)
-                 END
-               ) base_code
-        INTO   lv_reqst_base_code
-        FROM   xxcso_employees_v xev
-        WHERE  xev.user_id = ln_created_by
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-        --AND    ld_date BETWEEN TRUNC(NVL(xev.start_date, ld_date))
-        --                   AND TRUNC(NVL(xev.end_date, ld_date))
-        --AND    ld_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_date))
-        --                   AND TRUNC(NVL(xev.employee_end_date, ld_date))
-        --AND    ld_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_date))
-        --                   AND TRUNC(NVL(xev.assign_end_date, ld_date))
-        AND    ld_reqst_date BETWEEN TRUNC(NVL(xev.start_date, ld_reqst_date))
-                           AND TRUNC(NVL(xev.end_date, ld_reqst_date))
-        AND    ld_reqst_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_reqst_date))
-                           AND TRUNC(NVL(xev.employee_end_date, ld_reqst_date))
-        AND    ld_reqst_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_reqst_date))
-                           AND TRUNC(NVL(xev.assign_end_date, ld_reqst_date))
-        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
-        ;
-        --
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          -- データが存在しない場合
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_app_name           -- アプリケーション短縮名
-                         ,iv_name         => cv_tkn_number_06      -- メッセージコード
-                         ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
-                         ,iv_token_value1 => cv_emplbase_info      -- トークン値1
-                         ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
-                         ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
-                         ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
-                         ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
-                         ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
-                         ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
-                         ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
-                         ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
-                         ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
-                         ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
-                       );
-          --
-          lv_errbuf := lv_errmsg;
-          RAISE global_skip_expt;
-          --
-          -- 抽出に失敗した場合
-        WHEN OTHERS THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_app_name           -- アプリケーション短縮名
-                         ,iv_name         => cv_tkn_number_07      -- メッセージコード
-                         ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
-                         ,iv_token_value1 => cv_emplbase_info      -- トークン値1
-                         ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
-                         ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
-                         ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
-                         ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
-                         ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
-                         ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
-                         ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
-                         ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
-                         ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
-                         ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
-                         ,iv_token_name7  => cv_tkn_errmsg         -- トークンコード7
-                         ,iv_token_value7 => SQLERRM               -- トークン値7
-                       );
-          lv_errbuf := lv_errmsg;
-          RAISE global_process_expt;
-          --
-      END;
-      /* 2009.12.21 K.Hosoi E_本稼動_00563対応 START */
-      /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
+      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del START */
+--      /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+--      -- 依頼部署の格納      
+--      BEGIN
+--        SELECT (
+--                 CASE
+--                   /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--                   --WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+--                   WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd') <= ld_reqst_date THEN
+--                   /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+--                     xev.work_base_code_new  -- 勤務地拠点コード(新)
+--                   /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+--                   --WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+--                   WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd')  > ld_reqst_date THEN
+--                   /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+--                     xev.work_base_code_old  -- 勤務地拠点コード(旧)
+--                   WHEN xev.issue_date IS NULL THEN
+--                     xev.work_base_code_old  -- 勤務地拠点コード(旧)
+--                 END
+--               ) base_code
+--        INTO   lv_reqst_base_code
+--        FROM   xxcso_employees_v xev
+--        WHERE  xev.user_id = ln_created_by
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--        --AND    ld_date BETWEEN TRUNC(NVL(xev.start_date, ld_date))
+--        --                   AND TRUNC(NVL(xev.end_date, ld_date))
+--        --AND    ld_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_date))
+--        --                   AND TRUNC(NVL(xev.employee_end_date, ld_date))
+--        --AND    ld_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_date))
+--        --                   AND TRUNC(NVL(xev.assign_end_date, ld_date))
+--        AND    ld_reqst_date BETWEEN TRUNC(NVL(xev.start_date, ld_reqst_date))
+--                           AND TRUNC(NVL(xev.end_date, ld_reqst_date))
+--        AND    ld_reqst_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_reqst_date))
+--                           AND TRUNC(NVL(xev.employee_end_date, ld_reqst_date))
+--        AND    ld_reqst_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_reqst_date))
+--                           AND TRUNC(NVL(xev.assign_end_date, ld_reqst_date))
+--        /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+--        ;
+--        --
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          -- データが存在しない場合
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_app_name           -- アプリケーション短縮名
+--                         ,iv_name         => cv_tkn_number_06      -- メッセージコード
+--                         ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+--                         ,iv_token_value1 => cv_emplbase_info      -- トークン値1
+--                         ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+--                         ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+--                         ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+--                         ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+--                         ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+--                         ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+--                         ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+--                         ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+--                         ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+--                         ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+--                       );
+--          --
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_skip_expt;
+--          --
+--          -- 抽出に失敗した場合
+--        WHEN OTHERS THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_app_name           -- アプリケーション短縮名
+--                         ,iv_name         => cv_tkn_number_07      -- メッセージコード
+--                         ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+--                         ,iv_token_value1 => cv_emplbase_info      -- トークン値1
+--                         ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+--                         ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+--                         ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+--                         ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+--                         ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+--                         ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+--                         ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+--                         ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+--                         ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+--                         ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+--                         ,iv_token_name7  => cv_tkn_errmsg         -- トークンコード7
+--                         ,iv_token_value7 => SQLERRM               -- トークン値7
+--                       );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_process_expt;
+--          --
+--      END;
+--      /* 2009.12.21 K.Hosoi E_本稼動_00563対応 START */
+--      /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
+      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del END */
       /* 2009.08.10 K.Satomura 0000662対応 START */
       ---- ==================
       ---- 新設置先営業員情報
@@ -1675,6 +1691,10 @@ AS
       --
       /* 2009.08.10 K.Satomura 0000662対応 END */
       /* 2009.12.21 K.Hosoi E_本稼動_00563対応 END */
+      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+      -- 顧客営業担当員取得用の顧客コード取得
+      lt_emp_customer_code := lv_new_customer_code1; --新設置先顧客コード
+      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
     END IF;
 --    
     -- 作業区分が新台代替、旧台代替、引揚の時
@@ -1705,6 +1725,9 @@ AS
               /* 2009.04.10 K.Satomura T1_0408対応 START */
               ,casv.account_number
               /* 2009.04.10 K.Satomura T1_0408対応 END */
+              /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+              ,casv.sale_base_code
+              /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
         INTO   lv_cur_organization_name
               /* 2009.08.10 K.Satomura 0000662対応 START */
               --,lv_cur_full_name
@@ -1718,6 +1741,9 @@ AS
               /* 2009.04.10 K.Satomura T1_0408対応 START */
               ,lv_cur_customer_code2
               /* 2009.04.10 K.Satomura T1_0408対応 END */
+              /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+              ,lv_reqst_base_code
+              /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
         FROM   xxcso_cust_acct_sites_v casv
               /* 2009.08.10 K.Satomura 0000662対応 START */
               --,xxcso_employees_v       empv
@@ -1960,6 +1986,10 @@ AS
       --
       /* 2009.08.10 K.Satomura 0000662対応 END */
       /* 2009.12.21 K.Hosoi E_本稼動_00563対応 END */
+      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+      -- 顧客営業担当員取得用の顧客コード取得
+      lt_emp_customer_code := lv_cur_customer_code2; --現設置先顧客コード(引揚の場合)
+      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
       -- ================
       -- 新設置先顧客情報
       -- ================
@@ -1984,6 +2014,9 @@ AS
                 ,NVL(casv.address2, cv_adddrss_chr)
                 /* 2009.05.22 K.Satomura T1_1152対応 END */
                 ,casv.account_number
+                /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+                ,casv.sale_base_code
+                /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
           INTO   lv_new_organization_name
                 /* 2009.08.10 K.Satomura 0000662対応 START */
                 --,lv_new_full_name
@@ -1995,6 +2028,9 @@ AS
                 ,lv_new_est_site_adress3
                 ,lv_new_est_site_adress4
                 ,lv_new_customer_code1
+                /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+                ,lv_reqst_base_code
+                /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
           FROM   xxcso_cust_acct_sites_v casv
                 ,csi_item_instances      ciins
                 /* 2009.08.10 K.Satomura 0000662対応 START */
@@ -2172,94 +2208,100 @@ AS
             RAISE global_process_expt;
         END;
 --
+        /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+        -- 顧客営業担当員取得用の顧客コード取得
+        lt_emp_customer_code := lv_new_customer_code1; --新設置先顧客コード(引揚以外場合)
+        /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
       END IF;
 --
-      -- 依頼部署の格納
-      BEGIN
-        SELECT ( CASE
-                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
-                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_reqst_date THEN
-                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
-                   empv.work_base_code_new  -- 勤務地拠点コード(新)
-                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
-                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_reqst_date THEN
-                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
-                   empv.work_base_code_old  -- 勤務地拠点コード(旧)
-                 WHEN empv.issue_date IS NULL THEN
-                   empv.work_base_code_old  -- 勤務地拠点コード(旧)
-                 END
-               )  base_code  
-        INTO   lv_reqst_base_code
-        FROM   xxcso_employees_v   empv
-        WHERE  empv.user_id = ln_created_by
-          /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-          --AND  ld_date 
-          --       BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
-          --           AND TRUNC(NVL(empv.end_date, ld_date))
-          --AND  ld_date 
-          --       BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
-          --           AND TRUNC(NVL(empv.employee_end_date, ld_date))
-          --AND  ld_date 
-          --       BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
-          --           AND TRUNC(NVL(empv.assign_end_date, ld_date))
-          AND  ld_reqst_date 
-                 BETWEEN TRUNC(NVL(empv.start_date, ld_reqst_date)) 
-                     AND TRUNC(NVL(empv.end_date, ld_reqst_date))
-          AND  ld_reqst_date 
-                 BETWEEN TRUNC(NVL(empv.employee_start_date, ld_reqst_date)) 
-                     AND TRUNC(NVL(empv.employee_end_date, ld_reqst_date))
-          AND  ld_reqst_date 
-                 BETWEEN TRUNC(NVL(empv.assign_start_date, ld_reqst_date)) 
-                     AND TRUNC(NVL(empv.assign_end_date, ld_reqst_date))
-          /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
-        ;
---
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          -- データが存在しない場合
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_app_name                  -- アプリケーション短縮名
-                         ,iv_name         => cv_tkn_number_06             -- メッセージコード
-                         ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
-                         ,iv_token_value1 => cv_emplbase_info             -- トークン値1
-                         ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
-                         ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
-                         ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
-                         ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
-                         ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
-                         ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
-                         ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
-                         ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
-                         ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
-                         ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
-                       );
-          lv_errbuf := lv_errmsg;
-          RAISE global_skip_expt;
-          -- 抽出に失敗した場合
-        WHEN OTHERS THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_app_name                  -- アプリケーション短縮名
-                         ,iv_name         => cv_tkn_number_07             -- メッセージコード
-                         ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
-                         ,iv_token_value1 => cv_emplbase_info             -- トークン値1
-                         ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
-                         ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
-                         ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
-                         ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
-                         ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
-                         ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
-                         ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
-                         ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
-                         ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
-                         ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
-                         ,iv_token_name7  => cv_tkn_errmsg               -- トークンコード7
-                         ,iv_token_value7 => SQLERRM                      -- トークン値7
-                       );
-          lv_errbuf := lv_errmsg;
-          RAISE global_process_expt;
-      END;
+      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del START */
+--      -- 依頼部署の格納
+--      BEGIN
+--        SELECT ( CASE
+--                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+--                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_reqst_date THEN
+--                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+--                   empv.work_base_code_new  -- 勤務地拠点コード(新)
+--                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+--                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_reqst_date THEN
+--                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+--                   empv.work_base_code_old  -- 勤務地拠点コード(旧)
+--                 WHEN empv.issue_date IS NULL THEN
+--                   empv.work_base_code_old  -- 勤務地拠点コード(旧)
+--                 END
+--               )  base_code  
+--        INTO   lv_reqst_base_code
+--        FROM   xxcso_employees_v   empv
+--        WHERE  empv.user_id = ln_created_by
+--          /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--          --AND  ld_date 
+--          --       BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
+--          --           AND TRUNC(NVL(empv.end_date, ld_date))
+--          --AND  ld_date 
+--          --       BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
+--          --           AND TRUNC(NVL(empv.employee_end_date, ld_date))
+--          --AND  ld_date 
+--          --       BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
+--          --           AND TRUNC(NVL(empv.assign_end_date, ld_date))
+--          AND  ld_reqst_date 
+--                 BETWEEN TRUNC(NVL(empv.start_date, ld_reqst_date)) 
+--                     AND TRUNC(NVL(empv.end_date, ld_reqst_date))
+--          AND  ld_reqst_date 
+--                 BETWEEN TRUNC(NVL(empv.employee_start_date, ld_reqst_date)) 
+--                     AND TRUNC(NVL(empv.employee_end_date, ld_reqst_date))
+--          AND  ld_reqst_date 
+--                 BETWEEN TRUNC(NVL(empv.assign_start_date, ld_reqst_date)) 
+--                     AND TRUNC(NVL(empv.assign_end_date, ld_reqst_date))
+--          /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+--        ;
+----
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          -- データが存在しない場合
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_app_name                  -- アプリケーション短縮名
+--                         ,iv_name         => cv_tkn_number_06             -- メッセージコード
+--                         ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+--                         ,iv_token_value1 => cv_emplbase_info             -- トークン値1
+--                         ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+--                         ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+--                         ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+--                         ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+--                         ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+--                         ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+--                         ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+--                         ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+--                         ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+--                         ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+--                       );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_skip_expt;
+--          -- 抽出に失敗した場合
+--        WHEN OTHERS THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_app_name                  -- アプリケーション短縮名
+--                         ,iv_name         => cv_tkn_number_07             -- メッセージコード
+--                         ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+--                         ,iv_token_value1 => cv_emplbase_info             -- トークン値1
+--                         ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+--                         ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+--                         ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+--                         ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+--                         ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+--                         ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+--                         ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+--                         ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+--                         ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+--                         ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+--                         ,iv_token_name7  => cv_tkn_errmsg               -- トークンコード7
+--                         ,iv_token_value7 => SQLERRM                      -- トークン値7
+--                       );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_process_expt;
+--      END;
+      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del END */
 --
     END IF;
 --
@@ -2286,6 +2328,9 @@ AS
               ,NVL(casv.address2, cv_adddrss_chr)
               /* 2009.05.22 K.Satomura T1_1152対応 END */
               ,casv.account_number
+              /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+              ,casv.sale_base_code
+              /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
         INTO   lv_cur_organization_name
               /* 2009.08.10 K.Satomura 0000662対応 START */
               --,lv_cur_full_name
@@ -2297,6 +2342,9 @@ AS
               ,lv_cur_est_site_adress3
               ,lv_cur_est_site_adress4
               ,lv_cur_customer_code2
+              /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+              ,lv_reqst_base_code
+              /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
         FROM   xxcso_cust_acct_sites_v casv
               ,csi_item_instances      ciins
               /* 2009.08.10 K.Satomura 0000662対応 START */
@@ -2637,95 +2685,155 @@ AS
           RAISE global_process_expt;
       END;
 --
-      -- 依頼部署の格納
-      BEGIN
-        SELECT ( CASE
-                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
-                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_reqst_date THEN
-                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
-                   empv.work_base_code_new  -- 勤務地拠点コード(新)
-                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
-                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_reqst_date THEN
-                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
-                   empv.work_base_code_old  -- 勤務地拠点コード(旧)
-                 WHEN empv.issue_date IS NULL THEN
-                   empv.work_base_code_old  -- 勤務地拠点コード(旧)
-                 END
-               )  base_code  
-        INTO   lv_reqst_base_code
-        FROM   xxcso_employees_v   empv
-        WHERE  empv.user_id = ln_created_by
-          /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
-          --AND  ld_date 
-          --       BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
-          --           AND TRUNC(NVL(empv.end_date, ld_date))
-          --AND  ld_date 
-          --       BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
-          --           AND TRUNC(NVL(empv.employee_end_date, ld_date))
-          --AND  ld_date 
-          --       BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
-          --           AND TRUNC(NVL(empv.assign_end_date, ld_date))
-          AND  ld_reqst_date 
-                 BETWEEN TRUNC(NVL(empv.start_date, ld_reqst_date)) 
-                     AND TRUNC(NVL(empv.end_date, ld_reqst_date))
-          AND  ld_reqst_date 
-                 BETWEEN TRUNC(NVL(empv.employee_start_date, ld_reqst_date)) 
-                     AND TRUNC(NVL(empv.employee_end_date, ld_reqst_date))
-          AND  ld_reqst_date 
-                 BETWEEN TRUNC(NVL(empv.assign_start_date, ld_reqst_date)) 
-                     AND TRUNC(NVL(empv.assign_end_date, ld_reqst_date))
-          /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
-        ;
---
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          -- データが存在しない場合
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_app_name                  -- アプリケーション短縮名
-                         ,iv_name         => cv_tkn_number_06             -- メッセージコード
-                         ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
-                         ,iv_token_value1 => cv_emplbase_info             -- トークン値1
-                         ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
-                         ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
-                         ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
-                         ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
-                         ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
-                         ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
-                         ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
-                         ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
-                         ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
-                         ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
-                       );
-          lv_errbuf := lv_errmsg;
-          RAISE global_skip_expt;
-          -- 抽出に失敗した場合
-        WHEN OTHERS THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_app_name                  -- アプリケーション短縮名
-                         ,iv_name         => cv_tkn_number_07             -- メッセージコード
-                         ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
-                         ,iv_token_value1 => cv_emplbase_info             -- トークン値1
-                         ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
-                         ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
-                         ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
-                         ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
-                         ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
-                         ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
-                         ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
-                         ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
-                         ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
-                         ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
-                         ,iv_token_name7  => cv_tkn_errmsg               -- トークンコード7
-                         ,iv_token_value7 => SQLERRM                      -- トークン値7
-                       );
-          lv_errbuf := lv_errmsg;
-          RAISE global_process_expt;
-      END;
+      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del START */
+--      -- 依頼部署の格納
+--      BEGIN
+--        SELECT ( CASE
+--                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+--                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd') <= ld_reqst_date THEN
+--                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+--                   empv.work_base_code_new  -- 勤務地拠点コード(新)
+--                 /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--                 --WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+--                 WHEN TO_DATE(empv.issue_date, 'yyyy/mm/dd')  > ld_reqst_date THEN
+--                 /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+--                   empv.work_base_code_old  -- 勤務地拠点コード(旧)
+--                 WHEN empv.issue_date IS NULL THEN
+--                   empv.work_base_code_old  -- 勤務地拠点コード(旧)
+--                 END
+--               )  base_code  
+--        INTO   lv_reqst_base_code
+--        FROM   xxcso_employees_v   empv
+--        WHERE  empv.user_id = ln_created_by
+--          /* 2010.05.10 D.Abe E_本稼動_02598対応 START */
+--          --AND  ld_date 
+--          --       BETWEEN TRUNC(NVL(empv.start_date, ld_date)) 
+--          --           AND TRUNC(NVL(empv.end_date, ld_date))
+--          --AND  ld_date 
+--          --       BETWEEN TRUNC(NVL(empv.employee_start_date, ld_date)) 
+--          --           AND TRUNC(NVL(empv.employee_end_date, ld_date))
+--          --AND  ld_date 
+--          --       BETWEEN TRUNC(NVL(empv.assign_start_date, ld_date)) 
+--          --           AND TRUNC(NVL(empv.assign_end_date, ld_date))
+--          AND  ld_reqst_date 
+--                 BETWEEN TRUNC(NVL(empv.start_date, ld_reqst_date)) 
+--                     AND TRUNC(NVL(empv.end_date, ld_reqst_date))
+--          AND  ld_reqst_date 
+--                 BETWEEN TRUNC(NVL(empv.employee_start_date, ld_reqst_date)) 
+--                     AND TRUNC(NVL(empv.employee_end_date, ld_reqst_date))
+--          AND  ld_reqst_date 
+--                 BETWEEN TRUNC(NVL(empv.assign_start_date, ld_reqst_date)) 
+--                     AND TRUNC(NVL(empv.assign_end_date, ld_reqst_date))
+--          /* 2010.05.10 D.Abe E_本稼動_02598対応 END   */
+--        ;
+----
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          -- データが存在しない場合
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_app_name                  -- アプリケーション短縮名
+--                         ,iv_name         => cv_tkn_number_06             -- メッセージコード
+--                         ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+--                         ,iv_token_value1 => cv_emplbase_info             -- トークン値1
+--                         ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+--                         ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+--                         ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+--                         ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+--                         ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+--                         ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+--                         ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+--                         ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+--                         ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+--                         ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+--                       );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_skip_expt;
+--          -- 抽出に失敗した場合
+--        WHEN OTHERS THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_app_name                  -- アプリケーション短縮名
+--                         ,iv_name         => cv_tkn_number_07             -- メッセージコード
+--                         ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+--                         ,iv_token_value1 => cv_emplbase_info             -- トークン値1
+--                         ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+--                         ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+--                         ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+--                         ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+--                         ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+--                         ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+--                         ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+--                         ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+--                         ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+--                         ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+--                         ,iv_token_name7  => cv_tkn_errmsg               -- トークンコード7
+--                         ,iv_token_value7 => SQLERRM                      -- トークン値7
+--                       );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_process_expt;
+--      END;
+        /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Del End */
+      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+      -- 顧客営業担当員取得用の顧客コード取得
+      lt_emp_customer_code := lv_cur_customer_code2; --現設置先顧客コード
+      /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
 --
     END IF;
 --
+/* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+    -- ================
+    -- 担当営業員コード
+    -- ================
+    BEGIN
+      SELECT xrcv.employee_number employee_number
+      INTO   lt_empoyee_number
+      FROM   xxcso_resource_custs_v  xrcv --営業員担当顧客ビュー
+      WHERE  xrcv.account_number = lt_emp_customer_code  --各作業区分による設置先顧客コード
+        AND  ld_reqst_date BETWEEN NVL( xrcv.start_date_active, ld_reqst_date )
+                           AND     NVL( xrcv.end_date_active,   ld_reqst_date )
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- 顧客担当が存在しない場合は発注依頼作成者を設定
+        lt_empoyee_number := io_get_data_rec.employee_number;
+      WHEN OTHERS THEN
+        -- 予期せぬエラーの場合、メッセージを出力し、発注依頼作成者を設定(エラーとせず正常とする)
+        lt_empoyee_number := io_get_data_rec.employee_number;
+--
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_07             -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                       ,iv_token_value1 => cv_account_emp_info          -- トークン値1
+                       ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+                       ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+                       ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+                       ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+                       ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+                       ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+                       ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+                       ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+                       ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+                       ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+                       ,iv_token_name7  => cv_tkn_errmsg               -- トークンコード7
+                       ,iv_token_value7 => SQLERRM                      -- トークン値7
+                     );
+        -- メッセージ出力
+        fnd_file.put_line(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg                  -- ユーザー・エラーメッセージ
+        );
+        --ログ出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_pkg_name||cv_msg_cont||
+                     cv_prg_name||cv_msg_part||
+                     lv_errmsg                  -- エラーメッセージ
+        );
+        --変数初期化
+        lv_errmsg := NULL;
+    END;
+/* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add EMD */
     -- ================
     -- 所属マスタ情報
     -- ================
@@ -3144,6 +3252,10 @@ AS
     io_get_data_rec.sale_base_code         := lv_sale_base_code;
     -- 依頼部署
     io_get_data_rec.reqst_base_code        := lv_reqst_base_code;
+    /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add START */
+    -- 担当営業員コード
+    io_get_data_rec.employee_number        := lt_empoyee_number;
+    /* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add End */
     /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
     ---- 事業所電話１
 --    io_get_data_rec.work_locatn_tel1       := lv_work_locatn_tel1;
