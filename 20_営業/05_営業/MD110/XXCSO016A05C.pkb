@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2009-11-27    1.13  K.Satomura       E_本稼動_00118対応
  *  2009-12-09    1.14  T.Maruyama       E_本稼動_00117対応
  *  2010-02-26    1.15  K.Hosoi          E_本稼動_01568対応
+ *  2010-03-17    1.16  K.Hosoi          E_本稼動_01881対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1421,84 +1422,97 @@ AS
     -- ========================================
     -- 製造メーカー、特殊機区分とコラム数を抽出
     -- ========================================
+    /* 2010.03.17 K.Hosoi E_本稼動_01881対応 START */
     -- インスタンスタイプが「1:自動販売機」の場合
-    IF (l_get_rec.instance_type_code = 1) THEN
-      BEGIN
-        SELECT  punv.attribute2 attribute2    -- メーカーコード
-               ,punv.attribute9 attribute9    -- 特殊機区分１
-               ,punv.attribute10 attribute10  -- 特殊機区分2
-               ,punv.attribute11 attribute11  -- 特殊機区分3
-               ,punv.attribute8 attribute8    -- コラム数
-        INTO    lv_attribute2                 -- メーカーコード
-               ,lv_attribute9                 -- 特殊機区分1
-               ,lv_attribute10                -- 特殊機区分2
-               ,lv_attribute11                -- 特殊機区分3
-               ,lv_attribute8                 -- コラム数
-        FROM   po_un_numbers_vl punv          -- 国連番号マスタビュー
-        WHERE  punv.un_number = l_get_rec.vendor_model; -- 機種コード
-      EXCEPTION
-        -- 検索結果がない場合、抽出失敗した場合
-        WHEN OTHERS THEN
-          /* 2009.11.27 K.Satomura E_本稼動_00118対応 START */
-          --lv_errmsg := xxccp_common_pkg.get_msg(
-          --                   iv_application  => cv_app_name                   -- アプリケーション短縮名
-          --                  ,iv_name         => cv_tkn_number_08              -- メッセージコード
-          --                  ,iv_token_name1  => cv_tkn_proc_name              -- トークンコード1
-          --                  ,iv_token_value1 => cv_po_un_number_vl            -- トークン値1抽出処理名
-          --                  ,iv_token_name2  => cv_tkn_object_cd              -- トークンコード2
-          --                  ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
-          --                  ,iv_token_name3  => cv_tkn_un_number              -- トークンコード3
-          --                  ,iv_token_value3 => l_get_rec.vendor_model        -- トークン値3機種コード
-          --                  ,iv_token_name4  => cv_tkn_maker_cd               -- トークンコード4
-          --                  ,iv_token_value4 => lv_attribute2                 -- トークン値4メーカーコード
-          --                  ,iv_token_name5  => cv_tkn_special1               -- トークンコード5
-          --                  ,iv_token_value5 => lv_attribute9                 -- トークン値5特殊機区分1
-          --                  ,iv_token_name6  => cv_tkn_special2               -- トークンコード6
-          --                  ,iv_token_value6 => lv_attribute10                -- トークン値6特殊機区分2
-          --                  ,iv_token_name7  => cv_tkn_special3               -- トークンコード7
-          --                  ,iv_token_value7 => lv_attribute11                -- トークン値7特殊機区分3
-          --                  ,iv_token_name8  => cv_tkn_column                 -- トークンコード8
-          --                  ,iv_token_value8 => lv_attribute8                 -- トークン値8コラム数
-          --                  ,iv_token_name9  => cv_tkn_err_msg                -- トークンコード9
-          --                  ,iv_token_value9 => SQLERRM                       -- トークン値9
-          --    );
-          --lv_errbuf  := lv_errmsg;
-          --RAISE select_error_expt;
-          lv_attribute2  := NULL;
-          lv_attribute9  := NULL;
-          lv_attribute10 := NULL;
-          lv_attribute11 := NULL;
-          lv_attribute8  := NULL;
-          ov_retcode     := cv_status_warn;
-          lv_errmsg      := xxccp_common_pkg.get_msg(
-                               iv_application  => cv_app_name            -- アプリケーション短縮名
-                              ,iv_name         => cv_tkn_number_19       -- メッセージコード
-                              ,iv_token_name1  => cv_tkn_param           -- トークンコード1
-                              ,iv_token_value1 => cv_tkn_val2            -- トークン値1
-                              ,iv_token_name2  => cv_tkn_object_cd       -- トークンコード2
-                              ,iv_token_value2 => l_get_rec.install_code -- トークン値2外部参照(物件コード)
-                            );
-          --
-          fnd_file.put_line(
-             which  => fnd_file.log
-            ,buff   => lv_errmsg
-          );
-          --
-          fnd_file.put_line(
-             which  => fnd_file.output
-            ,buff   => lv_errmsg
-          );
-          --
-          /* 2009.11.27 K.Satomura E_本稼動_00118対応 END */
-      END;
+    --IF (l_get_rec.instance_type_code = 1) THEN
+    /* 2010.03.17 K.Hosoi E_本稼動_01881対応 END */
+    BEGIN
+      SELECT  punv.attribute2 attribute2    -- メーカーコード
+             ,punv.attribute9 attribute9    -- 特殊機区分１
+             ,punv.attribute10 attribute10  -- 特殊機区分2
+             ,punv.attribute11 attribute11  -- 特殊機区分3
+             ,punv.attribute8 attribute8    -- コラム数
+      INTO    lv_attribute2                 -- メーカーコード
+             ,lv_attribute9                 -- 特殊機区分1
+             ,lv_attribute10                -- 特殊機区分2
+             ,lv_attribute11                -- 特殊機区分3
+             ,lv_attribute8                 -- コラム数
+      FROM   po_un_numbers_vl punv          -- 国連番号マスタビュー
+      WHERE  punv.un_number = l_get_rec.vendor_model; -- 機種コード
+      /* 2010.03.17 K.Hosoi E_本稼動_01881対応 START */
+      -- インスタンスタイプが「1:自動販売機」以外の場合
+      IF (l_get_rec.instance_type_code <> 1) THEN
+        lv_attribute9   := NULL;             -- 特殊機区分1
+        lv_attribute10  := NULL;             -- 特殊機区分2
+        lv_attribute11  := NULL;             -- 特殊機区分3
+        lv_attribute8   := NULL;             -- コラム数
+      END IF;
+      /* 2010.03.17 K.Hosoi E_本稼動_01881対応 END */
+    EXCEPTION
+      -- 検索結果がない場合、抽出失敗した場合
+      WHEN OTHERS THEN
+        /* 2009.11.27 K.Satomura E_本稼動_00118対応 START */
+        --lv_errmsg := xxccp_common_pkg.get_msg(
+        --                   iv_application  => cv_app_name                   -- アプリケーション短縮名
+        --                  ,iv_name         => cv_tkn_number_08              -- メッセージコード
+        --                  ,iv_token_name1  => cv_tkn_proc_name              -- トークンコード1
+        --                  ,iv_token_value1 => cv_po_un_number_vl            -- トークン値1抽出処理名
+        --                  ,iv_token_name2  => cv_tkn_object_cd              -- トークンコード2
+        --                  ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
+        --                  ,iv_token_name3  => cv_tkn_un_number              -- トークンコード3
+        --                  ,iv_token_value3 => l_get_rec.vendor_model        -- トークン値3機種コード
+        --                  ,iv_token_name4  => cv_tkn_maker_cd               -- トークンコード4
+        --                  ,iv_token_value4 => lv_attribute2                 -- トークン値4メーカーコード
+        --                  ,iv_token_name5  => cv_tkn_special1               -- トークンコード5
+        --                  ,iv_token_value5 => lv_attribute9                 -- トークン値5特殊機区分1
+        --                  ,iv_token_name6  => cv_tkn_special2               -- トークンコード6
+        --                  ,iv_token_value6 => lv_attribute10                -- トークン値6特殊機区分2
+        --                  ,iv_token_name7  => cv_tkn_special3               -- トークンコード7
+        --                  ,iv_token_value7 => lv_attribute11                -- トークン値7特殊機区分3
+        --                  ,iv_token_name8  => cv_tkn_column                 -- トークンコード8
+        --                  ,iv_token_value8 => lv_attribute8                 -- トークン値8コラム数
+        --                  ,iv_token_name9  => cv_tkn_err_msg                -- トークンコード9
+        --                  ,iv_token_value9 => SQLERRM                       -- トークン値9
+        --    );
+        --lv_errbuf  := lv_errmsg;
+        --RAISE select_error_expt;
+        lv_attribute2  := NULL;
+        lv_attribute9  := NULL;
+        lv_attribute10 := NULL;
+        lv_attribute11 := NULL;
+        lv_attribute8  := NULL;
+        ov_retcode     := cv_status_warn;
+        lv_errmsg      := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_app_name            -- アプリケーション短縮名
+                            ,iv_name         => cv_tkn_number_19       -- メッセージコード
+                            ,iv_token_name1  => cv_tkn_param           -- トークンコード1
+                            ,iv_token_value1 => cv_tkn_val2            -- トークン値1
+                            ,iv_token_name2  => cv_tkn_object_cd       -- トークンコード2
+                            ,iv_token_value2 => l_get_rec.install_code -- トークン値2外部参照(物件コード)
+                          );
+        --
+        fnd_file.put_line(
+           which  => fnd_file.log
+          ,buff   => lv_errmsg
+        );
+        --
+        fnd_file.put_line(
+           which  => fnd_file.output
+          ,buff   => lv_errmsg
+        );
+        --
+        /* 2009.11.27 K.Satomura E_本稼動_00118対応 END */
+    END;
+    /* 2010.03.17 K.Hosoi E_本稼動_01881対応 START */
     -- インスタンスタイプが「1:自動販売機」以外の場合
-    ELSE
-      lv_attribute2   := NULL;             -- メーカーコード
-      lv_attribute9   := NULL;             -- 特殊機区分1
-      lv_attribute10  := NULL;             -- 特殊機区分2
-      lv_attribute11  := NULL;             -- 特殊機区分3
-      lv_attribute8   := NULL;             -- コラム数
-    END IF;
+    --ELSE
+    --  lv_attribute2   := NULL;             -- メーカーコード
+    --  lv_attribute9   := NULL;             -- 特殊機区分1
+    --  lv_attribute10  := NULL;             -- 特殊機区分2
+    --  lv_attribute11  := NULL;             -- 特殊機区分3
+    --  lv_attribute8   := NULL;             -- コラム数
+    --END IF;
+    /* 2010.03.17 K.Hosoi E_本稼動_01881対応 END */
 --
     -- ==================================================
     -- 再リース区分とリース料 月額リース料(税抜)をを抽出
