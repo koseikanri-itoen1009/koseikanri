@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2010-05-10    1.26  D.Abe            E_本稼動_02598対応
  *  2011-02-02    1.28  N.Horigome       E_本稼動_02369対応
  *  2011-06-23    1.29  K.Kiriu          E_本稼動_07712対応
+ *  2011-07-01    1.30  K.Kiriu          E_本稼動_07712対応(対応変更分)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2797,9 +2798,12 @@ AS
         -- 顧客担当が存在しない場合は発注依頼作成者を設定
         lt_empoyee_number := io_get_data_rec.employee_number;
       WHEN OTHERS THEN
-        -- 予期せぬエラーの場合、メッセージを出力し、発注依頼作成者を設定(エラーとせず正常とする)
-        lt_empoyee_number := io_get_data_rec.employee_number;
+/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Del START */
+--        -- 予期せぬエラーの場合、メッセージを出力し、発注依頼作成者を設定(エラーとせず正常とする)
+--        lt_empoyee_number := io_get_data_rec.employee_number;
 --
+/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Del END */
+        -- 警告終了とし、データはスキップする
         lv_errmsg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_app_name                  -- アプリケーション短縮名
                        ,iv_name         => cv_tkn_number_07             -- メッセージコード
@@ -2818,22 +2822,27 @@ AS
                        ,iv_token_name7  => cv_tkn_errmsg               -- トークンコード7
                        ,iv_token_value7 => SQLERRM                      -- トークン値7
                      );
-        -- メッセージ出力
-        fnd_file.put_line(
-           which  => FND_FILE.OUTPUT
-          ,buff   => lv_errmsg                  -- ユーザー・エラーメッセージ
-        );
-        --ログ出力
-        fnd_file.put_line(
-           which  => FND_FILE.LOG
-          ,buff   => cv_pkg_name||cv_msg_cont||
-                     cv_prg_name||cv_msg_part||
-                     lv_errmsg                  -- エラーメッセージ
-        );
-        --変数初期化
-        lv_errmsg := NULL;
+/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Mod START */
+--        -- メッセージ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.OUTPUT
+--          ,buff   => lv_errmsg                  -- ユーザー・エラーメッセージ
+--        );
+--        --ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+--          ,buff   => cv_pkg_name||cv_msg_cont||
+--                     cv_prg_name||cv_msg_part||
+--                     lv_errmsg                  -- エラーメッセージ
+--        );
+--        --変数初期化
+--        lv_errmsg := NULL;
+--
+        lv_errbuf := lv_errmsg;
+        RAISE global_skip_expt;
+/* 2011-07-01 K.Kiriu E_本稼動_07712対応 Mod END */
     END;
-/* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add EMD */
+/* 2011-06-23 K.Kiriu E_本稼動_07712対応 Add END */
     -- ================
     -- 所属マスタ情報
     -- ================
