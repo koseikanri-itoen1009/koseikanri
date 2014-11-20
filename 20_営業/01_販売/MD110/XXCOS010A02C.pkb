@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A02C(body)
  * Description      : 受注OIFへの取込機能
  * MD.050           : 受注OIFへの取込(MD050_COS_010_A02)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *                                       ・営業担当の日付チェック変更
  *                                       ・営業担当が複数取得できた場合の考慮
  *  2010/04/20    1.13  H.Sasaki         [E_本稼動_01719]担当営業員の取得方法を変更
+ *  2012/04/18    1.14  Y.Horikawa       [E_本稼動_09441]受注一覧リストPT対応に伴う影響回避の対応
  *
  *****************************************************************************************/
 --
@@ -237,7 +238,12 @@ AS
   -- EDIヘッダ情報テーブルカーソル
   CURSOR edi_headers_cur
   IS
-  SELECT   xeh.edi_header_info_id            edi_header_info_id             -- EDIヘッダ情報ID
+-- 2012/04/18 Ver1.14 Mod Start
+--  SELECT   xeh.edi_header_info_id            edi_header_info_id             -- EDIヘッダ情報ID
+    SELECT
+           /*+ INDEX(xeh xxcos_edi_headers_n04) */
+           xeh.edi_header_info_id            edi_header_info_id             -- EDIヘッダ情報ID
+-- 2012/04/18 Ver1.14 Mod End
          , xeh.conv_customer_code            conv_customer_code             -- 変換後顧客コード
          , xeh.edi_chain_code                edi_chain_code                 -- EDIチェーン店コード
          , xeh.shop_code                     shop_code                      -- 店コード

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (body)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2010/04/01    1.12  M.Sano           [E_本稼動_01811]受注ソース「出荷実績依頼」追加対応
  *  2011/04/20    1.13  N.Horigome       [E_本稼動_03310]EDI取込時の受注抽出条件修正対応
  *  2012/01/30    1.14  K.Kiriu          [E_本稼動_08658]EDI出力時の出力数量変更対応
+ *  2012/04/18    1.15  Y.Horikawa       [E_本稼動_09441]PT対応
  *
  *****************************************************************************************/
 --
@@ -1440,8 +1441,12 @@ AS
       SELECT
 /* 2009/12/28 Ver1.9 Add Start */
         /*+
-            LEADING(xca)
-            USE_NL(xca xca_c hca hca_c ooha oos jrs jrre papf1)
+-- 2012/04/18 Ver1.15 Mod Start
+--            LEADING(xca)
+--            USE_NL(xca xca_c hca hca_c ooha oos jrs jrre papf1)
+            LEADING(xca hca hp xca_c hca_c hp_c xeh ooha oos jrs jrre papf1 ppt1 fu papf ppt)
+            USE_NL(xca hca hp xca_c hca_c hp_c xeh ooha oos jrs jrre papf1 ppt1 fu papf ppt)
+-- 2012/04/18 Ver1.15 Mod End
         */
 /* 2009/12/28 Ver1.9 Add End   */
         oola.rowid                             AS row_id                     -- rowid
@@ -1657,6 +1662,9 @@ AS
       --EDIヘッダ.受注関連番号＝受注ヘッダ.外部システム受注番号
       AND xeh.order_connection_number       = ooha.orig_sys_document_ref
 /* 2010/03/08 Ver1.10 Add End   */
+-- 2012/04/18 Ver1.15 Add Start
+      AND xeh.conv_customer_code            = hca.account_number
+-- 2012/04/18 Ver1.15 Add End
       AND ( 
 /* 2009/12/28 Ver1.9 Mod Start */
 --        --EDI取込の場合
