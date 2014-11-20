@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO019A05C(spec)
  * Description      : 要求の発行画面から、訪問売上計画管理表を帳票に出力します。
  * MD.050           : MD050_CSO_019_A05_訪問売上計画管理表_Draft2.0A
- * Version          : 1.1
+ * Version          : 1.2
  * Program List
  * -------------------- ------------------------------------------------------------
  *  Name                 Description
@@ -16,12 +16,16 @@ AS
  * get_rslt_amt          売上実績取得
  * get_rslt_other_sales_amt  他拠点納品分売上実績取得
  * get_visit_sign        訪問記号取得
+ * get_rslt_amt_in_month 売上実績(年月指定)取得
  * get_i_tgt_vis_num     訪問計画取得(一般用)
  * get_v_tgt_vis_num     訪問計画取得(自販機用)
  * get_i_rslt_vis_num    訪問実績取得(一般用)
  * get_v_rslt_vis_num    訪問実績取得(自販機用)
  * get_m_rslt_vis_num    訪問実績取得(MC用)
  * get_e_rslt_vis_num    訪問実績取得(有効訪問用)
+ * get_business_high_type_code  業態大分類コード取得
+ * get_business_high_type_name  業態大分類名取得
+ * get_route_number      ルートNo取得
  * main                  コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
@@ -30,6 +34,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-01-05    1.0   Seirin.Kin        新規作成
  *  2009-05-19    1.1   Hiroshi.Ogawa     障害番号：T1_1033
+ *  2009-07-02    1.2   Hiroshi.Ogawa     障害番号：0000312
  *
  *****************************************************************************************/
  --
@@ -82,6 +87,11 @@ AS
   FUNCTION get_visit_sign(
     iv_base_code         IN  VARCHAR2     -- 拠点コード
    ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+   ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+   ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+   ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+/* 20090702_Ogawa_0000312 END*/
    ,iv_year_month        IN  VARCHAR2     -- 年月
    ,in_day_index         IN  NUMBER       -- 日
   ) RETURN VARCHAR2;
@@ -90,6 +100,13 @@ AS
   FUNCTION get_i_tgt_vis_num(
     iv_base_code         IN  VARCHAR2     -- 拠点コード
    ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+   ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+   ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+   ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+   ,iv_business_low_type IN  VARCHAR2     -- 業態小分類
+   ,iv_route_number      IN  VARCHAR2     -- ルートNo
+/* 20090702_Ogawa_0000312 END*/
    ,iv_year_month        IN  VARCHAR2     -- 年月
    ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER;
@@ -98,6 +115,13 @@ AS
   FUNCTION get_v_tgt_vis_num(
     iv_base_code         IN  VARCHAR2     -- 拠点コード
    ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+   ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+   ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+   ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+   ,iv_business_low_type IN  VARCHAR2     -- 業態小分類
+   ,iv_route_number      IN  VARCHAR2     -- ルートNo
+/* 20090702_Ogawa_0000312 END*/
    ,iv_year_month        IN  VARCHAR2     -- 年月
    ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER;
@@ -106,6 +130,12 @@ AS
   FUNCTION get_i_rslt_vis_num(
     iv_base_code         IN  VARCHAR2     -- 拠点コード
    ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+   ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+   ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+   ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+   ,iv_business_low_type IN  VARCHAR2     -- 業態小分類
+/* 20090702_Ogawa_0000312 END*/
    ,iv_year_month        IN  VARCHAR2     -- 年月
    ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER;
@@ -114,6 +144,12 @@ AS
   FUNCTION get_v_rslt_vis_num(
     iv_base_code         IN  VARCHAR2     -- 拠点コード
    ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+   ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+   ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+   ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+   ,iv_business_low_type IN  VARCHAR2     -- 業態小分類
+/* 20090702_Ogawa_0000312 END*/
    ,iv_year_month        IN  VARCHAR2     -- 年月
    ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER;
@@ -122,6 +158,10 @@ AS
   FUNCTION get_m_rslt_vis_num(
     iv_base_code         IN  VARCHAR2     -- 拠点コード
    ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+   ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+   ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+/* 20090702_Ogawa_0000312 END*/
    ,iv_year_month        IN  VARCHAR2     -- 年月
    ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER;
@@ -130,10 +170,35 @@ AS
   FUNCTION get_e_rslt_vis_num(
     iv_base_code         IN  VARCHAR2     -- 拠点コード
    ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+   ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+/* 20090702_Ogawa_0000312 END*/
    ,iv_year_month        IN  VARCHAR2     -- 年月
    ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER;
 --
+/* 20090702_Ogawa_0000312 START*/
+  -- 業態大分類コード取得
+  FUNCTION get_business_high_type_code(
+    iv_business_low_type IN  VARCHAR2     -- 業態小分類
+  ) RETURN VARCHAR2;
+--
+  -- 業態大分類名取得
+  FUNCTION get_business_high_type_name(
+    iv_business_low_type IN  VARCHAR2     -- 業態小分類
+  ) RETURN VARCHAR2;
+--
+  -- ルートNo取得
+  FUNCTION get_route_number(
+    in_organization_profile_id  IN  NUMBER  -- 組織プロファイルID
+  ) RETURN VARCHAR2;
+--
+  -- 売上実績(年月指定)取得
+  FUNCTION get_rslt_amt_in_month(
+    iv_account_number    IN  VARCHAR2     -- 顧客コード
+   ,iv_year_month        IN  VARCHAR2     -- 年月
+  ) RETURN NUMBER;
+/* 20090702_Ogawa_0000312 END*/
 /* 20090519_Ogawa_T1_1033 END*/
 --
   --コンカレント実行ファイル登録プロシージャ

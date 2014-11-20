@@ -8,7 +8,7 @@ AS
  *                           訪問売上計画管理表を帳票に出力します。
  * MD.050                  : 営業システム構築プロジェクトアドオン：
  *                           訪問売上計画管理表
- * Version                 : 1.4
+ * Version                 : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,10 @@ AS
  *  get_v_rslt_vis_num     訪問実績取得(自販機用)
  *  get_m_rslt_vis_num     訪問実績取得(MC用)
  *  get_e_rslt_vis_num     訪問実績取得(有効訪問用)
+ *  get_business_high_type_code  業態大分類コード取得
+ *  get_business_high_type_name  業態大分類名取得
+ *  get_route_number       ルートNo取得
+ *  get_rslt_amt_in_month  売上実績(年月指定)取得
  *  init                   初期処理 (A-1)
  *  chek_param             パラメータチェック (A-2)
  *  get_ticket1            帳票種別1-営業員別 (A-3-1,A-3-2)
@@ -60,6 +64,8 @@ AS
  *  2009-05-19    1.3   Hiroshi.Ogawa     障害番号：T1_1029,T1_1031,T1_1033,T1_1037,T1_1056
  *  2009-06-02    1.3   Daisuke.Abe       PT対応
  *  2009-06-26    1.4   Satomura.Kazuo    統合テスト障害番号0000016対応
+ *  2009-07-02    1.5   Hiroshi.Ogawa     障害番号：0000312
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -253,6 +259,10 @@ AS
   gv_work_base_code         xxcso_resource_relations_v2.work_base_code_new%TYPE;    -- 勤務地拠点コード
   gv_is_salesman            VARCHAR2(6);                                            -- ログインユーザが営業員
   gv_is_groupleader         VARCHAR2(6);                                            -- ログインユーザがグループリーダ
+/* 20090702_Ogawa_0000312 START*/
+  gn_rsrc_attr_group_id     NUMBER;                                                 -- 属性グループID（担当営業員）
+  gn_rtn_attr_group_id      NUMBER;                                                 -- 属性グループID（ルートNo）
+/* 20090702_Ogawa_0000312 END*/
   -- 1日分売上計画、売上実績などの項目を保持するレコード型定義
   TYPE g_get_one_day_date_rtype IS RECORD(
     plan_vs_amt             xxcso_rep_visit_sale_plan.plan_vs_amt_1%TYPE,           -- 売上計画,訪問計画
@@ -681,48 +691,71 @@ AS
   BEGIN
     SELECT  SUBSTRB(inn_v.last_name || 'グループ', 1, 40)
     INTO    lv_last_name
-    FROM    (SELECT  xrrv.employee_number         employee_number
-                    ,xrrv.last_name               last_name
-                    ,(CASE
-                        WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= id_standard_date) THEN
-                          NVL(xrrv.group_grade_new, ' ')
-                        ELSE
-                          NVL(xrrv.group_grade_old, ' ')
-                      END
-                     )                            group_grade
-             FROM    xxcso_resource_relations_v2  xrrv
-             /* 20090602_abe_PT START*/
-             WHERE   (
-                       (      TO_DATE(xrrv.issue_date,'YYYYMMDD') <= id_standard_date
-                         AND  xrrv.work_base_code_new = iv_base_code
-                       )
-                       OR
-                       (      TO_DATE(xrrv.issue_date,'YYYYMMDD') > id_standard_date
-                         AND  xrrv.work_base_code_old = iv_base_code
-                       )
-                     )
-             --WHERE   (CASE
-             --           WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= id_standard_date) THEN
-             --             xrrv.work_base_code_new
-             --           ELSE
-             --             xrrv.work_base_code_old
-             --         END
-             --        ) = iv_base_code
-             /* 20090602_abe_PT END*/
-               AND   (CASE
-                        WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= id_standard_date) THEN
-                          NVL(xrrv.group_number_new, ' ')
-                        ELSE
-                          NVL(xrrv.group_number_old, ' ')
-                      END
-                     ) = NVL(iv_group_number, ' ')
-               AND   (CASE
-                        WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= id_standard_date) THEN
-                          xrrv.group_leader_flag_new
-                        ELSE
-                          xrrv.group_leader_flag_old
-                      END
-                     ) = 'Y'
+/* 20090702_Ogawa_0000312 START*/
+    FROM    (SELECT  inn_v2.employee_number
+                    ,inn_v2.last_name
+                    ,inn_v2.group_grade
+             FROM    (SELECT  xrrv.employee_number            employee_number
+                             ,xrrv.last_name                  last_name
+                             ,xrrv.group_grade_new            group_grade
+                      FROM    xxcso_resource_relations_v2  xrrv
+                      WHERE   TO_DATE(xrrv.issue_date,'YYYYMMDD') <= id_standard_date
+                        AND   xrrv.work_base_code_new              = iv_base_code
+                        AND   NVL(xrrv.group_number_new, ' ')      = NVL(iv_group_number, ' ')
+                        AND   xrrv.group_leader_flag_new           = 'Y'
+                      UNION ALL
+                      SELECT  xrrv.employee_number            employee_number
+                             ,xrrv.last_name                  last_name
+                             ,xrrv.group_grade_old            group_grade
+                      FROM    xxcso_resource_relations_v2  xrrv
+                      WHERE   TO_DATE(xrrv.issue_date,'YYYYMMDD')  > id_standard_date
+                        AND   xrrv.work_base_code_old              = iv_base_code
+                        AND   NVL(xrrv.group_number_old, ' ')      = NVL(iv_group_number, ' ')
+                        AND   xrrv.group_leader_flag_old           = 'Y'
+                     ) inn_v2
+--  FROM    (SELECT  xrrv.employee_number         employee_number
+--                  ,xrrv.last_name               last_name
+--                  ,(CASE
+--                      WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= id_standard_date) THEN
+--                        NVL(xrrv.group_grade_new, ' ')
+--                      ELSE
+--                        NVL(xrrv.group_grade_old, ' ')
+--                    END
+--                   )                            group_grade
+--           FROM    xxcso_resource_relations_v2  xrrv
+--           /* 20090602_abe_PT START*/
+--           WHERE   (
+--                     (      TO_DATE(xrrv.issue_date,'YYYYMMDD') <= id_standard_date
+--                       AND  xrrv.work_base_code_new = iv_base_code
+--                     )
+--                     OR
+--                     (      TO_DATE(xrrv.issue_date,'YYYYMMDD') > id_standard_date
+--                       AND  xrrv.work_base_code_old = iv_base_code
+--                     )
+--                   )
+--           --WHERE   (CASE
+--           --           WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= id_standard_date) THEN
+--           --             xrrv.work_base_code_new
+--           --           ELSE
+--           --             xrrv.work_base_code_old
+--           --         END
+--           --        ) = iv_base_code
+--           /* 20090602_abe_PT END*/
+--             AND   (CASE
+--                      WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= id_standard_date) THEN
+--                        NVL(xrrv.group_number_new, ' ')
+--                      ELSE
+--                        NVL(xrrv.group_number_old, ' ')
+--                    END
+--                   ) = NVL(iv_group_number, ' ')
+--             AND   (CASE
+--                      WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= id_standard_date) THEN
+--                        xrrv.group_leader_flag_new
+--                      ELSE
+--                        xrrv.group_leader_flag_old
+--                    END
+--                   ) = 'Y'
+/* 20090702_Ogawa_0000312 END*/
              ORDER BY  TO_NUMBER(group_grade)  ASC
                       ,employee_number         ASC
             ) inn_v
@@ -944,6 +977,11 @@ AS
    FUNCTION get_visit_sign(
      iv_base_code         IN  VARCHAR2     -- 拠点コード
     ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+    ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+    ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+    ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+/* 20090702_Ogawa_0000312 END*/
     ,iv_year_month        IN  VARCHAR2     -- 年月
     ,in_day_index         IN  NUMBER       -- 日
   ) RETURN VARCHAR2
@@ -963,7 +1001,10 @@ AS
     SELECT  SUBSTRB(
               (CASE
                  WHEN (xsvsr.vis_num > 0)
-                  AND (xcav.customer_status IN (
+/* 20090702_Ogawa_0000312 START*/
+--                AND (xcav.customer_status IN (
+                  AND (iv_customer_status IN (
+/* 20090702_Ogawa_0000312 END*/
                                                  cv_cust_status4
                                                 ,cv_cust_status5
                                                 ,cv_cust_status6
@@ -997,7 +1038,10 @@ AS
                        || (CASE WHEN (xsvsr.vis_y_num > 0) THEN 'Y' END)
                        || (CASE WHEN (xsvsr.vis_z_num > 0) THEN 'Z' END)
                  WHEN (xsvsr.vis_num > 0)
-                  AND (xcav.cnvs_date > TO_DATE(lv_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 START*/
+--                AND (xcav.cnvs_date > TO_DATE(lv_date,'YYYYMMDD'))
+                  AND (id_cnvs_date > TO_DATE(lv_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 END*/
                  THEN
                    '*' || (CASE WHEN (xsvsr.vis_a_num > 0) THEN 'A' END)
                        || (CASE WHEN (xsvsr.vis_b_num > 0) THEN 'B' END)
@@ -1026,7 +1070,10 @@ AS
                        || (CASE WHEN (xsvsr.vis_y_num > 0) THEN 'Y' END)
                        || (CASE WHEN (xsvsr.vis_z_num > 0) THEN 'Z' END)
                  WHEN (xsvsr.vis_num > 0)
-                  AND (xcav.vist_target_div = '1')
+/* 20090702_Ogawa_0000312 START*/
+--                AND (xcav.vist_target_div = '1')
+                  AND (iv_vist_target_div = '1')
+/* 20090702_Ogawa_0000312 END*/
                  THEN
                    '*' || (CASE WHEN (xsvsr.vis_a_num > 0) THEN 'A' END)
                        || (CASE WHEN (xsvsr.vis_b_num > 0) THEN 'B' END)
@@ -1065,15 +1112,23 @@ AS
              ,20
             )
     INTO    lv_visit_sign
-    FROM    xxcso_cust_accounts_v      xcav
-           ,xxcso_sum_visit_sale_rep   xsvsr
-    WHERE   xcav.account_number   = iv_account_number
-      AND   xcav.sale_base_code   = iv_base_code
-      AND   xsvsr.sum_org_type    = cv_sum_org_type1
-      AND   xsvsr.sum_org_code    = xcav.account_number
-      AND   xsvsr.group_base_code = xcav.sale_base_code
+/* 20090702_Ogawa_0000312 START*/
+    FROM    xxcso_sum_visit_sale_rep   xsvsr
+    WHERE   xsvsr.sum_org_type    = cv_sum_org_type1
+      AND   xsvsr.sum_org_code    = iv_account_number
+      AND   xsvsr.group_base_code = iv_base_code
       AND   xsvsr.month_date_div  = cv_month_date_div2
       AND   xsvsr.sales_date      = lv_date
+--  FROM    xxcso_cust_accounts_v      xcav
+--         ,xxcso_sum_visit_sale_rep   xsvsr
+--  WHERE   xcav.account_number   = iv_account_number
+--    AND   xcav.sale_base_code   = iv_base_code
+--    AND   xsvsr.sum_org_type    = cv_sum_org_type1
+--    AND   xsvsr.sum_org_code    = xcav.account_number
+--    AND   xsvsr.group_base_code = xcav.sale_base_code
+--    AND   xsvsr.month_date_div  = cv_month_date_div2
+--    AND   xsvsr.sales_date      = lv_date
+/* 20090702_Ogawa_0000312 END*/
     ;
 --
     RETURN lv_visit_sign;
@@ -1090,6 +1145,13 @@ AS
    FUNCTION get_i_tgt_vis_num(
      iv_base_code         IN  VARCHAR2     -- 拠点コード
     ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+    ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+    ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+    ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+    ,iv_business_low_type IN  VARCHAR2     -- 業態小分類
+    ,iv_route_number      IN  VARCHAR2     -- ルートNo
+/* 20090702_Ogawa_0000312 END*/
     ,iv_year_month        IN  VARCHAR2     -- 年月
     ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER
@@ -1108,34 +1170,55 @@ AS
 --
     SELECT  (CASE
                WHEN (xsvsr.tgt_amt > 0)
-                AND (xcav.vist_target_div = '1')
-                AND (xcav.cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 START*/
+--              AND (xcav.vist_target_div = '1')
+--              AND (xcav.cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+                AND (iv_vist_target_div = '1')
+                AND (id_cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 END*/
                 AND (xxcso_route_common_pkg.iscustomervendor(
-                       xcav.business_low_type
+/* 20090702_Ogawa_0000312 START*/
+--                     xcav.business_low_type
+                       iv_business_low_type
+/* 20090702_Ogawa_0000312 END*/
                      ) <> cv_true
                     )
                THEN
                  XXCSO019A05C.get_route_bit(
-                   xcrv.route_number
+/* 20090702_Ogawa_0000312 START*/
+--                 xcrv.route_number
+                   iv_route_number
+/* 20090702_Ogawa_0000312 END*/
                   ,iv_year_month
                   ,in_day_index
                  )
                WHEN (xsvsr.tgt_amt > 0)
-                AND (xcav.vist_target_div = '1')
-                AND (xcav.cnvs_date IS NULL)
-                AND (xcav.customer_status IN (
+/* 20090702_Ogawa_0000312 START*/
+--              AND (xcav.vist_target_div = '1')
+--              AND (xcav.cnvs_date IS NULL)
+--              AND (xcav.customer_status IN (
+                AND (iv_vist_target_div = '1')
+                AND (id_cnvs_date IS NULL)
+                AND (iv_customer_status IN (
+/* 20090702_Ogawa_0000312 END*/
                                                cv_cust_status8
                                               ,cv_cust_status9
                                               ,cv_cust_status3
                                              )
                     )
                 AND (xxcso_route_common_pkg.iscustomervendor(
-                       xcav.business_low_type
+/* 20090702_Ogawa_0000312 START*/
+--                     xcav.business_low_type
+                       iv_business_low_type
+/* 20090702_Ogawa_0000312 END*/
                      ) <> cv_true
                     )
                THEN
                  XXCSO019A05C.get_route_bit(
-                   xcrv.route_number
+/* 20090702_Ogawa_0000312 START*/
+--                 xcrv.route_number
+                   iv_route_number
+/* 20090702_Ogawa_0000312 END*/
                   ,iv_year_month
                   ,in_day_index
                  )
@@ -1145,16 +1228,23 @@ AS
             )
     INTO    ln_tgt_vis_num
     FROM    xxcso_sum_visit_sale_rep   xsvsr
-           ,xxcso_cust_accounts_v      xcav
-           ,xxcso_cust_routes_v2       xcrv
-    WHERE   xcav.account_number    = iv_account_number
-      AND   xcav.sale_base_code    = iv_base_code
-      AND   xsvsr.sum_org_type     = cv_sum_org_type1
-      AND   xsvsr.sum_org_code     = xcav.account_number
-      AND   xsvsr.group_base_code  = xcav.sale_base_code
+/* 20090702_Ogawa_0000312 START*/
+    WHERE   xsvsr.sum_org_type     = cv_sum_org_type1
+      AND   xsvsr.sum_org_code     = iv_account_number
+      AND   xsvsr.group_base_code  = iv_base_code
       AND   xsvsr.month_date_div   = cv_month_date_div2
       AND   xsvsr.sales_date       = lv_date
-      AND   xcrv.account_number(+) = xcav.account_number
+--         ,xxcso_cust_accounts_v      xcav
+--         ,xxcso_cust_routes_v2       xcrv
+--  WHERE   xcav.account_number    = iv_account_number
+--    AND   xcav.sale_base_code    = iv_base_code
+--    AND   xsvsr.sum_org_type     = cv_sum_org_type1
+--    AND   xsvsr.sum_org_code     = xcav.account_number
+--    AND   xsvsr.group_base_code  = xcav.sale_base_code
+--    AND   xsvsr.month_date_div   = cv_month_date_div2
+--    AND   xsvsr.sales_date       = lv_date
+--    AND   xcrv.account_number(+) = xcav.account_number
+/* 20090702_Ogawa_0000312 END*/
     ;
 --
     RETURN ln_tgt_vis_num;
@@ -1171,6 +1261,13 @@ AS
    FUNCTION get_v_tgt_vis_num(
      iv_base_code         IN  VARCHAR2     -- 拠点コード
     ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+    ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+    ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+    ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+    ,iv_business_low_type IN  VARCHAR2     -- 業態小分類
+    ,iv_route_number      IN  VARCHAR2     -- ルートNo
+/* 20090702_Ogawa_0000312 END*/
     ,iv_year_month        IN  VARCHAR2     -- 年月
     ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER
@@ -1189,34 +1286,54 @@ AS
 --
     SELECT  (CASE
                WHEN (xsvsr.tgt_amt > 0)
-                AND (xcav.vist_target_div = '1')
-                AND (xcav.cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 START*/
+--              AND (xcav.vist_target_div = '1')
+--              AND (xcav.cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+                AND (iv_vist_target_div = '1')
+                AND (id_cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 END*/
                 AND (xxcso_route_common_pkg.iscustomervendor(
-                       xcav.business_low_type
+/* 20090702_Ogawa_0000312 START*/
+                       iv_business_low_type
+/* 20090702_Ogawa_0000312 END*/
                      ) = cv_true
                     )
                THEN
                  XXCSO019A05C.get_route_bit(
-                   xcrv.route_number
+/* 20090702_Ogawa_0000312 START*/
+--                 xcrv.route_number
+                   iv_route_number
+/* 20090702_Ogawa_0000312 END*/
                   ,iv_year_month
                   ,in_day_index
                  )
                WHEN (xsvsr.tgt_amt > 0)
-                AND (xcav.vist_target_div = '1')
-                AND (xcav.cnvs_date IS NULL)
-                AND (xcav.customer_status IN (
+/* 20090702_Ogawa_0000312 START*/
+--              AND (xcav.vist_target_div = '1')
+--              AND (xcav.cnvs_date IS NULL)
+--              AND (xcav.customer_status IN (
+                AND (iv_vist_target_div = '1')
+                AND (id_cnvs_date IS NULL)
+                AND (iv_customer_status IN (
+/* 20090702_Ogawa_0000312 END*/
                                                cv_cust_status8
                                               ,cv_cust_status9
                                               ,cv_cust_status3
                                              )
                     )
                 AND (xxcso_route_common_pkg.iscustomervendor(
-                       xcav.business_low_type
+/* 20090702_Ogawa_0000312 START*/
+--                     xcav.business_low_type
+                       iv_business_low_type
+/* 20090702_Ogawa_0000312 END*/
                      ) = cv_true
                     )
                THEN
                  XXCSO019A05C.get_route_bit(
-                   xcrv.route_number
+/* 20090702_Ogawa_0000312 START*/
+--                 xcrv.route_number
+                   iv_route_number
+/* 20090702_Ogawa_0000312 END*/
                   ,iv_year_month
                   ,in_day_index
                  )
@@ -1226,16 +1343,23 @@ AS
             )
     INTO    ln_tgt_vis_num
     FROM    xxcso_sum_visit_sale_rep   xsvsr
-           ,xxcso_cust_accounts_v      xcav
-           ,xxcso_cust_routes_v2       xcrv
-    WHERE   xcav.account_number   = iv_account_number
-      AND   xcav.sale_base_code   = iv_base_code
-      AND   xsvsr.sum_org_type    = cv_sum_org_type1
-      AND   xsvsr.sum_org_code    = xcav.account_number
-      AND   xsvsr.group_base_code = xcav.sale_base_code
+/* 20090702_Ogawa_0000312 START*/
+    WHERE   xsvsr.sum_org_type    = cv_sum_org_type1
+      AND   xsvsr.sum_org_code    = iv_account_number
+      AND   xsvsr.group_base_code = iv_base_code
       AND   xsvsr.month_date_div  = cv_month_date_div2
       AND   xsvsr.sales_date      = lv_date
-      AND   xcrv.account_number(+) = xcav.account_number
+--         ,xxcso_cust_accounts_v      xcav
+--         ,xxcso_cust_routes_v2       xcrv
+--  WHERE   xcav.account_number   = iv_account_number
+--    AND   xcav.sale_base_code   = iv_base_code
+--    AND   xsvsr.sum_org_type    = cv_sum_org_type1
+--    AND   xsvsr.sum_org_code    = xcav.account_number
+--    AND   xsvsr.group_base_code = xcav.sale_base_code
+--    AND   xsvsr.month_date_div  = cv_month_date_div2
+--    AND   xsvsr.sales_date      = lv_date
+--    AND   xcrv.account_number(+) = xcav.account_number
+/* 20090702_Ogawa_0000312 END*/
     ;
 --
     RETURN ln_tgt_vis_num;
@@ -1252,6 +1376,12 @@ AS
    FUNCTION get_i_rslt_vis_num(
      iv_base_code         IN  VARCHAR2     -- 拠点コード
     ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+    ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+    ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+    ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+    ,iv_business_low_type IN  VARCHAR2     -- 業態小分類
+/* 20090702_Ogawa_0000312 END*/
     ,iv_year_month        IN  VARCHAR2     -- 年月
     ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER
@@ -1270,25 +1400,40 @@ AS
 --
     SELECT  (CASE
                WHEN (xsvsr.vis_num > 0)
-                AND (xcav.vist_target_div = '1')
-                AND (xcav.cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 START*/
+--              AND (xcav.vist_target_div = '1')
+--              AND (xcav.cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+                AND (iv_vist_target_div = '1')
+                AND (id_cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 END*/
                 AND (xxcso_route_common_pkg.iscustomervendor(
-                       xcav.business_low_type
+/* 20090702_Ogawa_0000312 START*/
+--                     xcav.business_low_type
+                       iv_business_low_type
+/* 20090702_Ogawa_0000312 END*/
                      ) <> cv_true
                     )
                THEN
                  xsvsr.vis_num
                WHEN (xsvsr.vis_num > 0)
-                AND (xcav.vist_target_div = '1')
-                AND (xcav.cnvs_date IS NULL)
-                AND (xcav.customer_status IN (
+/* 20090702_Ogawa_0000312 START*/
+--              AND (xcav.vist_target_div = '1')
+--              AND (xcav.cnvs_date IS NULL)
+--              AND (xcav.customer_status IN (
+                AND (iv_vist_target_div = '1')
+                AND (id_cnvs_date IS NULL)
+                AND (iv_customer_status IN (
+/* 20090702_Ogawa_0000312 END*/
                                                cv_cust_status8
                                               ,cv_cust_status9
                                               ,cv_cust_status3
                                              )
                     )
                 AND (xxcso_route_common_pkg.iscustomervendor(
-                       xcav.business_low_type
+/* 20090702_Ogawa_0000312 START*/
+--                     xcav.business_low_type
+                       iv_business_low_type
+/* 20090702_Ogawa_0000312 END*/
                      ) <> cv_true
                     )
                THEN
@@ -1299,14 +1444,21 @@ AS
             )
     INTO    ln_rslt_vis_num
     FROM    xxcso_sum_visit_sale_rep   xsvsr
-           ,xxcso_cust_accounts_v      xcav
-    WHERE   xcav.account_number   = iv_account_number
-      AND   xcav.sale_base_code   = iv_base_code
-      AND   xsvsr.sum_org_type    = cv_sum_org_type1
-      AND   xsvsr.sum_org_code    = xcav.account_number
-      AND   xsvsr.group_base_code = xcav.sale_base_code
+/* 20090702_Ogawa_0000312 START*/
+    WHERE   xsvsr.sum_org_type    = cv_sum_org_type1
+      AND   xsvsr.sum_org_code    = iv_account_number
+      AND   xsvsr.group_base_code = iv_base_code
       AND   xsvsr.month_date_div  = cv_month_date_div2
       AND   xsvsr.sales_date      = lv_date
+--         ,xxcso_cust_accounts_v      xcav
+--  WHERE   xcav.account_number   = iv_account_number
+--    AND   xcav.sale_base_code   = iv_base_code
+--    AND   xsvsr.sum_org_type    = cv_sum_org_type1
+--    AND   xsvsr.sum_org_code    = xcav.account_number
+--    AND   xsvsr.group_base_code = xcav.sale_base_code
+--    AND   xsvsr.month_date_div  = cv_month_date_div2
+--    AND   xsvsr.sales_date      = lv_date
+/* 20090702_Ogawa_0000312 END*/
     ;
 --
     RETURN ln_rslt_vis_num;
@@ -1323,6 +1475,12 @@ AS
    FUNCTION get_v_rslt_vis_num(
      iv_base_code         IN  VARCHAR2     -- 拠点コード
     ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+    ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+    ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+    ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+    ,iv_business_low_type IN  VARCHAR2     -- 業態小分類
+/* 20090702_Ogawa_0000312 END*/
     ,iv_year_month        IN  VARCHAR2     -- 年月
     ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER
@@ -1341,25 +1499,40 @@ AS
 --
     SELECT  (CASE
                WHEN (xsvsr.vis_num > 0)
-                AND (xcav.vist_target_div = '1')
-                AND (xcav.cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 START*/
+--              AND (xcav.vist_target_div = '1')
+--              AND (xcav.cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+                AND (iv_vist_target_div = '1')
+                AND (id_cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 END*/
                 AND (xxcso_route_common_pkg.iscustomervendor(
-                       xcav.business_low_type
+/* 20090702_Ogawa_0000312 START*/
+--                     xcav.business_low_type
+                       iv_business_low_type
+/* 20090702_Ogawa_0000312 END*/
                      ) = cv_true
                     )
                THEN
                  xsvsr.vis_num
                WHEN (xsvsr.vis_num > 0)
-                AND (xcav.vist_target_div = '1')
-                AND (xcav.cnvs_date IS NULL)
-                AND (xcav.customer_status IN (
+/* 20090702_Ogawa_0000312 START*/
+--              AND (xcav.vist_target_div = '1')
+--              AND (xcav.cnvs_date IS NULL)
+--              AND (xcav.customer_status IN (
+                AND (iv_vist_target_div = '1')
+                AND (id_cnvs_date IS NULL)
+                AND (iv_customer_status IN (
+/* 20090702_Ogawa_0000312 END*/
                                                cv_cust_status8
                                               ,cv_cust_status9
                                               ,cv_cust_status3
                                              )
                     )
                 AND (xxcso_route_common_pkg.iscustomervendor(
-                       xcav.business_low_type
+/* 20090702_Ogawa_0000312 START*/
+--                     xcav.business_low_type
+                       iv_business_low_type
+/* 20090702_Ogawa_0000312 END*/
                      ) = cv_true
                     )
                THEN
@@ -1370,14 +1543,21 @@ AS
             )
     INTO    ln_rslt_vis_num
     FROM    xxcso_sum_visit_sale_rep   xsvsr
-           ,xxcso_cust_accounts_v      xcav
-    WHERE   xcav.account_number   = iv_account_number
-      AND   xcav.sale_base_code   = iv_base_code
-      AND   xsvsr.sum_org_type    = cv_sum_org_type1
-      AND   xsvsr.sum_org_code    = xcav.account_number
-      AND   xsvsr.group_base_code = xcav.sale_base_code
+/* 20090702_Ogawa_0000312 START*/
+    WHERE   xsvsr.sum_org_type    = cv_sum_org_type1
+      AND   xsvsr.sum_org_code    = iv_account_number
+      AND   xsvsr.group_base_code = iv_base_code
       AND   xsvsr.month_date_div  = cv_month_date_div2
       AND   xsvsr.sales_date      = lv_date
+--         ,xxcso_cust_accounts_v      xcav
+--  WHERE   xcav.account_number   = iv_account_number
+--    AND   xcav.sale_base_code   = iv_base_code
+--    AND   xsvsr.sum_org_type    = cv_sum_org_type1
+--    AND   xsvsr.sum_org_code    = xcav.account_number
+--    AND   xsvsr.group_base_code = xcav.sale_base_code
+--    AND   xsvsr.month_date_div  = cv_month_date_div2
+--    AND   xsvsr.sales_date      = lv_date
+/* 20090702_Ogawa_0000312 END*/
     ;
 --
     RETURN ln_rslt_vis_num;
@@ -1394,6 +1574,10 @@ AS
    FUNCTION get_m_rslt_vis_num(
      iv_base_code         IN  VARCHAR2     -- 拠点コード
     ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+    ,iv_customer_status   IN  VARCHAR2     -- 顧客ステータス
+    ,id_cnvs_date         IN  DATE         -- 顧客獲得日
+/* 20090702_Ogawa_0000312 END*/
     ,iv_year_month        IN  VARCHAR2     -- 年月
     ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER
@@ -1412,12 +1596,19 @@ AS
 --
     SELECT  (CASE
                WHEN (xsvsr.vis_num > 0)
-                AND (xcav.cnvs_date > TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 START*/
+--              AND (xcav.cnvs_date > TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+                AND (id_cnvs_date > TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+/* 20090702_Ogawa_0000312 END*/
                THEN
                  xsvsr.vis_num
                WHEN (xsvsr.vis_num > 0)
-                AND (xcav.cnvs_date IS NULL)
-                AND (xcav.customer_status IN (
+/* 20090702_Ogawa_0000312 START*/
+--              AND (xcav.cnvs_date IS NULL)
+--              AND (xcav.customer_status IN (
+                AND (id_cnvs_date IS NULL)
+                AND (iv_customer_status IN (
+/* 20090702_Ogawa_0000312 END*/
                                                cv_cust_status7
                                               ,cv_cust_status4
                                               ,cv_cust_status5
@@ -1432,14 +1623,21 @@ AS
             )
     INTO    ln_rslt_vis_num
     FROM    xxcso_sum_visit_sale_rep   xsvsr
-           ,xxcso_cust_accounts_v      xcav
-    WHERE   xcav.account_number   = iv_account_number
-      AND   xcav.sale_base_code   = iv_base_code
-      AND   xsvsr.sum_org_type    = cv_sum_org_type1
-      AND   xsvsr.sum_org_code    = xcav.account_number
-      AND   xsvsr.group_base_code = xcav.sale_base_code
+/* 20090702_Ogawa_0000312 START*/
+    WHERE   xsvsr.sum_org_type    = cv_sum_org_type1
+      AND   xsvsr.sum_org_code    = iv_account_number
+      AND   xsvsr.group_base_code = iv_base_code
       AND   xsvsr.month_date_div  = cv_month_date_div2
       AND   xsvsr.sales_date      = lv_date
+--         ,xxcso_cust_accounts_v      xcav
+--  WHERE   xcav.account_number   = iv_account_number
+--    AND   xcav.sale_base_code   = iv_base_code
+--    AND   xsvsr.sum_org_type    = cv_sum_org_type1
+--    AND   xsvsr.sum_org_code    = xcav.account_number
+--    AND   xsvsr.group_base_code = xcav.sale_base_code
+--    AND   xsvsr.month_date_div  = cv_month_date_div2
+--    AND   xsvsr.sales_date      = lv_date
+/* 20090702_Ogawa_0000312 END*/
     ;
 --
     RETURN ln_rslt_vis_num;
@@ -1456,6 +1654,9 @@ AS
    FUNCTION get_e_rslt_vis_num(
      iv_base_code         IN  VARCHAR2     -- 拠点コード
     ,iv_account_number    IN  VARCHAR2     -- 顧客コード
+/* 20090702_Ogawa_0000312 START*/
+    ,iv_vist_target_div   IN  VARCHAR2     -- 訪問対象区分
+/* 20090702_Ogawa_0000312 END*/
     ,iv_year_month        IN  VARCHAR2     -- 年月
     ,in_day_index         IN  NUMBER       -- 日
   ) RETURN NUMBER
@@ -1474,7 +1675,10 @@ AS
 --
     SELECT  (CASE
                WHEN (xsvsr.vis_sales_num > 0)
-                AND (xcav.vist_target_div = '1')
+/* 20090702_Ogawa_0000312 START*/
+--              AND (xcav.vist_target_div = '1')
+                AND (iv_vist_target_div = '1')
+/* 20090702_Ogawa_0000312 END*/
                THEN
                  xsvsr.vis_sales_num
                ELSE
@@ -1483,14 +1687,21 @@ AS
             )
     INTO    ln_rslt_vis_num
     FROM    xxcso_sum_visit_sale_rep   xsvsr
-           ,xxcso_cust_accounts_v      xcav
-    WHERE   xcav.account_number   = iv_account_number
-      AND   xcav.sale_base_code   = iv_base_code
-      AND   xsvsr.sum_org_type    = cv_sum_org_type1
-      AND   xsvsr.sum_org_code    = xcav.account_number
-      AND   xsvsr.group_base_code = xcav.sale_base_code
+/* 20090702_Ogawa_0000312 START*/
+    WHERE   xsvsr.sum_org_type    = cv_sum_org_type1
+      AND   xsvsr.sum_org_code    = iv_account_number
+      AND   xsvsr.group_base_code = iv_base_code
       AND   xsvsr.month_date_div  = cv_month_date_div2
       AND   xsvsr.sales_date      = lv_date
+--         ,xxcso_cust_accounts_v      xcav
+--  WHERE   xcav.account_number   = iv_account_number
+--    AND   xcav.sale_base_code   = iv_base_code
+--    AND   xsvsr.sum_org_type    = cv_sum_org_type1
+--    AND   xsvsr.sum_org_code    = xcav.account_number
+--    AND   xsvsr.group_base_code = xcav.sale_base_code
+--    AND   xsvsr.month_date_div  = cv_month_date_div2
+--    AND   xsvsr.sales_date      = lv_date
+/* 20090702_Ogawa_0000312 END*/
     ;
 --
     RETURN ln_rslt_vis_num;
@@ -1500,6 +1711,181 @@ AS
       RETURN 0;
   END get_e_rslt_vis_num;
 --
+/* 20090702_Ogawa_0000312 START*/
+  /**********************************************************************************
+   * Procedure Name   : get_business_high_type_code
+   * Description      : 業態大分類コード取得
+  ***********************************************************************************/
+  FUNCTION get_business_high_type_code(
+    iv_business_low_type IN  VARCHAR2     -- 業態小分類
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name         CONSTANT VARCHAR2(100) := 'get_business_high_type_code';    -- プログラム名
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- *** ローカル変数 ***
+    lv_business_low_type_code          fnd_lookup_values_vl.lookup_code%TYPE;
+--
+  BEGIN
+--
+    SELECT  dai.lookup_code
+    INTO    lv_business_low_type_code
+    FROM    fnd_lookup_values_vl  sho
+           ,fnd_lookup_values_vl  chu
+           ,fnd_lookup_values_vl  dai
+    WHERE   sho.lookup_type = cv_lookup_type_syo
+      AND   chu.lookup_type = cv_lookup_type_chu
+      AND   dai.lookup_type = cv_lookup_type_dai
+      AND   chu.lookup_code = sho.attribute1
+      AND   dai.lookup_code = chu.attribute1
+      AND   sho.enabled_flag = cv_flg_y
+      AND   chu.enabled_flag = cv_flg_y
+      AND   dai.enabled_flag = cv_flg_y
+      AND   NVL(sho.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+      AND   NVL(sho.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+      AND   NVL(chu.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+      AND   NVL(chu.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+      AND   NVL(dai.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+      AND   NVL(dai.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+      AND   sho.lookup_code = iv_business_low_type
+    ;
+--
+    RETURN lv_business_low_type_code;
+--
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN NULL;
+  END get_business_high_type_code;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_business_high_type_name
+   * Description      : 業態大分類名取得
+  ***********************************************************************************/
+  FUNCTION get_business_high_type_name(
+    iv_business_low_type IN  VARCHAR2     -- 業態小分類
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name         CONSTANT VARCHAR2(100) := 'get_business_high_type_name';    -- プログラム名
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- *** ローカル変数 ***
+    lv_business_low_type_name          fnd_lookup_values_vl.meaning%TYPE;
+--
+  BEGIN
+--
+    SELECT  dai.meaning
+    INTO    lv_business_low_type_name
+    FROM    fnd_lookup_values_vl  sho
+           ,fnd_lookup_values_vl  chu
+           ,fnd_lookup_values_vl  dai
+    WHERE   sho.lookup_type = cv_lookup_type_syo
+      AND   chu.lookup_type = cv_lookup_type_chu
+      AND   dai.lookup_type = cv_lookup_type_dai
+      AND   chu.lookup_code = sho.attribute1
+      AND   dai.lookup_code = chu.attribute1
+      AND   sho.enabled_flag = cv_flg_y
+      AND   chu.enabled_flag = cv_flg_y
+      AND   dai.enabled_flag = cv_flg_y
+      AND   NVL(sho.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+      AND   NVL(sho.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+      AND   NVL(chu.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+      AND   NVL(chu.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+      AND   NVL(dai.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+      AND   NVL(dai.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+      AND   sho.lookup_code = iv_business_low_type
+    ;
+--
+    RETURN lv_business_low_type_name;
+--
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN NULL;
+  END get_business_high_type_name;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_route_number
+   * Description      : ルートNo取得
+  ***********************************************************************************/
+  FUNCTION get_route_number(
+    in_organization_profile_id  IN  NUMBER  -- 組織プロファイルID
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name         CONSTANT VARCHAR2(100) := 'get_route_number';    -- プログラム名
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- *** ローカル変数 ***
+    lv_route_number          hz_org_profiles_ext_b.c_ext_attr2%TYPE;
+--
+  BEGIN
+    SELECT  hopeb.c_ext_attr2
+    INTO    lv_route_number
+    FROM    hz_org_profiles_ext_b   hopeb
+    WHERE   hopeb.attr_group_id                        = gn_rtn_attr_group_id
+      AND   hopeb.organization_profile_id              = in_organization_profile_id
+      AND   hopeb.d_ext_attr3                         <= gd_online_sysdate
+      AND   NVL(hopeb.d_ext_attr4, gd_online_sysdate) >= gd_online_sysdate
+    ;
+--
+    RETURN lv_route_number;
+--
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN NULL;
+  END get_route_number;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_rslt_amt_in_month
+   * Description      : 売上実績(年月指定)取得
+  ***********************************************************************************/
+  FUNCTION get_rslt_amt_in_month(
+     iv_account_number    IN  VARCHAR2     -- 顧客コード
+    ,iv_year_month        IN  VARCHAR2     -- 年月
+  ) RETURN NUMBER
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name         CONSTANT VARCHAR2(100) := 'get_rslt_amt_in_month';    -- プログラム名
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- *** ローカル変数 ***
+    ln_rslt_amt          NUMBER;
+--
+  BEGIN
+    SELECT  SUM(xsvsr.rslt_amt)
+    INTO    ln_rslt_amt
+    FROM    xxcso_sum_visit_sale_rep   xsvsr
+    WHERE   xsvsr.sum_org_type       = cv_sum_org_type1
+      AND   xsvsr.sum_org_code       = iv_account_number
+      AND   xsvsr.month_date_div     = cv_month_date_div1
+      AND   xsvsr.sales_date         = iv_year_month
+    ;
+--
+    RETURN ln_rslt_amt;
+--
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN 0;
+  END get_rslt_amt_in_month;
+--
+/* 20090702_Ogawa_0000312 END*/
   /**********************************************************************************
    * Procedure Name   : sum_resources
    * Description      : 出力対象リソース集計
@@ -1537,34 +1923,11 @@ AS
       ,program_id
       ,program_update_date
     )
-    SELECT  (CASE
-               WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
-                 xrrv.work_base_code_new
-               ELSE
-                 xrrv.work_base_code_old
-             END
-            )
-           ,(CASE
-               WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
-                 xrrv.group_number_new
-               ELSE
-                 xrrv.group_number_old
-             END
-            )
-           ,(CASE
-               WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
-                 xrrv.group_leader_flag_new
-               ELSE
-                 xrrv.group_leader_flag_old
-             END
-            )
-           ,(CASE
-               WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
-                 xrrv.group_grade_new
-               ELSE
-                 xrrv.group_grade_old
-             END
-            )
+/* 20090702_Ogawa_0000312 START*/
+    SELECT  xrrv.work_base_code_new
+           ,xrrv.group_number_new
+           ,xrrv.group_leader_flag_new
+           ,xrrv.group_grade_new
            ,xrrv.employee_number
            ,xrrv.full_name
            ,cn_created_by
@@ -1577,37 +1940,15 @@ AS
            ,cn_program_id
            ,cd_program_update_date
     FROM    xxcso_resource_relations_v2  xrrv
-    /* 20090602_abe_PT START*/
-    WHERE   (
-               (     TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
-                AND  xrrv.work_base_code_new = iv_base_code
-               )
-               OR
-               (     TO_DATE(xrrv.issue_date,'YYYYMMDD') > gd_online_sysdate
-                AND  xrrv.work_base_code_old = iv_base_code
-               )
-            ) 
-    --WHERE   (CASE
-    --           WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
-    --             xrrv.work_base_code_new
-    --           ELSE
-    --             xrrv.work_base_code_old
-    --         END
-    --        )                                      = iv_base_code
-    /* 20090602_abe_PT END*/
+    WHERE   TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+      AND   xrrv.work_base_code_new = iv_base_code
       AND   (
              (gv_is_groupleader = cv_false)
              OR
              (
               (gv_is_groupleader = cv_true)
               AND
-              (CASE
-                 WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
-                   NVL(xrrv.group_number_new, ' ')
-                 ELSE
-                   NVL(xrrv.group_number_old, ' ')
-               END
-              ) = gt_group_number
+              (NVL(xrrv.group_number_new, ' ') = gt_group_number)
              )
             )
       AND   (
@@ -1619,6 +1960,126 @@ AS
               (xrrv.employee_number = gt_employee_number)
              )
             )
+    UNION ALL
+    SELECT  xrrv.work_base_code_old
+           ,xrrv.group_number_old
+           ,xrrv.group_leader_flag_old
+           ,xrrv.group_grade_old
+           ,xrrv.employee_number
+           ,xrrv.full_name
+           ,cn_created_by
+           ,cd_creation_date
+           ,cn_last_updated_by
+           ,cd_last_update_date
+           ,cn_last_update_login
+           ,cn_request_id
+           ,cn_program_application_id
+           ,cn_program_id
+           ,cd_program_update_date
+    FROM    xxcso_resource_relations_v2  xrrv
+    WHERE   TO_DATE(xrrv.issue_date,'YYYYMMDD')  > gd_online_sysdate
+      AND   xrrv.work_base_code_old = iv_base_code
+      AND   (
+             (gv_is_groupleader = cv_false)
+             OR
+             (
+              (gv_is_groupleader = cv_true)
+              AND
+              (NVL(xrrv.group_number_old, ' ') = gt_group_number)
+             )
+            )
+      AND   (
+             (gv_is_salesman = cv_false)
+             OR
+             (
+              (gv_is_salesman = cv_true)
+              AND
+              (xrrv.employee_number = gt_employee_number)
+             )
+            )
+--  SELECT  (CASE
+--             WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
+--               xrrv.work_base_code_new
+--             ELSE
+--               xrrv.work_base_code_old
+--           END
+--          )
+--         ,(CASE
+--             WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
+--               xrrv.group_number_new
+--             ELSE
+--               xrrv.group_number_old
+--           END
+--          )
+--         ,(CASE
+--             WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
+--               xrrv.group_leader_flag_new
+--             ELSE
+--               xrrv.group_leader_flag_old
+--           END
+--          )
+--         ,(CASE
+--             WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
+--               xrrv.group_grade_new
+--             ELSE
+--               xrrv.group_grade_old
+--           END
+--          )
+--         ,xrrv.employee_number
+--         ,xrrv.full_name
+--         ,cn_created_by
+--         ,cd_creation_date
+--         ,cn_last_updated_by
+--         ,cd_last_update_date
+--         ,cn_last_update_login
+--         ,cn_request_id
+--         ,cn_program_application_id
+--         ,cn_program_id
+--         ,cd_program_update_date
+--  FROM    xxcso_resource_relations_v2  xrrv
+--  /* 20090602_abe_PT START*/
+--  WHERE   (
+--             (     TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+--              AND  xrrv.work_base_code_new = iv_base_code
+--             )
+--             OR
+--             (     TO_DATE(xrrv.issue_date,'YYYYMMDD') > gd_online_sysdate
+--              AND  xrrv.work_base_code_old = iv_base_code
+--             )
+--          ) 
+--  --WHERE   (CASE
+--  --           WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
+--  --             xrrv.work_base_code_new
+--  --           ELSE
+--  --             xrrv.work_base_code_old
+--  --         END
+--  --        )                                      = iv_base_code
+--  /* 20090602_abe_PT END*/
+--    AND   (
+--           (gv_is_groupleader = cv_false)
+--           OR
+--           (
+--            (gv_is_groupleader = cv_true)
+--            AND
+--            (CASE
+--               WHEN (TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate) THEN
+--                 NVL(xrrv.group_number_new, ' ')
+--               ELSE
+--                 NVL(xrrv.group_number_old, ' ')
+--             END
+--            ) = gt_group_number
+--           )
+--          )
+--    AND   (
+--           (gv_is_salesman = cv_false)
+--           OR
+--           (
+--            (gv_is_salesman = cv_true)
+--            AND
+--            (xrrv.employee_number = gt_employee_number)
+--           )
+--          )
+/* 20090702_Ogawa_0000312 END*/
     ;
 --
   END sum_resources;
@@ -1976,20 +2437,38 @@ AS
       ,program_id
       ,program_update_date
     )
-    SELECT  xtrvr.base_code              sale_base_code
-           ,xtrvr.group_number           group_number
-           ,xtrvr.employee_number        employee_number
-           ,xtrvr.employee_name          employee_name
+/* 20090702_Ogawa_0000312 START*/
+--  SELECT  xtrvr.base_code              sale_base_code
+--         ,xtrvr.group_number           group_number
+--         ,xtrvr.employee_number        employee_number
+--         ,xtrvr.employee_name          employee_name
+    SELECT  xcav.base_code               sale_base_code
+           ,xcav.group_number            group_number
+           ,xcav.employee_number         employee_number
+           ,xcav.employee_name           employee_name
+/* 20090702_Ogawa_0000312 END*/
            ,(CASE
-               WHEN (biz.business_low_type IS NOT NULL) THEN
-                 biz.business_high_type
+/* 20090702_Ogawa_0000312 START*/
+--             WHEN (biz.business_low_type IS NOT NULL) THEN
+--               biz.business_high_type
+               WHEN (xcav.business_low_type IS NOT NULL) THEN
+                 XXCSO019A05C.get_business_high_type_code(
+                   xcav.business_low_type
+                 )
+/* 20090702_Ogawa_0000312 END*/
                ELSE
                  NULL
              END
             )                            business_high_type
            ,(CASE
-               WHEN (biz.business_low_type IS NOT NULL) THEN
-                 biz.business_high_name
+/* 20090702_Ogawa_0000312 START*/
+--             WHEN (biz.business_low_type IS NOT NULL) THEN
+--               biz.business_high_name
+               WHEN (xcav.business_low_type IS NOT NULL) THEN
+                 XXCSO019A05C.get_business_high_type_name(
+                   xcav.business_low_type
+                 )
+/* 20090702_Ogawa_0000312 END*/
                ELSE
                  cv_mc
              END
@@ -2000,9 +2479,20 @@ AS
             )                            gvm_type
            ,xcav.account_number          account_number
            ,xcav.party_name              customer_name
-           ,rtn.route_number             route_no
-           ,xsvsry.rslt_amt              last_year_rslt_sales_amt
-           ,xsvsrm.rslt_amt              last_mon_rslt_sales_amt
+/* 20090702_Ogawa_0000312 START*/
+--         ,rtn.route_number             route_no
+--         ,xsvsry.rslt_amt              last_year_rslt_sales_amt
+--         ,xsvsrm.rslt_amt              last_mon_rslt_sales_amt
+           ,xcav.route_number            route_no
+           ,XXCSO019A05C.get_rslt_amt_in_month(
+              xcav.account_number
+             ,gv_year_prev
+            )                            last_year_rslt_sales_amt
+           ,XXCSO019A05C.get_rslt_amt_in_month(
+              xcav.account_number
+             ,gv_year_month_prev
+            )                            last_mon_rslt_sales_amt
+/* 20090702_Ogawa_0000312 END*/
            ,(CASE
                WHEN (xcav.new_point_div IN ('1','2'))
                 AND (TO_CHAR(xcav.cnvs_date,'YYYYMM') = gv_year_month)
@@ -2587,1302 +3077,2480 @@ AS
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,1
             )                            visit_sign_1
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,2
             )                            visit_sign_2
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,3
             )                            visit_sign_3
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,4
             )                            visit_sign_4
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,5
             )                            visit_sign_5
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,6
             )                            visit_sign_6
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,7
             )                            visit_sign_7
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,8
             )                            visit_sign_8
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,9
             )                            visit_sign_9
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,10
             )                            visit_sign_10
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,11
             )                            visit_sign_11
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,12
             )                            visit_sign_12
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,13
             )                            visit_sign_13
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,14
             )                            visit_sign_14
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,15
             )                            visit_sign_15
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,16
             )                            visit_sign_16
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,17
             )                            visit_sign_17
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,18
             )                            visit_sign_18
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,19
             )                            visit_sign_19
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,20
             )                            visit_sign_20
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,21
             )                            visit_sign_21
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,22
             )                            visit_sign_22
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,23
             )                            visit_sign_23
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,24
             )                            visit_sign_24
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,25
             )                            visit_sign_25
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,26
             )                            visit_sign_26
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,27
             )                            visit_sign_27
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,28
             )                            visit_sign_28
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,29
             )                            visit_sign_29
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,30
             )                            visit_sign_30
            ,XXCSO019A05C.get_visit_sign(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,31
             )                            visit_sign_31
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,1
             )                            tgt_vis_i_num_1
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,2
             )                            tgt_vis_i_num_2
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,3
             )                            tgt_vis_i_num_3
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,4
             )                            tgt_vis_i_num_4
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,5
             )                            tgt_vis_i_num_5
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,6
             )                            tgt_vis_i_num_6
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,7
             )                            tgt_vis_i_num_7
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,8
             )                            tgt_vis_i_num_8
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,9
             )                            tgt_vis_i_num_9
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,10
             )                            tgt_vis_i_num_10
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,11
             )                            tgt_vis_i_num_11
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,12
             )                            tgt_vis_i_num_12
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,13
             )                            tgt_vis_i_num_13
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,14
             )                            tgt_vis_i_num_14
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,15
             )                            tgt_vis_i_num_15
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,16
             )                            tgt_vis_i_num_16
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,17
             )                            tgt_vis_i_num_17
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,18
             )                            tgt_vis_i_num_18
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,19
             )                            tgt_vis_i_num_19
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,20
             )                            tgt_vis_i_num_20
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,21
             )                            tgt_vis_i_num_21
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,22
             )                            tgt_vis_i_num_22
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,23
             )                            tgt_vis_i_num_23
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,24
             )                            tgt_vis_i_num_24
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,25
             )                            tgt_vis_i_num_25
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,26
             )                            tgt_vis_i_num_26
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,27
             )                            tgt_vis_i_num_27
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,28
             )                            tgt_vis_i_num_28
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,29
             )                            tgt_vis_i_num_29
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,30
             )                            tgt_vis_i_num_30
            ,XXCSO019A05C.get_i_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,31
             )                            tgt_vis_i_num_31
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,1
             )                            tgt_vis_v_num_1
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,2
             )                            tgt_vis_v_num_2
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,3
             )                            tgt_vis_v_num_3
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,4
             )                            tgt_vis_v_num_4
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,5
             )                            tgt_vis_v_num_5
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,6
             )                            tgt_vis_v_num_6
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,7
             )                            tgt_vis_v_num_7
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,8
             )                            tgt_vis_v_num_8
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,9
             )                            tgt_vis_v_num_9
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,10
             )                            tgt_vis_v_num_10
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,11
             )                            tgt_vis_v_num_11
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,12
             )                            tgt_vis_v_num_12
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,13
             )                            tgt_vis_v_num_13
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,14
             )                            tgt_vis_v_num_14
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,15
             )                            tgt_vis_v_num_15
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,16
             )                            tgt_vis_v_num_16
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,17
             )                            tgt_vis_v_num_17
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,18
             )                            tgt_vis_v_num_18
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,19
             )                            tgt_vis_v_num_19
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,20
             )                            tgt_vis_v_num_20
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,21
             )                            tgt_vis_v_num_21
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,22
             )                            tgt_vis_v_num_22
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,23
             )                            tgt_vis_v_num_23
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,24
             )                            tgt_vis_v_num_24
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,25
             )                            tgt_vis_v_num_25
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,26
             )                            tgt_vis_v_num_26
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,27
             )                            tgt_vis_v_num_27
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,28
             )                            tgt_vis_v_num_28
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,29
             )                            tgt_vis_v_num_29
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,30
             )                            tgt_vis_v_num_30
            ,XXCSO019A05C.get_v_tgt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+             ,xcav.route_number
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,31
             )                            tgt_vis_v_num_31
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,1
             )                            rslt_vis_i_num_1
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,2
             )                            rslt_vis_i_num_2
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,3
             )                            rslt_vis_i_num_3
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,4
             )                            rslt_vis_i_num_4
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,5
             )                            rslt_vis_i_num_5
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,6
             )                            rslt_vis_i_num_6
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,7
             )                            rslt_vis_i_num_7
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,8
             )                            rslt_vis_i_num_8
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,9
             )                            rslt_vis_i_num_9
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,10
             )                            rslt_vis_i_num_10
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,11
             )                            rslt_vis_i_num_11
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,12
             )                            rslt_vis_i_num_12
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,13
             )                            rslt_vis_i_num_13
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,14
             )                            rslt_vis_i_num_14
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,15
             )                            rslt_vis_i_num_15
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,16
             )                            rslt_vis_i_num_16
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,17
             )                            rslt_vis_i_num_17
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,18
             )                            rslt_vis_i_num_18
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,19
             )                            rslt_vis_i_num_19
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,20
             )                            rslt_vis_i_num_20
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,21
             )                            rslt_vis_i_num_21
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,22
             )                            rslt_vis_i_num_22
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,23
             )                            rslt_vis_i_num_23
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,24
             )                            rslt_vis_i_num_24
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,25
             )                            rslt_vis_i_num_25
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,26
             )                            rslt_vis_i_num_26
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,27
             )                            rslt_vis_i_num_27
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,28
             )                            rslt_vis_i_num_28
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,29
             )                            rslt_vis_i_num_29
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,30
             )                            rslt_vis_i_num_30
            ,XXCSO019A05C.get_i_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,31
             )                            rslt_vis_i_num_31
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,1
             )                            rslt_vis_v_num_1
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,2
             )                            rslt_vis_v_num_2
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,3
             )                            rslt_vis_v_num_3
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,4
             )                            rslt_vis_v_num_4
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,5
             )                            rslt_vis_v_num_5
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,6
             )                            rslt_vis_v_num_6
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,7
             )                            rslt_vis_v_num_7
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,8
             )                            rslt_vis_v_num_8
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,9
             )                            rslt_vis_v_num_9
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,10
             )                            rslt_vis_v_num_10
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,11
             )                            rslt_vis_v_num_11
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,12
             )                            rslt_vis_v_num_12
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,13
             )                            rslt_vis_v_num_13
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,14
             )                            rslt_vis_v_num_14
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,15
             )                            rslt_vis_v_num_15
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,16
             )                            rslt_vis_v_num_16
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,17
             )                            rslt_vis_v_num_17
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,18
             )                            rslt_vis_v_num_18
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,19
             )                            rslt_vis_v_num_19
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,20
             )                            rslt_vis_v_num_20
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,21
             )                            rslt_vis_v_num_21
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,22
             )                            rslt_vis_v_num_22
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,23
             )                            rslt_vis_v_num_23
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,24
             )                            rslt_vis_v_num_24
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,25
             )                            rslt_vis_v_num_25
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,26
             )                            rslt_vis_v_num_26
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,27
             )                            rslt_vis_v_num_27
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,28
             )                            rslt_vis_v_num_28
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,29
             )                            rslt_vis_v_num_29
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,30
             )                            rslt_vis_v_num_30
            ,XXCSO019A05C.get_v_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+             ,xcav.vist_target_div
+             ,xcav.business_low_type
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,31
             )                            rslt_vis_v_num_31
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,1
             )                            rslt_vis_m_num_1
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,2
             )                            rslt_vis_m_num_2
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,3
             )                            rslt_vis_m_num_3
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,4
             )                            rslt_vis_m_num_4
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,5
             )                            rslt_vis_m_num_5
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,6
             )                            rslt_vis_m_num_6
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,7
             )                            rslt_vis_m_num_7
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,8
             )                            rslt_vis_m_num_8
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,9
             )                            rslt_vis_m_num_9
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,10
             )                            rslt_vis_m_num_10
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,11
             )                            rslt_vis_m_num_11
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,12
             )                            rslt_vis_m_num_12
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,13
             )                            rslt_vis_m_num_13
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,14
             )                            rslt_vis_m_num_14
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,15
             )                            rslt_vis_m_num_15
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,16
             )                            rslt_vis_m_num_16
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,17
             )                            rslt_vis_m_num_17
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,18
             )                            rslt_vis_m_num_18
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,19
             )                            rslt_vis_m_num_19
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,20
             )                            rslt_vis_m_num_20
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,21
             )                            rslt_vis_m_num_21
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,22
             )                            rslt_vis_m_num_22
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,23
             )                            rslt_vis_m_num_23
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,24
             )                            rslt_vis_m_num_24
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,25
             )                            rslt_vis_m_num_25
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,26
             )                            rslt_vis_m_num_26
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,27
             )                            rslt_vis_m_num_27
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,28
             )                            rslt_vis_m_num_28
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,29
             )                            rslt_vis_m_num_29
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,30
             )                            rslt_vis_m_num_30
            ,XXCSO019A05C.get_m_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.customer_status
+             ,xcav.cnvs_date
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,31
             )                            rslt_vis_m_num_31
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,1
             )                            rslt_vis_e_num_1
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,2
             )                            rslt_vis_e_num_2
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,3
             )                            rslt_vis_e_num_3
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,4
             )                            rslt_vis_e_num_4
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,5
             )                            rslt_vis_e_num_5
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,6
             )                            rslt_vis_e_num_6
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,7
             )                            rslt_vis_e_num_7
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,8
             )                            rslt_vis_e_num_8
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,9
             )                            rslt_vis_e_num_9
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,10
             )                            rslt_vis_e_num_10
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,11
             )                            rslt_vis_e_num_11
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,12
             )                            rslt_vis_e_num_12
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,13
             )                            rslt_vis_e_num_13
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,14
             )                            rslt_vis_e_num_14
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,15
             )                            rslt_vis_e_num_15
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,16
             )                            rslt_vis_e_num_16
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,17
             )                            rslt_vis_e_num_17
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,18
             )                            rslt_vis_e_num_18
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,19
             )                            rslt_vis_e_num_19
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,20
             )                            rslt_vis_e_num_20
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,21
             )                            rslt_vis_e_num_21
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,22
             )                            rslt_vis_e_num_22
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,23
             )                            rslt_vis_e_num_23
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,24
             )                            rslt_vis_e_num_24
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,25
             )                            rslt_vis_e_num_25
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,26
             )                            rslt_vis_e_num_26
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,27
             )                            rslt_vis_e_num_27
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,28
             )                            rslt_vis_e_num_28
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,29
             )                            rslt_vis_e_num_29
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,30
             )                            rslt_vis_e_num_30
            ,XXCSO019A05C.get_e_rslt_vis_num(
               xcav.sale_base_code
              ,xcav.account_number
+/* 20090702_Ogawa_0000312 START*/
+             ,xcav.vist_target_div
+/* 20090702_Ogawa_0000312 END*/
              ,gv_year_month
              ,31
             )                            rslt_vis_e_num_31
@@ -3895,107 +5563,202 @@ AS
            ,cn_program_application_id
            ,cn_program_id
            ,cd_program_update_date
-    FROM    xxcso_tmp_rep_vsp_rsrcs      xtrvr
-           ,xxcso_resource_custs_v2      rsrc
-           ,xxcso_cust_accounts_v        xcav
-           ,xxcso_cust_routes_v2         rtn
-           ,xxcso_sum_visit_sale_rep     xsvsry
-           ,xxcso_sum_visit_sale_rep     xsvsrm
-           ,(SELECT  sho.lookup_code  business_low_type
-                    ,dai.lookup_code  business_high_type
-                    ,dai.meaning      business_high_name
-             FROM    fnd_lookup_values_vl  sho
-                    ,fnd_lookup_values_vl  chu
-                    ,fnd_lookup_values_vl  dai
-             WHERE   sho.lookup_type = cv_lookup_type_syo
-               AND   chu.lookup_type = cv_lookup_type_chu
-               AND   dai.lookup_type = cv_lookup_type_dai
-               AND   chu.lookup_code = sho.attribute1
-               AND   dai.lookup_code = chu.attribute1
-               AND   sho.enabled_flag = cv_flg_y
-               AND   chu.enabled_flag = cv_flg_y
-               AND   dai.enabled_flag = cv_flg_y
-               AND   NVL(sho.start_date_active, gd_online_sysdate) <= gd_online_sysdate
-               AND   NVL(sho.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
-               AND   NVL(chu.start_date_active, gd_online_sysdate) <= gd_online_sysdate
-               AND   NVL(chu.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
-               AND   NVL(dai.start_date_active, gd_online_sysdate) <= gd_online_sysdate
-               AND   NVL(dai.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
-            )                            biz
-    WHERE   rsrc.employee_number         = xtrvr.employee_number
-      AND   xcav.account_number          = rsrc.account_number
-      AND   rtn.account_number(+)        = xcav.account_number
-      AND   xsvsry.sum_org_type(+)       = cv_sum_org_type1
-      AND   xsvsry.sum_org_code(+)       = xcav.account_number
-      AND   xsvsry.group_base_code(+)    = xcav.sale_base_code
-      AND   xsvsry.month_date_div(+)     = cv_month_date_div1
-      AND   xsvsry.sales_date(+)         = gv_year_prev
-      AND   xsvsrm.sum_org_type(+)       = cv_sum_org_type1
-      AND   xsvsrm.sum_org_code(+)       = xcav.account_number
-      AND   xsvsrm.group_base_code(+)    = xcav.sale_base_code
-      AND   xsvsrm.month_date_div(+)     = cv_month_date_div1
-      AND   xsvsrm.sales_date(+)         = gv_year_month_prev
-      AND   biz.business_low_type(+)     = xcav.business_low_type
-      AND   (
-              (EXISTS
-                (SELECT  1
-                 FROM    xxcso_cust_accounts_v   xcav1
-                        ,hz_parties              hp
-                 WHERE   hp.party_id                         = xcav1.party_id
-                   AND   TO_CHAR(hp.creation_date,'YYYYMM') <= gv_year_month
-                   AND   xcav1.account_number                = xcav.account_number
-                   AND   (
-                           (
-                             (NVL(xcav1.customer_class_code, cv_cust_class_cd3)
-                                = cv_cust_class_cd3
-                             )
-                             AND
-                             (xcav1.customer_status IN (
-                                                         cv_cust_status7
-                                                        ,cv_cust_status4
-                                                        ,cv_cust_status5
-                                                        ,cv_cust_status6
-                                                        ,cv_cust_status8
-                                                        ,cv_cust_status9
-                                                       )
-                             )
-                           )
-                           OR
-                           (
-                             (xcav1.customer_class_code = cv_cust_class_cd4)
-                             AND
-                             (xcav1.customer_status IN (
-                                                         cv_cust_status6
-                                                        ,cv_cust_status8
-                                                       )
-                             )
-                           )
-                           OR
-                           (
-                             (xcav1.customer_class_code IN (
-                                                             cv_cust_class_cd5
-                                                            ,cv_cust_class_cd6
-                                                            ,cv_cust_class_cd7
-                                                           )
-                             )
-                             AND
-                             (xcav1.customer_status = cv_cust_status3)
-                           )
+/* 20090702_Ogawa_0000312 START*/
+    FROM    (
+             SELECT  /*+ ORDERED USE_NL(rsrc,hop,hp,hca,xca) */
+                     xtrvr.base_code            base_code
+                    ,xtrvr.group_number         group_number
+                    ,xtrvr.employee_number      employee_number
+                    ,xtrvr.employee_name        employee_name
+                    ,xca.sale_base_code         sale_base_code
+                    ,xca.business_low_type      business_low_type
+                    ,hp.duns_number_c           customer_status
+                    ,hca.account_number         account_number
+                    ,hp.party_name              party_name
+                    ,xca.new_point_div          new_point_div
+                    ,xca.cnvs_date              cnvs_date
+                    ,xca.vist_target_div        vist_target_div
+                    ,XXCSO019A05C.get_route_number(
+                       hop.organization_profile_id
+                     )                          route_number
+             FROM    xxcso_tmp_rep_vsp_rsrcs    xtrvr
+                    ,hz_org_profiles_ext_b      rsrc
+                    ,hz_organization_profiles   hop
+                    ,hz_parties                 hp
+                    ,hz_cust_accounts           hca
+                    ,xxcmm_cust_accounts        xca
+             WHERE   rsrc.attr_group_id                       = gn_rsrc_attr_group_id
+               AND   rsrc.c_ext_attr1                         = xtrvr.employee_number
+               AND   rsrc.d_ext_attr1                        <= gd_online_sysdate
+               AND   NVL(rsrc.d_ext_attr2,gd_online_sysdate) >= gd_online_sysdate
+               AND   hop.organization_profile_id              = rsrc.organization_profile_id
+               AND   hop.effective_end_date                   IS NULL
+               AND   hp.party_id                              = hop.party_id
+               AND   hca.party_id                             = hp.party_id
+               AND   xca.customer_id(+)                       = hca.cust_account_id
+               AND   (
+                       (EXISTS
+                         (SELECT  1
+                          FROM    hz_cust_accounts        hca1
+                                 ,hz_parties              hp1
+                          WHERE   hp1.party_id                         = hp.party_id
+                            AND   TO_CHAR(hp1.creation_date,'YYYYMM') <= gv_year_month
+                            AND   hca1.party_id                        = hp1.party_id
+                            AND   (
+                                    (
+                                      (NVL(hca1.customer_class_code, cv_cust_class_cd3)
+                                         = cv_cust_class_cd3
+                                      )
+                                      AND
+                                      (hp1.duns_number_c IN (
+                                                                  cv_cust_status7
+                                                                 ,cv_cust_status4
+                                                                 ,cv_cust_status5
+                                                                 ,cv_cust_status6
+                                                                 ,cv_cust_status8
+                                                                 ,cv_cust_status9
+                                                                )
+                                      )
+                                    )
+                                    OR
+                                    (
+                                      (hca1.customer_class_code = cv_cust_class_cd4)
+                                      AND
+                                      (hp1.duns_number_c IN (
+                                                                  cv_cust_status6
+                                                                 ,cv_cust_status8
+                                                                )
+                                      )
+                                    )
+                                    OR
+                                    (
+                                      (hca1.customer_class_code IN (
+                                                                      cv_cust_class_cd5
+                                                                     ,cv_cust_class_cd6
+                                                                     ,cv_cust_class_cd7
+                                                                    )
+                                      )
+                                      AND
+                                      (hp1.duns_number_c = cv_cust_status3)
+                                    )
+                                  )
                          )
-                )
-              )
-              OR
-              (EXISTS
-                (SELECT  1
-                 FROM    xxcso_sum_visit_sale_rep  xsvsr
-                 WHERE   xsvsr.sum_org_type        = cv_sum_org_type1
-                   AND   xsvsr.sum_org_code        = xcav.account_number
-                   AND   xsvsr.group_base_code     = xcav.sale_base_code
-                   AND   xsvsr.month_date_div      = cv_month_date_div1
-                   AND   xsvsr.sales_date          = gv_year_month
-                )
-              )
-            )
+                       )
+                       OR
+                       (EXISTS
+                         (SELECT  1
+                          FROM    xxcso_sum_visit_sale_rep  xsvsr
+                          WHERE   xsvsr.sum_org_type        = cv_sum_org_type1
+                            AND   xsvsr.sum_org_code        = hca.account_number
+                            AND   xsvsr.group_base_code     = xca.sale_base_code
+                            AND   xsvsr.month_date_div      = cv_month_date_div1
+                            AND   xsvsr.sales_date          = gv_year_month
+                         )
+                       )
+                     )
+            )  xcav
+--  FROM    xxcso_tmp_rep_vsp_rsrcs      xtrvr
+--         ,xxcso_resource_custs_v2      rsrc
+--         ,xxcso_cust_accounts_v        xcav
+--         ,xxcso_cust_routes_v2         rtn
+--         ,xxcso_sum_visit_sale_rep     xsvsry
+--         ,xxcso_sum_visit_sale_rep     xsvsrm
+--         ,(SELECT  sho.lookup_code  business_low_type
+--                  ,dai.lookup_code  business_high_type
+--                  ,dai.meaning      business_high_name
+--           FROM    fnd_lookup_values_vl  sho
+--                  ,fnd_lookup_values_vl  chu
+--                  ,fnd_lookup_values_vl  dai
+--           WHERE   sho.lookup_type = cv_lookup_type_syo
+--             AND   chu.lookup_type = cv_lookup_type_chu
+--             AND   dai.lookup_type = cv_lookup_type_dai
+--             AND   chu.lookup_code = sho.attribute1
+--             AND   dai.lookup_code = chu.attribute1
+--             AND   sho.enabled_flag = cv_flg_y
+--             AND   chu.enabled_flag = cv_flg_y
+--             AND   dai.enabled_flag = cv_flg_y
+--             AND   NVL(sho.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+--             AND   NVL(sho.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+--             AND   NVL(chu.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+--             AND   NVL(chu.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+--             AND   NVL(dai.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+--             AND   NVL(dai.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+--          )                            biz
+--  WHERE   rsrc.employee_number         = xtrvr.employee_number
+--    AND   xcav.account_number          = rsrc.account_number
+--    AND   rtn.account_number(+)        = xcav.account_number
+--    AND   xsvsry.sum_org_type(+)       = cv_sum_org_type1
+--    AND   xsvsry.sum_org_code(+)       = xcav.account_number
+--    AND   xsvsry.group_base_code(+)    = xcav.sale_base_code
+--    AND   xsvsry.month_date_div(+)     = cv_month_date_div1
+--    AND   xsvsry.sales_date(+)         = gv_year_prev
+--    AND   xsvsrm.sum_org_type(+)       = cv_sum_org_type1
+--    AND   xsvsrm.sum_org_code(+)       = xcav.account_number
+--    AND   xsvsrm.group_base_code(+)    = xcav.sale_base_code
+--    AND   xsvsrm.month_date_div(+)     = cv_month_date_div1
+--    AND   xsvsrm.sales_date(+)         = gv_year_month_prev
+--    AND   biz.business_low_type(+)     = xcav.business_low_type
+--    AND   (
+--            (EXISTS
+--              (SELECT  1
+--               FROM    xxcso_cust_accounts_v   xcav1
+--                      ,hz_parties              hp
+--               WHERE   hp.party_id                         = xcav1.party_id
+--                 AND   TO_CHAR(hp.creation_date,'YYYYMM') <= gv_year_month
+--                 AND   xcav1.account_number                = xcav.account_number
+--                 AND   (
+--                         (
+--                           (NVL(xcav1.customer_class_code, cv_cust_class_cd3)
+--                              = cv_cust_class_cd3
+--                           )
+--                           AND
+--                           (xcav1.customer_status IN (
+--                                                       cv_cust_status7
+--                                                      ,cv_cust_status4
+--                                                      ,cv_cust_status5
+--                                                      ,cv_cust_status6
+--                                                      ,cv_cust_status8
+--                                                      ,cv_cust_status9
+--                                                     )
+--                           )
+--                         )
+--                         OR
+--                         (
+--                           (xcav1.customer_class_code = cv_cust_class_cd4)
+--                           AND
+--                           (xcav1.customer_status IN (
+--                                                       cv_cust_status6
+--                                                      ,cv_cust_status8
+--                                                     )
+--                           )
+--                         )
+--                         OR
+--                         (
+--                           (xcav1.customer_class_code IN (
+--                                                           cv_cust_class_cd5
+--                                                          ,cv_cust_class_cd6
+--                                                          ,cv_cust_class_cd7
+--                                                         )
+--                           )
+--                           AND
+--                           (xcav1.customer_status = cv_cust_status3)
+--                         )
+--                       )
+--              )
+--            )
+--            OR
+--            (EXISTS
+--              (SELECT  1
+--               FROM    xxcso_sum_visit_sale_rep  xsvsr
+--               WHERE   xsvsr.sum_org_type        = cv_sum_org_type1
+--                 AND   xsvsr.sum_org_code        = xcav.account_number
+--                 AND   xsvsr.group_base_code     = xcav.sale_base_code
+--                 AND   xsvsr.month_date_div      = cv_month_date_div1
+--                 AND   xsvsr.sales_date          = gv_year_month
+--              )
+--            )
+--          )
+/* 20090702_Ogawa_0000312 END*/
     ;
 --
   END sum_visit_sales;
@@ -4602,6 +6365,28 @@ DO_ERROR('A-1');
                   'is営業員:'         || gv_is_salesman || cv_lf ||
                   'isグループリーダ:' || gv_is_groupleader
      );
+--
+/* 20090702_Ogawa_0000312 START*/
+    SELECT   efdfce.attr_group_id
+    INTO     gn_rsrc_attr_group_id
+    FROM     fnd_application          fa
+            ,ego_fnd_dsc_flx_ctx_ext  efdfce
+    WHERE    fa.application_short_name             = 'AR'
+      AND    efdfce.application_id                 = fa.application_id
+      AND    efdfce.descriptive_flexfield_name     = 'HZ_ORG_PROFILES_GROUP'
+      AND    efdfce.descriptive_flex_context_code  = 'RESOURCE'
+    ;
+--
+    SELECT   efdfce.attr_group_id
+    INTO     gn_rtn_attr_group_id
+    FROM     fnd_application          fa
+            ,ego_fnd_dsc_flx_ctx_ext  efdfce
+    WHERE    fa.application_short_name             = 'AR'
+      AND    efdfce.application_id                 = fa.application_id
+      AND    efdfce.descriptive_flexfield_name     = 'HZ_ORG_PROFILES_GROUP'
+      AND    efdfce.descriptive_flex_context_code  = 'ROUTE'
+    ;
+/* 20090702_Ogawa_0000312 END*/
 --
   EXCEPTION
 --
@@ -20599,7 +22384,7 @@ DO_ERROR('A-9');
     ,ov_errmsg           OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ  --# 固定 #
   )
   IS
-    -- ===============================
+        -- ===============================
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name             CONSTANT VARCHAR2(100)   := 'submain';     -- プログラム名
