@@ -6,22 +6,23 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.26
+ * Version                : 1.27
  *
  * Program List
- *  --------------------   ---- ----- --------------------------------------------------
- *   Name                  Type  Ret   Description
- *  --------------------   ---- ----- --------------------------------------------------
- *  get_max_ship_method     F   NUM   最大配送区分算出関数
- *  get_oprtn_day           F   NUM   稼働日算出関数
- *  get_same_request_number F   NUM   同一依頼No検索関数
- *  convert_request_number  F   NUM   依頼Noコンバート関数
- *  get_max_pallet_qty      F   NUM   最大パレット枚数算出関数
- *  check_tightening_status F   NUM   締めステータスチェック関数
- *  update_line_items       F   NUM   重量容積小口個数更新関数
- *  cancel_reserve          F   NUM   引当解除関数
- *  cancel_careers_schedule F   NUM   配車解除関数
- *  update_mixed_no         F   VAR   混載元No更新関数(出荷依頼画面専用)
+ *  ----------------------   ---- ----- --------------------------------------------------
+ *   Name                    Type  Ret   Description
+ *  ----------------------   ---- ----- --------------------------------------------------
+ *  get_max_ship_method       F    NUM   最大配送区分算出関数
+ *  get_oprtn_day             F    NUM   稼働日算出関数
+ *  get_same_request_number   F    NUM   同一依頼No検索関数
+ *  convert_request_number    F    NUM   依頼Noコンバート関数
+ *  get_max_pallet_qty        F    NUM   最大パレット枚数算出関数
+ *  check_tightening_status   F    NUM   締めステータスチェック関数
+ *  update_line_items         F    NUM   重量容積小口個数更新関数
+ *  cancel_reserve            F    NUM   引当解除関数
+ *  cancel_careers_schedule   F    NUM   配車解除関数
+ *  update_mixed_no           F    VAR   混載元No更新関数(出荷依頼画面専用)
+ *  convert_mixed_ship_method F    VAR   混載配送区分変換関数                -- 2008/10/15 H.Itou Add 統合テスト指摘298
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -77,6 +78,7 @@ AS
  *  2008/09/17   1.25  Oracle 北寒寺正夫[混載元No更新関数] T_TE080_BPO_400指摘77により出荷依頼画面で使用するため新規追加
  *                                                         ※FORMSではON_UPDATE以外でUPDATE文を発行できないため外出し
  *  2008/10/06   1.26  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘240対応 積載効率チェック(合計値算出)にパラメータ.基準日追加
+ *  2008/10/15   1.27  Oracle 伊藤ひとみ[混載配送区分変換関数][最大パレット枚数算出関数] 統合テスト指摘298対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1382,6 +1384,9 @@ AS
 --
     -- *** ローカル変数 ***
     ld_standard_date DATE;                                        --基準日
+-- 2008/10/15 H.Itou Add Start 統合テスト指摘298
+    lv_ship_methods  xxcmn_ship_methods.ship_method%TYPE;         --配送区分
+-- 2008/10/15 H.Itou Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1412,6 +1417,13 @@ AS
       ld_standard_date := TRUNC(id_standard_date);
     END IF;
 --
+-- 2008/10/15 H.Itou Add Start 統合テスト指摘298
+    -- 混載配送区分を配送区分に変換
+    lv_ship_methods := convert_mixed_ship_method(
+                         it_ship_method_code => iv_ship_methods   -- IN 混載配送区分
+                       );
+-- 2008/10/15 H.Itou Add End
+--
     ------------ 1. 倉庫(個別コード)－配送先(個別コード) --------------------------
     BEGIN
       SELECT
@@ -1441,7 +1453,10 @@ AS
         AND
         xdlv2.lt_end_date_active         >=  ld_standard_date               -- 適用終了日(配送L/T)
         AND
-        xdlv2.ship_method                 =  iv_ship_methods                -- 出荷方法
+-- 2008/10/15 H.Itou Add Start 統合テスト指摘298
+--        xdlv2.ship_method                 =  iv_ship_methods                -- 出荷方法
+        xdlv2.ship_method                 =  lv_ship_methods                -- 出荷方法
+-- 2008/10/15 H.Itou Add End
         AND
         xdlv2.sm_start_date_active       <=  ld_standard_date               -- 適用開始日(出荷方法)
         AND
@@ -1485,7 +1500,10 @@ AS
             AND
             xdlv2.lt_end_date_active         >=  ld_standard_date               -- 適用終了日(配送L/T)
             AND
-            xdlv2.ship_method                 =  iv_ship_methods                -- 出荷方法
+-- 2008/10/15 H.Itou Add Start 統合テスト指摘298
+--            xdlv2.ship_method                 =  iv_ship_methods                -- 出荷方法
+            xdlv2.ship_method                 =  lv_ship_methods                -- 出荷方法
+-- 2008/10/15 H.Itou Add End
             AND
             xdlv2.sm_start_date_active       <=  ld_standard_date               -- 適用開始日(出荷方法)
             AND
@@ -1532,7 +1550,10 @@ AS
                 AND
                 xdlv2.lt_end_date_active         >=  ld_standard_date               -- 適用終了日(配送L/T)
                 AND
-                xdlv2.ship_method                 =  iv_ship_methods                -- 出荷方法
+-- 2008/10/15 H.Itou Add Start 統合テスト指摘298
+--                xdlv2.ship_method                 =  iv_ship_methods                -- 出荷方法
+                xdlv2.ship_method                 =  lv_ship_methods                -- 出荷方法
+-- 2008/10/15 H.Itou Add End
                 AND
                 xdlv2.sm_start_date_active       <=  ld_standard_date               -- 適用開始日(出荷方法)
                 AND
@@ -1579,7 +1600,10 @@ AS
                     AND
                     xdlv2.lt_end_date_active         >=  ld_standard_date               -- 適用終了日(配送L/T)
                     AND
-                    xdlv2.ship_method                 =  iv_ship_methods                -- 出荷方法
+-- 2008/10/15 H.Itou Add Start 統合テスト指摘298
+--                    xdlv2.ship_method                 =  iv_ship_methods                -- 出荷方法
+                    xdlv2.ship_method                 =  lv_ship_methods                -- 出荷方法
+-- 2008/10/15 H.Itou Add End
                     AND
                     xdlv2.sm_start_date_active       <=  ld_standard_date               -- 適用開始日(出荷方法)
                     AND
@@ -6931,5 +6955,74 @@ AS
   END update_mixed_no;
 -- Ver1.25 M.Hokkanji End
 --
+-- 2008/10/15 H.Itou Add Start 統合テスト指摘298
+  /**********************************************************************************
+   * Function Name    : convert_mixed_ship_method
+   * Description      : 混載配送区分変換関数
+   ***********************************************************************************/
+  FUNCTION convert_mixed_ship_method(
+    it_ship_method_code IN  xxwsh_ship_method_v.ship_method_code%TYPE -- 配送区分コード
+  )
+    RETURN xxwsh_ship_method_v.ship_method_code%TYPE                  -- 配送区分コード（混載なし）
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'convert_mixed_ship_method';  --プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lt_ship_method_code    xxwsh_ship_method2_v.ship_method_code%TYPE; -- 配送区分コード
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+--
+  BEGIN
+--
+    -- 配送区分コードがNULLならNULLを返す。
+    IF (it_ship_method_code IS NULL) THEN
+      RETURN NULL;
+    END IF;
+--
+    -- **************************************************
+    -- *** 配送区分取得
+    -- **************************************************
+    BEGIN
+      SELECT xsmv.ship_method_code   ship_method_code           -- 配送区分コード
+      INTO   lt_ship_method_code
+      FROM   xxwsh_ship_method_v     xsmv                       -- 配送区分情報VIEW
+      WHERE  xsmv.mixed_ship_method_code = it_ship_method_code  -- 混載配送区分コード
+      ;
+--
+    EXCEPTION
+      -- 取得できない場合は、「混載」配送区分ではないので、同じものを返す。
+      WHEN NO_DATA_FOUND THEN
+        lt_ship_method_code := it_ship_method_code;
+--
+    END;
+--
+    RETURN lt_ship_method_code;
+--
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END convert_mixed_ship_method;
+-- 2008/10/15 H.Itou Add End
 END xxwsh_common_pkg;
 /

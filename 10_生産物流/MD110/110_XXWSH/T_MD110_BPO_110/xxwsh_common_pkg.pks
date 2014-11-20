@@ -6,22 +6,23 @@ AS
  * Package Name           : xxwsh_common_pkg(SPEC)
  * Description            : 共通関数(SPEC)
  * MD.070(CMD.050)        : なし
- * Version                : 1.26
+ * Version                : 1.27
  *
  * Program List
- *  --------------------   ---- ----- --------------------------------------------------
- *   Name                  Type  Ret   Description
- *  --------------------   ---- ----- --------------------------------------------------
- *  get_max_ship_method     F   NUM   最大配送区分算出関数
- *  get_oprtn_day           F   NUM   稼働日算出関数
- *  get_same_request_number F   NUM   同一依頼No検索関数
- *  convert_request_number  F   NUM   依頼Noコンバート関数
- *  get_max_pallet_qty      F   NUM   最大パレット枚数算出関数
- *  check_tightening_status F   NUM   締めステータスチェック関数
- *  update_line_items       F   NUM   重量容積小口個数更新関数
- *  cancel_reserve          F   NUM   引当解除関数
- *  cancel_careers_schedule F   NUM   配車解除関数
- *  update_mixed_no         F   VAR   混載元No更新関数(出荷依頼画面専用)
+ *  ---------------------    ---- ----- --------------------------------------------------
+ *   Name                    Type  Ret   Description
+ *  ---------------------    ---- ----- --------------------------------------------------
+ *  get_max_ship_method       F    NUM   最大配送区分算出関数
+ *  get_oprtn_day             F    NUM   稼働日算出関数
+ *  get_same_request_number   F    NUM   同一依頼No検索関数
+ *  convert_request_number    F    NUM   依頼Noコンバート関数
+ *  get_max_pallet_qty        F    NUM   最大パレット枚数算出関数
+ *  check_tightening_status   F    NUM   締めステータスチェック関数
+ *  update_line_items         F    NUM   重量容積小口個数更新関数
+ *  cancel_reserve            F    NUM   引当解除関数
+ *  cancel_careers_schedule   F    NUM   配車解除関数
+ *  update_mixed_no           F    VAR   混載元No更新関数(出荷依頼画面専用)
+ *  convert_mixed_ship_method F    VAR   混載配送区分変換関数                -- 2008/10/15 H.Itou Add 統合テスト指摘298
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -77,6 +78,7 @@ AS
  *  2008/09/17   1.25  Oracle 北寒寺正夫[混載元No更新関数] T_TE080_BPO_400指摘77により出荷依頼画面で使用するため新規追加
  *                                                         ※FORMSではON_UPDATE以外でUPDATE文を発行できないため外出し
  *  2008/10/06   1.26  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘240対応 積載効率チェック(合計値算出)にパラメータ.基準日追加
+ *  2008/10/15   1.27  Oracle 伊藤ひとみ[混載配送区分変換関数][最大パレット枚数算出関数] 統合テスト指摘298対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -204,5 +206,11 @@ AS
     RETURN VARCHAR2;
 -- Ver1.25 M.Hokkanji End
 --
+-- 2008/10/15 H.Itou Add Start 統合テスト指摘298
+  -- 混載配送区分変換関数
+  FUNCTION convert_mixed_ship_method(
+    it_ship_method_code IN  xxwsh_ship_method_v.ship_method_code%TYPE -- 配送区分コード
+  ) RETURN xxwsh_ship_method_v.ship_method_code%TYPE;                 -- 配送区分コード（混載なし）
+-- 2008/10/15 H.Itou Add End
 END xxwsh_common_pkg;
 /
