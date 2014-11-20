@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxpoProvisionRtnMakeHeaderPVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo443001j.server.XxpoProvisionRtnMakeHeaderPVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="RowKey"
+      IsPersistent="false"
+      Precision="1"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="VIEW_ATTR"
+      SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FixBtnReject"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RcvBtnReject"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ManualFixBtnReject"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProvCancelBtnReject"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PriceSetBtnReject"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrderTypeReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="WeightCapacityReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReqDeptReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipToReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipWhseReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FreightCarrierReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShippedDateReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ArrivalDateReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ArrivalTimeFromReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ArrivalTimeToReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FreightChargeReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TakebackReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DesignatedProdDateReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DesignatedItemReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DesignatedBranchNoReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShippingInstructionsReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FixReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstDeptReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstDeptRequired"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FreightCarrierRequired"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShippedDateRequired"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="RowKey" />
+   </AttrArray>
+</ViewObject>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxpoShippedMakeTotalVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeTotalVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xola.order_header_id             order_header_id         -- 受注ヘッダアドオンID
+      ,TO_CHAR(SUM(NVL(xola.quantity, 0)), 'FM999,999,990.000')
+                                        inst_quantity_total     -- 指示数量合計
+      ,TO_CHAR(SUM(NVL(xola.shipped_quantity, 0)), 'FM999,999,990.000')
+                                        shipped_quantity_total  -- 出荷実績数量
+      ,TO_CHAR(SUM(NVL(xola.ship_to_quantity, 0)), 'FM999,999,990.000')
+                                        ship_to_quantity_total  -- 入庫実績数量
+FROM   xxwsh_order_lines_all   xola -- 受注明細アドオン
+WHERE  xola.delete_flag     = 'N'   -- 未削除
+AND    xola.order_header_id = :1
+GROUP BY xola.order_header_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="OrderHeaderId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ORDER_HEADER_ID"
+      Expression="ORDER_HEADER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstQuantityTotal"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INST_QUANTITY_TOTAL"
+      Expression="INST_QUANTITY_TOTAL"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShippedQuantityTotal"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIPPED_QUANTITY_TOTAL"
+      Expression="SHIPPED_QUANTITY_TOTAL"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipToQuantityTotal"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIP_TO_QUANTITY_TOTAL"
+      Expression="SHIP_TO_QUANTITY_TOTAL"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="OrderHeaderId" />
+   </AttrArray>
+</ViewObject>

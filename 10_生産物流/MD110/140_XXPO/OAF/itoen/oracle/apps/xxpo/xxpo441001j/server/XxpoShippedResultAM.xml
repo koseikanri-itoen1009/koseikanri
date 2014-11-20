@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="XxpoShippedResultAM"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedResultAMImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+      <Attr Name="_superClassName" Value="itoen.oracle.apps.xxcmn.util.server.XxcmnOAApplicationModuleImpl" />
+   </DesignTime>
+   <ViewUsage
+      Name="OrderTypeVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.poplist.server.OrderTypeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="NotifStatusVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.poplist.server.NotifStatusVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="TransStatusVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.poplist.server.TransStatusVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxpoProvSearchVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.util.server.XxpoProvSearchVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxpoShippedResultVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedResultVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxpoShippedMakeHeaderVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeHeaderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxpoShippedMakeHeaderPVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeHeaderPVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxpoShippedMakeLinePVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeLinePVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxpoShippedMakeLineVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeLineVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxpoShippedMakeTotalVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeTotalVO" >
+   </ViewUsage>
+</AppModule>

@@ -1,0 +1,189 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" controllerClass="itoen.oracle.apps.xxpo.xxpo440001j.webui.XxpoProvisionRequestCO" amDefName="itoen.oracle.apps.xxpo.xxpo440001j.server.XxpoProvisionRequestAM" windowTitle="(有償支給)支給依頼要約" title="(有償支給)支給依頼要約" warnAboutChanges="true">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:flowLayout id="MainRN">
+               <ui:contents>
+                  <oa:formValue id="ExeType" viewName="XxpoProvSearchVO1" viewAttr="ExeType"/>
+                  <oa:tableLayout id="SearchTab" extends="/itoen/oracle/apps/xxpo/util/webui/ProvSearchRN"/>
+                  <oa:separator id="Separator"/>
+                  <oa:submitButton id="New" text="新規" prompt="新規"/>
+                  <oa:spacer id="Sp" height="30"/>
+                  <oa:advancedTable id="ResultRN" tableBanding="rowBanding" width="100%" viewName="XxpoProvReqtResultVO1" blockSize="20">
+                     <ui:tableSelection>
+                        <oa:multipleSelection id="MultiSelect" viewAttr="MultiSelect">
+                           <ui:contents>
+                              <oa:rowLayout id="MultiSelectRow">
+                                 <ui:contents>
+                                    <oa:pageButtonBar id="MultiSelectBtnBarRN">
+                                       <ui:contents>
+                                          <oa:submitButton id="Fix" text="確定" prompt="確定"/>
+                                          <oa:submitButton id="Rcv" text="受領" prompt="受領" disabled="${oa.XxpoProvisionRequestPVO1.RcvBtnReject}"/>
+                                          <oa:submitButton id="ManualFix" text="手動指示確定" prompt="手動指示確定" disabled="${oa.XxpoProvisionRequestPVO1.ManualFixBtnReject}"/>
+                                          <oa:submitButton id="PriceSet" text="価格設定" prompt="価格設定" disabled="${oa.XxpoProvisionRequestPVO1.PriceSetBtnReject}"/>
+                                          <oa:submitButton id="AmountFix" text="金額確定" prompt="金額確定"/>
+                                       </ui:contents>
+                                    </oa:pageButtonBar>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:multipleSelection>
+                     </ui:tableSelection>
+                     <ui:contents>
+                        <oa:column id="Col01">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="Col01Hdr" prompt="依頼No/区分"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:stackLayout id="Span01">
+                                 <ui:contents>
+                                    <oa:switcher id="RequestNoSw" viewAttr="ReqNoSwitcher">
+                                       <ui:case name="RequestNo">
+                                          <oa:messageStyledText id="RequestNo" viewAttr="RequestNo">
+                                             <ui:primaryClientAction>
+                                                <ui:fireAction event="ReqestNoLink">
+                                                   <ui:parameters>
+                                                      <ui:parameter key="REQ_NO" value="${oa.XxpoProvReqtResultVO1.RequestNo}"/>
+                                                   </ui:parameters>
+                                                </ui:fireAction>
+                                             </ui:primaryClientAction>
+                                          </oa:messageStyledText>
+                                       </ui:case>
+                                       <ui:case name="RequestNoDisp">
+                                          <oa:messageStyledText id="RequestNoDisp" viewAttr="RequestNo"/>
+                                       </ui:case>
+                                    </oa:switcher>
+                                    <oa:messageChoice id="OrderType" shortDesc="発生区分" styleClass="LegendText" pickListValAttr="TransTypeId" pickListDispAttr="TransTypeName" pickListViewName="OrderTypeVO1" viewAttr="OrderTypeId" readOnly="true"/>
+                                 </ui:contents>
+                              </oa:stackLayout>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="Col02">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="Col02Hdr" prompt="ｽﾃｰﾀｽ/通知"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:stackLayout id="Span02">
+                                 <ui:contents>
+                                    <oa:messageChoice id="TransStatus" shortDesc="ステータス" styleClass="LegendText" pickListValAttr="TransStatusCode" pickListDispAttr="TransStatusName" pickListViewName="TransStatusVO1" readOnly="true" viewAttr="TransStatus"/>
+                                    <oa:messageChoice id="NotifStatus" shortDesc="通知ステータス" styleClass="LegendText" pickListValAttr="NotifStatusCode" pickListDispAttr="NotifStatusName" pickListViewName="NotifStatusVO1" readOnly="true" viewAttr="NotifStatus"/>
+                                 </ui:contents>
+                              </oa:stackLayout>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="Col03">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="Col03Hdr" prompt="出庫日/入庫日"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:stackLayout id="Span03">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ShippedDate" viewAttr="ShippedDate" shortDesc="出庫日"/>
+                                    <oa:messageStyledText id="ArrivalDate" viewAttr="ArrivalDate" shortDesc="入庫日"/>
+                                 </ui:contents>
+                              </oa:stackLayout>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="Col041">
+                           <ui:contents>
+                              <oa:stackLayout id="Span041">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="VendorCode" viewAttr="VendorCode" shortDesc="取引先"/>
+                                    <oa:messageStyledText id="ShipToCode" viewAttr="ShipToCode" shortDesc="配送先"/>
+                                 </ui:contents>
+                              </oa:stackLayout>
+                           </ui:contents>
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="Col041Hdr" prompt="　"/>
+                           </ui:columnHeader>
+                        </oa:column>
+                        <oa:column id="Col042">
+                           <ui:contents>
+                              <oa:stackLayout id="Span042">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="VendorName" viewAttr="VendorName"/>
+                                    <oa:messageStyledText id="ShipToName" viewAttr="ShipToName"/>
+                                 </ui:contents>
+                              </oa:stackLayout>
+                           </ui:contents>
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="Col042Hdr" prompt="取引先/配送先"/>
+                           </ui:columnHeader>
+                        </oa:column>
+                        <oa:column id="Col05">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="Col05Hdr" prompt="依頼/指示"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:stackLayout id="Span05">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ReqDeptCode" viewAttr="ReqDeptCode" styleClass="LegendText"/>
+                                    <oa:rowLayout id="region1">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="InstDeptCode" viewAttr="InstDeptCode" styleClass="LegendText"/>
+                                          <oa:spacer id="Sp0611" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:stackLayout>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="Col061">
+                           <ui:contents>
+                              <oa:stackLayout id="Span061">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ShipWhseCode" viewAttr="ShipWhseCode"/>
+                                    <oa:rowLayout id="region11">
+                                       <ui:contents>
+                                          <oa:spacer id="Sp061" height="13"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:stackLayout>
+                           </ui:contents>
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="Col061Hdr" prompt="　"/>
+                           </ui:columnHeader>
+                        </oa:column>
+                        <oa:column id="Col062">
+                           <ui:contents>
+                              <oa:stackLayout id="Span062">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ShipWhseName" viewAttr="ShipWhseName"/>
+                                    <oa:spacer id="Sp062" height="13"/>
+                                 </ui:contents>
+                              </oa:stackLayout>
+                           </ui:contents>
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="Col062Hdr" prompt="出庫倉庫"/>
+                           </ui:columnHeader>
+                        </oa:column>
+                        <oa:column id="Col07" columnDataFormat="iconButtonFormat">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="Col07Hdr" prompt="受領"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageCheckBox id="RcvClass" viewAttr="RcvClass" checkedValue="1" unCheckedValue="0" readOnly="true"/>
+                           </ui:contents>
+                        </oa:column>
+                        <oa:column id="Col08" columnDataFormat="iconButtonFormat">
+                           <ui:columnHeader>
+                              <oa:sortableHeader id="Col08Hdr" prompt="確定"/>
+                           </ui:columnHeader>
+                           <ui:contents>
+                              <oa:messageCheckBox id="FixClass" viewAttr="FixClass" checkedValue="1" unCheckedValue="2" readOnly="true"/>
+                           </ui:contents>
+                        </oa:column>
+                     </ui:contents>
+                  </oa:advancedTable>
+               </ui:contents>
+            </oa:flowLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

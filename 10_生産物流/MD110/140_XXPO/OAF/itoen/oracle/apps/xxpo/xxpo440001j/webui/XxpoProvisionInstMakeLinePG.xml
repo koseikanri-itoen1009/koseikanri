@@ -1,0 +1,559 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" controllerClass="itoen.oracle.apps.xxpo.xxpo440001j.webui.XxpoProvisionInstMakeLineCO" amDefName="itoen.oracle.apps.xxpo.xxpo440001j.server.XxpoProvisionRequestAM" windowTitle="(有償支給)支給指示作成" title="(有償支給)支給指示作成：明細" warnAboutChanges="true">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:formValue id="ExeType" viewName="XxpoProvSearchVO1" viewAttr="ExeType"/>
+            <oa:formValue id="NewFlag" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="NewFlag"/>
+            <oa:formValue id="ReqNo" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="RequestNo"/>
+            <oa:formValue id="WeightCapacityClass" viewAttr="WeightCapacityClass" viewName="XxpoProvisionInstMakeHeaderVO1"/>
+            <oa:tableLayout id="ReqFieldDescRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG"/>
+            <oa:advancedTable id="ProvMakeLineRN" width="100%" tableBanding="rowBanding" viewName="XxpoProvisionInstMakeLineVO1" blockSize="200">
+               <ui:contents>
+                  <oa:column id="Col01">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col01Hdr" prompt="品目" required="uiOnly"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:tableLayout id="Tbl01">
+                           <ui:contents>
+                              <oa:rowLayout id="Row011">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell0111" height="20">
+                                       <ui:contents>
+                                          <oa:switcher id="ItemSwitcher" viewAttr="ItemSwitcher">
+                                             <ui:case name="ItemNo">
+                                                <oa:messageLovInput id="ItemNo" viewAttr="ItemNo" maximumLength="7" columns="10" styleClass="LegendText" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ItemCode4LovRN" shortDesc="品目">
+                                                   <lovMappings>
+                                                      <lovMap id="FromItemNo" lovItem="ItemNo" criteriaFrom="ItemNo"/>
+                                                      <lovMap id="FromWeightCapacityClass" criteriaFrom="WeightCapacityClass" lovItem="WeightCapacityClass"/>
+                                                      <lovMap id="ToItemNo" lovItem="ItemNo" resultTo="ItemNo"/>
+                                                      <lovMap id="ToItemName" lovItem="ItemName" resultTo="ItemName"/>
+                                                      <lovMap id="ToItemNameFv" lovItem="ItemName" resultTo="ItemNameFv"/>
+                                                      <lovMap id="ToInvItemId" lovItem="InvItemId" resultTo="InvItemId"/>
+                                                      <lovMap id="ToItemId" lovItem="ItemId" resultTo="ItemId"/>
+                                                      <lovMap id="ToItemUm" lovItem="ItemUm" resultTo="ItemUm"/>
+                                                      <lovMap id="ToNumOfCases" lovItem="NumOfCases" resultTo="NumOfCases"/>
+                                                      <lovMap id="ToNumOfDeliver" lovItem="NumOfDeliver" resultTo="NumOfDeliver"/>
+                                                      <lovMap id="ToWhseItemId" lovItem="WhseItemId" resultTo="WhseItemId"/>
+                                                      <lovMap id="ToWhseItemNo" lovItem="WhseItemNo" resultTo="WhseItemNo"/>
+                                                      <lovMap id="ToWhseInvItemId" lovItem="WhseInvItemId" resultTo="WhseInvItemId"/>
+                                                      <lovMap id="ToItemUmFv" lovItem="ItemUm" resultTo="ItemUmFv"/>
+                                                      <lovMap id="ToLotCtl" lovItem="LotCtl" resultTo="LotCtl"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                             </ui:case>
+                                             <ui:case name="ItemDisable">
+                                                <oa:messageStyledText id="ItemDisable" viewAttr="ItemNo" styleClass="LegendText" shortDesc="品目"/>
+                                             </ui:case>
+                                          </oa:switcher>
+                                          <oa:formValue id="LotCtl" viewAttr="LotCtl"/>
+                                          <oa:formValue id="InvItemId" viewAttr="InvItemId"/>
+                                          <oa:formValue id="ItemId" viewAttr="ItemId"/>
+                                          <oa:formValue id="ConvUnit" viewAttr="ConvUnit"/>
+                                          <oa:formValue id="NumOfDeliver" viewAttr="NumOfDeliver"/>
+                                          <oa:formValue id="NumOfCases" viewAttr="NumOfCases"/>
+                                          <oa:formValue id="WhseItemId" viewAttr="WhseItemId" dataType="NUMBER"/>
+                                          <oa:formValue id="WhseItemNo" viewAttr="WhseItemNo"/>
+                                          <oa:formValue id="WhseInvItemId" viewAttr="WhseInvItemId" dataType="NUMBER"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="Cell0112">
+                                       <ui:contents>
+                                          <oa:spacer id="Sp01" width="15"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="Cell0113">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="ItemName" viewAttr="ItemName" styleClass="LegendText"/>
+                                          <oa:formValue id="ItemNameFv" viewAttr="ItemName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Row012">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell0121" height="20" columnSpan="2"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Col02">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col02Hdr" prompt="付帯" required="uiOnly"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:tableLayout id="Tbl02">
+                           <ui:contents>
+                              <oa:rowLayout id="Row021">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell021" height="20">
+                                       <ui:contents>
+                                          <oa:switcher id="FutaiSwitcher" viewAttr="FutaiSwitcher">
+                                             <ui:case name="FutaiCode">
+                                                <oa:messageTextInput id="FutaiCode" viewAttr="FutaiCode" maximumLength="1" columns="2" styleClass="LegendText" shortDesc="付帯"/>
+                                             </ui:case>
+                                             <ui:case name="FutaiDisable">
+                                                <oa:messageStyledText id="FutaiDisable" viewAttr="FutaiCode" styleClass="LegendText" shortDesc="付帯"/>
+                                             </ui:case>
+                                          </oa:switcher>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Row022">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell022" height="20"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Col03" columnDataFormat="numberFormat">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col03Hdr" prompt="依頼/指示数" required="uiOnly"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:tableLayout id="Tbl03">
+                           <ui:contents>
+                              <oa:rowLayout id="Row031">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell031" height="20" hAlign="right">
+                                       <ui:contents>
+                                          <oa:switcher id="ReqSwitcher" viewAttr="ReqSwitcher">
+                                             <ui:case name="ReqQuantity">
+                                                <oa:messageTextInput id="ReqQuantity" viewAttr="ReqQuantity" styleClass="OraFieldNumber" shortDesc="依頼数"/>
+                                             </ui:case>
+                                             <ui:case name="ReqDisable">
+                                                <oa:messageStyledText id="ReqDisable" viewAttr="ReqQuantity" styleClass="OraFieldNumber" shortDesc="依頼数"/>
+                                             </ui:case>
+                                          </oa:switcher>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Row032">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell032" height="20" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="InstQuantity" viewAttr="InstQuantity" styleClass="OraFieldNumber" totalValue="true" shortDesc="指示数"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Col04">
+                     <ui:contents>
+                        <oa:tableLayout id="Tbl04">
+                           <ui:contents>
+                              <oa:rowLayout id="Row041">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell041" height="20">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="ItemUm" viewAttr="ItemUm" styleClass="LegendText" shortDesc="単位"/>
+                                          <oa:formValue id="ItemUmFv" viewAttr="ItemUm"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Row042">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell042" height="20"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col04Hdr" prompt="単位"/>
+                     </ui:columnHeader>
+                  </oa:column>
+                  <oa:column id="Col05" columnDataFormat="numberFormat" rendered="${oa.XxpoProvisionInstMakeLinePVO1.UnitPriceColRender}">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col05Hdr" prompt="単価/金額"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:tableLayout id="Tbl05">
+                           <ui:contents>
+                              <oa:rowLayout id="Row051">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell051" height="20" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="UnitPrice" viewAttr="UnitPrice" styleClass="OraFieldNumber"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Row052">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell052" height="20" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="Amount" viewAttr="Amount" styleClass="OraFieldNumber"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Col06" columnDataFormat="numberFormat">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col06Hdr" prompt="出庫/入庫実績"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:tableLayout id="Tbl06">
+                           <ui:contents>
+                              <oa:rowLayout id="Row061">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell0611" height="20" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="ShippedQuantity" viewAttr="ShippedQuantity" styleClass="OraFieldNumber"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="Cell0612" width="25">
+                                       <ui:contents>
+                                          <oa:switcher id="ShippedSwitcher" viewAttr="ShippedSwitcher">
+                                             <ui:case name="ShippedIconEnable">
+                                                <oa:image id="ShippedIconEnable" source="rework_enabled.gif" imageHeight="20" imageWidth="20" shortDesc="出庫実績">
+                                                   <ui:primaryClientAction>
+                                                      <ui:fireAction event="ShippedIcon">
+                                                         <ui:parameters>
+                                                            <ui:parameter key="ORDER_LINE_ID" value="${oa.XxpoProvisionInstMakeLineVO1.OrderLineId}"/>
+                                                            <ui:parameter key="HDR_UPD_DATE" value="${oa.XxpoProvisionInstMakeHeaderVO1.XohaLastUpdateDate}"/>
+                                                            <ui:parameter key="LINE_UPD_DATE" value="${oa.XxpoProvisionInstMakeHeaderVO1.XolaLastUpdateDate}"/>
+                                                         </ui:parameters>
+                                                      </ui:fireAction>
+                                                   </ui:primaryClientAction>
+                                                </oa:image>
+                                             </ui:case>
+                                             <ui:case name="ShippedIconDisable">
+                                                <oa:image id="ShippedIconDisable" source="remove_disabled.gif" imageHeight="20" imageWidth="20" shortDesc="出庫実績"/>
+                                             </ui:case>
+                                          </oa:switcher>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Row062">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell0621" height="20" hAlign="right">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="ShipToQuantity" viewAttr="ShipToQuantity" styleClass="OraFieldNumber"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="Cell0622" width="25">
+                                       <ui:contents>
+                                          <oa:switcher id="ShipToSwitcher" viewAttr="ShipToSwitcher">
+                                             <ui:case name="ShipToIconEnable">
+                                                <oa:image id="ShipToIconEnable" source="rework_enabled.gif" imageHeight="20" imageWidth="20" shortDesc="入庫実績">
+                                                   <ui:primaryClientAction>
+                                                      <ui:fireAction event="ShipToIcon">
+                                                         <ui:parameters>
+                                                            <ui:parameter key="ORDER_LINE_ID" value="${oa.XxpoProvisionInstMakeLineVO1.OrderLineId}"/>
+                                                            <ui:parameter key="HDR_UPD_DATE" value="${oa.XxpoProvisionInstMakeHeaderVO1.XolaLastUpdateDate}"/>
+                                                            <ui:parameter key="LINE_UPD_DATE" value="${oa.XxpoProvisionInstMakeHeaderVO1.XolaLastUpdateDate}"/>
+                                                         </ui:parameters>
+                                                      </ui:fireAction>
+                                                   </ui:primaryClientAction>
+                                                </oa:image>
+                                             </ui:case>
+                                             <ui:case name="ShipToIconDisable">
+                                                <oa:image id="ShipToIconDisable" source="remove_disabled.gif" imageHeight="20" imageWidth="20" shortDesc="入庫実績"/>
+                                             </ui:case>
+                                          </oa:switcher>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Col07" columnDataFormat="iconButtonFormat">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col07Hdr" prompt="引当"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:tableLayout id="Tbl07">
+                           <ui:contents>
+                              <oa:rowLayout id="Row07">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell07" height="40" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:switcher id="ReserveSwitcher" viewAttr="ReserveSwitcher">
+                                             <ui:case name="ReserveIconEnable">
+                                                <oa:image id="ReserveIconEnable" source="rework_enabled.gif" imageHeight="24" imageWidth="24" shortDesc="引当">
+                                                   <ui:primaryClientAction>
+                                                      <ui:fireAction event="ReserveIcon">
+                                                         <ui:parameters>
+                                                            <ui:parameter key="ORDER_LINE_ID" value="${oa.XxpoProvisionInstMakeLineVO1.OrderLineId}"/>
+                                                            <ui:parameter key="HDR_UPD_DATE" value="${oa.XxpoProvisionInstMakeHeaderVO1.XohaLastUpdateDate}"/>
+                                                            <ui:parameter key="LINE_UPD_DATE" value="${oa.XxpoProvisionInstMakeHeaderVO1.XolaLastUpdateDate}"/>
+                                                         </ui:parameters>
+                                                      </ui:fireAction>
+                                                   </ui:primaryClientAction>
+                                                </oa:image>
+                                             </ui:case>
+                                             <ui:case name="ReserveIconDisable">
+                                                <oa:image id="ReserveIconDisable" source="remove_disabled.gif" imageHeight="24" imageWidth="24" shortDesc="引当"/>
+                                             </ui:case>
+                                          </oa:switcher>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Col08">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col08Hdr" prompt="備考"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:tableLayout id="Tbl08">
+                           <ui:contents>
+                              <oa:rowLayout id="Row081">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell081" height="20">
+                                       <ui:contents>
+                                          <oa:switcher id="DescSwitcher" viewAttr="DescSwitcher">
+                                             <ui:case name="LineDescription">
+                                                <oa:messageTextInput id="LineDescription" viewAttr="LineDescription" maximumLength="20" columns="25" styleClass="LegendText" shortDesc="備考"/>
+                                             </ui:case>
+                                             <ui:case name="LineDescriptionDisable">
+                                                <oa:messageStyledText id="LineDescriptionDisable" viewAttr="LineDescription" styleClass="LegendText" shortDesc="備考"/>
+                                             </ui:case>
+                                          </oa:switcher>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="Row082">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell082" height="20"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Col09" columnDataFormat="iconButtonFormat">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="DeleteInvestHdr" prompt="削除"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:tableLayout id="Tbl09">
+                           <ui:contents>
+                              <oa:rowLayout id="Row09">
+                                 <ui:contents>
+                                    <oa:cellFormat id="Cell09" height="40" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:switcher id="DeleteSwitcher" viewAttr="DeleteSwitcher">
+                                             <ui:case name="DeleteEnable">
+                                                <oa:image id="DeleteEnable" source="deleteicon_enabled.gif" shortDesc="削除" imageHeight="24" imageWidth="24" serverUnvalidated="true">
+                                                   <ui:primaryClientAction>
+                                                      <ui:fireAction id="fireAction11" event="deleteRow" unvalidated="true">
+                                                         <ui:parameters>
+                                                            <ui:parameter key="ORDER_LINE_NUMBER" value="${oa.XxpoProvisionInstMakeLineVO1.OrderLineNumber}"/>
+                                                         </ui:parameters>
+                                                      </ui:fireAction>
+                                                   </ui:primaryClientAction>
+                                                </oa:image>
+                                             </ui:case>
+                                             <ui:case name="DeleteDisable">
+                                                <oa:image id="DeleteDisable" source="deleteicon_disabled.gif" shortDesc="削除" imageHeight="24" imageWidth="24"/>
+                                             </ui:case>
+                                          </oa:switcher>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:column>
+               </ui:contents>
+               <ui:footer>
+                  <oa:tableFooter id="footer">
+                     <ui:contents>
+                        <oa:addTableRow id="AddRow" text="行挿入" autoInsertion="false" rendered="${oa.XxpoProvisionInstMakeLinePVO1.AddRowBtnRender}"/>
+                     </ui:contents>
+                  </oa:tableFooter>
+               </ui:footer>
+            </oa:advancedTable>
+            <oa:spacer id="SpLine" height="20"/>
+            <oa:tableLayout id="TotalRN">
+               <ui:contents>
+                  <oa:rowLayout id="Row01">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell101" hAlign="right" width="230">
+                           <ui:contents>
+                              <oa:messageStyledText id="TotalPrompt" prompt="合計" styleClass="legendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell102" hAlign="right" width="70">
+                           <ui:contents>
+                              <oa:messageStyledText id="InstQuantityPrompt" prompt="数量" styleClass="legendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell103" width="140" styleClass="OraTableCellText" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="InstQuantityTotal" viewName="XxpoProvisionInstMakeTotalVO1" viewAttr="InstQuantityTotal" styleClass="OraFieldNumber"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell104" hAlign="right" width="70">
+                           <ui:contents>
+                              <oa:messageStyledText id="AmountPrompt" prompt="金額" styleClass="legendText" rendered="${oa.XxpoProvisionInstMakeLinePVO1.UnitPriceColRender}"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell105" width="100" styleClass="OraTableCellText" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="AmountTotal" viewName="XxpoProvisionInstMakeTotalVO1" viewAttr="AmountTotal" styleClass="OraFieldNumber" rendered="${oa.XxpoProvisionInstMakeLinePVO1.UnitPriceColRender}"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell106" width="70" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShippedPrompt" prompt="出庫" styleClass="legendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell107" width="140" styleClass="OraTableCellText" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShippedQuantityTotal" viewName="XxpoProvisionInstMakeTotalVO1" viewAttr="ShippedQuantityTotal" styleClass="OraFieldNumber"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row001">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell0101">
+                           <ui:contents>
+                              <oa:spacer id="Sp001" height="5"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row02">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell201" hAlign="right" columnSpan="6">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipToPrompt" prompt="入庫" styleClass="legendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell202" styleClass="OraTableCellText" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipToQuantityTotal" viewName="XxpoProvisionInstMakeTotalVO1" viewAttr="ShipToQuantityTotal" styleClass="OraFieldNumber"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row002">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell0201">
+                           <ui:contents>
+                              <oa:spacer id="Sp002" height="5"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row03">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell301" columnSpan="2" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="BasedWeightPrompt" prompt="基本重量" styleClass="legendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell302" hAlign="right" styleClass="OraTableCellText">
+                           <ui:contents>
+                              <oa:messageStyledText id="BasedWeight" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="BasedWeight" styleClass="OraFieldNumber"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell303" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="SumWeightPrompt" prompt="重量" styleClass="legendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell304" hAlign="right" styleClass="OraTableCellText">
+                           <ui:contents>
+                              <oa:messageStyledText id="SumWeight" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="SumWeight" styleClass="OraFieldNumber"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell305" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="EfficiencyWeightPrompt" prompt="積載率" styleClass="legendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell306" hAlign="right" styleClass="OraTableCellText">
+                           <ui:contents>
+                              <oa:messageStyledText id="EfficiencyWeight" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="EfficiencyWeightDisp" styleClass="OraFieldNumber"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row003">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell0301">
+                           <ui:contents>
+                              <oa:spacer id="Sp003" height="5"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row04">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell401" columnSpan="2" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="BasedCapacityPrompt" prompt="基本容積" styleClass="legendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell402" hAlign="right" styleClass="OraTableCellText">
+                           <ui:contents>
+                              <oa:messageStyledText id="BasedCapacity" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="BasedCapacity" styleClass="OraFieldNumber"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell403" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="SumCapacityPrompt" prompt="容積" styleClass="legendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell404" hAlign="right" styleClass="OraTableCellText">
+                           <ui:contents>
+                              <oa:messageStyledText id="SumCapacity" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="SumCapacity" styleClass="OraFieldNumber"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell405" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="EfficiencyCapacityPrompt" prompt="積載率" styleClass="legendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell406" hAlign="right" styleClass="OraTableCellText">
+                           <ui:contents>
+                              <oa:messageStyledText id="EfficiencyCapacity" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="EfficiencyCapacityDisp" styleClass="OraFieldNumber"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+               </ui:contents>
+            </oa:tableLayout>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="Apply" text="適用" prompt="適用" disabled="${oa.XxpoProvisionInstMakeLinePVO1.ApplyBtnReject}"/>
+                  <oa:submitButton id="Cancel" text="取消" prompt="取消" unvalidated="true" serverUnvalidated="true"/>
+                  <oa:submitButton id="Back" text="戻る" prompt="戻る" unvalidated="true" serverUnvalidated="true"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

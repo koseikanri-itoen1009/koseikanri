@@ -1,0 +1,424 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" controllerClass="itoen.oracle.apps.xxpo.xxpo441001j.webui.XxpoShippedMakeHeaderCO" amDefName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedResultAM" windowTitle="(有償支給)出庫実績入力" title="(有償支給)出庫実績入力:ヘッダ" warnAboutChanges="true">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:formValue id="ExeType" viewName="XxpoProvSearchVO1" viewAttr="ExeType"/>
+            <oa:formValue id="NewFlag" viewName="XxpoShippedMakeHeaderVO1" viewAttr="NewFlag"/>
+            <oa:formValue id="ReqNo" viewName="XxpoShippedMakeHeaderVO1" viewAttr="RequestNo"/>
+            <oa:spacer id="SpHdr" height="20"/>
+            <oa:rowLayout id="ReqFieldRN">
+               <ui:contents>
+                  <oa:spacer id="SpReqFieldSp" width="50" height="20"/>
+                  <oa:tableLayout id="ReqFieldDescRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG"/>
+               </ui:contents>
+            </oa:rowLayout>
+            <oa:tableLayout id="ProvMakeHeaderRN" width="90%">
+               <ui:contents>
+                  <oa:rowLayout id="Row01">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell101" width="130" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="OrderTypePrompt" prompt="発生区分"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell102">
+                           <ui:contents>
+                              <oa:messageStyledText id="OrderType" shortDesc="発生区分" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="OrderTypeName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell103" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="WeightCapacityPrompt" prompt="重量容積区分"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell104">
+                           <ui:contents>
+                              <oa:messageStyledText id="WeightCapacity" shortDesc="発生区分" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="WeightCapacityClassName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell105" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="TransStatusPrompt" prompt="ステータス"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell106" columnSpan="3">
+                           <ui:contents>
+                              <oa:messageStyledText id="TransStatus" shortDesc="ステータス" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="TransStatusName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row02">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell201" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ReqNoPrompt" prompt="依頼No"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell202">
+                           <ui:contents>
+                              <oa:messageStyledText id="RequestNo" shortDesc="依頼No" styleClass="LegendText" maximumLength="12" columns="15" viewName="XxpoShippedMakeHeaderVO1" viewAttr="RequestNo"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell203" columnSpan="2"/>
+                        <oa:cellFormat id="Cell204" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="NotifStatusPrompt" prompt="通知ステータス"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell205">
+                           <ui:contents>
+                              <oa:messageStyledText id="NotifStatus" shortDesc="通知ステータス" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="NotifStatusName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell206" hAlign="right">
+                           <ui:contents>
+                              <oa:messageCheckBox id="CorrectFlag" viewName="XxpoShippedMakeHeaderVO1" viewAttr="NewModifyFlg" checkedValue="M" unCheckedValue="N" shortDesc="修正フラグ" readOnly="true"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell207" hAlign="left">
+                           <ui:contents>
+                              <oa:messageStyledText id="CorrectFlagPrompt" prompt="修正フラグ"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row03">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell301" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipToNoPrompt" prompt="配送No"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell302">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipToNo" shortDesc="配送No" styleClass="LegendText" maximumLength="12" columns="15" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ShipToNo"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell303" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="PrevShipToNoPrompt" prompt="前回配送No"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell304">
+                           <ui:contents>
+                              <oa:messageStyledText id="PrevShipToNo" shortDesc="前回配送No" styleClass="LegendText" maximumLength="12" columns="15" viewName="XxpoShippedMakeHeaderVO1" viewAttr="PrevShipToNo"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell305" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="PoNoPrompt" prompt="発注番号"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell306">
+                           <ui:contents>
+                              <oa:messageStyledText id="PoNo" shortDesc="発注番号" styleClass="LegendText" maximumLength="12" columns="15" viewName="XxpoShippedMakeHeaderVO1" viewAttr="PoNo"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell307" columnSpan="2"/>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row04">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell401" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ReqDeptPrompt" prompt="依頼部署" required="no"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell402">
+                           <ui:contents>
+                              <oa:messageStyledText id="ReqDeptCode" styleClass="LegendText" maximumLength="4" columns="7" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ReqDeptCode" shortDesc="依頼部署"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell403" columnSpan="6">
+                           <ui:contents>
+                              <oa:messageStyledText id="ReqDeptName" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ReqDeptName" shortDesc="依頼部署名" styleClass="LegendText" maximumLength="20"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row05">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell501" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="InstDeptNamePrompt" prompt="指示部署" required="no"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell502">
+                           <ui:contents>
+                              <oa:messageStyledText id="InstDeptCode" styleClass="LegendText" maximumLength="4" columns="7" viewName="XxpoShippedMakeHeaderVO1" viewAttr="InstDeptCode" shortDesc="指示部署"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell503" columnSpan="6">
+                           <ui:contents>
+                              <oa:messageStyledText id="InstDeptName" viewName="XxpoShippedMakeHeaderVO1" viewAttr="InstDeptName" shortDesc="指示部署名" styleClass="LegendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row06">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell601" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="VendorPrompt" prompt="取引先" required="no"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell602">
+                           <ui:contents>
+                              <oa:messageStyledText id="VendorCode" styleClass="LegendText" maximumLength="4" columns="7" viewName="XxpoShippedMakeHeaderVO1" viewAttr="VendorCode" shortDesc="取引先"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell603" columnSpan="6" hAlign="left">
+                           <ui:contents>
+                              <oa:messageStyledText id="VendorName" viewName="XxpoShippedMakeHeaderVO1" viewAttr="VendorName" shortDesc="指示部署名" styleClass="LegendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row07">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell701" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipToPrompt" prompt="配送先" required="no"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell702">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipToCode" styleClass="LegendText" maximumLength="4" columns="7" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ShipToCode" shortDesc="配送先"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell703" columnSpan="6" hAlign="left">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipToName" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ShipToName" shortDesc="配送先名"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row08">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell801" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipWhsePrompt" prompt="出庫倉庫" required="no"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell802">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipWhseCode" styleClass="LegendText" maximumLength="4" columns="7" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ShipWhseCode" shortDesc="出庫倉庫"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell803" columnSpan="6" hAlign="left">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipWhseName" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ShipWhseName" shortDesc="配送先名"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row09">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell901" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="FreightCarrierPrompt" prompt="運送業者" required="no"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell902">
+                           <ui:contents>
+                              <oa:messageStyledText id="FreightCarrierCode" styleClass="LegendText" maximumLength="4" columns="7" viewName="XxpoShippedMakeHeaderVO1" viewAttr="FreightCarrierCode" shortDesc="運送業者"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell903" columnSpan="6" hAlign="left">
+                           <ui:contents>
+                              <oa:messageStyledText id="FreightCarrierName" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="FreightCarrierName" shortDesc="運送業者名"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row10">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1001" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShippedDatePrompt" prompt="出庫日" required="uiOnly"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1002" columnSpan="7">
+                           <ui:contents>
+                              <oa:messageTextInput id="ShippedDate" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ShippedDate" shortDesc="出庫日" dataType="DATE" columns="12" maximumLength="10" readOnly="${oa.XxpoShippedMakeHeaderPVO1.ShippedDateReadOnly}" required="no"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row11">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1101" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ArrivalDatePrompt" prompt="入庫日" required="no"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1102">
+                           <ui:contents>
+                              <oa:messageStyledText id="ArrivalDate" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ArrivalDate" shortDesc="入庫日" dataType="DATE" columns="12" maximumLength="10"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1103" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ArrivalTimePrompt" prompt="着荷時間"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1104" columnSpan="5">
+                           <ui:contents>
+                              <oa:tableLayout id="ArrivalTimeRN">
+                                 <ui:contents>
+                                    <oa:rowLayout id="ArrivalTimeRow">
+                                       <ui:contents>
+                                          <oa:cellFormat id="ArrivalTimeCell01">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ArrivalTimeFromName" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ArrivalTimeFromName" shortDesc="着荷時間" maximumLength="5" columns="7"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ArrivalTimeCell02" hAlign="right" width="30">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ArrivalTimeHyphen" prompt="-"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ArrivalTimeCell03">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ArrivalTimeToName" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ArrivalTimeToName" shortDesc="着荷時間" maximumLength="5" columns="7"/>
+                                                <oa:formValue id="ArrivalTimeToFv" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ArrivalTimeTo"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:tableLayout>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row12">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1201" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShippingMethodPrompt" prompt="配送区分"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1202">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShippingMethod" shortDesc="配送区分" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ShippingMethodName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1203" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="FreightChargeClassPrompt" prompt="運賃区分"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1204" columnSpan="3">
+                           <ui:contents>
+                              <oa:messageStyledText id="FreightChargeClass" shortDesc="運賃区分" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="FreightCarrierName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1205" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="TakebackClassPrompt" prompt="引取区分"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1206">
+                           <ui:contents>
+                              <oa:messageStyledText id="TakebackClass" shortDesc="引取区分" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="TakebackClassName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row13">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1301" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="DesignatedProdDatePrompt" prompt="製造日"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1302">
+                           <ui:contents>
+                              <oa:messageStyledText id="DesignatedProdDate" shortDesc="製造日" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="DesignatedProdDate" dataType="DATE" maximumLength="10" columns="12"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1303" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="DesignatedItemPrompt" prompt="製造品目"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1304">
+                           <ui:contents>
+                              <oa:messageStyledText id="DesignatedItemCode" shortDesc="製造品目" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="DesignatedItemCode" maximumLength="7" columns="10"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1305">
+                           <ui:contents>
+                              <oa:messageStyledText id="DesignatedItemName" shortDesc="製造品目" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="DesignatedItemName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1306" hAlign="right" columnSpan="2">
+                           <ui:contents>
+                              <oa:messageStyledText id="DesignatedBranchNoPrompt" prompt="製造番号"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1307">
+                           <ui:contents>
+                              <oa:messageStyledText id="DesignatedBranchNo" shortDesc="製造番号" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="DesignatedBranchNo" maximumLength="10" columns="13"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row14">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1401" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShippingInstructionsPrompt" prompt="摘要"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1402" columnSpan="7">
+                           <ui:contents>
+                              <oa:messageTextInput id="ShippingInstructions" shortDesc="摘要" styleClass="LegendText" viewName="XxpoShippedMakeHeaderVO1" viewAttr="ShippingInstructions" maximumLength="60" columns="63" readOnly="${oa.XxpoShippedMakeHeaderPVO1.ShippingInstructionsReadOnly}"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row15">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1501" hAlign="right"/>
+                        <oa:cellFormat id="Cell1502" hAlign="right">
+                           <ui:contents>
+                              <oa:messageCheckBox id="RcvClass" viewName="XxpoShippedMakeHeaderVO1" viewAttr="RcvClass" checkedValue="1" unCheckedValue="2" shortDesc="指示受領" readOnly="false"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1503" hAlign="left" columnSpan="2">
+                           <ui:contents>
+                              <oa:messageStyledText id="RcvClassPrompt" prompt="指示受領"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1504" hAlign="right">
+                           <ui:contents>
+                              <oa:messageCheckBox id="FixClass" viewName="XxpoShippedMakeHeaderVO1" viewAttr="FixClass" checkedValue="1" unCheckedValue="2" shortDesc="金額確定" readOnly="true"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1505" hAlign="left" columnSpan="3">
+                           <ui:contents>
+                              <oa:messageStyledText id="FixClassPrompt" prompt="金額確定"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+               </ui:contents>
+            </oa:tableLayout>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="Next" text="次へ" prompt="次へ"/>
+                  <oa:submitButton id="Cancel" text="取消" prompt="取消" serverUnvalidated="true" unvalidated="true" warnAboutChanges="true"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

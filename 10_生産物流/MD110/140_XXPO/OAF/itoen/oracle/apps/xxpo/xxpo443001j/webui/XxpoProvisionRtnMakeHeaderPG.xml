@@ -1,0 +1,513 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" controllerClass="itoen.oracle.apps.xxpo.xxpo443001j.webui.XxpoProvisionRtnMakeHeaderCO" amDefName="itoen.oracle.apps.xxpo.xxpo443001j.server.XxpoProvisionRtnSummaryAM" windowTitle="(有償支給)支給返品作成" title="(有償支給)支給返品作成：ヘッダ">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:formValue id="ExeType" viewName="XxpoProvSearchVO1" viewAttr="ExeType"/>
+            <oa:formValue id="NewFlag" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="NewFlag"/>
+            <oa:spacer id="SpHdr" height="20"/>
+            <oa:rowLayout id="ReqFieldRN">
+               <ui:contents>
+                  <oa:spacer id="SpReqFieldSp" height="20" width="50"/>
+                  <oa:tableLayout id="ReqFieldDescRN" extends="/oracle/apps/fnd/framework/webui/OAReqFieldDescRG" hAlign="center"/>
+               </ui:contents>
+            </oa:rowLayout>
+            <oa:tableLayout id="ProvMakeHeaderRN" width="90%">
+               <ui:contents>
+                  <oa:rowLayout id="Row01">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell101" hAlign="right" width="130">
+                           <ui:contents>
+                              <oa:messageStyledText id="OrderTypePrompt" prompt="発生区分"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell102">
+                           <ui:contents>
+                              <oa:messageChoice id="OrderType" pickListViewName="OrderType2VO1" pickListDispAttr="TransTypeName" pickListValAttr="TransTypeId" allowBlankValue="false" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="OrderTypeId" shortDesc="発生区分" styleClass="LegendText" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.OrderTypeReadOnly}"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell103" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="WeightCapacityPrompt" prompt="重量容積区分"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell104">
+                           <ui:contents>
+                              <oa:messageChoice id="WeightCapacity" shortDesc="重量容積区分" styleClass="LegendText" prompt="" readOnly="true" pickListViewName="WeightCapacityVO1" pickListDispAttr="WeightCapacityName" pickListValAttr="WeightCapacityClass" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="WeightCapacityClass"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell105" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="TransStatusPrompt" prompt="ステータス"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell106" columnSpan="3">
+                           <ui:contents>
+                              <oa:messageChoice id="TransStatus" readOnly="true" pickListViewName="TransStatus2VO1" pickListDispAttr="TransStatusName" pickListValAttr="TransStatusCode" shortDesc="ステータス" styleClass="LegendText" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="TransStatus"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row02">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell201" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ReqNoPrompt" prompt="依頼No"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell202">
+                           <ui:contents>
+                              <oa:messageStyledText id="ReqNo" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="RequestNo" shortDesc="依頼No" styleClass="LegendText" maximumLength="12" columns="15"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell203" columnSpan="2"/>
+                        <oa:cellFormat id="Cell204" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="NotifStatusPrompt" prompt="通知ステータス"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell205">
+                           <ui:contents>
+                              <oa:messageChoice id="NotifStatus" readOnly="true" pickListViewName="NotifStatusVO1" pickListDispAttr="NotifStatusName" pickListValAttr="NotifStatusCode" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="NotifStatus" shortDesc="通知ステータス" styleClass="LegendText"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell206" hAlign="right">
+                           <ui:contents>
+                              <oa:messageCheckBox id="CorrectFlag" readOnly="true" checkedValue="M" unCheckedValue="N" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="NewModifyFlg" shortDesc="修正フラグ"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell207" hAlign="left">
+                           <ui:contents>
+                              <oa:messageStyledText id="CorrectFlagPrompt" prompt="修正フラグ"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row03">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell301" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipToNoPrompt" prompt="配送No"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell302">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipToNo" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShipToNo" shortDesc="配送No" styleClass="LegendText" maximumLength="12" columns="15"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell303" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="PrevShipToNoPrompt" prompt="前回配送No"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell304">
+                           <ui:contents>
+                              <oa:messageStyledText id="PrevShipToNo" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="PrevShipToNo" shortDesc="前回配送No" styleClass="LegendText" maximumLength="12" columns="15"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell305" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="PoNoPrompt" prompt="発注番号"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell306">
+                           <ui:contents>
+                              <oa:messageStyledText id="PoNo" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="PoNo" shortDesc="発注番号" styleClass="LegendText" maximumLength="12" columns="15"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell307" columnSpan="2"/>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row04">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell401" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ReqDeptPrompt" required="uiOnly" prompt="依頼部署"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell402">
+                           <ui:contents>
+                              <oa:messageLovInput id="ReqDeptCode" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ReqDeptCodeLovRN" maximumLength="4" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ReqDeptCode" shortDesc="依頼部署" styleClass="LegendText" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.ReqDeptReadOnly}" columns="7">
+                                 <lovMappings>
+                                    <lovMap id="FromReqDeptCode" lovItem="ReqDeptCode" criteriaFrom="ReqDeptCode"/>
+                                    <lovMap id="ToReqDeptCode" lovItem="ReqDeptCode" resultTo="ReqDeptCode"/>
+                                    <lovMap id="ToReqDeptName" lovItem="ReqDeptName" resultTo="ReqDeptName"/>
+                                    <lovMap id="ToReqDeptNameFv" lovItem="ReqDeptName" resultTo="ReqDeptNameFv"/>
+                                 </lovMappings>
+                              </oa:messageLovInput>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell403" columnSpan="6">
+                           <ui:contents>
+                              <oa:messageStyledText id="ReqDeptName" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ReqDeptName" shortDesc="依頼部署名" styleClass="LegendText"/>
+                              <oa:formValue id="ReqDeptNameFv" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ReqDeptName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row05">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell501" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="InstDeptNamePrompt" prompt="指示部署"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell502">
+                           <ui:contents>
+                              <oa:messageLovInput id="InstDeptCode" maximumLength="4" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="InstDeptCode" shortDesc="指示部署" styleClass="LegendText" columns="7" readOnly="true" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/InstDeptCodeLovRN">
+                                 <lovMappings>
+                                    <lovMap id="FromInstDeptCode" lovItem="InstDeptCode" criteriaFrom="InstDeptCode"/>
+                                    <lovMap id="ToInstDeptCode" lovItem="InstDeptCode" resultTo="InstDeptCode"/>
+                                    <lovMap id="ToInstDeptName" lovItem="InstDeptName" resultTo="InstDeptName"/>
+                                    <lovMap id="ToInstDeptNameFv" lovItem="InstDeptName" resultTo="InstDeptNameFv"/>
+                                 </lovMappings>
+                              </oa:messageLovInput>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell503" columnSpan="6">
+                           <ui:contents>
+                              <oa:messageStyledText id="InstDeptName" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="InstDeptName" shortDesc="指示部署名" styleClass="LegendText"/>
+                              <oa:formValue id="InstDeptNameFv" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="InstDeptName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row06">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell601" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="VendorPrompt" required="uiOnly" prompt="取引先"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell602">
+                           <ui:contents>
+                              <oa:messageLovInput id="VendorCode" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/VendorCode3LovRN" maximumLength="4" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="VendorCode" shortDesc="取引先" styleClass="LegendText" columns="7" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.VendorReadOnly}">
+                                 <lovMappings>
+                                    <lovMap id="FromVendorCode" lovItem="VendorCode" criteriaFrom="VendorCode"/>
+                                    <lovMap id="ToVendorCode" lovItem="VendorCode" resultTo="VendorCode"/>
+                                    <lovMap id="ToVendorName" lovItem="VendorName" resultTo="VendorName"/>
+                                    <lovMap id="ToVendorNameFv" lovItem="VendorName" resultTo="VendorNameFv"/>
+                                    <lovMap id="ToVendorId" lovItem="VendorId" resultTo="VendorId"/>
+                                    <lovMap id="ToPriceList" lovItem="PriceList" resultTo="PriceList"/>
+                                    <lovMap id="ToCustomerCode" lovItem="CustomerCode" resultTo="CustomerCode"/>
+                                    <lovMap id="ToCustomerId" lovItem="CustomerId" resultTo="CustomerId"/>
+                                 </lovMappings>
+                              </oa:messageLovInput>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell603" hAlign="left" columnSpan="6">
+                           <ui:contents>
+                              <oa:messageStyledText id="VendorName" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="VendorName" shortDesc="指示部署名" styleClass="LegendText"/>
+                              <oa:formValue id="VendorNameFv" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="VendorName"/>
+                              <oa:formValue id="VendorId" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="VendorId"/>
+                              <oa:formValue id="PriceList" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="PriceList"/>
+                              <oa:formValue id="CustomerCode" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="CustomerCode"/>
+                              <oa:formValue id="CustomerId" dataType="NUMBER" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="CustomerId"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row07">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell701" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipToPrompt" required="uiOnly" prompt="配送先"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell702">
+                           <ui:contents>
+                              <oa:messageLovInput id="ShipToCode" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ShipToCodeLovRN" maximumLength="4" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShipToCode" shortDesc="配送先" styleClass="LegendText" columns="7" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.ShipToReadOnly}">
+                                 <lovMappings>
+                                    <lovMap id="FromShipToCode" lovItem="ShipToCode" criteriaFrom="ShipToCode"/>
+                                    <lovMap id="FromVendorId" lovItem="VendorId" criteriaFrom="VendorId"/>
+                                    <lovMap id="ToShipToCode" lovItem="ShipToCode" resultTo="ShipToCode"/>
+                                    <lovMap id="ToShipToName" lovItem="ShipToName" resultTo="ShipToName"/>
+                                    <lovMap id="ToShipToNameFv" lovItem="ShipToName" resultTo="ShipToNameFv"/>
+                                    <lovMap id="ToShipToId" lovItem="ShipToId" resultTo="ShipToId"/>
+                                 </lovMappings>
+                              </oa:messageLovInput>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell703" hAlign="left" columnSpan="6">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipToName" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShipToName" shortDesc="配送先名" styleClass="LegendText"/>
+                              <oa:formValue id="ShipToNameFv" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShipToName"/>
+                              <oa:formValue id="ShipToId" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShipToId"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row08">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell801" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipWhsePrompt" required="uiOnly" prompt="出庫倉庫"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell802">
+                           <ui:contents>
+                              <oa:messageLovInput id="ShipWhseCode" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ShipWhseCodeLovRN" maximumLength="4" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShipWhseCode" shortDesc="出庫倉庫" styleClass="LegendText" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.ShipWhseReadOnly}" columns="7">
+                                 <lovMappings>
+                                    <lovMap id="FromShipWhseCode" lovItem="ShipWhseCode" criteriaFrom="ShipWhseCode"/>
+                                    <lovMap id="ToShipWhseCode" lovItem="ShipWhseCode" resultTo="ShipWhseCode"/>
+                                    <lovMap id="ToShipWhseName" lovItem="ShipWhseName" resultTo="ShipWhseName"/>
+                                    <lovMap id="ToShipWhseNameFv" lovItem="ShipWhseName" resultTo="ShipWhseNameFv"/>
+                                    <lovMap id="ToShipWhseId" lovItem="ShipWhseId" resultTo="ShipWhseId"/>
+                                    <lovMap id="ToFrequentMover" lovItem="FrequentMover" resultTo="FrequentMover"/>
+                                 </lovMappings>
+                              </oa:messageLovInput>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell803" hAlign="left" columnSpan="6">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShipWhseName" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShipWhseName" shortDesc="配送先名" styleClass="LegendText"/>
+                              <oa:formValue id="ShipWhseNameFv" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShipWhseName"/>
+                              <oa:formValue id="ShipWhseId" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShipWhseId"/>
+                              <oa:formValue id="FrequentMover" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="FrequentMover"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row09">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell901" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="FreightCarrierPrompt" prompt="運送業者"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell902">
+                           <ui:contents>
+                              <oa:messageLovInput id="FreightCarrierCode" readOnly="true" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/FreightCarrierLovRN" maximumLength="4" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="FreightCarrierCode" shortDesc="運送業者" styleClass="LegendText" columns="7">
+                                 <lovMappings>
+                                    <lovMap id="FromFreightCarrierCode" lovItem="PartyNumber" criteriaFrom="FreightCarrierCode"/>
+                                    <lovMap id="ToFreightCarrierCode" lovItem="PartyNumber" resultTo="FreightCarrierCode"/>
+                                    <lovMap id="ToFreightCarrierName" lovItem="PartyName" resultTo="FreightCarrierName"/>
+                                    <lovMap id="ToFreightCarrierNameFv" lovItem="PartyName" resultTo="FreightCarrierNameFv"/>
+                                    <lovMap id="ToFreightCarrierId" lovItem="PartyId" resultTo="FreightCarrierId"/>
+                                 </lovMappings>
+                              </oa:messageLovInput>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell903" hAlign="left" columnSpan="6">
+                           <ui:contents>
+                              <oa:messageStyledText id="FreightCarrierName" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="FreightCarrierName" shortDesc="運送業者名" styleClass="LegendText"/>
+                              <oa:formValue id="FreightCarrierNameFv" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="FreightCarrierName"/>
+                              <oa:formValue id="FreightCarrierId" dataType="NUMBER" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="FreightCarrierId"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row10">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1001" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShippedDatePrompt" required="uiOnly" prompt="出庫日"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1002" columnSpan="7">
+                           <ui:contents>
+                              <oa:messageTextInput id="ShippedDate" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShippedDate" shortDesc="出庫日" styleClass="LegendText" columns="12" dataType="DATE" maximumLength="10" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.ShippedDateReadOnly}"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row11">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1101" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ArrivalDatePrompt" prompt="入庫日"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1102">
+                           <ui:contents>
+                              <oa:messageTextInput id="ArrivalDate" dataType="DATE" maximumLength="10" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ArrivalDate" shortDesc="入庫日" styleClass="LegendText" columns="12" readOnly="true"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1103" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ArrivalTimePrompt" prompt="着荷時間"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1104" columnSpan="1">
+                           <ui:contents>
+                              <oa:tableLayout id="ArrivalTimeRN" hAlign="center">
+                                 <ui:contents>
+                                    <oa:rowLayout id="ArrivalTimeRow">
+                                       <ui:contents>
+                                          <oa:cellFormat id="ArrivalTimeCell01">
+                                             <ui:contents>
+                                                <oa:messageLovInput id="ArrivalTimeFromName" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ArrivalTimeLovRN" maximumLength="5" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ArrivalTimeFromName" shortDesc="着荷時間" styleClass="LegendText" columns="7" readOnly="true">
+                                                   <lovMappings>
+                                                      <lovMap id="FromArrivalTimeFromName" lovItem="ArrivalTimeName" criteriaFrom="ArrivalTimeFromName"/>
+                                                      <lovMap id="ToArrivalTimeFromName" lovItem="ArrivalTimeName" resultTo="ArrivalTimeFromName"/>
+                                                      <lovMap id="ToArrivalTimeFromNameFv" lovItem="ArrivalTimeClass" resultTo="ArrivalTimeFromFv"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:formValue id="ArrivalTimeFromFv" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ArrivalTimeFrom"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ArrivalTimeCell02" hAlign="right" width="30">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ArrivalTimeHyphen" prompt="-"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ArrivalTimeCell03">
+                                             <ui:contents>
+                                                <oa:messageLovInput id="ArrivalTimeToName" readOnly="true" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ArrivalTimeLovRN" maximumLength="5" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ArrivalTimeToName" shortDesc="着荷時間" styleClass="LegendText" columns="7">
+                                                   <lovMappings>
+                                                      <lovMap id="ToArrivalTimeToName" lovItem="ArrivalTimeName" resultTo="ArrivalTimeToName"/>
+                                                      <lovMap id="ToArrivalTimeToNameFv" lovItem="ArrivalTimeClass" resultTo="ArrivalTimeToFv"/>
+                                                      <lovMap id="FromArrivalTimeToName" lovItem="ArrivalTimeName" criteriaFrom="ArrivalTimeToName"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:formValue id="ArrivalTimeToFv" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ArrivalTimeTo"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:tableLayout>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row12">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1201" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShippingMethodPrompt" prompt="配送区分"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1202">
+                           <ui:contents>
+                              <oa:messageChoice id="ShippingMethod" pickListViewName="ShipMethodVO1" pickListDispAttr="ShipMethodName" pickListValAttr="ShipMethodCode" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShippingMethodCode" shortDesc="配送区分" styleClass="LegendText" readOnly="true"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1203" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="FreightChargeClassPrompt" prompt="運賃区分"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1204" columnSpan="2">
+                           <ui:contents>
+                              <oa:messageChoice id="FreightChargeClass" allowBlankValue="false" pickListViewName="FreightVO1" pickListDispAttr="FreightChargeName" pickListValAttr="FreightChargeClass" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="FreightChargeClass" shortDesc="運賃区分" styleClass="LegendText" readOnly="true"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1205" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="TakebackClassPrompt" prompt="引取区分"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1206">
+                           <ui:contents>
+                              <oa:messageChoice id="TakebackClass" pickListViewName="TakebackVO1" pickListDispAttr="TakebackName" pickListValAttr="TakebackClass" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="TakebackClass" prompt="" styleClass="LegendText" shortDesc="引取区分" readOnly="true"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row13">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1301" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="DesignatedProdDatePrompt" prompt="製造日"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1302">
+                           <ui:contents>
+                              <oa:messageTextInput id="DesignatedProdDate" dataType="DATE" maximumLength="10" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="DesignatedProdDate" shortDesc="製造日" styleClass="LegendText" columns="12" readOnly="true"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1303" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="DesignatedItemPrompt" prompt="製造品目"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1304">
+                           <ui:contents>
+                              <oa:messageLovInput id="DesignatedItemCode" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/DesignatedItemLovRN" maximumLength="7" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="DesignatedItemCode" shortDesc="製造品目" styleClass="LegendText" columns="10" readOnly="true">
+                                 <lovMappings>
+                                    <lovMap id="FromDesignatedItemCode" lovItem="ItemCode" criteriaFrom="DesignatedItemCode"/>
+                                    <lovMap id="ToDesignatedItemCode" lovItem="ItemCode" resultTo="DesignatedItemCode"/>
+                                    <lovMap id="ToDesignatedItemName" lovItem="ItemName" resultTo="DesignatedItemName"/>
+                                    <lovMap id="ToDesignatedItemNameFv" lovItem="ItemName" resultTo="DesignatedItemNameFv"/>
+                                    <lovMap id="ToDesignatedItemId" lovItem="InventoryItemId" resultTo="DesignatedItemId"/>
+                                 </lovMappings>
+                              </oa:messageLovInput>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1305">
+                           <ui:contents>
+                              <oa:messageStyledText id="DesignatedItemName" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="DesignatedItemName" shortDesc="製造品目" styleClass="LegendText"/>
+                              <oa:formValue id="DesignatedItemNameFv" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="DesignatedItemName"/>
+                              <oa:formValue id="DesignatedItemId" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="DesignatedItemId"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1306" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="DesignatedBranchNoPrompt" prompt="製造番号"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1307">
+                           <ui:contents>
+                              <oa:messageTextInput id="DesignatedBranchNo" maximumLength="10" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="DesignatedBranchNo" shortDesc="製造番号" styleClass="LegendText" columns="13" readOnly="true"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row14">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1401" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="ShippingInstructionsPrompt" prompt="摘要"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1402" columnSpan="7">
+                           <ui:contents>
+                              <oa:messageTextInput id="ShippingInstructions" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShippingInstructions" shortDesc="摘要" styleClass="LegendText" columns="63" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.ShippingInstructionsReadOnly}" maximumLength="60" prompt=""/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+                  <oa:rowLayout id="Row15">
+                     <ui:contents>
+                        <oa:cellFormat id="Cell1501" hAlign="right"/>
+                        <oa:cellFormat id="Cell1502" hAlign="right">
+                           <ui:contents>
+                              <oa:messageCheckBox id="RcvClass" readOnly="true" checkedValue="1" unCheckedValue="2" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="RcvClass" shortDesc="指示受領"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1503" hAlign="left" columnSpan="2">
+                           <ui:contents>
+                              <oa:messageStyledText id="RcvClassPrompt" prompt="指示受領"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1504" hAlign="right">
+                           <ui:contents>
+                              <oa:messageCheckBox id="FixClass" checkedValue="1" unCheckedValue="2" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="FixClass" text="" prompt="" shortDesc="金額確定" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.FixReadOnly}"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1505" hAlign="left" columnSpan="3">
+                           <ui:contents>
+                              <oa:messageStyledText id="FixClassPrompt" prompt="金額確定"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                     </ui:contents>
+                  </oa:rowLayout>
+               </ui:contents>
+            </oa:tableLayout>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="ProvCancel" text="支給取消" prompt="支給取消" disabled="${oa.XxpoProvisionRtnMakeHeaderPVO1.ProvCancelBtnReject}"/>
+                  <oa:spacer id="BtnSp1" width="50"/>
+                  <oa:submitButton id="Next" text="次へ" prompt="次へ"/>
+                  <oa:submitButton id="Cancel" text="取消" prompt="取消" serverUnvalidated="true" unvalidated="true"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

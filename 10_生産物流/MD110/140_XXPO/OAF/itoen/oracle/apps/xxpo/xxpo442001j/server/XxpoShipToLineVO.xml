@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxpoShipToLineVO"
+   OrderBy="ORDER_LINE_NUMBER"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo442001j.server.XxpoShipToLineVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT 'N'                              record_type       -- レコードタイプ「N:更新」固定
+      ,xola.order_header_id             order_header_id   -- 受注ヘッダアドオンID
+      ,xola.order_line_id               order_line_id     -- 受注明細アドオンID
+      ,xola.order_line_number           order_line_number -- 明細番号
+      ,ximv.item_id                     item_id           -- OPM品目ID
+      ,xola.shipping_item_code          item_no           -- 品目コード
+      ,xola.shipping_inventory_item_id  inv_item_id       -- INV品目ID
+      ,ximv.item_short_name             item_name         -- 品目名称(略称)
+      ,xola.futai_code                  futai_code        -- 付帯コード
+      ,TO_CHAR(xola.based_request_quantity, 'FM999,999,990.000')
+                                        req_quantity      -- 依頼数量
+      ,TO_CHAR(xola.quantity, 'FM999,999,990.000')
+                                        inst_quantity     -- 指示数量
+      ,ximv.item_um                     item_um           -- 単位
+      ,TO_CHAR(xola.unit_price, 'FM9,999,990.00')
+                                        unit_price        -- 単価
+      ,TO_CHAR(ROUND(NVL(xola.shipped_quantity, NVL(xola.quantity, 0)) * NVL(xola.unit_price, 0)), 'FM9,999,999,999,999')
+                                        amount            -- 金額
+      ,TO_CHAR(xola.shipped_quantity, 'FM999,999,990.000')
+                                        shipped_quantity  -- 出荷実績数量
+      ,TO_CHAR(xola.ship_to_quantity, 'FM999,999,990.000')
+                                        ship_to_quantity  -- 入庫実績数量
+      ,xola.line_description            line_description  -- 備考(摘要)
+      ,CASE
+         WHEN ((xoha.req_status  IN('07', '08')) AND (xoha.notif_status = '40'))     
+           THEN 'ShippedIconEnable'
+           ELSE 'ShippedIconDisable'
+         END                            shipped_switcher  -- 出庫実績アイコン
+      ,CASE
+         WHEN ((xoha.req_status  IN('07', '08')) AND (xoha.notif_status = '40')  AND (xoha.arrival_date IS NOT NULL)) -- 入庫実績有          
+           THEN 'ShipToIconEnable'
+           ELSE 'ShipToIconDisable'
+         END                            ship_to_switcher  -- 入庫実績アイコン
+      ,CASE
+         WHEN ((xoha.req_status  IN('07', '08')) AND (xoha.notif_status = '40') AND ('2' = xoha.amount_fix_class))
+           THEN 'LineDescription'
+           ELSE 'LineDescriptionDisable'
+         END                            desc_switcher     -- 備考スイッチャー 
+      ,ximv.lot_ctl                     lot_ctl           -- ロット管理区分
+      ,xola.unit_price                  unit_price_num    -- 単価(Number)
+      ,'ReserveIconDisable'             reserve_switcher  -- 引当アイコン
+/* DB項目 */
+      ,xola.line_description            db_line_description   -- (DB)備考
+      ,ximv.item_no                     db_item_no            -- (DB)OPM品目No
+      ,TO_CHAR(xola.ship_to_quantity, 'FM999,999,990.000')
+                                        db_ship_to_quantity   -- (DB)入庫実績数量
+FROM   xxwsh_order_headers_all xoha   -- 受注ヘッダアドオン
+      ,xxwsh_order_lines_all   xola   -- 受注明細アドオン
+      ,xxcmn_item_mst2_v       ximv   -- OPM品目情報VIEW2
+WHERE  
+/* 結合条件 */
+       xoha.order_header_id             = xola.order_header_id
+AND    xola.shipping_inventory_item_id  = ximv.inventory_item_id
+/* 抽出条件 */
+AND    xola.delete_flag     = 'N' -- 未削除
+AND    xola.order_header_id = :0
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN ximv.start_date_active(+) 
+                                                       AND     ximv.end_date_active(+)
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="RecordType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="CHAR"
+      AliasName="RECORD_TYPE"
+      Expression="RECORD_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrderHeaderId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ORDER_HEADER_ID"
+      Expression="ORDER_HEADER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrderLineId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ORDER_LINE_ID"
+      Expression="ORDER_LINE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrderLineNumber"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ORDER_LINE_NUMBER"
+      Expression="ORDER_LINE_NUMBER"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ITEM_ID"
+      Expression="ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemNo"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_NO"
+      Expression="ITEM_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvItemId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="INV_ITEM_ID"
+      Expression="INV_ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_NAME"
+      Expression="ITEM_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FutaiCode"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FUTAI_CODE"
+      Expression="FUTAI_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReqQuantity"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="REQ_QUANTITY"
+      Expression="REQ_QUANTITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstQuantity"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INST_QUANTITY"
+      Expression="INST_QUANTITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ItemUm"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ITEM_UM"
+      Expression="ITEM_UM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UnitPrice"
+      IsPersistent="false"
+      Precision="13"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="UNIT_PRICE"
+      Expression="UNIT_PRICE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="13" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Amount"
+      IsPersistent="false"
+      Precision="17"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="AMOUNT"
+      Expression="AMOUNT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="14" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShippedQuantity"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIPPED_QUANTITY"
+      Expression="SHIPPED_QUANTITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipToQuantity"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIP_TO_QUANTITY"
+      Expression="SHIP_TO_QUANTITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LineDescription"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LINE_DESCRIPTION"
+      Expression="LINE_DESCRIPTION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="60" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShippedSwitcher"
+      IsPersistent="false"
+      Precision="18"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIPPED_SWITCHER"
+      Expression="SHIPPED_SWITCHER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="18" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipToSwitcher"
+      IsPersistent="false"
+      Precision="17"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIP_TO_SWITCHER"
+      Expression="SHIP_TO_SWITCHER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="17" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DescSwitcher"
+      IsPersistent="false"
+      Precision="22"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DESC_SWITCHER"
+      Expression="DESC_SWITCHER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LotCtl"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="5"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LOT_CTL"
+      Expression="LOT_CTL"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UnitPriceNum"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="UNIT_PRICE_NUM"
+      Expression="UNIT_PRICE_NUM"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReserveSwitcher"
+      IsPersistent="false"
+      Precision="18"
+      Type="java.lang.String"
+      ColumnType="CHAR"
+      AliasName="RESERVE_SWITCHER"
+      Expression="RESERVE_SWITCHER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="18" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbLineDescription"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_LINE_DESCRIPTION"
+      Expression="DB_LINE_DESCRIPTION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="60" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbItemNo"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="32"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_ITEM_NO"
+      Expression="DB_ITEM_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="32" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbShipToQuantity"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_SHIP_TO_QUANTITY"
+      Expression="DB_SHIP_TO_QUANTITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="OrderLineId" />
+   </AttrArray>
+</ViewObject>

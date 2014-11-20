@@ -1,0 +1,1449 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxpoShippedMakeHeaderVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeHeaderVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xoha.order_header_id               order_header_id       -- 受注ヘッダアドオンID
+      ,xottv.auto_create_po_class         auto_create_po_class  -- 自動発注作成区分
+      ,xottv.transaction_type_id          order_type_id         -- 発生区分(受注タイプID)
+      ,xoha.weight_capacity_class         weight_capacity_class -- 重量容積区分
+      ,xoha.req_status                    trans_status          -- ステータス(コード)
+      ,xlvv1.meaning                      trans_status_name     -- ステータス(名称)
+      ,xoha.request_no                    request_no            -- 依頼No
+      ,xoha.notif_status                  notif_status          -- 通知ステータス(コード)
+      ,xlvv2.meaning                      notif_status_name     -- 通知ステータス(名称)
+      ,xoha.new_modify_flg                new_modify_flg        -- 修正フラグ(新規修正フラグ)
+      ,xoha.delivery_no                   ship_to_no            -- 配送No
+      ,xoha.prev_delivery_no              prev_ship_to_no       -- 前回配送No 
+      ,xoha.po_no                         po_no                 -- 発注No
+      ,xoha.performance_management_dept   req_dept_code         -- 依頼部署コード
+      ,xlv1.location_short_name           req_dept_name         -- 依頼部署名
+      ,xoha.instruction_dept              inst_dept_code        -- 指示部署コード
+      ,xlv2.location_short_name           inst_dept_name        -- 指示部署名
+      ,xoha.vendor_id                     vendor_id             -- 取引先ID
+      ,xoha.vendor_code                   vendor_code           -- 取引先コード
+      ,xvv.vendor_short_name              vendor_name           -- 取引先名
+      ,xoha.vendor_site_id                ship_to_id            -- 配送先ID
+      ,xoha.vendor_site_code              ship_to_code          -- 配送先コード
+      ,xvsv.vendor_site_short_name        ship_to_name          -- 配送先名
+      ,xoha.deliver_from_id               ship_whse_id          -- 出庫倉庫ID
+      ,xoha.deliver_from                  ship_whse_code        -- 出庫倉庫コード
+      ,xilv.short_name                    ship_whse_name        -- 出庫倉庫名
+      ,NVL(xoha.result_freight_carrier_id, xoha.career_id)
+                                          freight_carrier_id    -- 運送業者ID
+      ,NVL(xoha.result_freight_carrier_code, xoha.freight_carrier_code)
+                                          freight_carrier_code  -- 運送業者コード
+      ,xcv.party_short_name               freight_carrier_name  -- 運送業者名称(略称)
+      ,NVL(xoha.shipped_date, xoha.schedule_ship_date)
+                                          shipped_date          -- 出庫日
+      ,NVL(xoha.arrival_date, xoha.schedule_arrival_date) 
+                                          arrival_date          -- 入庫日
+      ,xoha.arrival_time_from             arrival_time_from     -- 着荷時間fromコード
+      ,xlvv3.meaning                      arrival_time_from_name-- 着荷時間from(名称)
+      ,xoha.arrival_time_to               arrival_time_to       -- 着荷時間toコード
+      ,xlvv4.meaning                      arrival_time_to_name  -- 着荷時間to(名称)
+      ,NVL(xoha.result_shipping_method_code, xoha.shipping_method_code)
+                                          shipping_method_code  -- 配送区分
+      ,xlvv5.meaning                      shipping_method_name  -- 配送区分(名称)
+      ,xoha.freight_charge_class          freight_charge_class  -- 運賃区分
+      ,xoha.takeback_class                takeback_class        -- 引取区分
+      ,xoha.designated_production_date    designated_prod_date  -- 製造日
+      ,xoha.designated_item_code          designated_item_code  -- 製造品目コード
+      ,ximv.item_short_name               designated_item_name  -- 製造品目名称
+      ,xoha.designated_branch_no          designated_branch_no  -- 製造番号
+      ,xoha.shipping_instructions         shipping_instructions -- 摘要(出荷指示)
+      ,xoha.shikyu_inst_rcv_class         rcv_class             -- 受領
+      ,xoha.amount_fix_class              fix_class             -- 確定
+      ,TO_CHAR(xoha.last_update_date,  'YYYY/MM/DD HH24:MI:SS')
+                                          xoha_last_update_date -- 最終更新日(受注ヘッダアドオン)
+      ,TO_CHAR(xola.last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+                                          xola_last_update_date -- 最終更新日(受注明細アドオン)
+      ,xoha.designated_item_id            designated_item_id    -- 製造品目ID
+      ,xottv.transaction_type_name        order_type_name       -- 発生区分名(受注タイプ名)
+      ,'N'                                new_flag              -- 新規フラグ(更新の場合、「N」固定)
+      ,xilv.frequent_mover                frequent_mover        -- 代表運送会社
+      ,xcav.party_id                      customer_id           -- 顧客ID(パーティーID)
+      ,xcav.party_number                  customer_code         -- 顧客コード(組織番号)
+      ,xvv.spare2                         price_list            -- 価格表
+      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_weight, 'FM9,999,990'), '')
+                                          based_weight          -- 基本重量
+      ,TO_CHAR(ROUND(xoha.sum_weight), 'FM9,999,990')
+                                          sum_weight            -- 積載重量合計
+      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_weight, 'FM990.00'), '')
+                                          efficiency_weight     -- 重量積載効率
+      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.based_capacity, 'FM9,999,990'), '')
+                                          based_capacity        -- 基本容積
+      ,TO_CHAR(ROUND(xoha.sum_capacity), 'FM9,999,990')
+                                          sum_capacity          -- 積載容積合計
+      ,DECODE(xoha.freight_charge_class, '1', TO_CHAR(xoha.loading_efficiency_capacity, 'FM990.00'), '')
+                                          efficiency_capacity   -- 容積積載効率
+      ,xoha.sum_quantity                  sum_quantity          -- 合計数量
+      ,xoha.small_quantity                small_quantity        -- 小口個数
+      ,xoha.label_quantity                label_quantity        -- ラベル枚数
+/*    DB項目     */ 
+      ,xottv.transaction_type_id          db_order_type_id         -- 発生区分(受注タイプID)
+      ,xoha.weight_capacity_class         db_weight_capacity_class -- 重量容積区分
+      ,xoha.performance_management_dept   db_req_dept_code         -- 依頼部署コード
+      ,xoha.instruction_dept              db_inst_dept_code        -- 指示部署コード
+      ,xoha.vendor_code                   db_vendor_code           -- 取引先コード
+      ,xoha.vendor_site_code              db_ship_to_code          -- 配送先コード
+      ,xoha.deliver_from                  db_ship_whse_code        -- 出庫倉庫コード
+      ,NVL(xoha.result_freight_carrier_code, xoha.freight_carrier_code)
+                                          db_freight_carrier_code  -- 運送業者コード
+      ,xoha.shipped_date                  db_shipped_date          -- 出庫日
+      ,NVL(xoha.arrival_date, xoha.schedule_arrival_date) 
+                                          db_arrival_date          -- 入庫日
+      ,xoha.arrival_time_from             db_arrival_time_from     -- 着荷時間fromコード
+      ,xoha.arrival_time_to               db_arrival_time_to       -- 着荷時間toコード
+      ,NVL(xoha.result_shipping_method_code, xoha.shipping_method_code)
+                                          db_shipping_method_code  -- 配送区分
+      ,xoha.freight_charge_class          db_freight_charge_class  -- 運賃区分
+      ,xoha.takeback_class                db_takeback_class        -- 引取区分
+      ,xoha.designated_production_date    db_designated_prod_date  -- 製造日
+      ,xoha.designated_item_code          db_designated_item_code  -- 製造品目コード
+      ,xoha.designated_branch_no          db_designated_branch_no  -- 製造番号
+      ,xoha.shipping_instructions         db_shipping_instructions -- 摘要(出荷指示)
+      ,xoha.shikyu_inst_rcv_class         db_rcv_class             -- 受領
+      ,xoha.amount_fix_class              db_fix_class             -- 確定
+      ,xoha.shipped_date                  db_result_shipped_date   -- 出庫日(実績)
+      ,xoha.arrival_date                  db_result_arrival_date   -- 入庫日(実績)
+      ,CASE 
+         WHEN xoha.req_status = '07' THEN -- 受領済
+           CASE  
+             WHEN xola.actual_count = 0 THEN -- 出庫・入庫両方の実績を加味
+               -- 実績なし
+               CASE WHEN xoha.delivery_no IS NULL THEN -- 配送No
+                 -- 未配車
+                 CASE
+                   WHEN xola.reserved_quantity_sum = 0 THEN -- 引当数
+                     CASE 
+                       WHEN xoha.po_no IS NULL THEN -- 発注No
+                                '0'
+                       ELSE     '1'
+                     END
+                   ELSE         '2'
+                 END
+               ELSE
+                 CASE
+                   WHEN xola.reserved_quantity_sum = 0 THEN -- 引当数
+                                '3'
+                   ELSE         '4'
+                 END
+              END
+           ELSE                 '5'
+           END
+         ELSE                   NULL
+       END                                rcv_type                 -- 受領タイプ
+      ,xlvv6.meaning                      freight_charge_class_name -- 運賃区分(名称)
+      ,xlvv7.meaning                      takeback_class_name   -- 引取区分(名称)
+      ,xlvv8.meaning                      weight_capacity_class_name -- 重量容積区分
+      ,xoha.organization_id               organization_id            -- 組織ID
+      ,xoha.program_update_date           program_update_date        -- プログラム更新日
+FROM   xxwsh_order_headers_all        xoha  -- 受注ヘッダアドオン
+      ,xxwsh_oe_transaction_types2_v  xottv -- 受注タイプ情報VIEW2
+      ,xxcmn_locations2_v             xlv1  -- 事業所情報VIEW2(依頼部署用)
+      ,xxcmn_locations2_v             xlv2  -- 事業所情報VIEW2(指示部署用)
+      ,xxcmn_vendors2_v               xvv   -- 仕入先情報VIEW2
+      ,xxcmn_vendor_sites2_v          xvsv  -- 仕入先サイト情報VIEW2
+      ,xxcmn_cust_accounts2_v         xcav  -- 顧客情報VIEW2
+      ,xxcmn_carriers2_v              xcv   -- 運送業者情報VIEW2
+      ,xxcmn_lookup_values_v          xlvv1 -- クイックコード情報VIEW(ステータス用)
+      ,xxcmn_lookup_values_v          xlvv2 -- クイックコード情報VIEW(通知ステータス用)
+      ,xxcmn_lookup_values_v          xlvv3 -- クイックコード情報VIEW(着荷時間FROM用)
+      ,xxcmn_lookup_values_v          xlvv4 -- クイックコード情報VIEW(着荷時間TO用)
+      ,xxcmn_lookup_values_v          xlvv5 -- クイックコード情報VIEW(配送区分用)
+      ,xxcmn_lookup_values_v          xlvv6 -- クイックコード情報VIEW(運賃区分用)
+      ,xxcmn_lookup_values_v          xlvv7 -- クイックコード情報VIEW(引取区分用)
+      ,xxcmn_lookup_values_v          xlvv8 -- クイックコード情報VIEW(重量容積区分用)
+      ,xxcmn_item_mst2_v              ximv  -- OPM品目情報VIEW2
+      ,xxcmn_item_locations2_v        xilv  -- OPM保管場所情報VIEW
+      ,(SELECT xol.order_header_id                order_header_id
+              ,MAX(xol.last_update_date)          last_update_date       -- 最終更新日
+              ,SUM(NVL(xol.reserved_quantity,0))  reserved_quantity_sum  -- 引当数
+              ,MAX(NVL(xmld.actual_count, 0))     actual_count
+        FROM   xxwsh_order_lines_all   xol
+              ,(SELECT mov_line_id  mov_line_id
+                      ,COUNT(mov_line_id)     actual_count
+                FROM   xxinv_mov_lot_details
+                WHERE  document_type_code = '30'
+                AND    record_type_code   IN('20', '30')
+                --AND    ROWNUM             = 1
+                GROUP BY mov_line_id) xmld
+        WHERE  xol.delete_flag    = 'N' -- 削除フラグ
+        AND    xol.order_line_id  = xmld.mov_line_id(+)
+        GROUP BY xol.order_header_id
+       )    xola  -- 受注明細アドオン
+WHERE  
+/* 結合条件 */
+       xoha.order_type_id               = xottv.transaction_type_id
+AND    xoha.performance_management_dept = xlv1.location_code
+AND    xoha.instruction_dept            = xlv2.location_code
+AND    xoha.vendor_id                   = xvv.vendor_id
+AND    xoha.vendor_site_id              = xvsv.vendor_site_id
+AND    xvv.customer_num                 = xcav.account_number
+AND    NVL(xoha.result_freight_carrier_id, xoha.career_id)
+                                        = xcv.party_id(+)
+AND    xoha.req_status                  = xlvv1.lookup_code
+AND    xoha.notif_status                = xlvv2.lookup_code
+AND    xoha.arrival_time_from           = xlvv3.lookup_code(+)
+AND    xoha.arrival_time_to             = xlvv4.lookup_code(+)
+AND    NVL(xoha.result_shipping_method_code, xoha.shipping_method_code)
+                                        = xlvv5.lookup_code(+)
+AND    xoha.freight_charge_class        = xlvv6.lookup_code(+)
+AND    xoha.takeback_class              = xlvv7.lookup_code(+)
+AND    xoha.weight_capacity_class       = xlvv8.lookup_code(+)
+AND    xoha.designated_item_id          = ximv.inventory_item_id(+)
+AND    xoha.deliver_from_id             = xilv.inventory_location_id(+)
+AND    xoha.order_header_id             = xola.order_header_id
+/* 抽出条件 */
+AND    xoha.latest_external_flag    = 'Y'  -- 最新
+AND    xlvv1.lookup_type            = 'XXPO_TRANSACTION_STATUS' -- 支給依頼ステータス
+AND    xlvv2.lookup_type            = 'XXWSH_NOTIF_STATUS'      -- 通知ステータス
+AND    xlvv3.lookup_type(+)         = 'XXWSH_ARRIVAL_TIME'      -- 着荷時間
+AND    xlvv4.lookup_type(+)         = 'XXWSH_ARRIVAL_TIME'      -- 着荷時間
+AND    xlvv5.lookup_type(+)         = 'XXCMN_SHIP_METHOD'       -- 配送区分
+AND    xlvv6.lookup_type(+)         = 'XXWSH_FREIGHT_CLASS'     -- 運賃区分
+AND    xlvv7.lookup_type(+)         = 'XXWSH_TAKEBACK_CLASS'    -- 引取区分
+AND    xlvv8.lookup_type(+)         = 'XXCMN_WEIGHT_CAPACITY_CLASS' -- 重量容積区分
+AND    xoha.request_no              = :1
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xottv.start_date_active 
+                                                       AND     NVL(xottv.end_date_active, TO_DATE('99991231', 'YYYYMMDD'))
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xvv.start_date_active
+                                                       AND     xvv.end_date_active
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xvsv.start_date_active
+                                                       AND     xvsv.end_date_active
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xcav.start_date_active
+                                                       AND     xcav.end_date_active
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xlv1.start_date_active
+                                                       AND     xlv1.end_date_active
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xlv2.start_date_active
+                                                       AND     xlv2.end_date_active
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xilv.date_from(+) 
+                                                       AND     NVL(xilv.date_to(+), TO_DATE('99991231', 'YYYYMMDD'))
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xcv.start_date_active(+) 
+                                                       AND     xcv.end_date_active(+)
+AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN ximv.start_date_active(+) 
+                                                       AND     ximv.end_date_active(+)
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="OrderHeaderId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ORDER_HEADER_ID"
+      Expression="ORDER_HEADER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AutoCreatePoClass"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="AUTO_CREATE_PO_CLASS"
+      Expression="AUTO_CREATE_PO_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrderTypeId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ORDER_TYPE_ID"
+      Expression="ORDER_TYPE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="WeightCapacityClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="WEIGHT_CAPACITY_CLASS"
+      Expression="WEIGHT_CAPACITY_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransStatus"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TRANS_STATUS"
+      Expression="TRANS_STATUS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TransStatusName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TRANS_STATUS_NAME"
+      Expression="TRANS_STATUS_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestNo"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="12"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="REQUEST_NO"
+      Expression="REQUEST_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="12" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NotifStatus"
+      IsPersistent="false"
+      Precision="3"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NOTIF_STATUS"
+      Expression="NOTIF_STATUS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="3" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NotifStatusName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NOTIF_STATUS_NAME"
+      Expression="NOTIF_STATUS_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NewModifyFlg"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NEW_MODIFY_FLG"
+      Expression="NEW_MODIFY_FLG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipToNo"
+      IsPersistent="false"
+      Precision="12"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIP_TO_NO"
+      Expression="SHIP_TO_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="12" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PrevShipToNo"
+      IsPersistent="false"
+      Precision="12"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PREV_SHIP_TO_NO"
+      Expression="PREV_SHIP_TO_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="12" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PoNo"
+      IsPersistent="false"
+      Precision="12"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PO_NO"
+      Expression="PO_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="12" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReqDeptCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="REQ_DEPT_CODE"
+      Expression="REQ_DEPT_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ReqDeptName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="REQ_DEPT_NAME"
+      Expression="REQ_DEPT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstDeptCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INST_DEPT_CODE"
+      Expression="INST_DEPT_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstDeptName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INST_DEPT_NAME"
+      Expression="INST_DEPT_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="VENDOR_ID"
+      Expression="VENDOR_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_CODE"
+      Expression="VENDOR_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VendorName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_NAME"
+      Expression="VENDOR_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipToId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="SHIP_TO_ID"
+      Expression="SHIP_TO_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipToCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIP_TO_CODE"
+      Expression="SHIP_TO_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipToName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIP_TO_NAME"
+      Expression="SHIP_TO_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipWhseId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="SHIP_WHSE_ID"
+      Expression="SHIP_WHSE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipWhseCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIP_WHSE_CODE"
+      Expression="SHIP_WHSE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipWhseName"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIP_WHSE_NAME"
+      Expression="SHIP_WHSE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FreightCarrierId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="FREIGHT_CARRIER_ID"
+      Expression="FREIGHT_CARRIER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FreightCarrierCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FREIGHT_CARRIER_CODE"
+      Expression="FREIGHT_CARRIER_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FreightCarrierName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FREIGHT_CARRIER_NAME"
+      Expression="FREIGHT_CARRIER_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShippedDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="SHIPPED_DATE"
+      Expression="SHIPPED_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ArrivalDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="ARRIVAL_DATE"
+      Expression="ARRIVAL_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ArrivalTimeFrom"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ARRIVAL_TIME_FROM"
+      Expression="ARRIVAL_TIME_FROM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ArrivalTimeFromName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="5"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ARRIVAL_TIME_FROM_NAME"
+      Expression="ARRIVAL_TIME_FROM_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ArrivalTimeTo"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ARRIVAL_TIME_TO"
+      Expression="ARRIVAL_TIME_TO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ArrivalTimeToName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="5"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ARRIVAL_TIME_TO_NAME"
+      Expression="ARRIVAL_TIME_TO_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShippingMethodCode"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIPPING_METHOD_CODE"
+      Expression="SHIPPING_METHOD_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShippingMethodName"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIPPING_METHOD_NAME"
+      Expression="SHIPPING_METHOD_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FreightChargeClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FREIGHT_CHARGE_CLASS"
+      Expression="FREIGHT_CHARGE_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TakebackClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TAKEBACK_CLASS"
+      Expression="TAKEBACK_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DesignatedProdDate"
+      IsPersistent="false"
+      Precision="1"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="DESIGNATED_PROD_DATE"
+      Expression="DESIGNATED_PROD_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DesignatedItemCode"
+      IsPersistent="false"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DESIGNATED_ITEM_CODE"
+      Expression="DESIGNATED_ITEM_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DesignatedItemName"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DESIGNATED_ITEM_NAME"
+      Expression="DESIGNATED_ITEM_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DesignatedBranchNo"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DESIGNATED_BRANCH_NO"
+      Expression="DESIGNATED_BRANCH_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShippingInstructions"
+      IsPersistent="false"
+      Precision="60"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIPPING_INSTRUCTIONS"
+      Expression="SHIPPING_INSTRUCTIONS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RcvClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RCV_CLASS"
+      Expression="RCV_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FixClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FIX_CLASS"
+      Expression="FIX_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="XohaLastUpdateDate"
+      IsPersistent="false"
+      Precision="19"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="XOHA_LAST_UPDATE_DATE"
+      Expression="XOHA_LAST_UPDATE_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="19" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="XolaLastUpdateDate"
+      IsPersistent="false"
+      Precision="19"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="XOLA_LAST_UPDATE_DATE"
+      Expression="XOLA_LAST_UPDATE_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="19" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DesignatedItemId"
+      IsPersistent="false"
+      Precision="19"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="DESIGNATED_ITEM_ID"
+      Expression="DESIGNATED_ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrderTypeName"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ORDER_TYPE_NAME"
+      Expression="ORDER_TYPE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="NewFlag"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="NEW_FLAG"
+      Expression="NEW_FLAG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FrequentMover"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FREQUENT_MOVER"
+      Expression="FREQUENT_MOVER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustomerId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CUSTOMER_ID"
+      Expression="CUSTOMER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustomerCode"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CUSTOMER_CODE"
+      Expression="CUSTOMER_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PriceList"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PRICE_LIST"
+      Expression="PRICE_LIST"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BasedWeight"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASED_WEIGHT"
+      Expression="BASED_WEIGHT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SumWeight"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SUM_WEIGHT"
+      Expression="SUM_WEIGHT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EfficiencyWeight"
+      IsPersistent="false"
+      Precision="8"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EFFICIENCY_WEIGHT"
+      Expression="EFFICIENCY_WEIGHT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="8" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BasedCapacity"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASED_CAPACITY"
+      Expression="BASED_CAPACITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SumCapacity"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SUM_CAPACITY"
+      Expression="SUM_CAPACITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="EfficiencyCapacity"
+      IsPersistent="false"
+      Precision="8"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="EFFICIENCY_CAPACITY"
+      Expression="EFFICIENCY_CAPACITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="8" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SumQuantity"
+      IsPersistent="false"
+      Precision="10"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="SUM_QUANTITY"
+      Expression="SUM_QUANTITY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SmallQuantity"
+      IsPersistent="false"
+      Precision="8"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="SMALL_QUANTITY"
+      Expression="SMALL_QUANTITY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LabelQuantity"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="LABEL_QUANTITY"
+      Expression="LABEL_QUANTITY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbOrderTypeId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="DB_ORDER_TYPE_ID"
+      Expression="DB_ORDER_TYPE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbWeightCapacityClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_WEIGHT_CAPACITY_CLASS"
+      Expression="DB_WEIGHT_CAPACITY_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbReqDeptCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_REQ_DEPT_CODE"
+      Expression="DB_REQ_DEPT_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbInstDeptCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_INST_DEPT_CODE"
+      Expression="DB_INST_DEPT_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbVendorCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_VENDOR_CODE"
+      Expression="DB_VENDOR_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbShipToCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_SHIP_TO_CODE"
+      Expression="DB_SHIP_TO_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbShipWhseCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_SHIP_WHSE_CODE"
+      Expression="DB_SHIP_WHSE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbFreightCarrierCode"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_FREIGHT_CARRIER_CODE"
+      Expression="DB_FREIGHT_CARRIER_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbShippedDate"
+      IsPersistent="false"
+      Precision="4"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="DB_SHIPPED_DATE"
+      Expression="DB_SHIPPED_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbArrivalDate"
+      IsPersistent="false"
+      Precision="4"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="DB_ARRIVAL_DATE"
+      Expression="DB_ARRIVAL_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbArrivalTimeFrom"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_ARRIVAL_TIME_FROM"
+      Expression="DB_ARRIVAL_TIME_FROM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbArrivalTimeTo"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_ARRIVAL_TIME_TO"
+      Expression="DB_ARRIVAL_TIME_TO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbShippingMethodCode"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_SHIPPING_METHOD_CODE"
+      Expression="DB_SHIPPING_METHOD_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbFreightChargeClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_FREIGHT_CHARGE_CLASS"
+      Expression="DB_FREIGHT_CHARGE_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbTakebackClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_TAKEBACK_CLASS"
+      Expression="DB_TAKEBACK_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbDesignatedProdDate"
+      IsPersistent="false"
+      Precision="1"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="DB_DESIGNATED_PROD_DATE"
+      Expression="DB_DESIGNATED_PROD_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbDesignatedItemCode"
+      IsPersistent="false"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_DESIGNATED_ITEM_CODE"
+      Expression="DB_DESIGNATED_ITEM_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbDesignatedBranchNo"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_DESIGNATED_BRANCH_NO"
+      Expression="DB_DESIGNATED_BRANCH_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbShippingInstructions"
+      IsPersistent="false"
+      Precision="2000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_SHIPPING_INSTRUCTIONS"
+      Expression="DB_SHIPPING_INSTRUCTIONS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbRcvClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_RCV_CLASS"
+      Expression="DB_RCV_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbFixClass"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_FIX_CLASS"
+      Expression="DB_FIX_CLASS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbResultShippedDate"
+      IsPersistent="false"
+      Precision="1"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="DB_RESULT_SHIPPED_DATE"
+      Expression="DB_RESULT_SHIPPED_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbResultArrivalDate"
+      IsPersistent="false"
+      Precision="1"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="DB_RESULT_ARRIVAL_DATE"
+      Expression="DB_RESULT_ARRIVAL_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RcvType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RCV_TYPE"
+      Expression="RCV_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FreightChargeClassName"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FREIGHT_CHARGE_CLASS_NAME"
+      Expression="FREIGHT_CHARGE_CLASS_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TakebackClassName"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TAKEBACK_CLASS_NAME"
+      Expression="TAKEBACK_CLASS_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="WeightCapacityClassName"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="WEIGHT_CAPACITY_CLASS_NAME"
+      Expression="WEIGHT_CAPACITY_CLASS_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrganizationId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ORGANIZATION_ID"
+      Expression="ORGANIZATION_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="PROGRAM_UPDATE_DATE"
+      Expression="PROGRAM_UPDATE_DATE"
+      SQLType="DATE" >
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="OrderHeaderId" />
+   </AttrArray>
+</ViewObject>

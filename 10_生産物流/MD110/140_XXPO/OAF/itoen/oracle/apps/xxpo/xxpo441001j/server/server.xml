@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxpo.xxpo441001j.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="XxpoShippedResultAM"
+      FullName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedResultAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="XxpoShippedResultVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedResultVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoShippedMakeHeaderVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeHeaderVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoShippedMakeHeaderPVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeHeaderPVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoShippedMakeLinePVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeLinePVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoShippedMakeLineVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeLineVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoShippedMakeTotalVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo441001j.server.XxpoShippedMakeTotalVO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>
