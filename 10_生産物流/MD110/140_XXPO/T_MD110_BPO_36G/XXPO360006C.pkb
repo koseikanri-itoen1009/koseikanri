@@ -7,7 +7,7 @@ AS
  * Description      : 仕入取引明細表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2009/04/03    1.24  A.Shiina         本番障害#1379対応(v1.22対応取消)
  *  2009/04/23    1.25  A.Shiina         本番障害#1429対応
  *  2009/05/18    1.26  T.Yoshimoto      本番障害#1478対応
+ *  2009/06/02    1.27  T.Yoshimoto      本番障害#1515,1516対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -980,26 +981,44 @@ AS
     ELSE
 */
 -- 2009/05/20 v1.26 T.Yoshimoto Del End 本番#1478
-      lv_select := 'SELECT '
-        ||   ' xrart.txns_id txns_id '
-        ||  ', LPAD(NVL( '|| lv_dept ||  ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
-        || '|| LPAD(NVL(xvv_part.segment1 , '|| cv_code_format||'), 4, '|| cv_zero ||')'
-        || '|| LPAD(NVL( ' || lv_assen || ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
-        ||                                                        ' break_dtl ' --小ブレイクキー
-        ;
-      IF (gr_param_rec.out_flg = gv_out_assen) THEN
+      lv_select := 'SELECT ';
+-- 2009/06/02 v1.27 T.Yoshimoto Add Start 本番#1515
+      --入力パラメータ＝3.集計の場合
+      IF (gr_param_rec.out_flg = gv_out_syukei) THEN
         lv_select := lv_select
-          || ',  LPAD(NVL( '|| lv_dept ||  ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
-          || '|| LPAD(NVL( ' || lv_assen || ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
-          ||                                                      ' break_mid ' --中ブレイクキー
+          ||   ' NULL txns_id '
+          || ' , ' || lv_dept || ' break_dtl '
+          || ' , ' || lv_dept || ' break_mid '
           ;
+--
+      --入力パラメータ＝3.集計以外の場合
       ELSE
+-- 2009/06/02 v1.27 T.Yoshimoto Add End 本番#1515
         lv_select := lv_select
-          || ',  LPAD(NVL('|| lv_dept ||  ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
+          ||   ' xrart.txns_id txns_id '
+          ||  ', LPAD(NVL( '|| lv_dept ||  ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
           || '|| LPAD(NVL(xvv_part.segment1 , '|| cv_code_format||'), 4, '|| cv_zero ||')'
-          ||                                                      ' break_mid ' --中ブレイクキー
+          || '|| LPAD(NVL( ' || lv_assen || ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
+          ||                                                        ' break_dtl ' --小ブレイクキー
           ;
+--
+        IF (gr_param_rec.out_flg = gv_out_assen) THEN
+          lv_select := lv_select
+            || ',  LPAD(NVL( '|| lv_dept ||  ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
+            || '|| LPAD(NVL( ' || lv_assen || ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
+            ||                                                      ' break_mid ' --中ブレイクキー
+            ;
+        ELSE
+          lv_select := lv_select
+            || ',  LPAD(NVL('|| lv_dept ||  ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
+            || '|| LPAD(NVL(xvv_part.segment1 , '|| cv_code_format||'), 4, '|| cv_zero ||')'
+            ||                                                      ' break_mid ' --中ブレイクキー
+            ;
+        END IF;
+--
+-- 2009/06/02 v1.27 T.Yoshimoto Add Start 本番#1515
       END IF;
+-- 2009/06/02 v1.27 T.Yoshimoto Add End 本番#1515
 --
       --見出し
       lv_select := lv_select
@@ -1570,8 +1589,17 @@ AS
         OR ( lv_siire_no <> it_data_rec(ln_loop_index).siire_no )
         OR ( lv_rcv_rtn_uom <> it_data_rec(ln_loop_index).rcv_rtn_uom) ) THEN
 --
-        --単価
-        ln_kobikigo_tanka   := ROUND(( ln_sum_siire/ln_sum_conv_qty ), 2);
+-- 2009/6/2 v1.27 T.Yoshimoto Add Start 本番#1516
+        IF ( ln_sum_conv_qty = 0 ) THEN
+          --単価
+          ln_kobikigo_tanka   := 0;
+        ELSE
+-- 2009/6/2 v1.27 T.Yoshimoto Add End 本番#1516
+          --単価
+          ln_kobikigo_tanka   := ROUND(( ln_sum_siire/ln_sum_conv_qty ), 2);
+-- 2009/6/2 v1.27 T.Yoshimoto Add Start 本番#1516
+        END IF;
+-- 2009/6/2 v1.27 T.Yoshimoto Add End 本番#1516
 --
         --差引金額
         ln_sum_sasihiki     := ln_sum_siire - ln_sum_kosen - ln_sum_fuka;
@@ -1744,8 +1772,17 @@ AS
 --
       ln_loop_index := it_data_rec.COUNT;
 --
-      --単価
-      ln_kobikigo_tanka   := ROUND(( ln_sum_siire/ln_sum_conv_qty ), 2);
+-- 2009/6/2 v1.27 T.Yoshimoto Add Start 本番#1516
+      IF ( ln_sum_conv_qty = 0 ) THEN
+        --単価
+        ln_kobikigo_tanka   := 0;
+      ELSE
+-- 2009/6/2 v1.27 T.Yoshimoto Add End 本番#1516
+        --単価
+        ln_kobikigo_tanka   := ROUND(( ln_sum_siire/ln_sum_conv_qty ), 2);
+-- 2009/6/2 v1.27 T.Yoshimoto Add Start 本番#1516
+      END IF;
+-- 2009/6/2 v1.27 T.Yoshimoto Add End 本番#1516
 --
       --差引金額
       ln_sum_sasihiki     := ln_sum_siire - ln_sum_kosen - ln_sum_fuka;

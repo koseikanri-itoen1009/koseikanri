@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -50,7 +50,7 @@ AS
  *  2009/01/08    1.13  N.Yoshida        本番障害#970
  *  2009/03/30    1.14  A.Shiina         本番障害#1346
  *  2009/05/26    1.15  T.Yoshimoto      本番障害#1478
- *
+ *  2009/06/02    1.16  T.Yoshimoto      本番障害#1516
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1157,6 +1157,9 @@ AS
       || ' ORDER BY'
       || '  segment1_s' -- 仕入先コード
       || ' ,segment1_a' -- 斡旋者コード
+-- 2009/06/02 v1.16 T.Yoshimoto Add Start 本番#1516
+      || ' ,attribute10' -- 発注部署コード
+-- 2009/06/02 v1.16 T.Yoshimoto Add End 本番#1516
       ;
 --
 --      FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql) ;
@@ -1298,10 +1301,13 @@ AS
         --差引金額
         ln_sum_sasihiki     := ln_sum_siire - ln_sum_kosen - ln_sum_fuka;
 --
+-- 2009/06/02 v1.16 T.Yoshimoto Del Start 本番#1516
         --消費税(仕入金額)
-        ln_sum_tax_siire    := ROUND(NVL(ln_sum_siire, 0) * NVL(gn_tax , 0) ,0);
+        --ln_sum_tax_siire    := ROUND(NVL(ln_sum_siire, 0) * NVL(gn_tax , 0) ,0);
         --消費税(口銭金額)
-        ln_sum_tax_kousen   := ROUND(NVL(ln_sum_kosen, 0) * NVL(gn_tax , 0) ,0);
+        --ln_sum_tax_kousen   := ROUND(NVL(ln_sum_kosen, 0) * NVL(gn_tax , 0) ,0);
+-- 2009/06/02 v1.16 T.Yoshimoto Del End 本番#1516
+--
         --消費税(差引金額)
         ln_sum_tax_sasihiki := ln_sum_tax_siire - ln_sum_tax_kousen;
 --
@@ -1425,7 +1431,6 @@ AS
       -- ==========================
       --消費税(仕入金額)
       ln_sum_tax_siire    := ln_sum_tax_siire + (ROUND(NVL(ln_siire, 0) * gn_tax ,0));
-      FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_siire=' || ln_siire || ':::ln_sum_tax_siire=' || ln_sum_tax_siire) ; -- test_yoshimoto
       --消費税(口銭金額)
       ln_sum_tax_kousen   := ln_sum_tax_kousen + (ROUND(NVL(ln_kousen, 0) * gn_tax ,0));
       -- 入庫総数を加算
