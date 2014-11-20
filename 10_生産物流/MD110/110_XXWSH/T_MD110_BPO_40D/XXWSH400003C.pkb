@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.21
+ * Version                : 1.22
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/11/18    1.19  M.Hokkanji       統合指摘141、632、658対応
  *  2008/11/26    1.20  M.Hokkanji       本番障害133対応
  *  2008/12/02    1.21  M.Nomura         本番障害318対応
+ *  2008/12/07    1.22  M.Hokkanji       本番障害514対応
  *
  *****************************************************************************************/
 --
@@ -156,6 +157,13 @@ AS
 -- Ver 1.17 M.Hokkanji START
   gv_cnst_tkn_request_no  CONSTANT VARCHAR2(15)  := 'REQUEST_NO';
 -- Ver 1.17 M.Hokkanji END
+-- Ver1.22 M.Hokkanji Start
+  gv_cnst_tkn_deliver_from CONSTANT VARCHAR2(15) := 'DELIVER_FROM';
+  gv_cnst_tkn_deliver_to   CONSTANT VARCHAR2(15) := 'DELIVER_TO';
+  gv_cnst_tkn_head_saled   CONSTANT VARCHAR2(20) := 'HEAD_SALES_BRANCH';
+  gv_cnst_tkn_ship_date    CONSTANT VARCHAR2(15) := 'SHIP_DATE';
+  gv_cnst_tkn_item_code    CONSTANT VARCHAR2(15) := 'ITEM_CODE';
+-- Ver1.22 M.Hokkanji End
 --
 -- 入力パラメータ名称
   gv_cnst_item_name       CONSTANT VARCHAR2(15)  := '項目名称';
@@ -1758,10 +1766,27 @@ AS
 --
           -- リターン・コードにエラーが返された場合はエラー
           IF (ln_retcode = gn_status_error) THEN
+-- Ver1.22 M.Hokkanji Start
             lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
                                                   gv_cnst_msg_152,
                                                   'REQUEST_NO',
-                                                  loop_cnt.request_no);
+                                                  loop_cnt.request_no,
+                                                  gv_cnst_tkn_item_code,
+                                                  loop_cnt.request_item_code,
+                                                  gv_cnst_tkn_deliver_to,
+                                                  loop_cnt.deliver_to,
+                                                  gv_cnst_tkn_head_saled,
+                                                  loop_cnt.head_sales_branch,
+                                                  gv_cnst_tkn_deliver_from,
+                                                  loop_cnt.deliver_from,
+                                                  gv_cnst_tkn_ship_date,
+                                                  TO_CHAR(loop_cnt.schedule_ship_date,'YYYY/MM/DD')
+                                                  );
+--            lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+--                                                  gv_cnst_msg_152,
+--                                                  'REQUEST_NO',
+--                                                  loop_cnt.request_no);
+-- Ver1.22 M.Hokkanji End
             RAISE global_api_expt;
           END IF;
 -- Ver1.15 M.Hokkanji START
