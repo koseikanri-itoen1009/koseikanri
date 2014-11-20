@@ -7,7 +7,7 @@ AS
  * Description      : 他勘定振替原価差異表
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *                                       されるが、ヘッダの処理年月が帳票出力時に書式’YYYY/MM
  *                                       ’へ変換されるよう修正。
  *  2008/05/31    1.2   M.Hamamoto       原価取得方法を修正。
+ *  2008/06/19    1.3   Y.Ishikawa       金額、数量がNULLの場合は0を表示する。
  *
  *****************************************************************************************/
 --
@@ -1060,33 +1061,33 @@ AS
         prc_set_xml('D', 'item_name_from', gt_main_data(ln_loop_index).item_name_from, 20);
 --
         --振替数量
-        prc_set_xml('Y', 'quantity', ln_qty);
+        prc_set_xml('Z', 'quantity', ln_qty);
 --
         --標準単価
         IF (ln_qty != 0) THEN
           ln_to_price := ln_to_gen / ln_qty;
-          prc_set_xml('Y', 'standard_price', ln_to_price);
         END IF;
+        prc_set_xml('Z', 'standard_price', ln_to_price);
 --
         --標準原価
-        prc_set_xml('Y', 'standard_cost', ln_to_gen);
+        prc_set_xml('Z', 'standard_cost', ln_to_gen);
 --
         --振替元実際単価
         IF (ln_qty != 0 ) THEN
           ln_from_price := ln_from_gen / ln_qty ;
-          prc_set_xml('Y', 'actual_price', ln_from_price);
         END IF;
+        prc_set_xml('Z', 'actual_price', ln_from_price);
 --
         --振替元実際原価
-        prc_set_xml('Y', 'actual_cost', ln_from_gen);
+        prc_set_xml('Z', 'actual_cost', ln_from_gen);
 --
         --単価差異
         ln_sai_tan := ln_to_price - ln_from_price;
-        prc_set_xml('Y', 'difference_price', ln_sai_tan);
+        prc_set_xml('Z', 'difference_price', ln_sai_tan);
 --
         --原価差異
         ln_sai_gen := ln_to_gen - ln_from_gen;
-        prc_set_xml('Y', 'difference_cost', ln_sai_gen);
+        prc_set_xml('Z', 'difference_cost', ln_sai_gen);
 --
         -- 明細１行終了
         prc_set_xml('T', '/g_item');

@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -31,6 +31,12 @@ AS
  *  2008/05/30    1.2   R.Tomoyose       実際原価を抽出する時、原価管理区分が実際原価の場合、
  *                                       ロット管理の対象の場合はロット別原価テーブル
  *                                       ロット管理の対象外の場合は標準原価マスタテーブルより取得
+ *  2008/06/12    1.3   Y.Ishikawa       生産原料詳細(アドオン)の結合が不要の為削除。
+ *                                       取引区分名 = 仕入先返品は払出だが出力位置は受入の部分に
+ *                                       出力する。
+ *  2008/06/24    1.4   T.Endou          数量・金額項目がNULLでも0出力する。
+ *                                       数量・金額の間を詰める。
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -187,6 +193,7 @@ AS
   ------------------------------
   gv_dealings_div_prod1      CONSTANT VARCHAR2(10)  := '品種振替';
   gv_dealings_div_prod2      CONSTANT VARCHAR2(10)  := '品目振替';
+  gv_dealings_name_po        CONSTANT xxcmn_lookup_values_v.meaning%TYPE := '仕入';
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -627,6 +634,9 @@ AS
               || '      WHEN xrpmxv.rcv_pay_div = ' || gc_rcv_pay_div_in
               || '           THEN SUBSTR(xlvv.attribute2,1,'
               || '                INSTR(xlvv.attribute2,''' || gc_break_col || ''') -1)'
+              || '      WHEN xrpmxv.dealings_div_name = ''' || gv_dealings_name_po || ''''
+              || '           THEN SUBSTR(xlvv.attribute2,1,'
+              || '                INSTR(xlvv.attribute2,''' || gc_break_col || ''') -1)'
               || '      ELSE'
               || '                SUBSTR(xlvv.attribute2,INSTR(xlvv.attribute2,'''
               ||                                         gc_break_col || ''') +1)'
@@ -939,7 +949,6 @@ AS
     lv_from_prod := ''
       || ',ic_tran_pnd               trn'      -- 保留在庫トラン
       || ',xxcmn_rcv_pay_mst_prod_v  xrpmxv'   --  受払VIW
-      || ',xxwip_material_detail     xmd'      -- 生産原料詳細（アドオン）
       || ',xxcmn_lookup_values2_v    xlvv2'    -- クイックコード情報view2
        ;
 --
@@ -954,8 +963,6 @@ AS
       || ' AND trn.doc_id              = xrpmxv.doc_id'                     --バッチID
       || ' AND trn.doc_line            = xrpmxv.doc_line'                   --
       || ' AND trn.line_type           = xrpmxv.gmd_line_type'              --
-      || ' AND trn.item_id             = xmd.item_id'
-      || ' AND trn.lot_id              = xmd.lot_id'
       || ' AND xlvv2.meaning          <> ''' || gv_dealings_div_prod1 || ''''   -- 品種振替
       || ' AND xlvv2.meaning          <> ''' || gv_dealings_div_prod2 || ''''   -- 品目振替
       || ' AND xlvv2.lookup_type       = ''' || gc_lookup_type_dealing_div || ''''
@@ -1668,10 +1675,10 @@ AS
           -- -----------------------------------------------------
           -- 数量
           ln_quantity := ln_first_inv_qty + ln_qty_in - ln_qty_out;
-          prc_set_xml('N', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
+          prc_set_xml('Z', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
           ln_amount := ln_first_inv_amt + ln_amt_in - ln_amt_out;
-          prc_set_xml('N', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
+          prc_set_xml('Z', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
           -- -----------------
           -- 受払VIEWより取得
@@ -1828,10 +1835,10 @@ AS
           -- -----------------------------------------------------
           -- 数量
           ln_quantity := ln_first_inv_qty + ln_qty_in - ln_qty_out;
-          prc_set_xml('N', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
+          prc_set_xml('Z', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
           ln_amount := ln_first_inv_amt + ln_amt_in - ln_amt_out;
-          prc_set_xml('N', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
+          prc_set_xml('Z', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
           -- -----------------
           -- 受払VIEWより取得
@@ -1975,10 +1982,10 @@ AS
           -- -----------------------------------------------------
           -- 数量
           ln_quantity := ln_first_inv_qty + ln_qty_in - ln_qty_out;
-          prc_set_xml('N', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
+          prc_set_xml('Z', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
           ln_amount := ln_first_inv_amt + ln_amt_in - ln_amt_out;
-          prc_set_xml('N', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
+          prc_set_xml('Z', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
           -- -----------------
           -- 受払VIEWより取得
@@ -2114,10 +2121,10 @@ AS
           -- -----------------------------------------------------
           -- 数量
           ln_quantity := ln_first_inv_qty + ln_qty_in - ln_qty_out;
-          prc_set_xml('N', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
+          prc_set_xml('Z', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
           ln_amount := ln_first_inv_amt + ln_amt_in - ln_amt_out;
-          prc_set_xml('N', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
+          prc_set_xml('Z', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
           -- -----------------
           -- 受払VIEWより取得
@@ -2245,10 +2252,10 @@ AS
           -- -----------------------------------------------------
           -- 数量
           ln_quantity := ln_first_inv_qty + ln_qty_in - ln_qty_out;
-          prc_set_xml('N', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
+          prc_set_xml('Z', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
           ln_amount := ln_first_inv_amt + ln_amt_in - ln_amt_out;
-          prc_set_xml('N', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
+          prc_set_xml('Z', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
           -- -----------------
           -- 受払VIEWより取得
@@ -2378,10 +2385,10 @@ AS
           -- -----------------------------------------------------
           -- 数量
           ln_quantity := ln_first_inv_qty + ln_qty_in - ln_qty_out;
-          prc_set_xml('N', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
+          prc_set_xml('Z', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
           -- 金額
           ln_amount := ln_first_inv_amt + ln_amt_in - ln_amt_out;
-          prc_set_xml('N', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
+          prc_set_xml('Z', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
           -- -----------------
           -- 受払VIEWより取得
@@ -2457,7 +2464,7 @@ AS
                                               ln_first_inv_qty, ln_first_inv_amt);
         -- 数量
         ln_first_inv_qty := ln_first_inv_qty + ln_inv_qty;
-        prc_set_xml('N', 'first_inv_qty' , TO_CHAR(ln_first_inv_qty) );
+        prc_set_xml('Z', 'first_inv_qty' , TO_CHAR(ln_first_inv_qty) );
         -- 金額
         IF (NVL( gt_main_data(i).cost_kbn, lc_break_null ) = gc_cost_st ) THEN
           -- 原価管理区分が「標準原価」の場合
@@ -2470,7 +2477,7 @@ AS
             ln_first_inv_amt := (ln_first_inv_qty + ln_inv_qty) * ln_unit_price;
           END IF;
         END IF;
-        prc_set_xml('N', 'first_inv_amt' , TO_CHAR(ln_first_inv_amt) );
+        prc_set_xml('Z', 'first_inv_amt' , TO_CHAR(ln_first_inv_amt) );
 --
         -- -----------------------------------------------------
         -- キーブレイク時の初期処理
@@ -2686,10 +2693,10 @@ AS
     -- -----------------------------------------------------
     -- 数量
     ln_quantity := ln_first_inv_qty + ln_qty_in - ln_qty_out;
-    prc_set_xml('N', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
+    prc_set_xml('Z', 'end_inv_qty' ,TO_CHAR(ROUND(ln_quantity, gn_quantity_decml)));
     -- 金額
     ln_amount := ln_first_inv_amt + ln_amt_in - ln_amt_out;
-    prc_set_xml('N', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
+    prc_set_xml('Z', 'end_inv_amt' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml)));
 --
     -- -----------------
     -- 受払VIEWより取得

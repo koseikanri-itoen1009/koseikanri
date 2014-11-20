@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.2
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -34,6 +34,11 @@ AS
  *  2008/05/30    1.2   Y.Ishikawa       実際原価を抽出する時、原価管理区分が実際原価の場合、
  *                                       ロット管理の対象の場合はロット別原価テーブル
  *                                       ロット管理の対象外の場合は標準原価マスタテーブルより取得
+ *
+ *  2008/06/12    1.3   I.Higa           取引区分が"棚卸増"または"棚卸減"の場合、マイナスデータが
+ *                                       入っているので絶対値計算を行わず、設定値で集計を行う。
+ *  2008/06/13    1.4   Y.Ishikawa       生産原料詳細(アドオン)の結合が不要の為削除。
+ *  2008/06/24    1.5   Y.Ishikawa       金額、数量がNULLの場合は0を表示する。
  *
  *****************************************************************************************/
 --
@@ -80,6 +85,11 @@ AS
   ------------------------------
   gc_cost_ac              CONSTANT VARCHAR2(1) := '0';--実際原価
   gc_cost_st              CONSTANT VARCHAR2(1) := '1';--標準原価
+--
+  ------------------------------
+  -- 取引区分
+  ------------------------------
+  gv_div_name             CONSTANT VARCHAR2(6) := '棚卸減';
 --
   ------------------------------
   -- ロット管理区分
@@ -147,6 +157,7 @@ AS
     whse_name          ic_whse_mst.whse_name%TYPE,              -- 倉庫名
     trans_qty          ic_tran_pnd.trans_qty%TYPE,              -- 取引数量
     trans_date         ic_tran_pnd.trans_date%TYPE,
+    div_name           xxcmn_lookup_values_v.meaning%TYPE,      -- 取引区分
     pay_div            xxcmn_rcv_pay_mst.rcv_pay_div%TYPE,      -- 受払区分
     item_id            ic_item_mst_b.item_id%TYPE,              -- 品目ID
     item_code          ic_item_mst_b.item_desc1%TYPE,           -- 品目コード
@@ -745,6 +756,7 @@ AS
     lv_select_xfer := lv_select_xfer
                    || ' itp.trans_qty          AS  trans_qty, '  -- 取引数量
                    || ' itp.trans_date         AS  trans_date, '  -- 取引日
+                   || ' xfer_v.dealings_div_name AS  div_name, ' -- 取引区分名
                    || ' xfer_v.rcv_pay_div     AS  pay_div, ';    -- 受払区分
 --
     -- ============================================
@@ -805,6 +817,7 @@ AS
     lv_select_trni := lv_select_trni
                    || ' itc.trans_qty          AS  trans_qty, '  -- 取引数量
                    || ' itc.trans_date         AS  trans_date, '  -- 取引日
+                   || ' trni_v.dealings_div_name AS  div_name, ' -- 取引区分名
                    || ' trni_v.rcv_pay_div     AS  pay_div, ';   -- 受払区分
 --
     -- ============================================
@@ -869,6 +882,7 @@ AS
     lv_select_adji_1 := lv_select_adji_1
                      || ' itc.trans_qty          AS  trans_qty, '  -- 取引数量
                      || ' itc.trans_date         AS  trans_date, '  -- 取引日
+                     || ' adji_v.dealings_div_name AS  div_name, ' -- 取引区分名
                      || ' adji_v.rcv_pay_div     AS  pay_div, ';   -- 受払区分
 --
     -- ============================================
@@ -927,6 +941,7 @@ AS
     lv_select_adji_2 := lv_select_adji_2
                      || ' itc.trans_qty          AS  trans_qty, '  -- 取引数量
                      || ' itc.trans_date         AS  trans_date, '  -- 取引日
+                     || ' adji_v.dealings_div_name AS  div_name, ' -- 取引区分名
                      || ' adji_v.rcv_pay_div     AS  pay_div, ';   -- 受払区分
 --
     -- ============================================
@@ -987,6 +1002,7 @@ AS
     lv_select_adji_3 := lv_select_adji_3
                      || ' itc.trans_qty          AS  trans_qty, '  -- 取引数量
                      || ' itc.trans_date         AS  trans_date, '  -- 取引日
+                     || ' adji_v.dealings_div_name AS  div_name, ' -- 取引区分名
                      || ' adji_v.rcv_pay_div     AS  pay_div, ';   -- 受払区分
 --
     -- ============================================
@@ -1054,6 +1070,7 @@ AS
     lv_select_adji_4 := lv_select_adji_4
                      || ' itc.trans_qty          AS  trans_qty, '  -- 取引数量
                      || ' itc.trans_date         AS  trans_date, '  -- 取引日
+                     || ' adji_v.dealings_div_name AS  div_name, ' -- 取引区分名
                      || ' adji_v.rcv_pay_div     AS  pay_div, ';   -- 受払区分
 --
     -- ============================================
@@ -1117,6 +1134,7 @@ AS
     lv_select_prod := lv_select_prod
                    || ' itp.trans_qty          AS trans_qty, '
                    || ' itp.trans_date         AS trans_date, '
+                   || ' prod_v.dealings_div_name AS  div_name, ' -- 取引区分名
                    || ' prod_v.rcv_pay_div     AS pay_div, ';   -- 受払区分
 --
     -- ============================================
@@ -1126,8 +1144,6 @@ AS
                    || ' ic_tran_pnd                 itp, '
                    || ' ic_tran_pnd                 itp2, '
                    || ' xxcmn_rcv_pay_mst_prod_v    prod_v, '
-                   || ' xxwip_material_detail       xmd1, '    -- 生産原料詳細（アドオン）
-                   || ' xxwip_material_detail       xmd2, '    -- 生産原料詳細（アドオン）
                    || ' xxcmn_lookup_values2_v      xlvv, '    -- クイックコード情報view2
                    || ' xxcmn_lookup_values2_v      xlvv2, '
                    || ' xxcmn_lot_each_item_v       xleiv, '   -- ロット別品目情報view
@@ -1149,8 +1165,6 @@ AS
                   || ' AND itp.line_type       = prod_v.line_type '
                   || ' AND itp.doc_id          = prod_v.doc_id '
                   || ' AND itp.doc_line        = prod_v.doc_line '
-                  || ' AND itp.item_id         = xmd1.item_id '
-                  || ' AND itp.lot_id          = xmd1.lot_id '
                   || ' AND itp2.line_type      = CASE '
                   || '                             WHEN itp.line_type = ' || cn_min
                   || '                             THEN ' || cn_one
@@ -1161,8 +1175,6 @@ AS
                   || ' AND itp2.reverse_id     IS NULL '
                   || ' AND itp.doc_id          = itp2.doc_id '
                   || ' AND itp.doc_line        = itp2.doc_line '
-                  || ' AND itp2.item_id        = xmd2.item_id '
-                  || ' AND itp2.lot_id         = xmd2.lot_id '
                   || ' AND itp2.trans_date   >= FND_DATE.STRING_TO_DATE( '
                   || '''' || gv_exec_start || ''', ''' || gc_char_dt_format || ''' )'
                   || ' AND  itp2.trans_date   <= FND_DATE.STRING_TO_DATE('
@@ -1220,6 +1232,7 @@ AS
     lv_select_omso := lv_select_omso
                    || ' itp.trans_qty          AS  trans_qty, '  -- 取引数量
                    || ' itp.trans_date         AS  trans_date, '  -- 取引日
+                   || ' omso_v.dealings_div_name AS  div_name, ' -- 取引区分名
                    || ' omso_v.rcv_pay_div     AS  pay_div, ';   -- 受払区分
 --
     -- ============================================
@@ -1271,6 +1284,7 @@ AS
     lv_select_porc := lv_select_porc
                    || ' itp.trans_qty          AS  trans_qty, '  -- 取引数量
                    || ' itp.trans_date         AS  trans_date, '  -- 取引日
+                   || ' porc_v.dealings_div_name AS  div_name, ' -- 取引区分名
                    || ' porc_v.rcv_pay_div     AS  pay_div, ';   -- 受払区分
 --
     -- ============================================
@@ -1449,6 +1463,8 @@ AS
       IF (gt_main_data(in_pos).pay_div = cv_one ) THEN
       --数量加算
         qty(ln_col_pos) :=  qty(ln_col_pos) + gt_main_data(in_pos).trans_qty;
+      ELSIF (gt_main_data(in_pos).div_name = gv_div_name ) THEN --棚卸減の場合
+        qty(ln_col_pos) :=  qty(ln_col_pos) + (gt_main_data(in_pos).trans_qty);
       ELSE
         qty(ln_col_pos) :=  qty(ln_col_pos) + (gt_main_data(in_pos).trans_qty * cn_min);
       --金額加算
@@ -1703,87 +1719,65 @@ AS
         -- =========================================
         -- 浜岡
         -- =========================================
-        IF ( qty(gc_hamaoka_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'hamaoka_qty',    qty(gc_hamaoka_num));
+        prc_set_xml('Z', 'hamaoka_qty',    qty(gc_hamaoka_num));
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'hamaoka_amt',  qty(gc_hamaoka_num) * in_price);
-            ELSIF ( amt(gc_hamaoka_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'hamaoka_amt',  amt(gc_hamaoka_num));
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'hamaoka_amt',  qty(gc_hamaoka_num) * in_price);
+        ELSE
+          prc_set_xml('Z', 'hamaoka_amt',  amt(gc_hamaoka_num));
         END IF;
 --
         -- =========================================
         -- 品種移動
         -- =========================================
-        IF ( qty(gc_rec_kind_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'rec_kind_qty',   qty(gc_rec_kind_num));
+        prc_set_xml('Z', 'rec_kind_qty',   qty(gc_rec_kind_num));
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'rec_kind_amt',   qty(gc_rec_kind_num) * in_price);
-            ELSIF ( amt(gc_rec_kind_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'rec_kind_amt',   amt(gc_rec_kind_num));
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'rec_kind_amt',   qty(gc_rec_kind_num) * in_price);
+        ELSE
+          prc_set_xml('Z', 'rec_kind_amt',   amt(gc_rec_kind_num));
         END IF;
 --
         -- =========================================
         -- 倉庫移動
         -- =========================================
-        IF ( qty(gc_rec_whse_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'rec_whse_qty',   qty(gc_rec_whse_num));
+        prc_set_xml('Z', 'rec_whse_qty',   qty(gc_rec_whse_num));
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'rec_whse_amt',   qty(gc_rec_whse_num) * in_price);
-            ELSIF ( amt(gc_rec_whse_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'rec_whse_amt',   amt(gc_rec_whse_num));
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'rec_whse_amt',   qty(gc_rec_whse_num) * in_price);
+        ELSE
+          prc_set_xml('Z', 'rec_whse_amt',   amt(gc_rec_whse_num));
         END IF;
 --
         -- =========================================
         -- その他
         -- =========================================
-        IF ( qty(gc_rec_etc_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'rec_etc_qty',    qty(gc_rec_etc_num));
+        prc_set_xml('Z', 'rec_etc_qty',    qty(gc_rec_etc_num));
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'rec_etc_amt',    qty(gc_rec_etc_num) * in_price);
-            ELSIF ( amt(gc_rec_etc_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'rec_etc_amt',    amt(gc_rec_etc_num));
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'rec_etc_amt',    qty(gc_rec_etc_num) * in_price);
+        ELSE
+          prc_set_xml('Z', 'rec_etc_amt',    amt(gc_rec_etc_num));
         END IF;
 --
         -- =========================================
         -- 受払合計
         -- =========================================
-        IF ((qty(gc_hamaoka_num)    + qty(gc_rec_kind_num)
-             + qty(gc_rec_whse_num) + qty(gc_rec_etc_num)) <> cn_zero ) THEN
-          prc_set_xml('D', 'rec_total_qty',  qty(gc_hamaoka_num)
-                                          +  qty(gc_rec_kind_num)
-                                          +  qty(gc_rec_whse_num)
-                                          +  qty(gc_rec_etc_num));
+        prc_set_xml('Z', 'rec_total_qty',  qty(gc_hamaoka_num)
+                                        +  qty(gc_rec_kind_num)
+                                        +  qty(gc_rec_whse_num)
+                                        +  qty(gc_rec_etc_num));
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'rec_total_amt',  qty(gc_hamaoka_num)  * in_price
-                                              +  qty(gc_rec_kind_num) * in_price
-                                              +  qty(gc_rec_whse_num) * in_price
-                                              +  qty(gc_rec_etc_num)  * in_price);
-            ELSIF ((amt(gc_hamaoka_num)    + amt(gc_rec_kind_num)
-                    + amt(gc_rec_whse_num) + amt(gc_rec_etc_num)) <> cn_zero ) THEN
-              prc_set_xml('D', 'rec_total_amt',  amt(gc_hamaoka_num)
-                                              +  amt(gc_rec_kind_num)
-                                              +  amt(gc_rec_whse_num)
-                                              +  amt(gc_rec_etc_num));
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'rec_total_amt',  qty(gc_hamaoka_num)  * in_price
+                                          +  qty(gc_rec_kind_num) * in_price
+                                          +  qty(gc_rec_whse_num) * in_price
+                                          +  qty(gc_rec_etc_num)  * in_price);
+        ELSE
+          prc_set_xml('Z', 'rec_total_amt',  amt(gc_hamaoka_num)
+                                          +  amt(gc_rec_kind_num)
+                                          +  amt(gc_rec_whse_num)
+                                          +  amt(gc_rec_etc_num));
         END IF;
 --
         -- ===================================================
@@ -1792,179 +1786,134 @@ AS
         -- =========================================
         -- 転売
         -- =========================================
-        IF ( qty(gc_resale_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'resale_qty',     qty(gc_resale_num));
+        prc_set_xml('Z', 'resale_qty',     qty(gc_resale_num));
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'resale_amt',     qty(gc_resale_num) * in_price);
-            ELSIF ( amt(gc_resale_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'resale_amt',     amt(gc_resale_num) );
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'resale_amt',     qty(gc_resale_num) * in_price);
+        ELSE
+          prc_set_xml('Z', 'resale_amt',     amt(gc_resale_num) );
         END IF;
 --
         -- =========================================
         -- 廃却
         -- =========================================
-        IF ( qty(gc_aband_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'aband_qty',      qty(gc_aband_num) );
+        prc_set_xml('Z', 'aband_qty',      qty(gc_aband_num) );
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'aband_amt' ,     qty(gc_aband_num) * in_price);
-            ELSIF ( amt(gc_aband_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'aband_amt' ,     amt(gc_aband_num) );
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'aband_amt' ,     qty(gc_aband_num) * in_price);
+        ELSE
+          prc_set_xml('Z', 'aband_amt' ,     amt(gc_aband_num) );
         END IF;
 --
         -- =========================================
         -- 見本
         -- =========================================
-        IF ( qty(gc_sample_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'sample_qty',     qty(gc_sample_num) );
+        prc_set_xml('Z', 'sample_qty',     qty(gc_sample_num) );
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'sample_amt',     qty(gc_sample_num) * in_price);
-            ELSIF ( amt(gc_sample_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'sample_amt',     amt(gc_sample_num) );
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'sample_amt',     qty(gc_sample_num) * in_price);
+        ELSE
+          prc_set_xml('Z', 'sample_amt',     amt(gc_sample_num) );
         END IF;
 --
         -- =========================================
         -- 総務払出
         -- =========================================
-        IF ( qty(gc_admin_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'admin_qty',      qty(gc_admin_num) );
+        prc_set_xml('Z', 'admin_qty',      qty(gc_admin_num) );
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'admin_amt',      qty(gc_admin_num)  * in_price);
-            ELSIF ( amt(gc_admin_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'admin_amt',      amt(gc_admin_num) );
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'admin_amt',      qty(gc_admin_num)  * in_price);
+        ELSE
+          prc_set_xml('Z', 'admin_amt',      amt(gc_admin_num) );
         END IF;
 --
         -- =========================================
         -- 経理払出
         -- =========================================
-        IF ( qty(gc_acnt_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'acnt_qty',       qty(gc_acnt_num));
+        prc_set_xml('Z', 'acnt_qty',       qty(gc_acnt_num));
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'acnt_amt',       qty(gc_acnt_num) * in_price);
-            ELSIF ( amt(gc_acnt_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'acnt_amt',       amt(gc_acnt_num) );
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'acnt_amt',       qty(gc_acnt_num) * in_price);
+        ELSE
+          prc_set_xml('Z', 'acnt_amt',       amt(gc_acnt_num) );
         END IF;
 --
         -- =========================================
         -- 品種移動
         -- =========================================
-        IF ( qty(gc_dis_kind_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'dis_kind_qty',   qty(gc_dis_kind_num) );
+        prc_set_xml('Z', 'dis_kind_qty',   qty(gc_dis_kind_num) );
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'dis_kind_amt',   qty(gc_dis_kind_num) * in_price);
-            ELSIF ( amt(gc_dis_kind_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'dis_kind_amt',   amt(gc_dis_kind_num) );
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'dis_kind_amt',   qty(gc_dis_kind_num) * in_price);
+        ELSE
+          prc_set_xml('Z', 'dis_kind_amt',   amt(gc_dis_kind_num) );
         END IF;
 --
         -- =========================================
         -- 倉庫移動
         -- =========================================
-        IF ( qty(gc_dis_whse_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'dis_whse_qty',   qty(gc_dis_whse_num));
+        prc_set_xml('Z', 'dis_whse_qty',   qty(gc_dis_whse_num));
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'dis_whse_amt',  qty(gc_dis_whse_num) * in_price);
-            ELSIF ( amt(gc_dis_whse_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'dis_whse_amt',   amt(gc_dis_whse_num) );
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'dis_whse_amt',  qty(gc_dis_whse_num) * in_price);
+        ELSE
+          prc_set_xml('Z', 'dis_whse_amt',   amt(gc_dis_whse_num) );
         END IF;
 --
         -- =========================================
         -- その他
         -- =========================================
-        IF ( qty(gc_dis_etc_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'dis_etc_qty',    qty(gc_dis_etc_num) );
+        prc_set_xml('Z', 'dis_etc_qty',    qty(gc_dis_etc_num) );
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'dis_etc_amt',    qty(gc_dis_etc_num)  * in_price);
-            ELSIF ( amt(gc_dis_etc_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'dis_etc_amt',    amt(gc_dis_etc_num) );
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'dis_etc_amt',    qty(gc_dis_etc_num)  * in_price);
+        ELSE
+          prc_set_xml('Z', 'dis_etc_amt',    amt(gc_dis_etc_num) );
         END IF;
 --
         -- =========================================
         -- 棚卸減耗
         -- =========================================
-        IF ( qty(gc_inv_he_num) <> cn_zero ) THEN
-          prc_set_xml('D', 'inv_he_qty',     qty(gc_inv_he_num));
+        prc_set_xml('Z', 'inv_he_qty',     qty(gc_inv_he_num));
 --
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'inv_he_amt',     qty(gc_inv_he_num) * in_price);
-            ELSIF ( amt(gc_inv_he_num) <> cn_zero ) THEN
-              prc_set_xml('D', 'inv_he_amt',     amt(gc_inv_he_num));
-            END IF;
-          END IF;
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'inv_he_amt',     qty(gc_inv_he_num) * in_price);
+        ELSE
+          prc_set_xml('Z', 'inv_he_amt',     amt(gc_inv_he_num));
         END IF;
 --
         -- =========================================
         -- 払出合計
         -- =========================================
-        IF (( qty(gc_resale_num)     + qty(gc_aband_num)   + qty(gc_sample_num)
-              + qty(gc_admin_num)    + qty(gc_acnt_num)    + qty(gc_dis_kind_num)
-              + qty(gc_dis_whse_num) + qty(gc_dis_etc_num) + qty(gc_inv_he_num)) <> cn_zero) THEN
-          prc_set_xml('D', 'dis_total_qty', qty(gc_resale_num)
-                                          + qty(gc_aband_num)
-                                          + qty(gc_sample_num)
-                                          + qty(gc_admin_num)
-                                          + qty(gc_acnt_num)
-                                          + qty(gc_dis_kind_num)
-                                          + qty(gc_dis_whse_num)
-                                          + qty(gc_dis_etc_num)
-                                          + qty(gc_inv_he_num));
-          IF ( in_price <> cn_zero ) THEN
-            IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
-              prc_set_xml('D', 'dis_total_amt', qty(gc_resale_num)   * in_price
-                                              + qty(gc_aband_num)    * in_price
-                                              + qty(gc_sample_num)   * in_price
-                                              + qty(gc_admin_num)    * in_price
-                                              + qty(gc_acnt_num)     * in_price
-                                              + qty(gc_dis_kind_num) * in_price
-                                              + qty(gc_dis_whse_num) * in_price
-                                              + qty(gc_dis_etc_num)  * in_price
-                                              + qty(gc_inv_he_num)   * in_price);
-            ELSIF (( amt(gc_resale_num)    + amt(gc_aband_num) + amt(gc_sample_num)
-                    + amt(gc_admin_num)    + amt(gc_acnt_num)  + amt(gc_dis_kind_num)
-                    + amt(gc_dis_whse_num) + amt(gc_dis_etc_num)
-                    + amt(gc_inv_he_num)) <> cn_zero) THEN
-              prc_set_xml('D', 'dis_total_amt', amt(gc_resale_num)
-                                              + amt(gc_aband_num)
-                                              + amt(gc_sample_num)
-                                              + amt(gc_admin_num)
-                                              + amt(gc_acnt_num)
-                                              + amt(gc_dis_kind_num)
-                                              + amt(gc_dis_whse_num)
-                                              + amt(gc_dis_etc_num)
-                                              + amt(gc_inv_he_num));
-            END IF;
-          END IF;
+        prc_set_xml('Z', 'dis_total_qty', qty(gc_resale_num)
+                                        + qty(gc_aband_num)
+                                        + qty(gc_sample_num)
+                                        + qty(gc_admin_num)
+                                        + qty(gc_acnt_num)
+                                        + qty(gc_dis_kind_num)
+                                        + qty(gc_dis_whse_num)
+                                        + qty(gc_dis_etc_num)
+                                        + qty(gc_inv_he_num));
+        IF ( gt_main_data(in_pos).cost_div = gc_cost_st ) THEN
+          prc_set_xml('Z', 'dis_total_amt', qty(gc_resale_num)   * in_price
+                                          + qty(gc_aband_num)    * in_price
+                                          + qty(gc_sample_num)   * in_price
+                                          + qty(gc_admin_num)    * in_price
+                                          + qty(gc_acnt_num)     * in_price
+                                          + qty(gc_dis_kind_num) * in_price
+                                          + qty(gc_dis_whse_num) * in_price
+                                          + qty(gc_dis_etc_num)  * in_price
+                                          + qty(gc_inv_he_num)   * in_price);
+        ELSE
+          prc_set_xml('Z', 'dis_total_amt', amt(gc_resale_num)
+                                          + amt(gc_aband_num)
+                                          + amt(gc_sample_num)
+                                          + amt(gc_admin_num)
+                                          + amt(gc_acnt_num)
+                                          + amt(gc_dis_kind_num)
+                                          + amt(gc_dis_whse_num)
+                                          + amt(gc_dis_etc_num)
+                                          + amt(gc_inv_he_num));
         END IF;
       END IF;
 --

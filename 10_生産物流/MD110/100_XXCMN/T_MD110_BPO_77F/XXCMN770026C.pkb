@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -29,6 +29,12 @@ AS
  *                                       77F-09 処理年月パラYYYYM入力対応
  *                                       77F-10 担当部署、担当者名の最大文字数制限の修正
  *  2008/05/16    1.2   T.Endou          実際原価取得方法の変更
+ *  2008/06/16    1.3   T.Endou          取引区分
+ *                                        ・有償
+ *                                        ・振替有償_出荷
+ *                                        ・商品振替有償_出荷
+ *                                       場合は、受注ヘッダアドオン.取引先サイトIDで紐付ける
+ *  2008/06/24    1.4   I.Higa           データが無い項目でも０を出力する
  *
  *****************************************************************************************/
 --
@@ -169,6 +175,13 @@ AS
   gv_gr3_sum_desc               VARCHAR2(16) DEFAULT NULL ; -- 集計３名称
   gv_gr4_sum_desc               VARCHAR2(16) DEFAULT NULL ; -- 集計４名称
 --
+  ------------------------------
+  -- 取引区分
+  ------------------------------
+  gv_charge                     xxcmn_lookup_values_v.lookup_code%TYPE; -- 有償;
+  gv_trans_charge               xxcmn_lookup_values_v.lookup_code%TYPE; -- 振替有償_出荷';
+  gv_item_charge                xxcmn_lookup_values_v.lookup_code%TYPE; -- 商品振替有償_出荷';
+--
 --#####################  固定共通例外宣言部 START   ####################
 --
   --*** 処理部共通例外 ***
@@ -243,6 +256,13 @@ AS
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
+    -- *** ローカル定数 ***
+    -- 取引区分
+    lc_charge             CONSTANT VARCHAR2(30) := '有償';
+    lc_trans_charge       CONSTANT VARCHAR2(30) := '振替有償_出荷';
+    lc_item_charge        CONSTANT VARCHAR2(30) := '商品振替有償_出荷';
+    lc_xxcmn_dealings_div CONSTANT VARCHAR2(30) := 'XXCMN_DEALINGS_DIV';
+--
     -- *** ローカル変数 ***
     -- *** ローカル・例外処理 ***
     get_value_expt        EXCEPTION ;     -- 値取得エラー
@@ -395,6 +415,54 @@ AS
       END;
     END IF;
 --
+    -- ====================================================
+    -- 取引先区分コード取得（有償）
+    -- ====================================================
+    BEGIN
+      SELECT xlvv.lookup_code
+      INTO   gv_charge
+      FROM   xxcmn_lookup_values_v xlvv
+      WHERE  xlvv.lookup_type = lc_xxcmn_dealings_div
+      AND    xlvv.meaning     = lc_charge
+      AND    ROWNUM           = 1;
+    EXCEPTION
+      -- データなし
+      WHEN NO_DATA_FOUND THEN
+        NULL;
+    END;
+--
+    -- ====================================================
+    -- 取引先区分コード取得（振替有償_出荷）
+    -- ====================================================
+    BEGIN
+      SELECT xlvv.lookup_code
+      INTO   gv_trans_charge
+      FROM   xxcmn_lookup_values_v xlvv
+      WHERE  xlvv.lookup_type = lc_xxcmn_dealings_div
+      AND    xlvv.meaning     = lc_trans_charge
+      AND    ROWNUM           = 1;
+    EXCEPTION
+      -- データなし
+      WHEN NO_DATA_FOUND THEN
+        NULL;
+    END;
+--
+    -- ====================================================
+    -- 取引先区分コード取得（商品振替有償_出荷）
+    -- ====================================================
+    BEGIN
+      SELECT xlvv.lookup_code
+      INTO   gv_item_charge
+      FROM   xxcmn_lookup_values_v xlvv
+      WHERE  xlvv.lookup_type = lc_xxcmn_dealings_div
+      AND    xlvv.meaning     = lc_item_charge
+      AND    ROWNUM           = 1;
+    EXCEPTION
+      -- データなし
+      WHEN NO_DATA_FOUND THEN
+        NULL;
+    END;
+--
   EXCEPTION
     --*** 値取得エラー例外 ***
     WHEN get_value_expt THEN
@@ -461,6 +529,12 @@ AS
     lv_group_by             VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
     lv_order_by             VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
     lv_sql                  VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
+    lv_from_porc_charge     VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
+    lv_from_omso_charge     VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
+    lv_where_no_charge      VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
+    lv_where_charge         VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
+    lv_from_porc_where      VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
+    lv_from_omso_where      VARCHAR2(32000) ;     -- データ取得用ＳＱＬ
 --
     lv_crowd_c_name         VARCHAR2(20) ;        -- 郡コードカラム名(抽出条件用)
 --
@@ -704,6 +778,7 @@ AS
     -- ＦＲＯＭ句生成
     -- ----------------------------------------------------
     -- ＜受払VIEW(購買関連)＞
+    -- 有償支給・返品以外
     lv_from_porc := ' FROM'
                  ||       '  ic_tran_pnd'                  || ' itp'   -- 保留在庫トラン
                  ||       ' ,xxcmn_rcv_pay_mst_porc_rma_v' || ' xrpm'  -- 受払VIEW(購買関連)
@@ -715,7 +790,21 @@ AS
                  ||       ' ,xxcmn_parties2_v'             || ' xpv'   -- パーティ情報View2
                  ||       ' ,xxcmn_lookup_values2_v'       || ' xlvv2' -- クイックコード
                  ;
+    -- 有償支給・返品
+    lv_from_porc_charge := ' FROM'
+                 ||       '  ic_tran_pnd'                  || ' itp'   -- 保留在庫トラン
+                 ||       ' ,xxcmn_rcv_pay_mst_porc_rma_v' || ' xrpm'  -- 受払VIEW(購買関連)
+                 ||       ' ,xxcmn_lookup_values2_v'       || ' xlvv'  -- クイックコード
+                 ||       ' ,xxcmn_lot_each_item_v'        || ' xleiv' -- ロット別品目情報
+                 ||       ' ,xxcmn_stnd_unit_price_v'      || ' xsupv' -- 標準原価情報View
+                 ||       ' ,xxcmn_item_mst2_v'            || ' ximv'  -- OPM品目情報View2
+                 ||       ' ,po_vendor_sites_all'          || ' pvsa'  -- 仕入先サイトマスタ
+                 ||       ' ,po_vendors'                   || ' pv'    -- 仕入先マスタ
+                 ||       ' ,xxcmn_parties2_v'             || ' xpv'   -- パーティ情報View2
+                 ||       ' ,xxcmn_lookup_values2_v'       || ' xlvv2' -- クイックコード
+                 ;
     -- ＜受払VIEW(受注関連)＞
+    -- 有償支給・返品以外
     lv_from_omso := ' FROM'
                  ||       '  ic_tran_pnd'                  || ' itp'   -- 保留在庫トラン
                  ||       ' ,xxcmn_rcv_pay_mst_omso_v'     || ' xrpm'  -- 受払VIEW(受注関連)
@@ -727,13 +816,26 @@ AS
                  ||       ' ,xxcmn_parties2_v'             || ' xpv'   -- パーティ情報View2
                  ||       ' ,xxcmn_lookup_values2_v'       || ' xlvv2' -- クイックコード
                  ;
+    -- 有償支給・返品
+    lv_from_omso_charge := ' FROM'
+                 ||       '  ic_tran_pnd'                  || ' itp'   -- 保留在庫トラン
+                 ||       ' ,xxcmn_rcv_pay_mst_omso_v'     || ' xrpm'  -- 受払VIEW(受注関連)
+                 ||       ' ,xxcmn_lookup_values2_v'       || ' xlvv'  -- クイックコード
+                 ||       ' ,xxcmn_lot_each_item_v'        || ' xleiv' -- ロット別品目情報
+                 ||       ' ,xxcmn_stnd_unit_price_v'      || ' xsupv' -- 標準原価情報View
+                 ||       ' ,xxcmn_item_mst2_v'            || ' ximv'  -- OPM品目情報View2
+                 ||       ' ,po_vendor_sites_all'          || ' pvsa'  -- 仕入先サイトマスタ
+                 ||       ' ,po_vendors'                   || ' pv'    -- 仕入先マスタ
+                 ||       ' ,xxcmn_parties2_v'             || ' xpv'   -- パーティ情報View2
+                 ||       ' ,xxcmn_lookup_values2_v'       || ' xlvv2' -- クイックコード
+                 ;
 --
     -- ----------------------------------------------------
     -- ＷＨＥＲＥ句生成
     -- ----------------------------------------------------
     -- ＜受払VIEW(購買関連)＞
-    lv_from_porc := lv_from_porc
-                 || ' WHERE'
+    lv_from_porc_where :=
+                    ' WHERE'
                  ||           ' itp.doc_type'         || ' = ''PORC'''      -- 文書タイプ(PORC)
                  || ' AND' || ' itp.completed_ind'    || ' = 1'             -- 完了フラグ
                  || ' AND' || ' itp.doc_type'         || ' = xrpm.doc_type' -- 文書タイプ(PORC)
@@ -741,8 +843,8 @@ AS
                  || ' AND' || ' itp.doc_line'         || ' = xrpm.doc_line' -- 取引明細番号
                  ;
     -- ＜受払VIEW(受注関連)＞
-    lv_from_omso := lv_from_omso
-                 || ' WHERE'
+    lv_from_omso_where :=
+                    ' WHERE'
                  ||           ' itp.doc_type'         || ' = ''OMSO'''      -- 文書タイプ(OMSO)
                  || ' AND' || ' itp.completed_ind'    || ' = 1'             -- 完了フラグ
                  || ' AND' || ' itp.doc_type'         || ' = xrpm.doc_type' -- 文書タイプ(OMSO)
@@ -853,8 +955,22 @@ AS
              ||           ' OR ximv.end_date_active >= TRUNC(itp.trans_date) )'
              ;
 --
-    -- パーティサイト情報View2(xxcmn_party_sites2_v)連結
+    -- クイックコード(xxcmn_lookup_values2_v)連結－消費税率
     lv_where := lv_where
+             || ' AND' || ' xlvv2.lookup_type'    || ' = ''XXCMN_CONSUMPTION_TAX_RATE'''
+             || ' AND' || ' (xlvv2.start_date_active IS NULL'
+             ||           ' OR xlvv2.start_date_active <= TRUNC(itp.trans_date) )'
+             || ' AND' || ' (xlvv2.end_date_active IS NULL'
+             ||           ' OR xlvv2.end_date_active >= TRUNC(itp.trans_date) )'
+             || ' AND' || ' xlvv2.language'       || ' = ''JA'''
+             || ' AND' || ' xlvv2.source_lang'    || ' = ''JA'''
+             ;
+--
+    -- ------------------------------------------
+    --＜有償支給・返品以外＞
+    -- ------------------------------------------
+    -- パーティサイト情報View2(xxcmn_party_sites2_v)連結
+    lv_where_no_charge := lv_where_no_charge
              || ' AND' || ' xrpm.deliver_to_id'   || ' = xpsv.party_site_id'    -- 出荷先ID
              || ' AND' || ' (xpsv.start_date_active IS NULL'
              ||           ' OR xpsv.start_date_active <= TRUNC(itp.trans_date) )'
@@ -866,30 +982,63 @@ AS
     IF  ( ir_param.party_code IS NOT NULL )
     AND ( ir_param.party_code != gc_param_all_code )
     THEN
-      lv_where := lv_where
+      lv_where_no_charge := lv_where_no_charge
                || ' AND xpv.party_number = '''    || ir_param.party_code || ''''
                ;
     END IF;
 --
     -- パーティ情報View2(xxcmn_parties2_v)連結
-    lv_where := lv_where
+    lv_where_no_charge := lv_where_no_charge
              || ' AND' || ' xpsv.party_id'        || ' = xpv.party_id'          -- パーティID
              || ' AND' || ' (xpv.start_date_active IS NULL'
              ||           ' OR xpv.start_date_active <= TRUNC(itp.trans_date) )'
              || ' AND' || ' (xpv.end_date_active IS NULL'
              ||           ' OR xpv.end_date_active >= TRUNC(itp.trans_date) )'
              ;
---
-    -- クイックコード(xxcmn_lookup_values2_v)連結－消費税率
-    lv_where := lv_where
-             || ' AND' || ' xlvv2.lookup_type'    || ' = ''XXCMN_CONSUMPTION_TAX_RATE'''
-             || ' AND' || ' (xlvv2.start_date_active IS NULL'
-             ||           ' OR xlvv2.start_date_active <= TRUNC(itp.trans_date) )'
-             || ' AND' || ' (xlvv2.end_date_active IS NULL'
-             ||           ' OR xlvv2.end_date_active >= TRUNC(itp.trans_date) )'
-             || ' AND' || ' xlvv2.language'       || ' = ''JA'''
-             || ' AND' || ' xlvv2.source_lang'    || ' = ''JA'''
+    lv_where_no_charge := lv_where_no_charge
+             || ' AND' || ' xrpm.dealings_div <> ''' || gv_charge       || ''''
+             || ' AND' || ' xrpm.dealings_div <> ''' || gv_trans_charge || ''''
+             || ' AND' || ' xrpm.dealings_div <> ''' || gv_item_charge  || ''''
              ;
+--
+    -- ------------------------------------------
+    --＜有償支給・返品＞
+    -- ------------------------------------------
+    -- 仕入先サイトマスタ(po_vendor_sites_all)連結
+    lv_where_charge := lv_where_charge
+             || ' AND' || ' xrpm.vendor_site_id'  || ' = pvsa.vendor_site_id' -- 仕入先サイトID
+             ;
+    -- 仕入先マスタ(po_vendors)連結
+    lv_where_charge := lv_where_charge
+             || ' AND' || ' pvsa.vendor_id'       || ' = pv.vendor_id'        -- 仕入先ID
+             || ' AND' || ' (pv.start_date_active IS NULL'
+             ||           ' OR pv.start_date_active <= TRUNC(itp.trans_date) )'
+             || ' AND' || ' (pv.end_date_active IS NULL'
+             ||           ' OR pv.end_date_active >= TRUNC(itp.trans_date) )'
+             ;
+--
+    -- 「出荷先コード」が個別選択されている場合(*ALLを除く)、抽出条件に設定
+    IF  ( ir_param.party_code IS NOT NULL )
+    AND ( ir_param.party_code != gc_param_all_code )
+    THEN
+      lv_where_charge := lv_where_charge
+               || ' AND xpv.party_number = '''    || ir_param.party_code || ''''
+               ;
+    END IF;
+--
+    -- パーティ情報View2(xxcmn_parties2_v)連結
+    lv_where_charge := lv_where_charge
+             || ' AND' || ' pv.customer_num'      || ' = xpv.account_number '  -- 顧客番号
+             || ' AND' || ' (xpv.start_date_active IS NULL'
+             ||           ' OR xpv.start_date_active <= TRUNC(itp.trans_date) )'
+             || ' AND' || ' (xpv.end_date_active IS NULL'
+             ||           ' OR xpv.end_date_active >= TRUNC(itp.trans_date) )'
+             ;
+    lv_where_charge := lv_where_charge
+             || ' AND' || ' xrpm.dealings_div IN('
+               || ''''  || gv_charge       || ''''   -- 有償
+               || ',''' || gv_trans_charge || ''''   -- 振替有償_出荷
+               || ',''' || gv_item_charge  || ''')'; -- 商品振替有償_出荷
 --
     -- ----------------------------------------------------
     -- ＧＲＯＵＰ ＢＹ句生成
@@ -940,12 +1089,24 @@ AS
            || ' FROM ('
 --
            -- ＜受払VIEW(購買関連)＞
-           || lv_select || lv_from_porc || lv_where
+           -- 有償支給・返品以外
+           || lv_select || lv_from_porc || lv_from_porc_where || lv_where || lv_where_no_charge
+--
+           || ' UNION ALL '
+--
+           -- 有償支給・返品
+           || lv_select || lv_from_porc_charge || lv_from_porc_where || lv_where || lv_where_charge
 --
            || ' UNION ALL '
 --
            -- ＜受払VIEW(受注関連)＞
-             || lv_select || lv_from_omso || lv_where
+           -- 有償支給・返品以外
+           || lv_select || lv_from_omso || lv_from_omso_where || lv_where || lv_where_no_charge
+--
+           || ' UNION ALL '
+--
+           -- 有償支給・返品
+           || lv_select || lv_from_omso_charge || lv_from_omso_where || lv_where || lv_where_charge
 --
            || ' ) mst'
            || lv_group_by
@@ -1336,61 +1497,33 @@ AS
                       -- 単位
                       prc_xml_add('item_um'      ,'D', gt_main_data(ln_i).trans_um );
                       -- 数量
-                      IF ( lv_trans_qty IS NOT NULL ) THEN
-                        prc_xml_add('trans_qty'  ,'D', lv_trans_qty );
-                      END IF;
+                      prc_xml_add('trans_qty'  ,'D', NVL(lv_trans_qty,0) );
                       -- 消費税
-                      IF ( lv_tax_price IS NOT NULL ) THEN
-                        prc_xml_add('tax_price'  ,'D', lv_tax_price );
-                      END IF;
+                      prc_xml_add('tax_price'  ,'D', NVL(lv_tax_price,0) );
                       -- 標準原価
-                      IF ( ln_unit_price1 IS NOT NULL ) THEN
-                        prc_xml_add('unit_price1','D', ln_unit_price1 );
-                      END IF;
+                      prc_xml_add('unit_price1','D', NVL(ln_unit_price1,0) );
                       -- 標準金額
-                      IF ( lv_price1 IS NOT NULL ) THEN
-                        prc_xml_add('price1'     ,'D', lv_price1 );
-                      END IF;
+                      prc_xml_add('price1'     ,'D', NVL(lv_price1,0) );
                       -- 有償単価
-                      IF ( ln_unit_price2 IS NOT NULL ) THEN
-                        prc_xml_add('unit_price2','D', ln_unit_price2 );
-                      END IF;
+                      prc_xml_add('unit_price2','D', NVL(ln_unit_price2,0) );
                       -- 有償金額
-                      IF ( lv_price2 IS NOT NULL ) THEN
-                        prc_xml_add('price2'     ,'D', lv_price2 );
-                      END IF;
+                      prc_xml_add('price2'     ,'D', NVL(lv_price2,0) );
                       -- 実際原価
-                      IF ( ln_unit_price3 IS NOT NULL ) THEN
-                        prc_xml_add('unit_price3','D', ln_unit_price3 );
-                      END IF;
+                      prc_xml_add('unit_price3','D', NVL(ln_unit_price3,0) );
                       -- 実際金額
-                      IF ( lv_price3 IS NOT NULL ) THEN
-                        prc_xml_add('price3'     ,'D', lv_price3 );
-                      END IF;
+                      prc_xml_add('price3'     ,'D', NVL(lv_price3,0) );
                       -- 有－標（原価）
-                      IF ( ln_unit_price4 IS NOT NULL ) THEN
-                        prc_xml_add('unit_price4','D', ln_unit_price4 );
-                      END IF;
+                      prc_xml_add('unit_price4','D', NVL(ln_unit_price4,0) );
                       -- 有－標（金額）
-                      IF ( lv_price4 IS NOT NULL ) THEN
-                        prc_xml_add('price4'     ,'D', lv_price4 );
-                      END IF;
+                      prc_xml_add('price4'     ,'D', NVL(lv_price4,0) );
                       -- 有－実（原価）
-                      IF ( ln_unit_price5 IS NOT NULL ) THEN
-                        prc_xml_add('unit_price5','D', ln_unit_price5 );
-                      END IF;
+                      prc_xml_add('unit_price5','D', NVL(ln_unit_price5,0) );
                       -- 有－実（金額）
-                      IF ( lv_price5 IS NOT NULL ) THEN
-                        prc_xml_add('price5'     ,'D', lv_price5 );
-                      END IF;
+                      prc_xml_add('price5'     ,'D', NVL(lv_price5,0) );
                       -- 標－実（単価）
-                      IF ( ln_unit_price6 IS NOT NULL ) THEN
-                        prc_xml_add('unit_price6','D', ln_unit_price6 );
-                      END IF;
+                      prc_xml_add('unit_price6','D', NVL(ln_unit_price6,0) );
                       -- 標－実（金額）
-                      IF ( lv_price6 IS NOT NULL ) THEN
-                        prc_xml_add('price6'     ,'D', lv_price6 );
-                      END IF;
+                      prc_xml_add('price6'     ,'D', NVL(lv_price6,0) );
 --
                       ln_i  :=  ln_i  + 1; --次明細位置
                       prc_xml_add('/g_item', 'T');

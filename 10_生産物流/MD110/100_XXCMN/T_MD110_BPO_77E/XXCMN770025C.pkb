@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/04/14    1.0   T.Endou          新規作成
  *  2008/05/16    1.1   T.Ikehara        不具合ID:77E-17対応  処理年月パラYYYYM入力対応
  *  2008/05/30    1.2   T.Endou          実際単価取得方法の変更
+ *  2008/06/24    1.3   I.Higa           データが無い項目でも０を出力する
  *
  *****************************************************************************************/
 --
@@ -921,17 +922,17 @@ AS
       || '    ,itp.trans_qty           AS trans_qty '        -- 数量
       || '    ,( '
       || '      SELECT '
-      || '        DECODE(SUM(NVL(trans_qty,0)),0,0, '
+      || '        NVL(DECODE(SUM(NVL(trans_qty,0)),0,0, '
       || '          SUM(trans_qty * unit_ploce) '
-      || '            / SUM(NVL(trans_qty,0))) AS purchases_price '
+      || '            / SUM(NVL(trans_qty,0))),0) AS purchases_price '
       || '      FROM  xxcmn_lot_cost xlc ' -- ﾛｯﾄ別原価ｱﾄﾞｵﾝ
       || '      WHERE xlc.item_id = itp.item_id '
       || '     )                       AS purchases_price '  -- 仕入単価 ロット別単価(※加重平均)
-      || '    ,xrpmpv.powder_price     AS powder_price '     -- 粉引後単価
-      || '    ,xrpmpv.commission_price AS commission_price ' -- 預かり口銭単価
-      || '    ,xrpmpv.assessment       AS assessment '       -- 賦課金
+      || '    ,NVL(xrpmpv.powder_price,0)     AS powder_price '     -- 粉引後単価
+      || '    ,NVL(xrpmpv.commission_price,0) AS commission_price ' -- 預かり口銭単価
+      || '    ,NVL(xrpmpv.assessment,0)       AS assessment '       -- 賦課金
       || '    ,( '
-      || '      SELECT '
+      || '      NVL((SELECT '
       || '        xsupv.stnd_unit_price '
       || '      FROM '
       || '        xxcmn_stnd_unit_price_v xsupv ' -- 標準原価情報
@@ -941,7 +942,7 @@ AS
       || '           OR (xsupv.end_date_active IS NULL) '
       || '          ) '
       || '      AND xsupv.item_id = itp.item_id '
-      || '     )                       AS stnd_unit_price '  -- 標準原価
+      || '     ),0))                       AS stnd_unit_price '  -- 標準原価
       || '    ,xvv.segment1            AS segment1 '         -- 仕入先コード
       || '    ,xvv.vendor_short_name   AS vendor_name '      -- 仕入先名
       || '    ,( '
@@ -1076,17 +1077,17 @@ AS
       || '    ,itc.trans_qty           AS trans_qty '        -- 数量
       || '    ,( '
       || '      SELECT '
-      || '        DECODE(SUM(NVL(xlc.trans_qty,0)),0,0, '
+      || '        NVL(DECODE(SUM(NVL(xlc.trans_qty,0)),0,0, '
       || '          SUM(xlc.trans_qty * xlc.unit_ploce) '
-      || '            / SUM(NVL(xlc.trans_qty,0))) AS purchases_price '
+      || '            / SUM(NVL(xlc.trans_qty,0))),0) AS purchases_price '
       || '      FROM  xxcmn_lot_cost xlc ' -- ﾛｯﾄ別原価ｱﾄﾞｵﾝ
       || '      WHERE xlc.item_id = itc.item_id '
       || '     )                       AS purchases_price '  -- 仕入単価
-      || '    ,TO_CHAR(xrrt.kobki_converted_unit_price) AS powder_price ' -- 粉引後単価
-      || '    ,TO_CHAR(xrrt.kousen_rate_or_unit_price)  AS commission_price ' -- 口銭単価
-      || '    ,TO_CHAR(xrrt.fukakin_price) AS assessment '       -- 賦課金
+      || '    ,TO_CHAR(NVL(xrrt.kobki_converted_unit_price,0)) AS powder_price ' -- 粉引後単価
+      || '    ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price,0))  AS commission_price ' -- 口銭単価
+      || '    ,TO_CHAR(NVL(xrrt.fukakin_price,0)) AS assessment '       -- 賦課金
       || '    ,( '
-      || '      SELECT '
+      || '      NVL((SELECT '
       || '        xsupv.stnd_unit_price '
       || '      FROM '
       || '        xxcmn_stnd_unit_price_v xsupv ' -- 標準原価情報
@@ -1096,7 +1097,7 @@ AS
       || '           OR (xsupv.end_date_active IS NULL) '
       || '          ) '
       || '      AND xsupv.item_id = itc.item_id '
-      || '     )                       AS stnd_unit_price '  -- 標準原価
+      || '     ),0))                       AS stnd_unit_price '  -- 標準原価
       || '    ,xvv.segment1            AS segment1 '         -- 仕入先コード
       || '    ,xvv.vendor_short_name   AS vendor_name '      -- 仕入先名
       || '    ,( '

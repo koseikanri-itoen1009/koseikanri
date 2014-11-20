@@ -7,7 +7,7 @@ AS
  * Description      : 生産原価差異表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_770)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_77G)
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -30,6 +30,8 @@ AS
  *                                       担当部署、担当者名の最大長処理を修正。
  *  2008/05/30    1.2   T.Ikehara        原価取得方法修正
  *  2008/06/03    1.3   T.Endou          担当部署または担当者名が未取得時は正常終了に修正
+ *  2008/06/12    1.4   Y.Ishikawa       生産原料詳細(アドオン)の結合が不要の為削除
+ *  2008/06/24    1.5   T.Ikehara        数量、金額が0の場合に出力されるように修正
  *
  *****************************************************************************************/
 --
@@ -536,7 +538,6 @@ AS
       ||' , xxcmn_lot_each_item_v    xlei ' --ロット別品目情報View
       ||' , xxcmn_stnd_unit_price_v  xcup ' --標準原価情報View
       ||' , xxcmn_lookup_values2_v   xlvv ' --クイックコード情報VIEW2
-      ||' , xxwip_material_detail    xmd  ' --生産原料詳細アドオン
       ;
 --
     lv_syukei_where := ' WHERE  '
@@ -547,8 +548,6 @@ AS
       ||' AND xrpm.line_type        = itp.line_type '
       ||' AND xlei.item_id          = itp.item_id '
       ||' AND xlei.lot_id           = itp.lot_id '
-      ||' AND xmd.item_id           = itp.item_id '
-      ||' AND xmd.lot_id            = itp.lot_id '
       ||' AND itp.trans_date        BETWEEN xlei.start_date_active AND xlei.end_date_active '
       ||' AND itp.item_id           = xcup.item_id(+) '
       ||' AND itp.trans_date        BETWEEN xcup.start_date_active(+) AND xcup.end_date_active(+) '
@@ -767,10 +766,10 @@ AS
     ---------------------
     PROCEDURE prc_set_xml(
         ic_type              IN        CHAR       --   タグタイプ  T:タグ
-                                                              -- D:データ
-                                                              -- N:データ(NULLの場合タグを書かない)
-                                                              -- Y:データ(NULL,0の場合タグを書かない)
-                                                              -- Z:データ(NULLの場合0表示)
+                                                  -- D:データ
+                                                  -- N:データ(NULLの場合タグを書かない)
+                                                  -- Y:データ(NULL,0の場合タグを書かない)
+                                                  -- Z:データ(NULLの場合0表示)
        ,iv_name              IN        VARCHAR2                --   タグ名
        ,iv_value             IN        VARCHAR2  DEFAULT NULL  --   タグデータ(省略可
        ,in_lengthb           IN        NUMBER    DEFAULT NULL  --   文字長（バイト）(省略可
@@ -1037,46 +1036,46 @@ AS
       prc_set_xml('D', 'item_name', gt_main_data(ln_loop_index).item_name, 20);
 --
       --出来高
-      prc_set_xml('Y', 'quantity', gt_main_data(ln_loop_index).trans_qty);
+      prc_set_xml('D', 'quantity', gt_main_data(ln_loop_index).trans_qty);
 --
       --標準原価
       IF (gt_main_data(ln_loop_index).trans_qty != 0) THEN
         ln_std_cost :=  gt_main_data(ln_loop_index).cmpnt_kin
                       / gt_main_data(ln_loop_index).trans_qty;
-        prc_set_xml('Y', 'standard_cost', ln_std_cost);
       END IF;
+      prc_set_xml('D', 'standard_cost', ln_std_cost);
 --
       --標準金額
-      prc_set_xml('Y', 'standard_amount', gt_main_data(ln_loop_index).cmpnt_kin);
+      prc_set_xml('D', 'standard_amount', gt_main_data(ln_loop_index).cmpnt_kin);
 --
       --投入金額
-      prc_set_xml('Y', 'turn_amount', gt_main_data(ln_loop_index).tou_kin);
+      prc_set_xml('D', 'turn_amount', gt_main_data(ln_loop_index).tou_kin);
 --
       --打込金額
-      prc_set_xml('Y', 'hit_amount', gt_main_data(ln_loop_index).uti_kin);
+      prc_set_xml('D', 'hit_amount', gt_main_data(ln_loop_index).uti_kin);
 --
       --副産物金額
-      prc_set_xml('Y', 'by_product_amount', gt_main_data(ln_loop_index).cmpnt_huku);
+      prc_set_xml('D', 'by_product_amount', gt_main_data(ln_loop_index).cmpnt_huku);
 --
       --出来高金額
       ln_dekikin :=  gt_main_data(ln_loop_index).tou_kin
                    + gt_main_data(ln_loop_index).uti_kin
                    - gt_main_data(ln_loop_index).cmpnt_huku;
-      prc_set_xml('Y', 'piece_amount', ln_dekikin);
+      prc_set_xml('D', 'piece_amount', ln_dekikin);
 --
       --出来高単価
       IF (gt_main_data(ln_loop_index).trans_qty != 0 ) THEN
         ln_dekitan := ln_dekikin / gt_main_data(ln_loop_index).trans_qty ;
-        prc_set_xml('Y', 'piece_price', ln_dekitan);
       END IF;
+      prc_set_xml('D', 'piece_price', ln_dekitan);
 --
       --単価差異
       ln_sai_tan := ln_std_cost - ln_dekitan;
-      prc_set_xml('Y', 'difference_price', ln_sai_tan);
+      prc_set_xml('D', 'difference_price', ln_sai_tan);
 --
       --原価差異
       ln_sai_kin :=  gt_main_data(ln_loop_index).cmpnt_kin - ln_dekikin;
-      prc_set_xml('Y', 'difference_amount', ln_sai_kin);
+      prc_set_xml('D', 'difference_amount', ln_sai_kin);
 --
       -- 明細１行終了
       prc_set_xml('T', '/g_item');

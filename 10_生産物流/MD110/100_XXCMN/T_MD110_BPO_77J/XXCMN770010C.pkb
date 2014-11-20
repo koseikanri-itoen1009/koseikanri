@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価内訳表
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.2
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -29,6 +29,9 @@ AS
  *  2008/05/13    1.1   N.Chinen         着荷日でデータを抽出するよう修正。
  *  2008/05/16    1.2   Y.Majikina       パラメータ：処理年月がYYYYMで入力されるとエラーと
  *                                       なる点を修正。
+ *  2008/06/12    1.3   Y.Ishikawa       生産原料詳細(アドオン)の結合が不要の為削除
+ *  2008/06/19    1.4   Y.Ishikawa       取引区分が廃却、見本に関しては、受払区分を掛けない
+ *  2008/06/19    1.5   Y.Ishikawa       金額、数量がNULLの場合は0を表示する。
  *
  *****************************************************************************************/
 --
@@ -66,6 +69,12 @@ AS
   ------------------------------
   gc_cat_set_goods_class        CONSTANT VARCHAR2(100) := '商品区分' ;
   gc_cat_set_item_class         CONSTANT VARCHAR2(100) := '品目区分' ;
+--
+  ------------------------------
+  -- 取引区分名
+  ------------------------------
+  gv_haiki                   CONSTANT VARCHAR2(100) := '廃却' ;
+  gv_mihon                   CONSTANT VARCHAR2(100) := '見本' ;
 --
    ------------------------------
   -- 群種別
@@ -645,7 +654,6 @@ AS
                    || ' FROM '
                    || ' ic_tran_pnd                 it, '
                    || ' xxcmn_rcv_pay_mst_prod_v    xrpmpv, '
-                   || ' xxwip_material_detail       xmd, '    -- 生産原料詳細（アドオン）
                    || ' xxcmn_lookup_values2_v      xlvv,   ' -- クイックコード情報view2
                    || ' xxcmn_item_mst2_v           ximv,   ' -- 品目情報ビュー
                    || ' xxcmn_item_categories3_v    xicv,   ' -- 品目カテゴリービュー
@@ -658,8 +666,6 @@ AS
                    || ' AND it.line_type            = xrpmpv.line_type '
                    || ' AND it.doc_id               = xrpmpv.doc_id '
                    || ' AND it.doc_line             = xrpmpv.doc_line '
-                   || ' AND it.item_id              = xmd.item_id '
-                   || ' AND it.lot_id               = xmd.lot_id '
                    || ' AND xrpmpv.dealings_div     <> ''' || cv_dealings_div_hinsyu || ''' '
                    || ' AND xrpmpv.dealings_div     <> ''' || cv_dealings_div_hinmoku || ''' '
                    || ' AND xrpmpv.dealings_div     = xlvv.meaning '
@@ -820,7 +826,11 @@ AS
     lv_from_porc_1 := lv_select_inner
                    || ' NVL2(xrpmprv.item_id, '
                    ||      ' it.trans_qty, '
-                   ||      ' it.trans_qty * TO_NUMBER(xrpmprv.rcv_pay_div)) trans_qty ' -- 数量
+                   ||      ' DECODE(xrpmprv.dealings_div_name,''' || gv_haiki || ''' '
+                   ||      '       ,it.trans_qty '
+                   ||      '       , ''' || gv_mihon || ''' '
+                   ||      '       ,it.trans_qty '
+                   ||      ',it.trans_qty * TO_NUMBER(xrpmprv.rcv_pay_div))) trans_qty ' -- 数量
                    || ' FROM '
                    || ' ic_tran_pnd                  it,      '
                    || ' xxcmn_rcv_pay_mst_porc_rma_v xrpmprv, '
@@ -865,7 +875,11 @@ AS
     lv_from_omso := lv_select_inner
                  || ' NVL2(xrpmov.item_id, '
                  ||      ' it.trans_qty, '
-                 ||      ' it.trans_qty * TO_NUMBER(xrpmov.rcv_pay_div)) trans_qty ' -- 数量
+                 ||      ' DECODE(xrpmov.dealings_div_name,''' || gv_haiki || ''' '
+                 ||      '       ,it.trans_qty '
+                 ||      '       , ''' || gv_mihon || ''' '
+                 ||      '       ,it.trans_qty '
+                 ||      ',it.trans_qty * TO_NUMBER(xrpmov.rcv_pay_div))) trans_qty ' -- 数量
                  || ' FROM '
                  || ' ic_tran_pnd               it, '
                  || ' xxcmn_rcv_pay_mst_omso_v  xrpmov, '
@@ -1436,34 +1450,20 @@ AS
         -- 品目名
         prc_set_xml('D','item_name', gt_main_data(i).item_name);
         -- 取引数量
-        IF (ln_quantity <> 0) THEN
-          prc_set_xml('N','quantity', ln_quantity);
-        END IF;
+        prc_set_xml('Z','quantity', ln_quantity);
         -- 標準原価
-        IF (gt_main_data(i).unit_price <> 0) THEN
-          prc_set_xml('N','standard_cost', round(gt_main_data(i).unit_price, gn_qty_dec));
-        END IF;
+        prc_set_xml('Z','standard_cost', round(gt_main_data(i).unit_price, gn_qty_dec));
         -- 原価費
-        IF (gt_main_data(i).raw_material_cost <> 0) THEN
-          prc_set_xml('N','raw_material_cost',round(gt_main_data(i).raw_material_cost,gn_qty_dec));
-        END IF;
+        prc_set_xml('Z','raw_material_cost',round(gt_main_data(i).raw_material_cost,gn_qty_dec));
         -- 再製費
-        IF (gt_main_data(i).agein_cost <> 0) THEN
-          prc_set_xml('N','agein_cost', round(gt_main_data(i).agein_cost, gn_qty_dec));
-        END IF;
+        prc_set_xml('Z','agein_cost', round(gt_main_data(i).agein_cost, gn_qty_dec));
         -- 資材費
-        IF (gt_main_data(i).material_cost <> 0) THEN
-          prc_set_xml('N','material_cost', round(gt_main_data(i).material_cost, gn_qty_dec));
-        END IF;
+        prc_set_xml('Z','material_cost', round(gt_main_data(i).material_cost, gn_qty_dec));
         -- 包装費
-        IF (gt_main_data(i).pack_cost <> 0) THEN
-          prc_set_xml('N','pack_cost', round(gt_main_data(i).pack_cost, gn_qty_dec));
-        END IF;
+        prc_set_xml('Z','pack_cost', round(gt_main_data(i).pack_cost, gn_qty_dec));
         -- その他経費
-        IF (gt_main_data(i).other_expense_cost <> 0) THEN
-          prc_set_xml('N','other_expense_cost',round(gt_main_data(i).other_expense_cost,
+        prc_set_xml('Z','other_expense_cost',round(gt_main_data(i).other_expense_cost,
                       gn_qty_dec));
-        END IF;
         -- 品目コードＧ終了タグ
         prc_set_xml('T','/g_item');
 --

@@ -7,7 +7,7 @@ AS
  * Description      : 受払その他実績リスト
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -36,6 +36,8 @@ AS
  *  2008/05/30    1.4   Y.Ishikawa       実際原価を抽出する時、原価管理区分が実際原価の場合、
  *                                       ロット管理の対象の場合はロット別原価テーブル
  *                                       ロット管理の対象外の場合は標準原価マスタテーブルより取得
+ *  2008/06/13    1.5   T.Endou          着荷日が無い場合は、予定着荷日を使用する
+ *                                       生産原料詳細（アドオン）を結合条件から外す
  *
  *****************************************************************************************/
 --
@@ -976,7 +978,6 @@ AS
     lv_from_prod := ' FROM'
       || ' xxcmn_rcv_pay_mst_prod_v    rpmv'  -- 受払View_PROD
       || ',ic_tran_pnd                 trn'   -- OPM保留在庫トラン
-      || ',xxwip_material_detail       xmd'   -- 生産原料詳細（アドオン）
       -- マスタ情報
       || ',xxcmn_locations2_v        loca'    -- 事業所情報VIEW
       || ',xxcmn_lookup_values2_v    xlv3'    -- クイックコード(ラインタイプ)
@@ -991,8 +992,6 @@ AS
       || '   AND trn.line_type           = rpmv.line_type'
       || '   AND trn.doc_id              = rpmv.doc_id'
       || '   AND trn.doc_line            = rpmv.doc_line'
-      || '   AND trn.item_id             = xmd.item_id'
-      || '   AND trn.lot_id              = xmd.lot_id'
     --マスタ関連
     ---------------------------------------------------------------------------------------------
     -- 事業所情報VIEWの絞込み条件
@@ -1076,8 +1075,6 @@ AS
       || ' xxcmn_rcv_pay_mst_prod_v    rpmv'  -- 受払View_PROD
       || ',ic_tran_pnd                 trn'   -- OPM保留在庫トラン
       || ',ic_tran_pnd                 trn2'  -- OPM保留在庫トラン
-      || ',xxwip_material_detail       xmd'   -- 生産原料詳細（アドオン）
-      || ',xxwip_material_detail       xmd2'  -- 生産原料詳細（アドオン）
       || ',xxcmn_lot_each_item_v       xlei'  -- ロット別品目情報
       || ',xxcmn_lot_each_item_v       xlei2' -- ロット別品目情報
       -- マスタ情報
@@ -1097,8 +1094,6 @@ AS
       || '   AND trn.line_type           = rpmv.line_type'
       || '   AND trn.doc_id              = rpmv.doc_id'
       || '   AND trn.doc_line            = rpmv.doc_line'
-      || '   AND trn.item_id             = xmd.item_id'
-      || '   AND trn.lot_id              = xmd.lot_id'
       || '   AND trn2.line_type  = CASE'
                         || '   WHEN trn.line_type = ''' || cv_line_type_product || ''''
                         || '        THEN ''' || cv_line_type_material || ''''
@@ -1109,8 +1104,6 @@ AS
       || '   AND trn2.reverse_id          IS NULL'
       || '   AND trn.doc_id               = trn2.doc_id'
       || '   AND trn.doc_line             = trn2.doc_line'
-      || '   AND trn2.item_id             = xmd2.item_id'
-      || '   AND trn2.lot_id              = xmd2.lot_id'
     -- パラメータ
       || '   AND trn.trans_date >= FND_DATE.STRING_TO_DATE(''' || lv_start_date || ''',  '''
       ||                                               gc_char_dt_format || ''')'--取引日
@@ -1452,9 +1445,11 @@ AS
       ||                                                   gc_char_dt_format || ''')'--取引日
       || '   AND rpmv.prod_div   = ''' || ir_param.goods_class || ''''  -- ﾊﾟﾗﾒｰﾀ：商品区分
       || '   AND rpmv.item_div   = ''' || ir_param.item_class || ''''   -- ﾊﾟﾗﾒｰﾀ：品目区分
-      || '   AND rpmv.arrival_date >= FND_DATE.STRING_TO_DATE(''' || lv_start_date || ''',  '''
+      || '   AND DECODE(rpmv.arrival_date,NULL,rpmv.schedule_arrival_date,rpmv.arrival_date)'
+      || '     >= FND_DATE.STRING_TO_DATE(''' || lv_start_date || ''',  '''
       ||                                               gc_char_dt_format || ''')'--着荷日
-      || '   AND rpmv.arrival_date <= FND_DATE.STRING_TO_DATE(''' || lv_end_date || ''',  '''
+      || '   AND DECODE(rpmv.arrival_date,NULL,rpmv.schedule_arrival_date,rpmv.arrival_date)'
+      || '   <= FND_DATE.STRING_TO_DATE(''' || lv_end_date || ''',  '''
       ||                                                   gc_char_dt_format || ''')'--着荷日
       || lv_sql_para   -- ﾊﾟﾗﾒｰﾀ設定
     --マスタ関連
