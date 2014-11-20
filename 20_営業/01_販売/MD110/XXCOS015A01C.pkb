@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS015A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS015A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.7
+ * Version          : 2.9
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2009/06/02    2.6   N.Maeda          [T1_1291]端数処理修正
  *  2009/06/05    2.7   S.Kayahara       [T1_1330]売上金額の編集処理(edit_sales_amount)削除
  *  2009/06/09    2.8   N.Maeda          [T1_1133]MC顧客対応
+ *  2009/07/03    2.9   T.Miyata         [0000234]販売実績読み込み0件時は情報連携区分更新処理を行わない
  *
  *****************************************************************************************/
 --
@@ -2506,20 +2507,36 @@ AS
            which  => FND_FILE.OUTPUT
           ,buff   => lv_errmsg
         );
+--****************************** 2009/07/03 2.9 T.Miyata ADD START ******************************--
+      ELSE
+        -- 処理対象データあり
+        -- ===============================
+        -- A-7.売上実績ヘッダステータス更新
+        -- ===============================
+        update_sales_header_status(
+           ov_errbuf   => lv_errbuf        -- エラー・メッセージ
+          ,ov_retcode  => lv_retcode       -- リターン・コード
+          ,ov_errmsg   => lv_errmsg);      -- ユーザ・エラー・メッセージ
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE sub_program_expt;
+        END IF;
+--****************************** 2009/07/03 2.9 T.Miyata ADD  END  ******************************--
       END IF;
       --
       CLOSE get_sales_actual_cur;
 --
-      -- ===============================
-      -- A-7.売上実績ヘッダステータス更新
-      -- ===============================
-      update_sales_header_status(
-         ov_errbuf   => lv_errbuf        -- エラー・メッセージ
-        ,ov_retcode  => lv_retcode       -- リターン・コード
-        ,ov_errmsg   => lv_errmsg);      -- ユーザ・エラー・メッセージ
-      IF ( lv_retcode = cv_status_error ) THEN
-        RAISE sub_program_expt;
-      END IF;
+--****************************** 2009/07/03 2.9 T.Miyata DELETE START ******************************--
+--      -- ===============================
+--      -- A-7.売上実績ヘッダステータス更新
+--      -- ===============================
+--      update_sales_header_status(
+--         ov_errbuf   => lv_errbuf        -- エラー・メッセージ
+--        ,ov_retcode  => lv_retcode       -- リターン・コード
+--        ,ov_errmsg   => lv_errmsg);      -- ユーザ・エラー・メッセージ
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        RAISE sub_program_expt;
+--      END IF;
+--****************************** 2009/07/03 2.9 T.Miyata DELETE END   ******************************--
 --
       -- ===============================
       -- A-8.ファイルクローズ
