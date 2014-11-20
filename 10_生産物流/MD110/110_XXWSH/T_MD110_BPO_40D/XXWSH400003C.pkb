@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼確定関数(BODY)
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_EDO_BPO_40D_出荷依頼確定関数
- * Version                : 1.12
+ * Version                : 1.13
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -39,7 +39,8 @@ AS
  *  2008/7/08    1.9   N.Fukuda        ST不具合対応#405
  *  2008/7/08    1.10  M.Uehara        ST不具合対応#424
  *  2008/7/09    1.11  N.Fukuda        ST不具合対応#430
- *  2008/7/29    1.11  D.Nihei         ST不具合対応#503
+ *  2008/7/29    1.12  D.Nihei         ST不具合対応#503
+ *  2008/7/30    1.13  M.Uehara        ST不具合対応#501
  *
  *****************************************************************************************/
 --
@@ -1225,23 +1226,25 @@ AS
         END IF;
       END IF;
 --
-      -- D-2中止客申請フラグが'0'以外の場合はエラー
-      IF (loop_cnt.cust_enable_flag <> '0') THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_164,
-                                              'REQUEST_NO',
-                                              loop_cnt.request_no,
-                                              'CUST',
-                                              loop_cnt.account_number);
-        RAISE global_api_expt;
+      IF (iv_status_kbn = '1') THEN  -- 2008/07/30 ST不具合対応#501
+        -- 締めステータスチェック区分が1:チェック有りの場合
+        -- D-2中止客申請フラグが'0'以外の場合はエラー
+        IF (loop_cnt.cust_enable_flag <> '0') THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_164,
+                                                'REQUEST_NO',
+                                                loop_cnt.request_no,
+                                                'CUST',
+                                                loop_cnt.account_number);
+          RAISE global_api_expt;
 --
-      END IF;
+        END IF;
 --
       -- **************************************************
       -- *** 締めステータス・顧客チェック(D-5)
       -- **************************************************
 --
-      IF (iv_status_kbn = '1') THEN
+--      IF (iv_status_kbn = '1') THEN  2008/07/30 ST不具合対応#501
         -- 締めステータスチェック区分が1:チェック有りの場合
         lv_status :=
         xxwsh_common_pkg.check_tightening_status(loop_cnt.order_type_id,       -- D-2受注タイプID
@@ -1310,126 +1313,127 @@ AS
 --
           END IF;
         END IF;  -- 2008/07/09 ST不具合対応#430
-      END IF;
+--      END IF; -- 2008/07/30 ST不具合対応#501
 --
-      -- **************************************************
-      -- *** マスタチェック(D-7)
-      -- **************************************************
+        -- **************************************************
+        -- *** マスタチェック(D-7)
+        -- **************************************************
 --
-      ln_retcode := master_check(loop_cnt.shipping_item_code,    -- D-2品目コード
-                                 loop_cnt.deliver_to,            -- D-2配送先コード
-                                 loop_cnt.head_sales_branch,     -- D-2拠点コード
-                                 loop_cnt.deliver_from,          -- D-2出荷元保管場所
-                                 loop_cnt.schedule_ship_date,    -- D-2出庫日
-                                 lv_retcode,                     -- リターンコード
-                                 lv_errbuf,                      -- エラーメッセージコード
-                                 lv_errmsg);                     -- エラーメッセージ
+        ln_retcode := master_check(loop_cnt.shipping_item_code,    -- D-2品目コード
+                                   loop_cnt.deliver_to,            -- D-2配送先コード
+                                   loop_cnt.head_sales_branch,     -- D-2拠点コード
+                                   loop_cnt.deliver_from,          -- D-2出荷元保管場所
+                                   loop_cnt.schedule_ship_date,    -- D-2出庫日
+                                   lv_retcode,                     -- リターンコード
+                                   lv_errbuf,                      -- エラーメッセージコード
+                                   lv_errmsg);                     -- エラーメッセージ
 --
-      -- リターン・コードにエラーが返された場合はエラー
-      IF (ln_retcode = gn_status_error) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_152,
-                                              'REQUEST_NO',
-                                              loop_cnt.request_no);
-        RAISE global_api_expt;
+        -- リターン・コードにエラーが返された場合はエラー
+        IF (ln_retcode = gn_status_error) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_152,
+                                                'REQUEST_NO',
+                                                loop_cnt.request_no);
+          RAISE global_api_expt;
+  --
+        -- D-2出荷区分が「否」の場合
+        ELSIF (loop_cnt.ship_class = cv_ship_disable) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_166,
+                                                'ITEM_ERRMSG',
+                                                cv_master_check_msg,
+                                                'REQUEST_NO',
+                                                loop_cnt.request_no,
+                                                'ITEM_CODE',
+                                                loop_cnt.shipping_item_code);
+          RAISE global_api_expt;
 --
-      -- D-2出荷区分が「否」の場合
-      ELSIF (loop_cnt.ship_class = cv_ship_disable) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_166,
-                                              'ITEM_ERRMSG',
-                                              cv_master_check_msg,
-                                              'REQUEST_NO',
-                                              loop_cnt.request_no,
-                                              'ITEM_CODE',
-                                              loop_cnt.shipping_item_code);
-        RAISE global_api_expt;
+        -- D-2売上対象区分が「1」以外の場合
+        ELSIF (loop_cnt.sales_div <> cv_sales_div) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_166,
+                                                'ITEM_ERRMSG',
+                                                cv_master_check_msg2,
+                                                'REQUEST_NO',
+                                                loop_cnt.request_no,
+                                                'ITEM_CODE',
+                                                loop_cnt.shipping_item_code);
+          RAISE global_api_expt;
 --
-      -- D-2売上対象区分が「1」以外の場合
-      ELSIF (loop_cnt.sales_div <> cv_sales_div) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_166,
-                                              'ITEM_ERRMSG',
-                                              cv_master_check_msg2,
-                                              'REQUEST_NO',
-                                              loop_cnt.request_no,
-                                              'ITEM_CODE',
-                                              loop_cnt.shipping_item_code);
-        RAISE global_api_expt;
+        -- D-2廃止区分が「D」の場合
+        ELSIF (loop_cnt.obsolete_class = cv_obsolete_class) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_166,
+                                                'ITEM_ERRMSG',
+                                                cv_master_check_msg3,
+                                                'REQUEST_NO',
+                                                loop_cnt.request_no,
+                                                'ITEM_CODE',
+                                                loop_cnt.shipping_item_code);
+          RAISE global_api_expt;
 --
-      -- D-2廃止区分が「D」の場合
-      ELSIF (loop_cnt.obsolete_class = cv_obsolete_class) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_166,
-                                              'ITEM_ERRMSG',
-                                              cv_master_check_msg3,
-                                              'REQUEST_NO',
-                                              loop_cnt.request_no,
-                                              'ITEM_CODE',
-                                              loop_cnt.shipping_item_code);
-        RAISE global_api_expt;
+        -- D-2率区分が「0」の場合
+        ELSIF (loop_cnt.rate_class <> cv_rate_class) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_166,
+                                                'ITEM_ERRMSG',
+                                                cv_master_check_msg4,
+                                                'REQUEST_NO',
+                                                loop_cnt.request_no,
+                                                'ITEM_CODE',
+                                                loop_cnt.shipping_item_code);
+          RAISE global_api_expt;
 --
-      -- D-2率区分が「0」の場合
-      ELSIF (loop_cnt.rate_class <> cv_rate_class) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_166,
-                                              'ITEM_ERRMSG',
-                                              cv_master_check_msg4,
-                                              'REQUEST_NO',
-                                              loop_cnt.request_no,
-                                              'ITEM_CODE',
-                                              loop_cnt.shipping_item_code);
-        RAISE global_api_expt;
+        -- D-2で取得した数量がD-2で取得した配数の整数倍でない場合
+        ELSIF (mod(loop_cnt.quantity, loop_cnt.delivery_qty) <> 0) THEN
+          -- 数量を配数で割った余りが0でない場合
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_167,
+                                                'REQUEST_NO',
+                                                loop_cnt.request_no,
+                                                'ITEM_CODE',
+                                                loop_cnt.shipping_item_code);
+          -- 警告をセット
+          lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+          ln_warn_flg := 1;
+          IF (gv_callfrom_flg = '1') THEN
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+          END IF;
 --
-      -- D-2で取得した数量がD-2で取得した配数の整数倍でない場合
-      ELSIF (mod(loop_cnt.quantity, loop_cnt.delivery_qty) <> 0) THEN
-        -- 数量を配数で割った余りが0でない場合
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_167,
-                                              'REQUEST_NO',
-                                              loop_cnt.request_no,
-                                              'ITEM_CODE',
-                                              loop_cnt.shipping_item_code);
-        -- 警告をセット
-        lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
-        ln_warn_flg := 1;
-        IF (gv_callfrom_flg = '1') THEN
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+        -- D-2で取得した数量がD-2で取得した出荷入数の整数倍でない場合
+        ELSIF ((loop_cnt.num_of_deliver IS NOT NULL)
+        AND    (mod(loop_cnt.quantity, loop_cnt.num_of_deliver) <> 0)) THEN
+          -- 数量を出荷入数で割った余りが0でない場合
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                                gv_cnst_msg_168,
+                                                'ATTR_TYPE',
+                                                cv_master_check_attr,
+                                                'REQUEST_NO',
+                                                loop_cnt.request_no,
+                                                'ITEM_CODE',
+                                                loop_cnt.shipping_item_code);
+          RAISE global_api_expt;
+--
+        -- D-2で取得した数量がD-2で取得した入数の整数倍でない場合
+        ELSIF ((loop_cnt.num_of_cases IS NOT NULL)
+        AND    (loop_cnt.conv_unit IS NOT NULL) --入出庫換算単位
+        AND    (mod(loop_cnt.quantity,loop_cnt.num_of_cases) <> 0)) THEN
+        -- 数量を入数で割った余りが0でない場合
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+                                            gv_cnst_msg_168,
+                                            'ATTR_TYPE',
+                                            cv_master_check_attr2,
+                                            'REQUEST_NO',
+                                            loop_cnt.request_no,
+                                            'ITEM_CODE',
+                                            loop_cnt.shipping_item_code);
+          RAISE global_api_expt;
+--
         END IF;
 --
-      -- D-2で取得した数量がD-2で取得した出荷入数の整数倍でない場合
-      ELSIF ((loop_cnt.num_of_deliver IS NOT NULL)
-      AND    (mod(loop_cnt.quantity, loop_cnt.num_of_deliver) <> 0)) THEN
-        -- 数量を出荷入数で割った余りが0でない場合
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                              gv_cnst_msg_168,
-                                              'ATTR_TYPE',
-                                              cv_master_check_attr,
-                                              'REQUEST_NO',
-                                              loop_cnt.request_no,
-                                              'ITEM_CODE',
-                                              loop_cnt.shipping_item_code);
-        RAISE global_api_expt;
---
-      -- D-2で取得した数量がD-2で取得した入数の整数倍でない場合
-      ELSIF ((loop_cnt.num_of_cases IS NOT NULL)
-      AND    (loop_cnt.conv_unit IS NOT NULL) --入出庫換算単位
-      AND    (mod(loop_cnt.quantity,loop_cnt.num_of_cases) <> 0)) THEN
-      -- 数量を入数で割った余りが0でない場合
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                          gv_cnst_msg_168,
-                                          'ATTR_TYPE',
-                                          cv_master_check_attr2,
-                                          'REQUEST_NO',
-                                          loop_cnt.request_no,
-                                          'ITEM_CODE',
-                                          loop_cnt.shipping_item_code);
-        RAISE global_api_expt;
---
-      END IF;
---
       -- ステータスチェック有りの場合は出荷可否チェック処理を実施
-      IF ( iv_status_kbn = '1' ) THEN
+--      IF ( iv_status_kbn = '1' ) THEN -- 2008/07/30 ST不具合対応#501
+                                        -- マスタチェックの実施条件にステータスチェック区分を追加
         -- **************************************************
         -- *** 計画商品フラグ取得処理(D-8)
         -- **************************************************
