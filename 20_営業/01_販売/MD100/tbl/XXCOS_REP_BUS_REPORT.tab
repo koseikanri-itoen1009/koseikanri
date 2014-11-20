@@ -3,13 +3,16 @@
  *
  * Table Name  : XXCOS_REP_BUS_REPORT
  * Description : 営業報告日報帳票ワークテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS T.Nakabayashi新規作成
+ *  2009/09/28    1.1   SCS S.Miyakoshi  [0001378]帳票テーブルの桁あふれ対応
+ *                                        ・NUMBERの桁数指定なし
+ *                                        ・QUANTITY1～6（NUMBER(6,2)⇒NUMBER(13,2)）
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_BUS_REPORT
@@ -32,29 +35,29 @@ CREATE TABLE XXCOS.XXCOS_REP_BUS_REPORT
     PARTY_NAME                    VARCHAR2(40),                           --顧客名
     PERFORMANCE_BY_CODE           VARCHAR2(5),                            --成績者コード
     PERFORMANCE_BY_NAME           VARCHAR2(40),                           --成績者名
-    AFTERTAX_SALE                 NUMBER(9,0),                            --売上金額
-    PRETAX_PAYMENT                NUMBER(9,0),                            --入金金額
-    SALE_DISCOUNT                 NUMBER(9,0),                            --売上値引
+    AFTERTAX_SALE                 NUMBER,                                 --売上金額
+    PRETAX_PAYMENT                NUMBER,                                 --入金金額
+    SALE_DISCOUNT                 NUMBER,                                 --売上値引
     ITEM_NAME1                    VARCHAR2(16),                           --商品名称1
-    QUANTITY1                     NUMBER(6,2),                            --数量1
+    QUANTITY1                     NUMBER(13,2),                           --数量1
     ITEM_NAME2                    VARCHAR2(16),                           --商品名称2
-    QUANTITY2                     NUMBER(6,2),                            --数量2
+    QUANTITY2                     NUMBER(13,2),                           --数量2
     ITEM_NAME3                    VARCHAR2(16),                           --商品名称3
-    QUANTITY3                     NUMBER(6,2),                            --数量3
+    QUANTITY3                     NUMBER(13,2),                           --数量3
     ITEM_NAME4                    VARCHAR2(16),                           --商品名称4
-    QUANTITY4                     NUMBER(6,2),                            --数量4
+    QUANTITY4                     NUMBER(13,2),                           --数量4
     ITEM_NAME5                    VARCHAR2(16),                           --商品名称5
-    QUANTITY5                     NUMBER(6,2),                            --数量5
+    QUANTITY5                     NUMBER(13,2),                           --数量5
     ITEM_NAME6                    VARCHAR2(16),                           --商品名称6
-    QUANTITY6                     NUMBER(6,2),                            --数量6
-    DELAY_VISIT_COUNT             NUMBER(3,0),                            --延訪問件数
-    DELAY_VALID_COUNT             NUMBER(3,0),                            --延有効件数
-    DLV_TOTAL_SALE                NUMBER(9,0),                            --納品合計純売上
-    DLV_TOTAL_RTN                 NUMBER(9,0),                            --納品合計返品
-    DLV_TOTAL_DISCOUNT            NUMBER(9,0),                            --納品合計値引
-    PERFORMANCE_TOTAL_SALE        NUMBER(9,0),                            --成績合計純売上
-    PERFORMANCE_TOTAL_RTN         NUMBER(9,0),                            --成績合計返品
-    PERFORMANCE_TOTAL_DISCOUNT    NUMBER(9,0),                            --成績合計値引
+    QUANTITY6                     NUMBER(13,2),                           --数量6
+    DELAY_VISIT_COUNT             NUMBER,                                 --延訪問件数
+    DELAY_VALID_COUNT             NUMBER,                                 --延有効件数
+    DLV_TOTAL_SALE                NUMBER,                                 --納品合計純売上
+    DLV_TOTAL_RTN                 NUMBER,                                 --納品合計返品
+    DLV_TOTAL_DISCOUNT            NUMBER,                                 --納品合計値引
+    PERFORMANCE_TOTAL_SALE        NUMBER,                                 --成績合計純売上
+    PERFORMANCE_TOTAL_RTN         NUMBER,                                 --成績合計返品
+    PERFORMANCE_TOTAL_DISCOUNT    NUMBER,                                 --成績合計値引
     CREATED_BY                    NUMBER(15,0)    NOT NULL,               --作成者
     CREATION_DATE                 DATE            NOT NULL,               --作成日
     LAST_UPDATED_BY               NUMBER(15,0)    NOT NULL,               --最終更新者
