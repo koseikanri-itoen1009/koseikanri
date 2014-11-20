@@ -1,0 +1,5 @@
+CREATE INDEX xxcos.xxcos_edi_stc_lines_n01  ON  xxcos.xxcos_edi_stc_lines  (
+  header_id
+)
+TABLESPACE xxidx2
+;

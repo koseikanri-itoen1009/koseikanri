@@ -1,0 +1,5 @@
+CREATE INDEX xxcos.xxcos_payment_n01 ON xxcos.xxcos_payment (
+  delete_flag
+)
+TABLESPACE xxidx2
+;

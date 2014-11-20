@@ -1,0 +1,6 @@
+CREATE UNIQUE INDEX xxcos.xxcos_vd_digestion_lns_u01  ON  xxcos.xxcos_vd_digestion_lns  (
+  vd_digestion_hdr_id
+ ,vd_digestion_ln_id
+)
+TABLESPACE xxidx2
+;
