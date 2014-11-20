@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_016_A02_情報系-EBSインターフェース：
  *                    (OUT)営業員マスタ
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,7 +30,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-11-26    1.0   Kazuyo.Hosoi     新規作成
- *  2009-02-26    1.1   K.Sai            レビュー結果反映 
+ *  2009-02-26    1.1   K.Sai            レビュー結果反映
+ *  2009-03-26    1.2   M.Maruyama      【ST障害T01_208】データ取得元をリソース関連マスタビューに変更
  *
  *****************************************************************************************/
 --
@@ -643,121 +644,123 @@ AS
 --
   END open_csv_file;
 --
-  /**********************************************************************************
-   * Procedure Name   : get_prsn_cnnct_data
-   * Description      : 営業員マスタ関連情報抽出処理(A-5)
-   ***********************************************************************************/
-  PROCEDURE get_prsn_cnnct_data(
-     io_person_data_rec IN OUT NOCOPY g_get_data_rtype -- 営業員マスタ情報
-    ,id_process_date    IN     DATE                    -- 業務処理日付
-    ,ov_errbuf          OUT    NOCOPY VARCHAR2         -- エラー・メッセージ            --# 固定 #
-    ,ov_retcode         OUT    NOCOPY VARCHAR2         -- リターン・コード              --# 固定 #
-    ,ov_errmsg          OUT    NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ  --# 固定 #
-  )
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_prsn_cnnct_data';  -- プログラム名
---
---#######################  固定ローカル変数宣言部 START   ######################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
-    cv_no               CONSTANT VARCHAR2(1)   :=  'N';
-    cv_processing_name  CONSTANT VARCHAR2(100) :=  '営業員マスタ関連情報';
-    -- *** ローカル変数 ***
-    --取得データ格納用
-    lt_attribute1  jtf_rs_group_members.attribute1%TYPE;    -- グループ長区分
-    lt_attribute2  jtf_rs_group_members.attribute2%TYPE;    -- グループコード
-    ld_date        DATE;                                    -- 業務処理日付格納用('yyyymmdd'形式)
-    -- *** ローカル・例外 ***
-    error_expt      EXCEPTION;            -- データ抽出エラー例外
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-  -- 業務処理日付を'yyyymmdd'形式で格納
-  ld_date := TRUNC(id_process_date);
-    -- ============================
-    -- 営業員マスタ関連情報抽出処理
-    -- ============================
-    BEGIN
-      SELECT  jrgm.attribute1   --グループ長区分
-             ,jrgm.attribute2   --グループコード
-      INTO    lt_attribute1
-             ,lt_attribute2
-      FROM    jtf_rs_group_members  jrgm    -- リソースグループメンバーテーブル
-             ,jtf_rs_groups_b       jrgb    -- リソースグループテーブル
-      WHERE  jrgm.resource_id   = io_person_data_rec.resource_id
-        AND  jrgm.group_id      = jrgb.group_id
-        AND  jrgb.attribute1    = io_person_data_rec.base_code
-        AND  jrgm.delete_flag   = cv_no
-        AND  NVL(jrgb.start_date_active,ld_date) <= ld_date
-        AND  NVL(jrgb.end_date_active,ld_date) >= ld_date
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        -- データが存在しない場合はNULLを設定
-        lt_attribute1 := NULL;
-        lt_attribute2 := NULL;
-      WHEN OTHERS THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_app_name                           -- アプリケーション短縮名
-                         ,iv_name         => cv_tkn_number_04                      -- メッセージコード
-                         ,iv_token_name1  => cv_tkn_prcss_nm                       -- トークン値1
-                         ,iv_token_value1 => cv_processing_name                    -- エラー発生処理名
-                         ,iv_token_name2  => cv_tkn_errmessage                     -- トークンコード2
-                         ,iv_token_value2 => SQLERRM                               -- SQLエラーメッセージ
-                      );
-        lv_errbuf  := lv_errmsg||SQLERRM;
-        RAISE error_expt;
-    END;
-    -- 取得した値をOUTパラメータに設定
-    io_person_data_rec.group_leader_flag := lt_attribute1; --グループ長区分
-    io_person_data_rec.group_cd          := lt_attribute2; --グループコード
---
-  EXCEPTION
---
-  -- *** データ抽出例外ハンドラ ***
-    WHEN error_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END get_prsn_cnnct_data;
---
+  /* 2009/03/26 M.Maruyama ST0156対応 START */
+  --/**********************************************************************************
+  -- * Procedure Name   : get_prsn_cnnct_data
+  -- * Description      : 営業員マスタ関連情報抽出処理(A-5)
+  -- ***********************************************************************************/
+  --PROCEDURE get_prsn_cnnct_data(
+  --   io_person_data_rec IN OUT NOCOPY g_get_data_rtype -- 営業員マスタ情報
+  --  ,id_process_date    IN     DATE                    -- 業務処理日付
+  --  ,ov_errbuf          OUT    NOCOPY VARCHAR2         -- エラー・メッセージ            --# 固定 #
+  --  ,ov_retcode         OUT    NOCOPY VARCHAR2         -- リターン・コード              --# 固定 #
+  --  ,ov_errmsg          OUT    NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ  --# 固定 #
+  --)
+  --IS
+  --  -- ===============================
+  --  -- 固定ローカル定数
+  --  -- ===============================
+  --  cv_prg_name   CONSTANT VARCHAR2(100) := 'get_prsn_cnnct_data';  -- プログラム名
+----
+----#######################  固定ローカル変数宣言部 START   ######################
+----
+  --  lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+  --  lv_retcode VARCHAR2(1);     -- リターン・コード
+  --  lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+  --  -- ===============================
+  --  -- ユーザー宣言部
+  --  -- ===============================
+  --  -- *** ローカル定数 ***
+  --  cv_no               CONSTANT VARCHAR2(1)   :=  'N';
+  --  cv_processing_name  CONSTANT VARCHAR2(100) :=  '営業員マスタ関連情報';
+  --  -- *** ローカル変数 ***
+  --  --取得データ格納用
+  --  lt_attribute1  jtf_rs_group_members.attribute1%TYPE;    -- グループ長区分
+  --  lt_attribute2  jtf_rs_group_members.attribute2%TYPE;    -- グループコード
+  --  ld_date        DATE;                                    -- 業務処理日付格納用('yyyymmdd'形式)
+  --  -- *** ローカル・例外 ***
+  --  error_expt      EXCEPTION;            -- データ抽出エラー例外
+----
+  --BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+  --  ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+  ---- 業務処理日付を'yyyymmdd'形式で格納
+  --ld_date := TRUNC(id_process_date);
+  --  -- ============================
+  --  -- 営業員マスタ関連情報抽出処理
+  --  -- ============================
+  --  BEGIN
+  --    SELECT  jrgm.attribute1   --グループ長区分
+  --           ,jrgm.attribute2   --グループコード
+  --    INTO    lt_attribute1
+  --           ,lt_attribute2
+  --    FROM    jtf_rs_group_members  jrgm    -- リソースグループメンバーテーブル
+  --           ,jtf_rs_groups_b       jrgb    -- リソースグループテーブル
+  --    WHERE  jrgm.resource_id   = io_person_data_rec.resource_id
+  --      AND  jrgm.group_id      = jrgb.group_id
+  --      AND  jrgb.attribute1    = io_person_data_rec.base_code
+  --      AND  jrgm.delete_flag   = cv_no
+  --      AND  NVL(jrgb.start_date_active,ld_date) <= ld_date
+  --      AND  NVL(jrgb.end_date_active,ld_date) >= ld_date
+  --    ;
+  --  EXCEPTION
+  --    WHEN NO_DATA_FOUND THEN
+  --      -- データが存在しない場合はNULLを設定
+  --      lt_attribute1 := NULL;
+  --      lt_attribute2 := NULL;
+  --    WHEN OTHERS THEN
+  --      lv_errmsg := xxccp_common_pkg.get_msg(
+  --                        iv_application  => cv_app_name                           -- アプリケーション短縮名
+  --                       ,iv_name         => cv_tkn_number_04                      -- メッセージコード
+  --                       ,iv_token_name1  => cv_tkn_prcss_nm                       -- トークン値1
+  --                       ,iv_token_value1 => cv_processing_name                    -- エラー発生処理名
+  --                       ,iv_token_name2  => cv_tkn_errmessage                     -- トークンコード2
+  --                       ,iv_token_value2 => SQLERRM                               -- SQLエラーメッセージ
+  --                    );
+  --      lv_errbuf  := lv_errmsg||SQLERRM;
+  --      RAISE error_expt;
+  --  END;
+  --  -- 取得した値をOUTパラメータに設定
+  --  io_person_data_rec.group_leader_flag := lt_attribute1; --グループ長区分
+  --  io_person_data_rec.group_cd          := lt_attribute2; --グループコード
+----
+  --EXCEPTION
+----
+  ---- *** データ抽出例外ハンドラ ***
+  --  WHEN error_expt THEN
+  --    ov_errmsg  := lv_errmsg;
+  --    ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+  --    ov_retcode := cv_status_error;
+----
+----#################################  固定例外処理部 START   ####################################
+----
+  --  -- *** 共通関数例外ハンドラ ***
+  --  WHEN global_api_expt THEN
+  --    ov_errmsg  := lv_errmsg;
+  --    ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+  --    ov_retcode := cv_status_error;
+  --  -- *** 共通関数OTHERS例外ハンドラ ***
+  --  WHEN global_api_others_expt THEN
+  --    ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+  --    ov_retcode := cv_status_error;
+  --  -- *** OTHERS例外ハンドラ ***
+  --  WHEN OTHERS THEN
+  --    ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+  --    ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+  --END get_prsn_cnnct_data;
+----
+  /* 2009/03/26 M.Maruyama ST0156対応 END */
   /**********************************************************************************
    * Procedure Name   : create_csv_rec
    * Description      : 営業員マスタCSV出力(A-6)
@@ -1114,37 +1117,87 @@ AS
     ld_date         DATE;
 --
     -- *** ローカル・カーソル ***
+  /* 2009/03/26 M.Maruyama ST0156対応 START */
     CURSOR get_person_data_cur
     IS
-      SELECT  papf.employee_number  employee_number                    -- 営業員コード
+      SELECT  xrrv.employee_number employee_number  -- 営業員コード
              ,( CASE
-                 WHEN TO_DATE(paaf.ass_attribute2, 'yyyy/mm/dd') <= ld_date THEN
-                   paaf.ass_attribute3  -- 勤務地拠点コード(新)
-                 WHEN TO_DATE(paaf.ass_attribute2, 'yyyy/mm/dd')  > ld_date THEN
-                   paaf.ass_attribute4  -- 勤務地拠点コード(旧)
-                 WHEN paaf.ass_attribute2 IS NULL THEN
-                   paaf.ass_attribute4  -- 勤務地拠点コード(旧)
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                   xrrv.work_dept_code_new          -- 勤務地拠点コード(新)
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                   xrrv.work_dept_code_old          -- 勤務地拠点コード(旧)
+                 WHEN xrrv.issue_date IS NULL THEN
+                   xrrv.work_dept_code_old          -- 勤務地拠点コード(旧)
                  END
-              )  base_code                                            -- 拠点コード
-             ,SUBSTRB(papf.per_information18,1,cn_name_lengthb) || cv_space ||
-               SUBSTRB(papf.per_information19,1,cn_name_lengthb)  person_name     -- 営業員名称
-             ,SUBSTRB(papf.last_name,1,cn_name_lengthb) || cv_space ||
-               SUBSTRB(papf.first_name,1,cn_name_lengthb)  person_name_kana       -- 営業員氏名（カナ）
-             ,jrre.attribute1    business_form                         -- 営業形態
-             ,jrre.resource_id  resource_id                            -- リソースID
-      FROM   per_people_f           papf                        -- 従業員マスタ
-            ,per_assignments_f      paaf                        -- 従業員マスタアサイメント
-            ,jtf_rs_resource_extns  jrre                        -- リソーステーブル
-      WHERE  jrre.category  = cv_category
-        AND  jrre.source_id = papf.person_id
-        AND  papf.person_id = paaf.person_id
-        AND  papf.effective_start_date <= ld_date
-        AND  papf.effective_end_date   >= ld_date
-        AND  paaf.effective_start_date <= ld_date
-        AND  paaf.effective_end_date   >= ld_date
-        AND  jrre.start_date_active    <= ld_date
-        AND  NVL(jrre.end_date_active,ld_date) >= ld_date
+              )  base_code                          -- 拠点コード
+             ,SUBSTRB(xrrv.last_name,1,cn_name_lengthb) || cv_space ||
+               SUBSTRB(xrrv.first_name,1,cn_name_lengthb)  person_name            -- 営業員名称
+             ,SUBSTRB(xrrv.last_name_kana,1,cn_name_lengthb) || cv_space ||
+               SUBSTRB(xrrv.first_name_kana,1,cn_name_lengthb)  person_name_kana  -- 営業員氏名（カナ）
+             ,xrrv.sales_style  sales_style         -- 営業形態
+             ,xrrv.resource_id  resource_id         -- リソースID
+             ,( CASE
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                   xrrv.group_leader_flag_new       -- グループ長区分(新)
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                   xrrv.group_leader_flag_old       -- グループ長区分(旧)
+                 WHEN xrrv.issue_date IS NULL THEN
+                   xrrv.group_leader_flag_old       -- グループ長区分(旧)
+                 END
+              )  group_leader_flag                  -- グループ長区分
+             ,( CASE
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                   xrrv.group_number_new            -- グループ番号(新)
+                 WHEN TO_DATE(xrrv.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                   xrrv.group_number_old            -- グループ番号(旧)
+                 WHEN xrrv.issue_date IS NULL THEN
+                   xrrv.group_number_old            -- グループ番号(旧)
+                 END
+              )  group_number                       -- グループ番号
+      FROM   xxcso_resource_relations_v xrrv        -- リソース関連マスタビュー
+      WHERE  xrrv.employee_start_date <= ld_date
+        AND  xrrv.employee_end_date   >= ld_date
+        AND  xrrv.assign_start_date   <= ld_date
+        AND  xrrv.assign_end_date     >= ld_date
+        AND  xrrv.resource_start_date <= ld_date
+        AND  NVL(xrrv.resource_end_date,ld_date)     >= ld_date
+        AND  NVL(xrrv.start_date_active_new,ld_date) <= ld_date
+        AND  NVL(xrrv.end_date_active_new,ld_date)   >= ld_date
+        AND  NVL(xrrv.start_date_active_old,ld_date) <= ld_date
+        AND  NVL(xrrv.end_date_active_old,ld_date)   >= ld_date
       ;
+    --CURSOR get_person_data_cur
+    --IS
+    --  SELECT  papf.employee_number  employee_number                    -- 営業員コード
+    --         ,( CASE
+    --             WHEN TO_DATE(paaf.ass_attribute2, 'yyyy/mm/dd') <= ld_date THEN
+    --               paaf.ass_attribute3  -- 勤務地拠点コード(新)
+    --             WHEN TO_DATE(paaf.ass_attribute2, 'yyyy/mm/dd')  > ld_date THEN
+    --               paaf.ass_attribute4  -- 勤務地拠点コード(旧)
+    --             WHEN paaf.ass_attribute2 IS NULL THEN
+    --               paaf.ass_attribute4  -- 勤務地拠点コード(旧)
+    --             END
+    --          )  base_code                                            -- 拠点コード
+    --         ,SUBSTRB(papf.per_information18,1,cn_name_lengthb) || cv_space ||
+    --           SUBSTRB(papf.per_information19,1,cn_name_lengthb)  person_name     -- 営業員名称
+    --         ,SUBSTRB(papf.last_name,1,cn_name_lengthb) || cv_space ||
+    --           SUBSTRB(papf.first_name,1,cn_name_lengthb)  person_name_kana       -- 営業員氏名（カナ）
+    --         ,jrre.attribute1    business_form                         -- 営業形態
+    --         ,jrre.resource_id  resource_id                            -- リソースID
+    --  FROM   per_people_f           papf                        -- 従業員マスタ
+    --        ,per_assignments_f      paaf                        -- 従業員マスタアサイメント
+    --        ,jtf_rs_resource_extns  jrre                        -- リソーステーブル
+    --  WHERE  jrre.category  = cv_category
+    --    AND  jrre.source_id = papf.person_id
+    --    AND  papf.person_id = paaf.person_id
+    --    AND  papf.effective_start_date <= ld_date
+    --    AND  papf.effective_end_date   >= ld_date
+    --    AND  paaf.effective_start_date <= ld_date
+    --    AND  paaf.effective_end_date   >= ld_date
+    --    AND  jrre.start_date_active    <= ld_date
+    --    AND  NVL(jrre.end_date_active,ld_date) >= ld_date
+    --  ;
+  /* 2009/03/26 M.Maruyama ST0156対応 END */
 --
     -- *** ローカル・レコード ***
     l_get_person_data_rec   get_person_data_cur%ROWTYPE;
@@ -1240,29 +1293,36 @@ AS
       -- レコード変数初期化
       l_get_data_rec := NULL;
       -- 取得データを格納
-      l_get_data_rec.company_cd        := lv_company_cd;                           -- 会社コード
-      l_get_data_rec.employee_number   := l_get_person_data_rec.employee_number;   -- 営業員コード
-      l_get_data_rec.base_code         := l_get_person_data_rec.base_code;         -- 拠点コード
-      l_get_data_rec.person_name       := l_get_person_data_rec.person_name;       -- 営業員名称
-      l_get_data_rec.person_name_kana  := l_get_person_data_rec.person_name_kana;  -- 営業員氏名(カナ)
-      l_get_data_rec.business_form     := l_get_person_data_rec.business_form;     -- 営業形態
-      l_get_data_rec.cprtn_date        := ld_sysdate;                              -- 連携日時
-      l_get_data_rec.resource_id       := l_get_person_data_rec.resource_id;       -- リソースID
+      l_get_data_rec.company_cd        := lv_company_cd;                            -- 会社コード
+      l_get_data_rec.employee_number   := l_get_person_data_rec.employee_number;    -- 営業員コード
+      l_get_data_rec.base_code         := l_get_person_data_rec.base_code;          -- 拠点コード
+      l_get_data_rec.person_name       := l_get_person_data_rec.person_name;        -- 営業員名称
+      l_get_data_rec.person_name_kana  := l_get_person_data_rec.person_name_kana;   -- 営業員氏名(カナ)
+  /* 2009/03/26 M.Maruyama ST0156対応 START */
+      --l_get_data_rec.business_form     := l_get_person_data_rec.business_form;    -- 営業形態
+      l_get_data_rec.business_form     := l_get_person_data_rec.sales_style;        -- 営業形態
+  /* 2009/03/26 M.Maruyama ST0156対応 END */
+      l_get_data_rec.cprtn_date        := ld_sysdate;                               -- 連携日時
+      l_get_data_rec.resource_id       := l_get_person_data_rec.resource_id;        -- リソースID
+  /* 2009/03/26 M.Maruyama ST0156対応 START */
+      l_get_data_rec.group_leader_flag := l_get_person_data_rec.group_leader_flag;  -- グループ長区分
+      l_get_data_rec.group_cd          := l_get_person_data_rec.group_number;       -- グループ番号
 --
-      -- ========================================
-      -- A-5.営業員マスタ関連情報抽出処理
-      -- ========================================
-      get_prsn_cnnct_data(
-         io_person_data_rec => l_get_data_rec   --営業員マスタ情報
-        ,id_process_date    => ld_process_date  -- 業務処理日付
-        ,ov_errbuf          => lv_errbuf        -- エラー・メッセージ            --# 固定 #
-        ,ov_retcode         => lv_retcode       -- リターン・コード              --# 固定 #
-        ,ov_errmsg          => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
-      );
---
-      IF (lv_retcode = cv_status_error) THEN
-        RAISE global_process_expt;
-      END IF;
+      ---- ========================================
+      ---- A-5.営業員マスタ関連情報抽出処理
+      ---- ========================================
+      --get_prsn_cnnct_data(
+      --   io_person_data_rec => l_get_data_rec   --営業員マスタ情報
+      --  ,id_process_date    => ld_process_date  -- 業務処理日付
+      --  ,ov_errbuf          => lv_errbuf        -- エラー・メッセージ            --# 固定 #
+      --  ,ov_retcode         => lv_retcode       -- リターン・コード              --# 固定 #
+      --  ,ov_errmsg          => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
+      --);
+--    --
+      --IF (lv_retcode = cv_status_error) THEN
+      --  RAISE global_process_expt;
+      --END IF;
+  /* 2009/03/26 M.Maruyama ST0156対応 END */
 --
       -- ========================================
       -- A-6.営業員マスタCSV出力
