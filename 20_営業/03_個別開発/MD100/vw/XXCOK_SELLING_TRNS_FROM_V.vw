@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_SELLING_TRNS_FROM_V
  * Description : ”„ãU‘ÖŒ³î•ñƒrƒ…[
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/15    1.0   T.Osada          V‹Kì¬
  *  2009/04/06    1.1   M.Hiruta         [áŠQT1_0199‘Î‰ž] U‘ÖŒ³‹’“_‚Ì’ŠoŒ³‚ð”„ãU‘ÖŒ³î•ñƒe[ƒuƒ‹‚Ö•ÏX
  *                                       [áŠQT1_0307‘Î‰ž] ’S“–‰c‹Æˆõ’ŠoðŒ‚ÌSYSDATE‚ð‹Æ–±“ú•t‚Ö•ÏX
+ *  2009/04/23    1.2   M.Hiruta         [áŠQT1_0624‘Î‰ž] ‘gDƒvƒƒtƒ@ƒCƒ‹‚Ì’ŠoðŒ‚Ì‹Æ–±“ú•t‚ðSYSDATE‚Ö•ÏX
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW xxcok_selling_trns_from_v
@@ -72,8 +73,14 @@ AS
 --         AND    TRUNC( NVL( era.resource_e_date,       SYSDATE ) ) >= TRUNC(SYSDATE)
 --         AND    TRUNC( NVL( papf.effective_start_date, SYSDATE ) ) <= TRUNC(SYSDATE)
 --         AND    TRUNC( NVL( papf.effective_end_date,   SYSDATE ) ) >= TRUNC(SYSDATE)
-         AND    TRUNC( NVL( hop.effective_start_date,  get_date.process_date ) ) <= get_date.process_date
-         AND    TRUNC( NVL( hop.effective_end_date,    get_date.process_date ) ) >= get_date.process_date
+-- End   2009/04/06 Ver_1.1 T1_0307 M.Hiruta
+-- Start 2009/04/23 Ver_1.2 T1_0624 M.Hiruta
+--         AND    TRUNC( NVL( hop.effective_start_date,  get_date.process_date ) ) <= get_date.process_date
+--         AND    TRUNC( NVL( hop.effective_end_date,    get_date.process_date ) ) >= get_date.process_date
+         AND    TRUNC( NVL( hop.effective_start_date,  SYSDATE ) ) <= TRUNC(SYSDATE)
+         AND    TRUNC( NVL( hop.effective_end_date,    SYSDATE ) ) >= TRUNC(SYSDATE)
+-- End   2009/04/23 Ver_1.2 T1_0624 M.Hiruta
+-- Start 2009/04/06 Ver_1.1 T1_0307 M.Hiruta
          AND    TRUNC( NVL( era.resource_s_date,       get_date.process_date ) ) <= get_date.process_date
          AND    TRUNC( NVL( era.resource_e_date,       get_date.process_date ) ) >= get_date.process_date
          AND    TRUNC( NVL( papf.effective_start_date, get_date.process_date ) ) <= get_date.process_date
