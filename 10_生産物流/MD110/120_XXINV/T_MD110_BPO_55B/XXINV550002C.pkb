@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/10/20    1.18  Takao Ohashi     T_S_492(出力されない処理区分と事由コートの組み合わせを出力させる)
  *  2008/10/23    1.19  Takao Ohashi     指摘442(品目振替情報の取得条件修正)
  *  2008/11/07    1.20  Hitomi Itou      統合テスト指摘548対応
+ *  2008/11/17    1.21  Takao Ohashi     指摘356対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2072,10 +2073,19 @@ AS
             ELSE 0
           END                                                 in_qty              --入庫数
          ,CASE sh_info.rcv_pay_div--受払区分
+-- mod start ver1.21
 -- mod start 1.18
 --            WHEN gv_rcvdiv_pay THEN sh_info.trans_qty_sum
-            WHEN gv_rcvdiv_pay THEN ABS(sh_info.trans_qty_sum)
+--            WHEN gv_rcvdiv_pay THEN ABS(sh_info.trans_qty_sum)
+            WHEN gv_rcvdiv_pay THEN 
+              CASE
+                WHEN (sh_info.new_div_invent = '104' AND sh_info.order_category_code = 'RETURN') THEN
+                  ABS(sh_info.trans_qty_sum) * -1
+                ELSE
+                  ABS(sh_info.trans_qty_sum)
+              END
 -- mod end 1.18
+-- mod end ver1.21
             ELSE 0
           END                                                 out_qty             --出庫数
          ,sh_info.whse_code                                   whse_code           --倉庫コード
@@ -2115,6 +2125,9 @@ AS
            ,DECODE(xoha.req_status,gv_recsts_shipped,xpsv.party_site_full_name
                                   ,gv_recsts_shipped2,xvsv.vendor_site_name
             ) party_site_full_name
+-- add start ver1.21
+           ,otta.order_category_code                          order_category_code
+-- add end ver1.21
 --add end 1.6
           FROM
             ( --OMSO関連情報
@@ -2327,6 +2340,9 @@ AS
            ,xoha.req_status
            ,xpsv.party_site_full_name
            ,xvsv.vendor_site_name
+-- add start ver1.21
+           ,otta.order_category_code
+-- add end ver1.21
 --add end 1.6
         )                                                     sh_info             --出荷関連情報
 --del start 1.6

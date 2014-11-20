@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼締め関数
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_BPO_40E_出荷依頼締め関数
- * Version                : 1.9
+ * Version                : 1.10
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/08/05   1.7   Oracle 山根一浩 出荷追加_5対応
  *  2008/10/10   1.8   Oracle 伊藤ひとみ 統合テスト指摘239対応
  *  2008/10/28   1.9   Oracle 伊藤ひとみ 統合テスト指摘141対応
+ *  2008/11/14   1.10  Oracle 伊藤ひとみ 統合テスト指摘650対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -144,6 +145,9 @@ AS
   gv_msg_null_07          CONSTANT VARCHAR2(30)  := '出庫形態';
   gv_msg_null_10          CONSTANT VARCHAR2(30)  := '生産物流LT/引取変更LT';
   gv_msg_null_11          CONSTANT VARCHAR2(30)  := '締めコンカレントID';
+-- 2008/11/14 H.Itou Add Start 統合テスト指摘650 着荷日非稼働日警告の時にOUTパラメータ.エラーメッセージに返すメッセージ
+  gv_msg_warn_01          CONSTANT VARCHAR2(30)  := '稼働日';
+-- 2008/11/14 H.Itou Add End
   gv_status_A             CONSTANT VARCHAR2(1)   := 'A'; -- 有効
   gn_m999                 CONSTANT NUMBER        := -999;
   gv_ALL                  CONSTANT VARCHAR2(3)   := 'ALL';
@@ -1764,9 +1768,15 @@ AS
           lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
                                                 gv_cnst_msg_206,
                                                 'IN_DATE',
-                                                TO_CHAR(lr_u_rec.schedule_arrival_date,'YYYY/MM/DD'),                                                'REQUEST_NO',
-                                                lr_u_rec.request_no) || gv_line_feed;
-          RAISE global_api_expt;
+                                                TO_CHAR(lr_u_rec.schedule_arrival_date,'YYYY/MM/DD'),
+                                                'REQUEST_NO',
+                                                lr_u_rec.request_no);
+-- 2008/11/14 H.Itou Mod Start 統合テスト指摘650 着荷日が稼働日でない場合、警告（登録は行う。）
+--          RAISE global_api_expt;
+          ln_warn_cnt := ln_warn_cnt + 1;
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          ov_errmsg := gv_msg_warn_01;
+-- 2008/11/14 H.Itou Mod End
         END IF;
 --
         -- リードタイム算出
@@ -1796,27 +1806,31 @@ AS
           RAISE global_api_expt;
         END IF;
 --
-        -- リードタイム妥当チェック
-        ln_retcode :=
-        xxwsh_common_pkg.get_oprtn_day(lr_u_rec.schedule_arrival_date, -- E-2着日
-                                       NULL,                           -- 出荷元保管場所
-                                       lr_u_rec.deliver_to,            -- E-2配送先コード
-                                       ln_delivery_lt,                 -- リードタイム
-                                       lr_u_rec.prod_class,            -- E-2商品区分
-                                       ld_oprtn_day);                  -- 稼働日日付
---
-        -- リターン・コードにエラーが返された場合はエラー
-        IF (ln_retcode = gn_status_error) THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
-                                                gv_cnst_msg_205,
-                                                gv_cnst_token_api_name,
-                                                cv_get_oprtn_day_api,
-                                                'ERR_MSG',
-                                                '',
-                                                'REQUEST_NO',
-                                                lr_u_rec.request_no);
-          RAISE global_api_expt;
-        END IF;
+-- 2008/11/14 H.Itou Mod Start 統合テスト指摘650 着荷日 － 配送リードタイムは稼動日を考慮しない。
+--        -- リードタイム妥当チェック
+--        ln_retcode :=
+--        xxwsh_common_pkg.get_oprtn_day(lr_u_rec.schedule_arrival_date, -- E-2着日
+--                                       NULL,                           -- 出荷元保管場所
+--                                       lr_u_rec.deliver_to,            -- E-2配送先コード
+--                                       ln_delivery_lt,                 -- リードタイム
+--                                       lr_u_rec.prod_class,            -- E-2商品区分
+--                                       ld_oprtn_day);                  -- 稼働日日付
+----
+--        -- リターン・コードにエラーが返された場合はエラー
+--        IF (ln_retcode = gn_status_error) THEN
+--          lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_msg_kbn,
+--                                                gv_cnst_msg_205,
+--                                                gv_cnst_token_api_name,
+--                                                cv_get_oprtn_day_api,
+--                                                'ERR_MSG',
+--                                                '',
+--                                                'REQUEST_NO',
+--                                                lr_u_rec.request_no);
+--          RAISE global_api_expt;
+--        END IF;
+        -- 着荷日 － 配送リードタイムを取得
+        ld_oprtn_day := lr_u_rec.schedule_arrival_date - ln_delivery_lt;
+-- 2008/11/14 H.Itou Mod End
 --
         -- E-2出庫日 < 稼働日
         IF (lr_u_rec.schedule_ship_date > ld_oprtn_day) THEN
