@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/05/30    1.1   Oracle 石渡 賢和 出荷依頼(実績)出力済みフラグの判定修正
  *  2008/06/10    1.2   Oracle 石渡 賢和 TE080指摘事項修正
  *  2008/07/14    1.3   Oracle 椎名 昭圭 TE080指摘事項#73対応
+ *  2008/08/04    1.4   Oracle 山根 一浩 ST#103対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1009,8 +1010,10 @@ AS
     INTO   ln_cnt
     FROM   xxcmn_lookup_values_v xlv
     WHERE  xlv.lookup_type = lv_lookup_code
-    AND    xlv.lookup_code = iv_inf_div
-    AND    ROWNUM      = 1;
+    AND    xlv.lookup_code = iv_inf_div;
+-- 2008/08/04 Mod ↓
+--    AND    ROWNUM      = 1;
+-- 2008/08/04 Mod ↑
 --
     -- 存在しない
     IF (ln_cnt < 1) THEN
@@ -1231,7 +1234,9 @@ AS
                                               gv_tkn_num_40f_02);
 --
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
-        gn_warn_cnt := gn_warn_cnt + 1;
+-- 2008/08/04 Mod ↓
+--        gn_warn_cnt := gn_warn_cnt + 1;
+-- 2008/08/04 Mod ↑
         ov_retcode := gv_status_warn;
     END IF;
 --
