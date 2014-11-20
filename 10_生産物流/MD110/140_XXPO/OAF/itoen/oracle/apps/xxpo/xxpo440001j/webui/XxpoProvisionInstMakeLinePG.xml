@@ -362,7 +362,7 @@
                                        <ui:contents>
                                           <oa:switcher id="DeleteSwitcher" viewAttr="DeleteSwitcher">
                                              <ui:case name="DeleteEnable">
-                                                <oa:image id="DeleteEnable" source="deleteicon_enabled.gif" shortDesc="削除" imageHeight="24" imageWidth="24" serverUnvalidated="true">
+                                                <oa:image id="DeleteEnable" source="deleteicon_enabled.gif" shortDesc="削除" imageHeight="24" imageWidth="24" serverUnvalidated="true" warnAboutChanges="false">
                                                    <ui:primaryClientAction>
                                                       <ui:fireAction id="fireAction11" event="deleteRow" unvalidated="true">
                                                          <ui:parameters>

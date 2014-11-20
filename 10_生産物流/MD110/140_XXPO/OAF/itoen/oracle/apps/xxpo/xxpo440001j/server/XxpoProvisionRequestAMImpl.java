@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 *                              ST不具合#199対応
 * 2008-07-04 1.4  二瓶大輔     変更要求#91対応
 * 2008-07-29 1.5  二瓶大輔     内部変更要求#164,166,173、課題#32
+* 2008-08-13 1.6  二瓶大輔     ST不具合#249対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -47,7 +48,7 @@ import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.5
+ * @version 1.6
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1453,6 +1454,8 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     // 導出処理
     getHdrData(vo, row);
 
+    // 変更に関する警告処理
+    doWarnAboutChanges();
   } // doNext
 
   /***************************************************************************
@@ -1548,6 +1551,9 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     {
       // 挿入行削除
       row.remove();
+
+      // コミット処理
+      doCommit(reqNo);
 
       // 削除処理成功メッセージを表示
       XxcmnUtility.putSuccessMessage(XxpoConstants.TOKEN_NAME_DEL);
@@ -3118,6 +3124,8 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     vo.next();
     vo.insertRow(row);
     row.setNewRowState(Row.STATUS_INITIALIZED);
+    // 変更に関する警告を設定
+    super.setWarnAboutChanges();  
 
   } // addRow
 
@@ -4802,6 +4810,75 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     destVo.reset();
 
   } // copyRows
+
+  /***************************************************************************
+   * 変更に関する警告をセットします。
+   ***************************************************************************
+   */
+  public void doWarnAboutChanges()
+  {
+    // 支給指示作成ヘッダVO取得
+    XxpoProvisionInstMakeHeaderVOImpl hdrVo = getXxpoProvisionInstMakeHeaderVO1();
+    OARow hdrRow  = (OARow)hdrVo.first();
+
+    // いづれかの項目に変更があった場合
+    if (!XxcmnUtility.isEquals(hdrRow.getAttribute("VendorCode"),           hdrRow.getAttribute("DbVendorCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShipToCode"),           hdrRow.getAttribute("DbShipToCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShipWhseCode"),         hdrRow.getAttribute("DbShipWhseCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippedDate"),          hdrRow.getAttribute("DbShippedDate"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalDate"),          hdrRow.getAttribute("DbArrivalDate"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("FreightCarrierCode"),   hdrRow.getAttribute("DbFreightCarrierCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("OrderTypeId"),          hdrRow.getAttribute("DbOrderTypeId"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("WeightCapacityClass"),  hdrRow.getAttribute("DbWeightCapacityClass"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ReqDeptCode"),          hdrRow.getAttribute("DbReqDeptCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("InstDeptCode"),         hdrRow.getAttribute("DbInstDeptCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeFrom"),      hdrRow.getAttribute("DbArrivalTimeFrom"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeTo"),        hdrRow.getAttribute("DbArrivalTimeTo"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippingMethodCode"),   hdrRow.getAttribute("DbShippingMethodCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("FreightChargeClass"),   hdrRow.getAttribute("DbFreightChargeClass"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("TakebackClass"),        hdrRow.getAttribute("DbTakebackClass"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("DesignatedProdDate"),   hdrRow.getAttribute("DbDesignatedProdDate"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("DesignatedItemCode"),   hdrRow.getAttribute("DbDesignatedItemCode"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("DesignatedBranchNo"),   hdrRow.getAttribute("DbDesignatedBranchNo"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippingInstructions"), hdrRow.getAttribute("DbShippingInstructions"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("RcvClass"),             hdrRow.getAttribute("DbRcvClass"))
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("FixClass"),             hdrRow.getAttribute("DbFixClass"))) 
+    {
+      // 変更に関する警告を設定
+      super.setWarnAboutChanges();  
+    } else
+    {
+      // 支給指示作成明細VO取得
+      XxpoProvisionInstMakeLineVOImpl vo = getXxpoProvisionInstMakeLineVO1();
+
+      /****************************
+       * 明細行取得
+       ****************************/
+      Row[] rows = vo.getAllRowsInRange();
+      if (rows != null || rows.length > 0) 
+      {
+        OARow row = null;
+        for (int i = 0; i < rows.length; i++)
+        {
+          // i番目の行を取得
+          row = (OARow)rows[i];
+
+          /******************
+           * いづれかが変更された場合
+           ******************/
+          if (!XxcmnUtility.isEquals(row.getAttribute("ItemId"),          row.getAttribute("DbItemId"))
+           || !XxcmnUtility.isEquals(row.getAttribute("FutaiCode"),       row.getAttribute("DbFutaiCode"))
+           || !XxcmnUtility.isEquals(row.getAttribute("ReqQuantity"),     row.getAttribute("DbReqQuantity"))
+           || !XxcmnUtility.isEquals(row.getAttribute("LineDescription"), row.getAttribute("DbLineDescription"))) 
+          {
+            // 変更に関する警告を設定
+            super.setWarnAboutChanges();  
+            return;
+          }
+        }
+      }
+    }
+  } // doWarnAboutChanges
 
   /**
    * 

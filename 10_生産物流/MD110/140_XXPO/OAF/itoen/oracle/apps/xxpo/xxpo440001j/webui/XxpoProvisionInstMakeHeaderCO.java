@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionInstMakeHeaderCO
 * 概要説明   : 支給指示作成ヘッダコントローラ
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-07 1.0  二瓶大輔     新規作成
 * 2008-06-09 1.1  二瓶大輔     変更要求#42対応
+* 2008-08-13 1.2  二瓶大輔     ST不具合#249対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.webui;
@@ -32,7 +33,7 @@ import oracle.apps.fnd.framework.webui.beans.OAWebBean;
 /***************************************************************************
  * 支給指示作成ヘッダ画面のコントローラクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
 public class XxpoProvisionInstMakeHeaderCO extends XxcmnOAControllerImpl
@@ -116,6 +117,8 @@ public class XxpoProvisionInstMakeHeaderCO extends XxcmnOAControllerImpl
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO440001J);
           
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
         // 起動タイプ取得
         String exeType = pageContext.getParameter("ExeType");
         // 依頼No取得
@@ -171,6 +174,8 @@ public class XxpoProvisionInstMakeHeaderCO extends XxcmnOAControllerImpl
       {
         // 支給取消処理実行
         am.invokeMethod("doProvCancel");
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
         // 起動タイプ取得
         String exeType = pageContext.getParameter("ExeType");
         //パラメータ用HashMap生成

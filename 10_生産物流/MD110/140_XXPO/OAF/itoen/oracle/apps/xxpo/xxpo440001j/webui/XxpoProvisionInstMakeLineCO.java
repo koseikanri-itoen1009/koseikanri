@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionInstMakeLineCO
 * 概要説明   : 支給指示作成明細コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-07 1.0  二瓶大輔     新規作成
+* 2008-08-13 1.1  二瓶大輔     ST不具合#249対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.webui;
@@ -34,7 +35,7 @@ import oracle.apps.fnd.framework.webui.beans.OAWebBean;
 /***************************************************************************
  * 支給指示作成明細画面のコントローラクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoProvisionInstMakeLineCO extends XxcmnOAControllerImpl
@@ -257,6 +258,8 @@ public class XxpoProvisionInstMakeLineCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO440001J);
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
           
         // 新規フラグ取得
         String newFlag = pageContext.getParameter("NewFlag");
@@ -286,6 +289,8 @@ public class XxpoProvisionInstMakeLineCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO440001J);
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
           
         // 明細ID取得
         String lineId           = pageContext.getParameter("ORDER_LINE_ID");
@@ -318,6 +323,8 @@ public class XxpoProvisionInstMakeLineCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO440001J);
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
           
         // 明細ID取得
         String lineId           = pageContext.getParameter("ORDER_LINE_ID");
@@ -350,6 +357,8 @@ public class XxpoProvisionInstMakeLineCO extends XxcmnOAControllerImpl
       {
         // 【共通処理】トランザクション終了
         TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO440001J);
+        // 変更に関する警告クリア処理実行
+        am.invokeMethod("clearWarnAboutChanges");
           
         // 明細ID取得
         String lineId           = pageContext.getParameter("ORDER_LINE_ID");

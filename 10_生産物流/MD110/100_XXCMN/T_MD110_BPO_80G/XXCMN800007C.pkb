@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 倉庫マスタインタフェース T_MD070_BPO_80G
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -21,14 +21,14 @@ AS
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
- * ------------- ----- ---------------- -------------------------------------------------
- *  Date          Ver.  Editor           Description
- * ------------- ----- ---------------- -------------------------------------------------
- *  2007/12/26    1.0  Oracle 椎名 昭圭  初回作成
- *  2008/05/02    1.1  Oracle 椎名 昭圭  変更要求#11･内部変更要求#62対応
- *  2008/06/12    1.2  Oracle 丸下       日付項目書式変更
- *  2008/07/11    1.3  Oracle 椎名 昭圭  仕様不備障害#I_S_192.1.2対応
- *
+ * ------------- ----- ------------------ -------------------------------------------------
+ *  Date          Ver.  Editor             Description
+ * ------------- ----- ------------------ -------------------------------------------------
+ *  2007/12/26    1.0  Oracle 椎名 昭圭    初回作成
+ *  2008/05/02    1.1  Oracle 椎名 昭圭    変更要求#11･内部変更要求#62対応
+ *  2008/06/12    1.2  Oracle 丸下         日付項目書式変更
+ *  2008/07/11    1.3  Oracle 椎名 昭圭    仕様不備障害#I_S_192.1.2対応
+ *  2008/08/19    1.4  Oracle 伊藤 ひとみ  T_S_478対応 倉庫名をOPM保管場所情報VIEWから取得する
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -106,8 +106,14 @@ AS
     location_id          xxcmn_locations_all.location_id%TYPE,          -- 事業所ID
     segment1             xxcmn_item_locations_v.segment1%TYPE,          -- 保管倉庫コード
     whse_code            xxcmn_item_locations_v.whse_code%TYPE,         -- 倉庫コード
-    location_name        xxcmn_locations_all.location_name%TYPE,        -- 正式名
-    location_short_name  xxcmn_locations_all.location_short_name%TYPE,  -- 略称
+-- 2008/08/19 H.Itou Mod Start T_S_478 OPM保管場所情報VIEWから名称を取得する
+--    location_name        xxcmn_locations_all.location_name%TYPE,        -- 正式名
+    location_name        xxcmn_item_locations_v.description%TYPE,       -- 正式名
+-- 2008/08/19 H.Itou Mod End
+-- 2008/08/19 H.Itou Mod Start T_S_478 OPM保管場所情報VIEWから名称を取得する
+--    location_short_name  xxcmn_locations_all.location_short_name%TYPE,  -- 略称
+    location_short_name  xxcmn_item_locations_v.short_name%TYPE,        -- 略称
+-- 2008/08/19 H.Itou Mod End
     fax                  xxcmn_locations_all.fax%TYPE,                  -- FAX番号
     zip                  xxcmn_locations_all.zip%TYPE,                  -- 郵便番号
     phone                xxcmn_locations_all.phone%TYPE,                -- 電話番号
@@ -200,8 +206,14 @@ AS
     SELECT xla.location_id,            -- 事業所ID
            xilv.segment1,              -- 保管倉庫コード
            xilv.whse_code,             -- 倉庫コード
-           xla.location_name,          -- 正式名
-           xla.location_short_name,    -- 略称
+-- 2008/08/19 H.Itou Mod Start T_S_478 OPM保管場所情報VIEWから名称を取得する
+--           xla.location_name,          -- 正式名
+           xilv.description            location_name,       -- 正式名
+-- 2008/08/19 H.Itou Mod End
+-- 2008/08/19 H.Itou Mod Start T_S_478 OPM保管場所情報VIEWから名称を取得する
+--           xla.location_short_name,    -- 略称
+           xilv.short_name             location_short_name, -- 略称
+-- 2008/08/19 H.Itou Mod End
            xla.fax,                    -- FAX番号
            xla.zip,                    -- 郵便番号
            xla.phone,                  -- 電話番号
