@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.28
+ * Version                : 1.29
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -18,6 +18,7 @@ AS
  *  check_lot_reversal     P         D.ロット逆転防止チェック
  *  check_lot_reversal2    P         D.ロット逆転防止チェック(依頼No指定あり)
  *  check_fresh_condition  P         E.鮮度条件チェック
+ *  get_fresh_pass_date    P         E.鮮度条件合格製造日取得
  *  calc_lead_time         P         F.リードタイム算出
  *  check_shipping_judgment
  *                         P         G.出荷可否チェック
@@ -63,6 +64,7 @@ AS
  *  2008/12/07   1.26  ORACLE北寒寺正夫 [出荷可否チェック]本番障害#318対応
  *  2008/12/23   1.27  ORACLE北寒寺正夫 [積載効率チェック(合計値算出)] 本番指摘#781対応
  *  2009/01/22   1.28  SCS   伊藤ひとみ [ロット逆転防止チェック(依頼No指定あり)] 本番障害#1000対応
+ *  2009/01/23   1.29  SCS   伊藤ひとみ [鮮度条件合格製造日取得] 本番障害#936対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4196,6 +4198,261 @@ AS
 --
   END check_fresh_condition;
 --
+-- 2009/01/23 H.Itou Add Start 本番#936対応
+  /**********************************************************************************
+   * Procedure Name   : get_fresh_pass_date
+   * Description      : 鮮度条件合格製造日取得
+   ***********************************************************************************/
+  PROCEDURE get_fresh_pass_date(
+    it_move_to_id                 IN  NUMBER                         -- 1.配送先
+   ,it_item_no                    IN  xxcmn_item_mst_v.item_no%TYPE  -- 2.品目コード
+   ,id_arrival_date               IN  DATE                           -- 3.着荷予定日
+   ,id_standard_date              IN  DATE   DEFAULT SYSDATE         -- 4.基準日(適用日基準日)
+   ,od_manufacture_date           OUT NOCOPY DATE                    -- 5.鮮度条件合格製造日
+   ,ov_retcode                    OUT NOCOPY VARCHAR2                -- 6.リターンコード
+   ,ov_errmsg                     OUT NOCOPY VARCHAR2                -- 8.エラーメッセージ
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_fresh_pass_date'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- メッセージID
+    cv_xxwsh_in_pram_set_err       CONSTANT VARCHAR2(100) := 'APP-XXWSH-12701'; -- 必須入力パラメータ未設定エラーメッセージ
+    cv_xxwsh_in_pram_base_val_err  CONSTANT VARCHAR2(100) := 'APP-XXWSH-12703'; -- 基準値ゼロエラーメッセージ
+    cv_xxwsh_not_fresh_condition   CONSTANT VARCHAR2(100) := 'APP-XXWSH-12704'; -- 鮮度条件取得エラーメッセージ
+    cv_xxwsh_fresh_condition_err   CONSTANT VARCHAR2(100) := 'APP-XXWSH-12705'; -- 鮮度条件不正エラーメッセージ
+    cv_xxwsh_item_info_err         CONSTANT VARCHAR2(100) := 'APP-XXWSH-12709'; -- 品目情報なしエラーメッセージ
+    -- トークン
+    cv_tkn_in_parm                 CONSTANT VARCHAR2(30)  := 'IN_PARAM';
+    cv_tkn_deliver_to_id           CONSTANT VARCHAR2(30)  := 'DELIVER_TO_ID';
+    cv_tkn_item_no                 CONSTANT VARCHAR2(30)  := 'ITEM_NO';
+    -- トークンセット値
+    cv_move_to_id_char             CONSTANT VARCHAR2(30)  := '配送先ID';
+    cv_item_no_char                CONSTANT VARCHAR2(30)  := '品目コード';
+    cv_arrival_date_char           CONSTANT VARCHAR2(30)  := '着荷予定日';
+    --
+    -- クイックコードタイプ「鮮度条件」
+    cv_lookup_fressness_condition  CONSTANT VARCHAR2(30)  := 'XXCMN_FRESHNESS_CONDITION';
+    -- 鮮度条件区分
+    cv_freshness_class0            CONSTANT VARCHAR2(1)   :=  '0';   -- 一般
+    cv_freshness_class1            CONSTANT VARCHAR2(1)   :=  '1';   -- 賞味期限基準
+    cv_freshness_class2            CONSTANT VARCHAR2(1)   :=  '2';   -- 製造日基準
+--
+    -- 戻り値
+    cv_status_normal               CONSTANT VARCHAR2(1)   := '0'; -- 正常
+    cv_status_warn                 CONSTANT VARCHAR2(1)   := '1'; -- 賞味期間0なので日付なし
+    cv_status_error                CONSTANT VARCHAR2(1)   := '2'; -- 異常
+--
+    -- *** ローカル変数 ***
+    -- 鮮度条件
+    lv_freshness_class             VARCHAR2(2);                      -- 鮮度条件区分
+    ln_freshness_base_value        NUMBER;                           -- 鮮度条件基準値
+    ln_freshness_adjust_value      NUMBER;                           -- 鮮度条件調整値
+    -- 賞味期間
+    ld_manufact_date               DATE;                             -- 製造年月日
+    ld_expiration_date             DATE;                             -- 賞味期限
+    ln_expiration_days             NUMBER;                           -- 賞味期間
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+    expiration_days_zero_expt      EXCEPTION; -- 賞味期間0
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    /********************************************
+     *  パラメータチェック(E-1)                 *
+     ********************************************/
+    -- 必須入力パラメータをチェックします
+    -- 配送先ID
+    IF   ( it_move_to_id IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh
+                                           ,cv_xxwsh_in_pram_set_err
+                                           ,cv_tkn_in_parm
+                                           ,cv_move_to_id_char);
+      RAISE global_api_expt;
+--
+    -- 品目コード
+    ELSIF( it_item_no   IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh
+                                           ,cv_xxwsh_in_pram_set_err
+                                           ,cv_tkn_in_parm
+                                           ,cv_item_no_char);
+      RAISE global_api_expt;
+--
+    -- 着荷予定日
+    ELSIF( id_arrival_date   IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh
+                                           ,cv_xxwsh_in_pram_set_err
+                                           ,cv_tkn_in_parm
+                                           ,cv_arrival_date_char);
+      RAISE global_api_expt;
+    END IF;
+--
+    /********************************************
+     *  鮮度条件取得(E-2)                       *
+     ********************************************/
+    -- 鮮度条件および鮮度条件付随情報の取得
+    BEGIN
+      SELECT xlv.attribute1                        freshness_class
+            ,NVL( TO_NUMBER( xlv.attribute2 ), 0 ) freshness_base_value
+            ,NVL( TO_NUMBER( xlv.attribute3 ), 0 ) freshness_adjust_value
+      INTO   lv_freshness_class                                  -- 鮮度条件区分
+            ,ln_freshness_base_value                             -- 鮮度条件基準値
+            ,ln_freshness_adjust_value                           -- 鮮度条件調整値
+      FROM   xxcmn_cust_acct_sites2_v    xcasv                   -- 顧客サイト情報VIEW2
+            ,xxcmn_lookup_values2_v      xlv                     -- クイックコード情報VIEW2(鮮度条件)
+      WHERE  xlv.lookup_code           = xcasv.freshness_condition
+      AND    xcasv.party_site_id       = it_move_to_id           -- 配送先ID(パーティサイトID)
+      AND    xcasv.start_date_active  <= TRUNC( id_standard_date )
+      AND    xcasv.end_date_active    >= TRUNC( id_standard_date )
+      AND    xlv.lookup_type           = cv_lookup_fressness_condition
+      AND ( (xlv.start_date_active    <= TRUNC( id_standard_date ) )
+        OR  (xlv.start_date_active    IS NULL  ) )
+      AND ( (xlv.end_date_active      >= TRUNC( id_standard_date ) )
+        OR  (xlv.end_date_active      IS NULL  ) );
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh
+                                             ,cv_xxwsh_not_fresh_condition
+                                             ,cv_tkn_deliver_to_id
+                                             ,it_move_to_id);
+        RAISE global_api_expt;
+    END;
+--
+    -- 鮮度条件区分が規定値以外またはNULLの場合
+    IF ( ( lv_freshness_class NOT IN ( cv_freshness_class0, cv_freshness_class1, cv_freshness_class2 ) ) 
+      OR ( lv_freshness_class IS NULL ) ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh
+                                           ,cv_xxwsh_fresh_condition_err
+                                           ,cv_tkn_deliver_to_id
+                                           ,it_move_to_id);
+      RAISE global_api_expt;
+    END IF;
+--
+    -- 鮮度条件区分が1:賞味期限基準で、鮮度条件基準値が0またはNULL
+    IF  ( ( lv_freshness_class = cv_freshness_class1 ) 
+      AND ( ln_freshness_base_value = 0 ) )THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh
+                                           ,cv_xxwsh_in_pram_base_val_err);
+      RAISE global_api_expt;
+    END IF;
+--
+    /********************************************
+     *  賞味期間取得 (E-3)                      *
+     ********************************************/
+    -- 「品目コード」に紐づく品目の賞味期間を取得
+    BEGIN
+      SELECT ximv.expiration_day expiration_day   -- 賞味期間
+      INTO   ln_expiration_days                   -- 賞味期間
+      FROM   xxcmn_item_mst2_v ximv               -- OPM品目情報VIEW2
+      WHERE  ximv.item_no            = it_item_no -- 品目コード
+      AND    ximv.start_date_active <= TRUNC( id_standard_date )
+      AND    ximv.end_date_active   >= TRUNC( id_standard_date );
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_cnst_xxwsh
+                                             ,cv_xxwsh_item_info_err
+                                             ,cv_tkn_item_no
+                                             ,it_item_no);
+        RAISE global_api_expt;
+    END;
+--
+    -- 賞味期間がNULLの場合
+    IF  ( ( lv_freshness_class IN ( cv_freshness_class1, cv_freshness_class0 ) )
+      AND ( ln_expiration_days IS NULL ) ) THEN
+      lv_errmsg := '賞味期間に値がありません。';
+      RAISE global_api_expt;
+--
+    -- 賞味期間が0の場合
+    ELSIF ( ln_expiration_days = 0 ) THEN
+      -- 賞味期間0終了
+      RAISE expiration_days_zero_expt;
+    END IF;
+    --
+    /**************************************
+     *  製造日の算出(1:賞味期限基準)(E-4) *
+     **************************************/
+    IF   ( lv_freshness_class = cv_freshness_class1 ) THEN
+      -- 製造日 = 着荷予定日 - (賞味期間 / 鮮度条件基準値) - 鮮度条件調整値
+      ld_manufact_date := id_arrival_date - TRUNC( ln_expiration_days / ln_freshness_base_value ) - ln_freshness_adjust_value;
+--
+    /**************************************
+     *  製造日の算出(2:製造日基準)(E-5)   *
+     **************************************/
+    ELSIF( lv_freshness_class = cv_freshness_class2 ) THEN
+      -- 製造日 = 着荷予定日 - 鮮度条件基準値 - 鮮度条件調整値
+      ld_manufact_date := id_arrival_date - ln_freshness_base_value - ln_freshness_adjust_value;
+--
+    /**************************************
+     *  製造日の算出(0:一般)(E-6)         *
+     **************************************/
+    ELSE
+      -- 賞味期限 = 着荷予定日 - 鮮度条件基準値 - 鮮度条件調整値
+      ld_expiration_date := id_arrival_date - ln_freshness_base_value - ln_freshness_adjust_value;
+      -- 製造日   = 賞味期限 - 賞味期間
+      ld_manufact_date   := ld_expiration_date - ln_expiration_days;
+      --
+    END IF;
+    --
+    /********************************************
+     *  OUTパラメータセット(E-7)                *
+     ********************************************/
+     od_manufacture_date := ld_manufact_date; -- 鮮度条件合格製造日
+     ov_retcode          := cv_status_normal; -- リターンコード
+     ov_errmsg           := NULL;             -- エラーメッセージ
+--
+  EXCEPTION
+    -- *** 賞味期間0終了 ***
+    WHEN expiration_days_zero_expt THEN
+      od_manufacture_date := NULL;             -- 鮮度条件合格製造日
+      ov_retcode          := cv_status_warn;   -- リターンコード
+      ov_errmsg           := NULL;             -- エラーメッセージ
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_retcode     := cv_status_error; -- リターンコード
+      ov_errmsg      := lv_errmsg;       -- エラーメッセージ
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_retcode     := cv_status_error; -- リターンコード
+      ov_errmsg      := SQLERRM;         -- エラーメッセージ
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_retcode     := cv_status_error; -- リターンコード
+      ov_errmsg      := SQLERRM;         -- エラーメッセージ
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_fresh_pass_date;
+-- 2009/01/23 H.Itou Add End
   /**********************************************************************************
    * Procedure Name   : calc_lead_time
    * Description      : リードタイム算出
