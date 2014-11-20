@@ -1,0 +1,2 @@
+PROMPT XXCMM_IF_DIR.dir>>>
+@XXCMM_IF_DIR.dir;

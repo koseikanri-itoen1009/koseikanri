@@ -1,0 +1,4 @@
+f60gen module=/ebst/tebs08/tebs08appl/xxau/11.5.0/forms/JA/XXCOK001A01F.fmb userid=apps/apps output_file=/ebst/tebs08/tebs08appl/xxcok/11.5.0/forms/JA/XXCOK001A01F.fmx
+f60gen module=/ebst/tebs08/tebs08appl/xxau/11.5.0/forms/JA/XXCOK001A05F.fmb userid=apps/apps output_file=/ebst/tebs08/tebs08appl/xxcok/11.5.0/forms/JA/XXCOK001A05F.fmx
+f60gen module=/ebst/tebs08/tebs08appl/xxau/11.5.0/forms/JA/XXCOK008A01F.fmb userid=apps/apps output_file=/ebst/tebs08/tebs08appl/xxcok/11.5.0/forms/JA/XXCOK008A01F.fmx
+f60gen module=/ebst/tebs08/tebs08appl/xxau/11.5.0/forms/JA/XXCOK021A02F.fmb userid=apps/apps output_file=/ebst/tebs08/tebs08appl/xxcok/11.5.0/forms/JA/XXCOK021A02F.fmx
