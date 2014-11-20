@@ -1,19 +1,20 @@
 /*============================================================================
 * ファイル名 : XxwipConstants
 * 概要説明   : 生産共通定数
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2007-11-27 1.0  二瓶大輔     新規作成
+* 2008-09-10 1.1  二瓶大輔     結合テスト指摘対応No30
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.util;
 /***************************************************************************
  * 生産共通定数クラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxwipConstants 
@@ -44,10 +45,28 @@ public class XxwipConstants
   public static final String XXWIP10065   = "APP-XXWIP-10065";
   /** メッセージ：APP-XXWIP-10081 */
   public static final String XXWIP10081   = "APP-XXWIP-10081";
+// 2008-09-10 v1.1 D.Nihei Add Start
+  /** メッセージ：APP-XXWIP-10082 */
+  public static final String XXWIP10082   = "APP-XXWIP-10082";
+  /** メッセージ：APP-XXWIP-10083 */
+  public static final String XXWIP10083   = "APP-XXWIP-10083";
+  /** メッセージ：APP-XXWIP-10084 */
+  public static final String XXWIP10084   = "APP-XXWIP-10084";
+  /** メッセージ：APP-XXWIP-10085 */
+  public static final String XXWIP10085   = "APP-XXWIP-10085";
+// 2008-09-10 v1.1 D.Nihei Add End
   /** メッセージ：APP-XXWIP-30001 */
   public static final String XXWIP30001   = "APP-XXWIP-30001";
   /** メッセージ：APP-XXWIP-30002 */
   public static final String XXWIP30002   = "APP-XXWIP-30002";
+// 2008-09-10 v1.1 D.Nihei Add Start
+  /** メッセージ：APP-XXWIP-30011 */
+  public static final String XXWIP30011   = "APP-XXWIP-30011";
+  /** メッセージ：APP-XXWIP-40002 */
+  public static final String XXWIP40002   = "APP-XXWIP-40002";
+  /** トークン：STATUS */
+  public static final String TOKEN_STATUS     = "STATUS";
+// 2008-09-10 v1.1 D.Nihei Add End
   /** トークン：ITEM */
   public static final String TOKEN_ITEM       = "ITEM";
   /** トークン：API_NAME */
@@ -66,6 +85,16 @@ public class XxwipConstants
 	public static final String URL_PARAM_MOVE_BATCH_ID     = "pMoveBatchId";
 	/** URLパラメータID：検索用バッチID */
 	public static final String URL_PARAM_TAB_TYPE = "pTabType";
+// 2008-09-10 v1.1 D.Nihei Add Start
+	/** URLパラメータID：引当解除用バッチID */
+	public static final String URL_PARAM_CAN_BATCH_ID         = "pCanBatchId";
+	/** URLパラメータID：引当解除用生産原料詳細ID */
+	public static final String URL_PARAM_CAN_MTL_DTL_ID       = "pCanMtlDtlId";
+	/** URLパラメータID：引当解除用生産原料詳細アドオンID */
+	public static final String URL_PARAM_CAN_MTL_DTL_ADDON_ID = "pCanMtlDtlAddonId";
+	/** URLパラメータID：引当解除用処理ID */
+	public static final String URL_PARAM_CAN_TRANS_ID         = "pCanTransId";
+// 2008-09-10 v1.1 D.Nihei Add End
 	/** パラメータID：検索ボタン */
 	public static final String QS_SEARCH_BTN      = "QsSearch";
 	/** ボタンID : 適用ボタン */
@@ -106,17 +135,17 @@ public class XxwipConstants
 	public static final String DUTY_STATUS_HRT    = "1";
 	/** 業務ステータス：2 依頼済 */
 	public static final String DUTY_STATUS_IRZ    = "2";
-	/** 業務ステータス：4 手配済 */
+	/** 業務ステータス：3 手配済 */
 	public static final String DUTY_STATUS_THZ    = "3";
-	/** 業務ステータス：5 指図済 */
+	/** 業務ステータス：4 指図済 */
 	public static final String DUTY_STATUS_SZZ    = "4";
-	/** 業務ステータス：6 確認済 */
+	/** 業務ステータス：5 確認済 */
 	public static final String DUTY_STATUS_KNZ    = "5";
-	/** 業務ステータス：7 受付済 */
+	/** 業務ステータス：6 受付済 */
 	public static final String DUTY_STATUS_UTZ    = "6";
-	/** 業務ステータス：8 完了 */
+	/** 業務ステータス：7 完了 */
 	public static final String DUTY_STATUS_COM    = "7";
-	/** 業務ステータス：9 クローズ */
+	/** 業務ステータス：8 クローズ */
 	public static final String DUTY_STATUS_CLS    = "8";
 	/** 業務ステータス：-1 取消 */
 	public static final String DUTY_STATUS_CAN    = "-1";

@@ -82,5 +82,31 @@
             <oa:messageStyledText id="InvestItemUm" viewAttr="ItemUm" shortDesc="単位"/>
          </ui:contents>
       </oa:column>
+      <oa:column id="InvestInstClearRow" columnDataFormat="iconButtonFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InvestHdrInstClear" prompt="引当解除" shortDesc="引当解除"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:switcher id="InvestInstClearSwitcher" viewAttr="InstClearSwitcher">
+               <ui:case name="InvestInstClearEnable">
+                  <oa:image id="InvestInstClearEnable" source="deleteicon_enabled.gif" shortDesc="解除可" imageHeight="24" imageWidth="24">
+                     <ui:primaryClientAction>
+                        <ui:fireAction event="InvestInstClear">
+                           <ui:parameters>
+                              <ui:parameter key="BATCH_ID" value="${oa.XxwipInvestLotVO1.BatchId}"/>
+                              <ui:parameter key="MTL_DTL_ID" value="${oa.XxwipInvestLotVO1.MaterialDetailId}"/>
+                              <ui:parameter key="MTL_DTL_ADDON_ID" value="${oa.XxwipInvestLotVO1.MtlDetailAddonId}"/>
+                              <ui:parameter key="TRANS_ID" value="${oa.XxwipInvestLotVO1.TransId}"/>
+                           </ui:parameters>
+                        </ui:fireAction>
+                     </ui:primaryClientAction>
+                  </oa:image>
+               </ui:case>
+               <ui:case name="InvestInstClearDisable">
+                  <oa:image id="InvestInstClearDisable" source="deleteicon_disabled.gif" shortDesc="解除不可" imageHeight="24" imageWidth="24"/>
+               </ui:case>
+            </oa:switcher>
+         </ui:contents>
+      </oa:column>
    </ui:contents>
 </oa:advancedTable>

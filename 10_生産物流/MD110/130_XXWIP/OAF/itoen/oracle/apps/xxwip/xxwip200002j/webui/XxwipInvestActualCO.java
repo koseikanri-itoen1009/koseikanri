@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxwipInvestActualCO
 * 概要説明   : 投入実績入力コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-22 1.0  二瓶大輔     新規作成
+* 2008-09-10 1.1  二瓶大輔     結合テスト指摘対応No30
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200002j.webui;
@@ -20,6 +21,9 @@ import itoen.oracle.apps.xxwip.util.XxwipConstants;
 
 import java.io.Serializable;
 
+import java.util.Hashtable;
+
+import oracle.apps.fnd.common.MessageToken;
 import oracle.apps.fnd.common.VersionInfo;
 import oracle.apps.fnd.framework.OAApplicationModule;
 import oracle.apps.fnd.framework.OAException;
@@ -32,7 +36,7 @@ import oracle.apps.fnd.framework.webui.beans.layout.OASubTabLayoutBean;
 /***************************************************************************
  * 投入実績入力コントローラクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxwipInvestActualCO extends XxcmnOAControllerImpl
@@ -52,6 +56,31 @@ public class XxwipInvestActualCO extends XxcmnOAControllerImpl
     // 【共通処理】「戻る」ボタンチェック
     if (!pageContext.isBackNavigationFired(false)) 
     {
+// 2008/09/10 v1.1 D.Nihei Add Start
+      if (pageContext.getParameter("InstClearYes") != null) 
+      {
+        // パラメータ取得
+        String batchId       = pageContext.getParameter(XxwipConstants.URL_PARAM_CAN_BATCH_ID);
+        String mtlDtlId      = pageContext.getParameter(XxwipConstants.URL_PARAM_CAN_MTL_DTL_ID);
+        String mtlDtlAddonId = pageContext.getParameter(XxwipConstants.URL_PARAM_CAN_MTL_DTL_ADDON_ID);
+        String transId       = pageContext.getParameter(XxwipConstants.URL_PARAM_CAN_TRANS_ID);
+
+        // 引数設定
+        Serializable params[] = { batchId, mtlDtlId, mtlDtlAddonId, transId };
+        // AMの取得
+        OAApplicationModule am = pageContext.getApplicationModule(webBean);
+        // 初期化・検索処理
+        am.invokeMethod("cancelAllocation", params);
+        
+        MessageToken[] mainTokens = new MessageToken[1];
+        throw new OAException(XxcmnConstants.APPL_XXWIP,
+                              XxwipConstants.XXWIP30011, 
+                              null, 
+                              OAException.INFORMATION, 
+                              null);
+
+      }
+// 2008/09/10 v1.1 D.Nihei Add End
       // 【共通処理】「戻る」ボタンチェック
       TransactionUnitHelper.startTransactionUnit(pageContext, XxwipConstants.TXN_XXWIP200002J);
       // タブを取得
@@ -169,7 +198,41 @@ public class XxwipInvestActualCO extends XxcmnOAControllerImpl
         Serializable params[] = { searchMtlDtlId, tabType };
         // 変更処理
         am.invokeMethod("doChange", params);
+// 2008/09/10 v1.1 D.Nihei Add Start
+      // 引当解除アイコンが押下された場合
+      } else if ("InvestInstClear".equals(pageContext.getParameter(EVENT_PARAM))
+              || "ReInvestInstClear".equals(pageContext.getParameter(EVENT_PARAM)))
+      {
+        // パラメータ取得
+        String batchId       = pageContext.getParameter("BATCH_ID");
+        String mtlDtlId      = pageContext.getParameter("MTL_DTL_ID");
+        String mtlDtlAddonId = pageContext.getParameter("MTL_DTL_ADDON_ID");
+        String transId       = pageContext.getParameter("TRANS_ID");
 
+        //パラメータ用HashMap生成
+        Hashtable pageParams = new Hashtable();
+        pageParams.put(XxwipConstants.URL_PARAM_CAN_BATCH_ID,         batchId);
+        pageParams.put(XxwipConstants.URL_PARAM_CAN_MTL_DTL_ID,       mtlDtlId);
+        pageParams.put(XxwipConstants.URL_PARAM_CAN_MTL_DTL_ADDON_ID, mtlDtlAddonId);
+        pageParams.put(XxwipConstants.URL_PARAM_CAN_TRANS_ID,         transId);
+        // メインメッセージ作成 
+        OAException mainMessage = new OAException(XxcmnConstants.APPL_XXWIP,
+                                                  XxwipConstants.XXWIP40002);
+                                            
+        // ダイアログメッセージを表示
+        XxcmnUtility.createDialog(
+          OAException.CONFIRMATION,
+          pageContext,
+          mainMessage,
+          null,
+          XxwipConstants.URL_XXWIP200002J,
+          XxwipConstants.URL_XXWIP200002J,
+          "Yes",
+          "No",
+          "InstClearYes",
+          "InstClearNo",
+          pageParams);          
+// 2008/09/10 v1.1 D.Nihei Add End
       }
 
     } catch(OAException oae)

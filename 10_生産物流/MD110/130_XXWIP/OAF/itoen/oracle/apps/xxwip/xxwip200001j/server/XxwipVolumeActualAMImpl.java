@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualAMImpl
 * 概要説明   : 出来高実績入力アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-06-12 1.1  二瓶大輔     ST不具合対応(#78)
 * 2008-06-27 1.2  二瓶大輔     結合テスト指摘対応
 * 2008-07-29 1.3  二瓶大輔     ST不具合対応(#498)
+* 2008-09-10 1.4  二瓶大輔     結合テスト指摘対応No30
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.server;
@@ -45,7 +46,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出来高実績入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -173,6 +174,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
         OAException.raiseBundledOAException(exceptions);
       }
     }
+// 2008-09-10 v.1.4 D.Nihei Add Start
+    // ステータスチェックを行います。
+    chkDutyStatus(searchBatchId);
+// 2008-09-10 v.1.4 D.Nihei Add End
     // バッチヘッダ情報VO取得
     XxwipBatchHeaderVOImpl xbhvo = getXxwipBatchHeaderVO1();
     // 検索を実行します。
@@ -227,8 +232,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
         }
         row.setAttribute("TrustCalculateType", retMap.get("calcType"));
         row.setAttribute("Trust", retMap.get("orgnName"));
-        // 委託加工単価の必須設定        
-        trustProcessUnitPriceRequired = XxcmnConstants.STRING_UI_ONLY;
+// 2008-07-18 D.Nihei DEL START
+//        // 委託加工単価の必須設定        
+//        trustProcessUnitPriceRequired = XxcmnConstants.STRING_UI_ONLY;
+// 2008-07-18 D.Nihei DEL END
       }
     }
     // 副産物情報VO取得
@@ -508,12 +515,92 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     boolean warnFlag = false;
     String  exeType  = XxcmnConstants.STRING_ZERO;
 
+// 2008-09-10 v.1.4 D.Nihei Add Start
+    // バッチヘッダ情報VO取得
+    XxwipBatchHeaderVOImpl vo  = getXxwipBatchHeaderVO1();
+    OARow row = (OARow)vo.first();
+    String actualQty     = (String)row.getAttribute("ActualQty");       // 実績数量
+    String baseActualQty = (String)row.getAttribute("BaseActualQty");   // 実績数量(DB)
+// 2008-09-10 v.1.4 D.Nihei Add End
     // バッチヘッダ情報チェック処理
     checkItem(tabType, exceptions);
     // チェックがNGであった場合、スタックしたOA例外をスローします。
     if (exceptions.size() > 0)
     {
       OAException.raiseBundledOAException(exceptions);
+// 2008-09-10 v.1.4 D.Nihei Add Start
+    // 出来高総数が0の場合
+    } else if ( XxcmnUtility.chkCompareNumeric(3, actualQty, XxcmnConstants.STRING_ZERO)
+            && !XxcmnUtility.isEquals(actualQty, baseActualQty))
+    {
+      // 副産物情報VO取得
+      XxwipBatchCoProdVOImpl cpVo  = getXxwipBatchCoProdVO1();
+      // 更新行取得
+      Row[] rows = cpVo.getFilteredRows("ItemNoSwitcher", "ItemNoCoProdDisable");
+      if ((rows != null) && (rows.length > 0))
+      {
+        exceptions.add( new OAException(
+                          XxcmnConstants.APPL_XXWIP,
+                          XxwipConstants.XXWIP10083));
+      }
+// 投入品の実績があるか確認
+      String investedQty = XxcmnConstants.STRING_ZERO;
+      // 投入情報VO取得
+      XxwipBatchInvestVOImpl investVo = getXxwipBatchInvestVO1();
+      Row[] investRows = investVo.getAllRowsInRange();
+      if ((investRows != null) && (investRows.length > 0))
+      {
+        OARow investRow = null;
+        for (int i = 0; i < investRows.length; i++)
+        {
+          investRow = (OARow)investRows[i];
+          // 投入総数
+          investedQty = (String)investRow.getAttribute("InvestedQty");
+          // 数量チェック
+          if (XxcmnUtility.chkCompareNumeric(1, investedQty, XxcmnConstants.STRING_ZERO))
+          {
+            //トークンを生成します。
+            MessageToken[] tokens = { new MessageToken(XxwipConstants.TOKEN_ITEM, "投入") };
+            exceptions.add( new OAException(
+                              XxcmnConstants.APPL_XXWIP,
+                              XxwipConstants.XXWIP10084,
+                              tokens));
+            break;
+          }
+        }
+      }
+      // 打込情報VO取得
+      XxwipBatchReInvestVOImpl reInvestVo = getXxwipBatchReInvestVO1();
+      Row[] reInvestRows = reInvestVo.getAllRowsInRange();
+      if ((reInvestRows != null) && (reInvestRows.length > 0))
+      {
+        OARow reInvestRow = null;
+        for (int i = 0; i < reInvestRows.length; i++)
+        {
+          reInvestRow = (OARow)reInvestRows[i];
+          // 投入総数
+          investedQty = (String)reInvestRow.getAttribute("InvestedQty");
+          // 数量チェック
+          if (XxcmnUtility.chkCompareNumeric(1, investedQty, XxcmnConstants.STRING_ZERO))
+          {
+            //トークンを生成します。
+            MessageToken[] tokens = { new MessageToken(XxwipConstants.TOKEN_ITEM, "打込") };
+            exceptions.add( new OAException(
+                              XxcmnConstants.APPL_XXWIP,
+                              XxwipConstants.XXWIP10084,
+                              tokens));
+            break;
+          }
+        }
+      }
+      if (exceptions.size() > 0)
+      {
+        OAException.raiseBundledOAException(exceptions);
+      }
+      // 0実績処理を実行
+      zeroExecute();
+      exeFlag = true;
+// 2008-09-10 v.1.4 D.Nihei Add End
     } else
     {
       getOADBTransaction().executeCommand("SAVEPOINT " + XxwipConstants.SAVE_POINT_XXWIP200001J);
@@ -2411,6 +2498,287 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       } 
     }
   } // getQtNumber
+
+// 2008-09-10 v.1.4 D.Nihei Add Start
+  /*****************************************************************************
+   * 0実績処理を行います。
+   ****************************************************************************/
+  public void zeroExecute()
+  {
+
+    getOADBTransaction().executeCommand("SAVEPOINT " + XxwipConstants.SAVE_POINT_XXWIP200001J);
+
+    // バッチヘッダ情報VO取得
+    XxwipBatchHeaderVOImpl xbhvo = getXxwipBatchHeaderVO1();
+    OARow  hdrRow = (OARow)xbhvo.first();
+    // 先に必要情報を退避(ロットID)
+    Number batchId       = (Number)hdrRow.getAttribute("BatchId");          // バッチID
+    Number lotId         = (Number)hdrRow.getAttribute("LotId");            // ロットID
+    String actualQty     = (String)hdrRow.getAttribute("ActualQty");        // 実績数量
+    Number mtlDtlId      = (Number)hdrRow.getAttribute("MaterialDetailId"); // 生産原料詳細ID   
+    Number transId       = (Number)hdrRow.getAttribute("TransId");          // トランザクションID
+    String itemClassCode = (String)hdrRow.getAttribute("ItemClassCode");    // 品目区分
+    String location      = (String)hdrRow.getAttribute("DeliveryLocation"); // 保管場所
+    String whseCode      = (String)hdrRow.getAttribute("WipWhseCode");      // 倉庫コード
+    Date   planDate      = (Date)hdrRow.getAttribute("PlanDate");           // 生産予定日
+    String directionQty  = (String)hdrRow.getAttribute("DirectionQty");     // 指図総数
+    // 引数を設定します。
+    HashMap params = new HashMap();
+    params.put("batchId",      batchId);
+    params.put("mtlDtlId",     mtlDtlId);
+    params.put("transId",      transId);
+    params.put("lotId",        lotId);
+    params.put("actualQty",    actualQty);
+    params.put("location",     location);
+    params.put("whseCode",     whseCode);
+    params.put("planDate",     planDate);
+    params.put("directionQty", directionQty);
+
+    // ロック取得処理
+    getRowLock(XxcmnUtility.stringValue(batchId));
+    // 排他制御
+    chkEexclusiveControl();
+
+    // 割当削除関数を実行
+    XxwipUtility.deleteLineAllocation(
+      getOADBTransaction(),
+      params,
+      XxwipConstants.LINE_TYPE_INVEST);
+
+    // 完成品の原料更新処理
+    updateMaterialLine(false);
+    
+    // 完成品の品目区分が「4：半製品」の場合
+    if (XxwipConstants.ITEM_TYPE_HALF.equals(itemClassCode)
+     || XxwipConstants.ITEM_TYPE_MTL.equals(itemClassCode)) 
+    {
+      // 割当追加APIを実行します。
+      reInsertLineAllocation(
+        getOADBTransaction(),
+        params);
+    }
+    // バッチセーブ
+    XxwipUtility.saveBatch(getOADBTransaction(), XxcmnUtility.stringValue(batchId));
+    // 在庫単価更新関数
+    XxwipUtility.updateInvPrice(getOADBTransaction(), XxcmnUtility.stringValue(batchId));
+
+    // バッチヘッダ情報VO取得
+    xbhvo  = getXxwipBatchHeaderVO1();
+    hdrRow = (OARow)xbhvo.first();
+    String inOutType     = (String)hdrRow.getAttribute("InOutType");
+    String trustCalcType = (String)hdrRow.getAttribute("TrustCalculateType");
+    // 委託先の場合
+    if (XxwipConstants.IN_OUT_TYPE_ITAKU.equals(inOutType)) 
+    {
+      // 委託加工費更新関数
+      XxwipUtility.updateTrustPrice(getOADBTransaction(), XxcmnUtility.stringValue(batchId));
+    }
+  }
+  /*****************************************************************************
+   * 割当の再追加を行います。
+	 * @param trans - トランザクション
+   * @param params - パラメータ
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static void reInsertLineAllocation(
+    OADBTransaction trans,
+    HashMap params
+  ) throws OAException 
+  {
+    String apiName      = "reInsertLineAllocation";
+    Number batchId      = (Number)params.get("batchId");
+    Number mtlDtlId     = (Number)params.get("mtlDtlId");
+    Number lotId        = (Number)params.get("lotId");
+    String directionQty = (String)params.get("directionQty");
+    Date   planDate     = (Date)params.get("planDate");
+    String location     = (String)params.get("location");
+    String whseCode     = (String)params.get("whseCode");
+    
+    //PL/SQLの作成を行います
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("DECLARE ");
+    sb.append("  lr_tran_row_in  gme_inventory_txns_gtmp%ROWTYPE; ");
+    sb.append("BEGIN ");
+    sb.append("  lr_tran_row_in.doc_id             := :1; ");    // バッチID
+    sb.append("  lr_tran_row_in.lot_id             := :2; ");    // ロットID
+    sb.append("  lr_tran_row_in.trans_qty          := :3; ");    // 処理数量
+    sb.append("  lr_tran_row_in.trans_date         := :4; ");    // 処理日付
+    sb.append("  lr_tran_row_in.location           := :5; ");    // 保管倉庫
+    sb.append("  lr_tran_row_in.completed_ind      := :6; ");    // 完了フラグ
+    sb.append("  lr_tran_row_in.material_detail_id := :7; ");    // 生産原料詳細ID
+    sb.append("  lr_tran_row_in.whse_code          := :8; ");    // 倉庫コード
+    sb.append("  xxwip_common_pkg.insert_line_allocation ( ");
+    sb.append("    ir_tran_row_in  => lr_tran_row_in ");
+    sb.append("   ,ov_errbuf       => :9  ");
+    sb.append("   ,ov_retcode      => :10  ");
+    sb.append("   ,ov_errmsg       => :11 ");
+    sb.append("  ); ");
+    sb.append("END; ");
+
+    //PL/SQLの設定を行います
+    CallableStatement cstmt = trans.createCallableStatement(
+                                sb.toString(),
+                                OADBTransaction.DEFAULT);
+    try
+    {
+
+      //PL/SQLを実行します
+      int i = 1;
+      cstmt.setInt(i++, XxcmnUtility.intValue(batchId));
+      cstmt.setInt(i++, XxcmnUtility.intValue(lotId));
+      cstmt.setString(i++, directionQty);
+      cstmt.setDate(i++, XxcmnUtility.dateValue(planDate));
+      cstmt.setString(i++, location);
+      cstmt.setInt(i++, 0);
+      cstmt.setInt(i++, XxcmnUtility.intValue(mtlDtlId));
+      cstmt.setString(i++, whseCode);
+      cstmt.registerOutParameter(i++, Types.VARCHAR, 5000); 
+      cstmt.registerOutParameter(i++, Types.VARCHAR, 1); 
+      cstmt.registerOutParameter(i++, Types.VARCHAR, 5000); 
+
+      cstmt.execute();
+
+      if (!XxcmnConstants.API_RETURN_NORMAL.equals(cstmt.getString(10))) 
+      {
+        // ロールバック
+        XxwipUtility.rollBack(trans, XxwipConstants.SAVE_POINT_XXWIP200001J);
+        XxcmnUtility.writeLog(trans,
+                              XxwipConstants.CLASS_XXWIP_UTILITY + XxcmnConstants.DOT + apiName,
+                              cstmt.getString(9) + cstmt.getString(11),
+                              6);
+        // エラーをスロー
+        //トークンを生成します。
+        MessageToken[] tokens = { new MessageToken(XxwipConstants.TOKEN_API_NAME,
+                                                   "割当追加関数") };
+        throw new OAException(XxcmnConstants.APPL_XXWIP, 
+                              XxwipConstants.XXWIP10049, 
+                              tokens);
+      }
+    } catch (SQLException s) 
+    {
+      // ロールバック
+      XxwipUtility.rollBack(trans, XxwipConstants.SAVE_POINT_XXWIP200001J);
+      XxcmnUtility.writeLog(trans,
+                            XxwipConstants.CLASS_AM_XXWIP200001J + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally 
+    {
+      try 
+      {
+        if (cstmt != null)
+        { 
+          cstmt.close();
+        }
+      } catch (SQLException s) 
+      {
+        // ロールバック
+        XxwipUtility.rollBack(trans, XxwipConstants.SAVE_POINT_XXWIP200001J);
+        XxcmnUtility.writeLog(trans,
+                              XxwipConstants.CLASS_AM_XXWIP200001J + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      } 
+    }
+  } // reInsertLineAllocation
+
+  /***************************************************************************
+   * バッチに紐付くステータスをチェックします。
+   * @param batchId - バッチID
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public void chkDutyStatus(
+    String batchId
+    ) throws OAException
+  {
+    String apiName = "chkDutyStatus";
+
+    // PL/SQLの作成を行います
+    StringBuffer sb = new StringBuffer(500);
+    sb.append("BEGIN ");
+    sb.append("  SELECT gbh.batch_no    batch_no         ");
+    sb.append("        ,gbh.attribute4  duty_status      ");
+    sb.append("        ,xlvv.meaning    duty_status_name ");
+    sb.append("  INTO   :1   ");
+    sb.append("        ,:2   ");
+    sb.append("        ,:3   ");
+    sb.append("  FROM   gme_batch_header      gbh   ");
+    sb.append("        ,xxcmn_lookup_values_v xlvv  ");
+    sb.append("  WHERE  xlvv.lookup_type = 'XXWIP_DUTY_STATUS' ");
+    sb.append("  AND    xlvv.lookup_code = gbh.attribute4      ");
+    sb.append("  AND    gbh.batch_id     = TO_NUMBER(:4);      ");
+    sb.append("END; ");
+
+    // PL/SQLの設定を行います
+    CallableStatement cstmt = getOADBTransaction().createCallableStatement(sb.toString(),
+                                                                           OADBTransaction.DEFAULT);
+    try
+    {
+      int i = 1;
+      // パラメータ設定(INパラメータ)
+      cstmt.registerOutParameter(i++, Types.VARCHAR, 10); 
+      cstmt.registerOutParameter(i++, Types.VARCHAR, 2); 
+      cstmt.registerOutParameter(i++, Types.VARCHAR, 20); 
+      cstmt.setString(i++,  batchId); // バッチID
+     
+      // PL/SQL実行
+      cstmt.execute();
+
+      String batchNo        = cstmt.getString(1);
+      String dutyStatus     = cstmt.getString(2);
+      String dutyStatusName = cstmt.getString(3);
+      if ((XxwipConstants.DUTY_STATUS_CAN.equals(dutyStatus))
+       || (XxwipConstants.DUTY_STATUS_CLS.equals(dutyStatus))
+       || (XxwipConstants.DUTY_STATUS_SZZ.equals(dutyStatus))
+       || (XxwipConstants.DUTY_STATUS_THZ.equals(dutyStatus))
+       || (XxwipConstants.DUTY_STATUS_IRZ.equals(dutyStatus))
+       || (XxwipConstants.DUTY_STATUS_HRT.equals(dutyStatus))) 
+      {
+        // バッチヘッダ情報VO取得
+        XxwipBatchHeaderVOImpl vo = getXxwipBatchHeaderVO1();
+        OARow row = (OARow)vo.first();
+        row.setAttribute("QsBatchNo", batchNo);
+        
+        // ステータスエラー
+        MessageToken[] tokens = { new MessageToken(XxwipConstants.TOKEN_STATUS, dutyStatusName) };
+        throw new OAException(XxcmnConstants.APPL_XXWIP, 
+                              XxwipConstants.XXWIP10085, 
+                              tokens);
+        
+      }
+      
+    // PL/SQL実行時例外の場合
+    } catch (SQLException s)
+    {
+      XxcmnUtility.writeLog(getOADBTransaction(),
+                            XxwipConstants.CLASS_AM_XXWIP200001J + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        // 処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch (SQLException s)
+      {
+        XxcmnUtility.writeLog(getOADBTransaction(),
+                              XxwipConstants.CLASS_AM_XXWIP200001J + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // chkDutyStatus 
+// 2008-09-10 v.1.4 D.Nihei Add End
 
   /**
    * 

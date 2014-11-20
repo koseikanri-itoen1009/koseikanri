@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxwipInvestActualAMImpl
 * 概要説明   : 投入実績入力アプリケーションモジュール
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-22 1.0  二瓶大輔     新規作成
 * 2008-06-27 1.1  二瓶大輔     結合テスト指摘事項対応(明細入力チェック修正)
+* 2008-09-10 1.2  二瓶大輔     結合テスト指摘対応No30
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200002j.server;
@@ -38,7 +39,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 投入実績入力アプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
 public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -482,7 +483,17 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
               {
                 String stockQty  = (String)row.getAttribute("StockQty");
                 stockQty  = XxcmnUtility.commaRemoval(stockQty);
-                if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+// 2008-09-10 v.1.2 D.Nihei Mod Start
+//                if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+                // 元実績総数
+                Object baseInvestedQty = row.getAttribute("BaseInvestedQty");
+                // 元戻入総数
+                Object baseReturnQty = row.getAttribute("BaseReturnQty");
+                String baseActualQty = XxwipUtility.subtract(getOADBTransaction(), baseInvestedQty, baseReturnQty);
+                // 差分総数
+                String qty = XxwipUtility.subtract(getOADBTransaction(), actualQty, baseInvestedQty);
+                if (XxcmnUtility.chkCompareNumeric(1, qty, stockQty)) 
+// 2008-09-10 v.1.2 D.Nihei Mod End
                 {
                   exceptions.add( new OAAttrValException(
                                         OAAttrValException.TYP_VIEW_OBJECT,
@@ -875,7 +886,17 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
               {
                 String stockQty  = (String)row.getAttribute("StockQty");
                 stockQty  = XxcmnUtility.commaRemoval(stockQty);
-                if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+// 2008-09-10 v.1.2 D.Nihei Mod Start
+//                if (XxcmnUtility.chkCompareNumeric(1, actualQty, stockQty)) 
+                // 元実績総数
+                Object baseInvestedQty = row.getAttribute("BaseInvestedQty");
+                // 元戻入総数
+                Object baseReturnQty = row.getAttribute("BaseReturnQty");
+                String baseActualQty = XxwipUtility.subtract(getOADBTransaction(), baseInvestedQty, baseReturnQty);
+                // 差分総数
+                String qty = XxwipUtility.subtract(getOADBTransaction(), actualQty, baseInvestedQty);
+                if (XxcmnUtility.chkCompareNumeric(1, qty, stockQty)) 
+// 2008-09-10 v.1.2 D.Nihei Mod End
                 {
                   exceptions.add( new OAAttrValException(
                                         OAAttrValException.TYP_VIEW_OBJECT,
@@ -1761,6 +1782,119 @@ public class XxwipInvestActualAMImpl extends XxcmnOAApplicationModuleImpl
     XxwipUtility.rollBack(getOADBTransaction(),
                           XxwipConstants.SAVE_POINT_XXWIP200001J);
   } // doRollBack
+
+// 2008-09-10 v.1.2 D.Nihei Add Start
+  /***************************************************************************
+   * 引当解除処理を行うメソッドです。
+   * @param batchId - バッチID
+   * @param mtlDtlId - 生産原料詳細ID
+   * @param mtlAddonId - 生産原料詳細アドオンID
+   * @param transId - 処理ID
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public void cancelAllocation(
+    String batchId,
+    String mtlDtlId,
+    String mtlAddonId,
+    String transId
+  ) throws OAException
+  {
+    String apiName  = "cancelAllocation";
+
+    getOADBTransaction().executeCommand("SAVEPOINT " + XxwipConstants.SAVE_POINT_XXWIP200001J);
+
+    // ロック取得処理
+    getRowLock(batchId);
+
+    // 排他制御
+    chkExclusiveControl();
+
+    // 削除用のPL/SQLの作成を行います
+    StringBuffer delSb = new StringBuffer(1000);
+    delSb.append("DECLARE ");
+    delSb.append("  lt_mov_lot_dtl_id    xxinv_mov_lot_details.mov_lot_dtl_id%TYPE;      ");
+    delSb.append("  lt_mtl_dtl_addon_id  xxwip_material_detail.mtl_detail_addon_id%TYPE; ");
+    delSb.append("BEGIN ");
+    delSb.append("  lt_mtl_dtl_addon_id := TO_NUMBER(:1); "); // 
+    delSb.append("  SELECT xmld.mov_lot_dtl_id          "); // 
+    delSb.append("  INTO   lt_mov_lot_dtl_id            "); // 
+    delSb.append("  FROM   xxwip_material_detail xmd    "); // 
+    delSb.append("       , xxinv_mov_lot_details xmld   "); // 
+    delSb.append("  WHERE  xmd.mtl_detail_addon_id = lt_mtl_dtl_addon_id  "); // 
+    delSb.append("  AND    xmd.material_detail_id  = xmld.mov_line_id     "); // 
+    delSb.append("  AND    xmd.item_id             = xmld.item_id         "); // 
+    delSb.append("  AND    xmd.lot_id              = xmld.lot_id          "); // 
+    delSb.append("  AND    xmld.document_type_code = '40'                 "); // 
+    delSb.append("  AND    xmld.record_type_code   = '10'                 "); // 
+    delSb.append("  ; ");
+    delSb.append("  DELETE xxwip_material_detail xmd                      "); // 生産原料詳細アドオン
+    delSb.append("  WHERE  xmd.mtl_detail_addon_id = lt_mtl_dtl_addon_id; "); // 生産原料詳細アドオンID
+    delSb.append("  DELETE xxinv_mov_lot_details xmld                     "); // 移動ロット詳細
+    delSb.append("  WHERE  xmld.mov_lot_dtl_id     = lt_mov_lot_dtl_id;   "); // ロット詳細ID
+    delSb.append("END; ");
+
+    //PL/SQLの設定を行います
+    CallableStatement cstmt = getOADBTransaction().createCallableStatement(
+                                delSb.toString(),
+                                OADBTransaction.DEFAULT);
+    try
+    {
+      cstmt.setString(1, mtlAddonId);
+
+      // 生産原料詳細アドオンの行を更新します。
+      cstmt.execute();
+
+      // 引数を設定します。
+      HashMap params = new HashMap();
+      params.put("batchId", new Number(batchId));
+      params.put("transId", new Number(transId));
+      // 割当削除APIを実行します。
+      XxwipUtility.deleteLineAllocation(
+        getOADBTransaction(),
+        params,
+        XxwipConstants.LINE_TYPE_INVEST);
+
+    } catch (SQLException s) 
+    {
+      // ロールバック
+      XxwipUtility.rollBack(getOADBTransaction(), XxwipConstants.SAVE_POINT_XXWIP200001J);
+      XxcmnUtility.writeLog(getOADBTransaction(),
+                            XxwipConstants.CLASS_AM_XXWIP200002J + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally 
+    {
+      try 
+      {
+        if (cstmt != null)
+        { 
+          cstmt.close();
+        }
+      } catch (SQLException s) 
+      {
+        // ロールバック
+        XxwipUtility.rollBack(getOADBTransaction(), XxwipConstants.SAVE_POINT_XXWIP200001J);
+        XxcmnUtility.writeLog(getOADBTransaction(),
+                              XxwipConstants.CLASS_AM_XXWIP200002J + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      } 
+    }
+    // バッチセーブ
+    XxwipUtility.saveBatch(getOADBTransaction(), batchId);
+
+    // コミット
+    getOADBTransaction().commit();
+
+    initialize(batchId, mtlDtlId);
+
+  } // cancelAllocation
+// 2008-09-10 v.1.2 D.Nihei Add End
 
   /**
    * 

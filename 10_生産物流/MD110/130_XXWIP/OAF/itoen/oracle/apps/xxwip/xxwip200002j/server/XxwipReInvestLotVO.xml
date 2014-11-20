@@ -37,6 +37,14 @@ SELECT TO_CHAR(MAX(xgmd.record_type)) record_type         -- 更新
       ,xmld.mov_lot_dtl_id       mov_lot_dtl_id      -- 移動ロット詳細ID
       ,TO_CHAR(MAX(xmld.actual_quantity))
                                       xmld_actual_quantity-- ロット詳細実績数量
+/** 結合テスト指摘対応No30 **/
+       -- 元投入数量計が0で指示数量がNULLではない場合
+      ,CASE WHEN (    (MAX(xgmd.instructions_qty)  IS NOT NULL) 
+                  AND (MAX(xgmd.base_invested_qty) = 0        ))
+              THEN  'InvestInstClearEnable'
+            ELSE    'InvestInstClearDisable'
+       END                            inst_clear_switcher -- 引当解除制御
+/** 結合テスト指摘対応No30 **/
 FROM   (SELECT 1                         record_type         -- 更新
               ,gmd.batch_id              batch_id            -- バッチID
               ,gmd.material_detail_id  material_detail_id  -- 生産原料詳細ID
@@ -52,12 +60,19 @@ FROM   (SELECT 1                         record_type         -- 更新
                                          entity_inner        -- 在庫入数
               ,TO_CHAR(xmd.instructions_qty, DECODE(xmd.instructions_qty,0,'', 'FM999,999,990.000')) 
                                          instructions_qty    -- 指示総数
-              ,TO_CHAR(xmd.invested_qty, 'FM999999990.000')
+/** 結合テスト指摘対応No33 **/
+--              ,TO_CHAR(xmd.invested_qty, 'FM999999990.000') 
+               -- 指示総数がNULLではなく、投入数量が0の場合、指示総数をコピー
+              ,CASE WHEN (    (xmd.instructions_qty IS NOT NULL) 
+                          AND (xmd.invested_qty     = 0        ))
+                      THEN  TO_CHAR(xmd.instructions_qty, 'FM999999990.000')
+                    ELSE    TO_CHAR(xmd.invested_qty    , 'FM999999990.000')
+               END
+/** 結合テスト指摘対応No33 **/
                                          invested_qty        -- 投入数量計
               ,TO_CHAR(xmd.return_qty,   'FM999999990.000')
                                          return_qty          -- 戻入数量計
-              ,DECODE(itp.completed_ind, 1, itp.trans_qty * -1, 0)
-                                         stock_qty
+              ,0                         stock_qty
               ,ximv.item_um              item_um             -- 単位
               ,ximv.item_id              item_id             -- 品目ID
               ,ximv.item_no              item_no             -- 品目コード
@@ -70,35 +85,22 @@ FROM   (SELECT 1                         record_type         -- 更新
               ,xxwip_material_detail     xmd  -- 生産原料詳細アドオン
               ,ic_tran_pnd               itp  -- OPM保留在庫トランザクション
               ,ic_lots_mst               ilm  -- OPMロットマスタ
-              ,xxcmn_item_mst2_v         ximv -- OPM品目マスタビュー
-              ,xxcmn_item_categories3_v  xicv -- 品目カテゴリ情報VIEW3
-              ,xxcmn_item_locations_v    xilv -- 保管倉庫
-              ,(SELECT a.batch_id batch_id       -- バッチID
-                      ,FND_DATE.STRING_TO_DATE(b.attribute11, 'YYYY/MM/DD')
-                                  product_date   -- 生産日
-                FROM   gme_batch_header     a -- 生産バッチヘッダ
-                      ,gme_material_details b -- 生産原料詳細
-                WHERE  a.batch_id  = b.batch_id
-                AND    b.line_type = 1 ) gbhh
+              ,xxcmn_item_mst_v          ximv -- OPM品目マスタビュー
+              ,xxcmn_item_categories5_v  xicv -- 品目カテゴリ情報VIEW5
         WHERE  
         /* 結合条件 */
                gmd.material_detail_id = xmd.material_detail_id
-        AND    gmd.batch_id           = gbhh.batch_id
         AND    gmd.item_id            = ximv.item_id
         AND    gmd.material_detail_id = itp.line_id
         AND    itp.lot_id             = xmd.lot_id
         AND    itp.lot_id             = ilm.lot_id
         AND    itp.item_id            = ilm.item_id
-        AND    xmd.location_code      = xilv.segment1
         AND    xicv.item_id           = ximv.item_id
+        AND    gmd.material_detail_id    = TO_NUMBER(:1)
         /* 抽出条件 */
-        AND    gmd.line_type          = -1    -- 投入品
-        AND    gmd.attribute5         = 'Y'   -- 打込
-        AND    gmd.attribute24        IS NULL -- 未取消
-        AND    itp.reverse_id         IS NULL
+        AND    gmd.attribute5         = 'Y'
         AND    xmd.plan_type          = '4' -- 投入
-        AND    ximv.start_date_active<= NVL(gbhh.product_date, TRUNC(SYSDATE))
-        AND    ximv.end_date_active  >= NVL(gbhh.product_date, TRUNC(SYSDATE))
+        AND    itp.reverse_id         IS NULL
       UNION
         SELECT 0                       record_type         -- 挿入
               ,gmd.batch_id            batch_id            -- バッチID
@@ -116,7 +118,7 @@ FROM   (SELECT 1                         record_type         -- 更新
               ,null                    instructions_qty    -- 指示総数
               ,null                    invested_qty        -- 投入数量計
               ,null                    return_qty          -- 戻入数量計
-              ,xxwip_common_pkg.get_can_stock_qty(gmd.batch_id, xilv.inventory_location_id, ximv.item_id, ilm.lot_id)
+              ,xxwip_common_pkg.get_can_stock_qty (gmd.batch_id, xilv.inventory_location_id, ilm.item_id, DECODE(xicv.item_class_code, 2, NULL, ilm.lot_id))
                                        stock_qty
               ,ximv.item_um            item_um             -- 単位
               ,ximv.item_id            item_id             -- 品目ID
@@ -129,32 +131,21 @@ FROM   (SELECT 1                         record_type         -- 更新
               ,gme_material_details      gmd  -- 生産原料詳細
               ,gmd_routings_vl           grv  -- 工順マスタビュー
               ,ic_lots_mst               ilm  -- OPMロットマスタ
-              ,xxcmn_item_mst2_v         ximv -- OPM品目マスタビュー
-              ,xxcmn_item_categories3_v  xicv -- 品目カテゴリ情報VIEW3
+              ,xxcmn_item_mst_v          ximv -- OPM品目マスタビュー
+              ,xxcmn_item_categories5_v  xicv -- 品目カテゴリ情報VIEW5
               ,xxcmn_item_locations_v    xilv -- 保管倉庫
-              ,(SELECT a.batch_id batch_id       -- バッチID
-                      ,FND_DATE.STRING_TO_DATE(b.attribute11, 'YYYY/MM/DD')
-                                  product_date   -- 生産日
-                FROM   gme_batch_header     a -- 生産バッチヘッダ
-                      ,gme_material_details b -- 生産原料詳細
-                WHERE  a.batch_id  = b.batch_id
-                AND    b.line_type = 1 ) gbhh
         WHERE  
         /* 結合条件 */
                gbh.routing_id         = grv.routing_id
         AND    gmd.batch_id           = gbh.batch_id
-        AND    gmd.batch_id           = gbhh.batch_id
         AND    gmd.item_id            = ximv.item_id
         AND    gmd.item_id            = ilm.item_id
-        AND    grv.attribute9         = xilv.segment1(+)
+        AND    grv.attribute9         = xilv.segment1
         AND    xicv.item_id           = ximv.item_id
         /* 抽出条件 */
-        AND    gmd.line_type          = -1    -- 投入品
-        AND    gmd.attribute5         = 'Y'   -- 打込
-        AND    gmd.attribute24        IS NULL -- 未取消
-        AND    xxwip_common_pkg.get_can_stock_qty(gmd.batch_id, xilv.inventory_location_id, ximv.item_id, ilm.lot_id) > 0
-        AND    ximv.start_date_active<= NVL(gbhh.product_date, TRUNC(SYSDATE))
-        AND    ximv.end_date_active  >= NVL(gbhh.product_date, TRUNC(SYSDATE))
+        AND    gmd.attribute5         = 'Y'
+        AND    gmd.material_detail_id    = TO_NUMBER(:2)
+        AND    xxwip_common_pkg.get_can_stock_qty( gmd.batch_id, xilv.inventory_location_id, ilm.item_id, DECODE(xicv.item_class_code, 2, NULL, ilm.lot_id) ) > 0
         )                        xgmd
       ,xxinv_mov_lot_details     xmld -- 移動ロット詳細
 WHERE  
@@ -162,9 +153,9 @@ WHERE
        xgmd.material_detail_id    = xmld.mov_line_id(+)
 AND    xgmd.lot_id                = xmld.lot_id(+)
 /* 抽出条件 */
-AND    xgmd.material_detail_id    = TO_NUMBER(:1)
 AND    xmld.document_type_code(+) = '40'
 AND    xmld.record_type_code(+)   = '40'
+AND    xgmd.material_detail_id    = TO_NUMBER(:3)
 GROUP BY xgmd.batch_id
         ,xgmd.material_detail_id
         ,xgmd.line_no
@@ -493,6 +484,19 @@ GROUP BY xgmd.batch_id
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstClearSwitcher"
+      IsPersistent="false"
+      Precision="22"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INST_CLEAR_SWITCHER"
+      Expression="INST_CLEAR_SWITCHER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">
