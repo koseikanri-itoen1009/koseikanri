@@ -7,7 +7,7 @@ AS
  * Description      : 売上実績データ連携
  * MD.050           : MD050_CFR_001_A02_売上実績データ連携
  * MD.070           : MD050_CFR_001_A02_売上実績データ連携
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/14    1.00 SCS 中村 博      初回作成
  *  2009/12/13    1.10 SCS 廣瀬 真佐人  障害対応[E_本稼動_00366]
+ *  2011/04/19    1.11 SCS 西野 裕介    障害対応[E_本稼動_04976]
  *
  *****************************************************************************************/
 --
@@ -142,6 +143,9 @@ AS
   cv_delivery_base_code CONSTANT VARCHAR2(4)  := '0000';       -- 納品拠点コード
   cv_unit_sales         CONSTANT VARCHAR2(1)  := '0';          -- 売上数量
   cv_column_no          CONSTANT VARCHAR2(2)  := '00';         -- コラムNo
+-- Add 2011.04.19 Ver.1.11 Start
+  cn_zero               CONSTANT NUMBER       := 0;            -- 基準単価（税込）,売上金額（税込）出力固定値
+-- Add 2011.04.19 Ver.1.11 End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -735,6 +739,17 @@ AS
                     || cv_delimiter
                     || cv_enclosed || gt_sales_data(ln_loop_cnt).tax_code || cv_enclosed || cv_delimiter
                     || cv_enclosed || gt_sales_data(ln_loop_cnt).bill_to_account_number || cv_enclosed || cv_delimiter
+-- Add 2011.04.19 Ver.1.11 Start
+                    || cv_enclosed || cv_enclosed || cv_delimiter     -- 注文伝票番号
+                    || cv_enclosed || cv_enclosed || cv_delimiter     -- 伝票区分
+                    || cv_enclosed || cv_enclosed || cv_delimiter     -- 伝票分類コード
+                    || cv_enclosed || cv_enclosed || cv_delimiter     -- つり銭切れ時間100円
+                    || cv_enclosed || cv_enclosed || cv_delimiter     -- つり銭切れ時間10円
+                    || cn_zero                    || cv_delimiter     -- 基準単価（税込）
+                    || cn_zero                    || cv_delimiter     -- 売上金額（税込）
+                    || cv_enclosed || cv_enclosed || cv_delimiter     -- 売切区分
+                    || cv_enclosed || cv_enclosed || cv_delimiter     -- 売切時間
+-- Add 2011.04.19 Ver.1.11 End
                     || TO_CHAR ( cd_last_update_date, cv_format_date_ymdhns)
         ;
 --
