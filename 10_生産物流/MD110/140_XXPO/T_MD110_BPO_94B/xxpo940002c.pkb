@@ -7,7 +7,7 @@ AS
  * Description      : 出来高実績取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 出来高実績取込処理 T_MD070_BPO_94B
- * Version          : 1.3
+ * Version          : 1.4
  * Program List
  * ------------------------- ----------------------------------------------------------
  *  Name                      Description
@@ -34,6 +34,7 @@ AS
  *  2008/07/08    1.1   Oracle 山根一浩     I_S_192対応
  *  2008/07/22    1.2   Oracle 伊藤ひとみ   内部課題#32対応
  *  2008/08/18    1.3   Oracle 伊藤ひとみ   T_S_595 品目情報VIEW2を製造日基準で抽出する
+ *  2008/12/02    1.4   Oracle 伊藤ひとみ   本番障害#171
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -156,7 +157,9 @@ AS
   gv_tkn_producted_qty_name  CONSTANT VARCHAR2(100) := '出来高数量';
   gv_tkn_koyu_code_name      CONSTANT VARCHAR2(100) := '固有記号';
   gv_tkn_factory_code_name   CONSTANT VARCHAR2(100) := '工場';
-
+-- 2008/12/02 H.Itou Add Start 本番障害#171
+  gv_tkn_koyu_code           CONSTANT VARCHAR2(100) := '工場固有記号:';
+-- 2008/12/02 H.Itou Add End
 --
   -- セキュリティ区分
   gv_security_kbn_in         CONSTANT VARCHAR2(1) := '1'; -- セキュリティ区分 伊藤園ユーザー
@@ -256,6 +259,11 @@ AS
   -- 廃止区分
   gv_obsolete_class_y CONSTANT VARCHAR2(1) := '1'; -- 廃止区分 1:廃止
 -- 2008/08/18 H.Itou Add End
+--
+-- 2008/12/02 H.Itou Add Start 本番障害#171
+  -- クイックコードタイプ
+  gv_plant_uniqe_sign CONSTANT VARCHAR2(100) := 'XXCMN_PLANT_UNIQE_SIGN'; -- 工場固有記号
+-- 2008/12/02 H.Itou Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -962,7 +970,7 @@ AS
     -- 品目区分が5:製品の場合
     IF (gr_main_data.item_class_code = gv_item_class_code_prod) THEN
       -- ===========================
-      -- 固有記号チェック
+      -- 固有記号チェック必須チェック
       -- ===========================
       IF (gr_main_data.koyu_code IS NULL) THEN
         -- 警告メッセージ出力
@@ -972,6 +980,86 @@ AS
                          ,gv_msg_xxpo10256       -- メッセージ:APP-XXPO-10256 製品必須エラー
                          ,gv_tkn_item            -- トークンITEM
                          ,gv_tkn_koyu_code_name) -- 固有記号
+                       ,1,5000);
+--
+        -- すでに警告の場合は、ダンプ不要
+        IF (ov_retcode <> gv_status_warn) THEN
+          -- 警告ダンプPL/SQL表にダンプをセット
+          gn_warn_msg_cnt := gn_warn_msg_cnt + 1;
+          warn_dump_tab(gn_warn_msg_cnt) := gr_main_data.data_dump;
+        END IF;
+--
+        -- 警告ダンプPL/SQL表に警告メッセージをセット
+        gn_warn_msg_cnt := gn_warn_msg_cnt + 1;
+        warn_dump_tab(gn_warn_msg_cnt) := lv_errmsg;
+--
+        -- リターン・コードに警告をセット
+        ov_retcode := gv_status_warn;
+-- 2008/12/02 H.Itou Add Start 本番障害#171
+      ELSE
+        -- ===========================
+        -- 固有記号マスタ存在チェック
+        -- ===========================
+        SELECT COUNT(1) cnt
+        INTO   ln_cnt
+        FROM   xxcmn_lookup_values_v  xlvv            -- クイックコード情報V
+        WHERE  xlvv.lookup_type = gv_plant_uniqe_sign -- タイプ：XXCMN_PLANT_UNIQE_SIGN
+        AND    xlvv.lookup_code = gr_main_data.koyu_code
+        ;
+--
+        -- マスタに登録がない場合
+        IF (ln_cnt = 0) THEN
+          -- 警告メッセージ出力
+          lv_errmsg  := SUBSTRB(
+                          xxcmn_common_pkg.get_msg(
+                            gv_xxcmn               -- モジュール名略称:XXCMN 共通
+                           ,gv_msg_xxcmn10001      -- メッセージ:APP-XXCMN-10001 対象データなし
+                           ,gv_tkn_table           -- トークン:TABLE
+                           ,gv_tkn_koyu_code_name  -- エラーテーブル名
+                           ,gv_tkn_key             -- トークン:KEY
+                           ,gv_tkn_koyu_code || gr_main_data.koyu_code)  -- エラーキー項目
+                         ,1,5000);
+--
+          -- すでに警告の場合は、ダンプ不要
+          IF (ov_retcode <> gv_status_warn) THEN
+            -- 警告ダンプPL/SQL表にダンプをセット
+            gn_warn_msg_cnt := gn_warn_msg_cnt + 1;
+            warn_dump_tab(gn_warn_msg_cnt) := gr_main_data.data_dump;
+          END IF;
+--
+          -- 警告ダンプPL/SQL表に警告メッセージをセット
+          gn_warn_msg_cnt := gn_warn_msg_cnt + 1;
+          warn_dump_tab(gn_warn_msg_cnt) := lv_errmsg;
+--
+          -- リターン・コードに警告をセット
+          ov_retcode := gv_status_warn;
+        END IF;
+-- 2008/12/02 H.Itou Add End
+      END IF;
+--
+    -- 品目区分が5:製品以外の場合で、固有記号に入力がある場合
+    ELSIF (gr_main_data.koyu_code IS NOT NULL) THEN
+      -- ===========================
+      -- 固有記号マスタ存在チェック
+      -- ===========================
+      SELECT COUNT(1) cnt
+      INTO   ln_cnt
+      FROM   xxcmn_lookup_values_v  xlvv            -- クイックコード情報V
+      WHERE  xlvv.lookup_type = gv_plant_uniqe_sign -- タイプ：XXCMN_PLANT_UNIQE_SIGN
+      AND    xlvv.lookup_code = gr_main_data.koyu_code
+      ;
+--
+      -- マスタに登録がない場合
+      IF (ln_cnt = 0) THEN
+        -- 警告メッセージ出力
+        lv_errmsg  := SUBSTRB(
+                        xxcmn_common_pkg.get_msg(
+                          gv_xxcmn               -- モジュール名略称:XXCMN 共通
+                         ,gv_msg_xxcmn10001      -- メッセージ:APP-XXCMN-10001 対象データなし
+                         ,gv_tkn_table           -- トークン:TABLE
+                         ,gv_tkn_koyu_code_name  -- エラーテーブル名
+                         ,gv_tkn_key             -- トークン:KEY
+                         ,gv_tkn_koyu_code || gr_main_data.koyu_code)  -- エラーキー項目
                        ,1,5000);
 --
         -- すでに警告の場合は、ダンプ不要
