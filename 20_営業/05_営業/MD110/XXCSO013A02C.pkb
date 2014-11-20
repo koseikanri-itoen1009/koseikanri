@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,7 +33,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-02-02    1.0   Tomoko.Mori      新規作成
- *
+ *  2009-04-01    1.1   Kazuo.Satomura   T1_0148,0149対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -274,8 +274,12 @@ AS
      ,cii.owner_party_account_id    owner_party_account_id     -- 所有者アカウントID
      ,DECODE(cii.instance_status_id, gn_instance_status_id, cv_yes, cv_no)
                                     new_active_flag            -- 新_論理削除フラグ
-     ,DECODE(cii.instance_status_id, gn_instance_status_id, cv_yes, cv_no)
+     /* 2009.04.01 K.Satomura T1_0149対応 START */
+     --,DECODE(cii.instance_status_id, gn_instance_status_id, cv_yes, cv_no)
+     --                               effective_flag             -- 物件有効フラグ
+     ,DECODE(cii.instance_status_id, gn_instance_status_id, cv_no, cv_yes)
                                     effective_flag             -- 物件有効フラグ
+     /* 2009.04.01 K.Satomura T1_0149対応 END */
      ,xxcso_util_common_pkg.get_lookup_attribute
         (
           cv_csi_inst_type_code
@@ -408,16 +412,16 @@ AS
     -- 取得したWHOカラムをログ出力
     fnd_file.put_line(
        which  => FND_FILE.LOG
-      ,buff   => 'WHOカラム'  || CHR(10) ||
- 'created_by:' || TO_CHAR(cn_created_by            ) || CHR(10) ||
- 'creation_date:' || TO_CHAR(cd_creation_date         ,'yyyy/mm/dd hh24:mi:ss') || CHR(10) ||
- 'last_updated_by:' || TO_CHAR(cn_last_updated_by       ) || CHR(10) ||
- 'last_update_date:' || TO_CHAR(cd_last_update_date      ,'yyyy/mm/dd hh24:mi:ss') || CHR(10) ||
- 'last_update_login:' || TO_CHAR(cn_last_update_login     ) || CHR(10) ||
- 'request_id:' || TO_CHAR(cn_request_id            ) || CHR(10) ||
- 'program_application_id:' || TO_CHAR(cn_program_application_id) || CHR(10) ||
- 'program_id:' || TO_CHAR(cn_program_id            ) || CHR(10) ||
- 'program_update_date:' || TO_CHAR(cd_program_update_date   ,'yyyy/mm/dd hh24:mi:ss') || CHR(10) ||
+      ,buff   => 'WHOカラム'               || CHR(10) ||
+                 'created_by:'             || TO_CHAR(cn_created_by            ) || CHR(10) ||
+                 'creation_date:'          || TO_CHAR(cd_creation_date         ,'yyyy/mm/dd hh24:mi:ss') || CHR(10) ||
+                 'last_updated_by:'        || TO_CHAR(cn_last_updated_by       ) || CHR(10) ||
+                 'last_update_date:'       || TO_CHAR(cd_last_update_date      ,'yyyy/mm/dd hh24:mi:ss') || CHR(10) ||
+                 'last_update_login:'      || TO_CHAR(cn_last_update_login     ) || CHR(10) ||
+                 'request_id:'             || TO_CHAR(cn_request_id            ) || CHR(10) ||
+                 'program_application_id:' || TO_CHAR(cn_program_application_id) || CHR(10) ||
+                 'program_id:'             || TO_CHAR(cn_program_id            ) || CHR(10) ||
+                 'program_update_date:'    || TO_CHAR(cd_program_update_date   ,'yyyy/mm/dd hh24:mi:ss') || CHR(10) ||
                  ''
     );
     -- ===========================
@@ -1795,7 +1799,10 @@ AS
        ,gv_owner_company                            -- 本社工場区分
        ,gv_installation_place                       -- 現設置先
        ,gv_installation_address                     -- 現設置場所
-       ,g_get_xxcso_ib_info_h_rec.new_active_flag   -- 物件有効フラグ
+       /* 2009.04.01 K.Satomura T1_0149対応 START */
+       --,g_get_xxcso_ib_info_h_rec.new_active_flag   -- 物件有効フラグ
+       ,g_get_xxcso_ib_info_h_rec.effective_flag    -- 物件有効フラグ
+       /* 2009.04.01 K.Satomura T1_0149対応 END */
        ,cv_import_status                            -- 取込ステータス（固定値：'0'）
        ,gv_customer_code                            -- 顧客コード
        ,NULL                                        -- グループID
@@ -2158,12 +2165,19 @@ AS
             -- ========================================
             -- A-6.物件関連情報変更チェック処理 
             -- ========================================
-            ib_info_change_chk(
-               ov_change_flg => lv_change_flg    -- 変更チェックフラグ
-              ,ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-              ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-              ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-            );
+            /* 2009.04.01 K.Satomura T1_0148対応 START */
+            IF (g_get_xxcso_ib_info_h_rec.interface_flag <> cv_yes) THEN
+              -- 連携済フラグがY以外の場合
+            /* 2009.04.01 K.Satomura T1_0148対応 END */
+              ib_info_change_chk(
+                 ov_change_flg => lv_change_flg    -- 変更チェックフラグ
+                ,ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+              );
+            /* 2009.04.01 K.Satomura T1_0148対応 START */
+            END IF;
+            /* 2009.04.01 K.Satomura T1_0148対応 END */
 --
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
@@ -2200,32 +2214,81 @@ AS
                    which  => FND_FILE.LOG
                   ,buff   => lv_errmsg                  --警告メッセージ
                 );
-              ELSE
+            /* 2009.04.01 K.Satomura T1_0148対応 START */
+              --ELSE
+              END IF;
+            END IF;
+            /* 2009.04.01 K.Satomura T1_0148対応 END */
                 -- 自販機SH物件インタフェースに登録対象物件が存在しない場合
 --
-                -- ========================================
-                -- A-8.物件関連変更履歴テーブルロック 
-                -- ========================================
-                xxcso_ib_info_h_lock(
-                   ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                  ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                  ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+            /* 2009.04.01 K.Satomura T1_0148対応 START */
+            IF (((NVL(lv_change_flg, cv_yes) <> cv_no)
+              OR (g_get_xxcso_ib_info_h_rec.interface_flag <> cv_yes))
+              AND (lv_retcode = cv_status_normal))
+            THEN
+            /* 2009.04.01 K.Satomura T1_0148対応 END */
+              -- ========================================
+              -- A-8.物件関連変更履歴テーブルロック 
+              -- ========================================
+              xxcso_ib_info_h_lock(
+                 ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+              );
+--
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              END IF;
+--
+              -- ========================================
+              -- A-9.セーブポイント発行処理 
+              -- ========================================
+              --
+              SAVEPOINT ib_info;
+--
+              -- ========================================
+              -- A-10.自販機SH物件インタフェース登録処理 
+              -- ========================================
+              insert_xxcff_vd_object_if(
+                 ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+              );
+--
+              IF (lv_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+--
+              ELSIF (lv_retcode = cv_status_warn) THEN
+                -- スキップ件数
+                gn_warn_cnt   := gn_warn_cnt + 1;
+                -- 固定ステータス設定（警告）
+                ov_retcode := cv_status_warn;
+                --警告出力
+                fnd_file.put_line(
+                   which  => FND_FILE.OUTPUT
+                  ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
                 );
---
-                IF (lv_retcode = cv_status_error) THEN
-                  RAISE global_process_expt;
-                END IF;
---
-                -- ========================================
-                -- A-9.セーブポイント発行処理 
-                -- ========================================
+                fnd_file.put_line(
+                   which  => FND_FILE.LOG
+                  ,buff   => lv_errmsg                  --警告メッセージ
+                );
+                ROLLBACK TO SAVEPOINT ib_info;
                 --
-                SAVEPOINT ib_info;
+                -- *** DEBUG_LOG ***
+                -- ロールバック処理をログ出力
+                fnd_file.put_line(
+                   which  => FND_FILE.LOG
+                  ,buff   => cv_debug_msg_rollback  || CHR(10) ||
+                             cv_tkn_msg_vd_object_if || cv_tkn_msg_insert ||
+                              CHR(10) ||
+                             ''
+                );
+              ELSE
 --
                 -- ========================================
-                -- A-10.自販機SH物件インタフェース登録処理 
+                -- A-11.物件関連情報変更履歴テーブル更新処理 
                 -- ========================================
-                insert_xxcff_vd_object_if(
+                update_xxcso_ib_info_h(
                    ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
                   ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
                   ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -2233,7 +2296,6 @@ AS
 --
                 IF (lv_retcode = cv_status_error) THEN
                   RAISE global_process_expt;
---
                 ELSIF (lv_retcode = cv_status_warn) THEN
                   -- スキップ件数
                   gn_warn_cnt   := gn_warn_cnt + 1;
@@ -2255,54 +2317,18 @@ AS
                   fnd_file.put_line(
                      which  => FND_FILE.LOG
                     ,buff   => cv_debug_msg_rollback  || CHR(10) ||
-                               cv_tkn_msg_vd_object_if || cv_tkn_msg_insert ||
+                               cv_tkn_msg_ib_info_h || cv_tkn_msg_update ||
                                 CHR(10) ||
                                ''
                   );
+                  --
                 ELSE
---
-                  -- ========================================
-                  -- A-11.物件関連情報変更履歴テーブル更新処理 
-                  -- ========================================
-                  update_xxcso_ib_info_h(
-                     ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                    ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                    ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-                  );
---
-                  IF (lv_retcode = cv_status_error) THEN
-                    RAISE global_process_expt;
-                  ELSIF (lv_retcode = cv_status_warn) THEN
-                    -- スキップ件数
-                    gn_warn_cnt   := gn_warn_cnt + 1;
-                    -- 固定ステータス設定（警告）
-                    ov_retcode := cv_status_warn;
-                    --警告出力
-                    fnd_file.put_line(
-                       which  => FND_FILE.OUTPUT
-                      ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
-                    );
-                    fnd_file.put_line(
-                       which  => FND_FILE.LOG
-                      ,buff   => lv_errmsg                  --警告メッセージ
-                    );
-                    ROLLBACK TO SAVEPOINT ib_info;
-                    --
-                    -- *** DEBUG_LOG ***
-                    -- ロールバック処理をログ出力
-                    fnd_file.put_line(
-                       which  => FND_FILE.LOG
-                      ,buff   => cv_debug_msg_rollback  || CHR(10) ||
-                                 cv_tkn_msg_ib_info_h || cv_tkn_msg_update ||
-                                  CHR(10) ||
-                                 ''
-                    );
-                    --
-                  ELSE
-                    -- 正常件数取得
-                    gn_normal_cnt := gn_normal_cnt + 1;  
-                  END IF;
+                  -- 正常件数取得
+                  gn_normal_cnt := gn_normal_cnt + 1;  
                 END IF;
+                /* 2009.04.01 K.Satomura T1_0148対応 START */
+                --END IF;
+                /* 2009.04.01 K.Satomura T1_0148対応 END */
               END IF;
             END IF;
           END IF;
