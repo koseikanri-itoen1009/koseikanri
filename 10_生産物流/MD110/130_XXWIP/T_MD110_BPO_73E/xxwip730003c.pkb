@@ -7,7 +7,7 @@ AS
  * Description      : 運賃アドオンインタフェース取込処理
  * MD.050           : 運賃計算（トランザクション）       T_MD050_BPO_732
  * MD.070           : 運賃アドオンインタフェース取込処理 T_MD070_BPO_73E
- * Version          : 1.4
+ * Version          : 1.5
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -34,6 +34,7 @@ AS
  *  2008/05/26    1.2  Oracle 野村 正幸  結合障害 
  *  2008/07/10    1.3  Oracle 野村 正幸  ST障害 #432 対応
  *  2008/07/25    1.4  Oracle 野村 正幸  ST障害 #473 対応
+ *  2008/09/16    1.5  Oracle 吉田 夏樹  T_S_570 対応
  *
  *****************************************************************************************/
 --
@@ -160,7 +161,10 @@ AS
     deliverys_header_id   xxwip_deliverys.deliverys_header_id%TYPE,     -- 1.運賃ヘッダーアドオンID
     delivery_company_code xxwip_deliverys.delivery_company_code%TYPE,   -- 2.運送業者
     delivery_no           xxwip_deliverys.delivery_no%TYPE,             -- 3.配送No
-    invoice_no            xxwip_deliverys.invoice_no%TYPE,              -- 4.送り状No
+-- ##### 20080916 Ver.1.5 T_S_570対応 START #####
+    --invoice_no            xxwip_deliverys.invoice_no%TYPE,              -- 4.送り状No
+    invoice_no2           xxwip_deliverys.invoice_no2%TYPE,              -- 4.送り状No2
+-- ##### 20080916 Ver.1.5 T_S_570対応 END #####
     p_b_classe            xxwip_deliverys.p_b_classe%TYPE,              -- 5.支払請求区分
     report_date           xxwip_deliverys.report_date%TYPE,             -- 6.報告日
     judgement_date        xxwip_deliverys.judgement_date%TYPE,          -- 7.判断日
@@ -338,7 +342,10 @@ AS
   TYPE u_deliv_head_deliv_no_type IS TABLE OF xxwip_deliverys.delivery_no%TYPE
   INDEX BY BINARY_INTEGER;
   -- 送り状No
-  TYPE u_deliv_head_invoice_no_type IS TABLE OF xxwip_deliverys.invoice_no%TYPE
+-- ##### 20080916 Ver.1.5 T_S_570対応 START #####
+  --TYPE u_deliv_head_invoice_no_type IS TABLE OF xxwip_deliverys.invoice_no%TYPE
+  TYPE u_deliv_head_invoice_no_type IS TABLE OF xxwip_deliverys.invoice_no2%TYPE
+-- ##### 20080916 Ver.1.5 T_S_570対応 END #####
   INDEX BY BINARY_INTEGER;
   -- 支払請求区分
   TYPE u_deliv_head_p_b_cls_type IS TABLE OF xxwip_deliverys.p_b_classe%TYPE
@@ -406,7 +413,7 @@ AS
 --
   u_deliv_head_com_code_id_tab   u_deliv_head_com_code_id_type;   -- 運賃業者
   u_deliv_head_deliv_no_tab      u_deliv_head_deliv_no_type;      -- 配送No
-  u_deliv_head_invoice_no_tab    u_deliv_head_invoice_no_type;    -- 送り状No
+  u_deliv_head_invoice_no_tab    u_deliv_head_invoice_no_type;    -- 送り状No2
   u_deliv_head_p_b_cls_tab       u_deliv_head_p_b_cls_type;       -- 支払請求区分
   u_deliv_head_rpt_date_tab      u_deliv_head_rpt_date_type;      -- 報告日
   u_deliv_head_deliv_cls_tab     u_deliv_head_deliv_cls_type;     -- 配送区分
@@ -912,7 +919,10 @@ AS
       SELECT xd.deliverys_header_id,      -- 1.運賃ヘッダー
              xd.delivery_company_code,    -- 2.運送業者
              xd.delivery_no,              -- 3.配送No
-             xd.invoice_no,               -- 4.送り状No
+-- ##### 20080916 Ver.1.5 T_S_570対応 START #####
+             --xd.invoice_no,               -- 4.送り状No
+             xd.invoice_no2,               -- 4.送り状No2
+-- ##### 20080916 Ver.1.5 T_S_570対応 END #####
              xd.p_b_classe,               -- 5.支払請求区分
              xd.report_date,              -- 6.報告日
              xd.judgement_date,           -- 7.判断日
@@ -1359,12 +1369,15 @@ AS
     -- 配送Noの設定
     u_deliv_head_deliv_no_tab(gn_upd_deliv_head_cnt) := ir_deliv_if_rec.delivery_no;
 --
-    -- 送り状No
+    -- 送り状No2
     IF (ir_deliv_if_rec.invoice_no IS NOT NULL) THEN
       u_deliv_head_invoice_no_tab(gn_upd_deliv_head_cnt) := ir_deliv_if_rec.invoice_no;
     ELSE
       u_deliv_head_invoice_no_tab(gn_upd_deliv_head_cnt) :=
-        gt_deliv_head_tbl(gn_deliv_head_cnt).invoice_no;
+-- ##### 20080916 Ver.1.5 T_S_570対応 START #####
+        --gt_deliv_head_tbl(gn_deliv_head_cnt).invoice_no;
+        gt_deliv_head_tbl(gn_deliv_head_cnt).invoice_no2;
+-- ##### 20080916 Ver.1.5 T_S_570対応 END #####
     END IF;
 --
     -- 支払請求区分
@@ -1827,7 +1840,10 @@ AS
     -- ***********************************
     FORALL ln_index IN u_deliv_head_com_code_id_tab.FIRST .. u_deliv_head_com_code_id_tab.LAST
       UPDATE xxwip_deliverys xd                                  -- 運賃ヘッダーアドオン
-      SET    xd.invoice_no             = u_deliv_head_invoice_no_tab(ln_index),  -- 1.送り状No
+-- ##### 20080916 Ver.1.5 T_S_570対応 START #####
+      --SET    xd.invoice_no             = u_deliv_head_invoice_no_tab(ln_index),  -- 1.送り状No
+      SET    xd.invoice_no2             = u_deliv_head_invoice_no_tab(ln_index),  -- 1.送り状No2
+-- ##### 20080916 Ver.1.5 T_S_570対応 END #####
              xd.delivery_classe        = u_deliv_head_deliv_cls_tab(ln_index),   -- 2.配送区分
              xd.report_date            = u_deliv_head_rpt_date_tab(ln_index),    -- 3.報告日
              xd.charged_amount         = u_deliv_head_chrg_amt_tab(ln_index),    -- 4.請求運賃

@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -100,6 +100,7 @@ AS
  *  2008/07/17    1.5  Oracle 野村       変更要求#96、#98対応
  *  2008/08/04    1.6  Oracle 山根       内部課題#187対応
  *  2008/08/25    1.7  Oracle 野村       ST事前確認障害
+ *  2008/09/12    1.8  Oracle 野村       TE080指摘事項15対応 区分設定見直対応
  *
  *****************************************************************************************/
 --
@@ -5112,7 +5113,8 @@ AS
                                       gt_deliv_line_tab(ln_index).picking_charge +
                                       NVL(lv_many_rate, 0)) ;
 --
-        -- *** 差異区分 ***
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
         -- 請求運賃 ＝ NULL の場合
         IF (lv_charged_amount IS NULL) THEN
           -- Y を設定
@@ -5129,7 +5131,6 @@ AS
           -- N を設定
           u_head_output_flag_tab(ln_update_cnt)   := gv_ktg_no ;
         END IF;
---
         -- *** 支払確定区分 ***
         IF (u_head_output_flag_tab(ln_update_cnt) = gv_ktg_yes) THEN
           -- N を設定
@@ -5138,30 +5139,67 @@ AS
           -- Y を設定
           u_head_defined_flag_tab(ln_update_cnt)  := gv_ktg_yes ;
         END IF;
+*****/
+--
+        -- *** 差異区分 ***
+        IF (u_head_balance_tab(ln_update_cnt) <> 0) THEN
+          u_head_output_flag_tab(ln_update_cnt)   := gv_ktg_yes ;
+        ELSE
+          u_head_output_flag_tab(ln_update_cnt)   := gv_ktg_no ;
+        END IF;
+--
+        -- *** 支払確定区分 ***
+        -- 請求金額 IS NULL の場合
+        IF (lv_charged_amount IS NULL) THEN
+          u_head_defined_flag_tab(ln_update_cnt)  := gv_ktg_no ;
+--
+        -- 差異区分 = Y の場合
+        ELSIF (u_head_output_flag_tab(ln_update_cnt) = gv_ktg_yes) THEN
+          u_head_defined_flag_tab(ln_update_cnt)  := gv_ktg_no ;
+--
+        -- 上記以外の場合
+        ELSE
+          u_head_defined_flag_tab(ln_update_cnt)  := gv_ktg_yes ;
+        END IF;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 --
         -- *** 支払確定戻 ***
-        -- 元の支払確定区分 ＝ Y、且つ、差額 <> 0 の場合
-        IF ((lv_defined_flag = gv_ktg_yes)
-          AND ( u_head_balance_tab(ln_update_cnt) <> 0) ) THEN
+        -- 元の支払確定区分 ＝ Y の場合
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--        IF ((lv_defined_flag = gv_ktg_yes) 
+--          AND ( u_head_balance_tab(ln_update_cnt) <> 0) ) THEN
+        IF (lv_defined_flag = gv_ktg_yes) THEN
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
           -- Y を設定
           u_head_return_flag_tab(ln_update_cnt)   := gv_ktg_yes ;
 --
-        -- 元の支払確定区分 ＝ Y、且つ、差額 = 0 の場合
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
+        -- 元の支払確定区分 ＝ Y、且つ、今回の支払確定区分 = N の場合
         ELSIF ((lv_defined_flag = gv_ktg_yes)
           AND ( u_head_balance_tab(ln_update_cnt) = 0) ) THEN
           -- N を設定
           u_head_return_flag_tab(ln_update_cnt)   := gv_ktg_no ;
---
         -- 上記以外の場合
         ELSE
           -- 登録済みの支払確定戻 を設定
           u_head_return_flag_tab(ln_update_cnt)   := lv_return_flag ;
+*****/
+--
+        -- 上記以外の場合
+        ELSE
+          u_head_return_flag_tab(ln_update_cnt)   := gv_ktg_no ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
         END IF;
 --
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
         -- 削除用PL/SQL表 登録
         -- 差額 <> 0 または、契約運賃 = 0 の場合
         IF (u_head_balance_tab(ln_update_cnt) <> 0)
           OR (gt_deliv_line_tab(ln_index).shipping_expenses = 0 ) THEN
+*****/
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
         IF (gv_debug_flg = gv_debug_on) THEN
@@ -5173,7 +5211,11 @@ AS
           ln_delete_cnt   := ln_delete_cnt + 1;
           -- 配送No
           d_head_deliv_no_tab(ln_delete_cnt)  := gt_deliv_line_tab(ln_index).delivery_no ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
         END IF;
+*****/
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 --
       END IF;
 --
@@ -5771,38 +5813,72 @@ AS
           ELSE
             u_head_output_flag_tab(ln_update_cnt)  := gv_ktg_no;
           END IF;
-          -- 支払確定区分
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
           IF (u_head_balance_tab(ln_update_cnt) <> 0 ) THEN
             u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_no;
           ELSE
             u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_yes;
           END IF;
+*****/
+          -- 支払確定区分
+          -- 請求金額 IS NULL の場合
+          IF (lv_charged_amount IS NULL ) THEN
+            u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_no;
 --
--- ##### 20080805 Ver.1.5 ST事前確認障害 START #####
---          u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
-          -- 元の支払確定区分＝Y 且つ、差額 <> 0 の場合
-          IF ((lv_defined_flag = gv_ktg_yes) AND (u_head_balance_tab(ln_update_cnt) <> 0)) THEN
-            u_head_return_flag_tab(ln_update_cnt)    := gv_ktg_yes ;  -- 支払確定戻
---
-          -- 元の支払確定区分＝Y 且つ、差額 = 0 の場合
-          ELSIF ((lv_defined_flag = gv_ktg_yes) AND (u_head_balance_tab(ln_update_cnt) = 0)) THEN
-            u_head_return_flag_tab(ln_update_cnt)    := gv_ktg_no ;  -- 支払確定戻
+          -- 差異区分 = Y の場合
+          ELSIF (u_head_output_flag_tab(ln_update_cnt) = gv_ktg_yes) THEN
+            u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_no;
 --
           -- 上記以外の場合
           ELSE
+            u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_yes;
+          END IF;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+--
+-- ##### 20080805 Ver.1.5 ST事前確認障害 START #####
+--          u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--          IF ((lv_defined_flag = gv_ktg_yes) AND (u_head_balance_tab(ln_update_cnt) <> 0)) THEN
+          -- 元の支払確定区分＝Y の場合
+          IF (lv_defined_flag = gv_ktg_yes) THEN
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+            u_head_return_flag_tab(ln_update_cnt)    := gv_ktg_yes ;  -- 支払確定戻
+--
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
+          -- 元の支払確定区分＝Y 且つ、差額 = 0 の場合
+          ELSIF ((lv_defined_flag = gv_ktg_yes) AND (u_head_balance_tab(ln_update_cnt) = 0)) THEN
+            u_head_return_flag_tab(ln_update_cnt)    := gv_ktg_no ;  -- 支払確定戻
+          -- 上記以外の場合
+          ELSE
             u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
+*****/
+--
+          -- 上記以外の場合
+          ELSE
+            u_head_return_flag_tab(ln_update_cnt)    := gv_ktg_no ;  -- 支払確定戻
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
           END IF;
 -- ##### 20080805 Ver.1.5 ST事前確認障害 END   #####
 --
           -- **************************************************
           -- ** 差額が0以外の配送Noの請求情報は全て削除対象
           -- **************************************************
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/***** 条件削除
           IF (u_head_balance_tab(ln_update_cnt) <> 0 ) THEN
+*****/
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
             -- 削除用PL/SQL表 件数インクリメント
             ln_delete_cnt   := ln_delete_cnt + 1;
             -- 配送No
             d_head_deliv_no_tab(ln_delete_cnt)  := gt_carriers_schedule_tab(ln_index).delivery_no ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
           END IF;
+*****/
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 --
         END IF;
 --
@@ -5817,6 +5893,83 @@ AS
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：配送No：' || gt_carriers_schedule_tab(ln_index).delivery_no);
         END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--
+        -- **************************************************
+        -- ***  配送距離アドオンマスタ抽出
+        -- **************************************************
+        -- 代表配送先コード区分変換
+        xxwip_common3_pkg.change_code_division(
+          gt_carriers_schedule_tab(ln_index).code_division, -- 代表配送先コード区分
+          lv_code_division,                                 -- コード区分（運賃用）
+          lv_errbuf,
+          lv_retcode,
+          lv_errmsg);
+--
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+--
+        -- 配送距離アドオンマスタ抽出
+        xxwip_common3_pkg.get_delivery_distance(
+          gt_carriers_schedule_tab(ln_index).prod_class,            -- 商品区分
+          gt_carriers_schedule_tab(ln_index).delivery_company_code, -- 運送業者
+          gt_carriers_schedule_tab(ln_index).whs_code,              -- 出庫倉庫
+          lv_code_division ,                                        -- コード区分
+          gt_carriers_schedule_tab(ln_index).shipping_address_code, -- 配送先コード
+          gt_carriers_schedule_tab(ln_index).judgement_date,        -- 判断日
+          lr_delivery_distance_tab,                                 -- 配送距離アドオンマスタレコード
+          lv_errbuf,
+          lv_retcode,
+          lv_errmsg);
+--
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+        IF (gv_debug_flg = gv_debug_on) THEN
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：$ 配送距離アドオンマスタ抽出 $');
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：車立距離    ：'|| TO_CHAR(lr_delivery_distance_tab.post_distance));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：小口距離    ：'|| TO_CHAR(lr_delivery_distance_tab.small_distance));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：混載割増距離：'|| TO_CHAR(lr_delivery_distance_tab.consolid_add_distance));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：実際距離    ：'|| TO_CHAR(lr_delivery_distance_tab.actual_distance));
+        END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+        -- **************************************************
+        -- ***  運賃アドオンマスタ抽出
+        -- **************************************************
+        -- 重量算出（0にて抽出）
+        ln_weight := 0;
+--
+        xxwip_common3_pkg.get_delivery_charges(
+          gv_pay,                                                   -- 支払請求区分
+          gt_carriers_schedule_tab(ln_index).prod_class,            -- 商品区分
+          gt_carriers_schedule_tab(ln_index).delivery_company_code, -- 運送業者
+          gt_carriers_schedule_tab(ln_index).dellivary_classe,      -- 配送区分
+          lr_delivery_distance_tab.post_distance,                   -- 運賃距離（車立距離）
+          ln_weight,                                                -- 重量（0にて）
+          gt_carriers_schedule_tab(ln_index).judgement_date,        -- 判断日
+          lr_delivery_charges_tab,                                  -- 運賃アドオンレコード
+          lv_errbuf,
+          lv_retcode,
+          lv_errmsg);
+--
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+        IF (gv_debug_flg = gv_debug_on) THEN
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：$ 運賃アドオンマスタ抽出 $');
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：運送費        ：'|| TO_CHAR(lr_delivery_charges_tab.shipping_expenses));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：リーフ混載割増：'|| TO_CHAR(lr_delivery_charges_tab.leaf_consolid_add));
+        END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 --
         -- **************************************************
         -- ***  運賃ヘッダアドオン抽出
@@ -5911,18 +6064,38 @@ AS
           i_head_mixed_cd_tab(ln_insert_cnt)       := 
                             gt_carriers_schedule_tab(ln_index).mixed_code  ;
           i_head_charg_amount_tab(ln_insert_cnt)   := NULL ;  -- 請求運賃
+--
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
           i_head_contract_rate_tab(ln_insert_cnt)  := 0 ;     -- 契約運賃
           i_head_balance_tab(ln_insert_cnt)        := 0 ;     -- 差額
           i_head_total_amount_tab(ln_insert_cnt)   := 0 ;     -- 合計
+*****/
+          -- 契約運賃（重量=0にて運送費抽出）
+          i_head_contract_rate_tab(ln_insert_cnt)  := lr_delivery_charges_tab.shipping_expenses;
+--
+          -- 差額（合計 × -1）
+          i_head_balance_tab(ln_insert_cnt)        := i_head_contract_rate_tab(ln_insert_cnt) * -1 ;
+          -- 合計（運送費）
+          i_head_total_amount_tab(ln_insert_cnt)   := i_head_contract_rate_tab(ln_insert_cnt) ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+--
           i_head_many_rate_tab(ln_insert_cnt)      := NULL ;  -- 諸料金
-          i_head_distance_tab(ln_insert_cnt)       := 0 ;     -- 最長距離
+--
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--          i_head_distance_tab(ln_insert_cnt)       := 0 ;     -- 最長距離
+          -- 最長距離（車立距離）
+          i_head_distance_tab(ln_insert_cnt)       := lr_delivery_distance_tab.post_distance ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+--
           -- 配送区分
           i_head_deliv_cls_tab(ln_insert_cnt)      := 
                             gt_carriers_schedule_tab(ln_index).dellivary_classe ;
           -- 代表出庫倉庫コード
           i_head_whs_cd_tab(ln_insert_cnt)         := 
                             gt_carriers_schedule_tab(ln_index).whs_code;
-          -- 代表配送先コード区分
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
           xxwip_common3_pkg.change_code_division(
             gt_carriers_schedule_tab(ln_index).code_division,
             i_head_cd_dvsn_tab(ln_insert_cnt),
@@ -5933,16 +6106,37 @@ AS
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_api_expt;
           END IF;
+*****/
+          -- 代表配送先コード区分
+          i_head_cd_dvsn_tab(ln_insert_cnt) := lv_code_division;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 --
           -- 代表配送先コード
           i_head_ship_addr_cd_tab(ln_insert_cnt) := 
                             gt_carriers_schedule_tab(ln_index).shipping_address_code;
-          i_head_qty1_tab(ln_insert_cnt)           := 0 ;           -- 個数１
+--
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--          i_head_qty1_tab(ln_insert_cnt)           := 0 ;           -- 個数１
+          -- 個数１（小口個数を設定）
+          i_head_qty1_tab(ln_insert_cnt)           := gt_carriers_schedule_tab(ln_index).small_quantity ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+--
           i_head_qty2_tab(ln_insert_cnt)           := NULL ;        -- 個数２
-          i_head_deliv_wght1_tab(ln_insert_cnt)    := 0 ;           -- 重量１
+--
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--          i_head_deliv_wght1_tab(ln_insert_cnt)    := 0 ;           -- 重量１
+          i_head_deliv_wght1_tab(ln_insert_cnt)    := ln_weight ;           -- 重量１
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+--
           i_head_deliv_wght2_tab(ln_insert_cnt)    := NULL ;        -- 重量２
           i_head_cnsld_srhrg_tab(ln_insert_cnt)    := 0 ;           -- 混載割増金額
-          i_head_actual_ditnc_tab(ln_insert_cnt)   := 0 ;           -- 最長実際距離
+--
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--          i_head_actual_ditnc_tab(ln_insert_cnt)   := 0 ;           -- 最長実際距離
+          -- 最長実際距離
+          i_head_actual_ditnc_tab(ln_insert_cnt)   := lr_delivery_distance_tab.actual_distance ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+--
           i_head_cong_chrg_tab(ln_insert_cnt)      := NULL ;        -- 通行料
           i_head_pick_charge_tab(ln_insert_cnt)    := 0 ;           -- ピッキング料
           i_head_consolid_qty_tab(ln_insert_cnt)   := 0 ;           -- 混載数
@@ -6004,38 +6198,73 @@ AS
           -- 混載区分
           u_head_mixed_cd_tab(ln_update_cnt)       := 
                                 gt_carriers_schedule_tab(ln_index).mixed_code ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
           u_head_contract_rate_tab(ln_update_cnt)  := 0 ;    -- 契約運賃
---
           -- 差額（請求金額 － 諸料金）
           u_head_balance_tab(ln_update_cnt)        := NVL(lv_charged_amount, 0) - NVL(lv_many_rate, 0) ;
---
           u_head_total_amount_tab(ln_update_cnt)   := NVL(lv_many_rate, 0) ;    -- 合計
-          u_head_distance_tab(ln_update_cnt)       := 0 ;    -- 最長距離
+*****/
+          -- 契約運賃（重量=0にて運送費抽出）
+          u_head_contract_rate_tab(ln_update_cnt)  := lr_delivery_charges_tab.shipping_expenses ;
+--
+          -- 合計（運送費 + 諸料金）
+          u_head_total_amount_tab(ln_update_cnt)   := lr_delivery_charges_tab.shipping_expenses +
+                                                      NVL(lv_many_rate, 0) ;
+--
+          -- 差額（請求金額 － 合計）
+          u_head_balance_tab(ln_update_cnt)        := NVL(lv_charged_amount, 0) - 
+                                                      u_head_total_amount_tab(ln_update_cnt) ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+--
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--          u_head_distance_tab(ln_update_cnt)       := 0 ;    -- 最長距離
+          -- 最長距離（車立距離）
+          u_head_distance_tab(ln_update_cnt)       := lr_delivery_distance_tab.post_distance  ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
           -- 配送区分
           u_head_deliv_cls_tab(ln_update_cnt)      := 
                             gt_carriers_schedule_tab(ln_index).dellivary_classe ;
           -- 代表出庫倉庫コード
           u_head_whs_cd_tab(ln_update_cnt)         := gt_carriers_schedule_tab(ln_index).whs_code;
 --
-          -- 代表配送先コード
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
           xxwip_common3_pkg.change_code_division(
             gt_carriers_schedule_tab(ln_index).code_division,
             u_head_cd_dvsn_tab(ln_update_cnt),
             lv_errbuf,
             lv_retcode,
             lv_errmsg);
-          -- 代表配送先コード
-          u_head_ship_addr_cd_tab(ln_update_cnt) :=
-                            gt_carriers_schedule_tab(ln_index).shipping_address_code;
 --
           IF (lv_retcode = gv_status_error) THEN
             RAISE global_api_expt;
           END IF;
 --
-          u_head_qty1_tab(ln_update_cnt)           := 0 ;    -- 個数１
-          u_head_deliv_wght1_tab(ln_update_cnt)    := 0 ;    -- 重量１
+*****/
+          -- 代表配送先コード区分
+          u_head_cd_dvsn_tab(ln_update_cnt) := lv_code_division;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+--
+          -- 代表配送先コード
+          u_head_ship_addr_cd_tab(ln_update_cnt) :=
+                            gt_carriers_schedule_tab(ln_index).shipping_address_code;
+--
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--          u_head_qty1_tab(ln_update_cnt)           := 0 ;    -- 個数１
+--          u_head_deliv_wght1_tab(ln_update_cnt)    := 0 ;    -- 重量１
+          -- 個数１
+          u_head_qty1_tab(ln_update_cnt)           := gt_carriers_schedule_tab(ln_index).small_quantity ;
+          -- 重量１
+          u_head_deliv_wght1_tab(ln_update_cnt)    := ln_weight ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+--
           u_head_cnsld_srhrg_tab(ln_update_cnt)    := 0 ;    -- 混載割増金額
-          u_head_actual_ditnc_tab(ln_update_cnt)   := 0 ;    -- 最長実際距離
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--          u_head_actual_ditnc_tab(ln_update_cnt)   := 0 ;    -- 最長実際距離
+          -- 最長実際距離
+          u_head_actual_ditnc_tab(ln_update_cnt)   := lr_delivery_distance_tab.actual_distance ;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
           u_head_pick_charge_tab(ln_update_cnt)    := 0 ;    -- ピッキング料
           u_head_consolid_qty_tab(ln_update_cnt)   := 0 ;    -- 混載数
           -- 代表タイプ
@@ -6045,18 +6274,45 @@ AS
                             gt_carriers_schedule_tab(ln_index).weight_capacity_class ;
           u_head_out_cont_tab(ln_update_cnt)       := NULL ; -- 契約外区分
           u_head_trans_lcton_tab(ln_update_cnt)    := NULL ; -- 振替先
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
           u_head_output_flag_tab(ln_update_cnt)    := gv_ktg_yes;       -- 差異区分
           u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_no;        -- 支払確定区分
+*****/
+          -- 差異区分
+          IF (u_head_balance_tab(ln_update_cnt) <> 0 ) THEN
+            u_head_output_flag_tab(ln_update_cnt)  := gv_ktg_yes;
+          ELSE
+            u_head_output_flag_tab(ln_update_cnt)  := gv_ktg_no;
+          END IF;
+--
+          -- 支払確定区分
+          --   請求運賃 IS NULL の場合
+          IF (lv_charged_amount IS NULL ) THEN
+            u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_no;
+--
+          -- 差異区分 = Y の場合
+          ELSIF  (u_head_output_flag_tab(ln_update_cnt)  = gv_ktg_yes) THEN
+            u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_no;
+--
+          -- 差異区分 = N の場合
+          ELSE
+            u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_yes;
+          END IF;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 --
 -- ##### 20080805 Ver.1.5 ST事前確認障害 START #####
 --          u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--          IF (lv_defined_flag = gv_ktg_yes) THEN
           -- 元の支払確定区分 ＝ Y の場合
-          IF (lv_defined_flag = gv_ktg_yes) THEN
+          IF  (lv_defined_flag = gv_ktg_yes) THEN
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
             u_head_return_flag_tab(ln_update_cnt)    := gv_ktg_yes ;  -- 支払確定戻
 --
           -- 上記以外の場合
           ELSE
-            u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
+            u_head_return_flag_tab(ln_update_cnt)    := gv_ktg_no ;  -- 支払確定戻
           END IF;
 -- ##### 20080805 Ver.1.5 ST事前確認障害 END   #####
 --
@@ -7808,9 +8064,13 @@ AS
     AND   xd.judgement_date >= gd_target_date         -- 判断日 >= 締め日
 -- ##### 20080717 Ver.1.5 変更要求96,98 START #####
 --    AND   xd.goods_classe IS NOT NULL                 -- 商品区分
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/***** 伝票なし配車は全て再計算対象とする
     AND   xd.dispatch_type          IN (gv_car_normal, gv_carcan_target_y)  -- 配車タイプ
                                                                             --   1：通常配車
                                                                             --   2：伝票なし配車（リーフ小口）
+*****/
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 -- ##### 20080717 Ver.1.5 変更要求96,98 END   #####
     AND   xd.goods_classe           = xdec.goods_classe(+)          -- 商品区分
     AND   xd.delivery_company_code  = xdec.delivery_company_code(+) -- 運送業者
@@ -7905,8 +8165,12 @@ AS
     FOR ln_index IN  gt_exch_deliv_tab.FIRST.. gt_exch_deliv_tab.LAST LOOP
 --
 --2008/08/04 Add ↓
-      -- 伝票なし配車（リーフ小口）
-      IF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_y) THEN
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--      IF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_y) THEN
+      -- 伝票なし配車の場合
+      IF (gt_exch_deliv_tab(ln_index).dispatch_type IN (gv_carcan_target_y, 
+                                                        gv_carcan_target_n)) THEN
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
         -- **************************************************
         -- ***  配送距離アドオンマスタ抽出
         -- **************************************************
@@ -7926,8 +8190,19 @@ AS
           RAISE global_api_expt;
         END IF;
 --
-        -- 小口距離を設定
-        gt_exch_deliv_tab(ln_index).distance        := lr_delivery_distance_tab.small_distance;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+--        gt_exch_deliv_tab(ln_index).distance        := lr_delivery_distance_tab.small_distance;
+        -- 伝票なし配車（リーフ小口）の場合
+        IF (gt_exch_deliv_tab(ln_index).dispatch_type = gv_carcan_target_y) THEN
+          -- 小口距離を設定
+          gt_exch_deliv_tab(ln_index).distance        := lr_delivery_distance_tab.small_distance;
+--
+        -- 伝票なし配車（リーフ小口以外）の場合
+        ELSE
+          -- 車立距離を設定
+          gt_exch_deliv_tab(ln_index).distance        := lr_delivery_distance_tab.post_distance;
+        END IF;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
         gt_exch_deliv_tab(ln_index).actual_distance := lr_delivery_distance_tab.actual_distance;
       END IF;
 --2008/08/04 Add ↑
@@ -8093,6 +8368,8 @@ AS
                                             ueh_head_total_amount_tab(ln_index);
 --
       -- *** 差異区分 ***
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
       -- 請求運賃 = NULLの場合
       IF (gt_exch_deliv_tab(ln_index).charged_amount IS NULL) THEN
         -- Y を設定
@@ -8109,8 +8386,19 @@ AS
         -- Y を設定
         ueh_head_output_flag_tab(ln_index) := gv_ktg_yes ;
       END IF;
+*****/
+      -- 差額≠０の場合
+      IF (ueh_head_balance_tab(ln_index) <> 0) THEN
+        ueh_head_output_flag_tab(ln_index) := gv_ktg_yes ;
+      -- 差額＝０の場合
+      ELSE
+        ueh_head_output_flag_tab(ln_index) := gv_ktg_no ;
+      END IF;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 --
       -- *** 支払確定区分 ***
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
       -- 差異区分 = N の場合
       IF (ueh_head_output_flag_tab(ln_index) = gv_ktg_no) THEN
         ueh_head_defined_flag_tab(ln_index) :=  gv_ktg_yes;
@@ -8119,8 +8407,22 @@ AS
       ELSE
         ueh_head_defined_flag_tab(ln_index) :=  gv_ktg_no;
       END IF;
+*****/
+      -- 請求金額＝NULL
+      IF (gt_exch_deliv_tab(ln_index).charged_amount IS NULL) THEN
+        ueh_head_defined_flag_tab(ln_index) :=  gv_ktg_no;
+      -- 差異区分＝YES
+      ELSIF (ueh_head_output_flag_tab(ln_index) = gv_ktg_yes) THEN
+        ueh_head_defined_flag_tab(ln_index) :=  gv_ktg_no;
+      -- 差異区分＝NO
+      ELSE
+        ueh_head_defined_flag_tab(ln_index) :=  gv_ktg_yes;
+      END IF;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 --
       -- *** 支払確定戻 ***
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
+/*****
       -- 元の支払確定区分 = Y 且つ 設定する支払確定区分 = N の場合
       IF ((gt_exch_deliv_tab(ln_index).defined_flag = gv_ktg_yes )
         AND (ueh_head_defined_flag_tab(ln_index) = gv_ktg_no)) THEN
@@ -8132,6 +8434,15 @@ AS
         -- N を設定
         ueh_head_return_flag_tab(ln_index)  := gv_ktg_no ;
       END IF;
+*****/
+      -- 元の支払確定区分 = Y の場合
+      IF (gt_exch_deliv_tab(ln_index).defined_flag = gv_ktg_yes ) THEN
+        ueh_head_return_flag_tab(ln_index)  := gv_ktg_yes ;
+      -- 元の支払確定区分 = N の場合
+      ELSE
+        ueh_head_return_flag_tab(ln_index)  := gv_ktg_no ;
+      END IF;
+-- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 --
 --2008/08/04 Add ↓
       ueh_head_distance_type_tab(ln_index)     := gt_exch_deliv_tab(ln_index).distance;

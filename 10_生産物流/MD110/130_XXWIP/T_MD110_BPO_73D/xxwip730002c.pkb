@@ -7,7 +7,7 @@ AS
  * Description      : 運賃更新
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_733
  * MD.070           : 運賃更新 T_MD070_BPO_73D
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/04/03    1.0  Oracle 小松 淳    初版作成
  *  2008/07/11    1.1  Oracle 山根 一浩  変更要求＃96、＃98対応
  *  2008/07/23    1.2  Oracle 野村 正幸  内部変更#132対応
+ *  2008/09/16    1.3  Oracle 吉田 夏樹  T_S_570 対応
  *
  *****************************************************************************************/
 --
@@ -155,6 +156,9 @@ AS
     delivery_company_code    xxwip_deliverys.delivery_company_code%TYPE,    -- 運送業者
     delivery_no              xxwip_deliverys.delivery_no%TYPE,              -- 配送No
     invoice_no               xxwip_deliverys.invoice_no%TYPE,               -- 送り状No
+-- ##### 20080916 Ver.1.3 T_S_570対応 START #####
+    invoice_no2              xxwip_deliverys.invoice_no2%TYPE,              -- 送り状No2
+-- ##### 20080916 Ver.1.3 T_S_570対応 END #####
     payments_judgment_classe xxwip_deliverys.payments_judgment_classe%TYPE, -- 支払判断区分
     ship_date                xxwip_deliverys.ship_date%TYPE,                -- 出庫日
     arrival_date             xxwip_deliverys.arrival_date%TYPE,             -- 到着日
@@ -231,6 +235,11 @@ AS
   -- (登録用)送り状No
   TYPE t_ins_invoice_no IS TABLE OF xxwip_deliverys.invoice_no%TYPE
   INDEX BY BINARY_INTEGER;
+-- ##### 20080916 Ver.1.3 T_S_570対応 START #####
+  -- (登録用)送り状No2
+  TYPE t_ins_invoice_no2 IS TABLE OF xxwip_deliverys.invoice_no2%TYPE
+  INDEX BY BINARY_INTEGER;
+-- ##### 20080916 Ver.1.3 T_S_570対応 END #####
   -- (登録用)支払請求区分
   TYPE t_ins_p_b_classe IS TABLE OF xxwip_deliverys.p_b_classe%TYPE
   INDEX BY BINARY_INTEGER;
@@ -350,6 +359,9 @@ AS
   tab_ins_delivery_company_code         t_ins_delivery_company_code;
   tab_ins_delivery_no                   t_ins_delivery_no;
   tab_ins_invoice_no                    t_ins_invoice_no;
+-- ##### 20080916 Ver.1.3 T_S_570対応 START #####
+  tab_ins_invoice_no2                   t_ins_invoice_no2;
+-- ##### 20080916 Ver.1.3 T_S_570対応 END #####
   tab_ins_p_b_classe                    t_ins_p_b_classe;
   tab_ins_payments_judgment_clas        t_ins_payments_judgment_classe;
   tab_ins_ship_date                     t_ins_ship_date;
@@ -462,6 +474,11 @@ AS
   -- (更新用)送り状No
   TYPE t_upd_invoice_no IS TABLE OF xxwip_deliverys.invoice_no%TYPE
   INDEX BY BINARY_INTEGER;
+-- ##### 20080916 Ver.1.3 T_S_570対応 START #####
+  -- (更新用)送り状No2
+  TYPE t_upd_invoice_no2 IS TABLE OF xxwip_deliverys.invoice_no2%TYPE
+  INDEX BY BINARY_INTEGER;
+-- ##### 20080916 Ver.1.3 T_S_570対応 END #####
   -- (更新用)支払判断区分
   TYPE t_upd_payments_judgment_classe IS TABLE OF xxwip_deliverys.payments_judgment_classe%TYPE
   INDEX BY BINARY_INTEGER;
@@ -528,6 +545,9 @@ AS
 --
   tab_upd_delivery_company_code         t_upd_delivery_company_code;     -- (更新用)運送業者
   tab_upd_invoice_no                    t_upd_invoice_no;                -- (更新用)送り状No
+-- ##### 20080916 Ver.1.3 T_S_570対応 START #####
+  tab_upd_invoice_no2                   t_upd_invoice_no2;               -- (更新用)送り状No2
+-- ##### 20080916 Ver.1.3 T_S_570対応 END #####
   tab_upd_payments_judgment_clas        t_upd_payments_judgment_classe;  -- (更新用)支払判断区分
   tab_upd_ship_date                     t_upd_ship_date;                 -- (更新用)出庫日
   tab_upd_arrival_date                  t_upd_arrival_date;              -- (更新用)到着日
@@ -1102,6 +1122,9 @@ AS
       SELECT xd.delivery_company_code,       -- 運送業者
              xd.delivery_no,                 -- 配送No
              xd.invoice_no,                  -- 送り状No
+-- ##### 20080916 Ver.1.3 T_S_570対応 START #####
+             xd.invoice_no2,                 -- 送り状No2
+-- ##### 20080916 Ver.1.3 T_S_570対応 END #####
              xd.payments_judgment_classe,    -- 支払判断区分
              xd.ship_date,                   -- 出庫日
              xd.arrival_date,                -- 到着日
@@ -1346,6 +1369,9 @@ AS
                                                                                  -- 運送業者
       tab_ins_delivery_no(gn_ins_cnt)           := ir_xd_data.delivery_no;       -- 配送No
       tab_ins_invoice_no(gn_ins_cnt)            := ir_xd_data.invoice_no;        -- 送り状No
+-- ##### 20080916 Ver.1.3 T_S_570対応 START #####
+      tab_ins_invoice_no2(gn_ins_cnt)           := ir_xd_data.invoice_no2;        -- 送り状No2
+-- ##### 20080916 Ver.1.3 T_S_570対応 END #####
       tab_ins_p_b_classe(gn_ins_cnt)            := gv_paycharge_type_2;          -- 支払請求区
       tab_ins_payments_judgment_clas(gn_ins_cnt) := ir_xd_data.payments_judgment_classe;
                                                                                  -- 支払判断区
@@ -1404,6 +1430,9 @@ AS
 --
       tab_upd_delivery_company_code(gn_upd_cnt)     := ir_xd_data.delivery_company_code;    -- 運送業者
       tab_upd_invoice_no(gn_upd_cnt)                := ir_xd_data.invoice_no;               -- 送り状No
+-- ##### 20080916 Ver.1.3 T_S_570対応 START #####
+      tab_upd_invoice_no2(gn_upd_cnt)               := ir_xd_data.invoice_no2;              -- 送り状No2
+-- ##### 20080916 Ver.1.3 T_S_570対応 END #####
       tab_upd_payments_judgment_clas(gn_upd_cnt)    := ir_xd_data.payments_judgment_classe; -- 支払判断区分
       tab_upd_ship_date(gn_upd_cnt)                 := ir_xd_data.ship_date;              -- 出庫日
       tab_upd_arrival_date(gn_upd_cnt)              := ir_xd_data.arrival_date;           -- 到着日
@@ -1520,6 +1549,9 @@ AS
         delivery_company_code,      -- 運送業者
         delivery_no,                -- 配送No
         invoice_no,                 -- 送り状No
+-- ##### 20080916 Ver.1.3 T_S_570対応 START #####
+        invoice_no2,                -- 送り状No2
+-- ##### 20080916 Ver.1.3 T_S_570対応 END #####
         p_b_classe,                 -- 支払請求区分
         payments_judgment_classe,   -- 支払判断区分
         ship_date,                  -- 出庫日
@@ -1572,6 +1604,9 @@ AS
         tab_ins_delivery_company_code(ln_index),      -- 運送業者
         tab_ins_delivery_no(ln_index),                -- 配送No
         tab_ins_invoice_no(ln_index),                 -- 送り状No
+-- ##### 20080916 Ver.1.3 T_S_570対応 START #####
+        tab_ins_invoice_no2(ln_index),                -- 送り状No2
+-- ##### 20080916 Ver.1.3 T_S_570対応 END #####
         tab_ins_p_b_classe(ln_index),                 -- 支払請求区分
         tab_ins_payments_judgment_clas(ln_index),     -- 支払判断区分
         tab_ins_ship_date(ln_index),                  -- 出庫日
@@ -1707,6 +1742,9 @@ AS
 -- ##### 20080723 Ver.1.2 内部変更#132対応 START #####
              delivery_company_code    = tab_upd_delivery_company_code(ln_index),    -- 運送業者
              invoice_no               = tab_upd_invoice_no(ln_index),               -- 送り状No
+-- ##### 20080916 Ver.1.3 T_S_570対応 START #####
+             invoice_no2              = tab_upd_invoice_no2(ln_index),              -- 送り状No2
+-- ##### 20080916 Ver.1.3 T_S_570対応 END #####
              payments_judgment_classe = tab_upd_payments_judgment_clas(ln_index),   -- 支払判断区分
              ship_date                = tab_upd_ship_date(ln_index),                -- 出庫日
              arrival_date             = tab_upd_arrival_date(ln_index),             -- 到着日

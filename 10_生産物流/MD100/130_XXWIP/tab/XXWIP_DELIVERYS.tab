@@ -4,6 +4,7 @@ CREATE TABLE xxwip.xxwip_deliverys
   delivery_company_code       VARCHAR2(4) NOT NULL,
   delivery_no                 VARCHAR2(12)NOT NULL,
   invoice_no                  VARCHAR2(20),
+  invoice_no2                 VARCHAR2(20),
   p_b_classe                  VARCHAR2(1) NOT NULL,
   payments_judgment_classe    VARCHAR2(1),
   ship_date                   DATE        NOT NULL,
