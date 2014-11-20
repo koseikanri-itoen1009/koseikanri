@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS016A03C(body)
  * Description      : 人事システム向け、販売実績賞与データ(I/F)作成処理
  * MD.050           : A03_人事システム向け販売実績データの作成（月次・賞与） COS_016_A03
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/02/26    1.4   T.kitajima       従業員ビューの適用日条件設定
  *  2009/10/16    1.5   S.Miyakoshi      [0001397]二重計上の対応
  *  2010/01/22    1.6   S.Miyakoshi      [E_本稼動_01234](A-15)異常終了時のログ出力内容の変更
+ *  2010/04/20    1.7   K.Atsushiba      [E_本稼動_02151]本部コード対応
  *
  *****************************************************************************************/
 --
@@ -2862,20 +2863,43 @@ AS
     -- A-4 対象従業員取得処理
     CURSOR data_cur
     IS
--- ************************ 2009/10/19 S.Miyakoshi Var1.5 MOD START ************************ --
---      SELECT division_code           as div_cd,             --本部コード
+-- == 2010/04/20 1.7 Mod START ===============================================================
+---- ************************ 2009/10/19 S.Miyakoshi Var1.5 MOD START ************************ --
+----      SELECT division_code           as div_cd,             --本部コード
+--      SELECT DISTINCT
+--             division_code           AS div_cd,             --本部コード
+---- ************************ 2009/10/19 S.Miyakoshi Var1.5 MOD  END  ************************ --
+--             area_code               AS area,               --地区コード
+--             base_code               AS base,               --拠点コード
+--             group_cd                AS group_cd,           --グループコード
+--             employee_number         AS code,               --従業員コード
+--             ori_division_code       AS ori_division_code   --オリジナル本部コード
       SELECT DISTINCT
-             division_code           AS div_cd,             --本部コード
--- ************************ 2009/10/19 S.Miyakoshi Var1.5 MOD  END  ************************ --
-             area_code               AS area,               --地区コード
-             base_code               AS base,               --拠点コード
-             group_cd                AS group_cd,           --グループコード
-             employee_number         AS code,               --従業員コード
-             ori_division_code       AS ori_division_code   --オリジナル本部コード
+             CASE
+               WHEN aff_effective_date <= ld_month_next_date  THEN
+                    new_area_code
+               ELSE old_area_code
+             END                           AS area,               --地区コード
+             CASE
+               WHEN aff_effective_date <= ld_month_next_date  THEN
+                    new_division_code
+               ELSE old_division_code
+             END                           AS div_cd,             --本部コード
+             CASE
+               WHEN aff_effective_date <= ld_month_next_date  THEN
+                    new_ori_division_code
+               ELSE old_ori_division_code
+             END                           AS ori_division_code,    --オリジナル本部コード
+             base_code                     AS base,                 --拠点コード
+             group_cd                      AS group_cd,             --グループコード
+             employee_number               AS code                  --従業員コード
+-- == 2010/04/20 1.7 Mod End ===============================================================
       FROM XXCOS_EMPLOYEE_V
       WHERE (announcement_start_day <= ld_month_next_date
         AND  announcement_end_day   >= ld_month_first_date)
-        AND ld_month_next_date BETWEEN add_on_start_date AND add_on_end_date
+-- == 2010/04/20 1.7 Del START ===============================================================
+--        AND ld_month_next_date BETWEEN add_on_start_date AND add_on_end_date
+-- == 2010/04/20 1.7 Del END ===============================================================
         AND ld_month_next_date BETWEEN effective_start_date AND effective_end_date
         AND ld_month_next_date BETWEEN asaiment_start_date AND asaiment_end_date
       ;
