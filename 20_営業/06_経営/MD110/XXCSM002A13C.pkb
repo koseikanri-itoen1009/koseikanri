@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
  * Package Name     : XXCSM002A13C(body)
  * Description      : 商品計画リスト(時系列_本数単位)出力
  * MD.050           : 商品計画リスト(時系列_本数単位)出力 MD050_CSM_002_A13
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -56,6 +56,7 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
  *  2009/05/27    1.8   M.Ohtsuki       [障害T1_1199] 商品データの年間計の不具合の対応
  *  2010/03/24    1.9   N.Abe           [E_本稼動_01906] PT対応(ヒント句追加)
  *  2011/01/07    1.10  SCS OuKou       [E_本稼動_05803]
+ *  2012/12/19    1.11  SCSK K.Taniguchi[E_本稼動_09949] 新旧原価選択可能対応
  *
  *****************************************************************************************/
 --
@@ -133,6 +134,13 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
   cv_group_C                CONSTANT VARCHAR2(10)  := 'C' ;                         -- 商品群C
   cv_group_D                CONSTANT VARCHAR2(10)  := 'D' ;                         -- 商品群D
   cv_group_N                CONSTANT VARCHAR2(10)  := 'N' ;                         -- 商品群N
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  cv_flg_y                  CONSTANT VARCHAR2(1)   := 'Y';                          -- フラグY
+  cv_flg_n                  CONSTANT VARCHAR2(1)   := 'N';                          -- フラグN
+  cv_whse_code              CONSTANT VARCHAR2(3)   := '000';                        -- 原価倉庫
+  cv_new_cost               CONSTANT VARCHAR2(10)  := '10';                         -- パラメータ：新旧原価区分（新原価）
+  cv_old_cost               CONSTANT VARCHAR2(10)  := '20';                         -- パラメータ：新旧原価区分（旧原価）
+--//+ADD END E_本稼動_09949 K.Taniguchi
 -- 
   -- ===============================
   -- ユーザー定義グローバル変数 
@@ -145,6 +153,10 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
   gv_genkacd               VARCHAR2(200);                                      -- 原価種別
   gv_genkanm               VARCHAR2(200);                                      -- 原価種別名
   gv_kaisou                VARCHAR2(2);                                        -- 階層
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  gv_new_old_cost_class    VARCHAR2(2);                                        -- 新旧原価区分(パラメータ格納用)
+  gd_gl_start_date         DATE;                                               -- 起動時の年度開始日
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --
   -- ===============================
   -- 共用メッセージ番号
@@ -164,6 +176,9 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
   -- ===============================
 --  
   cv_csm1_msg_00005           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00005';         -- プロファイル取得エラーメッセージ
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  cv_csm1_msg_10168           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10168';         -- 年度開始日取得エラー
+--//+ADD END E_本稼動_09949 K.Taniguchi
   cv_csm1_msg_00092           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00092';         -- 商品計画リスト(時系列:本数単位)ヘッダ用メッセージ
   cv_csm1_msg_00048           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00048';         -- 入力パラメータ取得メッセージ(拠点コード)
   cv_csm1_msg_00087           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00087';         -- 商品計画未設定メッセージ
@@ -173,6 +188,9 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
   cv_csm1_msg_10015           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10015';         -- 入力パラメータ取得メッセージ（対象年度）
   cv_csm1_msg_10016           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10016';         -- 入力パラメータ取得メッセージ（階層）
   cv_csm1_msg_10017           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10017';         -- 入力パラメータ取得メッセージ（原価種別名）
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  cv_csm1_msg_10167           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10167';         -- 入力パラメータ取得メッセージ（新旧原価区分）
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --
   -- ===============================
   -- トークン定義
@@ -186,6 +204,11 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
   cv_tkn_profile                   CONSTANT VARCHAR2(100) := 'PROF_NAME';       -- プロファイル名
   cv_tkn_count                     CONSTANT VARCHAR2(100) := 'COUNT';           -- 処理件数
   cv_tkn_sysdate                   CONSTANT VARCHAR2(100) := 'SAKUSEI_NICHIJI'; -- 作成日時
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  cv_tkn_new_old_cost_cls          CONSTANT VARCHAR2(100) := 'NEW_OLD_COST_CLASS';  -- 新旧原価区分
+  cv_tkn_sobid                     CONSTANT VARCHAR2(100) := 'SET_OF_BOOKS_ID';     -- 会計帳簿ID
+  cv_tkn_process_date              CONSTANT VARCHAR2(100) := 'PROCESS_DATE';        -- 業務日付
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --
   -- =============================== 
   -- プロファイル
@@ -203,6 +226,9 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
   lv_prf_cd_price_e                 CONSTANT VARCHAR2(100) := 'XXCSM1_PLANLIST_ITEM_6';     -- XXCMN:営業原価
   lv_prf_cd_price_h                 CONSTANT VARCHAR2(100) := 'XXCSM1_PLANLIST_ITEM_7';     -- XXCMN:標準原価
   lv_prf_cd_unit_hon                CONSTANT VARCHAR2(100) := 'XXCSM1_UNIT_ITEM_1';         -- XXCMN:本
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  cv_prf_gl_set_of_bks_id           CONSTANT VARCHAR2(100) := 'GL_SET_OF_BKS_ID';           -- 会計帳簿IDプロファイル名
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --
 -- プロファイル・名称
   lv_prf_cd_sales_val                   VARCHAR2(100) ;                                 -- XXCMN:売上
@@ -216,6 +242,10 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
   lv_prf_cd_price_e_val                 VARCHAR2(100) ;                                 -- XXCMN:営業原価
   lv_prf_cd_price_h_val                 VARCHAR2(100) ;                                 -- XXCMN:標準原価
   lv_prf_cd_unit_hon_val                VARCHAR2(100) ;                                 -- XXCMN:本
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  gv_prf_gl_set_of_bks_id               VARCHAR2(100) ;                                 -- 会計帳簿ID(Char)
+  gn_prf_gl_set_of_bks_id               NUMBER;                                         -- 会計帳簿ID
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --
     /****************************************************************************
    * Procedure Name   : init
@@ -246,6 +276,9 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
     lv_pram_op_2                VARCHAR2(100);
     lv_pram_op_3                VARCHAR2(100);
     lv_pram_op_4                VARCHAR2(100);
+--//+ADD START E_本稼動_09949 K.Taniguchi
+    lv_pram_op_5                VARCHAR2(100);
+--//+ADD END E_本稼動_09949 K.Taniguchi
     -- プロファイル値取得失敗時 トークン値格納用
     lv_tkn_value                VARCHAR2(100);
 --
@@ -305,8 +338,25 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
     -- LOGに出力
     fnd_file.put_line(
                       which  => FND_FILE.LOG
-                     ,buff   => lv_pram_op_4 || CHR(10)
+--//+UPD START E_本稼動_09949 K.Taniguchi
+--                   ,buff   => lv_pram_op_4 || CHR(10)
+                     ,buff   => lv_pram_op_4
+--//+UPD END E_本稼動_09949 K.Taniguchi
                      );
+--//+ADD START E_本稼動_09949 K.Taniguchi
+    -- 新旧原価区分(INパラメータの出力)
+    lv_pram_op_5 := xxccp_common_pkg.get_msg(                                   -- 階層の出力
+                      iv_application  => cv_xxcsm                               -- アプリケーション短縮名
+                     ,iv_name         => cv_csm1_msg_10167                      -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_new_old_cost_cls                -- トークンコード1（新旧原価区分）
+                     ,iv_token_value1 => gv_new_old_cost_class                  -- トークン値1
+                     );
+    -- LOGに出力
+    fnd_file.put_line(
+                      which  => FND_FILE.LOG
+                     ,buff   => lv_pram_op_5 || CHR(10)
+                     );
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --
     -- ===========================================================================
     -- プロファイル情報の取得
@@ -360,6 +410,13 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
                     name => lv_prf_cd_unit_hon
                    ,val  => lv_prf_cd_unit_hon_val
                    ); -- 単位：本
+--//+ADD START E_本稼動_09949 K.Taniguchi
+    FND_PROFILE.GET(
+                    name => cv_prf_gl_set_of_bks_id
+                   ,val  => gv_prf_gl_set_of_bks_id
+                   ); -- 会計帳簿ID
+    gn_prf_gl_set_of_bks_id := TO_NUMBER(gv_prf_gl_set_of_bks_id);
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --
     -- =========================================================================
     -- プロファイル値取得に失敗した場合
@@ -397,6 +454,11 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
         -- 単位：本
     ELSIF (lv_prf_cd_unit_hon_val IS NULL) THEN
       lv_tkn_value := lv_prf_cd_unit_hon;
+--//+ADD START E_本稼動_09949 K.Taniguchi
+        -- 会計帳簿ID
+    ELSIF (gn_prf_gl_set_of_bks_id IS NULL) THEN
+      lv_tkn_value := cv_prf_gl_set_of_bks_id;
+--//+ADD END E_本稼動_09949 K.Taniguchi
     END IF;
 --
     -- エラーメッセージ取得
@@ -418,6 +480,45 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
        gv_genkanm := lv_prf_cd_price_h_val; -- 標準原価
    END IF;
 --
+--//+ADD START E_本稼動_09949 K.Taniguchi
+    -- =====================
+    -- 起動時の年度開始日取得
+    -- =====================
+    BEGIN
+      -- 年度開始日
+      SELECT  gp.start_date             AS start_date             -- 年度開始日
+      INTO    gd_gl_start_date                                    -- 起動時の年度開始日
+      FROM    gl_sets_of_books          gsob                      -- 会計帳簿マスタ
+             ,gl_periods                gp                        -- 会計カレンダ
+      WHERE   gsob.set_of_books_id      = gn_prf_gl_set_of_bks_id -- 会計帳簿ID
+      AND     gp.period_set_name        = gsob.period_set_name    -- カレンダ名
+      AND     gp.period_year            = (
+                                            -- 起動時の年度
+                                            SELECT  gp2.period_year           AS period_year            -- 年度
+                                            FROM    gl_sets_of_books          gsob2                     -- 会計帳簿マスタ
+                                                   ,gl_periods                gp2                       -- 会計カレンダ
+                                            WHERE   gsob2.set_of_books_id     = gn_prf_gl_set_of_bks_id -- 会計帳簿ID
+                                            AND     gp2.period_set_name       = gsob2.period_set_name   -- カレンダ名
+                                            AND     gd_process_date           BETWEEN gp2.start_date    -- 業務日付時点
+                                                                              AND     gp2.end_date
+                                          )
+      AND     gp.adjustment_period_flag = cv_flg_n              -- 調整会計期間外
+      AND     gp.period_num             = 1                     -- 年度開始月
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcsm
+                      ,iv_name         => cv_csm1_msg_10168
+                      ,iv_token_name1  => cv_tkn_sobid
+                      ,iv_token_value1 => TO_CHAR(gn_prf_gl_set_of_bks_id)       -- 会計帳簿ID
+                      ,iv_token_name2  => cv_tkn_process_date
+                      ,iv_token_value2 => TO_CHAR(gd_process_date, 'YYYY/MM/DD') -- 業務日付
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --#################################  固定例外処理部  #############################
 --
   EXCEPTION
@@ -1554,6 +1655,67 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
 --
 --###########################  固定部 END   ####################################
 --
+--//+UPD START E_本稼動_09949 K.Taniguchi
+--// SELECT句でCASE式を使用⇒GROUP BY句での2重の記述をさけるため
+--// FROM句でのインラインビュー化を行います。
+--// またヒント句がない方が良い実行計画となるためヒント句は削除します。
+----============================================
+----  データの抽出【商品】カーソル
+----============================================
+--    CURSOR   
+--        get_item_data_cur(
+--                          iv_kyoten_cd      IN VARCHAR2                         -- 拠点コード
+--                          )
+--    IS
+---- == 2010/03/24 V1.9 Modified START ===============================================================
+----      SELECT   
+--      SELECT /*+ LEADING(xiph xipl) */
+---- == 2010/03/24 V1.9 Modified END   ===============================================================
+--             xipl.month_no                          AS  month                    -- 月
+--            ,SUM(NVL(xipl.amount,0))                AS  amount                   -- 数量
+--            ,SUM(NVL(xipl.sales_budget,0))          AS  sales                    -- 売上金額
+--            ,SUM(NVL(xipl.amount_gross_margin,0))   AS  margin                   -- 粗利益額
+--            ,xcgv.group1_cd                         AS  group_cd_1               -- 商品群1桁コード
+--            ,xcgv.group1_nm                         AS  group_nm_1               -- 商品群1桁名称
+--            ,xcgv.group4_cd                         AS  group_cd_4               -- 商品群4桁コード
+--            ,xcgv.group4_nm                         AS  group_nm_4               -- 商品群4桁名称
+--            ,xcgv.item_cd                           AS  item_id                  -- 品目コード
+--            ,xcgv.item_nm                           AS  item_nm                  -- 品目名称
+--            ,DECODE(gv_genkacd
+--                 ,cn_base_price,xcgv.now_item_cost
+--                 ,cn_bus_price,xcgv.now_business_cost
+--                 ,0)                                AS  base_price               -- 10:標準原価 20:営業原価
+--            ,NVL(xcgv.now_unit_price,0)             AS  con_price                -- 定価
+--      FROM     
+--            xxcsm_item_plan_lines                   xipl                         -- 商品計画明細テーブル
+--            ,xxcsm_item_plan_headers                xiph                         -- 商品計画ヘッダテーブル
+--            ,xxcsm_commodity_group4_v               xcgv                         -- 政策群４ビュー
+--      WHERE    
+--             xipl.item_plan_header_id                = xiph.item_plan_header_id   -- 商品計画ヘッダID
+--      AND   xcgv.item_cd                             = xipl.item_no               -- 商品コード
+--      AND   xiph.plan_year                           = gn_taisyoym               -- 対象年度
+--      AND   xiph.location_cd                         = iv_kyoten_cd              -- 拠点コード
+--      AND   xipl.item_kbn                            <> '0'                      -- 商品区分(商品群以外)
+---- START  DELETE  DATE:2010/12/20  AUTHOR:OUKOU  CONTENT:E_本稼動_05803
+----      AND   xcgv.unit_of_issue                       = lv_prf_cd_unit_hon_val    -- 単位(本)
+---- END    DELETE  DATE:2010/12/20  AUTHOR:OUKOU  CONTENT:E_本稼動_05803
+--      GROUP BY
+--               xipl.month_no                       -- 月
+--              ,xcgv.group1_cd                      -- 商品群1桁コード
+--              ,xcgv.group1_nm                      -- 商品群1桁名称
+--              ,xcgv.group4_cd                      -- 商品群4桁コード
+--              ,xcgv.group4_nm                      -- 商品群4桁名称
+--              ,xcgv.item_cd                        -- 商品コード
+--              ,xcgv.item_nm                        -- 商品名称
+--              ,xcgv.now_unit_price                 -- 定価
+--              ,xcgv.now_item_cost                  -- 標準原価
+--              ,xcgv.now_business_cost              -- 標準原価
+--      ORDER BY 
+--                 group_cd_1         ASC            -- 商品群1桁コード
+--                ,group_cd_4         ASC            -- 商品群4桁コード
+--                ,item_cd            ASC            -- 商品コード
+--    ;
+--
 --============================================
 --  データの抽出【商品】カーソル
 --============================================
@@ -1562,54 +1724,150 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
                           iv_kyoten_cd      IN VARCHAR2                         -- 拠点コード
                           )
     IS
--- == 2010/03/24 V1.9 Modified START ===============================================================
---      SELECT   
-      SELECT /*+ LEADING(xiph xipl) */
--- == 2010/03/24 V1.9 Modified END   ===============================================================
-             xipl.month_no                          AS  month                    -- 月
-            ,SUM(NVL(xipl.amount,0))                AS  amount                   -- 数量
-            ,SUM(NVL(xipl.sales_budget,0))          AS  sales                    -- 売上金額
-            ,SUM(NVL(xipl.amount_gross_margin,0))   AS  margin                   -- 粗利益額
-            ,xcgv.group1_cd                         AS  group_cd_1               -- 商品群1桁コード
-            ,xcgv.group1_nm                         AS  group_nm_1               -- 商品群1桁名称
-            ,xcgv.group4_cd                         AS  group_cd_4               -- 商品群4桁コード
-            ,xcgv.group4_nm                         AS  group_nm_4               -- 商品群4桁名称
-            ,xcgv.item_cd                           AS  item_id                  -- 品目コード
-            ,xcgv.item_nm                           AS  item_nm                  -- 品目名称
+      SELECT
+             sub.month_no                           AS  month                    -- 月
+            ,SUM(NVL(sub.amount,0))                 AS  amount                   -- 数量
+            ,SUM(NVL(sub.sales_budget,0))           AS  sales                    -- 売上金額
+            ,SUM(NVL(sub.amount_gross_margin,0))    AS  margin                   -- 粗利益額
+            ,sub.group1_cd                          AS  group_cd_1               -- 商品群1桁コード
+            ,sub.group1_nm                          AS  group_nm_1               -- 商品群1桁名称
+            ,sub.group4_cd                          AS  group_cd_4               -- 商品群4桁コード
+            ,sub.group4_nm                          AS  group_nm_4               -- 商品群4桁名称
+            ,sub.item_cd                            AS  item_id                  -- 品目コード
+            ,sub.item_nm                            AS  item_nm                  -- 品目名称
             ,DECODE(gv_genkacd
-                 ,cn_base_price,xcgv.now_item_cost
-                 ,cn_bus_price,xcgv.now_business_cost
+                 ,cn_base_price,sub.now_item_cost
+                 ,cn_bus_price, sub.now_business_cost
                  ,0)                                AS  base_price               -- 10:標準原価 20:営業原価
-            ,NVL(xcgv.now_unit_price,0)             AS  con_price                -- 定価
-      FROM     
-            xxcsm_item_plan_lines                   xipl                         -- 商品計画明細テーブル
-            ,xxcsm_item_plan_headers                xiph                         -- 商品計画ヘッダテーブル
-            ,xxcsm_commodity_group4_v               xcgv                         -- 政策群４ビュー
-      WHERE    
-             xipl.item_plan_header_id                = xiph.item_plan_header_id   -- 商品計画ヘッダID
-      AND   xcgv.item_cd                             = xipl.item_no               -- 商品コード
-      AND   xiph.plan_year                           = gn_taisyoym               -- 対象年度
-      AND   xiph.location_cd                         = iv_kyoten_cd              -- 拠点コード
-      AND   xipl.item_kbn                            <> '0'                      -- 商品区分(商品群以外)
--- START  DELETE  DATE:2010/12/20  AUTHOR:OUKOU  CONTENT:E_本稼動_05803
---      AND   xcgv.unit_of_issue                       = lv_prf_cd_unit_hon_val    -- 単位(本)
--- END    DELETE  DATE:2010/12/20  AUTHOR:OUKOU  CONTENT:E_本稼動_05803
+            ,NVL(sub.now_unit_price,0)              AS  con_price                -- 定価
+      FROM
+      (
+          SELECT
+                 xipl.month_no                          AS  month_no                 -- 月
+                ,xipl.amount                            AS  amount                   -- 数量
+                ,xipl.sales_budget                      AS  sales_budget             -- 売上金額
+                ,xipl.amount_gross_margin               AS  amount_gross_margin      -- 粗利益額
+                ,xcgv.group1_cd                         AS  group1_cd                -- 商品群1桁コード
+                ,xcgv.group1_nm                         AS  group1_nm                -- 商品群1桁名称
+                ,xcgv.group4_cd                         AS  group4_cd                -- 商品群4桁コード
+                ,xcgv.group4_nm                         AS  group4_nm                -- 商品群4桁名称
+                ,xcgv.item_cd                           AS  item_cd                  -- 品目コード
+                ,xcgv.item_nm                           AS  item_nm                  -- 品目名称
+                 --
+                 -- 標準原価
+                 -- パラメータ：新旧原価区分
+                ,CASE gv_new_old_cost_class
+                   --
+                   -- 10：新原価 選択時
+                   WHEN cv_new_cost THEN
+                     NVL(xcgv.now_item_cost, 0)
+                   --
+                   -- 20：旧原価 選択時
+                   WHEN cv_old_cost THEN
+                     NVL(
+                           (
+                             -- 標準原価マスタより前年度の標準原価を取得
+                             SELECT SUM(ccmd.cmpnt_cost) AS cmpnt_cost                    -- 標準原価
+                             FROM   cm_cmpt_dtl     ccmd                                  -- OPM標準原価マスタ
+                                   ,cm_cldr_dtl     ccld                                  -- 原価カレンダ明細
+                             WHERE  ccmd.calendar_code = ccld.calendar_code               -- 原価カレンダコード
+                             AND    ccmd.period_code   = ccld.period_code                 -- 期間コード
+                             AND    ccmd.item_id       = xcgv.opm_item_id                 -- 品目ID
+                             AND    ccmd.whse_code     = cv_whse_code                     -- 原価倉庫
+                             AND    ccld.start_date   <= ADD_MONTHS(gd_process_date, -12) -- 前年度時点
+                             AND    ccld.end_date     >= ADD_MONTHS(gd_process_date, -12) -- 前年度時点
+                           )
+                       , 0
+                     )
+                 END                                    AS  now_item_cost            -- 標準原価
+                 --
+                 -- 営業原価
+                 -- パラメータ：新旧原価区分
+                ,CASE gv_new_old_cost_class
+                   --
+                   -- 10：新原価 選択時
+                   WHEN cv_new_cost THEN
+                     NVL(xcgv.now_business_cost, 0)
+                   --
+                   -- 20：旧原価 選択時
+                   WHEN cv_old_cost THEN
+                     NVL(
+                           (
+                             -- 前年度の営業原価を品目変更履歴から取得
+                             SELECT  TO_CHAR(xsibh.discrete_cost)  AS  discrete_cost   -- 営業原価
+                             FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴
+                             WHERE   xsibh.item_hst_id   =
+                               (
+                                 -- 前年度の品目変更履歴ID
+                                 SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                 FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                 WHERE   xsibh2.item_code      =  xcgv.item_cd         -- 品目コード
+                                 AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                 AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                 AND     xsibh2.discrete_cost  IS NOT NULL             -- 営業原価 IS NOT NULL
+                               )
+                           )
+                       , 0
+                     )
+                 END                                    AS  now_business_cost        --営業原価
+                 --
+                 -- 定価
+                 -- パラメータ：新旧原価区分
+                ,CASE gv_new_old_cost_class
+                   --
+                   -- 10：新原価 選択時
+                   WHEN cv_new_cost THEN
+                     NVL(xcgv.now_unit_price, 0)
+                   --
+                   -- 20：旧原価 選択時
+                   WHEN cv_old_cost THEN
+                     NVL(
+                           (
+                             -- 前年度の定価を品目変更履歴から取得
+                             SELECT  TO_CHAR(xsibh.fixed_price)    AS  fixed_price     -- 定価
+                             FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴
+                             WHERE   xsibh.item_hst_id   =
+                               (
+                                 -- 前年度の品目変更履歴ID
+                                 SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                 FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                 WHERE   xsibh2.item_code      =  xcgv.item_cd         -- 品目コード
+                                 AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                 AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                 AND     xsibh2.fixed_price    IS NOT NULL             -- 定価 IS NOT NULL
+                               )
+                           )
+                       , 0
+                     )
+                 END                                    AS  now_unit_price           -- 定価
+          FROM
+                 xxcsm_item_plan_lines                  xipl                         -- 商品計画明細テーブル
+                ,xxcsm_item_plan_headers                xiph                         -- 商品計画ヘッダテーブル
+                ,xxcsm_commodity_group4_v               xcgv                         -- 政策群４ビュー
+          WHERE
+                 xipl.item_plan_header_id               = xiph.item_plan_header_id   -- 商品計画ヘッダID
+          AND    xcgv.item_cd                           = xipl.item_no               -- 商品コード
+          AND    xiph.plan_year                         = gn_taisyoym                -- 対象年度
+          AND    xiph.location_cd                       = iv_kyoten_cd               -- 拠点コード
+          AND    xipl.item_kbn                          <> '0'                       -- 商品区分(商品群以外)
+      ) sub
       GROUP BY
-               xipl.month_no                       -- 月
-              ,xcgv.group1_cd                      -- 商品群1桁コード
-              ,xcgv.group1_nm                      -- 商品群1桁名称
-              ,xcgv.group4_cd                      -- 商品群4桁コード
-              ,xcgv.group4_nm                      -- 商品群4桁名称
-              ,xcgv.item_cd                        -- 商品コード
-              ,xcgv.item_nm                        -- 商品名称
-              ,xcgv.now_unit_price                 -- 定価
-              ,xcgv.now_item_cost                  -- 標準原価
-              ,xcgv.now_business_cost              -- 標準原価
+               sub.month_no                         -- 月
+              ,sub.group1_cd                        -- 商品群1桁コード
+              ,sub.group1_nm                        -- 商品群1桁名称
+              ,sub.group4_cd                        -- 商品群4桁コード
+              ,sub.group4_nm                        -- 商品群4桁名称
+              ,sub.item_cd                          -- 商品コード
+              ,sub.item_nm                          -- 商品名称
+              ,sub.now_unit_price                   -- 定価
+              ,sub.now_item_cost                    -- 標準原価
+              ,sub.now_business_cost                -- 標準原価
       ORDER BY 
-                 group_cd_1         ASC            -- 商品群1桁コード
-                ,group_cd_4         ASC            -- 商品群4桁コード
-                ,item_cd            ASC            -- 商品コード
+               group_cd_1         ASC               -- 商品群1桁コード
+              ,group_cd_4         ASC               -- 商品群4桁コード
+              ,item_cd            ASC               -- 商品コード
     ;
+--//+UPD END E_本稼動_09949 K.Taniguchi
 --
 --============================================
 --  商品群コードの抽出・カーソル
@@ -3470,7 +3728,12 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
                 iv_taisyo_ym     IN     VARCHAR2,                --   対象年度
                 iv_kyoten_cd     IN     VARCHAR2,                --   拠点コード                
                 iv_cost_kind     IN     VARCHAR2,                --   原価種別
-                iv_kyoten_kaisou IN     VARCHAR2                 --   階層
+--//+UPD START E_本稼動_09949 K.Taniguchi
+--                iv_kyoten_kaisou IN     VARCHAR2                 --   階層
+                iv_kyoten_kaisou IN     VARCHAR2,                --   階層
+                iv_new_old_cost_class
+                                 IN     VARCHAR2                 --   新旧原価区分
+--//+UPD END E_本稼動_09949 K.Taniguchi
   ) AS
 --
 --#####################  固定ローカル変数宣言部 START   ########################
@@ -3518,6 +3781,9 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
     gv_kyotencd     := iv_kyoten_cd;                    -- 拠点コード
     gv_genkacd      := iv_cost_kind;                    -- 原価種別
     gv_kaisou       := iv_kyoten_kaisou;                -- 階層
+--//+ADD START E_本稼動_09949 K.Taniguchi
+    gv_new_old_cost_class := iv_new_old_cost_class;     -- 新旧原価区分
+--//+ADD END E_本稼動_09949 K.Taniguchi
 -- 実装処理
     submain(                               -- submainをコール
         lv_errbuf                          -- エラー・メッセージ

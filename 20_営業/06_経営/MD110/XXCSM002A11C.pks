@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE XXCSM002A11C AS
  * Package Name     : XXCSM002A11C(spec)
  * Description      : 商品計画リスト(時系列CS単位)出力
  * MD.050           : 商品計画リスト(時系列CS単位)出力 MD050_CSM_002_A11
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -44,6 +44,7 @@ CREATE OR REPLACE PACKAGE XXCSM002A11C AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/05    1.0   ohshikyo        新規作成
+ *  2012/12/14    1.1   SCSK K.Taniguchi [E_本稼動_09949] 新旧原価選択可能対応
  *
  *****************************************************************************************/
 --
@@ -54,7 +55,12 @@ CREATE OR REPLACE PACKAGE XXCSM002A11C AS
       iv_taisyo_ym     IN     VARCHAR2,                --   対象年度
       iv_kyoten_cd     IN     VARCHAR2,                --   拠点コード
       iv_cost_kind     IN     VARCHAR2,                --   原価種別
-      iv_kyoten_kaisou IN     VARCHAR2                 --   階層
+--//+UPD START E_本稼動_09949 K.Taniguchi
+--      iv_kyoten_kaisou IN     VARCHAR2                 --   階層
+      iv_kyoten_kaisou IN     VARCHAR2,                --   階層
+      iv_new_old_cost_class
+                       IN     VARCHAR2                 --   新旧原価区分
+--//+UPD END E_本稼動_09949 K.Taniguchi
   );
 END XXCSM002A11C;
 /

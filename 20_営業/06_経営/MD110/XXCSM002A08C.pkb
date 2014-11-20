@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A08C(body)
  * Description      : 月別商品計画(営業原価)チェックリスト出力
  * MD.050           : 月別商品計画(営業原価)チェックリスト出力 MD050_CSM_002_A08
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2011/01/05    1.9   SCS OuKou       [E_本稼動_05803]
  *  2011/01/13    1.10  SCS Y.Kanami    [E_本稼動_05803]PT対応
  *  2011/12/14    1.11  SCSK K.Nakamura [E_本稼動_08817]出力判定修正
+ *  2012/12/13    1.12  SCSK K.Taniguchi[E_本稼動_09949]新旧原価選択可能対応
  *
  *****************************************************************************************/
 --
@@ -78,12 +79,18 @@ AS
   cv_msg_10003              CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10003';       --コンカレント入力パラメータメッセージ(対象年度)
   cv_msg_00048              CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00048';       --コンカレント入力パラメータメッセージ(拠点コード)
   cv_msg_10004              CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10004';       --コンカレント入力パラメータメッセージ(階層)
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  cv_msg_10167              CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10167';       --コンカレント入力パラメータメッセージ(新旧原価区分)
+--//+ADD END E_本稼動_09949 K.Taniguchi
   cv_msg_00111              CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00111';       --想定外エラーメッセージ
   cv_chk_err_00005          CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00005';       --プロファイル取得エラーメッセージ
   cv_chk_err_00087          CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00087';       --商品計画未設定メッセージ
   cv_chk_err_00098          CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00098';       --月別商品計画(営業原価)チェックリストヘッダ用メッセージ
   cv_chk_err_00088          CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00088';       --商品計画単品別按分処理未完了メッセージ
   cv_chk_err_10001          CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10001';       --取得データ0件エラーメッセージ
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  cv_chk_err_10168          CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10168';       --GLカレンダ年度開始日取得エラーメッセージ
+--//+ADD END E_本稼動_09949 K.Taniguchi
   --トークン
   cv_tkn_prof               CONSTANT VARCHAR2(100) := 'PROF_NAME';               --カスタム・プロファイル・オプションの英名
   cv_tkn_kyoten_cd          CONSTANT VARCHAR2(100) := 'KYOTEN_CD';               --拠点コード
@@ -92,6 +99,11 @@ AS
   cv_tkn_yyyy               CONSTANT VARCHAR2(100) := 'YYYY';                    --入力パラメータ対象年度
   cv_tkn_level              CONSTANT VARCHAR2(100) := 'HIERARCHY_LEVEL';         --入力パラメータの階層
   cv_tkn_nichiji            CONSTANT VARCHAR2(100) := 'SAKUSEI_NICHIJI';         --作成日時  
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  cv_tkn_cost_class         CONSTANT VARCHAR2(100) := 'NEW_OLD_COST_CLASS';      --新旧原価区分
+  cv_tkn_sobid              CONSTANT VARCHAR2(100) := 'SET_OF_BOOKS_ID';         --会計帳簿ID
+  cv_tkn_process_date       CONSTANT VARCHAR2(100) := 'PROCESS_DATE';            --業務日付
+--//+ADD END E_本稼動_09949 K.Taniguchi
   --
   cv_language_ja            CONSTANT VARCHAR2(2)   := USERENV('LANG');           --言語(日本語)
   cv_flg_y                  CONSTANT VARCHAR2(1)   := 'Y';                       --フラグY
@@ -150,6 +162,9 @@ AS
   cv_budget_profile              CONSTANT VARCHAR2(100) := 'XXCSM1_PLANLIST_ITEM_2';      --売上プロファイル名
   cv_margin_profile              CONSTANT VARCHAR2(100) := 'XXCSM1_CHECKLIST_ITEM_6';     --粗利益額プロファイル名
   cv_credit_profile              CONSTANT VARCHAR2(100) := 'XXCSM1_PLANLIST_ITEM_4';      --掛率プロファイル名
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  cv_gl_set_of_bks_id_profile    CONSTANT VARCHAR2(100) := 'GL_SET_OF_BKS_ID';            --会計帳簿IDプロファイル名
+--//+ADD END E_本稼動_09949 K.Taniguchi
   cv_group_d                     CONSTANT VARCHAR2(1)   := 'D';                           --商品コード1桁D(その他)
   cv_location_1                  CONSTANT VARCHAR2(1)   := '1';                            --入力パラメータ拠点コード’1’
   cv_location_1_nm               CONSTANT VARCHAR2(100)   := '全拠点';                     --入力パラメータ拠点コード’1’
@@ -167,6 +182,10 @@ AS
   cv_group_1                    CONSTANT VARCHAR2(3)   := '***';
   cv_bar                        CONSTANT VARCHAR2(1)   := '_';
 --//+ADD END 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  cv_new_cost                   CONSTANT VARCHAR2(10)  := '10'; -- パラメータ：新旧原価区分（新原価）
+  cv_old_cost                   CONSTANT VARCHAR2(10)  := '20'; -- パラメータ：新旧原価区分（旧原価）
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -180,15 +199,24 @@ AS
   gv_budget_name         VARCHAR2(50);         --売上(プロファイル名)
   gv_margin_name         VARCHAR2(50);         --粗利益額(プロファイル名)
   gv_credit_name         VARCHAR2(50);         --掛率(プロファイル名)
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  gn_gl_set_of_bks_id    NUMBER;               --会計帳簿ID(プロファイル)
+--//+ADD END E_本稼動_09949 K.Taniguchi
   gn_subject_year        NUMBER;               --入力パラメータ．対象年度
   gv_location_cd         VARCHAR2(4);          --入力パラメータ．拠点コード
   gv_hierarchy_level     VARCHAR2(2);          --入力パラメータ．階層
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  gv_new_old_cost_class  VARCHAR2(10);         --入力パラメータ．新旧原価区分
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --//+ADD START 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami  
   gd_process_date        DATE := xxccp_common_pkg2.get_process_date;                      -- 業務日付を変数に格納-
 --//+ADD END 2011/01/13 E_本稼動_05803 PT対応 Y.Kanami  
 --//+ADD START 2011/12/14 E_本稼動_08817 K.Nakamura
   gv_group_flag          VARCHAR2(1);          --群出力フラグ
 --//+ADD END   2011/12/14 E_本稼動_08817 K.Nakamura
+--//+ADD START E_本稼動_09949 K.Taniguchi
+  gd_gl_start_date       DATE;                 --起動時の年度開始日
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -224,7 +252,9 @@ AS
     lv_pram_year          VARCHAR2(100);     -- パラメータメッセージ出力(対象年度)
     lv_pram_location      VARCHAR2(100);     -- パラメータメッセージ出力(拠点コード)
     lv_pram_level         VARCHAR2(100);     -- パラメータメッセージ出力(階層)
-    
+--//+ADD START E_本稼動_09949 K.Taniguchi
+    lv_new_old_cost_class VARCHAR2(100);     -- パラメータメッセージ出力(新旧原価区分)
+--//+ADD END E_本稼動_09949 K.Taniguchi
 
     -- *** ローカル・カーソル ***
 --
@@ -267,6 +297,18 @@ AS
                                            ,iv_token_value1 => gv_hierarchy_level
                                            );
     FND_FILE.PUT_LINE(FND_FILE.LOG,lv_pram_level);
+--//+ADD START E_本稼動_09949 K.Taniguchi
+    --新旧原価区分
+    lv_new_old_cost_class := xxccp_common_pkg.get_msg(
+                                            iv_application  => cv_xxcsm
+                                           ,iv_name         => cv_msg_10167
+                                           ,iv_token_name1  => cv_tkn_cost_class
+                                           ,iv_token_value1 => gv_new_old_cost_class
+                                           );
+    FND_FILE.PUT_LINE(FND_FILE.LOG,lv_new_old_cost_class);
+    --空行
+    FND_FILE.PUT_LINE(FND_FILE.LOG,'');
+--//+ADD END E_本稼動_09949 K.Taniguchi
 --③ プロファイル値取得
     --チェックリスト項目名(商品合計)
     gv_item_sum_name := FND_PROFILE.VALUE(cv_item_sum_profile);
@@ -379,6 +421,59 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
     END IF;
+--//+ADD START E_本稼動_09949 K.Taniguchi
+    --会計帳簿ID
+    gn_gl_set_of_bks_id := TO_NUMBER(FND_PROFILE.VALUE(cv_gl_set_of_bks_id_profile));
+    IF gn_gl_set_of_bks_id IS NULL THEN
+        lv_tkn_value := cv_gl_set_of_bks_id_profile;
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                                              iv_application  => cv_xxcsm
+                                             ,iv_name         => cv_chk_err_00005
+                                             ,iv_token_name1  => cv_tkn_prof
+                                             ,iv_token_value1 => lv_tkn_value
+                                             );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END IF;
+--//+ADD END E_本稼動_09949 K.Taniguchi
+
+--//+ADD START E_本稼動_09949 K.Taniguchi
+    --起動時の年度開始日取得
+    BEGIN
+      -- 年度開始日
+      SELECT  gp.start_date             AS start_date           -- 年度開始日
+      INTO    gd_gl_start_date                                  -- 起動時の年度開始日
+      FROM    gl_sets_of_books          gsob                    -- 会計帳簿マスタ
+             ,gl_periods                gp                      -- 会計カレンダ
+      WHERE   gsob.set_of_books_id      = gn_gl_set_of_bks_id   -- 会計帳簿ID
+      AND     gp.period_set_name        = gsob.period_set_name  -- カレンダ名
+      AND     gp.period_year            = (
+                                            -- 起動時の年度
+                                            SELECT  gp2.period_year           AS period_year          -- 年度
+                                            FROM    gl_sets_of_books          gsob2                   -- 会計帳簿マスタ
+                                                   ,gl_periods                gp2                     -- 会計カレンダ
+                                            WHERE   gsob2.set_of_books_id     = gn_gl_set_of_bks_id   -- 会計帳簿ID
+                                            AND     gp2.period_set_name       = gsob2.period_set_name -- カレンダ名
+                                            AND     gd_process_date           BETWEEN gp2.start_date  -- 業務日付時点
+                                                                              AND     gp2.end_date
+                                          )
+      AND     gp.adjustment_period_flag = cv_flg_n              -- 調整会計期間外
+      AND     gp.period_num             = 1                     -- 年度開始月
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                                              iv_application  => cv_xxcsm
+                                             ,iv_name         => cv_chk_err_10168
+                                             ,iv_token_name1  => cv_tkn_sobid
+                                             ,iv_token_value1 => TO_CHAR(gn_gl_set_of_bks_id)           --会計帳簿ID
+                                             ,iv_token_name2  => cv_tkn_process_date
+                                             ,iv_token_value2 => TO_CHAR(gd_process_date, 'YYYY/MM/DD') --業務日付
+                                             );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--//+ADD END E_本稼動_09949 K.Taniguchi
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -673,8 +768,73 @@ AS
       FROM   (
               SELECT 
                   xipl.year_month                     year_month
-                , NVL(iimb.attribute8, 0)             now_business_cost
-                , NVL(iimb.attribute5, 0)             now_unit_price
+                  --//+UPD START E_本稼動_09949 K.Taniguchi
+--                , NVL(iimb.attribute8, 0)             now_business_cost
+                  --
+                  -- 営業原価
+                  -- パラメータ：新旧原価区分
+                , CASE gv_new_old_cost_class
+                    --
+                    -- 10：新原価 選択時
+                    WHEN cv_new_cost THEN
+                      NVL(iimb.attribute8, 0)
+                    --
+                    -- 20：旧原価 選択時
+                    WHEN cv_old_cost THEN
+                      NVL(
+                            (
+                              -- 前年度の営業原価を品目変更履歴から取得
+                              SELECT  TO_CHAR(xsibh.discrete_cost)  AS  discrete_cost   -- 営業原価
+                              FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴
+                              WHERE   xsibh.item_hst_id   =
+                                (
+                                  -- 前年度の品目変更履歴ID
+                                  SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                  FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                  WHERE   xsibh2.item_code      =  iimb.item_no         -- 品目コード
+                                  AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                  AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                  AND     xsibh2.discrete_cost  IS NOT NULL             -- 営業原価 IS NOT NULL
+                                )
+                            )
+                        , 0
+                      )
+                  END                                 now_business_cost
+                  --//+UPD END E_本稼動_09949 K.Taniguchi
+                  --
+                  --//+UPD START E_本稼動_09949 K.Taniguchi
+--                , NVL(iimb.attribute5, 0)             now_unit_price
+                  --
+                  -- 定価
+                  -- パラメータ：新旧原価区分
+                , CASE gv_new_old_cost_class
+                    --
+                    -- 10：新原価 選択時
+                    WHEN cv_new_cost THEN
+                      NVL(iimb.attribute5, 0)
+                    --
+                    -- 20：旧原価 選択時
+                    WHEN cv_old_cost THEN
+                      NVL(
+                            (
+                              -- 前年度の定価を品目変更履歴から取得
+                              SELECT  TO_CHAR(xsibh.fixed_price)    AS  fixed_price     -- 定価
+                              FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴
+                              WHERE   xsibh.item_hst_id   =
+                                (
+                                  -- 前年度の品目変更履歴ID
+                                  SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                  FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                  WHERE   xsibh2.item_code      =  iimb.item_no         -- 品目コード
+                                  AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                  AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                  AND     xsibh2.fixed_price    IS NOT NULL             -- 定価 IS NOT NULL
+                                )
+                            )
+                        , 0
+                      )
+                  END                                 now_unit_price    -- 定価
+                  --//+UPD END E_本稼動_09949 K.Taniguchi
                 , xipl.amount                         amount
                 , xipl.sales_budget                   sales_budget
               FROM    mtl_categories_b            mcb2
@@ -1231,8 +1391,73 @@ AS
       FROM   (
               SELECT 
                   xipl.year_month                     year_month
-                , NVL(iimb.attribute8, 0)             now_business_cost
-                , NVL(iimb.attribute5, 0)             now_unit_price
+                  --//+UPD START E_本稼動_09949 K.Taniguchi
+--                , NVL(iimb.attribute8, 0)             now_business_cost
+                  --
+                  -- 営業原価
+                  -- パラメータ：新旧原価区分
+                , CASE gv_new_old_cost_class
+                    --
+                    -- 10：新原価 選択時
+                    WHEN cv_new_cost THEN
+                      NVL(iimb.attribute8, 0)
+                    --
+                    -- 20：旧原価 選択時
+                    WHEN cv_old_cost THEN
+                      NVL(
+                            (
+                              -- 前年度の営業原価を品目変更履歴から取得
+                              SELECT  TO_CHAR(xsibh.discrete_cost)  AS  discrete_cost   -- 営業原価
+                              FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴
+                              WHERE   xsibh.item_hst_id   =
+                                (
+                                  -- 前年度の品目変更履歴ID
+                                  SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                  FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                  WHERE   xsibh2.item_code      =  iimb.item_no         -- 品目コード
+                                  AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                  AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                  AND     xsibh2.discrete_cost  IS NOT NULL             -- 営業原価 IS NOT NULL
+                                )
+                            )
+                        , 0
+                      )
+                  END                                 now_business_cost
+                  --//+UPD END E_本稼動_09949 K.Taniguchi
+                  --
+                  --//+UPD START E_本稼動_09949 K.Taniguchi
+--                , NVL(iimb.attribute5, 0)             now_unit_price
+                  --
+                  -- 定価
+                  -- パラメータ：新旧原価区分
+                , CASE gv_new_old_cost_class
+                    --
+                    -- 10：新原価 選択時
+                    WHEN cv_new_cost THEN
+                      NVL(iimb.attribute5, 0)
+                    --
+                    -- 20：旧原価 選択時
+                    WHEN cv_old_cost THEN
+                      NVL(
+                            (
+                              -- 前年度の定価を品目変更履歴から取得
+                              SELECT  TO_CHAR(xsibh.fixed_price)    AS  fixed_price     -- 定価
+                              FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴
+                              WHERE   xsibh.item_hst_id   =
+                                (
+                                  -- 前年度の品目変更履歴ID
+                                  SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                  FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                  WHERE   xsibh2.item_code      =  iimb.item_no         -- 品目コード
+                                  AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                  AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                  AND     xsibh2.fixed_price    IS NOT NULL             -- 定価 IS NOT NULL
+                                )
+                            )
+                        , 0
+                      )
+                  END                                 now_unit_price    -- 定価
+                  --//+UPD END E_本稼動_09949 K.Taniguchi
                 , xipl.amount                         amount
                 , xipl.sales_budget                   sales_budget
               FROM    mtl_categories_b            mcb2
@@ -1775,8 +2000,73 @@ AS
       FROM   (
               SELECT 
                   xipl.year_month                     year_month
-                , NVL(iimb.attribute8, 0)             now_business_cost
-                , NVL(iimb.attribute5, 0)             now_unit_price
+                  --//+UPD START E_本稼動_09949 K.Taniguchi
+--                , NVL(iimb.attribute8, 0)             now_business_cost
+                  --
+                  -- 営業原価
+                  -- パラメータ：新旧原価区分
+                , CASE gv_new_old_cost_class
+                    --
+                    -- 10：新原価 選択時
+                    WHEN cv_new_cost THEN
+                      NVL(iimb.attribute8, 0)
+                    --
+                    -- 20：旧原価 選択時
+                    WHEN cv_old_cost THEN
+                      NVL(
+                            (
+                              -- 前年度の営業原価を品目変更履歴から取得
+                              SELECT  TO_CHAR(xsibh.discrete_cost)  AS  discrete_cost   -- 営業原価
+                              FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴
+                              WHERE   xsibh.item_hst_id   =
+                                (
+                                  -- 前年度の品目変更履歴ID
+                                  SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                  FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                  WHERE   xsibh2.item_code      =  iimb.item_no         -- 品目コード
+                                  AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                  AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                  AND     xsibh2.discrete_cost  IS NOT NULL             -- 営業原価 IS NOT NULL
+                                )
+                            )
+                        , 0
+                      )
+                  END                                 now_business_cost
+                  --//+UPD END E_本稼動_09949 K.Taniguchi
+                  --
+                  --//+UPD START E_本稼動_09949 K.Taniguchi
+--                , NVL(iimb.attribute5, 0)             now_unit_price
+                  --
+                  -- 定価
+                  -- パラメータ：新旧原価区分
+                , CASE gv_new_old_cost_class
+                    --
+                    -- 10：新原価 選択時
+                    WHEN cv_new_cost THEN
+                      NVL(iimb.attribute5, 0)
+                    --
+                    -- 20：旧原価 選択時
+                    WHEN cv_old_cost THEN
+                      NVL(
+                            (
+                              -- 前年度の定価を品目変更履歴から取得
+                              SELECT  TO_CHAR(xsibh.fixed_price)    AS  fixed_price     -- 定価
+                              FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴
+                              WHERE   xsibh.item_hst_id   = 
+                                ( 
+                                  -- 前年度の品目変更履歴ID
+                                  SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                  FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                  WHERE   xsibh2.item_code      =  iimb.item_no         -- 品目コード
+                                  AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                  AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                  AND     xsibh2.fixed_price    IS NOT NULL             -- 定価 IS NOT NULL
+                                )
+                            )
+                        , 0
+                      )
+                  END                                 now_unit_price    -- 定価
+                  --//+UPD END E_本稼動_09949 K.Taniguchi
                 , xipl.amount                         amount
                 , xipl.sales_budget                   sales_budget
               FROM    mtl_categories_b            mcb2
@@ -3339,22 +3629,129 @@ AS
       FROM   (
               SELECT 
                   xipl.year_month                     year_month
-                , NVL( 
-                        ( 
-                          SELECT SUM(ccmd.cmpnt_cost)
-                          FROM   cm_cmpt_dtl     ccmd
-                                ,cm_cldr_dtl     ccld
-                          WHERE  ccmd.calendar_code = ccld.calendar_code
-                          AND    ccmd.whse_code     = cv_whse_code
-                          AND    ccmd.period_code   = ccld.period_code
-                          AND    ccld.start_date   <= gd_process_date
-                          AND    ccld.end_date     >= gd_process_date
-                          AND    ccmd.item_id       = iimb.item_id
-                        )
-                    , 0
-                  )                                   now_item_cost
-                , NVL(iimb.attribute8, 0)             now_business_cost
-                , NVL(iimb.attribute5, 0)             now_unit_price
+                  --//+UPD START E_本稼動_09949 K.Taniguchi
+--                , NVL( 
+--                        ( 
+--                          SELECT SUM(ccmd.cmpnt_cost)
+--                          FROM   cm_cmpt_dtl     ccmd
+--                                ,cm_cldr_dtl     ccld
+--                          WHERE  ccmd.calendar_code = ccld.calendar_code
+--                          AND    ccmd.whse_code     = cv_whse_code
+--                          AND    ccmd.period_code   = ccld.period_code
+--                          AND    ccld.start_date   <= gd_process_date
+--                          AND    ccld.end_date     >= gd_process_date
+--                          AND    ccmd.item_id       = iimb.item_id
+--                        )
+--                    , 0
+--                  )                                   now_item_cost
+                  --
+                  -- 標準原価
+                  -- パラメータ：新旧原価区分
+                , CASE gv_new_old_cost_class
+                    --
+                    -- 10：新原価 選択時
+                    WHEN cv_new_cost THEN
+                      NVL(
+                            (
+                              SELECT SUM(ccmd.cmpnt_cost)
+                              FROM   cm_cmpt_dtl     ccmd
+                                    ,cm_cldr_dtl     ccld
+                              WHERE  ccmd.calendar_code = ccld.calendar_code
+                              AND    ccmd.whse_code     = cv_whse_code
+                              AND    ccmd.period_code   = ccld.period_code
+                              AND    ccld.start_date   <= gd_process_date
+                              AND    ccld.end_date     >= gd_process_date
+                              AND    ccmd.item_id       = iimb.item_id
+                            )
+                        , 0
+                      )
+                    --
+                    -- 20：旧原価 選択時
+                    WHEN cv_old_cost THEN
+                      NVL(
+                            (
+                              SELECT SUM(ccmd.cmpnt_cost)
+                              FROM   cm_cmpt_dtl     ccmd
+                                    ,cm_cldr_dtl     ccld
+                              WHERE  ccmd.calendar_code = ccld.calendar_code
+                              AND    ccmd.whse_code     = cv_whse_code
+                              AND    ccmd.period_code   = ccld.period_code
+                              AND    ccld.start_date   <= ADD_MONTHS(gd_process_date, -12) -- 前年度時点
+                              AND    ccld.end_date     >= ADD_MONTHS(gd_process_date, -12) -- 前年度時点
+                              AND    ccmd.item_id       = iimb.item_id
+                            )
+                        , 0
+                      )
+                  END                                 now_item_cost
+                  --//+UPD END E_本稼動_09949 K.Taniguchi
+                  --
+                  --//+UPD START E_本稼動_09949 K.Taniguchi
+--                , NVL(iimb.attribute8, 0)             now_business_cost
+                  --
+                  -- 営業原価
+                  -- パラメータ：新旧原価区分
+                , CASE gv_new_old_cost_class
+                    --
+                    -- 10：新原価 選択時
+                    WHEN cv_new_cost THEN
+                      NVL(iimb.attribute8, 0)
+                    --
+                    -- 20：旧原価 選択時
+                    WHEN cv_old_cost THEN
+                      NVL(
+                            (
+                              -- 前年度の営業原価を品目変更履歴から取得
+                              SELECT  TO_CHAR(xsibh.discrete_cost)  AS  discrete_cost   -- 営業原価
+                              FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴テーブル
+                              WHERE   xsibh.item_hst_id   =
+                                (
+                                  -- 前年度の品目変更履歴ID
+                                  SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                  FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                  WHERE   xsibh2.item_code      =  iimb.item_no         -- 品目コード
+                                  AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                  AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                  AND     xsibh2.discrete_cost  IS NOT NULL             -- 営業原価 IS NOT NULL
+                                )
+                            )
+                        , 0
+                      )
+                  END                                 now_business_cost
+                  --//+UPD END E_本稼動_09949 K.Taniguchi
+                  --
+                  --//+UPD START E_本稼動_09949 K.Taniguchi
+--                , NVL(iimb.attribute5, 0)             now_unit_price
+                  --
+                  -- 定価
+                  -- パラメータ：新旧原価区分
+                , CASE gv_new_old_cost_class
+                    --
+                    -- 10：新原価 選択時
+                    WHEN cv_new_cost THEN
+                      NVL(iimb.attribute5, 0)
+                    --
+                    -- 20：旧原価 選択時
+                    WHEN cv_old_cost THEN
+                      NVL(
+                            (
+                              -- 前年度の定価を品目変更履歴から取得
+                              SELECT  TO_CHAR(xsibh.fixed_price)    AS  fixed_price     -- 定価
+                              FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴
+                              WHERE   xsibh.item_hst_id   =
+                                (
+                                  -- 前年度の品目変更履歴ID
+                                  SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                  FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                  WHERE   xsibh2.item_code      =  iimb.item_no         -- 品目コード
+                                  AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                  AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                  AND     xsibh2.fixed_price    IS NOT NULL             -- 定価 IS NOT NULL
+                                )
+                            )
+                        , 0
+                      )
+                  END                                 now_unit_price    -- 定価
+                  --//+UPD END E_本稼動_09949 K.Taniguchi
                 , xipl.amount                         amount
                 , xipl.sales_budget                   sales_budget
                 , xiph.item_plan_header_id            item_plan_header_id
@@ -3978,22 +4375,129 @@ AS
                         AND     gd_process_date  BETWEEN NVL(TRUNC(flv.start_date_active), gd_process_date)
                                                  AND     NVL(TRUNC(flv.end_date_active),   gd_process_date)
                       )                                             AS  group3_nm  --"３桁群（名称）"
-                    , NVL( 
-                            ( 
-                              SELECT SUM(ccmd.cmpnt_cost)
-                              FROM   cm_cmpt_dtl     ccmd
-                                    ,cm_cldr_dtl     ccld
-                              WHERE  ccmd.calendar_code = ccld.calendar_code
-                              AND    ccmd.whse_code     = cv_whse_code
-                              AND    ccmd.period_code   = ccld.period_code
-                              AND    ccld.start_date   <= gd_process_date
-                              AND    ccld.end_date     >= gd_process_date
-                              AND    ccmd.item_id       = iimb.item_id
-                            )
-                        , NVL(iimb.attribute8, 0)
-                      )                                             now_item_cost     -- 標準原価
-                    , NVL(iimb.attribute8, 0)                       now_business_cost -- 営業原価
-                    , NVL(iimb.attribute5, 0)                       now_unit_price    -- 定価
+                      --//+UPD START E_本稼動_09949 K.Taniguchi
+--                    , NVL( 
+--                            ( 
+--                              SELECT SUM(ccmd.cmpnt_cost)
+--                              FROM   cm_cmpt_dtl     ccmd
+--                                    ,cm_cldr_dtl     ccld
+--                              WHERE  ccmd.calendar_code = ccld.calendar_code
+--                              AND    ccmd.whse_code     = cv_whse_code
+--                              AND    ccmd.period_code   = ccld.period_code
+--                              AND    ccld.start_date   <= gd_process_date
+--                              AND    ccld.end_date     >= gd_process_date
+--                              AND    ccmd.item_id       = iimb.item_id
+--                            )
+--                        , NVL(iimb.attribute8, 0)
+--                      )                                             now_item_cost     -- 標準原価
+                      --
+                      -- 標準原価
+                      -- パラメータ：新旧原価区分
+                    , CASE gv_new_old_cost_class
+                        --
+                        -- 10：新原価 選択時
+                        WHEN cv_new_cost THEN
+                          NVL(
+                                (
+                                  SELECT SUM(ccmd.cmpnt_cost)
+                                  FROM   cm_cmpt_dtl     ccmd
+                                        ,cm_cldr_dtl     ccld
+                                  WHERE  ccmd.calendar_code = ccld.calendar_code
+                                  AND    ccmd.whse_code     = cv_whse_code
+                                  AND    ccmd.period_code   = ccld.period_code
+                                  AND    ccld.start_date   <= gd_process_date
+                                  AND    ccld.end_date     >= gd_process_date
+                                  AND    ccmd.item_id       = iimb.item_id
+                                )
+                            , NVL(iimb.attribute8, 0)
+                          )
+                        --
+                        -- 20：旧原価 選択時
+                        WHEN cv_old_cost THEN
+                          NVL(
+                                (
+                                  SELECT SUM(ccmd.cmpnt_cost)
+                                  FROM   cm_cmpt_dtl     ccmd
+                                        ,cm_cldr_dtl     ccld
+                                  WHERE  ccmd.calendar_code = ccld.calendar_code
+                                  AND    ccmd.whse_code     = cv_whse_code
+                                  AND    ccmd.period_code   = ccld.period_code
+                                  AND    ccld.start_date   <= ADD_MONTHS(gd_process_date, -12) -- 前年度時点
+                                  AND    ccld.end_date     >= ADD_MONTHS(gd_process_date, -12) -- 前年度時点
+                                  AND    ccmd.item_id       = iimb.item_id
+                                )
+                            , 0
+                          )
+                      END                                           now_item_cost     -- 標準原価
+                      --//+UPD END E_本稼動_09949 K.Taniguchi
+                      --
+                      --//+UPD START E_本稼動_09949 K.Taniguchi
+--                    , NVL(iimb.attribute8, 0)                       now_business_cost -- 営業原価
+                      --
+                      -- 営業原価
+                      -- パラメータ：新旧原価区分
+                    , CASE gv_new_old_cost_class
+                        --
+                        -- 10：新原価 選択時
+                        WHEN cv_new_cost THEN
+                          NVL(iimb.attribute8, 0)
+                        --
+                        -- 20：旧原価 選択時
+                        WHEN cv_old_cost THEN
+                          NVL(
+                                (
+                                  -- 前年度の営業原価を品目変更履歴から取得
+                                  SELECT  TO_CHAR(xsibh.discrete_cost)  AS  discrete_cost   -- 営業原価
+                                  FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴
+                                  WHERE   xsibh.item_hst_id   =
+                                    (
+                                      -- 前年度の品目変更履歴ID
+                                      SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                      FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                      WHERE   xsibh2.item_code      =  iimb.item_no         -- 品目コード
+                                      AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                      AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                      AND     xsibh2.discrete_cost  IS NOT NULL             -- 営業原価 IS NOT NULL
+                                    )
+                                )
+                            , 0
+                          )
+                      END                                           now_business_cost -- 営業原価
+                      --//+UPD END E_本稼動_09949 K.Taniguchi
+                      --
+                      --//+UPD START E_本稼動_09949 K.Taniguchi
+--                    , NVL(iimb.attribute5, 0)                       now_unit_price    -- 定価
+                      --
+                      -- 定価
+                      -- パラメータ：新旧原価区分
+                    , CASE gv_new_old_cost_class
+                        --
+                        -- 10：新原価 選択時
+                        WHEN cv_new_cost THEN
+                          NVL(iimb.attribute5, 0)
+                        --
+                        -- 20：旧原価 選択時
+                        WHEN cv_old_cost THEN
+                          NVL(
+                                (
+                                  -- 前年度の定価を品目変更履歴から取得
+                                  SELECT  TO_CHAR(xsibh.fixed_price)    AS  fixed_price     -- 定価
+                                  FROM    xxcmm_system_items_b_hst      xsibh               -- 品目変更履歴
+                                  WHERE   xsibh.item_hst_id   =
+                                    (
+                                      -- 前年度の品目変更履歴ID
+                                      SELECT  MAX(item_hst_id)      AS item_hst_id          -- 品目変更履歴ID
+                                      FROM    xxcmm_system_items_b_hst xsibh2               -- 品目変更履歴
+                                      WHERE   xsibh2.item_code      =  iimb.item_no         -- 品目コード
+                                      AND     xsibh2.apply_date     <  gd_gl_start_date     -- 起動時の年度開始日
+                                      AND     xsibh2.apply_flag     =  cv_flg_y             -- 適用済み
+                                      AND     xsibh2.fixed_price    IS NOT NULL             -- 定価 IS NOT NULL
+                                    )
+                                )
+                            , 0
+                          )
+                      END                                           now_unit_price    -- 定価
+                      --//+UPD END E_本稼動_09949 K.Taniguchi                    
                     , xipl.amount                                   amount            -- 数量
                     , xipl.sales_budget                             sales_budget      -- 売上原価
                     , mcb2.segment1                                 AS  "４桁群"
@@ -4848,7 +5352,11 @@ AS
     retcode                 OUT  NOCOPY VARCHAR2,     --   リターン・コード
     iv_subject_year         IN   VARCHAR2,            --   対象年度
     iv_location_cd          IN   VARCHAR2,            --   拠点コード
-    iv_hierarchy_level      IN   VARCHAR2             --   階層
+--//+UPD START E_本稼動_09949 K.Taniguchi
+--    iv_hierarchy_level      IN   VARCHAR2             --   階層
+    iv_hierarchy_level      IN   VARCHAR2,            --   階層
+    iv_new_old_cost_class   IN   VARCHAR2             --   新旧原価区分
+--//+UPD END E_本稼動_09949 K.Taniguchi
   )
 --
 --###########################  固定部 START   ###########################
@@ -4898,6 +5406,9 @@ AS
     gn_subject_year    := TO_NUMBER(iv_subject_year);
     gv_location_cd     := iv_location_cd;
     gv_hierarchy_level := iv_hierarchy_level;
+--//+ADD START E_本稼動_09949 K.Taniguchi
+    gv_new_old_cost_class := iv_new_old_cost_class;
+--//+ADD END E_本稼動_09949 K.Taniguchi
     -- ===============================================
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
