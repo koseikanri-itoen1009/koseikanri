@@ -34,6 +34,7 @@ AS
  *  2008-12-10    1.0   Syoei.Kin        新規作成
  *  2008-1-30     1.1   Syoei.Kin        レビュー結果反映
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
+ *  2009-12-04    1.3   T.Maruyama       E_本稼動_00285対応、E_本稼動_00028
  *
  *****************************************************************************************/
 --
@@ -346,7 +347,10 @@ AS
     END IF;
     -- 更新日TOの存在チェック
     IF (gv_to_value IS NULL) THEN
-      gv_to_value := TO_CHAR(ld_process_date,'YYYYMMDD');
+      /* 2009/12/04 T.Maruyama E_本稼動_00285対応 START */
+      --gv_to_value := TO_CHAR(ld_process_date,'YYYYMMDD');
+      gv_to_value := TO_CHAR(ld_process_date + 1,'YYYYMMDD');
+      /* 2009/12/04 T.Maruyama E_本稼動_00285対応 END */
       lb_null_check := cb_true;
     END IF;
     --パラメータデフォルトセット
@@ -1523,7 +1527,10 @@ AS
             --
             xxcso_route_common_pkg.distribute_sales_plan(
                    iv_year_month             => lv_year_month_v
-                  ,it_sales_plan_amt         => lt_plan_month_amt_v
+                  /* 2009/12/04 T.Maruyama E_本稼動_00028対応 START */
+                  --,it_sales_plan_amt         => lt_plan_month_amt_v
+                  ,it_sales_plan_amt         => NVL(lt_plan_month_amt_v, 0)
+                  /* 2009/12/04 T.Maruyama E_本稼動_00028対応 END */
                   ,it_route_number           => lt_route_no
                   ,on_day_on_month           => ln_day_ln_month
                   ,on_visit_daytimes         => ln_visit_times
@@ -1563,20 +1570,25 @@ AS
                   ,ov_errmsg                 => lv_sub_msg
             );
             IF (lv_sub_retcode = cv_status_error) THEN
-              lv_sub_msg := xxccp_common_pkg.get_msg(
-                                   iv_application  => cv_app_name                   -- アプリケーション短縮名
-                                  ,iv_name         => cv_route_visit_tkn            -- メッセージコード
-                                  ,iv_token_name1  => cv_tkn_root_no                -- トークンコード1
-                                  ,iv_token_value1 => TO_CHAR(lt_route_no)          -- トークン値1ルートNo
-                                  ,iv_token_name2  => cv_tkn_location_cd            -- トークンコード2
-                                  ,iv_token_value2 => TO_CHAR(l_get_rec.base_code)  -- トークン値2売上拠点コード
-                                  ,iv_token_name3  => cv_tkn_customer_cd            -- トークンコード3
-                                  ,iv_token_value3 => l_get_rec.account_number      -- トークン値4顧客コード
-                                  ,iv_token_name4  => cv_tkn_year_month             -- トークンコード4
-                                  ,iv_token_value4 => l_get_rec.year_month          -- トークン値4年月
-                  );
-              lv_sub_buf  := lv_sub_msg;
-              RAISE select_error_expt;
+              /* 2009/12/04 T.Maruyama E_本稼動_00028対応 START */
+              --ルートNo不正等で訪問回数が取得できない場合、ルートNo未設定と同様
+              --ZEROを設定する
+              ln_visit_times := 0;
+              --lv_sub_msg := xxccp_common_pkg.get_msg(
+              --                     iv_application  => cv_app_name                   -- アプリケーション短縮名
+              --                    ,iv_name         => cv_route_visit_tkn            -- メッセージコード
+              --                    ,iv_token_name1  => cv_tkn_root_no                -- トークンコード1
+              --                    ,iv_token_value1 => TO_CHAR(lt_route_no)          -- トークン値1ルートNo
+              --                    ,iv_token_name2  => cv_tkn_location_cd            -- トークンコード2
+              --                    ,iv_token_value2 => TO_CHAR(l_get_rec.base_code)  -- トークン値2売上拠点コード
+              --                    ,iv_token_name3  => cv_tkn_customer_cd            -- トークンコード3
+              --                    ,iv_token_value3 => l_get_rec.account_number      -- トークン値4顧客コード
+              --                    ,iv_token_name4  => cv_tkn_year_month             -- トークンコード4
+              --                    ,iv_token_value4 => l_get_rec.year_month          -- トークン値4年月
+              --    );
+              --lv_sub_buf  := lv_sub_msg;
+              --RAISE select_error_expt;
+              /* 2009/12/04 T.Maruyama E_本稼動_00028対応 END */
             END IF;
           END IF;
         END IF;

@@ -33,6 +33,7 @@ AS
  *  2008-11-25    1.0   Syoei.Kin        新規作成
  *  2009-02-24    1.1   K.Sai            レビュー結果反映 
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
+ *  2009-12-04    1.3   T.Maruyama       E_本稼動_00285対応
  *
  *****************************************************************************************/
 --
@@ -337,7 +338,11 @@ AS
       );
     END IF;
     IF (gv_to_value IS NULL) THEN
-      gv_to_value := TO_CHAR(ld_process_date,'YYYYMMDD');
+      /* 2009/12/04 T.Maruyama E_本稼動_00285対応 START */
+      --夜間JOB更新データも対称として連携する
+      --gv_to_value := TO_CHAR(ld_process_date,'YYYYMMDD');
+      gv_to_value := TO_CHAR(ld_process_date + 1,'YYYYMMDD');
+      /* 2009/12/04 T.Maruyama E_本稼動_00285対応 END */
       --パラメータデフォルトセット
       lv_param_set := xxccp_common_pkg.get_msg(
                       iv_application  => cv_app_name
