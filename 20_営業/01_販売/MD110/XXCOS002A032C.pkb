@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/10/30    1.8   M.Sano           [0001373]XXCOS_RS_INFO_V変更に伴うPT対応
  *  2009/11/12    1.9   N.Maeda          [E_T4_00188]新規獲得ポイント集計条件修正
  *  2009/11/18    1.10  T.Nishikawa      [E_本番_00220]性能劣化に伴うヒント句追加
+ *  2009/11/24    1.11  K.Atsushiba      [E_本番_00347]PT対応
  *
  *****************************************************************************************/
 --
@@ -1059,6 +1060,11 @@ AS
               cd_program_update_date                    AS  program_update_date
       FROM    (
               SELECT
+/* 2009/11/24 Ver1.8 Add Start */  
+                      /*+ 
+                        USE_NL(newc.saeh xlvd)
+                      */
+/* 2009/11/24 Ver1.8 Add Start */
                       newc.sale_base_code                       AS  sale_base_code,
                       newc.results_employee_code                AS  results_employee_code,
                       newc.dlv_date                             AS  dlv_date,
@@ -1073,11 +1079,23 @@ AS
                           )                                     AS  discount_amount
               FROM    (
                       SELECT
-/* 2009/09/04 Ver1.7 Add Start */
+/* 2009/11/24 Ver1.8 Mod Start */
                               /*+
-                                USE_NL(saeh)
+                                LEADING(saeh)
+                                INDEX(saeh XXCOS_SALES_EXP_HEADERS_N14)
+                                INDEX(hzca HZ_CUST_ACCOUNTS_U2)
+                                USE_NL(saeh hzca xcac xlvst hzpt)
+                                USE_NL(xcac xlvp )
+                                USE_NL(hzca xlvc )
+                                USE_NL(saeh xlvm)
+                                USE_NL(sael xlvs)
                               */
-/* 2009/09/04 Ver1.7 Add End   */
+--/* 2009/09/04 Ver1.7 Add Start */
+--                              /*+
+--                                USE_NL(saeh)
+--                              */
+--/* 2009/09/04 Ver1.7 Add End   */
+/* 2009/11/24 Ver1.8 Mod End */
                               saeh.sales_base_code                      AS  sale_base_code,
                               saeh.results_employee_code                AS  results_employee_code,
                               saeh.delivery_date                        AS  dlv_date,
