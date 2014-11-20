@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/26    1.0   SCS 福間 貴子    初回作成
  *  2009/03/12    1.1   SCS R.Takigawa   抽出SQLを修正(在庫期間(INV)の抽出テーブルの変更)
+ *  2009/05/26    1.2   SCS H.Yoshiawa   GLの連携モジュール名を修正（障害：T1_1200）
  *
  *****************************************************************************************/
 --
@@ -99,8 +100,11 @@ AS
   cv_company_cd             CONSTANT VARCHAR2(3)   := '001';                        -- 会社コード
   cv_karenda                CONSTANT VARCHAR2(20)  := '会計カレンダ';               -- 抽出対象カレンダ
   cv_SQLGL                  CONSTANT VARCHAR2(5)   := 'SQLGL';                      -- 抽出対象モジュール
-  cv_AR                     CONSTANT VARCHAR2(5)   := 'AR';                         -- 抽出対象モジュール
-  cv_INV                    CONSTANT VARCHAR2(5)   := 'INV';                        -- 抽出対象モジュール
+-- Ver1.2  2009/05/26  ADD  T1_1200(連携モジュール名称を'SQLGL'から'GL'に修正)
+  cv_GL                     CONSTANT VARCHAR2(5)   := 'GL';                         -- 連携モジュール名(GL)
+-- End
+  cv_AR                     CONSTANT VARCHAR2(5)   := 'AR';                         -- 抽出対象モジュール・連携モジュール名(AR)
+  cv_INV                    CONSTANT VARCHAR2(5)   := 'INV';                        -- 抽出対象モジュール・連携モジュール名(INV)
   cv_open_status            CONSTANT VARCHAR2(1)   := 'O';                          -- オープンのステータス
   cv_open_status_nm         CONSTANT VARCHAR2(40)  := 'オープン';                   -- オープンのステータス名
 --Ver1.1 2009/03/12 add 在庫期間(INV)の抽出テーブルの変更により定数追加
@@ -184,7 +188,10 @@ AS
     UNION ALL
 --期間モジュール【SQLGL】
     SELECT   SUBSTRB(gpsv.period_name,1,7)              AS period_name,              --期間名称
-             SUBSTRB(fapp.application_short_name,1,5)   AS application_short_name,   --期間モジュール
+-- Ver1.2  2009/05/26  ADD  T1_1200(連携モジュール名称を'SQLGL'から'GL'に修正)
+--             SUBSTRB(fapp.application_short_name,1,5)   AS application_short_name,   --期間モジュール
+             cv_GL                                      AS application_short_name,   --期間モジュール
+-- End
              SUBSTRB(gpsv.closing_status,1,1)           AS closing_status,           --ステータス
              SUBSTRB(gpsv.show_status,1,40)             AS show_status,              --ステータス名
              gpsv.start_date                            AS start_date,               --期間From
