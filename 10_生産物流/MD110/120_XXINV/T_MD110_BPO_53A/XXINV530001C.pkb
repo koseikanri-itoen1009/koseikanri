@@ -43,6 +43,7 @@ AS
  *  2008/10/15    1.8   T.Ikehara        修正(不具合ID8対応：重複削除対象データを
  *                                                           妥当性チェック対象外に修正 )
  *  2008/12/06    1.9   H.Itou           修正(本番障害#510対応：日付は変換して比較)
+ *  2008/12/08    2.0   K.Kumamoto       修正(本番障害対応#570対応：棚卸連番をTO_NUMBER)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -467,7 +468,10 @@ AS
       ||  'WHERE xsi.request_id        = :request_id        ' -- 要求ID
       ||  '  AND xsi.report_post_code  = :report_post_code  ' -- 報告部署
       ||  '  AND xsi.invent_whse_code  = :invent_whse_code  ' -- 棚卸倉庫
-      ||  '  AND xsi.invent_seq        = :invent_seq        ' -- 棚卸連番
+--2008/12/08 mod start
+--      ||  '  AND xsi.invent_seq        = :invent_seq        ' -- 棚卸連番
+      ||  '  AND TO_NUMBER(xsi.invent_seq)        = TO_NUMBER(:invent_seq)        ' -- 棚卸連番
+--2008/12/08 mod end
       ||  '  AND xsi.item_code         = :item_code         ';-- 品目
 -- 2008/09/04 H.Itou Mod End
     --品目区分が製品の場合
@@ -516,7 +520,10 @@ AS
       ||  ' GROUP BY '
       ||  ' xsi.report_post_code  '    -- 報告部署
       ||  ',xsi.invent_whse_code  '    -- 棚卸倉庫
-      ||  ',xsi.invent_seq  '          -- 棚卸連番
+--2008/12/08 mod start
+--      ||  ',xsi.invent_seq  '          -- 棚卸連番
+      ||  ',TO_NUMBER(xsi.invent_seq)  '          -- 棚卸連番
+--2008/12/08 mod end
       ||  ',xsi.item_code  ';          -- 品目
 --
     --品目区分が製品の場合
@@ -2711,7 +2718,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql);
       ||  'xsi.report_post_code  report_post_code, '  --報告部署
       ||  'xsi.invent_date       invent_date, '       --棚卸日
       ||  'xsi.invent_whse_code  invent_whse_code, '  --棚卸倉庫
-      ||  'xsi.invent_seq        invent_seq, '        --棚卸連番
+--2008/12/08 mod start
+--      ||  'xsi.invent_seq        invent_seq, '        --棚卸連番
+      ||  'TO_NUMBER(xsi.invent_seq) invent_seq, '    --棚卸連番
+--2008/12/08 mod end
       ||  'xsi.item_code         item_code, '         --品目
       ||  'xsi.lot_no            lot_no, '            --ロットNo.
       ||  'xsi.maker_date        maker_date, '        --製造日
