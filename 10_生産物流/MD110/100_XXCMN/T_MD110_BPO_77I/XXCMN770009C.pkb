@@ -39,6 +39,7 @@ AS
  *  2008/07/23    1.5   Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_V→XXCMN_ITEM_CATEGORIES6_V変更
  *  2008/08/07    1.6   R.Tomoyose       参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
  *                                                       「xxcmn_rcv_pay_mst_porc_rma09_v」
+ *  2008/08/27    1.7   A.Shiina         T_TE080_BPO_770 指摘18対応
  *
  *****************************************************************************************/
 --
@@ -457,17 +458,27 @@ AS
     ;
     lv_sql := lv_sql
       || '  xrpmpr.new_div_account rcv_pay_div,                    ' --取引区分
-      || '  SUM(itp.trans_qty) trans_qty,                          ' --数量
+-- 2008/08/27 v1.7 UPDATE START
+--      || '  SUM(itp.trans_qty) trans_qty,                          ' --数量
+      || '  SUM(itp.trans_qty * TO_NUMBER(xrpmpr.rcv_pay_div)) trans_qty, ' --数量
+-- 2008/08/27 v1.7 UPDATE END
       || '  SUM(DECODE(xlei.item_attribute15,'''|| gn_one ||''',xsup_m.stnd_unit_price,'
       || '    DECODE(xlei.lot_ctl,'''|| gn_one1 ||''',xlei.actual_unit_price,'
       || '    xsup_m.stnd_unit_price)) '
       || '       )                      AS from_price ,'         --実際単価
       || '  SUM(DECODE(xlei.item_attribute15,'''|| gn_one ||''',xsup_m.stnd_unit_price,'
       || '    DECODE(xlei.lot_ctl,'''|| gn_one1 ||''',xlei.actual_unit_price,'
-      || '    xsup_m.stnd_unit_price)) * itp.trans_qty '
+-- 2008/08/27 v1.7 UPDATE START
+--      || '    xsup_m.stnd_unit_price)) * itp.trans_qty '
+      || '    xsup_m.stnd_unit_price)) * (itp.trans_qty * TO_NUMBER(xrpmpr.rcv_pay_div)) '
+-- 2008/08/27 v1.7 UPDATE END
       || '     )    AS from_cost ,'     --実際原価
       || '  SUM(xsup.stnd_unit_price_gen) to_price,                ' --原料費
-      || '  SUM(xsup.stnd_unit_price_gen * itp.trans_qty)  to_cost ' --振替先標準原価金額
+-- 2008/08/27 v1.7 UPDATE START
+--      || '  SUM(xsup.stnd_unit_price_gen * itp.trans_qty)  to_cost ' --振替先標準原価金額
+      --振替先標準原価金額
+      || ' SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpmpr.rcv_pay_div))) to_cost '
+-- 2008/08/27 v1.7 UPDATE END
       || 'FROM xxcmn_rcv_pay_mst_porc_rma09_v xrpmpr '   --経理受払区分情報view_購買関連
       || '   , ic_tran_pnd              itp'           --在庫トラン
       || '   , xxcmn_lot_each_item_v    xlei '
@@ -557,17 +568,27 @@ AS
     ;
     lv_sql := lv_sql
       ||'  xrpmo.new_div_account rcv_pay_div,                         ' -- 取引区分
-      ||'  SUM(itp.trans_qty) trans_qty,                          ' -- 数量
+-- 2008/08/27 v1.7 UPDATE START
+--      ||'  SUM(itp.trans_qty) trans_qty,                          ' -- 数量
+      ||'  SUM(itp.trans_qty * TO_NUMBER(xrpmo.rcv_pay_div)) trans_qty,  ' -- 数量
+-- 2008/08/27 v1.7 UPDATE END
       ||'  SUM(DECODE(xlei.item_attribute15,'''|| gn_one ||''',xsup_m.stnd_unit_price,'
       ||'    DECODE(xlei.lot_ctl,'''|| gn_one1 ||''',xlei.actual_unit_price,'
       ||'    xsup_m.stnd_unit_price)) '
       ||'       )                       AS from_price ,'                --実際単価
       ||'  SUM(DECODE(xlei.item_attribute15,'''|| gn_one ||''',xsup_m.stnd_unit_price,'
       ||'  DECODE(xlei.lot_ctl,'''|| gn_one1 ||''',xlei.actual_unit_price,'
-      ||'  xsup_m.stnd_unit_price)) * itp.trans_qty '
+-- 2008/08/27 v1.7 UPDATE START
+--      ||'  xsup_m.stnd_unit_price)) * itp.trans_qty '
+      ||'  xsup_m.stnd_unit_price)) * (itp.trans_qty * TO_NUMBER(xrpmo.rcv_pay_div)) '
+-- 2008/08/27 v1.7 UPDATE END
       ||'  )    AS from_cost ,'    --実際原価
       ||'  SUM(xsup.stnd_unit_price_gen) to_price,                ' -- 原料費
-      ||'  SUM(xsup.stnd_unit_price_gen * itp.trans_qty)  to_cost ' -- 振替先標準原価金額
+-- 2008/08/27 v1.7 UPDATE START
+--      ||'  SUM(xsup.stnd_unit_price_gen * itp.trans_qty)  to_cost ' -- 振替先標準原価金額
+      -- 振替先標準原価金額
+      ||'  SUM(xsup.stnd_unit_price_gen * (itp.trans_qty * TO_NUMBER(xrpmo.rcv_pay_div))) to_cost '
+-- 2008/08/27 v1.7 UPDATE END
       ||'FROM xxcmn_rcv_pay_mst_omso_v xrpmo '                     -- 経理受払区分情報view_受注関連
       ||'   , ic_tran_pnd              itp  '   --在庫トラン
       ||'   , xxcmn_lot_each_item_v    xlei '

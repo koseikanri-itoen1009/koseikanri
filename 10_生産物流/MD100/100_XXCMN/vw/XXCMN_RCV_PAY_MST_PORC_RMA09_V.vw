@@ -10,13 +10,20 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008-08-07    1.0   R.Tomoyose       V‹Kì¬
+ *  2008/08/27    1.1   A.Shiina         æ“¾€–Ú‚Éó•¥‹æ•ª‚ğ’Ç‰Á
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_PORC_RMA09_V
-    (NEW_DIV_ACCOUNT,DEALINGS_DIV,DOC_TYPE,DOC_ID,DOC_LINE,REQUEST_ITEM_CODE)
+-- 2008/08/27 v1.1 UPDATE START
+--    (NEW_DIV_ACCOUNT,DEALINGS_DIV,DOC_TYPE,DOC_ID,DOC_LINE,REQUEST_ITEM_CODE)
+    (NEW_DIV_ACCOUNT,DEALINGS_DIV,RCV_PAY_DIV,DOC_TYPE,DOC_ID,DOC_LINE,REQUEST_ITEM_CODE)
+-- 2008/08/27 v1.1 UPDATE END
 AS
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
        ,xrpm.dealings_div               AS dealings_div               -- æˆø‹æ•ª
+-- 2008/08/27 v1.1 ADD START
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- ó•¥‹æ•ª
+-- 2008/08/27 v1.1 ADD END
        ,xrpm.doc_type                   AS doc_type                   -- •¶‘ƒ^ƒCƒv
        ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
        ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
@@ -67,6 +74,9 @@ UNION
 --
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
        ,xrpm.dealings_div               AS dealings_div               -- æˆø‹æ•ª
+-- 2008/08/27 v1.1 ADD START
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- ó•¥‹æ•ª
+-- 2008/08/27 v1.1 ADD END
        ,xrpm.doc_type                   AS doc_type                   -- •¶‘ƒ^ƒCƒv
        ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
        ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
@@ -116,6 +126,9 @@ UNION
 --
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
        ,xrpm.dealings_div               AS dealings_div               -- æˆø‹æ•ª
+-- 2008/08/27 v1.1 ADD START
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- ó•¥‹æ•ª
+-- 2008/08/27 v1.1 ADD END
        ,xrpm.doc_type                   AS doc_type                   -- •¶‘ƒ^ƒCƒv
        ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
        ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
@@ -171,6 +184,9 @@ UNION
 --
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
        ,xrpm.dealings_div               AS dealings_div               -- æˆø‹æ•ª
+-- 2008/08/27 v1.1 ADD START
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- ó•¥‹æ•ª
+-- 2008/08/27 v1.1 ADD END
        ,xrpm.doc_type                   AS doc_type                   -- •¶‘ƒ^ƒCƒv
        ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
        ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
@@ -240,6 +256,9 @@ UNION
 --
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
        ,xrpm.dealings_div               AS dealings_div               -- æˆø‹æ•ª
+-- 2008/08/27 v1.1 ADD START
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- ó•¥‹æ•ª
+-- 2008/08/27 v1.1 ADD END
        ,xrpm.doc_type                   AS doc_type                   -- •¶‘ƒ^ƒCƒv
        ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
        ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
@@ -295,6 +314,9 @@ UNION
 --
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
        ,xrpm.dealings_div               AS dealings_div               -- æˆø‹æ•ª
+-- 2008/08/27 v1.1 ADD START
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- ó•¥‹æ•ª
+-- 2008/08/27 v1.1 ADD END
        ,xrpm.doc_type                   AS doc_type                   -- •¶‘ƒ^ƒCƒv
        ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
        ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
@@ -350,6 +372,9 @@ UNION
 --
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
        ,xrpm.dealings_div               AS dealings_div               -- æˆø‹æ•ª
+-- 2008/08/27 v1.1 ADD START
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- ó•¥‹æ•ª
+-- 2008/08/27 v1.1 ADD END
        ,xrpm.doc_type                   AS doc_type                   -- •¶‘ƒ^ƒCƒv
        ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
        ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
@@ -382,6 +407,9 @@ UNION
 --
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
        ,xrpm.dealings_div               AS dealings_div               -- æˆø‹æ•ª
+-- 2008/08/27 v1.1 ADD START
+       ,xrpm.rcv_pay_div                AS rcv_pay_div                -- ó•¥‹æ•ª
+-- 2008/08/27 v1.1 ADD START
        ,xrpm.doc_type                   AS doc_type                   -- •¶‘ƒ^ƒCƒv
        ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
        ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
@@ -414,6 +442,10 @@ COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA09_V.NEW_DIV_ACCOUNT IS 'VŒo—ó•¥‹
 /
 COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA09_V.DEALINGS_DIV IS 'æˆø‹æ•ª'
 /
+-- 2008/08/27 v1.1 ADD START
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA09_V.RCV_PAY_DIV IS 'ó•¥‹æ•ª'
+/
+-- 2008/08/27 v1.1 ADD END
 COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA09_V.DOC_TYPE IS '•¶‘ƒ^ƒCƒv'
 /
 COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA09_V.DOC_ID   IS '•¶‘ID'

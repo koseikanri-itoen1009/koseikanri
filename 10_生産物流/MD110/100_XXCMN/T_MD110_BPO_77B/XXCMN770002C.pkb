@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *                                                       「xxcmn_rcv_pay_mst_porc_rma02_v」
  *  2008/08/20    1.7   A.Shiina         T_TE080_BPO_770 指摘9対応
  *  2008/08/22    1.8   A.Shiina         T_TE080_BPO_770 指摘14対応
+ *  2008/08/27    1.9   A.Shiina         T_TE080_BPO_770 指摘20対応
  *
  *****************************************************************************************/
 --
@@ -2675,6 +2676,9 @@ AS
         WHEN gc_col_no_trnsfr THEN
           lv_col_name := 'trnsfr';
           lb_trnsfr   := TRUE;
+-- 2008/08/27 v1.9 ADD START
+          lb_revi     := TRUE;
+-- 2008/08/27 v1.9 ADD END
         -- 緑営１
         WHEN gc_col_no_acct_1 THEN
           lv_col_name := 'acct_1';
@@ -2693,6 +2697,9 @@ AS
         WHEN gc_col_no_guift THEN
           lv_col_name := 'guift';
           lb_trnsfr   := TRUE;
+-- 2008/08/27 v1.9 ADD START
+          lb_revi     := TRUE;
+-- 2008/08/27 v1.9 ADD END
         -- 倉替
         WHEN gc_col_no_locat_chg THEN
           lv_col_name := 'locat_chg';
