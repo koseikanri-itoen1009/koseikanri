@@ -3,17 +3,25 @@
  *
  * View Name   : XXCOK_SELLING_TRNS_TO_V
  * Description : îÑè„êUë÷êÊèÓïÒÉrÉÖÅ[
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          êVãKçÏê¨
+ *  2009/04/06    1.1   M.Hiruta         [è·äQT1_0307ëŒâû] íSìñâcã∆àıíäèoèåèÇÃSYSDATEÇã∆ñ±ì˙ïtÇ÷ïœçX
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW xxcok_selling_trns_to_v
 AS
+-- Start 2009/04/06 Ver_1.1 T1_0307 M.Hiruta
+  WITH get_date AS (
+    SELECT xxccp_common_pkg2.get_process_date AS process_date
+    FROM   DUAL
+  )
+-- End   2009/04/06 Ver_1.1 T1_0307 M.Hiruta
+--
   SELECT xsti.ROWID                AS row_id
        , xsti.selling_to_info_id   AS selling_to_info_id
        , xsti.selling_from_info_id AS selling_from_info_id
@@ -50,15 +58,26 @@ AS
               , ego_resource_agv         era
               , jtf_rs_resource_extns    jrre
               , per_all_people_f         papf
+-- Start 2009/04/06 Ver_1.1 T1_0307 M.Hiruta
+              , get_date                 get_date
+-- End   2009/04/06 Ver_1.1 T1_0307 M.Hiruta
          WHERE  hop.organization_profile_id = era.organization_profile_id
          AND    jrre.source_number          = era.resource_no
          AND    papf.person_id              = jrre.source_id
-         AND    TRUNC( NVL( hop.effective_start_date,  SYSDATE ) ) <= TRUNC(SYSDATE)
-         AND    TRUNC( NVL( hop.effective_end_date,    SYSDATE ) ) >= TRUNC(SYSDATE)
-         AND    TRUNC( NVL( era.resource_s_date,       SYSDATE ) ) <= TRUNC(SYSDATE)
-         AND    TRUNC( NVL( era.resource_e_date,       SYSDATE ) ) >= TRUNC(SYSDATE)
-         AND    TRUNC( NVL( papf.effective_start_date, SYSDATE ) ) <= TRUNC(SYSDATE)
-         AND    TRUNC( NVL( papf.effective_end_date,   SYSDATE ) ) >= TRUNC(SYSDATE)
+-- Start 2009/04/06 Ver_1.1 T1_0307 M.Hiruta
+--         AND    TRUNC( NVL( hop.effective_start_date,  SYSDATE ) ) <= TRUNC(SYSDATE)
+--         AND    TRUNC( NVL( hop.effective_end_date,    SYSDATE ) ) >= TRUNC(SYSDATE)
+--         AND    TRUNC( NVL( era.resource_s_date,       SYSDATE ) ) <= TRUNC(SYSDATE)
+--         AND    TRUNC( NVL( era.resource_e_date,       SYSDATE ) ) >= TRUNC(SYSDATE)
+--         AND    TRUNC( NVL( papf.effective_start_date, SYSDATE ) ) <= TRUNC(SYSDATE)
+--         AND    TRUNC( NVL( papf.effective_end_date,   SYSDATE ) ) >= TRUNC(SYSDATE)
+         AND    TRUNC( NVL( hop.effective_start_date,  get_date.process_date ) ) <= get_date.process_date
+         AND    TRUNC( NVL( hop.effective_end_date,    get_date.process_date ) ) >= get_date.process_date
+         AND    TRUNC( NVL( era.resource_s_date,       get_date.process_date ) ) <= get_date.process_date
+         AND    TRUNC( NVL( era.resource_e_date,       get_date.process_date ) ) >= get_date.process_date
+         AND    TRUNC( NVL( papf.effective_start_date, get_date.process_date ) ) <= get_date.process_date
+         AND    TRUNC( NVL( papf.effective_end_date,   get_date.process_date ) ) >= get_date.process_date
+-- End   2009/04/06 Ver_1.1 T1_0307 M.Hiruta
          ) people
   WHERE  xsti.selling_to_cust_code  = hca.account_number
   AND    hca.party_id               = hp.party_id
@@ -68,7 +87,7 @@ AS
   AND    hca.customer_class_code   <> '12'
   AND    hp.duns_number_c           = '40'
   AND    xca.selling_transfer_div   = '1'
-  AND    xca.chain_store_code      IS NULL;
+  AND    xca.chain_store_code      IS NULL
 /
 COMMENT ON TABLE  apps.xxcok_selling_trns_to_v                         IS 'îÑè„êUë÷êÊèÓïÒÉrÉÖÅ['
 /

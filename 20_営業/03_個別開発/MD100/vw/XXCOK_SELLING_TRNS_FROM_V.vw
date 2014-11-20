@@ -3,21 +3,33 @@
  *
  * View Name   : XXCOK_SELLING_TRNS_FROM_V
  * Description : 売上振替元情報ビュー
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
+ *  2009/04/06    1.1   M.Hiruta         [障害T1_0199対応] 振替元拠点の抽出元を売上振替元情報テーブルへ変更
+ *                                       [障害T1_0307対応] 担当営業員抽出条件のSYSDATEを業務日付へ変更
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW xxcok_selling_trns_from_v
 AS
+-- Start 2009/04/06 Ver_1.1 T1_0307 M.Hiruta
+  WITH get_date AS (
+    SELECT xxccp_common_pkg2.get_process_date AS process_date
+    FROM   DUAL
+  )
+-- End   2009/04/06 Ver_1.1 T1_0307 M.Hiruta
+--
   SELECT xsfi.ROWID                  AS row_id
        , xsfi.selling_from_info_id   AS selling_from_info_id
        , xsfi.selling_from_cust_code AS selling_from_cust_code
-       , base.base_code              AS selling_from_base_code
+-- Start 2009/04/03 Ver_1.1 T1_0199 M.Hiruta
+--       , base.base_code              AS selling_from_base_code
+       , xsfi.selling_from_base_code AS selling_from_base_code
+-- End   2009/04/03 Ver_1.1 T1_0199 M.Hiruta
        , hp.party_name               AS selling_from_cust_name
        , base.base_name              AS selling_from_base_name
        , people.charge_code          AS selling_from_charge_code
@@ -47,25 +59,39 @@ AS
               , ego_resource_agv         era
               , jtf_rs_resource_extns    jrre
               , per_all_people_f         papf
+-- Start 2009/04/06 Ver_1.1 T1_0307 M.Hiruta
+              , get_date                 get_date
+-- End   2009/04/06 Ver_1.1 T1_0307 M.Hiruta
          WHERE  hop.organization_profile_id    = era.organization_profile_id
          AND    jrre.source_number             = era.resource_no
          AND    papf.person_id                 = jrre.source_id
-         AND    TRUNC( NVL( hop.effective_start_date,  SYSDATE ) ) <= TRUNC(SYSDATE)
-         AND    TRUNC( NVL( hop.effective_end_date,    SYSDATE ) ) >= TRUNC(SYSDATE)
-         AND    TRUNC( NVL( era.resource_s_date,       SYSDATE ) ) <= TRUNC(SYSDATE)
-         AND    TRUNC( NVL( era.resource_e_date,       SYSDATE ) ) >= TRUNC(SYSDATE)
-         AND    TRUNC( NVL( papf.effective_start_date, SYSDATE ) ) <= TRUNC(SYSDATE)
-         AND    TRUNC( NVL( papf.effective_end_date,   SYSDATE ) ) >= TRUNC(SYSDATE)
+-- Start 2009/04/06 Ver_1.1 T1_0307 M.Hiruta
+--         AND    TRUNC( NVL( hop.effective_start_date,  SYSDATE ) ) <= TRUNC(SYSDATE)
+--         AND    TRUNC( NVL( hop.effective_end_date,    SYSDATE ) ) >= TRUNC(SYSDATE)
+--         AND    TRUNC( NVL( era.resource_s_date,       SYSDATE ) ) <= TRUNC(SYSDATE)
+--         AND    TRUNC( NVL( era.resource_e_date,       SYSDATE ) ) >= TRUNC(SYSDATE)
+--         AND    TRUNC( NVL( papf.effective_start_date, SYSDATE ) ) <= TRUNC(SYSDATE)
+--         AND    TRUNC( NVL( papf.effective_end_date,   SYSDATE ) ) >= TRUNC(SYSDATE)
+         AND    TRUNC( NVL( hop.effective_start_date,  get_date.process_date ) ) <= get_date.process_date
+         AND    TRUNC( NVL( hop.effective_end_date,    get_date.process_date ) ) >= get_date.process_date
+         AND    TRUNC( NVL( era.resource_s_date,       get_date.process_date ) ) <= get_date.process_date
+         AND    TRUNC( NVL( era.resource_e_date,       get_date.process_date ) ) >= get_date.process_date
+         AND    TRUNC( NVL( papf.effective_start_date, get_date.process_date ) ) <= get_date.process_date
+         AND    TRUNC( NVL( papf.effective_end_date,   get_date.process_date ) ) >= get_date.process_date
+-- End   2009/04/06 Ver_1.1 T1_0307 M.Hiruta
          ) people
   WHERE  xsfi.selling_from_cust_code  = hca.account_number
   AND    hca.party_id                 = hp.party_id
   AND    hca.cust_account_id          = xca.customer_id
-  AND    xca.sale_base_code           = base.base_code  (+)
+-- Start 2009/04/03 Ver_1.1 T1_0199 M.Hiruta
+--  AND    xca.sale_base_code           = base.base_code  (+)
+  AND    xsfi.selling_from_base_code  = base.base_code  (+)
+-- End   2009/04/03 Ver_1.1 T1_0199 M.Hiruta
   AND    hca.party_id                 = people.party_id (+)
   AND    hca.customer_class_code     <> '12'
   AND    hp.duns_number_c             = '40'
   AND    xca.selling_transfer_div     = '1'
-  AND    xca.chain_store_code        IS NULL;
+  AND    xca.chain_store_code        IS NULL
 /
 COMMENT ON TABLE  apps.xxcok_selling_trns_from_v                           IS '売上振替元情報ビュー'
 /
