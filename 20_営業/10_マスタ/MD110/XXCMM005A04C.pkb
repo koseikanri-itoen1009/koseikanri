@@ -29,6 +29,7 @@ AS
  *  2009/03/09    1.2   Yuuki.Nakamura   ファイル出力先プロファイル名称変更
  *  2009/04/20    1.3   Yutaka.Kuboshima 障害T1_0590の対応
  *  2009/05/15    1.4   Yutaka.Kuboshima 障害T1_1026の対応
+ *  2009/05/21    1.5   Yutaka.Kuboshima 障害T1_1129の対応
  *
  *****************************************************************************************/
 --
@@ -153,6 +154,11 @@ AS
 -- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
   cv_flag_parent      CONSTANT VARCHAR2(1)   := 'P';                          -- フラグ：P(親)
 -- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
+-- 2009/05/21 Ver1.5 add start by Yutaka.Kuboshima
+  cv_lookup_area      CONSTANT VARCHAR2(30) := 'XXCMN_AREA';                  -- 参照タイプ(地区名)
+  cv_y_flag           CONSTANT VARCHAR2(1)  := 'Y';                           -- 有効フラグ(Y)
+  cv_language_ja      CONSTANT VARCHAR2(2)  := 'JA';                          -- 言語(JA)
+-- 2009/05/21 Ver1.5 add end by Yutaka.Kuboshima
 -- 
   -- ===============================
   -- ユーザー定義グローバル型
@@ -869,12 +875,21 @@ AS
       -- ■ 地区名称を取得
       IF ( gt_out_tab(ln_idx).district_cd IS NOT NULL ) THEN
         BEGIN
-          SELECT SUBSTRB(ffvl.attribute4, 1, 16)
-          INTO   lv_district_name
-          FROM   fnd_flex_values   ffvl
-          WHERE  ffvl.flex_value_set_id = gt_out_tab(ln_idx).flex_value_set_id
-          AND    ffvl.flex_value        = gt_out_tab(ln_idx).district_cd
+-- 2009/05/21 Ver1.5 modify start by Yutaka.Kuboshima
+--          SELECT SUBSTRB(ffvl.attribute4, 1, 16)
+--          INTO   lv_district_name
+--          FROM   fnd_flex_values   ffvl
+--          WHERE  ffvl.flex_value_set_id = gt_out_tab(ln_idx).flex_value_set_id
+--          AND    ffvl.flex_value        = gt_out_tab(ln_idx).district_cd
+        SELECT SUBSTRB(flv.meaning, 1, 16)
+        INTO lv_district_name
+        FROM fnd_lookup_values flv
+        WHERE flv.lookup_type  = cv_lookup_area
+          AND flv.enabled_flag = cv_y_flag
+          AND flv.language     = cv_language_ja
+          AND flv.lookup_code  = gt_out_tab(ln_idx).district_cd
           ;
+-- 2009/05/21 Ver1.5 modify end by Yutaka.Kuboshima
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             lv_district_name := '';
