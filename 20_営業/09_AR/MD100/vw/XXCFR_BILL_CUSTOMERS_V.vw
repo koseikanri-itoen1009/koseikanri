@@ -1,25 +1,28 @@
-CREATE OR REPLACE VIEW xxcfr_bill_customers_v(
+CREATE OR REPLACE VIEW xxcfr_bill_customers_v
 /*************************************************************************
  * 
  * View Name       : XXCFR_BILL_CUSTOMERS_V
  * Description     : ¿‹æŒÚ‹qƒrƒ…[
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
- * ------------- ----- ------------ -------------------------------------
- *  Date          Ver.  Editor       Description
- * ------------- ----- ------------ -------------------------------------
- *  2008/11/27    1.0  SCS ‹g‘º Œ›i ‰‰ñì¬
+ * ------------- ----- -------------  -------------------------------------
+ *  Date          Ver.  Editor         Description
+ * ------------- ----- -------------  -------------------------------------
+ *  2009-01-30    1.0  SCS ‹g‘º Œ›i   ‰‰ñì¬
  *  2009/04/07    1.1  SCS ‘åì Œb   [áŠQT1_0383] æ“¾ŒÚ‹q•s³‘Î‰
+ *  2009/04/14    1.2  SCS ‘åì Œb   [áŠQT1_0546] ŒÚ‹qƒvƒƒtƒ@ƒCƒ‹æ“¾•s³‘Î‰
  ************************************************************************/
+(
   pay_customer_id,                   -- “ü‹àæŒÚ‹qID
   pay_customer_number,               -- “ü‹àæŒÚ‹qƒR[ƒh
   pay_customer_name,                 -- “ü‹àæŒÚ‹q–¼
   receiv_base_code,                  -- “ü‹à‹’“_ƒR[ƒh
   receiv_base_name,                  -- “ü‹à‹’“_–¼
   receiv_code1,                      -- ”„Š|ƒR[ƒh1i¿‹‘j
+  receiv_code1_name,                 -- ”„Š|ƒR[ƒh1i¿‹‘j–¼Ì
   bill_customer_id,                  -- ¿‹æŒÚ‹qID
   bill_customer_code,                -- ¿‹æŒÚ‹qƒR[ƒh
   bill_customer_name,                -- ¿‹æŒÚ‹q–¼
@@ -33,27 +36,35 @@ CREATE OR REPLACE VIEW xxcfr_bill_customers_v(
   org_id                             -- ‘gDID
 )
 AS
-  SELECT  NVL(chcar.cust_account_id,bcus.cust_account_id) pay_customer_id,
-          NVL(chca.account_number,bcus.customer_code) pay_customer_number,
-          NVL(chp.party_name,bcus.customer_name)  pay_customer_name,
-          NVL(cxca.receiv_base_code,bcus.bill_base_code) receiv_base_code,
-          NVL(cffvv.description,bcus.bill_base_name) receiv_base_name,
-          bcus.receiv_code1,
-          bcus.cust_account_id,
-          bcus.customer_code  bill_customer_code,
-          bcus.customer_name  bill_customer_name,
-          bcus.bill_base_code,
-          bcus.bill_base_name,
-          bcus.store_code,
-          bcus.tax_div,
-          bcus.tax_rounding_rule,
-          bcus.inv_prt_type,
-          bcus.cons_inv_flag,
-          NVL(chcar.org_id,bcus.org_id) org_id
+  SELECT  NVL(chcar.cust_account_id,bcus.cust_account_id)    pay_customer_id,      -- “ü‹àæŒÚ‹qID
+          NVL(chca.account_number,bcus.customer_code)        pay_customer_number,  -- “ü‹àæŒÚ‹qƒR[ƒh
+          NVL(chp.party_name,bcus.customer_name)             pay_customer_name,    -- “ü‹àæŒÚ‹q–¼
+          NVL(cxca.receiv_base_code,bcus.bill_base_code)     receiv_base_code,     -- “ü‹à‹’“_ƒR[ƒh
+          NVL(cffvv.description,bcus.bill_base_name)         receiv_base_name,     -- “ü‹à‹’“_–¼
+          bcus.receiv_code1                                  receiv_code1,         -- ”„Š|ƒR[ƒh1i¿‹‘j
+          xigc.receiv_code1_name                             receiv_code1_name,    -- ”„Š|ƒR[ƒh1i¿‹‘j–¼
+          bcus.cust_account_id                               cust_account_id,      -- ¿‹æŒÚ‹qID
+          bcus.customer_code                                 bill_customer_code,   -- ¿‹æŒÚ‹qƒR[ƒh
+          bcus.customer_name                                 bill_customer_name,   -- ¿‹æŒÚ‹q–¼
+          bcus.bill_base_code                                bill_base_code,       -- ¿‹‹’“_ƒR[ƒh
+          bcus.bill_base_name                                bill_base_name,       -- ¿‹‹’“_–¼
+          bcus.store_code                                    store_code,           -- ¿‹æŒÚ‹q“XƒR[ƒh
+          bcus.tax_div                                       tax_div,              -- Á”ïÅ‹æ•ª
+          bcus.tax_rounding_rule                             tax_rounding_rule,    -- ’[”ˆ—‹æ•ª
+          bcus.inv_prt_type                                  inv_prt_type,         -- ¿‹‘o—ÍŒ`®
+          bcus.cons_inv_flag                                 cons_inv_flag,        -- ˆêŠ‡¿‹‘”­sƒtƒ‰ƒO
+          NVL(chcar.org_id,bcus.org_id)                      org_id                -- ‘gDID
   FROM    hz_cust_acct_relate_all chcar,     -- ŒÚ‹qŠÖ˜Ai“ü‹àæ-¿‹æj
           hz_cust_accounts        chca,      -- ŒÚ‹qi“ü‹àæj
           hz_parties              chp,       -- ƒp[ƒeƒBi“ü‹àæj
           xxcmm_cust_accounts     cxca,      -- ŒÚ‹qƒAƒhƒIƒ“i“ü‹àæj
+          (SELECT  lookup_code              receiv_code1,              -- ”„Š|ƒR[ƒh1i¿‹æj
+                   meaning                  receiv_code1_name          -- ”„Š|ƒR[ƒh1i¿‹æj–¼
+           FROM    fnd_lookup_values_vl
+           WHERE   lookup_type        =  'XXCMM_INVOICE_GRP_CODE'      -- ”„Š|ƒR[ƒh1“o˜^ QÆƒ^ƒCƒv
+           AND     enabled_flag       =  'Y'
+           AND     NVL(start_date_active,TO_DATE('19000101','YYYYMMDD'))  <= SYSDATE
+           AND     NVL(end_date_active,TO_DATE('22001231','YYYYMMDD'))    >= SYSDATE ) xigc, -- ”„Š|ƒR[ƒh‚P
           (SELECT  flex_value,
                    description
            FROM    fnd_flex_values_vl ffv
@@ -64,41 +75,41 @@ AS
                     AND     flex_value_set_id   = ffv.flex_value_set_id)) cffvv,  --’lƒZƒbƒg’liŠ‘®•”–åj
           (
            --¿‹æ
-           SELECT  xhca.cust_account_id,        --¿‹æŒÚ‹qID
+           SELECT  xhca.cust_account_id,        -- ¿‹æŒÚ‹qID
                    xhcp.cust_account_profile_id,
                    xhcas.cust_acct_site_id,
                    xhcsu.site_use_id,
                    xhca.party_id,
                    xhp.party_number,
-                   xhcsu.attribute4          receiv_code1,         --”„Š|ƒR[ƒh1i¿‹æj
-                   xhca.account_number       customer_code,            --¿‹æŒÚ‹qƒR[ƒh
-                   xhp.party_name            customer_name,            --¿‹æŒÚ‹q–¼Ì
-                   xhca.status               status,                   --ŒÚ‹qƒXƒe[ƒ^ƒX
-                   xhca.customer_type        customer_type,            --ŒÚ‹qƒ^ƒCƒv
-                   xhca.customer_class_code  customer_class_code,      --ŒÚ‹q‹æ•ª
-                   xxca.bill_base_code       bill_base_code,           --¿‹‹’“_ƒR[ƒh
-                   xffvv.description         bill_base_name,           --¿‹‹’“_–¼
-                   xxca.store_code           store_code,               --“X•ÜƒR[ƒh
-                   xxca.tax_div              tax_div,                  --Á”ïÅ‹æ•ª
-                   xhcsu.tax_rounding_rule   tax_rounding_rule,        --Å‹à|’[”ˆ—
-                   xhcsu.attribute7          inv_prt_type,             --¿‹‘o—ÍŒ`®
-                   xhcp.cons_inv_flag        cons_inv_flag,            --ˆêŠ‡¿‹‘”­s‹æ•ª
-                   xhcas.org_id              org_id                    --‘gDID
-           FROM    hz_cust_accounts        xhca,                       --ŒÚ‹qƒAƒJƒEƒ“ƒgi¿‹æj
-                   hz_parties              xhp,                        --ƒp[ƒeƒBi¿‹æj
-                   hz_cust_acct_sites_all  xhcas,                      --ŒÚ‹qƒTƒCƒgi¿‹æj
-                   hz_cust_site_uses_all   xhcsu,                      --ŒÚ‹qg—p–Ú“Ii¿‹æj
-                   hz_customer_profiles    xhcp,                       --ŒÚ‹qƒvƒƒtƒ@ƒCƒ‹i¿‹æj
-                   xxcmm_cust_accounts     xxca,                       --ŒÚ‹qƒAƒhƒIƒ“i¿‹æj
+                   xhcsu.attribute4          receiv_code1,             -- ”„Š|ƒR[ƒh1i¿‹æj
+                   xhca.account_number       customer_code,            -- ¿‹æŒÚ‹qƒR[ƒh
+                   xhp.party_name            customer_name,            -- ¿‹æŒÚ‹q–¼
+                   xhca.status               status,                   -- ŒÚ‹qƒXƒe[ƒ^ƒX
+                   xhca.customer_type        customer_type,            -- ŒÚ‹qƒ^ƒCƒv
+                   xhca.customer_class_code  customer_class_code,      -- ŒÚ‹q‹æ•ª
+                   xxca.bill_base_code       bill_base_code,           -- ¿‹‹’“_ƒR[ƒh
+                   xffvv.description         bill_base_name,           -- ¿‹‹’“_–¼
+                   xxca.store_code           store_code,               -- “X•ÜƒR[ƒh
+                   xxca.tax_div              tax_div,                  -- Á”ïÅ‹æ•ª
+                   xhcsu.tax_rounding_rule   tax_rounding_rule,        -- Å‹à|’[”ˆ—
+                   xhcsu.attribute7          inv_prt_type,             -- ¿‹‘o—ÍŒ`®
+                   xhcp.cons_inv_flag        cons_inv_flag,            -- ˆêŠ‡¿‹‘”­s‹æ•ª
+                   xhcas.org_id              org_id                    -- ‘gDID
+           FROM    hz_cust_accounts        xhca,                       -- ŒÚ‹qƒAƒJƒEƒ“ƒgi¿‹æj
+                   hz_parties              xhp,                        -- ƒp[ƒeƒBi¿‹æj
+                   hz_cust_acct_sites_all  xhcas,                      -- ŒÚ‹qƒTƒCƒgi¿‹æj
+                   hz_cust_site_uses_all   xhcsu,                      -- ŒÚ‹qg—p–Ú“Ii¿‹æj
+                   hz_customer_profiles    xhcp,                       -- ŒÚ‹qƒvƒƒtƒ@ƒCƒ‹i¿‹æj
+                   xxcmm_cust_accounts     xxca,                       -- ŒÚ‹qƒAƒhƒIƒ“i¿‹æj
                    (SELECT flex_value,
-                           description 
+                           description
                     FROM   fnd_flex_values_vl ffv
                     WHERE  EXISTS
                            (SELECT  'X'
                             FROM    fnd_flex_value_sets
                             WHERE   flex_value_set_name = 'XX03_DEPARTMENT'
-                            AND     flex_value_set_id   = ffv.flex_value_set_id)) xffvv  --’lƒZƒbƒg’liŠ‘®•”–åj
-           WHERE   xhca.party_id            = xhp.party_id               
+                            AND     flex_value_set_id   = ffv.flex_value_set_id)) xffvv  -- ’lƒZƒbƒg’liŠ‘®•”–åj
+           WHERE   xhca.party_id            = xhp.party_id
            AND     xhca.customer_class_code = '14'
 -- Modify 2009.04.07 Ver1.1 Start
 --           AND     xhca.status              = 'A'                       --ƒXƒe[ƒ^ƒX
@@ -115,7 +126,7 @@ AS
            AND     xhcsu.status             = 'A'                       --ƒXƒe[ƒ^ƒX
 -- Modify 2009.04.07 Ver1.1 END
            AND     xhca.cust_account_id     = xhcp.cust_account_id
-           AND     xhcp.site_use_id         IS NULL
+           AND     xhcsu.site_use_id       = xhcp.site_use_id
            AND     xhca.cust_account_id     = xxca.customer_id(+)
            AND     xxca.bill_base_code      = xffvv.flex_value(+)
            AND     EXISTS
@@ -127,41 +138,41 @@ AS
                     )
          UNION ALL
            -- ”[•iæ AND ¿‹æ
-           SELECT  yhca.cust_account_id,                               --¿‹æŒÚ‹qid
+           SELECT  yhca.cust_account_id,                               -- ¿‹æŒÚ‹qID
                    yhcp.cust_account_profile_id,
                    yhcas.cust_acct_site_id,
                    yhcsu.site_use_id,
                    yhca.party_id,
                    yhp.party_number,
-                   yhcsu.attribute4          receiv_code1,         --”„Š|ƒR[ƒh1i¿‹æj
-                   yhca.account_number       customer_code,            --¿‹æŒÚ‹qƒR[ƒh
-                   yhp.party_name            customer_name,            --¿‹æŒÚ‹q–¼Ì
-                   yhca.status               status,                   --ŒÚ‹qƒXƒe[ƒ^ƒX
-                   yhca.customer_type        customer_type,            --ŒÚ‹qƒ^ƒCƒv
-                   yhca.customer_class_code  customer_class_code,      --ŒÚ‹q‹æ•ª
-                   yxca.bill_base_code       bill_base_code,           --¿‹‹’“_ƒR[ƒh
-                   yffvv.description         bill_base_name,           --¿‹‹’“_–¼
-                   yxca.store_code           store_code,               --“X•ÜƒR[ƒh
-                   yxca.tax_div              tax_div,                  --Á”ïÅ‹æ•ª
-                   yhcsu.tax_rounding_rule   tax_rounding_rule,        --Å‹à|’[”ˆ—
-                   yhcsu.attribute7          inv_prt_type,             --¿‹‘o—ÍŒ`®
-                   yhcp.cons_inv_flag        cons_inv_flag,            --ˆêŠ‡¿‹‘”­s‹æ•ª
-                   yhcas.org_id              org_id                    --‘gDID
-           FROM    hz_cust_accounts        yhca,                       --ŒÚ‹qƒAƒJƒEƒ“ƒgi¿‹æj
-                   hz_parties              yhp,                        --ƒp[ƒeƒBi¿‹æj
-                   hz_cust_acct_sites_all  yhcas,                      --ŒÚ‹qƒTƒCƒgi¿‹æj
-                   hz_cust_site_uses_all   yhcsu,                      --ŒÚ‹qg—p–Ú“Ii¿‹æj
-                   hz_customer_profiles    yhcp,                       --ŒÚ‹qƒvƒƒtƒ@ƒCƒ‹i¿‹æj
-                   xxcmm_cust_accounts     yxca,                       --ŒÚ‹qƒAƒhƒIƒ“i¿‹æj
+                   yhcsu.attribute4          receiv_code1,             -- ”„Š|ƒR[ƒh1i¿‹æj
+                   yhca.account_number       customer_code,            -- ¿‹æŒÚ‹qƒR[ƒh
+                   yhp.party_name            customer_name,            -- ¿‹æŒÚ‹q–¼Ì
+                   yhca.status               status,                   -- ŒÚ‹qƒXƒe[ƒ^ƒX
+                   yhca.customer_type        customer_type,            -- ŒÚ‹qƒ^ƒCƒv
+                   yhca.customer_class_code  customer_class_code,      -- ŒÚ‹q‹æ•ª
+                   yxca.bill_base_code       bill_base_code,           -- ¿‹‹’“_ƒR[ƒh
+                   yffvv.description         bill_base_name,           -- ¿‹‹’“_–¼
+                   yxca.store_code           store_code,               -- “X•ÜƒR[ƒh
+                   yxca.tax_div              tax_div,                  -- Á”ïÅ‹æ•ª
+                   yhcsu.tax_rounding_rule   tax_rounding_rule,        -- Å‹à|’[”ˆ—
+                   yhcsu.attribute7          inv_prt_type,             -- ¿‹‘o—ÍŒ`®
+                   yhcp.cons_inv_flag        cons_inv_flag,            -- ˆêŠ‡¿‹‘”­s‹æ•ª
+                   yhcas.org_id              org_id                    -- ‘gDID
+           FROM    hz_cust_accounts        yhca,                       -- ŒÚ‹qƒAƒJƒEƒ“ƒgi¿‹æj
+                   hz_parties              yhp,                        -- ƒp[ƒeƒBi¿‹æj
+                   hz_cust_acct_sites_all  yhcas,                      -- ŒÚ‹qƒTƒCƒgi¿‹æj
+                   hz_cust_site_uses_all   yhcsu,                      -- ŒÚ‹qg—p–Ú“Ii¿‹æj
+                   hz_customer_profiles    yhcp,                       -- ŒÚ‹qƒvƒƒtƒ@ƒCƒ‹i¿‹æj
+                   xxcmm_cust_accounts     yxca,                       -- ŒÚ‹qƒAƒhƒIƒ“i¿‹æj
                    (SELECT  flex_value,
-                           description 
+                           description
                     FROM   fnd_flex_values_vl ffv
                     WHERE  EXISTS
                            (SELECT   'X'
                             FROM     fnd_flex_value_sets
                             WHERE    flex_value_set_name = 'XX03_DEPARTMENT'
-                            AND      flex_value_set_id = ffv.flex_value_set_id)) yffvv  --’lƒZƒbƒg’liŠ‘®•”–åj
-           WHERE   yhca.party_id            = yhp.party_id               
+                            AND      flex_value_set_id = ffv.flex_value_set_id)) yffvv  -- ’lƒZƒbƒg’liŠ‘®•”–åj
+           WHERE   yhca.party_id            = yhp.party_id
            AND     yhca.customer_class_code = '10'
 -- Modify 2009.04.07 Ver1.1 Start
 --           AND     yhca.status              = 'A'                       --ƒXƒe[ƒ^ƒX
@@ -178,7 +189,7 @@ AS
            AND     yhcsu.status             = 'A'                       --ƒXƒe[ƒ^ƒX
 -- Modify 2009.04.07 Ver1.1 END
            AND     yhca.cust_account_id     = yhcp.cust_account_id
-           AND     yhcp.site_use_id         IS NULL
+           AND     yhcsu.site_use_id        = yhcp.site_use_id
            AND     yhca.cust_account_id     = yxca.customer_id(+)
            AND     yxca.bill_base_code      = yffvv.flex_value(+)
            AND     NOT EXISTS
@@ -196,6 +207,7 @@ AS
   AND     chca.cust_account_id             = cxca.customer_id(+)
   AND     cxca.receiv_base_code            = cffvv.flex_value(+)
   AND     chcar.status(+)                  = 'A'
+  AND     bcus.receiv_code1                = xigc.receiv_code1(+)
 ;
 
 COMMENT ON COLUMN  xxcfr_bill_customers_v.pay_customer_id        IS '“ü‹àæŒÚ‹qID';
@@ -204,6 +216,7 @@ COMMENT ON COLUMN  xxcfr_bill_customers_v.pay_customer_name      IS '“ü‹àæŒÚ‹q–
 COMMENT ON COLUMN  xxcfr_bill_customers_v.receiv_base_code       IS '“ü‹à‹’“_ƒR[ƒh';
 COMMENT ON COLUMN  xxcfr_bill_customers_v.receiv_base_name       IS '“ü‹à‹’“_–¼';
 COMMENT ON COLUMN  xxcfr_bill_customers_v.receiv_code1           IS '”„Š|ƒR[ƒh1i¿‹‘j';
+COMMENT ON COLUMN  xxcfr_bill_customers_v.receiv_code1_name      IS '”„Š|ƒR[ƒh1i¿‹‘j–¼';
 COMMENT ON COLUMN  xxcfr_bill_customers_v.bill_customer_id       IS '¿‹æŒÚ‹qID';
 COMMENT ON COLUMN  xxcfr_bill_customers_v.bill_customer_code     IS '¿‹æŒÚ‹qƒR[ƒh';
 COMMENT ON COLUMN  xxcfr_bill_customers_v.bill_customer_name     IS '¿‹æŒÚ‹q–¼';
@@ -211,7 +224,7 @@ COMMENT ON COLUMN  xxcfr_bill_customers_v.bill_base_code         IS '¿‹‹’“_ƒR
 COMMENT ON COLUMN  xxcfr_bill_customers_v.bill_base_name         IS '¿‹‹’“_–¼';
 COMMENT ON COLUMN  xxcfr_bill_customers_v.store_code             IS '¿‹æŒÚ‹q“XƒR[ƒh';
 COMMENT ON COLUMN  xxcfr_bill_customers_v.tax_div                IS 'Á”ïÅ‹æ•ª';
-COMMENT ON COLUMN  xxcfr_bill_customers_v.tax_rounding_rule      IS 'Å‹à';
+COMMENT ON COLUMN  xxcfr_bill_customers_v.tax_rounding_rule      IS '’[”ˆ—‹æ•ª';
 COMMENT ON COLUMN  xxcfr_bill_customers_v.inv_prt_type           IS '¿‹‘o—ÍŒ`®';
 COMMENT ON COLUMN  xxcfr_bill_customers_v.cons_inv_flag          IS 'ˆêŠ‡¿‹‘”­sƒtƒ‰ƒO';
 COMMENT ON COLUMN  xxcfr_bill_customers_v.org_id                 IS '‘gDID';
