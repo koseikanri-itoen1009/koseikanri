@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY xxcok_out_ah_kb_dir AS '/var/ST/ebsif/outbound/ah_iffile/kb'
+/
