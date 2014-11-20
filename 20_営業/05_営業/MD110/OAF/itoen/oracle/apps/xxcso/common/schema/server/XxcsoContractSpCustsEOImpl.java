@@ -1,13 +1,12 @@
 /*============================================================================
 * ファイル名 : XxcsoContractSpCustsEOImpl
 * 概要説明   : SP専決顧客テーブル（契約管理からの更新用）エンティティクラス
-* バージョン : 1.1
+* バージョン : 1.0
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2009-01-22 1.0  SCS小川浩    新規作成
-* 2010-02-05 1.1  SCS阿部大輔  [E_本稼動_01537]SP専決顧客テーブル更新対応
+* 2009-01-22 1.0  SCS小川浩  新規作成
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -218,9 +217,8 @@ public class XxcsoContractSpCustsEOImpl extends OAPlsqlEntityImpl
     OADBTransaction txn = getOADBTransaction();
     
     XxcsoUtils.debug(txn, "[START]");
-// 2010-02-05 [E_本稼動_01537] Add Start
-//    super.updateRow();
-// 2010-02-05 [E_本稼動_01537] Add End
+
+    super.updateRow();
 
     XxcsoUtils.debug(txn, "[END]");
   }
