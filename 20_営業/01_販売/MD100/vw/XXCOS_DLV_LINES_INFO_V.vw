@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_lines_info_v
  * Description     : 納品伝票明細情報ビュー
- * Version         : 1.6
+ * Version         : 1.7
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -17,6 +17,8 @@
  *  2009/08/03    1.5   K.Kiriu          [0000872]パフォーマンス対応
  *  2009/09/03    1.6   M.Sano           [0001227]パフォーマンス対応
  *                                       (業務日付の取得方法変更)
+ *  2012/01/05    1.7   N.Koyama         [E_本稼動_08907]パフォーマンス対応
+ *                                       (VD、VD以外にSELECTを分割しUNION ALLにて結合)
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_dlv_lines_info_v (
   order_no_hht
@@ -65,9 +67,14 @@ CREATE OR REPLACE VIEW apps.xxcos_dlv_lines_info_v (
 AS
 SELECT
 /* 2009/08/03 Ver1.5 Add Start */
-       /*+ INDEX(xmvc xxcoi_mst_vd_column_u01) */
+/* 2012/01/05 Ver1.7 Del Start */
+--       /*+ INDEX(xmvc xxcoi_mst_vd_column_u01) */
+/* 2012/01/05 Ver1.7 Del End */
 /* 2009/08/03 Ver1.5 Add End   */
-       xdl.order_no_hht order_no_hht,                              --受注No.（HHT)
+/* 2012/01/05 Ver1.7 Mod Start */
+--       xdl.order_no_hht order_no_hht,                              --受注No.（HHT)
+       xdh.order_no_hht order_no_hht,                              --受注No.（HHT)
+/* 2012/01/05 Ver1.7 Mod End */
        xdl.line_no_hht line_no_hht,                                --行No.
        xdl.digestion_ln_number digestion_ln_number,                --枝番
        xdl.column_no column_no,                                    --コラムNo.
@@ -230,7 +237,10 @@ FROM
        )                      org,
 /* 2009/08/03 Ver1.5 Mod End   */
        xxcoi_mst_vd_column    xmvc
-       , hz_cust_accounts     cust                                                                                            
+       , hz_cust_accounts     cust              
+/* 2012/01/05 Ver1.7 Add Start */
+       , xxcmm_cust_accounts  xcust
+/* 2012/01/05 Ver1.7 Add End */                                                                               
 WHERE  xdl.order_no_hht = xdh.order_no_hht
 AND    xdl.digestion_ln_number = xdh.digestion_ln_number
 /* 2009/08/03 Ver1.5 Mod Start */
@@ -268,8 +278,106 @@ AND    pd.process_date            BETWEEN cmn_mst.start_date_active
                                   AND     cmn_mst.end_date_active
 /* 2009/08/03 Ver1.5 Mod End   */
 AND    xdh.customer_number        = cust.account_number  
-AND    cust.cust_account_id       = nvl(xmvc.customer_id, cust.cust_account_id)
-AND    xdl.column_no              = xmvc.column_no(+)
+/* 2012/01/05 Ver1.7 Add Start */
+AND    cust.cust_account_id                = xcust.customer_id
+AND    xcust.business_low_type   IN ('24','25','27')
+/* 2012/01/05 Ver1.7 Add End */
+/* 2012/01/05 Ver1.7 Mod Start */
+--AND    cust.cust_account_id       = nvl(xmvc.customer_id, cust.cust_account_id)
+--AND    xdl.column_no              = xmvc.column_no(+)
+AND    cust.cust_account_id       = xmvc.customer_id
+AND    xdl.column_no              = xmvc.column_no
+/* 2012/01/05 Ver1.7 Mod End */
+/* 2011/12/26 Ver1.7 Add Start */
+UNION ALL
+SELECT
+       xdh.order_no_hht order_no_hht,                              --受注No.（HHT)
+       xdl.line_no_hht line_no_hht,                                --行No.
+       xdl.digestion_ln_number digestion_ln_number,                --枝番
+       xdl.column_no column_no,                                    --コラムNo.
+       xdl.h_and_c h_and_c,                                        --H/C
+       hac.meaning h_and_c_name,                                   --H/C名称
+       xdl.item_code_self item_code_self,                          --品名コード
+       cmn_mst.item_name,                                          --品目（名称）
+       abs( xdl.case_number ) abs_case_number,                     --ケース数（画面用:絶対値）
+       xdl.case_number case_number,                                --ケース数（DB値）
+       abs( xdl.quantity ) abs_quantity,                           --数量（画面用:絶対値）
+       xdl.quantity quantity,                                      --数量（DB値）
+       xdl.sale_class sale_class,                                  --売上区分
+       sc.meaning  sale_name,                                      --売上区分(名称)
+       abs( xdl.wholesale_unit_ploce ) abs_wholesale_unit_ploce,   --卸単価（画面用:絶対値）
+       xdl.wholesale_unit_ploce wholesale_unit_ploce,              --卸単価（DB値）
+       abs( xdl.selling_price ) abs_selling_price,                 --売単価（画面用:絶対値）
+       xdl.selling_price selling_price,                            --売単価（DB値）
+       abs(xdl.replenish_number) abs_replenish_number,             --補充数（画面用:絶対値）
+       xdl.replenish_number replenish_number,                      --補充数（DB値）
+       abs(xdl.cash_and_card) abs_cash_and_card,                   --現金・カード併用額（画面用:絶対値）
+       xdl.cash_and_card cash_and_card,                            --現金・カード併用額（DB値）
+       NULL inventory_quantity,                                     --基準在庫数
+       xdl.content content,                                        --入数
+       cmm_item.baracha_div,                                       --バラ茶区分
+       xdl.created_by,
+       xdl.creation_date,
+       xdl.last_updated_by,
+       xdl.last_update_date,
+       xdl.last_update_login,
+       xdl.request_id,
+       xdl.program_application_id,
+       xdl.program_id,
+       xdl.program_update_date,
+       xdl.sold_out_class,                                         --売切区分
+       xdl.sold_out_time,                                          --売切時間
+       xdl.inventory_item_id,                                      --品目ID
+       xdl.standard_unit,                                          --基準単位
+       xdl.order_no_ebs order_no_ebs,                              --受注No.（EBS）
+       xdl.line_number_ebs                                         --明細番号(EBS)
+FROM
+       xxcos_dlv_lines       xdl,                             --納品明細テーブル
+       xxcos_dlv_headers     xdh,                             --納品ヘッダテーブル
+       mtl_system_items_b    mtl_item,
+       ic_item_mst_b         ic_item,
+       xxcmm_system_items_b  cmm_item,
+       xxcmn_item_mst_b      cmn_mst,
+       fnd_lookup_values      sc,
+       fnd_lookup_values      hac,
+       (
+       --営業日
+       SELECT TRUNC( xpd.process_date ) process_date
+       FROM   xxccp_process_dates xpd
+       )                      pd,
+       (
+       --在庫組織ID
+       SELECT xxcoi_common_pkg.get_organization_id( FND_PROFILE.VALUE(  'XXCOI1_ORGANIZATION_CODE' ) ) organization_id
+       FROM   DUAL
+       )                      org
+       , hz_cust_accounts     cust
+       , xxcmm_cust_accounts  xcust
+WHERE  xdl.order_no_hht = xdh.order_no_hht
+AND    xdl.digestion_ln_number = xdh.digestion_ln_number
+AND    hac.lookup_type(+)      = 'XXCOS1_HC_CLASS'
+AND    hac.lookup_code(+)      = xdl.h_and_c
+AND    hac.language(+)         = 'JA'
+AND    hac.enabled_flag(+)     = 'Y'
+AND    pd.process_date         BETWEEN  NVL( hac.start_date_active, pd.process_date )
+                               AND      NVL( hac.end_date_active, pd.process_date )
+AND    sc.lookup_type          = 'XXCOS1_SALE_CLASS'
+AND    sc.lookup_code          = xdl.sale_class
+AND    sc.language             = 'JA'
+AND    sc.enabled_flag         = 'Y'
+AND    pd.process_date         BETWEEN  NVL( sc.start_date_active, pd.process_date )
+                               AND      NVL( sc.end_date_active, pd.process_date )
+AND    xdl.item_code_self = ic_item.item_no
+AND    mtl_item.organization_id   = org.organization_id
+AND    mtl_item.segment1          = ic_item.item_no
+AND    ic_item.item_id            = cmn_mst.item_id
+AND    mtl_item.segment1 = cmm_item.item_code
+AND    ic_item.item_id            = cmm_item.item_id
+AND    pd.process_date            BETWEEN cmn_mst.start_date_active
+                                  AND     cmn_mst.end_date_active
+AND    xdh.customer_number        = cust.account_number
+AND    cust.cust_account_id                = xcust.customer_id
+AND    xcust.business_low_type NOT IN ('24','25','27')
+/* 2011/12/26 Ver1.7 Add End */
 ;
 COMMENT ON  COLUMN  xxcos_dlv_lines_info_v.ORDER_NO_HHT              IS '受注No.（HHT)';
 COMMENT ON  COLUMN  xxcos_dlv_lines_info_v.LINE_NO_HHT               IS '行No.';
