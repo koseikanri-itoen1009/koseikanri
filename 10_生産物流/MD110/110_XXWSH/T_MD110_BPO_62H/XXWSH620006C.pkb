@@ -7,7 +7,7 @@ AS
  * Description      : 出庫調整表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫調整表 T_MD070_BPO_62H
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,7 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/18    1.0   Nozomi Kashiwagi 新規作成
  *  2008/06/04    1.1   Jun Nakada       クイックコード警告区分の結合を外部結合に変更(出荷移動)
- *
+ *  2008/6/20     1.2   Y.Shindo         配送区分情報VIEW2の結合を外部結合に変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -584,12 +584,16 @@ AS
             xoha.sum_weight
           WHEN xsmv.small_amount_class = gc_small_kbn_not_obj THEN
             xoha.sum_weight + xoha.sum_pallet_weight
+          WHEN xsmv.small_amount_class IS NULL THEN   -- 6/20追加
+            NULL
          END                               AS req_sum_weight         -- 積載重量合計(依頼No単位)
         ,CASE
           WHEN xsmv.small_amount_class = gc_small_kbn_obj THEN
             xoha.sum_capacity
           WHEN xsmv.small_amount_class = gc_small_kbn_not_obj THEN
             xoha.sum_capacity + xoha.sum_pallet_weight
+          WHEN xsmv.small_amount_class IS NULL THEN
+            NULL
          END                               AS  req_sum_capacity      -- 積載容積合計(依頼No単位)
         ,xoha.loading_efficiency_weight    AS  req_eff_weight        -- 重量積載効率(依頼No単位)
         ,xoha.loading_efficiency_capacity  AS  req_eff_capacity      -- 容積積載効率(依頼No単位)
@@ -697,7 +701,7 @@ AS
           )
         )
         -- 12:配送区分情報
-        AND  xoha.shipping_method_code  =  xsmv.ship_method_code
+        AND  xoha.shipping_method_code  =  xsmv.ship_method_code(+)   -- 6/20 外部結合追加
         ----------------------------------------------------------------------------------
         -- 明細情報
         ----------------------------------------------------------------------------------
@@ -831,6 +835,9 @@ AS
           -- 小口区分が対象外の場合
           WHEN xsmv.small_amount_class = gc_small_kbn_not_obj THEN
             xmrih.sum_weight + xmrih.sum_pallet_weight
+          -- 小口区分がNULLの場合
+          WHEN xsmv.small_amount_class IS NULL THEN   -- 6/20追加
+            NULL
          END                                AS req_sum_weight         -- 積載重量合計(依頼No単位)
         ,CASE
           -- 小口区分が対象の場合
@@ -839,6 +846,9 @@ AS
           -- 小口区分が対象外の場合
           WHEN xsmv.small_amount_class = gc_small_kbn_not_obj THEN
             xmrih.sum_capacity + xmrih.sum_pallet_weight
+          -- 小口区分がNULLの場合
+          WHEN xsmv.small_amount_class IS NULL THEN   -- 6/20追加
+            NULL
          END                                AS  req_sum_capacity      -- 積載容積合計(依頼No単位)
         ,xmrih.loading_efficiency_weight    AS  req_eff_weight        -- 重量積載効率(依頼No単位)
         ,xmrih.loading_efficiency_capacity  AS  req_eff_capacity      -- 容積積載効率(依頼No単位)
@@ -927,7 +937,7 @@ AS
           )
         )
         -- 09:配送区分情報
-        AND  xmrih.shipping_method_code  =  xsmv.ship_method_code
+        AND  xmrih.shipping_method_code  =  xsmv.ship_method_code(+)  -- 6/20 外部結合追加
         ----------------------------------------------------------------------------------
         -- 明細情報
         ----------------------------------------------------------------------------------
@@ -1211,6 +1221,7 @@ AS
       -- 出力判定
       -- ====================================================
       IF (i < it_data.COUNT) THEN
+--
         -- 依頼No/移動No
         IF (lv_tmp_req_move_no = it_data(i + 1).req_move_no) THEN
           lb_dispflg_req_move_no := FALSE ;
@@ -1219,7 +1230,7 @@ AS
         END IF ;
 --
         -- 配送No
-        IF (lv_tmp_delivery_no = it_data(i + 1).delivery_no) THEN
+        IF (NVL(lv_tmp_delivery_no,'NULL') = NVL(it_data(i + 1).delivery_no,'NULL')) THEN
           lb_dispflg_delivery_no := FALSE ;
         ELSE
           lb_dispflg_delivery_no := TRUE ;
@@ -1268,6 +1279,7 @@ AS
       -- 終了タグ設定
       -- ====================================================
       IF (lb_dispflg_req_move_no) THEN
+--
         prc_set_tag_data('/lg_item_info') ;
         prc_set_tag_data('req_sum_pallet_qty'  , it_data(i).req_sum_pallet_qty);
 --
