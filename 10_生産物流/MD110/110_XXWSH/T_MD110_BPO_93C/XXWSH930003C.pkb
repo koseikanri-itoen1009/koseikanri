@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（出庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93C)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/06/23    1.1   Oohashi  Takao   不具合ログ対応
  *  2008/06/25    1.2   Oohashi  Takao   不具合ログ対応
  *  2008/06/30    1.3   Oohashi  Takao   不具合ログ対応
+ *  2008/07/02    1.4   Kawano   Yuko    ST不具合対応#352
  *
  *****************************************************************************************/
 --
@@ -1213,12 +1214,18 @@ AS
         -- 出荷依頼の場合
         IF ( ir_get_data.order_type = gc_eos_type_rpt_ship_k ) THEN
           SELECT xcas.party_site_number
-                ,xcas.party_site_short_name
+--2008/07/02 mod start Y.Kawano
+--                ,xcas.party_site_short_name
+                ,xcas.party_site_full_name
+--2008/07/02 mod end   Y.Kawano
           INTO   or_temp_tab.deliver_code      -- 配送先又は入庫先コード
                 ,or_temp_tab.deliver_name      -- 配送先又は入庫先名称
           FROM xxcmn_cust_acct_sites2_v   xcas -- 顧客サイト情報VIEW2
           WHERE gr_param.date_from BETWEEN xcas.start_date_active AND xcas.end_date_active
-          AND   xcas.cust_acct_site_id  = ir_get_data.deliver_id
+--2008/07/02 mod start Y.Kawano
+--          AND   xcas.cust_acct_site_id  = ir_get_data.deliver_id
+          AND   xcas.party_site_id  = ir_get_data.deliver_id
+--2008/07/02 mod end   Y.Kawano
           ;
         -- 支給依頼の場合
         ELSIF ( ir_get_data.order_type = gc_eos_type_rpt_ship_y ) THEN
@@ -1259,12 +1266,18 @@ AS
 --          WHERE gr_param.date_from BETWEEN xps.start_date_active AND xps.end_date_active
 --          AND   xps.party_site_id  = ir_get_data.deliver_id
           SELECT xcas.party_site_number
-                ,xcas.party_site_short_name
+--2008/07/02 mod start Y.Kawano
+--                ,xcas.party_site_short_name
+                ,xcas.party_site_full_name
+--2008/07/02 mod end   Y.Kawano
           INTO   or_temp_tab.deliver_code      -- 配送先又は入庫先コード
                 ,or_temp_tab.deliver_name      -- 配送先又は入庫先名称
           FROM xxcmn_cust_acct_sites2_v   xcas -- 顧客サイト情報VIEW2
           WHERE gr_param.date_from BETWEEN xcas.start_date_active AND xcas.end_date_active
-          AND   xcas.cust_acct_site_id  = ir_get_data.deliver_id
+--2008/07/02 mod start Y.Kawano
+--          AND   xcas.cust_acct_site_id  = ir_get_data.deliver_id
+          AND   xcas.party_site_id  = ir_get_data.deliver_id
+--2008/07/02 mod end   Y.Kawano
 -- mod end ver1.1
           ;
         -- 支給依頼の場合
