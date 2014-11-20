@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.9
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/05/26    1.9   T.Kitajima       [T1_1177]件数制御修正
  *  2009/05/29    1.9   T.Kitajima       [T1_1120]org_id追加
  *  2009/06/02    1.10  N.Maeda          [T1_1192]端数処理(切上)の修正
+ *  2009/07/17    1.11  N.Maeda          [T1_1438]ロック単位の変更
  *
  *****************************************************************************************/
 --
@@ -99,6 +100,7 @@ AS
 --
   -- クイックコード取得エラー
   lookup_types_expt EXCEPTION;
+  insert_err_expt   EXCEPTION;
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -139,7 +141,7 @@ AS
   cv_msg_dlv_table   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10356';       -- 納品ヘッダテーブル及び納品明細テーブル
   cv_msg_dlv_h_table CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10357';       -- 納品ヘッダテーブル
   cv_msg_inv_cnt     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10358';       -- 入出庫情報抽出件数
-  cv_msg_dlv_cnt     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10359';       -- 納品ヘッダ情報抽出件数
+  cv_msg_dlv_cnt     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00141';       -- 納品ヘッダ情報抽出件数
   cv_msg_date        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10360';       -- 業務処理日取得エラー
   cv_msg_bks_id      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10361';       -- GL会計帳簿ID
   cv_msg_qck_error   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10362';       -- クイックコード取得エラーメッセージ
@@ -150,6 +152,7 @@ AS
   cv_msg_input       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10043';       -- 入力区分
 --****************************** 2009/05/29 1.9 T.Kitajima ADD START ******************************
   cv_msg_mo          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00047';       -- MO:営業単位
+  cv_data_loc        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00184';     -- 対象データロック中
 --****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
   -- トークン
   cv_tkn_table       CONSTANT VARCHAR2(20)  := 'TABLE_NAME';             -- テーブル名
@@ -170,6 +173,11 @@ AS
   cv_tkn_up          CONSTANT VARCHAR2(20)  := 'UP';                     -- 切上げ
   cv_tkn_nearest     CONSTANT VARCHAR2(20)  := 'NEAREST';                -- 四捨五入
   cv_tkn_bill_to     CONSTANT VARCHAR2(20)  := 'BILL_TO';                -- BILL_TO
+--******************** 2009/07/17 Ver1.11  N.Maeda ADD START ******************************************
+  cv_tkn_order_number  CONSTANT  VARCHAR2(100)  :=  'ORDER_NUMBER';   -- 受注番号
+  cv_digestion_ln_number CONSTANT VARCHAR2(20)  := 'DIGESTION_LN_NUMBER';  -- 枝番
+  cv_invoice_no      CONSTANT VARCHAR2(20)  := 'INVOICE_NO';           -- HHT伝票番号
+--******************** 2009/07/17 Ver1.11  N.Maeda ADD  END  ******************************************
 --
   -- クイックコードタイプ
   cv_qck_typ_tax     CONSTANT VARCHAR2(30)  := 'XXCOS1_CONSUMPTION_TAX_CLASS';    -- 消費税区分
@@ -210,6 +218,20 @@ AS
     );
   TYPE g_tab_qck_input_type IS TABLE OF g_rec_qck_input_type INDEX BY PLS_INTEGER;
 --****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
+-- ******************* 2009/07/17 Ver1.11 N.Maeda ADD START ******************************************--
+  TYPE g_get_inv_data_type IS RECORD
+    (
+      row_id              ROWID                                               -- 行ID
+     ,order_no_hht        xxcos_dlv_headers.order_no_hht%TYPE                 -- 受注No.(HHT)
+     ,digestion_ln_number xxcos_dlv_headers.digestion_ln_number%TYPE          -- 枝番
+     ,hht_invoice_no      xxcos_dlv_headers.hht_invoice_no%TYPE               -- 伝票No.HHT
+    );
+  TYPE g_tab_inv_data_type IS TABLE OF g_get_inv_data_type INDEX BY PLS_INTEGER;
+--
+  TYPE g_get_lines_type IS TABLE OF xxcos_vd_column_lines%ROWTYPE
+  INDEX BY PLS_INTEGER;
+--  TYPE g_get_lines_tab IS TABLE OF g_get_lines_type INDEX BY PLS_INTEGER;
+-- ******************* 2009/07/17 Ver1.11 N.Maeda ADD  END  ******************************************--
 --
   -- 入出庫一時表データ格納用変数
   TYPE g_rec_inv_data IS RECORD
@@ -246,7 +268,7 @@ AS
     );
   TYPE g_tab_inv_data IS TABLE OF g_rec_inv_data INDEX BY PLS_INTEGER;
   
---******************** 2009/05/07 Var1.8  N.Maeda ADD START ******************************************
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD START ******************************************
   TYPE g_tab_set_clm_headers  IS TABLE OF      xxcos_vd_column_headers%ROWTYPE    INDEX BY PLS_INTEGER;
 --
   TYPE g_rec_clm_headers IS RECORD
@@ -293,14 +315,14 @@ AS
      program_application_id          xxcos_vd_column_headers.program_application_id%TYPE,-- コンカレント・プログラム・アプリケーションID
      program_id                      xxcos_vd_column_headers.program_id%TYPE,-- コンカレント・プログラムID
      program_update_date             xxcos_vd_column_headers.program_update_date%TYPE,-- プログラム更新日
---******************** 2009/05/21 Var1.9  T.Kitajima ADD START ******************************************
+--******************** 2009/05/21 Ver1.9  T.Kitajima ADD START ******************************************
      h_rowid                         rowid                                                 -- レコードID
---******************** 2009/05/21 Var1.9  T.Kitajima ADD  END  ******************************************
+--******************** 2009/05/21 Ver1.9  T.Kitajima ADD  END  ******************************************
 
     );
   TYPE g_tab_clm_headers IS TABLE OF g_rec_clm_headers INDEX BY PLS_INTEGER;
 --
---******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ******************************************
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ******************************************
 --
   -- VDコラム別取引ヘッダテーブル登録用変数
   TYPE g_tab_order_noh_hht         IS TABLE OF xxcos_vd_column_headers.order_no_hht%TYPE
@@ -371,7 +393,7 @@ AS
     INDEX BY PLS_INTEGER;   -- 入出庫一時表ID
 --****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
 --
---******************** 2009/05/07 Var1.8  N.Maeda ADD START ******************************************
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD START ******************************************
   -- VDコラム別取引ヘッダテーブル登録用変数
   TYPE g_tab_digestion_ln_number         IS TABLE OF xxcos_vd_column_headers.digestion_ln_number%TYPE
     INDEX BY PLS_INTEGER;                --枝番
@@ -428,7 +450,7 @@ AS
     INDEX BY PLS_INTEGER;                -- 行ID
   TYPE g_tab_vd_can_cor_class            IS TABLE OF xxcos_vd_column_headers.cancel_correct_class%TYPE
     INDEX BY PLS_INTEGER;                -- 取消訂正区分
---******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ******************************************
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ******************************************
 
 --
   -- ===============================
@@ -472,7 +494,7 @@ AS
 --****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
   gt_input_class        g_tab_gt_input_class;           --  入力区分
 --****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
---******************** 2009/05/07 Var1.8  N.Maeda ADD START ***************************************--
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD START ***************************************--
   gt_dev_set_order_noh_hht          g_tab_order_noh_hht;            -- 受注No.(HHT)
   gt_dev_set_digestion_ln           g_tab_digestion_ln_number;      -- 枝番
   gt_dev_set_order_no_ebs           g_tab_order_no_ebs;             -- 受注No.(EBS)
@@ -517,10 +539,10 @@ AS
   gt_dev_set_program_update_d       g_tab_program_update_date;      -- プログラム更新日
   gt_vd_row_id                      g_tab_vd_row_id;                 -- VDカラム別取引情報-行ID
   gt_vd_can_cor_class               g_tab_vd_can_cor_class;          -- VDカラム別取引情報-取消訂正区分
---******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ***************************************--
---******************** 2009/05/21 Var1.9  T.Kitajima ADD START ******************************************
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ***************************************--
+--******************** 2009/05/21 Ver1.9  T.Kitajima ADD START ******************************************
   gt_dlv_headers_row_id             g_tab_vd_row_id;                 -- 納品ヘッダテーブルレコードID
---******************** 2009/05/21 Var1.9  T.Kitajima ADD  END  ******************************************
+--******************** 2009/05/21 Ver1.9  T.Kitajima ADD  END  ******************************************
 --
   gn_inv_target_cnt     NUMBER;                         -- 入出庫情報抽出件数
   gn_dlv_h_target_cnt   NUMBER;                         -- 納品ヘッダ情報抽出件数
@@ -533,10 +555,14 @@ AS
   gt_qck_invoice_type   g_tab_qck_invoice_type;         -- 伝票区分
   gt_qck_input_type     g_tab_qck_input_type;           -- 入力区分
   gt_inv_data           g_tab_inv_data;                 -- 入出庫一時表抽出データ
---******************** 2009/05/07 Var1.8  N.Maeda ADD START ******************************************
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD START ******************************************
   gt_clm_headers        g_tab_clm_headers;              -- 納品ヘッダデータ格納用
   gt_set_clm_headers    g_tab_set_clm_headers;          -- 
---******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ******************************************
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ******************************************
+-- ******************* 2009/07/17 Ver1.11 N.Maeda ADD START ******************************************--
+  gt_inv_data_tab      g_tab_inv_data_type;            -- 対象伝票情報格納用
+  gt_lines_tab         g_get_lines_type;                 -- 納品明細情報
+-- ******************* 2009/07/17 Ver1.11 N.Maeda ADD  END  ******************************************--
   gd_process_date       DATE;                           -- 業務処理日
   gd_max_date           DATE;                           -- MAX日付
   gv_bks_id             VARCHAR2(50);                   -- GL会計帳簿ID
@@ -546,6 +572,8 @@ AS
 --****************************** 2009/05/29 1.9 T.Kitajima ADD START ******************************
   gt_org_id             fnd_profile_option_values.profile_option_value%TYPE;      -- MO:営業単位
 --****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
+  gt_tr_count           NUMBER := 0;
+  gt_insert_h_count     NUMBER := 0;
 --
 --
   /**********************************************************************************
@@ -553,9 +581,9 @@ AS
    * Description      : 初期処理(A-0)
    ***********************************************************************************/
   PROCEDURE init(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -712,9 +740,9 @@ AS
    ***********************************************************************************/
   PROCEDURE inv_data_receive(
     on_target_cnt OUT NUMBER,       --   抽出件数
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -964,7 +992,7 @@ AS
           AND    acct.org_id            = gt_org_id               -- 顧客所在地.ORG_ID＝1145
 --****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
           AND    site.site_use_code     = cv_tkn_bill_to          -- 顧客使用目的.使用目的＝BILL_TO
---************************* 2009/04/16 N.Maeda Var1.5 MOD START ****************************************************
+--************************* 2009/04/16 N.Maeda Ver1.5 MOD START ****************************************************
 --          AND    (
 --                    xsv.account_number = inv.outside_cust_code    -- 担当営業員view.顧客番号＝入出庫一時表.出庫側顧客
 --                  AND                                             -- 日付の適用範囲
@@ -979,7 +1007,7 @@ AS
                   AND
                     inv.invoice_date <= NVL(xsv.effective_end_date, gd_max_date)
                  )
---************************* 2009/04/16 N.Maeda Var1.5 MOD END ******************************************************
+--************************* 2009/04/16 N.Maeda Ver1.5 MOD END ******************************************************
           ORDER BY  inv.base_code              -- 拠点コード
                    ,inv.outside_cust_code      -- 出庫側顧客コード
                    ,inv.invoice_no             -- 伝票No.
@@ -1090,7 +1118,7 @@ AS
           AND    acct.org_id            = gt_org_id               -- 顧客所在地.ORG_ID＝1145
 --****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
           AND    site.site_use_code     = cv_tkn_bill_to          -- 顧客使用目的.使用目的＝BILL_TO
---************************* 2009/04/16 N.Maeda Var1.5 MOD START ****************************************************
+--************************* 2009/04/16 N.Maeda Ver1.5 MOD START ****************************************************
 --          AND    (
 --                    xsv.account_number = inv.inside_cust_code     -- 担当営業員view.顧客番号＝入出庫一時表.入庫側顧客
 --                  AND                                             -- 日付の適用範囲
@@ -1105,7 +1133,7 @@ AS
                   AND
                     inv.invoice_date <= NVL(xsv.effective_end_date, gd_max_date)
                  )
---************************* 2009/04/16 N.Maeda Var1.5 MOD END ******************************************************
+--************************* 2009/04/16 N.Maeda Ver1.5 MOD END ******************************************************
           ORDER BY  inv.base_code              -- 拠点コード
                    ,inv.inside_cust_code       -- 入庫側顧客コード
                    ,inv.invoice_no             -- 伝票No.
@@ -1291,9 +1319,9 @@ AS
    * Description      : 入出庫データ導出(A-2)
    ***********************************************************************************/
   PROCEDURE inv_data_compute(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -1352,10 +1380,10 @@ AS
     lt_cancel_correct      xxcos_vd_column_headers.cancel_correct_class%TYPE;          -- 取消・訂正区分
     lt_vd_quantity         xxcos_vd_column_lines.quantity%TYPE;                        -- 数量
     lt_replenish_number    xxcos_vd_column_lines.replenish_number%TYPE;                -- 補充数
---************************* 2009/04/15 N.Maeda Var1.4 ADD START ****************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 ADD START ****************************************************
     lt_vd_replenish_number xxcos_vd_column_lines.replenish_number%TYPE;                -- 補充数(数量加工用)
     lt_vd_case_quant       xxcoi_hht_inv_transactions.case_quantity%TYPE;              -- ケース数(数量加工用)
---************************* 2009/04/15 N.Maeda Var1.4 ADD END ******************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 ADD END ******************************************************
 --****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
     lt_transaction_id      xxcoi_hht_inv_transactions.transaction_id%TYPE;             -- 入出庫一時表ID
 --****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
@@ -1496,16 +1524,16 @@ AS
       --== 数量加工 ==--
       IF ( lv_change = cv_tkn_yes ) THEN
         lt_vd_quantity := lt_quantity * -1;
---************************* 2009/04/15 N.Maeda Var1.4 ADD START ****************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 ADD START ****************************************************
         lt_vd_replenish_number := lt_replenish_number * -1;
         lt_vd_case_quant       := lt_case_quant * -1;
---************************* 2009/04/15 N.Maeda Var1.4 ADD END ******************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 ADD END ******************************************************
       ELSE
         lt_vd_quantity := lt_quantity;
---************************* 2009/04/15 N.Maeda Var1.4 ADD START ****************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 ADD START ****************************************************
         lt_vd_replenish_number := lt_replenish_number;
         lt_vd_case_quant       := lt_case_quant;
---************************* 2009/04/15 N.Maeda Var1.4 ADD END ******************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 ADD END ******************************************************
       END IF;
 --
 --****************************** 2009/04/22 1.7 T.Kitajima ADD START ******************************--
@@ -1534,22 +1562,22 @@ AS
       --==============================================================
       -- 合計金額の導出（ヘッダ部）
       --==============================================================
---************************* 2009/04/15 N.Maeda Var1.4 MOD START ****************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 MOD START ****************************************************
 --      -- 補充数×単価
 --      lt_total_amount := lt_total_amount + lt_replenish_number * lt_unit_price;
       -- 補充数×単価
       lt_total_amount := lt_total_amount + lt_vd_replenish_number * lt_unit_price;
---************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 MOD END ******************************************************
 --
       --==============================================================
       -- 税込み金額の導出（ヘッダ部）
       --==============================================================
---************************* 2009/04/15 N.Maeda Var1.4 MOD START ****************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 MOD START ****************************************************
 --      -- 本数×VDコラムマスタの単価
 --      lt_tax_include_tempo := lt_replenish_number * lt_inv_price;
       -- 本数×VDコラムマスタの単価
       lt_tax_include_tempo := lt_vd_replenish_number * lt_inv_price;
---************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 MOD END ******************************************************
 --
       -- ヘッダ変数格納用データ算出
       lt_tax_include := lt_tax_include + lt_tax_include_tempo;
@@ -1560,7 +1588,7 @@ AS
       -- 税込金額÷消費税率
       lt_sales_tax_tempo := lt_tax_include_tempo - ( lt_tax_include_tempo / ln_rate );
 --
---*************************** 2009/06/02 Var1.10 N.Maeda MOD START *****************************--
+--*************************** 2009/06/02 Ver1.10 N.Maeda MOD START *****************************--
       -- 端数発生時処理
       IF ( lt_sales_tax_tempo <> TRUNC(lt_sales_tax_tempo) ) THEN
 --
@@ -1589,7 +1617,7 @@ AS
 --
         END IF;
 --
---*************************** 2009/06/02 Var1.10 N.Maeda MOD  END  *****************************--
+--*************************** 2009/06/02 Ver1.10 N.Maeda MOD  END  *****************************--
       END IF;
 --
       -- ヘッダ変数格納用データ算出
@@ -1604,21 +1632,21 @@ AS
       gt_content(ln_inv_lines_num)        := lt_case_in_quant;     -- 入数
       gt_item_id(ln_inv_lines_num)        := lt_item_id;           -- 品目ID
       gt_standard_unit(ln_inv_lines_num)  := lt_primary_code;      -- 基準単位
---************************* 2009/04/16 N.Maeda Var1.5 MOD START ****************************************************
---************************* 2009/04/15 N.Maeda Var1.4 MOD START ****************************************************
+--************************* 2009/04/16 N.Maeda Ver1.5 MOD START ****************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 MOD START ****************************************************
 --      gt_case_number(ln_inv_lines_num)    := lt_case_quant;        -- ケース数
 --      gt_case_number(ln_inv_lines_num)    := lt_vd_replenish_number;        -- ケース数
---************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 MOD END ******************************************************
       gt_case_number(ln_inv_lines_num)    := lt_vd_case_quant;        -- ケース数
---************************* 2009/04/16 N.Maeda Var1.5 MOD END ******************************************************
+--************************* 2009/04/16 N.Maeda Ver1.5 MOD END ******************************************************
       gt_quantity(ln_inv_lines_num)       := lt_vd_quantity;       -- 数量
       gt_wholesale(ln_inv_lines_num)      := lt_unit_price;        -- 卸単価
       gt_column_no(ln_inv_lines_num)      := lt_column_no;         -- コラムNo.
       gt_h_and_c(ln_inv_lines_num)        := lt_hot_cold_div;      -- H/C
---************************* 2009/04/15 N.Maeda Var1.4 MOD START ****************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 MOD START ****************************************************
 --      gt_replenish_num(ln_inv_lines_num)  := lt_replenish_number;  -- 補充数
       gt_replenish_num(ln_inv_lines_num)  := lt_vd_replenish_number;  -- 補充数
---************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
+--************************* 2009/04/15 N.Maeda Ver1.4 MOD END ******************************************************
 ----****************************** 2009/04/17 1.6 T.Kitajima ADD START ******************************--
       gt_transaction_id(ln_inv_lines_num) := lt_transaction_id;     -- 入出庫一時表ID
 ----****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
@@ -1630,6 +1658,8 @@ AS
 --
       IF ( inv_no = gn_inv_target_cnt ) THEN    -- ループが最後の場合
 --
+        -- ヘッダ対象件数カウントアップ
+        gt_tr_count := gt_tr_count + 1;
         --==============================================================
         -- 入出庫ヘッダへデータ格納
         --==============================================================
@@ -1654,6 +1684,8 @@ AS
 --
       ELSIF ( lt_invoice_no != gt_inv_data(inv_no + 1).invoice_no ) THEN
 --
+        -- ヘッダ対象件数カウントアップ
+        gt_tr_count := gt_tr_count + 1;
         --==============================================================
         -- 入出庫ヘッダへデータ格納
         --==============================================================
@@ -1709,9 +1741,9 @@ AS
   PROCEDURE inv_data_register(
     on_normal_cnt   OUT NUMBER,       --   ヘッダ成功件数
     on_normal_cnt_l OUT NUMBER,       --   明細成功件数
-    ov_errbuf       OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode      OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg       OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf       OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode      OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg       OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -1850,10 +1882,10 @@ AS
           );
 --
       -- ヘッダ成功件数セット
---******************** 2009/05/26 Var1.9  T.Kitajima MOD START ******************************************
+--******************** 2009/05/26 Ver1.9  T.Kitajima MOD START ******************************************
 --      on_normal_cnt := SQL%ROWCOUNT;
       on_normal_cnt := gt_order_noh_hht.COUNT;
---******************** 2009/05/26 Var1.9  T.Kitajima MOD  END  ******************************************
+--******************** 2009/05/26 Ver1.9  T.Kitajima MOD  END  ******************************************
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -1937,10 +1969,10 @@ AS
           );
 --
       -- 明細成功件数セット
---******************** 2009/05/26 Var1.9  T.Kitajima MOD START ******************************************
+--******************** 2009/05/26 Ver1.9  T.Kitajima MOD START ******************************************
 --      on_normal_cnt_l := SQL%ROWCOUNT;
       on_normal_cnt_l := gt_order_nol_hht.COUNT;
---******************** 2009/05/26 Var1.9  T.Kitajima MOD  END  ******************************************
+--******************** 2009/05/26 Ver1.9  T.Kitajima MOD  END  ******************************************
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -1982,9 +2014,9 @@ AS
   PROCEDURE dlv_data_register(
     on_target_cnt   OUT NUMBER,       --   ヘッダ抽出件数
     on_target_cnt_l OUT NUMBER,       --   明細抽出件数
-    ov_errbuf       OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode      OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg       OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf       OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode      OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg       OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -2009,86 +2041,168 @@ AS
     lt_cancel_correct_class            xxcos_vd_column_headers.cancel_correct_class%TYPE; --枝番最大値の取消し訂正区分
     lt_min_digestion_ln_number         xxcos_vd_column_headers.digestion_ln_number%TYPE;  --枝番最小値
     ln_vd_data_count                   NUMBER;
+-- ******************* 2009/07/17 Ver1.11 N.Maeda ADD START ******************************************--
+    lt_inv_row_id                      ROWID;                                             -- 対象ヘッダ行ID
+    lt_inv_order_no_hht                xxcos_dlv_headers.order_no_hht%TYPE;               -- 受注No.(HHT)
+    lt_inv_digestion_ln_number         xxcos_dlv_headers.digestion_ln_number%TYPE;        -- 枝番
+    lt_inv_hht_invoice_no              xxcos_dlv_headers.hht_invoice_no%TYPE;             -- HHT伝票No.
+    lt_lock_brak_order_no_hht          xxcos_dlv_headers.order_no_hht%TYPE;               -- ロック済み受注No.(HHT)
+    lt_lock_err_order_no_hht          xxcos_dlv_headers.order_no_hht%TYPE;                -- ロックエラー受注No.(HHT)
+    lt_data_count                      NUMBER;
+    lt_dlv_line_count                  NUMBER;
+-- ******************* 2009/07/17 Ver1.11 N.Maeda ADD  END  ******************************************--
 --
     -- *** ローカル・カーソル ***
-    CURSOR headers_lock_cur
+-- ******************* 2009/07/17 Ver1.11 N.Maeda ADD START ******************************************--
+    -- 対象伝票取得カーソル
+    CURSOR get_inv_cur
     IS
---******************** 2009/05/07 Var1.8  N.Maeda MOD START ******************************************
---      SELECT head.creation_date  creation_date
---      FROM   xxcos_dlv_headers   head                     -- 納品ヘッダテーブル
+      SELECT DISTINCT
+             head.ROWID                      row_id                    -- 行ID
+            ,head.order_no_hht               order_no_hht              -- 受注No.(HHT)
+            ,head.digestion_ln_number        digestion_ln_number       -- 枝番
+            ,head.hht_invoice_no             hht_invoice_no            -- HHT伝票No.
+      FROM   xxcos_dlv_headers  head         -- 納品ヘッダ
+            ,xxcos_dlv_lines    line         -- 納品明細テーブル
+      WHERE  head.order_no_hht         = line.order_no_hht         -- ヘッダ.受注No.(HHT)＝明細.受注No.(HHT)
+      AND    head.digestion_ln_number  = line.digestion_ln_number  -- ヘッダ.枝番＝明細.枝番
+      AND    head.results_forward_flag = cv_default                -- 販売実績連携済みフラグ＝0
+      AND    head.input_class          = cv_input_class            -- 入力区分＝5
+      ORDER BY 
+             head.order_no_hht,head.digestion_ln_number;
+--
+    -- 対象伝票ロック取得カーソル
+    CURSOR get_inv_lock_cur
+    IS
+      SELECT 'Y'
+      FROM   xxcos_dlv_headers  head
+             ,xxcos_dlv_lines   line
+      WHERE  head.order_no_hht         = line.order_no_hht         -- ヘッダ.受注No.(HHT)＝明細.受注No.(HHT)
+      AND    head.digestion_ln_number  = line.digestion_ln_number  -- ヘッダ.枝番＝明細.枝番
+      AND    head.order_no_hht         = lt_inv_order_no_hht
+      FOR UPDATE OF head.order_no_hht,line.order_no_hht NOWAIT;
+--
+    -- 明細情報取得カーソル
+    CURSOR get_line_cur
+    IS
+      SELECT line.order_no_hht           order_no_hht        -- 受注No.(HHT)
+             ,line.line_no_hht            line_no_hht         -- 行No.(HHT)
+             ,line.digestion_ln_number    digestion_ln_number -- 枝番
+             ,line.order_no_ebs           order_no_ebs        -- 受注No.(EBS)
+             ,line.line_number_ebs        line_number_ebs     -- 明細番号(EBS)
+             ,line.item_code_self         item_code_self      -- 品名コード(自社)
+             ,line.content                content             -- 入数
+             ,line.inventory_item_id      inventory_item_id   -- 品目ID
+             ,line.standard_unit          standard_unit       -- 基準単位
+             ,line.case_number            case_number         -- ケース数
+             ,DECODE( head.red_black_flag, '0', line.quantity * -1, line.quantity )
+                                         quantity            -- 数量
+             ,line.sale_class             sale_class          -- 売上区分
+             ,line.wholesale_unit_ploce   wholesale_unit_ploce  -- 卸単価
+             ,line.selling_price          selling_price       -- 売単価
+             ,line.column_no              column_no           -- コラムNo.
+             ,line.h_and_c                h_and_c             -- H/C
+             ,line.sold_out_class         sold_out_class      -- 売切区分
+             ,line.sold_out_time          sold_out_time       -- 売切時間
+             ,DECODE( head.red_black_flag, '0', line.replenish_number * -1, line.replenish_number )
+                                         replenish_number    -- 補充数
+             ,line.cash_and_card          cash_and_card       -- 現金・カード併用額
+             ,cn_created_by               cn_created_by       -- 作成者
+             ,cd_creation_date            creation_date       -- 作成日
+             ,cn_last_updated_by          last_updated_by     -- 最終更新者
+             ,cd_last_update_date         last_update_date    -- 最終更新日
+             ,cn_last_update_login        last_update_login   -- 最終更新ログイン
+             ,cn_request_id               request_id          -- 要求ID
+             ,cn_program_application_id   program_application_id-- コンカレント・プログラム・アプリケーションID
+             ,cn_program_id               program_id          -- コンカレント・プログラムID
+             ,cd_program_update_date      program_update_date -- プログラム更新日
+      FROM   xxcos_dlv_headers  head      -- 納品ヘッダテーブル
+             ,xxcos_dlv_lines    line      -- 納品明細テーブル
+      WHERE  head.order_no_hht         = line.order_no_hht         -- ヘッダ.受注No.(HHT)＝明細.受注No.(HHT)
+      AND    head.digestion_ln_number  = line.digestion_ln_number  -- ヘッダ.枝番＝明細.枝番
+      AND    head.order_no_hht         = lt_inv_order_no_hht
+      AND    line.digestion_ln_number  = lt_inv_digestion_ln_number;
+--
+-- ******************* 2009/07/17 Ver1.11 N.Maeda ADD  END  ******************************************--
+-- ******************* 2009/07/17 Ver1.11 N.Maeda DEL START ******************************************--
+--    CURSOR headers_lock_cur
+--    IS
+----******************** 2009/05/07 Ver1.8  N.Maeda MOD START ******************************************
+----      SELECT head.creation_date  creation_date
+----      FROM   xxcos_dlv_headers   head                     -- 納品ヘッダテーブル
+----      WHERE  head.results_forward_flag = cv_default       -- 販売実績連携済みフラグ＝0
+----      AND    head.input_class          = cv_input_class   -- 入力区分＝5
+--      SELECT head.order_no_hht               order_no_hht,              -- 受注No.(HHT)
+--             head.digestion_ln_number        digestion_ln_number,       -- 枝番
+--             head.order_no_ebs               order_no_ebs,              -- 受注No.(EBS)
+--             head.base_code                  base_code,                 -- 拠点コード
+--             head.performance_by_code        performance_by_code,       -- 成績者コード
+--             head.dlv_by_code                dlv_by_code,               -- 納品者コード
+--             head.hht_invoice_no             hht_invoice_no,            -- HHT伝票No.
+--             head.dlv_date                   dlv_date,                  -- 納品日
+--             head.inspect_date               inspect_date,              -- 検収日
+--             head.sales_classification       sales_classification,      -- 売上分類区分
+--             head.sales_invoice              sales_invoice,             -- 売上伝票区分
+--             head.card_sale_class            card_sale_class,           -- カード売区分
+--             head.dlv_time                   dlv_time,                  -- 時間
+--             head.change_out_time_100        change_out_time_100,       -- つり銭切れ時間100円
+--             head.change_out_time_10         change_out_time_10,        -- つり銭切れ時間10円
+--             head.customer_number            customer_number,           -- 顧客コード
+--             NULL                            dlv_form,                  -- 納品形態
+--             head.system_class               system_class,              -- 業態区分
+--             NULL                            invoice_type,              -- 伝票区分
+--             head.input_class                input_class,               -- 入力区分
+--             head.consumption_tax_class      consumption_tax_class,     -- 消費税区分
+--             head.total_amount               total_amount,              -- 合計金額
+--             head.sale_discount_amount       sale_discount_amount,      -- 売上値引額
+--             head.sales_consumption_tax      sales_consumption_tax,     -- 売上消費税額
+--             head.tax_include                tax_include,               -- 税込金額
+--             head.keep_in_code               keep_in_code,              -- 預け先コード
+--             head.department_screen_class    department_screen_class,   -- 百貨店画面種別
+--             NULL                            digestion_vd_rate_maked_date, -- 消化VD掛率作成年月日
+--             head.red_black_flag             red_black_flag,            -- 赤黒フラグ
+--             'N'                             forward_flag,              -- 連携フラグ
+--             NULL                            forward_date,              -- 連携日付
+--             'N'                             vd_results_forward_flag,   -- ベンダ納品実績情報連携済フラグ
+--             head.cancel_correct_class       cancel_correct_class,       -- 取消・訂正区分
+--             cn_created_by                   created_by,                  -- 作成者
+--             cd_creation_date                creation_date,               -- 作成日
+--             cn_last_updated_by              last_updated_by,             -- 最終更新者
+--             cd_last_update_date             last_update_date,            -- 最終更新日
+--             cn_last_update_login            last_update_login,           -- 最終更新ログイン
+--             cn_request_id                   request_id,                  -- 要求ID
+--             cn_program_application_id       program_application_id,      -- コンカレント・プログラム・アプリケーションID
+--             cn_program_id                   program_id,                  -- コンカレント・プログラムID
+--             cd_program_update_date          program_update_date,         -- プログラム更新日
+----******************** 2009/05/21 Ver1.9  T.Kitajima ADD START ******************************************
+--             rowid                           h_rowid                       -- レコードID
+----******************** 2009/05/21 Ver1.9  T.Kitajima ADD  END  ******************************************
+--      FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
 --      WHERE  head.results_forward_flag = cv_default       -- 販売実績連携済みフラグ＝0
 --      AND    head.input_class          = cv_input_class   -- 入力区分＝5
-      SELECT head.order_no_hht               order_no_hht,              -- 受注No.(HHT)
-             head.digestion_ln_number        digestion_ln_number,       -- 枝番
-             head.order_no_ebs               order_no_ebs,              -- 受注No.(EBS)
-             head.base_code                  base_code,                 -- 拠点コード
-             head.performance_by_code        performance_by_code,       -- 成績者コード
-             head.dlv_by_code                dlv_by_code,               -- 納品者コード
-             head.hht_invoice_no             hht_invoice_no,            -- HHT伝票No.
-             head.dlv_date                   dlv_date,                  -- 納品日
-             head.inspect_date               inspect_date,              -- 検収日
-             head.sales_classification       sales_classification,      -- 売上分類区分
-             head.sales_invoice              sales_invoice,             -- 売上伝票区分
-             head.card_sale_class            card_sale_class,           -- カード売区分
-             head.dlv_time                   dlv_time,                  -- 時間
-             head.change_out_time_100        change_out_time_100,       -- つり銭切れ時間100円
-             head.change_out_time_10         change_out_time_10,        -- つり銭切れ時間10円
-             head.customer_number            customer_number,           -- 顧客コード
-             NULL                            dlv_form,                  -- 納品形態
-             head.system_class               system_class,              -- 業態区分
-             NULL                            invoice_type,              -- 伝票区分
-             head.input_class                input_class,               -- 入力区分
-             head.consumption_tax_class      consumption_tax_class,     -- 消費税区分
-             head.total_amount               total_amount,              -- 合計金額
-             head.sale_discount_amount       sale_discount_amount,      -- 売上値引額
-             head.sales_consumption_tax      sales_consumption_tax,     -- 売上消費税額
-             head.tax_include                tax_include,               -- 税込金額
-             head.keep_in_code               keep_in_code,              -- 預け先コード
-             head.department_screen_class    department_screen_class,   -- 百貨店画面種別
-             NULL                            digestion_vd_rate_maked_date, -- 消化VD掛率作成年月日
-             head.red_black_flag             red_black_flag,            -- 赤黒フラグ
-             'N'                             forward_flag,              -- 連携フラグ
-             NULL                            forward_date,              -- 連携日付
-             'N'                             vd_results_forward_flag,   -- ベンダ納品実績情報連携済フラグ
-             head.cancel_correct_class       cancel_correct_class,       -- 取消・訂正区分
-             cn_created_by                   created_by,                  -- 作成者
-             cd_creation_date                creation_date,               -- 作成日
-             cn_last_updated_by              last_updated_by,             -- 最終更新者
-             cd_last_update_date             last_update_date,            -- 最終更新日
-             cn_last_update_login            last_update_login,           -- 最終更新ログイン
-             cn_request_id                   request_id,                  -- 要求ID
-             cn_program_application_id       program_application_id,      -- コンカレント・プログラム・アプリケーションID
-             cn_program_id                   program_id,                  -- コンカレント・プログラムID
-             cd_program_update_date          program_update_date,         -- プログラム更新日
---******************** 2009/05/21 Var1.9  T.Kitajima ADD START ******************************************
-             rowid                           h_rowid                       -- レコードID
---******************** 2009/05/21 Var1.9  T.Kitajima ADD  END  ******************************************
-      FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
-      WHERE  head.results_forward_flag = cv_default       -- 販売実績連携済みフラグ＝0
-      AND    head.input_class          = cv_input_class   -- 入力区分＝5
---******************** 2009/05/07 Var1.8  N.Maeda MOD  END  ******************************************
-    FOR UPDATE NOWAIT;
---
-    CURSOR lines_lock_cur
-    IS
-      SELECT line.creation_date  creation_date
-      FROM   xxcos_dlv_headers   head,                             -- 納品ヘッダテーブル
-             xxcos_dlv_lines     line                              -- 納品明細テーブル
-      WHERE  head.results_forward_flag = cv_default                -- 販売実績連携済みフラグ＝0
-      AND    head.input_class          = cv_input_class            -- 入力区分＝5
-      AND    head.order_no_hht         = line.order_no_hht         -- ヘッダ.受注No.(HHT)＝明細.受注No.(HHT)
-      AND    head.digestion_ln_number  = line.digestion_ln_number  -- ヘッダ.枝番＝明細.枝番
-    FOR UPDATE NOWAIT;
---
---******************** 2009/05/07 Var1.8  N.Maeda ADD START ******************************************
+----******************** 2009/05/07 Ver1.8  N.Maeda MOD  END  ******************************************
+----    FOR UPDATE NOWAIT;
+----
+--    CURSOR lines_lock_cur
+--    IS
+--      SELECT line.creation_date  creation_date
+--      FROM   xxcos_dlv_headers   head,                             -- 納品ヘッダテーブル
+--             xxcos_dlv_lines     line                              -- 納品明細テーブル
+--      WHERE  head.results_forward_flag = cv_default                -- 販売実績連携済みフラグ＝0
+--      AND    head.input_class          = cv_input_class            -- 入力区分＝5
+--      AND    head.order_no_hht         = line.order_no_hht         -- ヘッダ.受注No.(HHT)＝明細.受注No.(HHT)
+--      AND    head.digestion_ln_number  = line.digestion_ln_number  -- ヘッダ.枝番＝明細.枝番
+--    FOR UPDATE NOWAIT;
+----
+-- ******************* 2009/07/17 Ver1.11 N.Maeda DEL  END  ******************************************--
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD START ******************************************
     CURSOR vd_lock_cur
     IS
       SELECT xvch.ROWID
       FROM   xxcos_vd_column_headers xvch
-      WHERE  xvch.order_no_hht = lt_order_no_hht
-    FOR UPDATE NOWAIT;
---******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ******************************************
---
+      WHERE  xvch.order_no_hht = lt_inv_order_no_hht
+    FOR UPDATE OF xvch.order_no_hht NOWAIT;
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ******************************************
 --
     -- *** ローカル・レコード ***
 --
@@ -2104,128 +2218,234 @@ AS
     -- 抽出件数初期化
     on_target_cnt   := 0;
     on_target_cnt_l := 0;
---******************** 2009/05/07 Var1.8  N.Maeda ADD START ******************************************
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD START ******************************************
     ln_vd_data_count:= 0;
---******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ******************************************
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ******************************************
+--
+--******************** 2009/07/17 Ver1.11  N.Maeda MOD START ******************************************
+--
+    lt_data_count   := 0;
+    lt_dlv_line_count := 0;
+    lt_lock_brak_order_no_hht := 0;
+    lt_lock_err_order_no_hht  := 0;
 --
     --==============================================================
-    -- テーブルロック
+    -- 対象伝票情報取得
     --==============================================================
-    OPEN  headers_lock_cur;
---******************** 2009/05/07 Var1.8  N.Maeda ADD START ******************************************
-    FETCH headers_lock_cur BULK COLLECT INTO gt_clm_headers;
---******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ******************************************
-    CLOSE headers_lock_cur;
+    OPEN  get_inv_cur;
+    FETCH get_inv_cur BULK COLLECT INTO gt_inv_data_tab;
+    CLOSE get_inv_cur;
 --
-    OPEN  lines_lock_cur;
-    CLOSE lines_lock_cur;
+    <<get_inv_loop>>
+    FOR i IN 1..gt_inv_data_tab.COUNT LOOP
 --
---******************** 2009/05/07 Var1.8  N.Maeda ADD START ******************************************
-    <<headers_loop>>
-    FOR header_id IN 1..gt_clm_headers.COUNT LOOP
-      lt_order_no_hht   :=   gt_clm_headers( header_id ).order_no_hht;              -- 受注No.(HHT)
+      on_target_cnt   := gt_inv_data_tab.COUNT;
+      -- 対象伝票情報セット
+      lt_inv_row_id                := gt_inv_data_tab(i).row_id;               -- 行ID
+      lt_inv_order_no_hht          := gt_inv_data_tab(i).order_no_hht;         -- 受注No.(HHT)
+      lt_inv_digestion_ln_number   := gt_inv_data_tab(i).digestion_ln_number;  -- 枝番
+      lt_inv_hht_invoice_no        := gt_inv_data_tab(i).hht_invoice_no;       -- HHT伝票NO.
 --
       BEGIN
-        SELECT head.cancel_correct_class
-        INTO   lt_cancel_correct_class
-        FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
-        WHERE  head.order_no_hht         = lt_order_no_hht
-        AND    head.results_forward_flag = cv_default       -- 販売実績連携済みフラグ＝0
-        AND    head.input_class          = cv_input_class   -- 入力区分＝5
-        AND    head.cancel_correct_class IS NOT NULL
-        AND    head.digestion_ln_number  = ( SELECT
-                                               MAX( head.digestion_ln_number )
-                                             FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
-                                             WHERE head.order_no_hht          = lt_order_no_hht
-                                             AND    head.results_forward_flag = cv_default
-                                             AND    head.input_class          = cv_input_class );
+        -- ===================
+        -- 明細単位ロック取得
+        -- ===================
+        IF ( lt_lock_err_order_no_hht  <> lt_inv_order_no_hht ) THEN
+--
+          IF ( lt_lock_brak_order_no_hht <> lt_inv_order_no_hht ) THEN
+--
+            OPEN  get_inv_lock_cur;
+            CLOSE get_inv_lock_cur;
+--
+          END IF;
+--
+          --ロック済みキーデータ
+          lt_lock_brak_order_no_hht := lt_inv_order_no_hht;
+          --添え字のカウントアップ
+          lt_data_count := lt_data_count + 1;
+--
+--
+          -- ========================
+          -- ヘッダデータ取得
+          -- ========================
+          SELECT head.order_no_hht               order_no_hht,              -- 1.受注No.(HHT)
+                 head.digestion_ln_number        digestion_ln_number,       -- 2.枝番
+                 head.order_no_ebs               order_no_ebs,              -- 3.受注No.(EBS)
+                 head.base_code                  base_code,                 -- 4.拠点コード
+                 head.performance_by_code        performance_by_code,       -- 5.成績者コード
+                 head.dlv_by_code                dlv_by_code,               -- 6.納品者コード
+                 head.hht_invoice_no             hht_invoice_no,            -- 7.HHT伝票No.
+                 head.dlv_date                   dlv_date,                  -- 8.納品日
+                 head.inspect_date               inspect_date,              -- 9.検収日
+                 head.sales_classification       sales_classification,      -- 10.売上分類区分
+                 head.sales_invoice              sales_invoice,             -- 11.売上伝票区分
+                 head.card_sale_class            card_sale_class,           -- 12.カード売区分
+                 head.dlv_time                   dlv_time,                  -- 13.時間
+                 head.change_out_time_100        change_out_time_100,       -- 14.つり銭切れ時間100円
+                 head.change_out_time_10         change_out_time_10,        -- 15.つり銭切れ時間10円
+                 head.customer_number            customer_number,           -- 16.顧客コード
+                 NULL                            dlv_form,                  -- 17.納品形態
+                 head.system_class               system_class,              -- 18.業態区分
+                 NULL                            invoice_type,              -- 19.伝票区分
+                 head.input_class                input_class,               -- 20.入力区分
+                 head.consumption_tax_class      consumption_tax_class,     -- 21.消費税区分
+                 head.total_amount               total_amount,              -- 22.合計金額
+                 head.sale_discount_amount       sale_discount_amount,      -- 23.売上値引額
+                 head.sales_consumption_tax      sales_consumption_tax,     -- 24.売上消費税額
+                 head.tax_include                tax_include,               -- 25.税込金額
+                 head.keep_in_code               keep_in_code,              -- 26.預け先コード
+                 head.department_screen_class    department_screen_class,   -- 27.百貨店画面種別
+                 NULL                            digestion_vd_rate_maked_date, -- 28.消化VD掛率作成年月日
+                 head.red_black_flag             red_black_flag,            -- 29.赤黒フラグ
+                 'N'                             forward_flag,              -- 30.連携フラグ
+                 NULL                            forward_date,              -- 31.連携日付
+                 'N'                             vd_results_forward_flag,   -- 32.ベンダ納品実績情報連携済フラグ
+                 head.cancel_correct_class       cancel_correct_class,      -- 33.取消・訂正区分
+                 cn_created_by                   created_by,                -- 34.作成者
+                 cd_creation_date                creation_date,             -- 35.作成日
+                 cn_last_updated_by              last_updated_by,           -- 36.最終更新者
+                 cd_last_update_date             last_update_date,          -- 37.最終更新日
+                 cn_last_update_login            last_update_login,         -- 38.最終更新ログイン
+                 cn_request_id                   request_id,                -- 39.要求ID
+                 cn_program_application_id       program_application_id,    -- 40.コンカレント・プログラム・アプリケーションID
+                 cn_program_id                   program_id,                -- 41.コンカレント・プログラムID
+                 cd_program_update_date          program_update_date,       -- 42.プログラム更新日
+                 lt_inv_row_id                   row_id                     -- 43.行ID
+          INTO   gt_dev_set_order_noh_hht(lt_data_count)
+                 ,gt_dev_set_digestion_ln(lt_data_count)
+                 ,gt_dev_set_order_no_ebs(lt_data_count)
+                 ,gt_dev_set_base_code(lt_data_count)
+                 ,gt_dev_set_perform_code(lt_data_count)
+                 ,gt_dev_set_dlv_code(lt_data_count)
+                 ,gt_dev_set_invoice_no(lt_data_count)
+                 ,gt_dev_set_dlv_date(lt_data_count)
+                 ,gt_dev_set_inspect_date(lt_data_count)
+                 ,gt_dev_set_sales_classif(lt_data_count)
+                 ,gt_dev_set_sales_invoice(lt_data_count)
+                 ,gt_dev_set_card_sale_class(lt_data_count)
+                 ,gt_dev_set_dlv_time(lt_data_count)
+                 ,gt_dev_set_out_time_100(lt_data_count)
+                 ,gt_dev_set_out_time_10(lt_data_count)
+                 ,gt_dev_set_cus_number(lt_data_count)
+                 ,gt_dev_set_dlv_form(lt_data_count)
+                 ,gt_dev_set_system_class(lt_data_count)
+                 ,gt_dev_set_invoice_type(lt_data_count)
+                 ,gt_dev_set_input_class(lt_data_count)
+                 ,gt_dev_set_tax_class(lt_data_count)
+                 ,gt_dev_set_total_amount(lt_data_count)
+                 ,gt_dev_set_sale_discount_a(lt_data_count)
+                 ,gt_dev_set_sales_tax(lt_data_count)
+                 ,gt_dev_set_tax_include(lt_data_count)
+                 ,gt_dev_set_keep_in_code(lt_data_count)
+                 ,gt_dev_set_depart_sc_clas(lt_data_count)
+                 ,gt_dev_set_dig_vd_r_mak_d(lt_data_count)
+                 ,gt_dev_set_red_black_flag(lt_data_count)
+                 ,gt_dev_set_forward_flag(lt_data_count)
+                 ,gt_dev_set_forward_date(lt_data_count)
+                 ,gt_dev_set_vd_results_for_f(lt_data_count)
+                 ,gt_dev_set_cancel_correct(lt_data_count)
+                 ,gt_dev_set_created_by(lt_data_count)
+                 ,gt_dev_set_creation_date(lt_data_count)
+                 ,gt_dev_set_last_updated_by(lt_data_count)
+                 ,gt_dev_set_last_update_date(lt_data_count)
+                 ,gt_dev_set_last_update_logi(lt_data_count)
+                 ,gt_dev_set_request_id(lt_data_count)
+                 ,gt_dev_set_program_appli_id(lt_data_count)
+                 ,gt_dev_set_program_id(lt_data_count)
+                 ,gt_dev_set_program_update_d(lt_data_count)
+                 ,gt_dlv_headers_row_id(lt_data_count)
+          FROM   xxcos_dlv_headers         head   -- 納品ヘッダ
+          WHERE  head.ROWID = lt_inv_row_id;
+--
+          -- ================================
+          -- 取消訂正区分最新値
+          -- ================================
+          BEGIN
+            SELECT head.cancel_correct_class
+            INTO   lt_cancel_correct_class
+            FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
+            WHERE  head.order_no_hht         = lt_inv_order_no_hht
+            AND    head.results_forward_flag = cv_default       -- 販売実績連携済みフラグ＝0
+            AND    head.input_class          = cv_input_class   -- 入力区分＝5
+            AND    head.cancel_correct_class IS NOT NULL
+            AND    head.digestion_ln_number  = ( SELECT
+                                                 MAX( head.digestion_ln_number )
+                                               FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
+                                               WHERE  head.order_no_hht         = lt_inv_order_no_hht
+                                               AND    head.results_forward_flag = cv_default
+                                               AND    head.input_class          = cv_input_class );
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              NULL;
+          END;
+--
+          IF ( lt_cancel_correct_class IS NOT NULL ) THEN
+            gt_dev_set_cancel_correct(lt_data_count) := lt_cancel_correct_class;
+          END IF;
+--
+          BEGIN
+            SELECT MIN( head.digestion_ln_number )
+            INTO   lt_min_digestion_ln_number
+            FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
+            WHERE head.order_no_hht          = lt_inv_order_no_hht
+            AND    head.results_forward_flag = cv_default
+            AND    head.input_class          = cv_input_class;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              NULL;
+          END;
+--
+          IF ( lt_min_digestion_ln_number IS NOT NULL ) AND ( lt_min_digestion_ln_number <> '0' ) THEN
+            <<vd_loop>>
+            FOR vd_lock_rec IN vd_lock_cur LOOP
+              ln_vd_data_count := ln_vd_data_count + 1;
+              gt_vd_row_id(ln_vd_data_count)          := vd_lock_rec.ROWID;
+              gt_vd_can_cor_class(ln_vd_data_count)   := lt_cancel_correct_class;
+            END LOOP vd_loop;
+          END IF;
+--
+          -- =============
+          -- 明細情報取得
+          -- =============
+          <<get_line_loop>>
+          FOR get_line_rec IN get_line_cur LOOP
+--
+            -- 明細情報件数カウントアップ
+            lt_dlv_line_count := lt_dlv_line_count + 1;
+            -- 変数へデータをセット
+            gt_lines_tab(lt_dlv_line_count) := get_line_rec;
+--
+          END LOOP get_line_loop;
+--
+        ELSE
+--
+          -- スキップ件数カウントアップ
+          gn_warn_cnt := gn_warn_cnt + 1;
+        END IF;
+--
       EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          NULL;
+        -- ロックエラー
+        WHEN lock_expt THEN
+          -- スキップ件数カウントアップ
+          gn_warn_cnt := gn_warn_cnt + 1;
+          -- ロックエラー・キーデータセット
+          lt_lock_err_order_no_hht := lt_inv_order_no_hht;
+          -- ロックエラーメッセージ
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application   => cv_application,            --アプリケーション短縮名
+                         iv_name          => cv_data_loc,               --メッセージコード
+                         iv_token_name1   => cv_tkn_order_number,       --トークンコード1
+                         iv_token_value1  => lt_inv_order_no_hht,       --受注No.(HHT)
+                         iv_token_name2   => cv_invoice_no,             --トークンコード2
+                         iv_token_value2  => lt_inv_hht_invoice_no);    --HHT伝票NO.
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
       END;
 --
-      IF ( lt_cancel_correct_class IS NOT NULL ) THEN
-        gt_clm_headers( header_id ).cancel_correct_class := lt_cancel_correct_class;
-      END IF;
+    END LOOP get_inv_loop;
 --
-      BEGIN
-        SELECT MIN( head.digestion_ln_number )
-        INTO   lt_min_digestion_ln_number
-        FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
-        WHERE head.order_no_hht          = lt_order_no_hht
-        AND    head.results_forward_flag = cv_default
-        AND    head.input_class          = cv_input_class;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          NULL;
-      END;
---
-      IF ( lt_min_digestion_ln_number IS NOT NULL ) AND ( lt_min_digestion_ln_number <> '0' ) THEN
-        <<vd_loop>>
-        FOR vd_lock_rec IN vd_lock_cur LOOP
-          ln_vd_data_count := ln_vd_data_count + 1;
-          gt_vd_row_id(ln_vd_data_count)          := vd_lock_rec.ROWID;
-          gt_vd_can_cor_class(ln_vd_data_count)   := lt_cancel_correct_class;
-        END LOOP vd_loop;
-      END IF;
---
-      gt_dev_set_order_noh_hht(header_id)       := gt_clm_headers(header_id).order_no_hht;
-      gt_dev_set_digestion_ln(header_id) := gt_clm_headers(header_id).digestion_ln_number;
-      gt_dev_set_order_no_ebs(header_id)        := gt_clm_headers(header_id).order_no_ebs;
-      gt_dev_set_base_code(header_id)           := gt_clm_headers(header_id).base_code;
-      gt_dev_set_perform_code(header_id)        := gt_clm_headers(header_id).performance_by_code;
-      gt_dev_set_dlv_code(header_id)            := gt_clm_headers(header_id).dlv_by_code;
-      gt_dev_set_invoice_no(header_id)          := gt_clm_headers(header_id).hht_invoice_no;
-      gt_dev_set_dlv_date(header_id)            := gt_clm_headers(header_id).dlv_date;
-      gt_dev_set_inspect_date(header_id)        := gt_clm_headers(header_id).inspect_date;
-      gt_dev_set_sales_classif(header_id) := gt_clm_headers(header_id).sales_classification;
-      gt_dev_set_sales_invoice(header_id)       := gt_clm_headers(header_id).sales_invoice;
-      gt_dev_set_card_sale_class(header_id)     := gt_clm_headers(header_id).card_sale_class;
-      gt_dev_set_dlv_time(header_id)            := gt_clm_headers(header_id).dlv_time;
-      gt_dev_set_out_time_100(header_id) := gt_clm_headers(header_id).change_out_time_100;
-      gt_dev_set_out_time_10(header_id)  := gt_clm_headers(header_id).change_out_time_10;
-      gt_dev_set_cus_number(header_id)          := gt_clm_headers(header_id).customer_number;
-      gt_dev_set_dlv_form(header_id)            := gt_clm_headers(header_id).dlv_form;
-      gt_dev_set_system_class(header_id)        := gt_clm_headers(header_id).system_class;
-      gt_dev_set_invoice_type(header_id)        := gt_clm_headers(header_id).invoice_type;
-      gt_dev_set_input_class(header_id)         := gt_clm_headers(header_id).input_class;
-      gt_dev_set_tax_class(header_id) := gt_clm_headers(header_id).consumption_tax_class;
-      gt_dev_set_total_amount(header_id)        := gt_clm_headers(header_id).total_amount;
-      gt_dev_set_sale_discount_a(header_id) := gt_clm_headers(header_id).sale_discount_amount;
-      gt_dev_set_sales_tax(header_id) := gt_clm_headers(header_id).sales_consumption_tax;
-      gt_dev_set_tax_include(header_id)         := gt_clm_headers(header_id).tax_include;
-      gt_dev_set_keep_in_code(header_id)        := gt_clm_headers(header_id).keep_in_code;
-      gt_dev_set_depart_sc_clas(header_id) := gt_clm_headers(header_id).department_screen_class;
-      gt_dev_set_dig_vd_r_mak_d(header_id) := gt_clm_headers(header_id).digestion_vd_rate_maked_date;
-      gt_dev_set_red_black_flag(header_id)      := gt_clm_headers(header_id).red_black_flag;
-      gt_dev_set_forward_flag(header_id)        := gt_clm_headers(header_id).forward_flag;
-      gt_dev_set_forward_date(header_id)        := gt_clm_headers(header_id).forward_date;
-      gt_dev_set_vd_results_for_f(header_id) := gt_clm_headers(header_id).vd_results_forward_flag;
-      gt_dev_set_cancel_correct(header_id)      := gt_clm_headers(header_id).cancel_correct_class;
-      gt_dev_set_created_by(header_id)          := gt_clm_headers(header_id).created_by;
-      gt_dev_set_creation_date(header_id)       := gt_clm_headers(header_id).creation_date;
-      gt_dev_set_last_updated_by(header_id)     := gt_clm_headers(header_id).last_updated_by;
-      gt_dev_set_last_update_date(header_id)    := gt_clm_headers(header_id).last_update_date;
-      gt_dev_set_last_update_logi(header_id)   := gt_clm_headers(header_id).last_update_login;
-      gt_dev_set_request_id(header_id)          := gt_clm_headers(header_id).request_id;
-      gt_dev_set_program_appli_id(header_id) := gt_clm_headers(header_id).program_application_id;
-      gt_dev_set_program_id(header_id)          := gt_clm_headers(header_id).program_id;
-      gt_dev_set_program_update_d(header_id) := gt_clm_headers(header_id).program_update_date;
---******************** 2009/05/21 Var1.9  T.Kitajima ADD START ******************************************
-      gt_dlv_headers_row_id(header_id)          := gt_clm_headers(header_id).h_rowid;
---******************** 2009/05/21 Var1.9  T.Kitajima ADD  END  ******************************************
-    END LOOP headers_loop;
---
---
---******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ******************************************
---
-    --==============================================================
-    -- VDコラム別取引ヘッダテーブルへ登録
-    --==============================================================
     BEGIN
---******************** 2009/05/07 Var1.8  N.Maeda ADD START ******************************************
       FORALL i IN 1..gt_dev_set_order_noh_hht.COUNT
---******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ******************************************
         INSERT INTO
           xxcos_vd_column_headers
             (
@@ -2273,54 +2493,7 @@ AS
                  program_update_date             -- プログラム更新日
             )
         VALUES
-          (
---******************** 2009/05/07 Var1.8  N.Maeda MOD START ******************************************
---        SELECT head.order_no_hht,              -- 受注No.(HHT)
---               head.digestion_ln_number,       -- 枝番
---               head.order_no_ebs,              -- 受注No.(EBS)
---               head.base_code,                 -- 拠点コード
---               head.performance_by_code,       -- 成績者コード
---               head.dlv_by_code,               -- 納品者コード
---               head.hht_invoice_no,            -- HHT伝票No.
---               head.dlv_date,                  -- 納品日
---               head.inspect_date,              -- 検収日
---               head.sales_classification,      -- 売上分類区分
---               head.sales_invoice,             -- 売上伝票区分
---               head.card_sale_class,           -- カード売区分
---               head.dlv_time,                  -- 時間
---               head.change_out_time_100,       -- つり銭切れ時間100円
---               head.change_out_time_10,        -- つり銭切れ時間10円
---               head.customer_number,           -- 顧客コード
---                 NULL,                           -- 納品形態
---               head.system_class,              -- 業態区分
---                 NULL,                           -- 伝票区分
---               head.input_class,               -- 入力区分
---               head.consumption_tax_class,     -- 消費税区分
---               head.total_amount,              -- 合計金額
---               head.sale_discount_amount,      -- 売上値引額
---               head.sales_consumption_tax,     -- 売上消費税額
---               head.tax_include,               -- 税込金額
---               head.keep_in_code,              -- 預け先コード
---               head.department_screen_class,   -- 百貨店画面種別
---                 NULL,                           -- 消化VD掛率作成年月日
---               head.red_black_flag,            -- 赤黒フラグ
---                 'N',                            -- 連携フラグ
---                 NULL,                           -- 連携日付
---                 'N',                            -- ベンダ納品実績情報連携済フラグ
---               head.cancel_correct_class,      -- 取消・訂正区分
---                 gt_clm_headers.cancel_correct_class,      -- 取消・訂正区分
---                 cn_created_by,                  -- 作成者
---                 cd_creation_date,               -- 作成日
---                 cn_last_updated_by,             -- 最終更新者
---                 cd_last_update_date,            -- 最終更新日
---                 cn_last_update_login,           -- 最終更新ログイン
---                 cn_request_id,                  -- 要求ID
---                 cn_program_application_id,      -- コンカレント・プログラム・アプリケーションID
---                 cn_program_id,                  -- コンカレント・プログラムID
---                 cd_program_update_date          -- プログラム更新日
---        FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
---        WHERE  head.results_forward_flag = cv_default       -- 販売実績連携済みフラグ＝0
---        AND    head.input_class          = cv_input_class;  -- 入力区分＝5
+            (
                  gt_dev_set_order_noh_hht(i),
                  gt_dev_set_digestion_ln(i),
                  gt_dev_set_order_no_ebs(i),
@@ -2364,13 +2537,8 @@ AS
                  gt_dev_set_program_id(i),
                  gt_dev_set_program_update_d(i)
                  );
---******************** 2009/05/07 Var1.8  N.Maeda MOD  END  ******************************************
---
-    -- ヘッダ抽出件数セット
---******************** 2009/05/26 Var1.9  T.Kitajima MOD START ******************************************
---    on_target_cnt := SQL%ROWCOUNT;
-    on_target_cnt := gt_dev_set_order_noh_hht.COUNT;
---******************** 2009/05/26 Var1.9  T.Kitajima MOD  END  ******************************************
+         -- ヘッダ登録件数セット
+         gt_insert_h_count := gt_dev_set_order_noh_hht.COUNT;
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -2380,89 +2548,16 @@ AS
                                                 cv_tkn_table,   gv_tkn1,
                                                 cv_tkn_key,     gv_tkn2 );
         lv_errbuf  := lv_errmsg;
-        RAISE global_api_expt;
+        RAISE insert_err_expt;
     END;
 --
-    --==============================================================
-    -- VDコラム別取引明細テーブルへ登録
-    --==============================================================
-    BEGIN
-      INSERT INTO
-        xxcos_vd_column_lines
-          (
-               order_no_hht,                -- 受注No.(HHT)
-               line_no_hht,                 -- 行No.(HHT)
-               digestion_ln_number,         -- 枝番
-               order_no_ebs,                -- 受注No.(EBS)
-               line_number_ebs,             -- 明細番号(EBS)
-               item_code_self,              -- 品名コード(自社)
-               content,                     -- 入数
-               inventory_item_id,           -- 品目ID
-               standard_unit,               -- 基準単位
-               case_number,                 -- ケース数
-               quantity,                    -- 数量
-               sale_class,                  -- 売上区分
-               wholesale_unit_ploce,        -- 卸単価
-               selling_price,               -- 売単価
-               column_no,                   -- コラムNo.
-               h_and_c,                     -- H/C
-               sold_out_class,              -- 売切区分
-               sold_out_time,               -- 売切時間
-               replenish_number,            -- 補充数
-               cash_and_card,               -- 現金・カード併用額
-               created_by,                  -- 作成者
-               creation_date,               -- 作成日
-               last_updated_by,             -- 最終更新者
-               last_update_date,            -- 最終更新日
-               last_update_login,           -- 最終更新ログイン
-               request_id,                  -- 要求ID
-               program_application_id,      -- コンカレント・プログラム・アプリケーションID
-               program_id,                  -- コンカレント・プログラムID
-               program_update_date          -- プログラム更新日
-          )
-        SELECT line.order_no_hht,           -- 受注No.(HHT)
-               line.line_no_hht,            -- 行No.(HHT)
-               line.digestion_ln_number,    -- 枝番
-               line.order_no_ebs,           -- 受注No.(EBS)
-               line.line_number_ebs,        -- 明細番号(EBS)
-               line.item_code_self,         -- 品名コード(自社)
-               line.content,                -- 入数
-               line.inventory_item_id,      -- 品目ID
-               line.standard_unit,          -- 基準単位
-               line.case_number,            -- ケース数
-               DECODE( head.red_black_flag, '0', line.quantity * -1, line.quantity ),
-                                            -- 数量
-               line.sale_class,             -- 売上区分
-               line.wholesale_unit_ploce,   -- 卸単価
-               line.selling_price,          -- 売単価
-               line.column_no,              -- コラムNo.
-               line.h_and_c,                -- H/C
-               line.sold_out_class,         -- 売切区分
-               line.sold_out_time,          -- 売切時間
-               DECODE( head.red_black_flag, '0', line.replenish_number * -1, line.replenish_number ),
-                                            -- 補充数
-               line.cash_and_card,          -- 現金・カード併用額
-               cn_created_by,               -- 作成者
-               cd_creation_date,            -- 作成日
-               cn_last_updated_by,          -- 最終更新者
-               cd_last_update_date,         -- 最終更新日
-               cn_last_update_login,        -- 最終更新ログイン
-               cn_request_id,               -- 要求ID
-               cn_program_application_id,   -- コンカレント・プログラム・アプリケーションID
-               cn_program_id,               -- コンカレント・プログラムID
-               cd_program_update_date       -- プログラム更新日
-        FROM   xxcos_dlv_headers  head,     -- 納品ヘッダテーブル
-               xxcos_dlv_lines    line      -- 納品明細テーブル
-        WHERE  head.results_forward_flag = cv_default                -- 販売実績連携済みフラグ＝0
-        AND    head.input_class          = cv_input_class            -- 入力区分＝5
-        AND    head.order_no_hht         = line.order_no_hht         -- ヘッダ.受注No.(HHT)＝明細.受注No.(HHT)
-        AND    head.digestion_ln_number  = line.digestion_ln_number; -- ヘッダ.枝番＝明細.枝番
---
---
-    -- 明細抽出件数セット
-    on_target_cnt_l := SQL%ROWCOUNT;
---
-    EXCEPTION
+     BEGIN
+       FORALL l IN 1..gt_lines_tab.COUNT
+         INSERT INTO
+           xxcos_vd_column_lines
+         VALUES
+           gt_lines_tab(l);
+     EXCEPTION
       WHEN OTHERS THEN
         gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_vdl_table );
         gv_tkn2    := NULL;
@@ -2470,28 +2565,400 @@ AS
                                                 cv_tkn_table,   gv_tkn1,
                                                 cv_tkn_key,     gv_tkn2 );
         lv_errbuf  := lv_errmsg;
-        RAISE global_api_expt;
-    END;
+        RAISE insert_err_expt;
+     END;
+--
+--
+--    --==============================================================
+--    -- テーブルロック
+--    --==============================================================
+--    OPEN  headers_lock_cur;
+----******************** 2009/05/07 Ver1.8  N.Maeda ADD START ******************************************
+--    FETCH headers_lock_cur BULK COLLECT INTO gt_clm_headers;
+----******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ******************************************
+--    CLOSE headers_lock_cur;
+----
+--    OPEN  lines_lock_cur;
+--    CLOSE lines_lock_cur;
+--
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD START ******************************************
+--    <<headers_loop>>
+--    FOR header_id IN 1..gt_clm_headers.COUNT LOOP
+--      lt_order_no_hht   :=   gt_clm_headers( header_id ).order_no_hht;              -- 受注No.(HHT)
+----
+--      BEGIN
+--        SELECT head.cancel_correct_class
+--        INTO   lt_cancel_correct_class
+--        FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
+--        WHERE  head.order_no_hht         = lt_order_no_hht
+--        AND    head.results_forward_flag = cv_default       -- 販売実績連携済みフラグ＝0
+--        AND    head.input_class          = cv_input_class   -- 入力区分＝5
+--        AND    head.cancel_correct_class IS NOT NULL
+--        AND    head.digestion_ln_number  = ( SELECT
+--                                               MAX( head.digestion_ln_number )
+--                                             FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
+--                                             WHERE head.order_no_hht          = lt_order_no_hht
+--                                             AND    head.results_forward_flag = cv_default
+--                                             AND    head.input_class          = cv_input_class );
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          NULL;
+--      END;
+----
+--      IF ( lt_cancel_correct_class IS NOT NULL ) THEN
+--        gt_clm_headers( header_id ).cancel_correct_class := lt_cancel_correct_class;
+--      END IF;
+----
+--      BEGIN
+--        SELECT MIN( head.digestion_ln_number )
+--        INTO   lt_min_digestion_ln_number
+--        FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
+--        WHERE head.order_no_hht          = lt_order_no_hht
+--        AND    head.results_forward_flag = cv_default
+--        AND    head.input_class          = cv_input_class;
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          NULL;
+--      END;
+----
+--      IF ( lt_min_digestion_ln_number IS NOT NULL ) AND ( lt_min_digestion_ln_number <> '0' ) THEN
+--        <<vd_loop>>
+--        FOR vd_lock_rec IN vd_lock_cur LOOP
+--          ln_vd_data_count := ln_vd_data_count + 1;
+--          gt_vd_row_id(ln_vd_data_count)          := vd_lock_rec.ROWID;
+--          gt_vd_can_cor_class(ln_vd_data_count)   := lt_cancel_correct_class;
+--        END LOOP vd_loop;
+--      END IF;
+----
+--      gt_dev_set_order_noh_hht(header_id)       := gt_clm_headers(header_id).order_no_hht;
+--      gt_dev_set_digestion_ln(header_id) := gt_clm_headers(header_id).digestion_ln_number;
+--      gt_dev_set_order_no_ebs(header_id)        := gt_clm_headers(header_id).order_no_ebs;
+--      gt_dev_set_base_code(header_id)           := gt_clm_headers(header_id).base_code;
+--      gt_dev_set_perform_code(header_id)        := gt_clm_headers(header_id).performance_by_code;
+--      gt_dev_set_dlv_code(header_id)            := gt_clm_headers(header_id).dlv_by_code;
+--      gt_dev_set_invoice_no(header_id)          := gt_clm_headers(header_id).hht_invoice_no;
+--      gt_dev_set_dlv_date(header_id)            := gt_clm_headers(header_id).dlv_date;
+--      gt_dev_set_inspect_date(header_id)        := gt_clm_headers(header_id).inspect_date;
+--      gt_dev_set_sales_classif(header_id) := gt_clm_headers(header_id).sales_classification;
+--      gt_dev_set_sales_invoice(header_id)       := gt_clm_headers(header_id).sales_invoice;
+--      gt_dev_set_card_sale_class(header_id)     := gt_clm_headers(header_id).card_sale_class;
+--      gt_dev_set_dlv_time(header_id)            := gt_clm_headers(header_id).dlv_time;
+--      gt_dev_set_out_time_100(header_id) := gt_clm_headers(header_id).change_out_time_100;
+--      gt_dev_set_out_time_10(header_id)  := gt_clm_headers(header_id).change_out_time_10;
+--      gt_dev_set_cus_number(header_id)          := gt_clm_headers(header_id).customer_number;
+--      gt_dev_set_dlv_form(header_id)            := gt_clm_headers(header_id).dlv_form;
+--      gt_dev_set_system_class(header_id)        := gt_clm_headers(header_id).system_class;
+--      gt_dev_set_invoice_type(header_id)        := gt_clm_headers(header_id).invoice_type;
+--      gt_dev_set_input_class(header_id)         := gt_clm_headers(header_id).input_class;
+--      gt_dev_set_tax_class(header_id) := gt_clm_headers(header_id).consumption_tax_class;
+--      gt_dev_set_total_amount(header_id)        := gt_clm_headers(header_id).total_amount;
+--      gt_dev_set_sale_discount_a(header_id) := gt_clm_headers(header_id).sale_discount_amount;
+--      gt_dev_set_sales_tax(header_id) := gt_clm_headers(header_id).sales_consumption_tax;
+--      gt_dev_set_tax_include(header_id)         := gt_clm_headers(header_id).tax_include;
+--      gt_dev_set_keep_in_code(header_id)        := gt_clm_headers(header_id).keep_in_code;
+--      gt_dev_set_depart_sc_clas(header_id) := gt_clm_headers(header_id).department_screen_class;
+--      gt_dev_set_dig_vd_r_mak_d(header_id) := gt_clm_headers(header_id).digestion_vd_rate_maked_date;
+--      gt_dev_set_red_black_flag(header_id)      := gt_clm_headers(header_id).red_black_flag;
+--      gt_dev_set_forward_flag(header_id)        := gt_clm_headers(header_id).forward_flag;
+--      gt_dev_set_forward_date(header_id)        := gt_clm_headers(header_id).forward_date;
+--      gt_dev_set_vd_results_for_f(header_id) := gt_clm_headers(header_id).vd_results_forward_flag;
+--      gt_dev_set_cancel_correct(header_id)      := gt_clm_headers(header_id).cancel_correct_class;
+--      gt_dev_set_created_by(header_id)          := gt_clm_headers(header_id).created_by;
+--      gt_dev_set_creation_date(header_id)       := gt_clm_headers(header_id).creation_date;
+--      gt_dev_set_last_updated_by(header_id)     := gt_clm_headers(header_id).last_updated_by;
+--      gt_dev_set_last_update_date(header_id)    := gt_clm_headers(header_id).last_update_date;
+--      gt_dev_set_last_update_logi(header_id)   := gt_clm_headers(header_id).last_update_login;
+--      gt_dev_set_request_id(header_id)          := gt_clm_headers(header_id).request_id;
+--      gt_dev_set_program_appli_id(header_id) := gt_clm_headers(header_id).program_application_id;
+--      gt_dev_set_program_id(header_id)          := gt_clm_headers(header_id).program_id;
+--      gt_dev_set_program_update_d(header_id) := gt_clm_headers(header_id).program_update_date;
+----******************** 2009/05/21 Ver1.9  T.Kitajima ADD START ******************************************
+--      gt_dlv_headers_row_id(header_id)          := gt_clm_headers(header_id).h_rowid;
+----******************** 2009/05/21 Ver1.9  T.Kitajima ADD  END  ******************************************
+--    END LOOP headers_loop;
+----
+----
+----******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ******************************************
+----
+--    --==============================================================
+--    -- VDコラム別取引ヘッダテーブルへ登録
+--    --==============================================================
+--    BEGIN
+----******************** 2009/05/07 Ver1.8  N.Maeda ADD START ******************************************
+--      FORALL i IN 1..gt_dev_set_order_noh_hht.COUNT
+----******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ******************************************
+--        INSERT INTO
+--          xxcos_vd_column_headers
+--            (
+--                 order_no_hht,                   -- 受注No.(HHT)
+--                 digestion_ln_number,            -- 枝番
+--                 order_no_ebs,                   -- 受注No.(EBS)
+--                 base_code,                      -- 拠点コード
+--                 performance_by_code,            -- 成績者コード
+--                 dlv_by_code,                    -- 納品者コード
+--                 hht_invoice_no,                 -- HHT伝票No.
+--                 dlv_date,                       -- 納品日
+--                 inspect_date,                   -- 検収日
+--                 sales_classification,           -- 売上分類区分
+--                 sales_invoice,                  -- 売上伝票区分
+--                 card_sale_class,                -- カード売区分
+--                 dlv_time,                       -- 時間
+--                 change_out_time_100,            -- つり銭切れ時間100円
+--                 change_out_time_10,             -- つり銭切れ時間10円
+--                 customer_number,                -- 顧客コード
+--                 dlv_form,                       -- 納品形態
+--                 system_class,                   -- 業態区分
+--                 invoice_type,                   -- 伝票区分
+--                 input_class,                    -- 入力区分
+--                 consumption_tax_class,          -- 消費税区分
+--                 total_amount,                   -- 合計金額
+--                 sale_discount_amount,           -- 売上値引額
+--                 sales_consumption_tax,          -- 売上消費税額
+--                 tax_include,                    -- 税込金額
+--                 keep_in_code,                   -- 預け先コード
+--                 department_screen_class,        -- 百貨店画面種別
+--                 digestion_vd_rate_maked_date,   -- 消化VD掛率作成年月日
+--                 red_black_flag,                 -- 赤黒フラグ
+--                 forward_flag,                   -- 連携フラグ
+--                 forward_date,                   -- 連携日付
+--                 vd_results_forward_flag,        -- ベンダ納品実績情報連携済フラグ
+--                 cancel_correct_class,           -- 取消・訂正区分
+--                 created_by,                     -- 作成者
+--                 creation_date,                  -- 作成日
+--                 last_updated_by,                -- 最終更新者
+--                 last_update_date,               -- 最終更新日
+--                 last_update_login,              -- 最終更新ログイン
+--                 request_id,                     -- 要求ID
+--                 program_application_id,         -- コンカレント・プログラム・アプリケーションID
+--                 program_id,                     -- コンカレント・プログラムID
+--                 program_update_date             -- プログラム更新日
+--            )
+--        VALUES
+--          (
+----******************** 2009/05/07 Ver1.8  N.Maeda MOD START ******************************************
+----        SELECT head.order_no_hht,              -- 受注No.(HHT)
+----               head.digestion_ln_number,       -- 枝番
+----               head.order_no_ebs,              -- 受注No.(EBS)
+----               head.base_code,                 -- 拠点コード
+----               head.performance_by_code,       -- 成績者コード
+----               head.dlv_by_code,               -- 納品者コード
+----               head.hht_invoice_no,            -- HHT伝票No.
+----               head.dlv_date,                  -- 納品日
+----               head.inspect_date,              -- 検収日
+----               head.sales_classification,      -- 売上分類区分
+----               head.sales_invoice,             -- 売上伝票区分
+----               head.card_sale_class,           -- カード売区分
+----               head.dlv_time,                  -- 時間
+----               head.change_out_time_100,       -- つり銭切れ時間100円
+----               head.change_out_time_10,        -- つり銭切れ時間10円
+----               head.customer_number,           -- 顧客コード
+----                 NULL,                           -- 納品形態
+----               head.system_class,              -- 業態区分
+----                 NULL,                           -- 伝票区分
+----               head.input_class,               -- 入力区分
+----               head.consumption_tax_class,     -- 消費税区分
+----               head.total_amount,              -- 合計金額
+----               head.sale_discount_amount,      -- 売上値引額
+----               head.sales_consumption_tax,     -- 売上消費税額
+----               head.tax_include,               -- 税込金額
+----               head.keep_in_code,              -- 預け先コード
+----               head.department_screen_class,   -- 百貨店画面種別
+----                 NULL,                           -- 消化VD掛率作成年月日
+----               head.red_black_flag,            -- 赤黒フラグ
+----                 'N',                            -- 連携フラグ
+----                 NULL,                           -- 連携日付
+----                 'N',                            -- ベンダ納品実績情報連携済フラグ
+----               head.cancel_correct_class,      -- 取消・訂正区分
+----                 gt_clm_headers.cancel_correct_class,      -- 取消・訂正区分
+----                 cn_created_by,                  -- 作成者
+----                 cd_creation_date,               -- 作成日
+----                 cn_last_updated_by,             -- 最終更新者
+----                 cd_last_update_date,            -- 最終更新日
+----                 cn_last_update_login,           -- 最終更新ログイン
+----                 cn_request_id,                  -- 要求ID
+----                 cn_program_application_id,      -- コンカレント・プログラム・アプリケーションID
+----                 cn_program_id,                  -- コンカレント・プログラムID
+----                 cd_program_update_date          -- プログラム更新日
+----        FROM   xxcos_dlv_headers  head         -- 納品ヘッダテーブル
+----        WHERE  head.results_forward_flag = cv_default       -- 販売実績連携済みフラグ＝0
+----        AND    head.input_class          = cv_input_class;  -- 入力区分＝5
+--                 gt_dev_set_order_noh_hht(i),
+--                 gt_dev_set_digestion_ln(i),
+--                 gt_dev_set_order_no_ebs(i),
+--                 gt_dev_set_base_code(i),
+--                 gt_dev_set_perform_code(i),
+--                 gt_dev_set_dlv_code(i),
+--                 gt_dev_set_invoice_no(i),
+--                 gt_dev_set_dlv_date(i),
+--                 gt_dev_set_inspect_date(i),
+--                 gt_dev_set_sales_classif(i),
+--                 gt_dev_set_sales_invoice(i),
+--                 gt_dev_set_card_sale_class(i),
+--                 gt_dev_set_dlv_time(i),
+--                 gt_dev_set_out_time_100(i),
+--                 gt_dev_set_out_time_10(i),
+--                 gt_dev_set_cus_number(i),
+--                 gt_dev_set_dlv_form(i),
+--                 gt_dev_set_system_class(i),
+--                 gt_dev_set_invoice_type(i),
+--                 gt_dev_set_input_class(i),
+--                 gt_dev_set_tax_class(i),
+--                 gt_dev_set_total_amount(i),
+--                 gt_dev_set_sales_tax(i),
+--                 gt_dev_set_sale_discount_a(i),
+--                 gt_dev_set_tax_include(i),
+--                 gt_dev_set_keep_in_code(i),
+--                 gt_dev_set_depart_sc_clas(i),
+--                 gt_dev_set_dig_vd_r_mak_d(i),
+--                 gt_dev_set_red_black_flag(i),
+--                 gt_dev_set_forward_flag(i),
+--                 gt_dev_set_forward_date(i),
+--                 gt_dev_set_vd_results_for_f(i),
+--                 gt_dev_set_cancel_correct(i),
+--                 gt_dev_set_created_by(i),
+--                 gt_dev_set_creation_date(i),
+--                 gt_dev_set_last_updated_by(i),
+--                 gt_dev_set_last_update_date(i),
+--                 gt_dev_set_last_update_logi(i),
+--                 gt_dev_set_request_id(i),
+--                 gt_dev_set_program_appli_id(i),
+--                 gt_dev_set_program_id(i),
+--                 gt_dev_set_program_update_d(i)
+--                 );
+----******************** 2009/05/07 Ver1.8  N.Maeda MOD  END  ******************************************
+----
+--    -- ヘッダ抽出件数セット
+----******************** 2009/05/26 Ver1.9  T.Kitajima MOD START ******************************************
+----    on_target_cnt := SQL%ROWCOUNT;
+--    on_target_cnt := gt_dev_set_order_noh_hht.COUNT;
+----******************** 2009/05/26 Ver1.9  T.Kitajima MOD  END  ******************************************
+----
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_vdh_table );
+--        gv_tkn2    := NULL;
+--        lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_add,
+--                                                cv_tkn_table,   gv_tkn1,
+--                                                cv_tkn_key,     gv_tkn2 );
+--        lv_errbuf  := lv_errmsg;
+--        RAISE global_api_expt;
+--    END;
+----
+--    --==============================================================
+--    -- VDコラム別取引明細テーブルへ登録
+--    --==============================================================
+--    BEGIN
+--      INSERT INTO
+--        xxcos_vd_column_lines
+--          (
+--               order_no_hht,                -- 受注No.(HHT)
+--               line_no_hht,                 -- 行No.(HHT)
+--               digestion_ln_number,         -- 枝番
+--               order_no_ebs,                -- 受注No.(EBS)
+--               line_number_ebs,             -- 明細番号(EBS)
+--               item_code_self,              -- 品名コード(自社)
+--               content,                     -- 入数
+--               inventory_item_id,           -- 品目ID
+--               standard_unit,               -- 基準単位
+--               case_number,                 -- ケース数
+--               quantity,                    -- 数量
+--               sale_class,                  -- 売上区分
+--               wholesale_unit_ploce,        -- 卸単価
+--               selling_price,               -- 売単価
+--               column_no,                   -- コラムNo.
+--               h_and_c,                     -- H/C
+--               sold_out_class,              -- 売切区分
+--               sold_out_time,               -- 売切時間
+--               replenish_number,            -- 補充数
+--               cash_and_card,               -- 現金・カード併用額
+--               created_by,                  -- 作成者
+--               creation_date,               -- 作成日
+--               last_updated_by,             -- 最終更新者
+--               last_update_date,            -- 最終更新日
+--               last_update_login,           -- 最終更新ログイン
+--               request_id,                  -- 要求ID
+--               program_application_id,      -- コンカレント・プログラム・アプリケーションID
+--               program_id,                  -- コンカレント・プログラムID
+--               program_update_date          -- プログラム更新日
+--          )
+--        SELECT line.order_no_hht,           -- 受注No.(HHT)
+--               line.line_no_hht,            -- 行No.(HHT)
+--               line.digestion_ln_number,    -- 枝番
+--               line.order_no_ebs,           -- 受注No.(EBS)
+--               line.line_number_ebs,        -- 明細番号(EBS)
+--               line.item_code_self,         -- 品名コード(自社)
+--               line.content,                -- 入数
+--               line.inventory_item_id,      -- 品目ID
+--               line.standard_unit,          -- 基準単位
+--               line.case_number,            -- ケース数
+--               DECODE( head.red_black_flag, '0', line.quantity * -1, line.quantity ),
+--                                            -- 数量
+--               line.sale_class,             -- 売上区分
+--               line.wholesale_unit_ploce,   -- 卸単価
+--               line.selling_price,          -- 売単価
+--               line.column_no,              -- コラムNo.
+--               line.h_and_c,                -- H/C
+--               line.sold_out_class,         -- 売切区分
+--               line.sold_out_time,          -- 売切時間
+--               DECODE( head.red_black_flag, '0', line.replenish_number * -1, line.replenish_number ),
+--                                            -- 補充数
+--               line.cash_and_card,          -- 現金・カード併用額
+--               cn_created_by,               -- 作成者
+--               cd_creation_date,            -- 作成日
+--               cn_last_updated_by,          -- 最終更新者
+--               cd_last_update_date,         -- 最終更新日
+--               cn_last_update_login,        -- 最終更新ログイン
+--               cn_request_id,               -- 要求ID
+--               cn_program_application_id,   -- コンカレント・プログラム・アプリケーションID
+--               cn_program_id,               -- コンカレント・プログラムID
+--               cd_program_update_date       -- プログラム更新日
+--        FROM   xxcos_dlv_headers  head,     -- 納品ヘッダテーブル
+--               xxcos_dlv_lines    line      -- 納品明細テーブル
+--        WHERE  head.results_forward_flag = cv_default                -- 販売実績連携済みフラグ＝0
+--        AND    head.input_class          = cv_input_class            -- 入力区分＝5
+--        AND    head.order_no_hht         = line.order_no_hht         -- ヘッダ.受注No.(HHT)＝明細.受注No.(HHT)
+--        AND    head.digestion_ln_number  = line.digestion_ln_number; -- ヘッダ.枝番＝明細.枝番
+----
+--    -- 明細抽出件数セット
+--    on_target_cnt_l := SQL%ROWCOUNT;
+--
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_vdl_table );
+--        gv_tkn2    := NULL;
+--        lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_add,
+--                                                cv_tkn_table,   gv_tkn1,
+--                                                cv_tkn_key,     gv_tkn2 );
+--        lv_errbuf  := lv_errmsg;
+--        RAISE insert_err_expt;
+--    END;
+--
+--  EXCEPTION
+--    -- ロックエラー
+--    WHEN lock_expt THEN
+--      gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_table );
+--      lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_lock, cv_tkn_tab, gv_tkn1 );
+--      lv_errbuf  := lv_errmsg;
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+--      ov_retcode := cv_status_error;
+----
+--      IF ( headers_lock_cur%ISOPEN ) THEN
+--        CLOSE headers_lock_cur;
+--      END IF;
+----
+--      IF ( lines_lock_cur%ISOPEN ) THEN
+--        CLOSE lines_lock_cur;
+--      END IF;
 --
   EXCEPTION
 --
-    -- ロックエラー
-    WHEN lock_expt THEN
-      gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_table );
-      lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_lock, cv_tkn_tab, gv_tkn1 );
-      lv_errbuf  := lv_errmsg;
+    -- インサートエラー
+    WHEN insert_err_expt THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
       ov_retcode := cv_status_error;
---
-      IF ( headers_lock_cur%ISOPEN ) THEN
-        CLOSE headers_lock_cur;
-      END IF;
---
-      IF ( lines_lock_cur%ISOPEN ) THEN
-        CLOSE lines_lock_cur;
-      END IF;
---
+--******************** 2009/07/17 Ver1.11  N.Maeda MOD  END  ******************************************
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
@@ -2517,9 +2984,9 @@ AS
    * Description      : コラム別転送済フラグ、販売実績連携済みフラグ更新(A-5)
    ***********************************************************************************/
   PROCEDURE data_update(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -2623,10 +3090,10 @@ AS
     END;
 --
     --==============================================================
-    -- 販売実績連携済みフラグ更新
+    -- 連携済みフラグ更新
     --==============================================================
     BEGIN
---******************** 2009/05/21 Var1.9  T.Kitajima MOD START ******************************************
+--******************** 2009/05/21 Ver1.9  T.Kitajima MOD START ******************************************
 --      UPDATE
 --        xxcos_dlv_headers  head   -- 納品ヘッダテーブル
 --      SET
@@ -2655,7 +3122,7 @@ AS
                head.program_update_date    = cd_program_update_date       -- プログラム更新日
          WHERE head.rowid                  = gt_dlv_headers_row_id(i)
       ;
---******************** 2009/05/21 Var1.9  T.Kitajima MOD  END  ******************************************
+--******************** 2009/05/21 Ver1.9  T.Kitajima MOD  END  ******************************************
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -2668,11 +3135,11 @@ AS
         RAISE global_api_expt;
     END;
 --
---******************** 2009/05/07 Var1.8  N.Maeda ADD START ******************************************
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD START ******************************************
     --==============================================================
     -- VDカラム別取引情報取消訂正区分更新
     --==============================================================
-    IF ( gt_clm_headers.COUNT > 0 ) THEN
+    IF ( gt_vd_row_id.COUNT > 0 ) THEN
       BEGIN
         <<vd_update_loop>>
         FORALL i IN 1..gt_vd_row_id.COUNT
@@ -2700,7 +3167,7 @@ AS
           RAISE global_api_expt;
       END;
     END IF;
---******************** 2009/05/07 Var1.8  N.Maeda ADD  END  ******************************************
+--******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ******************************************
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -2728,9 +3195,9 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
 --
 --#####################  固定ローカル定数変数宣言部 START   ####################
@@ -2877,8 +3344,14 @@ AS
         RAISE global_process_expt;
       END IF;
 --
-    -- 警告処理（対象データ無しエラー）
+    -- スキップ発生時
+    IF ( gn_warn_cnt <> 0 ) THEN
+      -- ステータス警告
+      ov_retcode := cv_status_warn;
+    END IF;
+    -- 警告処理（対象データ無しエラー）gt_tr_count
     IF (  gn_inv_target_cnt + gn_dlv_h_target_cnt = 0  ) THEN
+--    IF (  gn_inv_target_cnt + gn_dlv_h_target_cnt = 0  ) THEN
 --
       lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_nodata );
       FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
@@ -2978,6 +3451,7 @@ AS
       gn_l_normal_cnt  := 0;
       gn_dlv_h_nor_cnt := 0;
       gn_dlv_l_nor_cnt := 0;
+      gn_warn_cnt      := 0;
 --
       FND_FILE.PUT_LINE(
          which => FND_FILE.OUTPUT
@@ -2993,66 +3467,79 @@ AS
        which => FND_FILE.OUTPUT
       ,buff  => ''
     );
-    --入出庫情報抽出件数出力
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_application
-                    ,iv_name         => cv_msg_inv_cnt
-                    ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR( gn_inv_target_cnt )
-                   );
-    FND_FILE.PUT_LINE(
-       which => FND_FILE.OUTPUT
-      ,buff  => gv_out_msg
-    );
-    --
+--******************** 2009/07/17 Ver1.11  N.Maeda MOD START ******************************************
+--    --入出庫情報抽出件数出力
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_application
+--                    ,iv_name         => cv_msg_inv_cnt
+--                    ,iv_token_name1  => cv_tkn_count
+--                    ,iv_token_value1 => TO_CHAR( gn_inv_target_cnt )
+--                   );
+--    FND_FILE.PUT_LINE(
+--       which => FND_FILE.OUTPUT
+--      ,buff  => gv_out_msg
+--    );
+----    --
     --納品ヘッダ情報抽出件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_application
-                    ,iv_name         => cv_msg_dlv_cnt
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_target_rec_msg
                     ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR( gn_dlv_h_target_cnt )
+                    ,iv_token_value1 => TO_CHAR( gn_dlv_h_target_cnt + gt_tr_count )
                    );
     FND_FILE.PUT_LINE(
        which => FND_FILE.OUTPUT
       ,buff  => gv_out_msg
     );
     --
-    --納品明細情報抽出件数出力
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_application
-                    ,iv_name         => cv_msg_dlv_cnt_l
-                    ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR( gn_dlv_l_target_cnt )
-                   );
-    FND_FILE.PUT_LINE(
-       which => FND_FILE.OUTPUT
-      ,buff  => gv_out_msg
-    );
+--    --納品明細情報抽出件数出力
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_application
+--                    ,iv_name         => cv_msg_dlv_cnt_l
+--                    ,iv_token_name1  => cv_tkn_count
+--                    ,iv_token_value1 => TO_CHAR( gn_dlv_l_target_cnt )
+--                   );
+--    FND_FILE.PUT_LINE(
+--       which => FND_FILE.OUTPUT
+--      ,buff  => gv_out_msg
+--    );
     --
     --ヘッダ成功件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_application
                     ,iv_name         => cv_msg_h_nor_cnt
                     ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR( gn_h_normal_cnt + gn_dlv_h_nor_cnt )
+                    ,iv_token_value1 => TO_CHAR( gn_h_normal_cnt + gt_insert_h_count )
                    );
     FND_FILE.PUT_LINE(
        which => FND_FILE.OUTPUT
       ,buff  => gv_out_msg
     );
     --
-    --明細成功件数出力
+--    --明細成功件数出力
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_application
+--                    ,iv_name         => cv_msg_l_nor_cnt
+--                    ,iv_token_name1  => cv_tkn_count
+--                    ,iv_token_value1 => TO_CHAR( gn_l_normal_cnt + gn_dlv_l_nor_cnt )
+--                   );
+--    FND_FILE.PUT_LINE(
+--       which => FND_FILE.OUTPUT
+--      ,buff  => gv_out_msg
+--    );
+    --
+    --
+    --スキップ件数
     gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_application
-                    ,iv_name         => cv_msg_l_nor_cnt
-                    ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR( gn_l_normal_cnt + gn_dlv_l_nor_cnt )
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
                    );
     FND_FILE.PUT_LINE(
-       which => FND_FILE.OUTPUT
-      ,buff  => gv_out_msg
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
     );
-    --
     --エラー件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
@@ -3065,6 +3552,7 @@ AS
       ,buff  => gv_out_msg
     );
     --
+--******************** 2009/07/17 Ver1.11  N.Maeda MOD  END  ******************************************
     --終了メッセージ
     IF ( lv_retcode = cv_status_normal ) THEN
       lv_message_code := cv_normal_msg;
