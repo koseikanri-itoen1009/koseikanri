@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A10C(body)
  * Description      : 品目一覧作成
  * MD.050           : 品目一覧作成 MD050_CMM_004_A10
- * Version          : Issue3.3
+ * Version          : Issue3.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009/05/26    1.7   H.Yoshikawa      障害T1_0317対応  品目コードの不要な範囲設定を削除
  *  2009/07/13    1.8   H.Yoshikawa      障害0000366対応  コンポーネント原価(01:01GEN～07:07KEI)を追加
  *  2009/08/12    1.9   Y.Kuboshima      障害0000894対応  日付項目の修正(SYSDATE -> 業務日付)
+ *  2009/10/16    1.10  S.Niki           E_T4_00022対応   ケース換算入数を追加 
  *
  *****************************************************************************************/
 --
@@ -750,6 +751,9 @@ AS
                                                   --親品目コード
 -- End
                 xoiv.num_of_cases,                --ケース入数
+-- 2009/10/16 Ver1.10 add start by Shigeto.Niki
+                xoiv.case_conv_inc_num,           --ケース換算入数
+-- 2009/10/16 Ver1.10 add end by Shigeto.Niki
                 xoiv.item_um,                     --単位
                 ipc.item_product_class,           --商品製品区分
                 ipc.item_product_class_name,      --商品製品区分名
@@ -1111,6 +1115,9 @@ AS
           sales_div_name,               -- 売上対象区分名
           parent_item_code,             -- 親品目コード
           num_of_cases,                 -- ケース入数
+-- 2009/10/16 Ver1.10 add start by Shigeto.Niki
+          case_conv_inc_num,            -- ケース換算入数
+-- 2009/10/16 Ver1.10 add end by Shigeto.Niki
           item_um,                      -- 単位
           item_product_class,           -- 商品製品区分
           item_product_class_name,      -- 商品製品区分名
@@ -1190,6 +1197,9 @@ AS
           lt_item01_rec.sales_div_name,           -- 売上対象区分名
           lt_item01_rec.parent_item_code,         -- 親品目ID
           lt_item01_rec.num_of_cases,             -- ケース入数
+-- 2009/10/16 Ver1.10 add start by Shigeto.Niki
+          lt_item01_rec.case_conv_inc_num,        -- ケース換算入数
+-- 2009/10/16 Ver1.10 add end by Shigeto.Niki
           lt_item01_rec.item_um,                  -- 単位
           lt_item01_rec.item_product_class,       -- 商品製品区分
           lt_item01_rec.item_product_class_name,  -- 商品製品区分名
@@ -1604,6 +1614,10 @@ AS
                 TO_CHAR( xicw.num_of_cases )   AS num_of_cases,
                                                -- ケース入数
 -- End
+-- 2009/10/16 Ver1.10 add start by Shigeto.Niki
+                TO_CHAR( xicw.case_conv_inc_num )   AS case_conv_inc_num,
+                                               -- ケース換算入数
+-- 2009/10/16 Ver1.10 add end by Shigeto.Niki
                 xicw.item_um,                  -- 単位
                 xicw.item_product_class,       -- 商品製品区分
                 xicw.item_product_class_name,  -- 商品製品区分名
@@ -1823,6 +1837,10 @@ AS
           || cv_sep_com      -- 親品目ID
           || lt_item01_rec.num_of_cases
           || cv_sep_com      -- ケース入数
+-- 2009/10/16 Ver1.10 add start by Shigeto.Niki
+          || lt_item01_rec.case_conv_inc_num
+          || cv_sep_com      -- ケース換算入数
+-- 2009/10/16 Ver1.10 add end by Shigeto.Niki
           || lt_item01_rec.item_um
           || cv_sep_com ||   -- 単位
           ( CASE
