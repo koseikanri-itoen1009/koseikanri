@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_014_A06_HHT-EBSインターフェース：
  *                    (OUT)営業員管理ファイル
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -21,10 +21,16 @@ AS
  *  get_prsncd_data        営業員管理データを抽出 (A-6)
  *  create_csv_rec         CSVファイル出力 (A-7) 
  *  close_csv_file         CSVファイルクローズ (A-8) 
+ *  get_sum_sls_tgt_data   売上目標データ初期処理(A-9)
+ *  ins_work_results       実績データワークテーブル格納(A-11)
  *  submain                メイン処理プロシージャ
  *                           リソースデータ取得 (A-4)
+ *                           売上目標データ取得処理（実績あり）(A-10)
+ *                           売上目標データ取得処理（目標のみ）(A-12)
+ *                           月初表示用目標データ取得処理(A-13)
+ *                           売上目標データCSV出力処理(A-14)
  *  main                   コンカレント実行ファイル登録プロシージャ
- *                           終了処理 (A-9)
+ *                           終了処理 (A-15)
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -44,6 +50,7 @@ AS
  *  2009-11-23    1.8   T.Maruyama        E_本番_00331対応（当月売上実績を営業成績表と同様
  *                                        成績計上者ベースとする）
  *  2010-08-26    1.9   K.Kiriu           E_本番_04153対応（PT対応)
+ *  2013-05-13    1.10  K.Kiriu           E_本番_10735対応(営業員別月別ノルマ実績)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -79,6 +86,11 @@ AS
   gn_normal_cnt    NUMBER;                    -- 正常件数
   gn_error_cnt     NUMBER;                    -- エラー件数
   gn_warn_cnt      NUMBER;                    -- スキップ件数
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+  gn_target_cnt2   NUMBER;                    -- 対象件数(売上目標)
+  gn_normal_cnt2   NUMBER;                    -- 正常件数(売上目標)
+  gn_warn_cnt2     NUMBER;                    -- スキップ件数(売上目標)
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
 --
 --################################  固定部 END   ##################################
 --
@@ -109,6 +121,14 @@ AS
   cv_object_cd           CONSTANT VARCHAR2(30)  := 'PARTY';          -- ソースコード(固定)
   cv_delete_flag         CONSTANT VARCHAR2(1)   := 'N';              -- タスク削除フラグ
   cv_owner_type_code     CONSTANT VARCHAR2(30)  := 'RS_EMPLOYEE';    -- タスクオーナータイプ
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+  cv_yes                 CONSTANT VARCHAR2(1)   := 'Y';
+  cv_no                  CONSTANT VARCHAR2(1)   := 'N';
+  cv_app_name_cmm        CONSTANT VARCHAR2(5)   := 'XXCMM';
+  cv_app_name_ccp        CONSTANT VARCHAR2(5)   := 'XXCCP';
+  -- 参照タイプ
+  ct_item_group_summary  CONSTANT  fnd_lookup_values_vl.lookup_type%TYPE := 'XXCMM1_ITEM_GROUP_SUMMARY';  --商品別売上集計マスタ
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
 --
   -- メッセージコード
   cv_tkn_number_01    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00011';  -- 業務処理日付取得エラー
@@ -123,6 +143,21 @@ AS
   /* 2009.05.28 K.Satomura T1_1236対応 START */
   cv_tkn_number_10    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00572';  -- リソースグループ有効エラー
   /* 2009.05.28 K.Satomura T1_1236対応 END */
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+  cv_tkn_number_11    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00072';  -- テーブル削除エラー
+  cv_tkn_number_12    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00649';  -- テーブル挿入エラー
+  cv_tkn_number_13    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00054';  -- 値取得エラー
+  cv_tkn_number_14    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00014';  -- プロファイル取得
+  cv_tkn_number_15    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00054';  -- データ取得エラー
+--
+  --他領域メッセージ
+  cv_tkn_number_cmm_01  CONSTANT VARCHAR2(100) := 'APP-XXCMM1-00602';  -- 目標管理項目コード
+  cv_tkn_number_cmm_02  CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-10114';  -- 半角数値チェック
+--
+  --トークン値
+  cv_tkn_value_01     CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00650';  -- 売上目標ワークテーブル
+  cv_tkn_value_02     CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00651';  -- 稼働日カレンダ
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
 --
   -- トークンコード
   cv_tkn_errmsg           CONSTANT VARCHAR2(20) := 'ERR_MESSAGE';
@@ -140,7 +175,10 @@ AS
   cv_tkn_emp_num          CONSTANT VARCHAR2(20) := 'EMPLOYEE_NUMBER';
   cv_tkn_emp_name         CONSTANT VARCHAR2(20) := 'EMPLOYEE__NAME';
   /* 2009.05.28 K.Satomura T1_1236対応 END */
-
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+  cv_tkn_item             CONSTANT VARCHAR2(20) := 'ITEM';
+  cv_tkn_err_msg          CONSTANT VARCHAR2(20) := 'ERR_MSG';
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
 --
   cb_true                 CONSTANT BOOLEAN := TRUE;
   cb_false                CONSTANT BOOLEAN := FALSE;
@@ -178,6 +216,14 @@ AS
   cv_debug_msg_err4       CONSTANT VARCHAR2(200) := 'others例外';
   cv_debug_msg_err5       CONSTANT VARCHAR2(200) := 'no_data_expt';
   cv_debug_msg_err6       CONSTANT VARCHAR2(200) := 'global_process_expt';
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+  cv_debug_msg14          CONSTANT VARCHAR2(200) := '売上目標データ作成処理開始';
+  cv_debug_msg15          CONSTANT VARCHAR2(200) := '売上目標データ作成処理終了';
+  cv_debug_msg16          CONSTANT VARCHAR2(200) := '実績取得処理';
+  cv_debug_msg17          CONSTANT VARCHAR2(200) := '目標のみ取得処理';
+  cv_debug_msg18          CONSTANT VARCHAR2(200) := '月初表示用目標の取得処理';
+  cv_debug_msg19          CONSTANT VARCHAR2(200) := 'ＣＳＶ出力処理';
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -192,6 +238,11 @@ AS
   gv_duty_cd             VARCHAR2(30);        -- 職務コード
   gv_duty_cd_vl          VARCHAR2(30);        -- 職務コード名
   /* 2009.10.19 K.Kubo T4_00046対応 END */
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+  gv_err_tkn_val_01      VARCHAR2(100);       -- 売上目標ワークテーブル
+  gv_keeping_month       VARCHAR2(6);         -- 営業成績表の保持期間(YYYYMM形式)
+  gv_log_control_flag    VARCHAR2(1);         -- 終了時のログ制御用
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -211,6 +262,28 @@ AS
     full_name           xxcso_resources_v.full_name%TYPE,                          -- 営業員氏名
     prsn_total_cnt      NUMBER(10)                                                 -- 当月訪問実績
   );
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+  -- 営業員売上目標の日数データ
+  TYPE g_date_cnt_rtype IS RECORD(
+    actual_day_cnt      NUMBER,                                                    -- 実働日数
+    passed_day_cnt      NUMBER                                                     -- 経過日数
+  );
+  -- 売上目標ワークテーブル
+  TYPE g_sales_target_rtype IS RECORD(
+    base_code               xxcso_wk_sales_target.base_code%TYPE,                  --拠点コード
+    employee_code           xxcso_wk_sales_target.employee_code%TYPE,              --営業員コード
+    sale_amount_month_sum   xxcso_wk_sales_target.sale_amount_month_sum%TYPE,      --実績金額
+    target_amount           xxcso_wk_sales_target.target_amount%TYPE,              --目標金額
+    target_management_code  xxcso_wk_sales_target.target_management_code%TYPE,     --目標管理項目コード
+    target_month            xxcso_wk_sales_target.target_month%TYPE,               --年月
+    actual_day_cnt          xxcso_wk_sales_target.actual_day_cnt%TYPE,             --実働日数
+    passed_day_cnt          xxcso_wk_sales_target.passed_day_cnt%TYPE              --経過日数
+  );
+--
+  --テーブル型定義
+  TYPE g_date_cnt_ttype IS TABLE OF g_date_cnt_rtype INDEX BY VARCHAR2(6);
+  g_date_cnt_tab        g_date_cnt_ttype;
+  /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
 --
   /***********************************************************************************
    * Procedure Name   : init
@@ -1453,6 +1526,455 @@ AS
 --
   END close_csv_file;
 --
+/* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+  /**********************************************************************************
+   * Procedure Name   : get_sum_sls_tgt_data
+   * Description      : 売上目標データ初期処理 (A-9)
+   ***********************************************************************************/
+  PROCEDURE get_sum_sls_tgt_data(
+     ov_errbuf         OUT  NOCOPY VARCHAR2          -- エラー・メッセージ            --# 固定 #
+    ,ov_retcode        OUT  NOCOPY VARCHAR2          -- リターン・コード              --# 固定 #
+    ,ov_errmsg         OUT  NOCOPY VARCHAR2          -- ユーザー・エラー・メッセージ  --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_sum_sls_tgt_data';  -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(4000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(4000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    --メッセージ用
+    cv_paren1           CONSTANT VARCHAR2(2)  := '( ';    -- 左カッコ
+    cv_paren2           CONSTANT VARCHAR2(2)  := ' )';    -- 右カッコ
+    -- XXCOS:営業成績集約情報保存期間
+    ct_prof_002a03_keeping_period
+      CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_002A03_KEEPING_PERIOD';
+    -- XXCOS:カレンダコード
+    ct_prof_bus_cal_code
+      CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_BUSINESS_CALENDAR_CODE';
+    -- *** ローカル変数 ***
+    lv_token_value    VARCHAR2(100);                                       --トークン値取得用
+    ln_keeping_period NUMBER;                                              --営業成績集約情報保存期間
+    lt_bus_cla_code   fnd_profile_option_values.profile_option_value%TYPE; --カレンダコード
+    lv_chk_err_flag   VARCHAR2(1);                                         --チェックエラーフラグ
+    ld_first_date     DATE;
+    ld_end_date       DATE;
+    lv_month          VARCHAR2(6);
+    -- *** ローカルカーソル ***
+    --参照タイプ項目チェック用カーソル
+    CURSOR chk_lookup_cur
+    IS
+      SELECT   SUBSTRB( flv.lookup_code, 1,9 )  target_management_code -- 目標管理項目コード
+      FROM     fnd_lookup_values_vl flv
+      WHERE    flv.lookup_type         =  ct_item_group_summary  -- 商品別売上集計マスタ
+      AND      flv.attribute3          =  cv_yes                 -- 商品別売上集計マスタの送信データ
+      AND      flv.enabled_flag        =  cv_yes                 -- 有効なもののみ
+      AND      flv.start_date_active  <= gd_process_date
+      AND      (
+                 ( flv.end_date_active IS NULL )
+                 OR
+                 ( LAST_DAY( ADD_MONTHS( flv.end_date_active, 1 ) ) >= gd_process_date )
+               )
+    ;
+    TYPE g_chk_lookup_ttype IS TABLE OF chk_lookup_cur%ROWTYPE INDEX BY PLS_INTEGER;
+    g_chk_lookup_tab  g_chk_lookup_ttype;
+    -- *** ローカル例外 ***
+    lookup_chk_exp    EXCEPTION;
+    sls_tgt_data_exp  EXCEPTION;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    ----------------------------------------------------------------------
+    --エラー発生時のトークン値取得
+    ----------------------------------------------------------------------
+    --売上目標ワークテーブル
+    gv_err_tkn_val_01 :=  xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name          -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_value_01      -- メッセージコード
+                          );
+    ----------------------------------------------------------------------
+    --売上目標ワークテーブルのトランケート
+    ----------------------------------------------------------------------
+    BEGIN
+      EXECUTE IMMEDIATE 'TRUNCATE TABLE xxcso.xxcso_wk_sales_target';
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name            -- アプリケーション短縮名
+                      ,iv_name         => cv_tkn_number_11       -- メッセージコード
+                      ,iv_token_name1  => cv_tkn_tbl             -- トークンコード1
+                      ,iv_token_value1 => gv_err_tkn_val_01      -- トークン値1
+                      ,iv_token_name2  => cv_tkn_errmsg          -- トークンコード2
+                      ,iv_token_value2 => SQLERRM                -- トークン値2
+                     );
+        RAISE sls_tgt_data_exp;
+    END;
+--
+    ----------------------------------------------------------------------
+    --参照タイプ（商品別売上集計マスタ）の項目チェック
+    ----------------------------------------------------------------------
+    --初期化
+    lv_chk_err_flag := cv_no;
+    --データ取得
+    OPEN  chk_lookup_cur;
+    FETCH chk_lookup_cur BULK COLLECT INTO g_chk_lookup_tab;
+    CLOSE chk_lookup_cur;
+--
+    --チェック
+    <<chk_loop>>
+    FOR i IN 1..g_chk_lookup_tab.COUNT LOOP
+--
+      --目標管理項目コード(半角英数)
+      IF ( xxccp_common_pkg.chk_number( g_chk_lookup_tab(i).target_management_code ) = FALSE ) THEN
+        --エラーフラグを更新
+        lv_chk_err_flag := cv_yes;
+        --トークン値取得
+        lv_token_value := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name_cmm        -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_cmm_01   -- メッセージコード
+                          );
+        --メッセージ生成
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name_ccp        -- アプリケーション短縮名
+                      ,iv_name         => cv_tkn_number_cmm_02   -- メッセージコード
+                      ,iv_token_name1  => cv_tkn_item            -- トークンコード1
+                      ,iv_token_value1 => lv_token_value
+                                          || cv_paren1 || g_chk_lookup_tab(i).target_management_code || cv_paren2 -- トークン値1
+                     );
+        --メッセージ出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT --出力
+          ,buff   => lv_errmsg       --ユーザー・エラーメッセージ
+        );
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.LOG    --ログ
+          ,buff => lv_errmsg         --エラーメッセージ
+        );
+        --警告カウント
+        gn_warn_cnt2 := gn_warn_cnt2 + 1;
+      END IF;
+--
+    END LOOP chk_loop;
+--
+    --配列削除
+    g_chk_lookup_tab.DELETE;
+--
+    --参照タイプのチェックNGの場合、処理終了
+    IF ( lv_chk_err_flag = cv_yes ) THEN
+      RAISE lookup_chk_exp;
+    END IF;
+--
+    ----------------------------------------------------------------------
+    --プロファイルの取得
+    ----------------------------------------------------------------------
+    --営業成績表保持期間
+    ln_keeping_period := TO_NUMBER( FND_PROFILE.VALUE( ct_prof_002a03_keeping_period ) );
+    -- プロファイルが取得できない場合はエラー
+    IF ( ln_keeping_period IS NULL ) THEN
+      --メッセージ生成
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name                   -- アプリケーション短縮名
+                    ,iv_name         => cv_tkn_number_14              -- メッセージコード
+                    ,iv_token_name1  => cv_tkn_prof_nm                -- トークンコード1
+                    ,iv_token_value1 => ct_prof_002a03_keeping_period -- トークン値1
+                   );
+      RAISE sls_tgt_data_exp;
+    END IF;
+    --営業成績表を保持している最小月を取得
+    gv_keeping_month  := TO_CHAR( LAST_DAY( ADD_MONTHS( gd_process_date, ln_keeping_period * -1 ) ) + 1, 'YYYYMM');
+    --カレンダコード
+    lt_bus_cla_code   := FND_PROFILE.VALUE( ct_prof_bus_cal_code );
+    -- プロファイルが取得できない場合はエラー
+    IF ( lt_bus_cla_code IS NULL ) THEN
+      --メッセージ生成
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name                   -- アプリケーション短縮名
+                    ,iv_name         => cv_tkn_number_14              -- メッセージコード
+                    ,iv_token_name1  => cv_tkn_prof_nm                -- トークンコード1
+                    ,iv_token_value1 => ct_prof_bus_cal_code          -- トークン値1
+                   );
+      RAISE sls_tgt_data_exp;
+    END IF;
+--
+    ----------------------------------------------------------------------
+    --実働日数と経過日数を取得（営業成績表保持期間分）
+    ----------------------------------------------------------------------
+    --翌月の目標送信対象日の場合、翌月分も取得
+    IF ( gd_process_date = LAST_DAY( gd_process_date ) ) THEN
+      --翌月の取得設定
+      ld_first_date     := TRUNC( gd_process_date + 1, 'MM' );  --翌月1日
+      ln_keeping_period := ln_keeping_period + 1;               --営業成績表保持期間 + 1(翌月分)
+    ELSE
+      --当月の取得設定
+      ld_first_date     := TRUNC( gd_process_date, 'MM' );      --当月1日
+    END IF;
+--
+    ld_end_date         := LAST_DAY( ld_first_date );           --上記いずれかの最終日
+    lv_month            := TO_CHAR( ld_first_date, 'YYYYMM' );  --配列添え字
+--
+    <<day_cnt_loop>>
+    FOR i IN 1..ln_keeping_period LOOP
+--
+      BEGIN
+        SELECT  SUM(CASE
+                      WHEN  cal.seq_num IS NOT NULL
+                      THEN  1
+                      ELSE  0
+                    END)                    AS  actual_day_cnt,
+                SUM(CASE 
+                      WHEN  cal.seq_num IS NOT NULL
+                      AND   cal.calendar_date <= gd_process_date
+                      THEN  1
+                      ELSE  0
+                    END)                    AS  passed_day_cnt
+        INTO    g_date_cnt_tab(lv_month).actual_day_cnt
+               ,g_date_cnt_tab(lv_month).passed_day_cnt
+        FROM    bom_calendar_dates  cal
+        WHERE   cal.calendar_code       =       lt_bus_cla_code
+        AND     cal.calendar_date       BETWEEN ld_first_date
+                                        AND     ld_end_date
+        ;
+        --取得設定の前月以前
+        ld_first_date  := ADD_MONTHS( ld_first_date, -1 );
+        ld_end_date    := LAST_DAY( ld_first_date );
+        lv_month       := TO_CHAR( ld_first_date, 'YYYYMM' );
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+           --トークン値取得
+          lv_token_value := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_app_name_cmm        -- アプリケーション短縮名
+                             ,iv_name         => cv_tkn_value_02        -- メッセージコード
+                            );
+          --メッセージ生成
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_app_name       -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_15  -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_item       -- トークンコード1
+                        ,iv_token_value1 => lv_token_value    -- トークン値1
+                        ,iv_token_name2  => cv_tkn_err_msg    -- トークンコード2
+                        ,iv_token_value2 => SQLERRM           -- トークン値2
+                       );
+          RAISE sls_tgt_data_exp;
+      END;
+--
+    END LOOP day_cnt_loop;
+--
+  EXCEPTION
+--
+    -- *** 参照タイプチェックエラー *** --
+    WHEN lookup_chk_exp THEN
+--
+      --終了時ログ出力
+      gv_log_control_flag := 'N';
+      ov_errmsg  := NULL;
+      ov_errbuf  := NULL;
+      ov_retcode := cv_status_warn;
+--
+    -- *** データ取得エラー *** --
+    WHEN sls_tgt_data_exp THEN
+--
+      --警告カウント
+      gn_warn_cnt2 := 1;
+      --終了時ログ出力
+      gv_log_control_flag := 'Y';
+      ov_errmsg    := lv_errmsg;
+      ov_errbuf    := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,4000);
+      ov_retcode   := cv_status_warn;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+--
+      --警告カウント
+      gn_warn_cnt2 := 1;
+      --終了時ログ出力
+      gv_log_control_flag := 'Y';
+      ov_errmsg    := lv_errmsg;
+      ov_errbuf    := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      ov_retcode   := cv_status_warn;
+--
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+--
+      --警告カウント
+      gn_warn_cnt2 := 1;
+      --終了時ログ出力
+      gv_log_control_flag := 'Y';
+      ov_errbuf    := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
+      ov_retcode   := cv_status_warn;
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+--
+      --警告カウント
+      gn_warn_cnt2 := 1;
+      --終了時ログ出力
+      gv_log_control_flag := 'Y';
+      ov_errbuf    := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode   := cv_status_warn;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_sum_sls_tgt_data;
+--
+  /**********************************************************************************
+   * Procedure Name   : ins_work_results
+   * Description      : 実績データワークテーブル格納 (A-11)
+   ***********************************************************************************/
+  PROCEDURE ins_work_results(
+     i_sales_target_rec  IN  g_sales_target_rtype        -- 売上目標ワークテーブル
+    ,ov_errbuf           OUT NOCOPY VARCHAR2             -- エラー・メッセージ            --# 固定 #
+    ,ov_retcode          OUT NOCOPY VARCHAR2             -- リターン・コード              --# 固定 #
+    ,ov_errmsg           OUT NOCOPY VARCHAR2             -- ユーザー・エラー・メッセージ  --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_work_results';  -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(4000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(4000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    lv_msg_tkn_value1 VARCHAR2(100);
+    lv_msg_tkn_value2 VARCHAR2(100);
+    -- *** ローカル例外 ***
+    work_results_ins_exp EXCEPTION;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    ------------------------------
+    -- ワークテーブル格納
+    ------------------------------
+    BEGIN
+      INSERT INTO xxcso_wk_sales_target(
+         base_code              --拠点コード
+        ,employee_code          --営業員コード
+        ,sale_amount_month_sum  --実績金額
+        ,target_amount          --目標金額
+        ,target_management_code --目標管理項目コード
+        ,target_month           --年月
+        ,actual_day_cnt         --実働日数
+        ,passed_day_cnt         --経過日数
+        ,created_by             --作成者
+        ,creation_date          --作成日
+        ,last_updated_by        --最終更新者
+        ,last_update_date       --最終更新日
+        ,last_update_login      --最終更新ログイン
+        ,request_id             --要求ID
+        ,program_application_id --コンカレント・プログラム・アプリケーションID
+        ,program_id             --コンカレント・プログラムID
+        ,program_update_date    --プログラム更新日
+      ) VALUES (
+         i_sales_target_rec.base_code               --拠点コード
+        ,i_sales_target_rec.employee_code           --営業員コード
+        ,i_sales_target_rec.sale_amount_month_sum   --実績金額
+        ,i_sales_target_rec.target_amount           --目標金額
+        ,i_sales_target_rec.target_management_code  --目標管理項目コード
+        ,i_sales_target_rec.target_month            --年月
+        ,i_sales_target_rec.actual_day_cnt          --実働日数
+        ,i_sales_target_rec.passed_day_cnt          --経過日数
+        ,cn_created_by                              --作成者
+        ,cd_creation_date                           --作成日
+        ,cn_last_updated_by                         --最終更新者
+        ,cd_last_update_date                        --最終更新日
+        ,cn_last_update_login                       --最終更新ログイン
+        ,cn_request_id                              --要求ID
+        ,cn_program_application_id                  --コンカレント・プログラム・アプリケーションID
+        ,cn_program_id                              --コンカレント・プログラムID
+        ,cd_program_update_date                     --プログラム更新日
+      );
+    EXCEPTION
+      WHEN OTHERS THEN
+        --メッセージ生成
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name              --アプリケーション短縮名
+                      ,iv_name         => cv_tkn_number_12         --メッセージコード
+                      ,iv_token_name1  => cv_tkn_tbl               --トークンコード1
+                      ,iv_token_value1 => gv_err_tkn_val_01        --トークン値1
+                      ,iv_token_name2  => cv_tkn_errmsg            --トークンコード2
+                      ,iv_token_value2 => SQLERRM                  --トークン値2
+                     );
+        RAISE work_results_ins_exp;
+    END;
+--
+  EXCEPTION
+--
+    WHEN work_results_ins_exp THEN
+--
+      --警告カウント
+      gn_warn_cnt2 := 1;
+      ov_errmsg    := lv_errmsg;
+      ov_errbuf    := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,4000);
+      ov_retcode   := cv_status_warn;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+--
+      --警告カウント
+      gn_warn_cnt2 := 1;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      ov_retcode := cv_status_warn;
+--
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+--
+      --警告カウント
+      gn_warn_cnt2 := 1;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
+      ov_retcode := cv_status_warn;
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+--
+      --警告カウント
+      gn_warn_cnt2 := 1;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_warn;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_work_results;
+--
+/* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
+--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -1484,6 +2006,10 @@ AS
     ct_prof_electric_fee_item_cd
     CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE';
     /* 2010.08.26 K.Kiriu E_本番_04153対応 END */
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+    ct_base_code
+    CONSTANT  xxcso_wk_sales_target.base_code%TYPE         := '0';
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
     -- *** ローカル変数 ***
     -- OUTパラメータ格納用
     lv_csv_dir           VARCHAR2(2000); -- CSVファイル出力先
@@ -1635,12 +2161,160 @@ AS
       ;
       /* 2009.06.03 K.Satomura T1_1304対応 END */
 --
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+    -- 翌月の目標データ(1日にHHTで表示する)の取得を行うカーソルの定義
+    CURSOR target_start_cur
+    IS
+      SELECT /*+
+               LEADING(flv)
+               USE_NL(flv xstm)
+               INDEX(xstm xxcso_sales_target_mst_pk)
+             */
+              ct_base_code                                      base_code              --拠点コード
+             ,xstm.employee_code                                employee_code          --営業員コード
+             ,0                                                 sale_amount_month_sum  --実績金額
+             ,ROUND( NVL( xstm.target_amount,0 ) / 1000 )       target_amount          --目標金額
+             ,xstm.target_management_code                       target_management_code --目標管理項目コード
+             ,xstm.target_month                                 target_month           --年月
+             ,''                                                actual_day_cnt         --実働日数
+             ,''                                                passed_day_cnt         --経過日数
+      FROM   xxcso_sales_target_mst  xstm  --売上目標マスタ
+            ,fnd_lookup_values_vl    flv   --商品別売上集計マスタ(送信)
+      WHERE  flv.lookup_type                               = ct_item_group_summary      --XXCMM1_ITEM_GROUP_SUMMARY
+      AND    flv.enabled_flag                              = cv_yes                     --有効のみ
+      AND    flv.attribute3                                = cv_yes                     --商品別売上集計マスタの送信データ
+      AND    SUBSTRB(flv.lookup_code, 1, 9)                = xstm.target_management_code
+      AND    ( TO_DATE( xstm.target_month, 'YYYYMM' ) -1 ) = gd_process_date            --業務日付が目標年月の前日
+      AND    (
+               ( flv.end_date_active IS NULL )
+               OR
+               ( TO_CHAR( flv.end_date_active, 'YYYYMM') >= xstm.target_month )
+             )                                                               --集計期間が終了していない
+      ;
+    -- 売上目標データ処理で実績が存在する場合の取得を行うカーソルの定義
+    CURSOR sales_exist_cur
+    IS
+      SELECT /*+
+               LEADING(sum_d)
+             */ 
+              ct_base_code                                          base_code              --拠点(部門)コード
+             ,sum_d.employee_code                                   employee_code          --営業員コード
+             ,ROUND( NVL(sum_d.sale_amount_month_sum, 0 ) /1000 )   sale_amount_month_sum  --実績金額
+             ,ROUND( NVL( xstm.target_amount, 0 ) /1000 )           target_amount          --目標金額
+             ,SUBSTRB(flv.lookup_code, 1, 9)                        target_management_code --目標管理項目コード(小計行)
+             ,sum_d.target_month                                    target_month           --対象年月(YYYYMM形式)
+             ,NULL                                                  actual_day_cnt         --実働日数
+             ,NULL                                                  passed_day_cnt         --経過日数
+      FROM    ( SELECT /*+
+                         LEADING(flv)
+                         USE_NL(flv xrbsgs)
+                       */
+                       flv.attribute2                      sum_code                --小計区分
+                      ,TO_CHAR(xrbsgs.dlv_date, 'YYYYMM')  target_month            --対象年月
+                      ,xrbsgs.results_employee_code        employee_code           --営業員コード
+                      ,SUM(xrbsgs.sale_amount)             sale_amount_month_sum   --月別純売上金額合計
+                FROM   fnd_lookup_values_vl        flv     --商品別売上集計マスタ(集約)
+                      ,xxcos_rep_bus_s_group_sum   xrbsgs  --営業成績表 政策群別実績集計テーブル
+                WHERE  flv.lookup_type         =  ct_item_group_summary      --XXCMM1_ITEM_GROUP_SUMMARY
+                AND    flv.enabled_flag        =  cv_yes                     --有効のみ
+                AND    flv.attribute3          =  cv_no                      --商品別売上集計マスタの集約データ
+                AND    flv.start_date_active   <= gd_process_date            --商品別売上集計マスタの有効開始日が業務日付以前
+                AND    (
+                         ( flv.end_date_active IS NULL )
+                         OR
+                         ( LAST_DAY( ADD_MONTHS( flv.end_date_active, 1 ) ) >= gd_process_date )
+                       )                                                     --集計対象期間の翌月末日(クローズする月の末日)まで集計
+                AND    flv.attribute1          =  xrbsgs.policy_group_code
+                AND    xrbsgs.dlv_date         >= flv.start_date_active                       --納品日が商品別売上集計マスタの有効開始日以降
+                AND    xrbsgs.dlv_date         <= NVL(flv.end_date_active, gd_process_date )  --納品日が商品別売上集計マスタの有効終了日以前
+                GROUP BY
+                       flv.attribute2                      --小計区分
+                      ,TO_CHAR(xrbsgs.dlv_date, 'YYYYMM')  --納品日(月単位)
+                      ,xrbsgs.results_employee_code        --成績計上者コード
+              ) sum_d                             --営業員別売上サマリ
+             ,fnd_lookup_values_vl        flv     --商品別売上集計マスタ(送信)
+             ,xxcso_sales_target_mst      xstm    --売上目標マスタ
+      WHERE   flv.lookup_type                        = ct_item_group_summary      --XXCMM1_ITEM_GROUP_SUMMARY
+      AND     flv.enabled_flag                       = cv_yes                     --有効のみ
+      AND     flv.attribute3                         = cv_yes                     --商品別売上集計マスタの送信データ
+      AND     SUBSTRB(flv.lookup_code, 1, 9)         = sum_d.sum_code
+      AND     sum_d.sum_code                         = xstm.target_management_code(+)
+      AND     sum_d.employee_code                    = xstm.employee_code(+)
+      AND     sum_d.target_month                     = xstm.target_month(+)
+      ;
+--
+    -- 売上目標データ処理で実績が存在しない場合に目標のみ(月初を除く)の取得を行うカーソルの定義
+    CURSOR target_only_cur
+    IS
+      SELECT  /*+ 
+                LEADING(flv) 
+                USE_NL(flv xstm)
+                INDEX(xstm xxcso_sales_target_mst_pk)
+              */
+              ct_base_code                                  base_code              --拠点コード
+             ,xstm.employee_code                            employee_code          --営業員コード
+             ,0                                             sale_amount_month_sum  --実績金額
+             ,ROUND( NVL( xstm.target_amount, 0 ) / 1000 )  target_amount          --目標金額
+             ,xstm.target_management_code                   target_management_code --目標管理項目コード
+             ,xstm.target_month                             target_month           --年月
+             ,''                                            actual_day_cnt         --実働日数
+             ,''                                            passed_day_cnt         --経過日数
+      FROM    xxcso_sales_target_mst xstm --売上目標マスタ
+             ,fnd_lookup_values_vl   flv  --商品別売上集計マスタ
+      WHERE   flv.lookup_type         = ct_item_group_summary 
+      AND     flv.enabled_flag        = cv_yes  --有効のみ
+      AND     flv.attribute3          = cv_yes  --小計行
+      AND     SUBSTRB(flv.lookup_code, 1, 9)    = xstm.target_management_code
+      AND     xstm.target_month                >= gv_keeping_month                     --目標の対象期間に実績が保持されている(過去を対象としない)
+      AND     xstm.target_month                <= TO_CHAR( gd_process_date, 'YYYYMM')  --目標の対象期間に業務日付が到来している(未来を対象としない)
+      AND     xstm.target_month                >= TO_CHAR( flv.start_date_active, 'YYYYMM') --集計期間の開始以降で取得
+      AND     (
+                ( flv.end_date_active IS NULL )
+                OR
+                (
+                  ( LAST_DAY( ADD_MONTHS( flv.end_date_active, 1 ) ) >= gd_process_date )
+                  AND
+                  ( TO_CHAR( flv.end_date_active, 'YYYYMM') >= xstm.target_month )
+                )
+              )                                                                        --集計対象期間が終了後、翌月月末までは対象(但し、期間終了後の目標は対象としない)
+      AND     NOT EXISTS (
+                SELECT 1
+                FROM   xxcso_wk_sales_target xwst  --売上目標ワークテーブル
+                WHERE  xwst.target_management_code = xstm.target_management_code
+                AND    xwst.employee_code          = xstm.employee_code
+                AND    xwst.target_month           = xstm.target_month
+                AND    rownum                      = 1
+              )  --営業員の目標は存在するが対象の月の実績は存在しない
+      ;
+--
+    -- 売上目標データCSV出力を行うカーソルの定義
+    CURSOR sales_target_out_cur
+    IS
+      SELECT  xwst.base_code                   base_code               --拠点コード
+             ,xwst.employee_code               employee_code           --営業員コード
+             ,xwst.sale_amount_month_sum       sale_amount_month_sum   --実績金額
+             ,xwst.target_amount               target_amount           --目標金額
+             ,xwst.target_management_code      target_management_code  --目標管理項目コード
+             ,SUBSTRB(xwst.target_month, 3, 4) target_month            --年月(YYMM形式とする)
+             ,xwst.actual_day_cnt              actual_day_cnt          --実働日数
+             ,xwst.passed_day_cnt              passed_day_cnt          --経過日数
+             ,xwst.target_month                output_month            --CSV出力エラー時のメッセージに使用
+      FROM   xxcso_wk_sales_target xwst  --売上目標ワークテーブル
+      ;
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
     -- *** ローカル・レコード ***
     l_xrv_v_cur_rec       xrv_v_cur%ROWTYPE;
     l_prsncd_data_rec     g_prsncd_data_rtype;
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+    l_output_cur_rec      sales_target_out_cur%ROWTYPE;
+    l_sum_cur_rec         g_sales_target_rtype;
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
     -- *** ローカル例外 ***
     no_data_expt               EXCEPTION;
     error_skip_data_expt       EXCEPTION;
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+    sales_target_process_expt  EXCEPTION;
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
 --
   BEGIN
 --
@@ -1656,6 +2330,12 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+    gn_target_cnt2 := 0;
+    gn_normal_cnt2 := 0;
+    gn_warn_cnt2   := 0;
+    gv_log_control_flag := 'N';
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
 --
   -- ========================================
   -- A-1.初期処理 
@@ -1871,6 +2551,261 @@ AS
       RAISE no_data_expt;
     END IF;
 --
+/* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+    -- 売上目標データ処理開始をログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg14 || ' ' || TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS') || CHR(10) ||
+                 ''
+    );
+    -- =================================================
+    -- A-9.売上目標データ初期処理
+    -- =================================================
+    get_sum_sls_tgt_data(
+       ov_errbuf          => lv_errbuf   -- エラー・メッセージ            --# 固定 #
+      ,ov_retcode         => lv_retcode  -- リターン・コード              --# 固定 #
+      ,ov_errmsg          => lv_errmsg   -- ユーザー・エラー・メッセージ  --# 固定 #
+    );
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      RAISE sales_target_process_expt;
+    END IF;
+--
+    -- 実績取得処理開始をログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg16 || ' ' || TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS') || CHR(10) ||
+                 ''
+    );
+    -- =================================================
+    -- A-10.売上目標データ取得処理（実績あり）
+    -- =================================================
+    --カーソルオープン
+    OPEN sales_exist_cur;
+--
+    <<get_sales_exista_loop>>
+    LOOP 
+      BEGIN
+        FETCH sales_exist_cur INTO l_sum_cur_rec;
+        EXIT WHEN sales_exist_cur%NOTFOUND;
+--
+        -- 実稼動日数・経過日数の編集
+        l_sum_cur_rec.actual_day_cnt := g_date_cnt_tab(l_sum_cur_rec.target_month).actual_day_cnt;
+        l_sum_cur_rec.passed_day_cnt := g_date_cnt_tab(l_sum_cur_rec.target_month).passed_day_cnt;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          --メッセージ生成
+          lv_errmsg := SQLERRM;
+          --警告カウント
+          gn_warn_cnt2 := 1;
+          --終了時ログ出力
+          gv_log_control_flag := 'Y';
+          RAISE sales_target_process_expt;
+      END;
+--
+      --------------------------------------
+      -- A-11.実績データワークテーブル格納
+      --------------------------------------
+      ins_work_results(
+         i_sales_target_rec => l_sum_cur_rec  -- 売上目標ワークテーブル
+        ,ov_errbuf          => lv_errbuf      -- エラー・メッセージ            --# 固定 #
+        ,ov_retcode         => lv_retcode     -- リターン・コード              --# 固定 #
+        ,ov_errmsg          => lv_errmsg      -- ユーザー・エラー・メッセージ  --# 固定 #
+      );
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        --終了時ログ出力
+        gv_log_control_flag := 'Y';
+        RAISE sales_target_process_expt;
+      END IF;
+--
+    END LOOP get_sales_exista_loop;
+--
+    -- カーソルクローズ
+    CLOSE sales_exist_cur;
+--
+    -- 目標のみ取得取得処理開始をログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg17 || ' ' || TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS') || CHR(10) ||
+                 ''
+    );
+    -- =================================================
+    -- A-12.売上目標データ取得処理（目標のみ）
+    -- =================================================
+    --初期化
+    l_sum_cur_rec := NULL;
+    --カーソルオープン
+    OPEN target_only_cur;
+--
+    <<get_target_only_loop>>
+    LOOP 
+      BEGIN
+        FETCH target_only_cur INTO l_sum_cur_rec;
+        EXIT WHEN target_only_cur%NOTFOUND;
+--
+        -- 実稼動日数・経過日数の編集
+        l_sum_cur_rec.actual_day_cnt := g_date_cnt_tab(l_sum_cur_rec.target_month).actual_day_cnt;
+        l_sum_cur_rec.passed_day_cnt := g_date_cnt_tab(l_sum_cur_rec.target_month).passed_day_cnt;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          --メッセージ生成
+          lv_errmsg := SQLERRM;
+          --警告カウント
+          gn_warn_cnt2 := 1;
+          --終了時ログ出力
+          gv_log_control_flag := 'Y';
+          RAISE sales_target_process_expt;
+      END;
+--
+      --------------------------------------
+      -- A-11.実績データワークテーブル格納
+      --------------------------------------
+      ins_work_results(
+         i_sales_target_rec => l_sum_cur_rec  -- 売上目標ワークテーブル
+        ,ov_errbuf          => lv_errbuf      -- エラー・メッセージ            --# 固定 #
+        ,ov_retcode         => lv_retcode     -- リターン・コード              --# 固定 #
+        ,ov_errmsg          => lv_errmsg      -- ユーザー・エラー・メッセージ  --# 固定 #
+      );
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        --終了時ログ出力
+        gv_log_control_flag := 'Y';
+        RAISE sales_target_process_expt;
+      END IF;
+--
+    END LOOP get_target_only_loop;
+--
+    -- カーソルクローズ
+    CLOSE target_only_cur;
+--
+    -- 月初表示用目標の取得取得処理開始をログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg18 || ' ' || TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS') || CHR(10) ||
+                 ''
+    );
+    -- =================================================
+    -- A-13.月初表示用目標データ取得処理
+    -- =================================================
+    --初期化
+    l_sum_cur_rec := NULL;
+    --カーソルオープン
+    OPEN target_start_cur;
+--
+    <<get_target_start_loop>>
+    LOOP 
+      BEGIN
+        FETCH target_start_cur INTO l_sum_cur_rec;
+        EXIT WHEN target_start_cur%NOTFOUND;
+--
+        -- 実稼動日数・経過日数の編集
+        l_sum_cur_rec.actual_day_cnt := g_date_cnt_tab(l_sum_cur_rec.target_month).actual_day_cnt;
+        l_sum_cur_rec.passed_day_cnt := g_date_cnt_tab(l_sum_cur_rec.target_month).passed_day_cnt;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          --メッセージ生成
+          lv_errmsg := SQLERRM;
+          --警告カウント
+          gn_warn_cnt2 := 1;
+          --終了時ログ出力
+          gv_log_control_flag := 'Y';
+          RAISE sales_target_process_expt;
+      END;
+--
+      --------------------------------------
+      -- A-11.実績データワークテーブル格納
+      --------------------------------------
+      ins_work_results(
+         i_sales_target_rec => l_sum_cur_rec  -- 売上目標ワークテーブル
+        ,ov_errbuf          => lv_errbuf      -- エラー・メッセージ            --# 固定 #
+        ,ov_retcode         => lv_retcode     -- リターン・コード              --# 固定 #
+        ,ov_errmsg          => lv_errmsg      -- ユーザー・エラー・メッセージ  --# 固定 #
+      );
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE sales_target_process_expt;
+      END IF;
+--
+    END LOOP get_target_start_loop;
+--
+    -- カーソルクローズ
+    CLOSE target_start_cur;
+--
+    -- CSV出力処理開始をログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg19 || ' ' || TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS') || CHR(10) ||
+                 ''
+    );
+    --------------------------------------
+    -- A-14.売上目標データCSV出力処理
+    --------------------------------------
+    --初期化
+    l_prsncd_data_rec := NULL;
+    --カーソルオープン
+    OPEN sales_target_out_cur;
+--
+    <<sales_target_out_loop>>
+    LOOP
+      BEGIN
+        FETCH sales_target_out_cur INTO l_output_cur_rec;
+        EXIT WHEN sales_target_out_cur%NOTFOUND;
+--
+        --初期化
+        l_prsncd_data_rec := NULL;
+        --対象件数カウント
+        gn_target_cnt2    := gn_target_cnt2 + 1;
+--
+        --CSVファイル出力用変数に項目をセット
+        l_prsncd_data_rec.base_code        := l_output_cur_rec.base_code;                       --"0"(拠点（部門）コード)
+        l_prsncd_data_rec.employee_number  := l_output_cur_rec.employee_code;                   --営業員コード(営業員コード)
+        l_prsncd_data_rec.pure_amount_sum  := l_output_cur_rec.sale_amount_month_sum;           --実績金額(当月営業員実績計)
+        l_prsncd_data_rec.sls_amt          := l_output_cur_rec.target_amount;                   --目標金額(当月営業員ノルマ金額)
+        l_prsncd_data_rec.sls_next_amt     := l_output_cur_rec.target_management_code;          --目標管理項目コード(次月営業員ノルマ金額)
+        l_prsncd_data_rec.prsn_total_cnt   := l_output_cur_rec.target_month;                    --年月(当月訪問実績)
+        l_prsncd_data_rec.vis_amt          := l_output_cur_rec.actual_day_cnt;                  --実働日数(当月訪問ノルマ)
+        l_prsncd_data_rec.vis_next_amt     := l_output_cur_rec.passed_day_cnt;                  --経過日数(翌月訪問ノルマ)
+        --エラー時出力の為のメッセージ用項目設定
+        gv_duty_cd                         := TO_CHAR(l_output_cur_rec.target_management_code);  --目標管理項目コード
+        l_prsncd_data_rec.full_name        := l_output_cur_rec.output_month;                     --対象年月
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          --メッセージ生成
+          lv_errmsg := SQLERRM;
+          --警告カウント
+          gn_warn_cnt2 := 1;
+          --終了時ログ出力
+          gv_log_control_flag := 'Y';
+          RAISE sales_target_process_expt;
+      END;
+
+      -- =================================================
+      -- A-7.CSVファイル出力 
+      -- =================================================
+      create_csv_rec(
+         ir_prsncd_data_rec => l_prsncd_data_rec   -- 売上目標ワークテーブルデータ
+        ,ov_errbuf          => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+        ,ov_retcode         => lv_retcode          -- リターン・コード              --# 固定 #
+        ,ov_errmsg          => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+      );
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      --正常件数カウント
+      gn_normal_cnt2 := gn_normal_cnt2 + 1;
+--
+    END LOOP sales_target_out_loop;
+--
+    -- 売上目標データ処理終了をログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg15 || ' ' || TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS') || CHR(10) ||
+                 ''
+    );
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END */
+--
   -- =====================================================
   -- A-8.CSVファイルクローズ
   -- =================================================
@@ -1911,6 +2846,26 @@ AS
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
       ov_retcode := cv_status_error;
 --
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+    -- *** 営業員別売上目標処理例外ハンドラ ***
+    WHEN sales_target_process_expt THEN
+--
+      lb_fopn_retcd := UTL_FILE.IS_OPEN (
+                         file =>gf_file_hand
+                       );
+      -- ファイルがクローズされていない場合
+      IF (lb_fopn_retcd = cb_true) THEN
+        -- ファイルクローズ
+        UTL_FILE.FCLOSE(
+          file =>gf_file_hand
+        );
+      END IF;
+--
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+      ov_retcode := cv_status_warn;
+--
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 処理部共通例外ハンドラ ***
@@ -2018,6 +2973,11 @@ AS
     cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
     cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
     cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 MOD START */
+    cv_target_rec_msg2 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00652'; -- 売上目標処理対象件数メッセージ
+    cv_suc_rec_msg2    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00653'; -- 売上目標処理成功件数メッセージ
+    cv_warn_rec_msg2   CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00654'; -- 売上目標処理警告件数メッセージ
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 MOD END   */
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -2053,7 +3013,14 @@ AS
       ,ov_errmsg   => lv_errmsg          -- ユーザー・エラー・メッセージ  --# 固定 #
     );
 --
-    IF (lv_retcode = cv_status_error) THEN
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 MOD START */
+--    IF (lv_retcode = cv_status_error) THEN
+    IF ( 
+         ( lv_retcode = cv_status_error )
+         OR
+         ( gv_log_control_flag = 'Y' )
+       ) THEN
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 MOD END */
        --エラー出力
        fnd_file.put_line(
           which  => FND_FILE.OUTPUT
@@ -2068,7 +3035,7 @@ AS
     END IF;
 --
     -- =======================
-    -- A-9.終了処理 
+    -- A-15.終了処理 
     -- =======================
     --空行の出力
     fnd_file.put_line(
@@ -2098,6 +3065,51 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+    --空行の出力
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    --対象件数出力(売上目標データ処理)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_target_rec_msg2
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_target_cnt2)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --成功件数出力(売上目標データ処理)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_suc_rec_msg2
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_normal_cnt2)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --警告件数出力(売上目標データ処理)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name
+                    ,iv_name         => cv_warn_rec_msg2
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt2)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --空行の出力
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
 --
     --エラー件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
@@ -2110,6 +3122,13 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
+    --空行の出力
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD END   */
 --
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN

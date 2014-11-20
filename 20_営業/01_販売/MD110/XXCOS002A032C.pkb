@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2011/05/17    1.16  H.Sasaki         [E_本稼動_07118]対応 処理の並列実行化
  *  2011/07/14    1.17  K.Kubo           [E_本稼動_07885]対応 PT対応（タスク情報2ヶ月抽出処理）
  *  2012/12/27    1.18  K.Furuyama       [E_本稼動_10190]対応
+ *  2013/05/27    1.19  K.Kiriu          [E_本稼動_10735]対応 (ヒント句追加)
  *****************************************************************************************/
 --
 --#######################  固定プライベート定数宣言部 START   #######################
@@ -685,7 +686,13 @@ AS
                                         icp_dlv_date            xxcos_rep_bus_s_group_sum.dlv_date%TYPE
                                         )
   IS
-    SELECT  rbsg.ROWID                  AS  rbsg_rowid
+/* 2013/05/27 Ver1.19 Mod Start */
+--    SELECT  rbsg.ROWID                  AS  rbsg_rowid
+    SELECT  /*+
+              INDEX(rbsg XXCOS_REP_BUS_S_GROUP_SUM_N03)
+            */
+            rbsg.ROWID                  AS  rbsg_rowid
+/* 2013/05/27 Ver1.19 Mod End   */
     FROM    xxcos_rep_bus_s_group_sum   rbsg
     WHERE   rbsg.dlv_date               <=  icp_dlv_date
     FOR UPDATE NOWAIT

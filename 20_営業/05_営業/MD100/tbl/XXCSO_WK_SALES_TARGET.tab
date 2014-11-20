@@ -1,0 +1,62 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_wk_sales_target
+ * Description     : 売上目標ワークテーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2013/05/13    1.0  K.Kiriu      初回作成
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_wk_sales_target
+(
+  base_code                       VARCHAR2(4),
+  employee_code                   VARCHAR2(5)  NOT NULL,
+  sale_amount_month_sum           NUMBER,
+  target_amount                   NUMBER,
+  target_management_code          NUMBER(9)    NOT NULL,
+  target_month                    VARCHAR2(6)  NOT NULL,
+  actual_day_cnt                  NUMBER,
+  passed_day_cnt                  NUMBER,
+  created_by                      NUMBER(15)   NOT NULL,
+  creation_date                   DATE         NOT NULL,
+  last_updated_by                 NUMBER(15)   NOT NULL,
+  last_update_date                DATE         NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcso_wk_sales_target_pk PRIMARY KEY
+  (
+    target_management_code,  --目標管理項目コード
+    employee_code,           --営業員コード
+    target_month             --目標年月
+  )
+  USING INDEX TABLESPACE xxidx2
+)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_wk_sales_target                          IS '売上目標ワークテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.base_code               IS '拠点コード';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.employee_code           IS '営業員コード';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.sale_amount_month_sum   IS '実績金額';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.target_amount           IS '目標金額';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.target_management_code  IS '目標管理項目コード';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.target_month            IS '年月';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.actual_day_cnt          IS '実働日数';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.passed_day_cnt          IS '経過日数';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.created_by              IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.creation_date           IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.request_id              IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_wk_sales_target.program_update_date     IS 'プログラム更新日';
+--
