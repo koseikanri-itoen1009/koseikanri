@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/08/07    1.7   T.Endou          参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
  *                                                       「xxcmn_rcv_pay_mst_porc_rma26_v」
  *  2008/09/02    1.8   A.Shiina         仕様不備障害#T_S_475対応
+ *  2008/09/22    1.9   A.Shiina         内部変更要求#236対応
  *
  *****************************************************************************************/
 --
@@ -139,6 +140,8 @@ AS
 --
   -- 出荷実績表データ格納用レコード変数
   TYPE rec_data_type_dtl  IS RECORD (
+-- 2008/09/22 v1.9 UPDATE START
+/*
     group1_code               VARCHAR2(5)                         -- [集計1]コード
    ,group2_code               VARCHAR2(5)                         -- [集計2]コード
    ,group3_code               VARCHAR2(5)                         -- [集計3]コード
@@ -148,6 +151,17 @@ AS
    ,item_code                 ic_item_mst_b.item_no%TYPE          -- 品目コード
    ,req_item_name             xxcmn_item_mst_b.item_name%TYPE     -- 出荷品目名称
    ,item_name                 xxcmn_item_mst_b.item_name%TYPE     -- 品目名称
+*/
+    group1_code               VARCHAR2(240)                       -- [集計1]コード
+   ,group2_code               VARCHAR2(40)                        -- [集計2]コード
+   ,group3_code               VARCHAR2(30)                        -- [集計3]コード
+   ,group4_code               VARCHAR2(30)                        -- [集計4]コード
+   ,group5_code               VARCHAR2(40)                        -- [集計5]集計郡コード
+   ,req_item_code             VARCHAR2(240)                        -- 出荷品目コード
+   ,item_code                 xxcmn_lot_each_item_v.item_code%TYPE        -- 品目コード
+   ,req_item_name             xxcmn_item_mst2_v.item_short_name%TYPE      -- 出荷品目名称
+   ,item_name                 xxcmn_lot_each_item_v.item_short_name%TYPE  -- 品目名称
+-- 2008/09/22 v1.9 UPDATE END
    ,trans_um                  ic_tran_pnd.trans_um%TYPE           -- 取引単位
    ,trans_qty                 NUMBER                              -- 取引数量
    ,actual_price              NUMBER                              -- 実際金額
