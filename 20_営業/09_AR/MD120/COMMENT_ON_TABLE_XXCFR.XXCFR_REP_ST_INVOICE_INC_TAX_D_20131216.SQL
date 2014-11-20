@@ -1,0 +1,1 @@
+COMMENT ON TABLE  xxcfr.xxcfr_rep_st_invoice_inc_tax_d IS '標準請求書税込帳票内訳ワークテーブル';

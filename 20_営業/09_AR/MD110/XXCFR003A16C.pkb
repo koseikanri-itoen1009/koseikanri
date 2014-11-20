@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税抜
  * MD.050           : MD050_CFR_003_A16_標準請求書税抜
  * MD.070           : MD050_CFR_003_A16_標準請求書税抜
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
 -- Modify 2009.09.10 Ver1.3 Start
  *  put_account_warning    p 顧客紐付け警告出力                      (A-8)
 -- Modify 2009.09.10 Ver1.3 End
+ *  update_work_table      p ワークテーブルデータ更新                (A-9)
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
  *
@@ -41,6 +42,7 @@ AS
  *  2010/12/10    1.7  SCS 石渡 賢和    [E_本稼動_05401] パラメータ「請求書発行サイクル」の追加
  *  2011/01/17    1.8  SCS 廣瀬 真佐人  [E_本稼動_00580] ソート順に店舗コード追加
  *  2011/03/10    1.9  SCS 石渡 賢和    [E_本稼動_06753] ソート順の店舗コードの例外条件追加
+ *  2013/11/25    1.10 SCSK 桐生 和幸   [E_本稼動_11330] 税別内訳出力対応
  *
  *****************************************************************************************/
 --
@@ -137,6 +139,9 @@ AS
   cv_msg_003a16_023  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00080'; -- 顧客関連未設定エラー
   cv_msg_003a16_024  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00081'; -- パラメータ設定エラー
 -- Modify 2009.09.10 Ver1.3 End
+-- Add 2013.11.25 Ver1.10 Start
+  cv_msg_003a16_025  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00017'; -- テーブル更新エラー
+-- Add 2013.11.25 Ver1.10 End
 --
 -- トークン
   cv_tkn_prof        CONSTANT VARCHAR2(15) := 'PROF_NAME';        -- プロファイル名
@@ -274,6 +279,9 @@ AS
 -- Add 2010.12.10 Ver1.7 Start
     iv_bill_pub_cycle      IN      VARCHAR2,         -- 請求書発行サイクル
 -- Add 2010.12.10 Ver1.7 End
+-- Add 2013.11.25 Ver1.10 Start
+    iv_tax_output_type     IN      VARCHAR2,         -- 税別内訳出力区分
+-- Add 2013.11.25 Ver1.10 End
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode             OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg              OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -346,6 +354,9 @@ AS
 -- Add 2010.12.10 Ver1.7 Start
                                    ,iv_conc_param5  => iv_bill_pub_cycle                           -- コンカレントパラメータ５
 -- Add 2010.12.10 Ver1.7 End
+-- Add 2013.11.25 Ver1.10 Start
+                                   ,iv_conc_param6  => iv_tax_output_type           -- コンカレントパラメータ６
+-- Add 2013.11.25 Ver1.10 End
                                    ,ov_errbuf       => ov_errbuf                    -- エラー・メッセージ
                                    ,ov_retcode      => ov_retcode                   -- リターン・コード
                                    ,ov_errmsg       => ov_errmsg);                  -- ユーザー・エラー・メッセージ 
@@ -694,6 +705,168 @@ AS
   END put_account_warning;
 --
 -- Modify 2009.09.10 Ver1.3 End
+-- Add 2013.11.25 Ver1.10 Start
+  /**********************************************************************************
+   * Procedure Name   : update_work_table
+   * Description      : ワークテーブルデータ更新(A-9)
+   ***********************************************************************************/
+  PROCEDURE update_work_table(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_work_table'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_no_tax          CONSTANT NUMBER := 0;
+--
+    -- *** ローカル変数 ***
+    lt_bill_cust_code  xxcfr_rep_st_invoice_ex_tax.bill_cust_code%TYPE;
+    ln_cust_cnt        PLS_INTEGER;
+    ln_int             PLS_INTEGER := 0;
+--
+    -- *** ローカル・カーソル ***
+    CURSOR update_work_cur
+    IS
+      SELECT xrsi.bill_cust_code      bill_cust_code      ,  --顧客コード
+             xrsi.tax_rate            tax_rate            ,  --消費税率(編集用)
+             SUM( xrsi.slip_sum )     tax_rate_by_sum     ,  --税別お買上げ額
+             SUM( xrsi.ship_tax_sum ) tax_rate_by_tax_sum    --税別消費税額
+      FROM   xxcfr_rep_st_invoice_ex_tax  xrsi
+      WHERE  xrsi.request_id  = cn_request_id
+      AND    xrsi.tax_rate   <> cn_no_tax                    --非課税（税率0%)以外
+      GROUP BY
+             xrsi.bill_cust_code, -- 顧客コード
+             xrsi.tax_rate        -- 消費税率(編集用)
+      ORDER BY
+             xrsi.bill_cust_code, -- 顧客コード
+             xrsi.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+      ;
+--
+    -- *** ローカル・レコード ***
+    update_work_rec  update_work_cur%ROWTYPE;
+--
+    -- *** ローカル・タイプ ***
+    TYPE l_bill_cust_code_ttype IS TABLE OF xxcfr_rep_st_invoice_ex_tax.bill_cust_code%TYPE INDEX BY PLS_INTEGER;
+    TYPE l_tax_rate_ttype       IS TABLE OF xxcfr_rep_st_invoice_ex_tax.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+    TYPE l_ex_tax_charge_ttype  IS TABLE OF xxcfr_rep_st_invoice_ex_tax.ex_tax_charge1%TYPE INDEX BY PLS_INTEGER;
+    TYPE l_tax_sum_ttype        IS TABLE OF xxcfr_rep_st_invoice_ex_tax.tax_sum1%TYPE       INDEX BY PLS_INTEGER;
+--
+    l_bill_cust_code_tab     l_bill_cust_code_ttype;  --顧客コード
+    l_tax_rate1_tab          l_tax_rate_ttype;        --消費税率１
+    l_ex_tax_charge1_tab     l_ex_tax_charge_ttype;   --当月お買上げ額１
+    l_tax_sum1_tab           l_tax_sum_ttype;         --消費税額１
+    l_tax_rate2_tab          l_tax_rate_ttype;        --消費税率２
+    l_ex_tax_charge2_tab     l_ex_tax_charge_ttype;   --当月お買上げ額２
+    l_tax_sum2_tab           l_tax_sum_ttype;         --消費税額２
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    <<edit_loop>>
+    FOR update_work_rec IN update_work_cur LOOP
+--
+      --初回、又は、顧客コードがブレーク
+      IF (
+           ( lt_bill_cust_code IS NULL )
+           OR
+           ( lt_bill_cust_code <> update_work_rec.bill_cust_code )
+         )
+      THEN
+        --初期化、及び、１レコード目の税別項目設定
+        ln_cust_cnt                   := 1;                                   --顧客毎レコード件数初期化
+        ln_int                        := ln_int + 1;                          --配列カウントアップ
+        l_bill_cust_code_tab(ln_int)  := update_work_rec.bill_cust_code;      --顧客コード
+        l_tax_rate1_tab(ln_int)       := update_work_rec.tax_rate;            --消費税率1
+        l_ex_tax_charge1_tab(ln_int)  := update_work_rec.tax_rate_by_sum;     --当月お買上げ額１
+        l_tax_sum1_tab(ln_int)        := update_work_rec.tax_rate_by_tax_sum; --消費税額１
+        l_tax_rate2_tab(ln_int)       := NULL;                                --消費税率２
+        l_ex_tax_charge2_tab(ln_int)  := NULL;                                --当月お買上げ額２
+        l_tax_sum2_tab(ln_int)        := NULL;                                --消費税額２
+        lt_bill_cust_code             := update_work_rec.bill_cust_code;      --ブレークコード設定
+      ELSE
+        ln_cust_cnt := ln_cust_cnt + 1;  --顧客毎レコード件数カウントアップ
+        --1顧客につき最大2レコードの税別項目を設定(3レコード以上は設定しない)
+        IF ( ln_cust_cnt = 2 ) THEN
+          --2レコード目
+          l_tax_rate2_tab(ln_int)      := update_work_rec.tax_rate;            --消費税率２
+          l_ex_tax_charge2_tab(ln_int) := update_work_rec.tax_rate_by_sum;     --当月お買上げ額２
+          l_tax_sum2_tab(ln_int)       := update_work_rec.tax_rate_by_tax_sum; --消費税額２
+        END IF;
+      END IF;
+--
+    END LOOP edit_loop;
+--
+    --一括更新
+    BEGIN
+      <<update_loop>>
+      FORALL i IN l_bill_cust_code_tab.FIRST..l_bill_cust_code_tab.LAST
+        UPDATE  xxcfr_rep_st_invoice_ex_tax  xrsi
+        SET     xrsi.tax_rate1        = l_tax_rate1_tab(i)        --消費税率1
+               ,xrsi.ex_tax_charge1   = l_ex_tax_charge1_tab(i)   --当月お買上げ額１
+               ,xrsi.tax_sum1         = l_tax_sum1_tab(i)         --消費税額１
+               ,xrsi.tax_rate2        = l_tax_rate2_tab(i)        --消費税率２
+               ,xrsi.ex_tax_charge2   = l_ex_tax_charge2_tab(i)   --当月お買上げ額２
+               ,xrsi.tax_sum2         = l_tax_sum2_tab(i)         --消費税額２
+        WHERE   xrsi.bill_cust_code   = l_bill_cust_code_tab(i)
+        AND     xrsi.request_id       = cn_request_id
+        ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg( cv_msg_kbn_cfr       -- 'XXCFR'
+                                                       ,cv_msg_003a16_025    -- テーブル更新エラー
+                                                       ,cv_tkn_table         -- トークン'TABLE'
+                                                       ,xxcfr_common_pkg.get_table_comment(cv_table))
+                                                      -- 標準請求書税抜帳票ワークテーブル
+                             ,1
+                             ,5000);
+        lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+        RAISE global_api_expt;
+    END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_work_table;
+--
+-- Add 2013.11.25 Ver1.10 End
   /**********************************************************************************
    * Procedure Name   : insert_work_table
    * Description      : ワークテーブルデータ登録 (A-4)
@@ -709,6 +882,9 @@ AS
 -- Add 2010.12.10 Ver1.7 Start
     iv_bill_pub_cycle       IN   VARCHAR2,            -- 請求書発行サイクル
 -- Add 2010.12.10 Ver1.7 End
+-- Add 2013.11.25 Ver1.10 Start
+    iv_tax_output_type      IN   VARCHAR2,            -- 税別内訳出力区分
+-- Add 2013.11.25 Ver1.10 End
     ov_errbuf               OUT  VARCHAR2,            -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT  VARCHAR2,            -- リターン・コード             --# 固定 #
     ov_errmsg               OUT  VARCHAR2)            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -735,6 +911,9 @@ AS
     cv_syohizei_kbn_nt  CONSTANT VARCHAR2(1)  := '4';                      -- 非課税
     -- 請求書出力区分
     cv_inv_prt_type     CONSTANT VARCHAR2(1)  := '1';                       -- 1.伊藤園標準
+-- Add 2013.11.25 Ver1.10 Start
+    cv_tax_op_type_yes  CONSTANT VARCHAR2(1)  := '2';                      -- 2.税別内訳出力あり
+-- Add 2013.11.25 Ver1.10 End
 --
 -- Modify 2009.09.10 Ver1.3 Start
     -- 部門
@@ -1049,6 +1228,10 @@ AS
 --
     get_10address_rec get_10address_cur%ROWTYPE;
 -- Modify 2009.09.10 Ver1.3 End
+-- Add 2013.11.25 Ver1.10 Start
+    -- *** ローカル例外 ***
+    update_work_expt  EXCEPTION;
+-- Add 2013.11.25 Ver1.10 End
 --
   BEGIN
 --
@@ -1246,6 +1429,9 @@ AS
             slip_num                , -- 伝票No(ソート順４)
             slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
             ship_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Add 2013.11.25 Ver1.10 Start
+            tax_rate                , -- 消費税率(編集用)
+-- Add 2013.11.25 Ver1.10 End
             data_empty_message      , -- 0件メッセージ
             created_by              , -- 作成者
             creation_date           , -- 作成日
@@ -1322,6 +1508,9 @@ AS
                  xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
                  SUM(xil.ship_amount)                                               slip_sum         , -- 伝票金額(税抜額)
                  SUM(xil.tax_amount)                                                ship_tax_sum     , -- 税金額
+-- Add 2013.11.25 Ver1.10 Start
+                 xil.tax_rate                                                       tax_rate         , -- 税率
+-- Add 2013.11.25 Ver1.10 End
                  NULL                                                               data_empty_message,-- 0件メッセージ
                  cn_created_by                                                      created_by,             -- 作成者
                  cd_creation_date                                                   creation_date,          -- 作成日
@@ -1433,7 +1622,12 @@ AS
                                   NULL,xil.delivery_date,
                                   xil.acceptance_date),
                    cv_format_date_ymds2),
-                   xil.slip_num;
+-- Modify 2013.11.25 Ver1.10 Start
+--                   xil.slip_num;
+                   xil.slip_num,
+                   xil.tax_rate
+                   ;
+-- Modify 2013.11.25 Ver1.10 End
 --
             gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
 --
@@ -1475,6 +1669,9 @@ AS
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
               ship_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Add 2013.11.25 Ver1.10 Start
+              tax_rate                , -- 消費税率(編集用)
+-- Add 2013.11.25 Ver1.10 End
               data_empty_message      , -- 0件メッセージ
               created_by              , -- 作成者
               creation_date           , -- 作成日
@@ -1564,6 +1761,9 @@ AS
                    xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
                    SUM(xil.ship_amount)                                               slip_sum         , -- 伝票金額(税抜額)
                    SUM(xil.tax_amount)                                                ship_tax_sum     , -- 税金額
+-- Add 2013.11.25 Ver1.10 Start
+                   xil.tax_rate                                                       tax_rate         , -- 税率
+-- Add 2013.11.25 Ver1.10 End
                    NULL                                                               data_empty_message,-- 0件メッセージ
                    cn_created_by                                                      created_by,             -- 作成者
                    cd_creation_date                                                   creation_date,          -- 作成日
@@ -1668,7 +1868,12 @@ AS
                                     NULL,xil.delivery_date,
                                     xil.acceptance_date),
                      cv_format_date_ymds2),
-                     xil.slip_num;
+-- Modify 2013.11.25 Ver1.10 Start
+--                     xil.slip_num;
+                     xil.slip_num,
+                     xil.tax_rate
+                     ;
+-- Modify 2013.11.25 Ver1.10 End
 --
             gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
 --
@@ -1733,6 +1938,9 @@ AS
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
               ship_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Add 2013.11.25 Ver1.10 Start
+              tax_rate                , -- 消費税率(編集用)
+-- Add 2013.11.25 Ver1.10 End
               data_empty_message      , -- 0件メッセージ
               created_by              , -- 作成者
               creation_date           , -- 作成日
@@ -1810,6 +2018,9 @@ AS
                    xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
                    SUM(xil.ship_amount)                                               slip_sum         , -- 伝票金額(税抜額)
                    SUM(xil.tax_amount)                                                ship_tax_sum     , -- 税金額
+-- Add 2013.11.25 Ver1.10 Start
+                   xil.tax_rate                                                       tax_rate         , -- 税率
+-- Add 2013.11.25 Ver1.10 End
                    NULL                                                               data_empty_message,-- 0件メッセージ
                    cn_created_by                                                      created_by,             -- 作成者
                    cd_creation_date                                                   creation_date,          -- 作成日
@@ -1916,7 +2127,12 @@ AS
                                     NULL,xil.delivery_date,
                                     xil.acceptance_date),
                      cv_format_date_ymds2),
-                     xil.slip_num;
+-- Modify 2013.11.25 Ver1.10 Start
+--                     xil.slip_num;
+                     xil.slip_num,
+                     xil.tax_rate
+                     ;
+-- Modify 2013.11.25 Ver1.10 End
 --
             gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
 --
@@ -2170,9 +2386,32 @@ AS
 --
         ov_retcode := cv_status_warn;
 --
+-- Add 2013.11.25 Ver1.10 Start
+      ELSE
+        --税別内訳出力ありの場合、税別の金額を編集する
+        IF ( iv_tax_output_type = cv_tax_op_type_yes ) THEN
+          -- =====================================================
+          --  ワークテーブルデータ更新  (A-9)
+          -- =====================================================
+          update_work_table(
+             lv_errbuf             -- エラー・メッセージ           --# 固定 #
+            ,lv_retcode            -- リターン・コード             --# 固定 #
+            ,lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            --(エラー処理)
+            RAISE update_work_expt;
+          END IF;
+        END IF;
+-- Add 2013.11.25 Ver1.10 End
       END IF;
 --
     EXCEPTION
+-- Add 2013.11.25 Ver1.10 Start
+      --ワーク更新例外
+      WHEN update_work_expt THEN
+        RAISE global_api_expt;
+-- Add 2013.11.25 Ver1.10 End
       WHEN OTHERS THEN  -- 登録時エラー
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(cv_msg_kbn_cfr        -- 'XXCFR'
                                                        ,cv_msg_003a16_013    -- テーブル登録エラー
@@ -2643,6 +2882,9 @@ AS
 -- Add 2010.12.10 Ver1.7 Start
     iv_bill_pub_cycle      IN      VARCHAR2,         -- 請求書発行サイクル
 -- Add 2010.12.10 Ver1.7 End
+-- Add 2013.11.25 Ver1.10 Start
+    iv_tax_output_type     IN      VARCHAR2,         -- 税別内訳出力区分
+-- Add 2013.11.25 Ver1.10 End
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode             OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg              OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2706,6 +2948,9 @@ AS
 -- Add 2010.12.10 Ver1.7 Start
       ,iv_bill_pub_cycle      -- 請求書発行サイクル
 -- Add 2010.12.10 Ver1.7 End
+-- Add 2013.11.25 Ver1.10 Start
+      ,iv_tax_output_type     -- 税別内訳出力区分
+-- Add 2013.11.25 Ver1.10 End
       ,lv_errbuf              -- エラー・メッセージ           --# 固定 #
       ,lv_retcode             -- リターン・コード             --# 固定 #
       ,lv_errmsg);            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2752,6 +2997,9 @@ AS
 -- Add 2010.12.10 Ver1.7 Start
       ,iv_bill_pub_cycle      -- 請求書発行サイクル
 -- Add 2010.12.10 Ver1.7 End
+-- Add 2013.11.25 Ver1.10 Start
+      ,iv_tax_output_type     -- 税別内訳出力区分
+-- Add 2013.11.25 Ver1.10 End
       ,lv_errbuf              -- エラー・メッセージ           --# 固定 #
       ,lv_retcode             -- リターン・コード             --# 固定 #
       ,lv_errmsg);            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2852,6 +3100,9 @@ AS
 -- Add 2010.12.10 Ver1.7 Start
    ,iv_bill_pub_cycle      IN      VARCHAR2          -- 請求書発行サイクル
 -- Add 2010.12.10 Ver1.7 End
+-- Add 2013.11.25 Ver1.10 Start
+   ,iv_tax_output_type     IN      VARCHAR2          -- 税別内訳出力区分
+-- Add 2013.11.25 Ver1.10 End
   )
 --
 --
@@ -2917,6 +3168,9 @@ AS
 -- Add 2010.12.10 Ver1.7 Start
       ,iv_bill_pub_cycle -- 請求書発行サイクル
 -- Add 2010.12.10 Ver1.7 End
+-- Add 2013.11.25 Ver1.10 Start
+      ,iv_tax_output_type
+-- Add 2013.11.25 Ver1.10 End
       ,lv_errbuf      -- エラー・メッセージ           --# 固定 #
       ,lv_retcode     -- リターン・コード             --# 固定 #
       ,lv_errmsg      -- ユーザー・エラー・メッセージ --# 固定 #

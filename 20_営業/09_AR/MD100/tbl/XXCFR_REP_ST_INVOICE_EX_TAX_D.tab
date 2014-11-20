@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_rep_st_invoice_ex_tax_d
  * Description     : ïWèÄêøãÅèëê≈î≤í†ï[ì‡ñÛÉèÅ[ÉNÉeÅ[ÉuÉã
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@ CREATE TABLE xxcfr.xxcfr_rep_st_invoice_ex_tax_d
  * ------------- ----- ------------ -------------------------------------
  *  2009/10/20    1.0  SCS Yasukawa   èââÒçÏê¨
  *  2011/01/17    1.1  SCS úAê£ê^ç≤êl è·äQÅuE_ñ{â“ìÆ_00580ÅvëŒâû
+ *  2013/11/25    1.2  SCSK ãÀê∂òaçK  è·äQÅuE_ñ{â“ìÆ_11330ÅvëŒâû
  ************************************************************************/
 ( 
   report_id                VARCHAR2(20)                  ,     -- í†ï[ID
@@ -44,6 +45,15 @@ CREATE TABLE xxcfr.xxcfr_rep_st_invoice_ex_tax_d
   slip_num                 VARCHAR2(30)                  ,     -- ì`ï[No
   slip_sum                 NUMBER                        ,     -- ì`ï[ã‡äz
   slip_tax_sum             NUMBER                        ,     -- ì`ï[ê≈äz
+--Add 2013.11.25 Ver1.2 Start
+  tax_rate                 NUMBER                        ,     -- è¡îÔê≈ó¶(ï“èWóp)
+  tax_rate1                NUMBER                        ,     -- è¡îÔê≈ó¶1
+  ex_tax_charge1           NUMBER                        ,     -- ìñåéÇ®îÉè„Ç∞äz1
+  tax_sum1                 NUMBER                        ,     -- è¡îÔê≈äz1
+  tax_rate2                NUMBER                        ,     -- è¡îÔê≈ó¶2
+  ex_tax_charge2           NUMBER                        ,     -- ìñåéÇ®îÉè„Ç∞äz2
+  tax_sum2                 NUMBER                        ,     -- è¡îÔê≈äz2
+--Add 2013.11.25 Ver1.2 End
   data_empty_message       VARCHAR2(100)                 ,     -- 0åèÉÅÉbÉZÅ[ÉW
   created_by               NUMBER(15)     NOT NULL       ,     -- çÏê¨é“
   creation_date            DATE           NOT NULL       ,     -- çÏê¨ì˙
@@ -86,6 +96,15 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.slip_date                 
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.slip_num                       IS 'ì`ï[No';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.slip_sum                       IS 'ì`ï[ã‡äz';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.slip_tax_sum                   IS 'ì`ï[ê≈äz';
+--Add 2013.11.25 Ver1.2 Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.tax_rate                       IS 'è¡îÔê≈ó¶(ï“èWóp)';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.tax_rate1                      IS 'è¡îÔê≈ó¶ÇP';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.ex_tax_charge1                 IS 'ìñåéÇ®îÉè„Ç∞äzÇP';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.tax_sum1                       IS 'è¡îÔê≈äzÇP';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.tax_rate2                      IS 'è¡îÔê≈ó¶ÇQ';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.ex_tax_charge2                 IS 'ìñåéÇ®îÉè„Ç∞äzÇQ';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.tax_sum2                       IS 'è¡îÔê≈äzÇQ';
+--Add 2013.11.25 Ver1.2 End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.data_empty_message             IS '0åèÉÅÉbÉZÅ[ÉW';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.created_by                     IS 'çÏê¨é“';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_ex_tax_d.creation_date                  IS 'çÏê¨ì˙';

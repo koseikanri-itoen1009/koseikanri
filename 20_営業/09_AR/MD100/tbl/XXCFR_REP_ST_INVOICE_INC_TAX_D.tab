@@ -2,10 +2,10 @@ CREATE TABLE xxcfr.xxcfr_rep_st_invoice_inc_tax_d
 /*************************************************************************
  * 
  * Table Name      : xxcfr_rep_st_invoice_inc_tax_d
- * Description     : 標準請求書税抜帳票内訳ワークテーブル
+ * Description     : 標準請求書税込帳票内訳ワークテーブル
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@ CREATE TABLE xxcfr.xxcfr_rep_st_invoice_inc_tax_d
  * ------------- ----- ------------ -------------------------------------
  *  2009/10/20    1.0  SCS Yasukawa   初回作成
  *  2011/01/17    1.1  SCS 廣瀬真佐人 障害「E_本稼動_00580」対応
+ *  2013/12/16    1.2  SCSK 中野徹也  障害「E_本稼動_11330」対応
  ************************************************************************/
 ( 
   report_id               VARCHAR2(20)          , -- 帳票ID
@@ -44,6 +45,13 @@ CREATE TABLE xxcfr.xxcfr_rep_st_invoice_inc_tax_d
   slip_num                VARCHAR2(30)          , -- 伝票No
   slip_sum                NUMBER                , -- 伝票金額
   slip_tax_sum            NUMBER                , -- 伝票税額
+--modify 2013.12.16 Ver1.2 Start
+  tax_rate                NUMBER                , -- 消費税率(編集用)
+  tax_rate1               NUMBER                , -- 消費税率１
+  inc_tax_charge1         NUMBER                , -- 当月お買上げ額１
+  tax_rate2               NUMBER                , -- 消費税率２
+  inc_tax_charge2         NUMBER                , -- 当月お買上げ額２
+--modify 2013.12.16 Ver1.2 End
   data_empty_message      VARCHAR2(100)         , -- 0件メッセージ
   created_by              NUMBER(15)   NOT NULL , -- 作成者
   creation_date           DATE         NOT NULL , -- 作成日
@@ -86,6 +94,13 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.slip_date                
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.slip_num                   IS '伝票No';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.slip_sum                   IS '伝票金額';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.slip_tax_sum               IS '伝票税額';
+--modify 2013.12.16 Ver1.2 Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.tax_rate                   IS '消費税率(編集用)';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.tax_rate1                  IS '消費税率１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.inc_tax_charge1            IS '当月お買上げ額１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.tax_rate2                  IS '消費税率２';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.inc_tax_charge2            IS '当月お買上げ額２';
+--modify 2013.12.16 Ver1.2 End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.data_empty_message         IS '0件メッセージ';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.created_by                 IS '作成者';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.creation_date              IS '作成日';
@@ -97,4 +112,7 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.program_application_id   
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.program_id                 IS 'コンカレント・プログラムID';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_invoice_inc_tax_d.program_update_date        IS 'プログラム更新日';
 --
-COMMENT ON TABLE  xxcfr.xxcfr_rep_st_invoice_inc_tax_d IS '標準請求書税抜帳票内訳ワークテーブル';
+--modify 2013.12.16 Ver1.2 Start
+--COMMENT ON TABLE  xxcfr.xxcfr_rep_st_invoice_inc_tax_d IS '標準請求書税抜帳票内訳ワークテーブル';
+COMMENT ON TABLE  xxcfr.xxcfr_rep_st_invoice_inc_tax_d IS '標準請求書税込帳票内訳ワークテーブル';
+--modify 2013.12.16 Ver1.2 Start
