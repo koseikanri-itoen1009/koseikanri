@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品情報インターフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品情報インターフェース T_MD070_BPO_43B
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *                                       inventory_item_idをセットするよう変更
  *  2008/05/20    1.2   ORACLE椎名昭圭   内部変更要求#106対応
  *  2008/06/19    1.3   ORACLE石渡賢和   フラグのデフォルト値をセット
+ *  2008/08/07    1.4   ORACLE山根一浩   課題#32,課題#67変更#174対応
  *
  *****************************************************************************************/
 --
@@ -209,6 +210,9 @@ AS
      hd_result_deliver_to     xxwsh_order_headers_all.result_deliver_to%TYPE,     -- 出荷先_実績
      hd_shipped_date          xxwsh_order_headers_all.shipped_date%TYPE,          -- 出荷日
      hd_arrival_date          xxwsh_order_headers_all.arrival_date%TYPE,          -- 着荷日
+--2008/08/07 Add ↓
+     hd_actual_confirm_class  xxwsh_order_headers_all.actual_confirm_class%TYPE,  -- 実績計上済区分
+--2008/08/07 Add ↑
      hd_perform_management_dept xxwsh_order_headers_all.performance_management_dept%TYPE, -- 成績管理部署
      hd_registered_sequence    xxwsh_order_headers_all.registered_sequence%TYPE,  -- 登録順序
      hd_created_by             xxwsh_order_headers_all.created_by%TYPE,           -- 作成者
@@ -961,7 +965,11 @@ AS
                  xri.recorded_date,                -- 計上日付(着日)
                  xri.invoice_no,                   -- 伝票No
                  xim.item_no,                      -- 品目コード(OPM品目情報VIEW)
+/* 2008/08/07 Mod ↓
                  SUM(NVL(xri.case_amount_of_content,0) * TO_NUMBER(NVL(xim.num_of_cases,'0'))
+2008/08/07 Mod ↑ */
+                 SUM(NVL(xri.case_amount_of_content,0) 
+                   * TO_NUMBER(DECODE(NVL(xim.num_of_cases,'0'),'0','1',xim.num_of_cases))
                    + NVL(xri.quantity,0))
                               OVER (PARTITION BY xri.invoice_no, -- 伝票No
                                                  xri.item_code   -- 品目コードエントリーごとに
@@ -1525,6 +1533,9 @@ AS
             xoh.result_deliver_to          AS xoh_result_deliver_to,          -- 出荷先_実績
             xoh.shipped_date               AS xoh_shipped_date,               -- 出荷日
             xoh.arrival_date               AS xoh_arrival_date,               -- 着荷日
+--2008/08/07 Add ↓
+            xoh.actual_confirm_class       AS xoh_actual_confirm_class,       -- 実績計上済区分
+--2008/08/07 Add ↑
             xoh.perform_managerment_dept   AS xoh_perform_managerment_dept,   -- 成績管理部署
             xoh.registered_sequence        AS xoh_registered_sequence,        -- 登録順序
             xoh.created_by                 AS xoh_created_by,                 -- 作成者
@@ -1616,6 +1627,9 @@ AS
              oha.result_deliver_to           AS result_deliver_to,        -- 出荷先_実績
              oha.shipped_date                AS shipped_date,             -- 出荷日
              oha.arrival_date                AS arrival_date,             -- 着荷日
+--2008/08/07 Add ↓
+             oha.actual_confirm_class        AS actual_confirm_class,     -- 実績計上済区分
+--2008/08/07 Add ↑
              oha.performance_management_dept AS perform_managerment_dept, -- 成績管理部署
              oha.registered_sequence         AS registered_sequence,      -- 登録順序
              oha.created_by                  AS created_by,               -- 作成者
@@ -3691,6 +3705,10 @@ AS
 --
     lb_a13upd_flg          BOOLEAN;       -- A-13①で明細をUPDATEした場合(同一品目があった場合)はTRUE
 --
+--2008/08/07 Add ↓
+    lt_actual_class        xxwsh_order_headers_all.actual_confirm_class%TYPE;
+--2008/08/07 Add ↑
+--
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -3910,7 +3928,14 @@ AS
           -- 出荷実績計上済の場合
           -- LOOPを抜けた直後で出荷実績計上済か否かの判定が必要なのでここで変数に退避しておく
           lt_req_statu := gt_order_all_tbl(ln_idx_a6).hd_req_status;
+--2008/08/07 Add ↓
+          lt_actual_class := gt_order_all_tbl(ln_idx_a6).hd_actual_confirm_class;
+--2008/08/07 Add ↑
+/* 2008/08/07 Mod ↓
           IF (lt_req_statu = cv_req_status_confirm) THEN
+2008/08/07 Mod ↑ */
+          -- 出荷実績計上済且つ実績計上済区分='Y'の場合
+          IF ((lt_req_statu = cv_req_status_confirm) AND (lt_actual_class = gv_flag_on)) THEN
 --
             IF (lb_break_flg_a2) THEN  -- A-2伝票Noがブレイクした場合(前回A-2伝票Noと異なる場合)
               -- ここではA-2伝票Noブレイクフラグを初期化しないで下さい

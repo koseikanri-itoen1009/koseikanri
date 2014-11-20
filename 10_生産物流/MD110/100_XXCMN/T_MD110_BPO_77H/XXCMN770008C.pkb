@@ -7,7 +7,7 @@ AS
  * Description      : 返品原料原価差異表
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77H)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/06/19    1.5   Y.Ishikawa       金額、数量がNULLの場合は0を表示する。
  *  2008/06/25    1.6   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/08/26    1.7   A.Shiina         T_TE080_BPO_770 指摘17対応
  *
  *****************************************************************************************/
 --
@@ -291,7 +292,10 @@ AS
       ||  ',xleiv1.item_short_name                  item_name'          -- 返品原料品目名称
       ||  ',xleiv2.item_code                        product_item_code'  -- 製品品目コード
       ||  ',xleiv2.item_short_name                  product_item_name'  -- 製品品目名称
-      ||  ',itp1.trans_qty * (-1)                   quantity'           -- 受入数量
+-- 2008/08/26 v1.7 UPDATE START
+--      ||  ',itp1.trans_qty * (-1)                   quantity'           -- 受入数量
+      ||  ',itp1.trans_qty * TO_NUMBER(xrpmpv1.rcv_pay_div) quantity'   -- 受入数量
+-- 2008/08/26 v1.7 UPDATE END
       ||  ',xsupv.stnd_unit_price_gen               standard_cost'      -- 標準原価
       ||  ',itp2.trans_qty                          turn_qty'           -- 基準数量
       ||  ',TO_NUMBER(NVL(fmd.attribute5, ''0''))   turn_price'         -- 基準単価

@@ -7,7 +7,7 @@ AS
  * Description      : 仕入・有償・移動情報抽出処理
  * MD.050           : 生産物流共通                  T_MD050_BPO_940
  * MD.070           : 仕入・有償・移動情報抽出処理  T_MD070_BPO_94D
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/06/10    1.0   Oracle 山根 一浩 初回作成
+ *  2008/08/20    1.1   Oracle 山根 一浩 T_S_593,T_TE080_BPO_940 指摘6,指摘7,指摘8,指摘9対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1603,7 +1604,9 @@ AS
       mst_rec.div_j              := SUBSTR(lr_mst_data_rec.div_j,1,1);  -- 区分Ｊ
       mst_rec.div_k              := lr_mst_data_rec.div_k;              -- 区分Ｋ
       mst_rec.v_designate_date   := lr_mst_data_rec.designate_date;     -- 日付指定
+/* 2008/08/20 Mod ↓
       mst_rec.amt_a              := lr_mst_data_rec.amt_a;              -- お金Ａ
+2008/08/20 Mod ↑ */
       mst_rec.update_date_h      := lr_mst_data_rec.update_date_h;      -- 最終更新日(ヘッダ)
       mst_rec.update_date_l      := lr_mst_data_rec.update_date_l;      -- 最終更新日(明細)
 --
@@ -1621,15 +1624,16 @@ AS
         mst_rec.info_o             := SUBSTR(lr_mst_data_rec.info_o,1,2);  -- 情報Ｏ
         mst_rec.info_p             := SUBSTR(lr_mst_data_rec.info_p,1,2);  -- 情報Ｐ
         mst_rec.info_q             := SUBSTR(lr_mst_data_rec.info_q,1,2);  -- 情報Ｑ
-        mst_rec.amt_b              := SUBSTR(lr_mst_data_rec.amt_b,1,4);   -- お金Ｂ
-        mst_rec.amt_c              := SUBSTR(lr_mst_data_rec.amt_c,1,9);   -- お金Ｃ
-        mst_rec.amt_d              := SUBSTR(lr_mst_data_rec.amt_d,1,2);   -- お金Ｄ
-        mst_rec.amt_e              := SUBSTR(lr_mst_data_rec.amt_e,1,11);  -- お金Ｅ
-        mst_rec.amt_f              := SUBSTR(lr_mst_data_rec.amt_f,1,13);  -- お金Ｆ
-        mst_rec.amt_g              := SUBSTR(lr_mst_data_rec.amt_g,1,2);   -- お金Ｇ
-        mst_rec.amt_h              := SUBSTR(lr_mst_data_rec.amt_h,1,11);  -- お金Ｈ
-        mst_rec.amt_i              := SUBSTR(lr_mst_data_rec.amt_i,1,13);  -- お金Ｉ
-        mst_rec.amt_j              := SUBSTR(lr_mst_data_rec.amt_j,1,13);  -- お金Ｊ
+        mst_rec.amt_a              := SUBSTR(lr_mst_data_rec.amt_a,1,20);  -- お金Ａ 2008/08/20 Mod
+        mst_rec.amt_b              := SUBSTR(lr_mst_data_rec.amt_b,1,20);  -- お金Ｂ
+        mst_rec.amt_c              := SUBSTR(lr_mst_data_rec.amt_c,1,20);  -- お金Ｃ
+        mst_rec.amt_d              := SUBSTR(lr_mst_data_rec.amt_d,1,20);  -- お金Ｄ
+        mst_rec.amt_e              := SUBSTR(lr_mst_data_rec.amt_e,1,20);  -- お金Ｅ
+        mst_rec.amt_f              := SUBSTR(lr_mst_data_rec.amt_f,1,20);  -- お金Ｆ
+        mst_rec.amt_g              := SUBSTR(lr_mst_data_rec.amt_g,1,20);  -- お金Ｇ
+        mst_rec.amt_h              := SUBSTR(lr_mst_data_rec.amt_h,1,20);  -- お金Ｈ
+        mst_rec.amt_i              := SUBSTR(lr_mst_data_rec.amt_i,1,20);  -- お金Ｉ
+        mst_rec.amt_j              := SUBSTR(lr_mst_data_rec.amt_j,1,20);  -- お金Ｊ
 --
       ELSE
         mst_rec.info_f             := NULL;              -- 情報Ｆ
@@ -1644,6 +1648,7 @@ AS
         mst_rec.info_o             := NULL;              -- 情報Ｏ
         mst_rec.info_p             := NULL;              -- 情報Ｐ
         mst_rec.info_q             := NULL;              -- 情報Ｑ
+        mst_rec.amt_a              := NULL;              -- お金Ａ 2008/08/20 Mod
         mst_rec.amt_b              := NULL;              -- お金Ｂ
         mst_rec.amt_c              := NULL;              -- お金Ｃ
         mst_rec.amt_d              := NULL;              -- お金Ｄ
@@ -1802,10 +1807,30 @@ AS
             ,xmldv.best_bfr_date                               -- 賞味期限
             ,xmldv.lot_sign                                    -- 固有記号
             ,xola.based_request_quantity as request_qty        -- 依頼数
+-- 2008/08/20 Mod ↓
+/*
             ,xmldv.instruct_qty                                -- 指示数
             ,xmldv.num_of_deliver                              -- 出庫数
             ,xmldv.ship_to_qty                                 -- 入庫数
             ,xmldv.fix_qty                                     -- 確定数
+*/
+            ,DECODE(xmldv.lot_no,NULL,
+                    xola.quantity,
+                    xmldv.instruct_qty
+                   ) as instruct_qty                           -- 指示数
+            ,DECODE(xmldv.lot_no,NULL,
+                    xola.shipped_quantity,
+                    xmldv.num_of_deliver
+                   ) as num_of_deliver                         -- 出庫数
+            ,DECODE(xmldv.lot_no,NULL,
+                    xola.ship_to_quantity,
+                    xmldv.ship_to_qty
+                   ) as ship_to_qty                            -- 入庫数
+            ,DECODE(xmldv.lot_no,NULL,
+                    xola.shipped_quantity,
+                    xmldv.fix_qty
+                   ) as fix_qty                                -- 確定数
+-- 2008/08/20 Mod ↑
             ,xola.uom_code as item_um                          -- 単位
             ,DECODE(xoha.weight_capacity_class,
                     gv_weight_class,  xola.weight,
@@ -1818,7 +1843,12 @@ AS
             ,NULL as frequent_factory                          -- 工場コード
             ,NULL as div_i                                     -- 区分Ｉ
             ,NULL as div_j                                     -- 区分Ｊ
+-- 2008/08/20 Mod ↓
+/*
             ,NULL as div_k                                     -- 区分Ｋ
+*/
+            ,xola.delete_flag as div_k                         -- 区分Ｋ
+-- 2008/08/20 Mod ↑
             ,NULL as designate_date                            -- 日付指定
             ,NULL as info_f                                    -- 情報Ｆ
             ,NULL as info_g                                    -- 情報Ｇ
@@ -1857,6 +1887,8 @@ AS
                     ,DECODE(ximv.lot_ctl,gv_lot_ctl_on,
                             ilm.lot_no,
                             NULL) as lot_no                            -- ロットNo
+-- 2008/08/20 Mod ↓
+/*
                     ,SUM(DECODE(xmld.document_type_code,gv_document_type_code_30,
                             DECODE(xmld.record_type_code,gv_record_type_code_10,
                                    xmld.actual_quantity
@@ -1877,6 +1909,28 @@ AS
                                    xmld.actual_quantity
                                    ,0)
                            ,0)) as fix_qty                              -- 確定数
+*/
+                    ,SUM(DECODE(xmld.document_type_code,gv_document_type_code_30,
+                            DECODE(xmld.record_type_code,gv_record_type_code_10,
+                                   xmld.actual_quantity
+                                   ,NULL)
+                           ,NULL)) as instruct_qty                     -- 指示数
+                    ,SUM(DECODE(xmld.document_type_code,gv_document_type_code_30,
+                            DECODE(xmld.record_type_code,gv_record_type_code_20,
+                                   xmld.actual_quantity
+                                   ,NULL)
+                           ,NULL)) as num_of_deliver                   -- 出庫数
+                    ,SUM(DECODE(xmld.document_type_code,gv_document_type_code_30,
+                            DECODE(xmld.record_type_code,gv_record_type_code_30,
+                                   xmld.actual_quantity
+                                   ,NULL)
+                           ,NULL)) as ship_to_qty                      -- 入庫数
+                    ,SUM(DECODE(xmld.document_type_code,gv_document_type_code_30,
+                            DECODE(xmld.record_type_code,gv_record_type_code_20,
+                                   xmld.actual_quantity
+                                   ,NULL)
+                           ,NULL)) as fix_qty                          -- 確定数
+-- 2008/08/20 Mod ↑
               FROM   xxinv_mov_lot_details         xmld   -- 移動ロット詳細(アドオン)
                     ,ic_lots_mst                   ilm    -- OPMロットマスタ
                     ,xxcmn_item_mst2_v             ximv   -- OPM品目情報VIEW2
@@ -2191,7 +2245,17 @@ AS
       mst_rec.div_j              := lr_mst_data_rec.div_j;              -- 区分Ｊ
       mst_rec.div_k              := lr_mst_data_rec.div_k;              -- 区分Ｋ
       mst_rec.v_designate_date   := lr_mst_data_rec.designate_date;     -- 日付指定
+-- 2008/08/20 Mod ↓
+/*
       mst_rec.amt_a              := TO_CHAR(lr_mst_data_rec.amt_a);     -- お金Ａ
+*/
+      IF (gv_sec_class IN (gv_sec_class_home,gv_sec_class_vend)) THEN
+        mst_rec.amt_a            := lr_mst_data_rec.amt_a;              -- お金Ａ
+--
+      ELSE
+        mst_rec.amt_a            := NULL;              -- お金Ａ
+      END IF;
+-- 2008/08/20 Mod ↑
       mst_rec.update_date_h      := lr_mst_data_rec.update_date_h;      -- 最終更新日(ヘッダ)
       mst_rec.update_date_l      := lr_mst_data_rec.update_date_l;      -- 最終更新日(明細)
 --
@@ -2337,15 +2401,35 @@ AS
             ,ximv.item_name                                     -- 品目名
             ,ximv.item_short_name as item_s_name                -- 品目略名
             ,NULL as futai_code                                 -- 付帯
-            ,xmldv.lot_no                           -- ロットNo
-            ,xmldv.lot_date                         -- 製造日
-            ,xmldv.best_bfr_date                    -- 賞味期限
-            ,xmldv.lot_sign                         -- 固有記号
+            ,xmldv.lot_no                                       -- ロットNo
+            ,xmldv.lot_date                                     -- 製造日
+            ,xmldv.best_bfr_date                                -- 賞味期限
+            ,xmldv.lot_sign                                     -- 固有記号
             ,xmrl.request_qty                                   -- 依頼数
+-- 2008/08/20 Mod ↓
+/*
             ,xmldv.instruct_qty                                 -- 指示数
             ,xmldv.num_of_deliver                               -- 出庫数
             ,xmldv.ship_to_qty                                  -- 入庫数
             ,xmldv.fix_qty                                      -- 確定数
+*/
+            ,DECODE(xmldv.lot_no,NULL,
+                    xmrl.instruct_qty,
+                    xmldv.instruct_qty
+                   ) as instruct_qty                            -- 指示数
+            ,DECODE(xmldv.lot_no,NULL,
+                    xmrl.shipped_quantity,
+                    xmldv.num_of_deliver
+                   ) as num_of_deliver                          -- 出庫数
+            ,DECODE(xmldv.lot_no,NULL,
+                    xmrl.ship_to_quantity,
+                    xmldv.ship_to_qty
+                   ) as ship_to_qty                             -- 入庫数
+            ,DECODE(xmldv.lot_no,NULL,
+                    xmrl.shipped_quantity,
+                    xmldv.fix_qty
+                   ) as fix_qty                                 -- 確定数
+-- 2008/08/20 Mod ↑
             ,xmrl.uom_code as item_um                           -- 単位
             ,DECODE(xmrh.weight_capacity_class,
                     gv_weight_class,xmrl.weight,
@@ -2357,7 +2441,12 @@ AS
             ,NULL as frequent_factory                           -- 工場コード
             ,NULL as div_i                                      -- 区分Ｉ
             ,NULL as div_j                                      -- 区分Ｊ
+-- 2008/08/20 Mod ↓
+/*
             ,NULL as div_k                                      -- 区分Ｋ
+*/
+-- 2008/08/20 Mod ↑
+            ,xmrl.delete_flg as div_k                           -- 区分Ｋ
             ,xmrl.designated_production_date as designate_date  -- 日付指定
             ,NULL as info_f                                     -- 情報Ｆ(年度)
             ,NULL as info_g                                     -- 情報Ｇ(産地コード)
@@ -2403,6 +2492,8 @@ AS
                     ,DECODE(ximv2.lot_ctl,gv_lot_ctl_on,
                             ilm.lot_no,
                             NULL) as lot_no                             -- ロットNo
+-- 2008/08/20 Mod ↓
+/*
                     ,SUM(DECODE(xmld.document_type_code,gv_document_type_code_20
                         ,DECODE(xmld.record_type_code,gv_record_type_code_10,
                                 xmld.actual_quantity,0)
@@ -2419,6 +2510,28 @@ AS
                         ,DECODE(xmld.record_type_code,gv_record_type_code_20,
                                 xmld.actual_quantity,0)
                         ,0)) as fix_qty                                  -- 確定数
+*/
+                    ,SUM(DECODE(xmld.document_type_code,gv_document_type_code_20
+                        ,DECODE(xmld.record_type_code,gv_record_type_code_10,
+                                xmld.actual_quantity
+                               ,NULL)
+                        ,NULL)) as instruct_qty                          -- 指示数
+                    ,SUM(DECODE(xmld.document_type_code,gv_document_type_code_20
+                        ,DECODE(xmld.record_type_code,gv_record_type_code_20,
+                                xmld.actual_quantity
+                               ,NULL)
+                        ,NULL)) as num_of_deliver                        -- 出庫数
+                    ,SUM(DECODE(xmld.document_type_code,gv_document_type_code_20
+                        ,DECODE(xmld.record_type_code,gv_record_type_code_30,
+                                xmld.actual_quantity
+                               ,NULL)
+                        ,NULL)) as ship_to_qty                           -- 入庫数
+                    ,SUM(DECODE(xmld.document_type_code,gv_document_type_code_20
+                        ,DECODE(xmld.record_type_code,gv_record_type_code_20,
+                                xmld.actual_quantity
+                               ,NULL)
+                        ,NULL)) as fix_qty                               -- 確定数
+-- 2008/08/20 Mod ↑
               FROM   xxinv_mov_lot_details xmld     -- 移動ロット詳細(アドオン)
                     ,ic_lots_mst           ilm      -- OPMロットマスタ
                     ,xxcmn_item_mst2_v     ximv2    -- OPM品目情報VIEW2
@@ -2761,7 +2874,12 @@ AS
       mst_rec.div_i              := lr_mst_data_rec.div_i;              -- 区分Ｉ
       mst_rec.div_j              := lr_mst_data_rec.div_j;              -- 区分Ｊ
       mst_rec.div_k              := lr_mst_data_rec.div_k;              -- 区分Ｋ
+-- 2008/08/20 Mod ↓
+/*
       mst_rec.v_designate_date   := lr_mst_data_rec.designate_date;     -- 日付指定
+*/
+      mst_rec.designate_date     := lr_mst_data_rec.designate_date;     -- 日付指定
+-- 2008/08/20 Mod ↑
       mst_rec.amt_a              := lr_mst_data_rec.amt_a;              -- お金Ａ
       mst_rec.update_date_h      := lr_mst_data_rec.update_date_h;      -- 最終更新日(ヘッダ)
       mst_rec.update_date_l      := lr_mst_data_rec.update_date_l;      -- 最終更新日(明細)
@@ -2771,6 +2889,7 @@ AS
       mst_rec.v_arrival_date    := TO_CHAR(mst_rec.arrival_date,'YYYY/MM/DD');
       mst_rec.v_update_date_h   := TO_CHAR(mst_rec.update_date_h,'YYYY/MM/DD HH24:MI:SS');
       mst_rec.v_update_date_l   := TO_CHAR(mst_rec.update_date_l,'YYYY/MM/DD HH24:MI:SS');
+      mst_rec.v_designate_date  := TO_CHAR(mst_rec.designate_date,'YYYY/MM/DD'); -- 2008/08/20 Add
 --
       gt_master_tbl(ln_cnt) := mst_rec;
       ln_cnt := ln_cnt + 1;
@@ -2967,7 +3086,7 @@ AS
     -- データ出力
     UTL_FILE.PUT_LINE(if_file_hand,lv_data);
 --
-    gn_normal_cnt := gn_normal_cnt + 1;
+--    gn_normal_cnt := gn_normal_cnt + 1;            -- 2008/08/20 Del
 --
   EXCEPTION
 --
@@ -3677,6 +3796,8 @@ AS
     END IF;
 --
     gn_target_cnt := gt_master_tbl.COUNT;
+--
+    gn_normal_cnt := gn_target_cnt;           -- 2008/08/20 Add
 --
   EXCEPTION
 --
