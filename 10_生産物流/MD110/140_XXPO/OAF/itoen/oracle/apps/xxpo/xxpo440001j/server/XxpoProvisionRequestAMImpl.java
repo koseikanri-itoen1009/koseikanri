@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,7 +21,8 @@
 *                              T_TE080_BPO_440 No14
 * 2008-10-27 1.10 二瓶大輔     T_TE080_BPO_600 No22
 * 2009-01-05 1.11 二瓶大輔     本番障害#861対応
-* 2009-01-20 1.12 吉元強樹     本番障害#739,985対応
+* 2009-01-20 1.12 吉元強樹     本番障害#739,985対応(第1段階:金確ボタン)
+* 2009-01-22 1.13 吉元強樹     本番障害#739,985対応(第2段階:ヘッダ・明細)
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -2301,6 +2302,28 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
          * 更新処理
          ******************/
         updateOrderHdr(hdrRow);
+
+// 2009-01-22 v1.13 T.Yoshimoto Add Start 本番#739
+        // 有償金額確定区分が「確定」の場合
+        String fixClass       = (String)hdrRow.getAttribute("FixClass");      // 有償金額確定
+        Number orderHeaderId  = (Number)hdrRow.getAttribute("OrderHeaderId"); // 受注ヘッダアドオンID
+        if (XxpoConstants.FIX_CLASS_ON.equals(fixClass))
+        {
+          Date updateArrivalDate = getUpdateArrivalDate(hdrRow);
+
+          XxpoUtility.updArrivalDate(
+            getOADBTransaction(),
+            orderHeaderId,
+            updateArrivalDate);
+
+          // 有償金額確定処理を実行します。
+          XxpoUtility.updateFixClass(
+            getOADBTransaction(),
+            orderHeaderId,
+            XxpoConstants.FIX_CLASS_ON);
+        }
+// 2009-01-22 v1.13 T.Yoshimoto Add End 本番#739
+
         // ヘッダ実行フラグをtrueに変更
         hdrExeFlag = true;
 
@@ -3856,8 +3879,20 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     XxpoProvisionInstMakeHeaderVOImpl hdrVo = getXxpoProvisionInstMakeHeaderVO1();
     OARow hdrRow = (OARow)hdrVo.first();
 
-    // 在庫会計期間クローズチェックを行います。
+// 2009-01-22 v1.13 T.Yoshimoto Add Start 本番#985
+    // 金額確定済チェックを行います。
+    String fixClass  = (String)hdrRow.getAttribute("FixClass");  // 有償金額確定区分
     Date shippedDate = (Date)hdrRow.getAttribute("ShippedDate"); // 出庫日
+
+    // 有償金額確定区分が「確定」でない場合、出庫日ベースでチェック
+    if (XxpoConstants.FIX_CLASS_OFF.equals(fixClass))
+    {
+// 2009-01-22 v1.13 T.Yoshimoto Add End 本番#985
+
+    // 在庫会計期間クローズチェックを行います。
+// 2009-01-22 v1.13 T.Yoshimoto Del Start 本番#985
+    //Date shippedDate = (Date)hdrRow.getAttribute("ShippedDate"); // 出庫日
+// 2009-01-22 v1.13 T.Yoshimoto Del End 本番#985
     if (XxpoUtility.chkStockClose(getOADBTransaction(),
                                   shippedDate))
     {
@@ -3871,6 +3906,26 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
                             XxpoConstants.XXPO10119));
 
     }
+// 2009-01-22 v1.13 T.Yoshimoto Add Start 本番#985
+    // 有償金額確定区分が「確定」の場合、入庫日ベースでチェック
+    } else
+    {
+      // 在庫会計期間クローズチェックを行います。
+      Date arrivalDate = getUpdateArrivalDate(hdrRow);            // 入庫日
+      if (XxpoUtility.chkStockClose(getOADBTransaction(),
+                                    arrivalDate))
+      {
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,          
+                              hdrVo.getName(),
+                              hdrRow.getKey(),
+                              "ArrivalDate",
+                              arrivalDate,
+                              XxcmnConstants.APPL_XXPO, 
+                              XxpoConstants.XXPO10119));
+      }
+    }
+// 2009-01-22 v1.13 T.Yoshimoto Add End 本番#985
 
     // 単価導出可否を判断します。
     boolean priceFlag = false;
