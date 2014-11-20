@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS_COMMON2_PKG
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS_COMMON2_PKG
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_common2_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.4
+ * Version                : 1.5
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  conv_edi_item_code              P           品目コード変換（EBS→EDI)
  *  get_layout_info                 P           レイアウト定義情報取得
  *  makeup_data_record              P           データレコード編集
+ *  convert_quantity                P           EDI帳票向け数量換算関数
  *  get_deliv_slip_flag             F           納品書発行フラグ取得関数
  *  get_deliv_slip_flag_area        F           納品書発行フラグ全体取得関数
  *
@@ -31,6 +32,7 @@ AS
  *  2009/03/11    1.2  K.Kumamoto       I_E_048(百貨店送り状)単体テスト障害対応 (SPEC修正)
  *  2009/03/31    1.3  T.Kitajima       [T1_0113]makeup_data_recordのNUMBER,DATE編集変更
  *  2009/04/16    1.4  T.Kitajima       [T1_0543]conv_edi_item_code ケースJAN、JANコードNULL対応
+ *  2009/06/23    1.5  K.Kiriu          [T1_1359]EDI帳票向け数量換算関数の追加
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -130,6 +132,10 @@ AS
   ct_msg_case_jan_null_err                    CONSTANT  fnd_new_messages.message_name%TYPE
                                                         := 'APP-XXCOS1-13591';              -- ケースJANコードNULLエラー
 --****************************** 2009/04/16 1.4 T.Kitajima ADD  ENd  ******************************--
+/* 2009/06/15 Ver1.5 Add Start */
+  ct_msg_bad_calculation_err                  CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-13592';              -- 出荷数量、欠品数量、計算不可エラー
+/* 2009/06/15 Ver1.5 Add End   */
  -- トークン
   gv_token_name_layout                        CONSTANT VARCHAR2(6)  := 'LAYOUT';
   gv_token_name_in_param                      CONSTANT VARCHAR2(8)  := 'IN_PARAM';
@@ -1183,6 +1189,147 @@ AS
 --
   END makeup_data_record;
   --
+--
+/* 2009/06/23 Ver1.5 Add Start */
+  /**********************************************************************************
+   * Procedure Name   : convert_quantity
+   * Description      : EDI帳票向け数量換算関数
+   ***********************************************************************************/
+  PROCEDURE convert_quantity(
+               iv_uom_code           IN  VARCHAR2  DEFAULT NULL  --単位コード
+              ,in_case_qty           IN  NUMBER    DEFAULT NULL  --ケース入数
+              ,in_ball_qty           IN  NUMBER    DEFAULT NULL  --ボール入数
+              ,in_sum_indv_order_qty IN  NUMBER    DEFAULT NULL  --発注数量(合計・バラ)
+              ,in_sum_shipping_qty   IN  NUMBER    DEFAULT NULL  --出荷数量(合計・バラ)
+              ,on_indv_shipping_qty  OUT NOCOPY NUMBER           --出荷数量(バラ)
+              ,on_case_shipping_qty  OUT NOCOPY NUMBER           --出荷数量(ケース)
+              ,on_ball_shipping_qty  OUT NOCOPY NUMBER           --出荷数量(ボール)
+              ,on_indv_stockout_qty  OUT NOCOPY NUMBER           --欠品数量(バラ)
+              ,on_case_stockout_qty  OUT NOCOPY NUMBER           --欠品数量(ケース)
+              ,on_ball_stockout_qty  OUT NOCOPY NUMBER           --欠品数量(ボール)
+              ,on_sum_stockout_qty   OUT NOCOPY NUMBER           --欠品数量(合計・バラ)
+              ,ov_errbuf             OUT NOCOPY VARCHAR2         --エラー・メッセージエラー       #固定#
+              ,ov_retcode            OUT NOCOPY VARCHAR2         --リターン・コード               #固定#
+              ,ov_errmsg             OUT NOCOPY VARCHAR2         --ユーザー・エラー・メッセージ   #固定#
+  )
+  IS
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_prg_name                               CONSTANT VARCHAR2(100) := 'convert_quantity';   --プログラム
+    cn_zero                                   CONSTANT NUMBER(1)     := 0;                    --数値：0
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_case_uom_code                                   mtl_units_of_measure_tl.uom_code%TYPE; -- ケース単位コード
+    --
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+  --
+--
+  BEGIN
+--
+    --リターン・コード初期化
+    ov_retcode := cv_status_normal;
+--
+    --単位コードチェック
+    IF ( iv_uom_code IS NULL ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(  iv_application  => gv_application
+                                              ,iv_name         => ct_msg_bad_calculation_err
+                                            );
+      lv_errbuf  := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --ケース単位コード取得
+    lv_case_uom_code := FND_PROFILE.VALUE( ct_prof_case_uom_code );
+--
+    --欠品数量(合計・バラ) = 発注数量(合計・バラ) - 出荷数量(合計・バラ)
+    on_sum_stockout_qty  := in_sum_indv_order_qty - in_sum_shipping_qty;
+--
+    --ケース以外の場合
+    IF ( iv_uom_code <> lv_case_uom_code ) THEN
+--
+      --ケース入数あり、且つ、0以外
+      IF ( in_case_qty IS NOT NULL )
+        AND ( in_case_qty <> cn_zero )THEN
+        --出荷数量(バラ)   = 出荷数量(合計・バラ) / ケース入数の余り
+        on_indv_shipping_qty := MOD( in_sum_shipping_qty, in_case_qty );
+        --出荷数量(ケース) = 出荷数量(合計・バラ) / ケース入数の商
+        on_case_shipping_qty := TRUNC( in_sum_shipping_qty / in_case_qty );
+        --欠品数量(バラ)   = 欠品数量(合計・バラ) / ケース入数の余り
+        on_indv_stockout_qty := MOD( on_sum_stockout_qty, in_case_qty );
+        --欠品数量(ケース) = 欠品数量(合計・バラ) / ケース入数の商
+        on_case_stockout_qty := TRUNC( on_sum_stockout_qty / in_case_qty );
+      --ケース入数なし
+      ELSE
+        --出荷数量(バラ)   = 出荷数量(合計・バラ)
+        on_indv_shipping_qty := in_sum_shipping_qty;
+        --出荷数量(ケース) = 0
+        on_case_shipping_qty := cn_zero;
+        --欠品数量(バラ)   = 欠品数量(合計・バラ) 
+        on_indv_stockout_qty := on_sum_stockout_qty;
+        --欠品数量(ケース) = 0
+        on_case_stockout_qty := cn_zero;
+      END IF;
+--
+      --ボール入数あり、且つ、0以外
+      IF ( in_ball_qty IS NOT NULL )
+        AND ( in_ball_qty <> cn_zero )THEN
+        --出荷数量(ボール) = 出荷数量(合計・バラ) / ボール入数の商
+        on_ball_shipping_qty := TRUNC( in_sum_shipping_qty / in_ball_qty );
+        --欠品数量(ボール) = 欠品数量(合計・バラ) / ボール入数の商
+        on_ball_stockout_qty := TRUNC( on_sum_stockout_qty / in_ball_qty );
+      --ボール入数なし
+      ELSE
+        --出荷数量(ボール) = 0
+        on_ball_shipping_qty := cn_zero;
+        --欠品数量(ボール) = 0
+        on_ball_stockout_qty := cn_zero;
+      END IF;
+--
+    --ケースの場合
+    ELSE
+--
+      --出荷数量(バラ)   = 出荷数量(合計・バラ)
+      on_indv_shipping_qty := in_sum_shipping_qty;
+      --出荷数量(ケース) = 0
+      on_case_shipping_qty := cn_zero;
+      --出荷数量(ボール) = 0
+      on_ball_shipping_qty := cn_zero;
+      --欠品数量(バラ)   = 欠品数量(合計・バラ)
+      on_indv_stockout_qty := on_sum_stockout_qty;
+      --欠品数量(ケース) = 0
+      on_case_stockout_qty := cn_zero;
+      --欠品数量(ボール) = 0
+      on_ball_stockout_qty := cn_zero;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := xxccp_common_pkg.set_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_cnst_period||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END convert_quantity;
+  --
+/* 2009/06/23 Ver1.5 Add End */
 --
   /**********************************************************************************
    * Procedure Name   : get_deliv_slip_flag

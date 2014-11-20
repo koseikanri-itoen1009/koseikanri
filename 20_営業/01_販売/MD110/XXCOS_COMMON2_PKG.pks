@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS_COMMON2_PKG
+CREATE OR REPLACE PACKAGE APPS.XXCOS_COMMON2_PKG
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name           : XXCOS_COMMON2_PKG(spec)
  * Description            : 
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.4
+ * Version                : 1.5
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  conv_edi_item_code              P           品目コード変換（EBS→EDI)
  *  get_layout_info                 P           レイアウト定義情報取得
  *  makeup_data_record              P           データレコード編集
+ *  convert_quantity                P           EDI帳票向け数量換算関数
  *  get_deliv_slip_flag             F           納品書発行フラグ取得関数
  *  get_deliv_slip_flag_area        F           納品書発行フラグ全体取得関数
  *
@@ -31,6 +32,7 @@ AS
  *  2009/03/11    1.2  K.Kumamoto       I_E_048(百貨店送り状)単体テスト障害対応 (SPEC修正)
  *  2009/03/31    1.3  T.Kitajima       [T1_0026]makeup_data_recordのNUMBER,DATE編集変更
  *  2009/04/16    1.4  T.Kitajima       [T1_0543]conv_edi_item_code ケースJAN、JANコードNULL対応
+ *  2009/06/23    1.5  K.Kiriu          [T1_1359]EDI帳票向け数量換算関数の追加
  *
  *****************************************************************************************/
 --
@@ -124,6 +126,29 @@ AS
               ,ov_retcode                          OUT NOCOPY VARCHAR2        --リターン・コード               #固定#
               ,ov_errmsg                           OUT NOCOPY VARCHAR2        --ユーザー・エラー・メッセージ   #固定#
               );
+  --
+--
+  /************************************************************************
+   * Function Name   : convert_quantity
+   * Description     : EDI帳票向け数量換算関数
+   ************************************************************************/
+  PROCEDURE convert_quantity(
+               iv_uom_code                         IN  VARCHAR2  DEFAULT NULL  --単位コード
+              ,in_case_qty                         IN  NUMBER    DEFAULT NULL  --ケース入数
+              ,in_ball_qty                         IN  NUMBER    DEFAULT NULL  --ボール入数
+              ,in_sum_indv_order_qty               IN  NUMBER    DEFAULT NULL  --発注数量(合計・バラ)
+              ,in_sum_shipping_qty                 IN  NUMBER    DEFAULT NULL  --出荷数量(合計・バラ)
+              ,on_indv_shipping_qty                OUT NOCOPY NUMBER           --出荷数量(バラ)
+              ,on_case_shipping_qty                OUT NOCOPY NUMBER           --出荷数量(ケース)
+              ,on_ball_shipping_qty                OUT NOCOPY NUMBER           --出荷数量(ボール)
+              ,on_indv_stockout_qty                OUT NOCOPY NUMBER           --欠品数量(バラ)
+              ,on_case_stockout_qty                OUT NOCOPY NUMBER           --欠品数量(ケース)
+              ,on_ball_stockout_qty                OUT NOCOPY NUMBER           --欠品数量(ボール)
+              ,on_sum_stockout_qty                 OUT NOCOPY NUMBER           --欠品数量(合計・バラ)
+              ,ov_errbuf                           OUT NOCOPY VARCHAR2         --エラー・メッセージエラー       #固定#
+              ,ov_retcode                          OUT NOCOPY VARCHAR2         --リターン・コード               #固定#
+              ,ov_errmsg                           OUT NOCOPY VARCHAR2         --ユーザー・エラー・メッセージ   #固定#
+  );
   --
 --
   --納品書発行フラグ取得関数
