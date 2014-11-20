@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.59
+ * Version          : 1.60
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -158,6 +158,7 @@ AS
  *  2009/06/08    1.57 SCS    伊藤ひとみ 本番障害対応#1369 1回の取込で実績を二重上げてしまった場合、品目重複エラーとなるよう修正
  *  2009/10/02    1.58 SCS    伊藤ひとみ 本番障害対応#1144 ロット管理外品で黒データ作成時に出荷実績IF済フラグを常にNに設定するよう修正
  *  2009/10/07    1.59 SCS    伊藤ひとみ 本番障害対応#1648,1345 顧客ステータスを条件としないよう修正,顧客発注番号チェック廃止
+ *  2009/11/26    1.60 SCS    宮川真理子 本番障害対応#1497 パージ処理の削除条件の保留ステータス条件を削除
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4907,8 +4908,11 @@ AS
             ,xsli.line_id
       FROM   xxwsh_shipping_headers_if xshi   --IF_H
             ,xxwsh_shipping_lines_if   xsli   --IF_L
-      WHERE  xsli.reserved_status = gv_reserved_status    --保留ステータス = 保留
-      AND    xshi.header_id  = xsli.header_id
+-- 2009/11/26 本番障害対応#1497 Mod Start ---------------------
+--      WHERE  xsli.reserved_status = gv_reserved_status    --保留ステータス = 保留
+--      AND    xshi.header_id  = xsli.header_id
+      WHERE  xshi.header_id  = xsli.header_id
+-- 2009/11/26 本番障害対応#1497 Mod End -----------------------
       AND    xshi.data_type = iv_process_object_info      --データタイプ
       AND    xshi.creation_date < (TRUNC(gd_sysdate) - (gn_purge_period -1))
       ORDER BY xshi.header_id,xsli.line_id
