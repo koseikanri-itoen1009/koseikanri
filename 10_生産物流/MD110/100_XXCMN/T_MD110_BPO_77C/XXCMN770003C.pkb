@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2009/08/12    1.20  Marushita        本番障害1608対応
  *  2009/09/07    1.21  Marushita        本番障害1639対応
  *  2010/05/14    1.22  M.Hokkanji       本稼動障害#2688対応
+ *  2010/06/16    1.23  T.Yoshimoto      E_本稼動_03004対応
  *
  *****************************************************************************************/
 --
@@ -1255,9 +1256,13 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/06/16 v1.23 T.Yoshimoto Mod Start E_本稼動_03004
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD START
-              OR (xrpm.dealings_div = gc_dealings_div)
+--              OR (xrpm.dealings_div = gc_dealings_div)
+              -- 製品のみ合組打込を受払残高表Ⅱへ出力する
+              OR (xrpm.dealings_div = gc_dealings_div AND mcb2.segment1 = '5')
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD END
+-- 2010/06/16 v1.23 T.Yoshimoto Mod End E_本稼動_03004
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
@@ -2040,9 +2045,13 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/06/16 v1.23 T.Yoshimoto Mod Start E_本稼動_03004
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD START
-              OR (xrpm.dealings_div = gc_dealings_div)
+--              OR (xrpm.dealings_div = gc_dealings_div)
+              -- 製品のみ合組打込を受払残高表Ⅱへ出力する
+              OR (xrpm.dealings_div = gc_dealings_div AND mcb2.segment1 = '5')
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD END
+-- 2010/06/16 v1.23 T.Yoshimoto Mod End E_本稼動_03004
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
@@ -2834,9 +2843,13 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/06/16 v1.23 T.Yoshimoto Mod Start E_本稼動_03004
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD START
-              OR (xrpm.dealings_div = gc_dealings_div)
+--              OR (xrpm.dealings_div = gc_dealings_div)
+              -- 製品のみ合組打込を受払残高表Ⅱへ出力する
+              OR (xrpm.dealings_div = gc_dealings_div AND mcb2.segment1 = '5')
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD END
+-- 2010/06/16 v1.23 T.Yoshimoto Mod End E_本稼動_03004
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
@@ -3628,9 +3641,13 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/06/16 v1.23 T.Yoshimoto Mod Start E_本稼動_03004
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD START
-              OR (xrpm.dealings_div = gc_dealings_div)
+--              OR (xrpm.dealings_div = gc_dealings_div)
+              -- 製品のみ合組打込を受払残高表Ⅱへ出力する
+              OR (xrpm.dealings_div = gc_dealings_div AND mcb2.segment1 = '5')
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD END
+-- 2010/06/16 v1.23 T.Yoshimoto Mod End E_本稼動_03004
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
@@ -4419,9 +4436,13 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/06/16 v1.23 T.Yoshimoto Mod Start E_本稼動_03004
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD START
-              OR (xrpm.dealings_div = gc_dealings_div)
+--              OR (xrpm.dealings_div = gc_dealings_div)
+              -- 製品のみ合組打込を受払残高表Ⅱへ出力する
+              OR (xrpm.dealings_div = gc_dealings_div AND mcb2.segment1 = '5')
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD END
+-- 2010/06/16 v1.23 T.Yoshimoto Mod End E_本稼動_03004
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
@@ -5204,9 +5225,13 @@ AS
 --      AND    xrpm.dealings_div IN('306','309')
       AND    ((xrpm.dealings_div = '306' AND mcb2.segment1 = '5') OR 
               (xrpm.dealings_div = '309' AND mcb2.segment1 IN ('1','4'))
+-- 2010/06/16 v1.23 T.Yoshimoto Mod Start E_本稼動_03004
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD START
-              OR (xrpm.dealings_div = gc_dealings_div)
+--              OR (xrpm.dealings_div = gc_dealings_div)
+              -- 製品のみ合組打込を受払残高表Ⅱへ出力する
+              OR (xrpm.dealings_div = gc_dealings_div AND mcb2.segment1 = '5')
 -- 2010/05/14 Ver1.22 M.Hokkanji ADD END
+-- 2010/06/16 v1.23 T.Yoshimoto Mod End E_本稼動_03004
              )
 -- 2009/09/07 MOD END
       AND ((xrpm.routing_class    <> '70') OR 
