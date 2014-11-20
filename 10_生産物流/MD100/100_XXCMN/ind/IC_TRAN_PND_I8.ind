@@ -1,0 +1,2 @@
+drop index gmi.ic_tran_pndI8;
+CREATE INDEX gmi.ic_tran_pndI8 ON gmi.ic_tran_pnd( last_update_date,doc_type,completed_ind ) TABLESPACE xxidx;
