@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A02C(body)
  * Description      : 社員データ連携(自販機)
  * MD.050           : 社員データ連携(自販機) MD050_CMM_002_A02
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/29    1.0   SCS 福間 貴子    初回作成
+ *  2009/09/09    1.1   SCS 久保島 豊    障害0000337 従業員の抽出条件を変更
+ *                                       ( 4(ダミー)以外 -> 1(社員)または3(派遣社員) )
  *
  *****************************************************************************************/
 --
@@ -75,12 +77,16 @@ AS
   -- プロファイル
   cv_filepath               CONSTANT VARCHAR2(30)  := 'XXCMM1_JIHANKI_OUT_DIR';     -- 自販機CSVファイル出力先
   cv_filename               CONSTANT VARCHAR2(30)  := 'XXCMM1_002A02_OUT_FILE';     -- 連携用CSVファイル名
-  cv_jyugyoin_kbn           CONSTANT VARCHAR2(30)  := 'XXCMM1_002A02_JYUGYOIN_KBN'; -- 従業員区分のダミー値
+-- 2009/09/09 Ver1.1 delete start by Y.Kuboshima
+--  cv_jyugyoin_kbn           CONSTANT VARCHAR2(30)  := 'XXCMM1_002A02_JYUGYOIN_KBN'; -- 従業員区分のダミー値
+-- 2009/09/09 Ver1.1 delete end by Y.Kuboshima
   -- トークン
   cv_tkn_profile            CONSTANT VARCHAR2(10)  := 'NG_PROFILE';                 -- プロファイル名
   cv_tkn_filepath_nm        CONSTANT VARCHAR2(20)  := 'CSVファイル出力先';
   cv_tkn_filename_nm        CONSTANT VARCHAR2(20)  := 'CSVファイル名';
-  cv_tkn_jyugoin_kbn_nm     CONSTANT VARCHAR2(20)  := '従業員区分のダミー値';
+-- 2009/09/09 Ver1.1 delete start by Y.Kuboshima
+--  cv_tkn_jyugoin_kbn_nm     CONSTANT VARCHAR2(20)  := '従業員区分のダミー値';
+-- 2009/09/09 Ver1.1 delete end by Y.Kuboshima
   cv_tkn_word               CONSTANT VARCHAR2(10)  := 'NG_WORD';                    -- 項目名
   cv_tkn_word1              CONSTANT VARCHAR2(10)  := '社員番号';
   cv_tkn_word2              CONSTANT VARCHAR2(10)  := '、氏名 : ';
@@ -88,7 +94,10 @@ AS
   cv_tkn_filename           CONSTANT VARCHAR2(10)  := 'FILE_NAME';                  -- ファイル名
   cv_tkn_table              CONSTANT VARCHAR2(10)  := 'NG_TABLE';                   -- テーブル
   cv_tkn_table_nm1          CONSTANT VARCHAR2(20)  := 'アサインメントマスタ';
-  cv_tkn_table_nm2          CONSTANT VARCHAR2(40)  := '自販機差分連携用社員データテーブル';
+-- 2009/09/09 Ver1.1 modify start by Y.Kuboshima
+--  cv_tkn_table_nm2          CONSTANT VARCHAR2(40)  := '自販機差分連携用社員データテーブル';
+  cv_tkn_table_nm2          CONSTANT VARCHAR2(40)  := '、自販機差分連携用社員データテーブル';
+-- 2009/09/09 Ver1.1 modify end by Y.Kuboshima
   cv_tkn_value              CONSTANT VARCHAR2(10)  := 'VALUE';                      -- 項目名
   cv_tkn_value_nm1          CONSTANT VARCHAR2(10)  := '社員番号';
   cv_tkn_value_nm2          CONSTANT VARCHAR2(10)  := '発令日';
@@ -135,6 +144,10 @@ AS
   cv_chk_cd                 CONSTANT VARCHAR2(22)  := 'VENDING_MACHINE_SYSTEM';     -- 自販機システムチェック
   cv_flg_t                  CONSTANT VARCHAR2(1)   := 'T';                          -- 実行フラグ(T:定期)
   cv_flg_r                  CONSTANT VARCHAR2(1)   := 'R';                          -- 実行フラグ(R:随時(リカバリ))
+-- 2009/09/09 Ver1.1 add start by Y.Kuboshima
+  cv_jyugyoin_kbn_1         CONSTANT VARCHAR2(1)   := '1';                          -- 従業員区分(1:社員)
+  cv_jyugyoin_kbn_3         CONSTANT VARCHAR2(1)   := '3';                          -- 従業員区分(3:派遣社員)
+-- 2009/09/09 Ver1.1 add end by Y.Kuboshima
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -164,7 +177,9 @@ AS
   -- ===============================
   gv_filepath               VARCHAR2(255);        -- 連携用CSVファイル出力先
   gv_filename               VARCHAR2(255);        -- 連携用CSVファイル名
-  gv_jyugyoin_kbn           VARCHAR2(10);         -- 従業員区分のダミー値
+-- 2009/09/09 Ver1.1 delete start by Y.Kuboshima
+--  gv_jyugyoin_kbn           VARCHAR2(10);         -- 従業員区分のダミー値
+-- 2009/09/09 Ver1.1 delete end by Y.Kuboshima
   gd_process_date           DATE;                 -- 業務日付
   gd_select_start_date      DATE;                 -- 取得開始日
   gd_select_start_datetime  DATE;                 -- 取得開始日(時刻 00:00:00)
@@ -208,7 +223,10 @@ AS
               GROUP BY pp.person_id) pp
     WHERE    pp.person_id = p.person_id
     AND      pp.effective_start_date = p.effective_start_date
-    AND      (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
+-- 2009/09/09 Ver1.1 modify start by Y.Kuboshima
+--    AND      (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
+    AND      p.attribute3 IN (cv_jyugyoin_kbn_1, cv_jyugyoin_kbn_3)
+-- 2009/09/09 Ver1.1 modify end by Y.Kuboshima
     AND      (a.ass_attribute17 IS NULL
              OR TO_CHAR(p.last_update_date,'YYYYMMDD HH24:MI:SS') > a.ass_attribute17
              OR TO_CHAR(a.last_update_date,'YYYYMMDD HH24:MI:SS') > a.ass_attribute17)
@@ -244,7 +262,10 @@ AS
               GROUP BY pp.person_id) pp
     WHERE    pp.person_id = p.person_id
     AND      pp.effective_start_date = p.effective_start_date
-    AND      (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
+-- 2009/09/09 Ver1.1 modify start by Y.Kuboshima
+--    AND      (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
+    AND      p.attribute3 IN (cv_jyugyoin_kbn_1, cv_jyugyoin_kbn_3)
+-- 2009/09/09 Ver1.1 modify end by Y.Kuboshima
     AND      (((gd_select_start_datetime <= p.last_update_date) AND (p.last_update_date <= gd_select_end_datetime))
              OR ((gd_select_start_datetime <= a.last_update_date) AND (a.last_update_date <= gd_select_end_datetime)))
     AND      p.person_id = a.person_id
@@ -295,15 +316,22 @@ AS
                per_periods_of_service t,
                per_all_assignments_f a,
                per_all_people_f p
-      WHERE    (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
+-- 2009/09/09 Ver1.1 modify start by Y.Kuboshima
+--      WHERE    (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
+      WHERE    p.attribute3 IN (cv_jyugyoin_kbn_1, cv_jyugyoin_kbn_3)
+-- 2009/09/09 Ver1.1 modify end by Y.Kuboshima
       AND      (a.ass_attribute17 IS NULL
                OR TO_CHAR(p.last_update_date,'YYYYMMDD HH24:MI:SS') > a.ass_attribute17
                OR TO_CHAR(a.last_update_date,'YYYYMMDD HH24:MI:SS') > a.ass_attribute17)
       AND      p.person_id = a.person_id
       AND      p.effective_start_date = a.effective_start_date
       AND      a.period_of_service_id = t.period_of_service_id
-      AND      p.person_id = d.person_id
-      FOR UPDATE NOWAIT;
+-- 2009/09/09 Ver1.1 modify start by Y.Kuboshima
+--      AND      p.person_id = d.person_id
+--      FOR UPDATE NOWAIT;
+      AND      p.person_id = d.person_id(+)
+      FOR UPDATE OF a.person_id, d.person_id NOWAIT;
+-- 2009/09/09 Ver1.1 modify end by Y.Kuboshima
     --自販機差分連携用社員データテーブルロック用(随時(リカバリ)実行時)
     CURSOR get_r_dispenser_cur IS
       SELECT   d.person_id
@@ -311,42 +339,52 @@ AS
                per_periods_of_service t,
                per_all_assignments_f a,
                per_all_people_f p
-      WHERE    (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
+-- 2009/09/09 Ver1.1 modify start by Y.Kuboshima
+--      WHERE    (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
+      WHERE    p.attribute3 IN (cv_jyugyoin_kbn_1, cv_jyugyoin_kbn_3)
+-- 2009/09/09 Ver1.1 modify end by Y.Kuboshima
       AND      (((gd_select_start_datetime <= p.last_update_date) AND (p.last_update_date <= gd_select_end_datetime))
                OR ((gd_select_start_datetime <= a.last_update_date) AND (a.last_update_date <= gd_select_end_datetime)))
       AND      p.person_id = a.person_id
       AND      p.effective_start_date = a.effective_start_date
       AND      a.period_of_service_id = t.period_of_service_id
-      AND      p.person_id = d.person_id
-      FOR UPDATE NOWAIT;
+-- 2009/09/09 Ver1.1 modify start by Y.Kuboshima
+--      AND      p.person_id = d.person_id
+--      FOR UPDATE NOWAIT;
+      AND      p.person_id = d.person_id(+)
+      FOR UPDATE OF a.person_id, d.person_id NOWAIT;
+-- 2009/09/09 Ver1.1 modify end by Y.Kuboshima
     --
-    --アサインメントマスタロック用(定期実行時)
-    CURSOR get_t_assignment_cur IS
-      SELECT   a.assignment_id
-      FROM     per_periods_of_service t,
-               per_all_assignments_f a,
-               per_all_people_f p
-      WHERE    (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
-      AND      (a.ass_attribute17 IS NULL
-               OR TO_CHAR(p.last_update_date,'YYYYMMDD HH24:MI:SS') > a.ass_attribute17
-               OR TO_CHAR(a.last_update_date,'YYYYMMDD HH24:MI:SS') > a.ass_attribute17)
-      AND      p.person_id = a.person_id
-      AND      p.effective_start_date = a.effective_start_date
-      AND      a.period_of_service_id = t.period_of_service_id
-      FOR UPDATE NOWAIT;
-    --アサインメントマスタロック用(随時(リカバリ)実行時)
-    CURSOR get_r_assignment_cur IS
-      SELECT   a.assignment_id
-      FROM     per_periods_of_service t,
-               per_all_assignments_f a,
-               per_all_people_f p
-      WHERE    (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
-      AND      (((gd_select_start_datetime <= p.last_update_date) AND (p.last_update_date <= gd_select_end_datetime))
-               OR ((gd_select_start_datetime <= a.last_update_date) AND (a.last_update_date <= gd_select_end_datetime)))
-      AND      p.person_id = a.person_id
-      AND      p.effective_start_date = a.effective_start_date
-      AND      a.period_of_service_id = t.period_of_service_id
-      FOR UPDATE NOWAIT;
+-- 2009/09/09 Ver1.1 delete start by Y.Kuboshima
+-- 自販機差分連携様社員データテーブルロックカーソルでアサイメントマスタをロックするので削除
+--    --アサインメントマスタロック用(定期実行時)
+--    CURSOR get_t_assignment_cur IS
+--      SELECT   a.assignment_id
+--      FROM     per_periods_of_service t,
+--               per_all_assignments_f a,
+--               per_all_people_f p
+--      WHERE    (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
+--      AND      (a.ass_attribute17 IS NULL
+--               OR TO_CHAR(p.last_update_date,'YYYYMMDD HH24:MI:SS') > a.ass_attribute17
+--               OR TO_CHAR(a.last_update_date,'YYYYMMDD HH24:MI:SS') > a.ass_attribute17)
+--      AND      p.person_id = a.person_id
+--      AND      p.effective_start_date = a.effective_start_date
+--      AND      a.period_of_service_id = t.period_of_service_id
+--      FOR UPDATE NOWAIT;
+--    --アサインメントマスタロック用(随時(リカバリ)実行時)
+--    CURSOR get_r_assignment_cur IS
+--      SELECT   a.assignment_id
+--      FROM     per_periods_of_service t,
+--               per_all_assignments_f a,
+--               per_all_people_f p
+--      WHERE    (NVL(p.attribute3,' ') > gv_jyugyoin_kbn OR NVL(p.attribute3,' ') < gv_jyugyoin_kbn)
+--      AND      (((gd_select_start_datetime <= p.last_update_date) AND (p.last_update_date <= gd_select_end_datetime))
+--               OR ((gd_select_start_datetime <= a.last_update_date) AND (a.last_update_date <= gd_select_end_datetime)))
+--      AND      p.person_id = a.person_id
+--      AND      p.effective_start_date = a.effective_start_date
+--      AND      a.period_of_service_id = t.period_of_service_id
+--      FOR UPDATE NOWAIT;
+-- 2009/09/09 Ver1.1 delete start by Y.Kuboshima-
 --
     -- *** ローカル・レコード ***
 --
@@ -555,17 +593,19 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
-    gv_jyugyoin_kbn := fnd_profile.value(cv_jyugyoin_kbn);
-    IF (gv_jyugyoin_kbn IS NULL) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_msg_kbn_cmm           -- 'XXCMM'
-                      ,iv_name         => cv_msg_00002             -- プロファイル取得エラー
-                      ,iv_token_name1  => cv_tkn_profile           -- トークン(NG_PROFILE)
-                      ,iv_token_value1 => cv_tkn_jyugoin_kbn_nm    -- プロファイル名(従業員区分のダミー値)
-                     );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+-- 2009/09/09 Ver1.1 delete start by Y.Kuboshima
+--    gv_jyugyoin_kbn := fnd_profile.value(cv_jyugyoin_kbn);
+--    IF (gv_jyugyoin_kbn IS NULL) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_msg_kbn_cmm           -- 'XXCMM'
+--                      ,iv_name         => cv_msg_00002             -- プロファイル取得エラー
+--                      ,iv_token_name1  => cv_tkn_profile           -- トークン(NG_PROFILE)
+--                      ,iv_token_value1 => cv_tkn_jyugoin_kbn_nm    -- プロファイル名(従業員区分のダミー値)
+--                     );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+-- 2009/09/09 Ver1.1 delete end by Y.Kuboshima
     -- ============================================================
     --  固定出力(I/Fファイル名部)
     -- ============================================================
@@ -641,7 +681,10 @@ AS
                          iv_application  => cv_msg_kbn_cmm         -- 'XXCMM'
                         ,iv_name         => cv_msg_00008           -- ロック取得NGメッセージ
                         ,iv_token_name1  => cv_tkn_table           -- トークン(NG_TABLE)
-                        ,iv_token_value1 => cv_tkn_table_nm2       -- テーブル名(自販機差分連携用社員データテーブル)
+-- 2009/09/09 Ver1.1 modify start by Y.Kuboshima
+--                        ,iv_token_value1 => cv_tkn_table_nm2       -- テーブル名(自販機差分連携用社員データテーブル)
+                        ,iv_token_value1 => cv_tkn_table_nm1 || cv_tkn_table_nm2 -- テーブル名(アサイメントマスタ、自販機差分連携用社員データテーブル)
+-- 2009/09/09 Ver1.1 modify end by Y.Kuboshima
                        );
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
@@ -649,33 +692,35 @@ AS
         RAISE global_api_others_expt;
     END;
 --
-    -- =========================================================
-    --  アサインメントマスタの行ロック
-    -- =========================================================
-    BEGIN
-      IF (gv_run_flg = cv_flg_t) THEN
-        -- 定期実行時
-        OPEN get_t_assignment_cur;
-        CLOSE get_t_assignment_cur;
-      ELSE
-        -- 随時(リカバリ)時
-        OPEN get_r_assignment_cur;
-        CLOSE get_r_assignment_cur;
-      END IF;
-    EXCEPTION
-      -- テーブルロックエラー
-      WHEN lock_expt THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_msg_kbn_cmm         -- 'XXCMM'
-                        ,iv_name         => cv_msg_00008           -- ロック取得NGメッセージ
-                        ,iv_token_name1  => cv_tkn_table           -- トークン(NG_TABLE)
-                        ,iv_token_value1 => cv_tkn_table_nm1       -- テーブル名(アサインメントマスタ)
-                       );
-        lv_errbuf := lv_errmsg;
-        RAISE global_api_expt;
-      WHEN OTHERS THEN
-        RAISE global_api_others_expt;
-    END;
+-- 2009/09/09 Ver1.1 delete start by Y.Kuboshima
+--    -- =========================================================
+--    --  アサインメントマスタの行ロック
+--    -- =========================================================
+--    BEGIN
+--      IF (gv_run_flg = cv_flg_t) THEN
+--        -- 定期実行時
+--        OPEN get_t_assignment_cur;
+--        CLOSE get_t_assignment_cur;
+--      ELSE
+--        -- 随時(リカバリ)時
+--        OPEN get_r_assignment_cur;
+--        CLOSE get_r_assignment_cur;
+--      END IF;
+--    EXCEPTION
+--      -- テーブルロックエラー
+--      WHEN lock_expt THEN
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_msg_kbn_cmm         -- 'XXCMM'
+--                        ,iv_name         => cv_msg_00008           -- ロック取得NGメッセージ
+--                        ,iv_token_name1  => cv_tkn_table           -- トークン(NG_TABLE)
+--                        ,iv_token_value1 => cv_tkn_table_nm1       -- テーブル名(アサインメントマスタ)
+--                       );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_api_expt;
+--      WHEN OTHERS THEN
+--        RAISE global_api_others_expt;
+--    END;
+-- 2009/09/09 Ver1.1 delete end by Y.Kuboshima
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
