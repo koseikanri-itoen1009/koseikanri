@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
  * Package Name     : XXCFO019A06C(body)
  * Description      : 電子帳簿AR取引の情報系システム連携
  * MD.050           : MD050_CFO_019_A06_電子帳簿AR取引の情報系システム連携
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
  *                                      結合テスト障害対応[障害No33:未連携テーブル登録内容追加]
  *                                      結合テスト障害対応[障害No35:メインカーソルの日付項目の取得元変更]
  *                                      結合テスト障害対応[障害No36:取引明細のLINE行とTAX行の結合条件変更]
+ *  2012-11-28    1.2   T.Osawa         0件時警告終了対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3482,6 +3483,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
     -- 0件の場合はメッセージ出力
     --==================================================================
     IF ( gn_target_cnt + gn_target_wait_cnt ) = 0 THEN
+-- 2012-11-28 Ver.1.2 T.Osawa Add Start
+      ov_retcode  :=  cv_status_warn ;
+-- 2012-11-28 Ver.1.2 T.Osawa Add End
       lv_errmsg := SUBSTRB( xxccp_common_pkg.get_msg( cv_msg_kbn_cfo        -- 'XXCFO'
                                                      ,cv_msg_cfo_10025      -- 取得対象データ無しメッセージ
                                                      ,cv_tkn_get_data       -- トークン'GET_DATA' 

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A03C(body)
  * Description      : 電子帳簿販売実績の情報系システム連携
  * MD.050           : 電子帳簿販売実績の情報系システム連携 <MD050_CFO_019_A03>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/08/27    1.0   T.Osawa          新規作成
  *  2012/10/31    1.1   N.Sugiura        [結合テスト障害No29] エラー内容を出力ファイルに出力する
+ *  2012/11/28    1.2   T.Osawa          管理テーブル更新、ＡＲ取引取得エラー
  *
  *****************************************************************************************/
 --
@@ -1309,13 +1310,17 @@ AS
                 , gt_data_tab(88)                                               --顧客名
         FROM      ra_customer_trx_all             rcta      --AR請求取引ヘッダ        
                 , ra_customer_trx_lines_all       rctla     --AR請求取引明細
-                , ra_batch_sources_all            rbsa      --バッチソース
+-- 2012/11/28 Ver.1.2 T.Osawa Delete Start
+--              , ra_batch_sources_all            rbsa      --バッチソース
+-- 2012/11/28 Ver.1.2 T.Osawa Delete End
                 , ra_cust_trx_types_all           rctta     --AR取引タイプ
                 , hz_cust_accounts                hca       --顧客マスタ
                 , hz_parties                      hp        --パーティ
         WHERE     rcta.customer_trx_id            =         rctla.customer_trx_id
-        AND       rcta.batch_source_id            =         rbsa.batch_source_id
-        AND       rcta.org_id                     =         rbsa.org_id
+-- 2012/11/28 Ver.1.2 T.Osawa Delete Start
+--      AND       rcta.batch_source_id            =         rbsa.batch_source_id
+--      AND       rcta.org_id                     =         rbsa.org_id
+-- 2012/11/28 Ver.1.2 T.Osawa Delete End
         AND       rcta.cust_trx_type_id           =         rctta.cust_trx_type_id
         AND       rcta.org_id                     =         rctta.org_id
         AND       rcta.bill_to_customer_id        =         hca.cust_account_id
@@ -1323,7 +1328,9 @@ AS
         AND       rctla.line_type                 =         cv_line_type
         AND       rctla.interface_line_attribute7 =         gt_data_tab(cn_tbl_header_id) --販売実績ヘッダID
         AND       rcta.org_id                     =         gt_org_id                     --営業単位
-        AND       rbsa.name                       =         gv_sales_class_msg            --販売実績
+-- 2012/11/28 Ver.1.2 T.Osawa Delete Start
+--      AND       rbsa.name                       =         gv_sales_class_msg            --販売実績
+-- 2012/11/28 Ver.1.2 T.Osawa Delete End
         GROUP BY  rcta.customer_trx_id                      --AR取引ID
                 , rcta.trx_number                           --AR請求書（取引）番号
                 , rcta.doc_sequence_value                   --請求書文書番号
@@ -3331,6 +3338,9 @@ AS
 --
     -- *** ローカル変数 ***
     lt_sales_exp_header_id_max          xxcos_sales_exp_headers.sales_exp_header_id%TYPE;
+-- 2012/11/28 Ver.1.2 T.Osawa Add Start
+    ln_ctl_max_sales_exp_header_id      xxcfo_sales_exp_control.sales_exp_header_id%TYPE;
+-- 2012/11/28 Ver.1.2 T.Osawa Add End
 --
   BEGIN
 --
@@ -3366,15 +3376,34 @@ AS
           NULL;
       END;
       --
+-- 2012/11/28 Ver.1.2 T.Osawa Add Start
       BEGIN
-        SELECT    MAX(xseh.sales_exp_header_id)   AS    max_sales_exp_header_id
+        SELECT    MAX(xsec.sales_exp_header_id)
+        INTO      ln_ctl_max_sales_exp_header_id
+        FROM      xxcfo_sales_exp_control         xsec
+        ;
+      END;
+      --
+-- 2012/11/28 Ver.1.2 T.Osawa Add End
+      BEGIN
+-- 2012/11/28 Ver.1.2 T.Osawa Modify Start
+--      SELECT    MAX(xseh.sales_exp_header_id)   AS    max_sales_exp_header_id
+--      INTO      lt_sales_exp_header_id_max
+--      FROM      xxcos_sales_exp_headers         xseh
+--      WHERE     xseh.business_date              <=      gd_prdate
+        SELECT    NVL(MAX(xseh.sales_exp_header_id), ln_ctl_max_sales_exp_header_id)   
+                                                  AS    max_sales_exp_header_id
         INTO      lt_sales_exp_header_id_max
         FROM      xxcos_sales_exp_headers         xseh
-        WHERE     xseh.business_date              <=      gd_prdate
+        WHERE     xseh.sales_exp_header_id        >       ln_ctl_max_sales_exp_header_id
+        AND       xseh.business_date              <=      gd_prdate
+-- 2012/11/28 Ver.1.2 T.Osawa Modify End
         ;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          NULL;
+-- 2012/11/28 Ver.1.2 T.Osawa Delete Start
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        NULL;
+-- 2012/11/28 Ver.1.2 T.Osawa Delete End
       END;
       --
       BEGIN

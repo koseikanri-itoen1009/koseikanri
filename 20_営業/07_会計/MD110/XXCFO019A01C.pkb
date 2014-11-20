@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A01C(body)
  * Description      : 電子帳簿残高の情報系システム連携
  * MD.050           : MD050_CFO_019_A01_電子帳簿残高の情報系システム連携
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012-09-27    1.0   K.Onotsuka      新規作成
+ *  2012-11-27    1.1   T.Osawa         0Byteファイル作成対応、管理テーブル設定内容変更
  *
  *****************************************************************************************/
 --
@@ -868,6 +869,17 @@ AS
              which  => FND_FILE.OUTPUT
             ,buff   => lv_errmsg
           );
+-- 2012-11-27 Ver.1.1 T.Osawa Add Start
+          --==============================================================
+          --  0Byteファイルを作成する
+          --==============================================================
+          gv_file_hand := UTL_FILE.FOPEN( gt_file_path
+                                        , gv_file_name
+                                        , cv_open_mode_w
+                                        );
+                                      
+          UTL_FILE.FCLOSE( gv_file_hand );
+-- 2012-11-27 Ver.1.1 T.Osawa Add End
           --処理を正常終了する
           RAISE no_gl_pererid;
         END IF;
@@ -2133,7 +2145,10 @@ AS
     --==============================================================
     BEGIN
       UPDATE xxcfo_gl_balance_control xgbc -- 残高管理
-      SET xgbc.effective_period_num   = gt_data_tab(30)           -- 有効会計期間番号
+-- 2012-11-27 Ver.1.1 T.Osawa Mod Start
+--    SET xgbc.effective_period_num   = gt_data_tab(30)           -- 有効会計期間番号
+      SET xgbc.effective_period_num   = gt_period_name_to         -- 有効会計期間番号
+-- 2012-11-27 Ver.1.1 T.Osawa Mod End
          ,xgbc.last_updated_by        = cn_last_updated_by        -- 最終更新者
          ,xgbc.last_update_date       = SYSDATE                   -- 最終更新日
          ,xgbc.last_update_login      = cn_last_update_login      -- 最終更新ログイン

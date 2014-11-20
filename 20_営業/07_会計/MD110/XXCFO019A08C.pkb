@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A08C(body)
  * Description      : 電子帳簿自販機販売手数料の情報系システム連携
  * MD.050           : 電子帳簿自販機販売手数料の情報系システム連携 <MD050_CFO_019_A08>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/09/24    1.0   T.Osawa          新規作成
+ *  2012/11/28    1.1   T.Osawa          管理テーブル更新対応、手動実行時（ＧＬ未連携対応）
  *
  *****************************************************************************************/
 --
@@ -268,6 +269,9 @@ AS
   gv_full_name                          VARCHAR2(200) DEFAULT NULL;                       --電子帳簿自販機販売手数料データ追加ファイル
   gv_file_name                          VARCHAR2(100) DEFAULT NULL;                       --電子帳簿自販機販売手数料データ追加ファイル
   gn_electric_exec_days                 NUMBER;                                           --日数
+-- 2012/11/28 Ver.1.1 T.Osawa Add Start
+  gn_electric_exec_time                 NUMBER;                                           --時間
+-- 2012/11/28 Ver.1.1 T.Osawa Add End
   gd_prdate                             DATE;                                             --業務日付
   gv_coop_date                          VARCHAR2(14);                                     --連携日付
   --ファイル出力用
@@ -543,7 +547,13 @@ AS
     --電子帳簿処理実行日数情報
     BEGIN
       SELECT    TO_NUMBER(flv.attribute1)         AS      electric_exec_date_cnt          --電子帳簿処理実行日数
+-- 2012/11/28 Ver.1.2 T.Osawa Add Start
+              , TO_NUMBER(flv.attribute2)         AS      electric_exec_time              --時間
+-- 2012/11/28 Ver.1.2 T.Osawa Add End
       INTO      gn_electric_exec_days
+-- 2012/11/28 Ver.1.2 T.Osawa Add Start
+              , gn_electric_exec_time                                                     
+-- 2012/11/28 Ver.1.2 T.Osawa Add End
       FROM      fnd_lookup_values       flv                                               --クイックコード
       WHERE     flv.lookup_type         =         cv_lookup_book_date                     --電子帳簿処理実行日数
       AND       flv.lookup_code         =         cv_pkg_name                             --電子帳簿自販機販売手数料
@@ -765,6 +775,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2012/11/28 Ver.1.2 T.Osawa Add Start
+    lv_record_flag                      VARCHAR2(1);
+-- 2012/11/28 Ver.1.2 T.Osawa Add End
 --
     -- *** ローカル変数 ***
 --
@@ -781,34 +794,66 @@ AS
     -- ***       処理部の呼び出し          ***
     -- ***************************************
 --
+-- 2012/11/28 Ver.1.2 T.Osawa Add Start
     --==============================================================
-    --メッセージ出力をする必要がある場合は処理を記述
+    --手動実行時、未連携テーブルに存在するかチェックを行う
     --==============================================================
-    INSERT INTO xxcfo_bm_balance_wait_coop (
-        bm_balance_id                       --販手残高ID
-      , created_by                          --作成者
-      , creation_date                       --作成日
-      , last_updated_by                     --最終更新者
-      , last_update_date                    --最終更新日
-      , last_update_login                   --最終更新ログイン
-      , request_id                          --要求ID
-      , program_application_id              --プログラムアプリケーションID
-      , program_id                          --プログラムID
-      , program_update_date                 --プログラム更新日
-    ) VALUES ( 
-        gt_data_tab(1)                      --販手残高ID
-      , cn_created_by                       --作成者
-      , cd_creation_date                    --作成日
-      , cn_last_updated_by                  --最終更新者
-      , cd_last_update_date                 --最終更新日
-      , cn_last_update_login                --最終更新ログイン
-      , cn_request_id                       --要求ID
-      , cn_program_application_id           --プログラムアプリケーションID
-      , cn_program_id                       --プログラムID
-      , cd_program_update_date              --プログラム更新日
-    );
-    --未連携出力件数をカウントアップ
-    gn_out_coop_cnt   :=  gn_out_coop_cnt   +   1;
+    lv_record_flag  :=  cv_flag_n ;
+    --
+    IF ( gv_exec_kbn = cv_exec_manual ) THEN
+      --
+      BEGIN
+        SELECT    cv_flag_y
+        INTO      lv_record_flag
+        FROM      xxcfo_bm_balance_wait_coop                xbbwc
+        WHERE     xbbwc.bm_balance_id             =         gt_data_tab(1)  
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_record_flag  :=  cv_flag_n ;
+      END ;
+      --
+    END IF;
+    --
+    --==============================================================
+    --定期実行または、手動実行かつ未連携テーブルにレコードが存在しない場合、未連携テーブルにレコードを追加
+    --==============================================================
+    IF  ( ( gv_exec_kbn     = cv_exec_fixed_period )
+    OR  ( ( gv_exec_kbn     = cv_exec_manual       )
+    AND   ( lv_record_flag  = cv_flag_n            ) ) )
+    THEN
+-- 2012/11/28 Ver.1.2 T.Osawa Add End
+      --==============================================================
+      --メッセージ出力をする必要がある場合は処理を記述
+      --==============================================================
+      INSERT INTO xxcfo_bm_balance_wait_coop (
+          bm_balance_id                       --販手残高ID
+        , created_by                          --作成者
+        , creation_date                       --作成日
+        , last_updated_by                     --最終更新者
+        , last_update_date                    --最終更新日
+        , last_update_login                   --最終更新ログイン
+        , request_id                          --要求ID
+        , program_application_id              --プログラムアプリケーションID
+        , program_id                          --プログラムID
+        , program_update_date                 --プログラム更新日
+      ) VALUES ( 
+          gt_data_tab(1)                      --販手残高ID
+        , cn_created_by                       --作成者
+        , cd_creation_date                    --作成日
+        , cn_last_updated_by                  --最終更新者
+        , cd_last_update_date                 --最終更新日
+        , cn_last_update_login                --最終更新ログイン
+        , cn_request_id                       --要求ID
+        , cn_program_application_id           --プログラムアプリケーションID
+        , cn_program_id                       --プログラムID
+        , cd_program_update_date              --プログラム更新日
+      );
+      --未連携出力件数をカウントアップ
+      gn_out_coop_cnt   :=  gn_out_coop_cnt   +   1;
+-- 2012/11/28 Ver.1.2 T.Osawa Add Start
+    END IF;
+-- 2012/11/28 Ver.1.2 T.Osawa Add End
 --
   EXCEPTION
 --
@@ -1590,6 +1635,18 @@ AS
     -- 1 連携ステータス（GL）のチェック
     --==============================================================
     IF ( NVL(it_gl_interface_status, cn_zero) <> cv_gl_interface_status_y )  THEN
+-- 2012/11/28 Ver.1.2 T.Osawa Add Start
+      IF  ( gv_exec_kbn     = cv_exec_manual ) 
+      AND ( gv_ins_upd_kbn  = cv_ins_upd_0 ) 
+      THEN
+        ins_bm_balance_wait_coop (
+            ov_errbuf                   =>        lv_errbuf           --エラー・メッセージ                  --# 固定 #
+          , ov_retcode                  =>        lv_retcode          --リターン・コード                    --# 固定 #
+          , ov_errmsg                   =>        lv_errmsg           --ユーザー・エラー・メッセージ        --# 固定 #
+          ) ;
+        --
+      END IF;
+-- 2012/11/28 Ver.1.2 T.Osawa Add End
       lv_errbuf :=  xxccp_common_pkg.get_msg(
                       iv_application  => cv_xxcfo_appl_name
                     , iv_name         => cv_msg_cfo_10007
@@ -2404,6 +2461,9 @@ AS
 --
     -- *** ローカル変数 ***
     lt_bm_balance_id_max                xxcok_backmargin_balance.bm_balance_id%TYPE;
+-- 2012/11/28 Ver.1.2 T.Osawa Add Start
+    ln_ctl_max_bm_balance_id            xxcfo_bm_balance_control.bm_balance_id%TYPE;
+-- 2012/11/28 Ver.1.2 T.Osawa Add End
 --
   BEGIN
 --
@@ -2439,15 +2499,34 @@ AS
           NULL;
       END;
       --
+-- 2012/11/28 Ver.1.2 T.Osawa Add Start
       BEGIN
-        SELECT    MAX(xbb.bm_balance_id)          AS    bm_balance_id_max
+        SELECT    MAX(xbbc.bm_balance_id)               ctl_max_bm_balance_id
+        INTO      ln_ctl_max_bm_balance_id
+        FROM      xxcfo_bm_balance_control        xbbc
+        ;
+      END;
+      --
+-- 2012/11/28 Ver.1.2 T.Osawa Add End
+      BEGIN
+-- 2012/11/28 Ver.1.2 T.Osawa Modify Start
+--      SELECT    MAX(xbb.bm_balance_id)          AS    bm_balance_id_max
+--      INTO      lt_bm_balance_id_max
+--      FROM      xxcok_backmargin_balance        xbb
+--      WHERE     xbb.creation_date               <=      gd_prdate
+        SELECT    NVL(MAX(xbb.bm_balance_id), ln_ctl_max_bm_balance_id)
+                                                  AS    bm_balance_id_max
         INTO      lt_bm_balance_id_max
         FROM      xxcok_backmargin_balance        xbb
-        WHERE     xbb.creation_date               <=      gd_prdate
+        WHERE     xbb.bm_balance_id               >     ln_ctl_max_bm_balance_id
+        AND       xbb.creation_date               <     ( gd_prdate + 1 + ( gn_electric_exec_time / 24 ) )
+-- 2012/11/28 Ver.1.2 T.Osawa Modify End
         ;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          NULL;
+-- 2012/11/28 Ver.1.2 T.Osawa Delete End
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        NULL;
+-- 2012/11/28 Ver.1.2 T.Osawa Delete End
       END;
       --
       BEGIN
