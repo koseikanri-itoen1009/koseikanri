@@ -97,6 +97,7 @@ FROM   (SELECT 1                         record_type         -- çXêV
         AND    itp.lot_id             = ilm.lot_id
         AND    itp.item_id            = ilm.item_id
         AND    xicv.item_id           = ximv.item_id
+        AND    itp.location           = xmd.location_code
         AND    gmd.material_detail_id    = TO_NUMBER(:1)
         /* íäèoèåè */
         AND    gmd.attribute5         = 'Y'
