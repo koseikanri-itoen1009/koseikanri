@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2008/12/24    1.11  SCS    菅原 大輔   本番#845
  *  2009/01/15    1.12  SCS    伊藤 ひとみ 本番#981
  *  2009/04/08    1.13  SCS    伊藤 ひとみ 本番#1356
+ *  2009/04/14    1.14  SCS    伊藤 ひとみ 本番#1406
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1807,7 +1808,10 @@ AS
 -- 2008/09/01 Mod ↑
 -- 2009/04/08 H.Itou ADD START 本番障害#1356 最新の顧客データでないと、標準APIでエラーになるので、最新マスタデータを取得
     <<change_new_cust_loop>>
-    FOR i IN or_order_info_tbl.FIRST..or_order_info_tbl.LAST LOOP
+-- 2009/04/14 MOD START 本番障害#1406 データが0件のときに落ちるので修正
+--    FOR i IN or_order_info_tbl.FIRST..or_order_info_tbl.LAST LOOP
+    FOR i IN 1..or_order_info_tbl.COUNT LOOP
+-- 2009/04/14 MOD END
       -- ======================================
       -- 顧客情報洗い替え処理
       -- ======================================
@@ -2328,7 +2332,10 @@ AS
     CLOSE cur_order_data ;
 -- 2009/04/08 H.Itou ADD START 本番障害#1356 最新の顧客データでないと、標準APIでエラーになるので、最新マスタデータを取得
     <<change_new_cust_loop>>
-    FOR i IN or_order_info_tbl.FIRST..or_order_info_tbl.LAST LOOP
+-- 2009/04/14 MOD START 本番障害#1406 データが0件のときに落ちるので修正
+--    FOR i IN or_order_info_tbl.FIRST..or_order_info_tbl.LAST LOOP
+    FOR i IN 1..or_order_info_tbl.COUNT LOOP
+-- 2009/04/14 MOD END
       -- ======================================
       -- 顧客情報洗い替え処理
       -- ======================================
