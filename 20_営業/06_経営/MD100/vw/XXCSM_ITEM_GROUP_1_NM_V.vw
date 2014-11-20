@@ -13,11 +13,8 @@ AS
   AND     flv.enabled_flag = 'Y'  -- óLå¯
   AND     NVL(flv.start_date_active,xpcdv.process_date)  <= xpcdv.process_date
   AND     NVL(flv.end_date_active,xpcdv.process_date)    >= xpcdv.process_date
-  AND     NOT EXISTS (SELECT 'X'
-                      FROM   xxcsm_item_category_v xicv2
-                      WHERE  xicv2.segment1 = flv.lookup_code)
   AND     INSTR(flv.lookup_code,'*',1,1) = 2   --ê≠çÙåQ1åÖÇÃÇ›ëŒè€
-  UNION ALL
+  UNION
   SELECT  xicv.segment1    item_group_cd
          ,xicv.description item_group_nm
   FROM    xxcsm_item_category_v xicv

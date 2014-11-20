@@ -21,8 +21,7 @@ CREATE OR REPLACE VIEW XXCSM_ITEM_CATEGORY_V
  ,attribute15
 )
 AS
-  SELECT  /*+ NO_INDEX(mcb MTL__CATEGORIES_B_N2) */
-          mcb.category_id      category_id     --カテゴリID
+  SELECT  mcb.category_id      category_id     --カテゴリID
          ,mcsb.category_set_id category_set_id --カテゴリセットID
          ,mcb.segment1         segment1        --商品群コード
          ,mct.description      description     --名称
