@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価取込
  * MD.050           : 標準原価マスタ T_MD050_BPO_820
  * MD.070           : 標準原価取込   T_MD070_BPO_82A
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/11    1.0   ORACLE 青木祐介  main新規作成
+ *  2008/06/23    1.1   ORACLE 椎名昭圭  適用終了日更新不具合修正
  *
  *****************************************************************************************/
 --
@@ -505,20 +506,22 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    cd_max_date         CONSTANT DATE := FND_DATE.CANONICAL_TO_DATE( gv_max_date );   -- MAX日付
+    cv_price_standard   CONSTANT VARCHAR2(1) := '2';    -- マスタ区分（標準）
 --
     -- *** ローカル変数 ***
-    ln_price_header_id      NUMBER;
-    ld_max_date DATE := FND_DATE.CANONICAL_TO_DATE( gv_max_date );
-    ld_end_date DATE;
+    ld_past_s_date_active DATE;   -- 前歴の適用開始日
 --
     -- *** ローカル・カーソル ***
-    CURSOR get_insert_data_cur IS
-    SELECT xph.item_code         AS item_code
-          ,xph.start_date_active AS s_date_active
-    FROM xxpo_price_headers xph -- 仕入／標準単価ヘッダ
-    WHERE xph.end_date_active = ld_max_date
-    ORDER BY xph.item_code
-            ,xph.start_date_active;
+    CURSOR  get_insert_data_cur IS
+    SELECT  xph.item_code                                                AS item_code
+           ,xph.start_date_active                                        AS s_date_active
+           ,MAX(xph.start_date_active) over (PARTITION BY xph.item_code) AS MAX_START_DATE_ACTIVE
+    FROM    xxpo_price_headers      xph,    -- 仕入／標準単価ヘッダ
+            xxcmn_standard_cost_if  xsci    -- 標準原価インタフェース
+    WHERE   xph.item_code           =  xsci.item_code
+    AND     xph.price_type          = cv_price_standard
+    ORDER BY xph.item_code, xph.start_date_active DESC;
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -529,35 +532,51 @@ AS
 --
     <<get_parnet_price_loop>>
     FOR get_history_data IN  get_insert_data_cur  LOOP
-      BEGIN
-        SELECT price_header_id
-        INTO ln_price_header_id
-        FROM xxpo_price_headers xph -- 仕入／標準単価ヘッダ
-        WHERE xph.item_code = get_history_data.item_code
-          AND xph.end_date_active = ld_max_date
-          AND xph.start_date_active < get_history_data.s_date_active
-          AND ROWNUM = 1;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-        ln_price_header_id := NULL;
-      END;
---
-      -- 前歴適用終了日の更新（前歴が取得できなかった場合不要）
-      IF(ln_price_header_id IS NOT NULL) THEN
-        ld_end_date := get_history_data.s_date_active -1;
---
-        UPDATE xxpo_price_headers xph -- 仕入／標準単価ヘッダ
-        SET xph.end_date_active         = ld_end_date
-            ,xph.last_updated_by        = in_insert_user_id
-            ,xph.last_update_date       = id_insert_date
-            ,xph.last_update_login      = in_insert_login_id
-            ,xph.request_id             = in_insert_request_id
-            ,xph.program_application_id = in_insert_program_appl_id
-            ,xph.program_id             = in_insert_program_id
-            ,xph.program_update_date    = id_insert_date
-        WHERE xph.price_header_id = ln_price_header_id;
+      -- 適用開始日 = MAX_START_DATE_ACTIVEの場合はそのレコードの適用終了日を9999/12/31に更新する
+      IF (get_history_data.s_date_active = get_history_data.MAX_START_DATE_ACTIVE) THEN
+        UPDATE  xxpo_price_headers xph      -- 仕入／標準単価ヘッダ
+        SET     xph.end_date_active         = cd_max_date
+               ,xph.last_updated_by         = in_insert_user_id
+               ,xph.last_update_date        = id_insert_date
+               ,xph.last_update_login       = in_insert_login_id
+               ,xph.request_id              = in_insert_request_id
+               ,xph.program_application_id  = in_insert_program_appl_id
+               ,xph.program_id              = in_insert_program_id
+               ,xph.program_update_date     = id_insert_date
+        WHERE   xph.item_code               = get_history_data.item_code
+        AND     xph.start_date_active       = get_history_data.s_date_active
+        AND     xph.price_type              = cv_price_standard;
 --
       END IF;
+--
+      -- ローカル変数の初期化
+      ld_past_s_date_active := NULL;  -- 前歴の適用開始日
+--
+      -- 前歴を取得する
+      SELECT  MAX(xph.start_date_active)  AS s_date_active
+      INTO    ld_past_s_date_active
+      FROM    xxpo_price_headers xph      -- 仕入／標準単価ヘッダ
+      WHERE   xph.item_code               = get_history_data.item_code
+      AND     xph.start_date_active       < get_history_data.s_date_active
+      AND     xph.price_type              = cv_price_standard;
+--
+      -- 前歴の適用開始日がNULLでない場合は前歴の適用終了日を更新する
+      IF (ld_past_s_date_active IS NOT NULL) THEN
+        UPDATE  xxpo_price_headers xph      -- 仕入／標準単価ヘッダ
+        SET     xph.end_date_active         = get_history_data.s_date_active - 1
+               ,xph.last_updated_by         = in_insert_user_id
+               ,xph.last_update_date        = id_insert_date
+               ,xph.last_update_login       = in_insert_login_id
+               ,xph.request_id              = in_insert_request_id
+               ,xph.program_application_id  = in_insert_program_appl_id
+               ,xph.program_id              = in_insert_program_id
+               ,xph.program_update_date     = id_insert_date
+        WHERE   xph.item_code               = get_history_data.item_code
+        AND     xph.start_date_active       = ld_past_s_date_active
+        AND     xph.price_type              = cv_price_standard;
+--
+      END IF;
+--
     END LOOP get_parnet_price_loop;
 --
     --==============================================================
