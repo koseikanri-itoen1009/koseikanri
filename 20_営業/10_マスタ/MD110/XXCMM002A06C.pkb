@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A06C(body)
  * Description      : 社員マスタIF出力(HHT)
  * MD.050           : 社員マスタIF出力(HHT) MD050_CMM_002_A06
- * Version          : 1.2
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/06/08    1.2   H.Yoshikawa      障害T1_1135の対応
  *  2009/06/17    1.3   H.Yoshikawa      障害T1_1481の対応(営業員番号の設定誤り修正)
  *  2009/08/04    1.4   Yutaka.Kuboshima 障害0000890の対応
+ *  2010/05/17    1.5   Yutaka.Kuboshima 障害E_本稼動_02749の対応(管理元拠点の取得位置の変更)
  *
  *****************************************************************************************/
 --
@@ -832,6 +833,20 @@ AS
           g_rs_data_tab(ln_stack_cnt).resource_department := SUBSTRB( l_get_rs_data_rec.base_code, 1, 4 );
           g_rs_data_tab(ln_stack_cnt).inactive_date       := TO_CHAR( l_get_rs_data_rec.end_date_active, 'YYYYMMDD' );
           g_rs_data_tab(ln_stack_cnt).last_update_date    := TO_CHAR( l_get_rs_data_rec.last_update_date, 'YYYY/MM/DD HH24:MI:SS' );
+-- 2010/05/17 Ver1.5 add start by Yutaka.Kuboshima
+-- 管理元拠点の取得位置を変更
+            -- 管理元拠点を取得します
+            OPEN management_base_cur(g_rs_data_tab(ln_stack_cnt).resource_department);
+            FETCH management_base_cur INTO l_management_base_rec;
+            CLOSE management_base_cur;
+            -- 百貨店HHT区分が'1'の場合
+            IF (l_management_base_rec.dept_hht_div = cv_dept_div_mult) THEN
+              -- リソースグループに管理元拠点をセットします
+              g_rs_data_tab(ln_stack_cnt).resource_department := SUBSTRB( l_management_base_rec.management_base_code, 1, 4 );
+            END IF;
+            -- 変数初期化
+            l_management_base_rec := NULL;
+-- 2010/05/17 Ver1.5 add end by Yutaka.Kuboshima
         ELSE
           -- 有効データ抽出時：有効データ抽出と拠点抽出で同じリソースグループ役割の場合連携対象とする
           -- 無効データ抽出時：拠点抽出で抽出したリソースグループを連携対象とする
@@ -847,24 +862,41 @@ AS
             g_rs_data_tab(ln_stack_cnt).resource_department := SUBSTRB( l_act_rs_data_rec.base_code, 1, 4 );
             g_rs_data_tab(ln_stack_cnt).inactive_date       := NULL;
             g_rs_data_tab(ln_stack_cnt).last_update_date    := TO_CHAR( l_act_rs_data_rec.last_update_date, 'YYYY/MM/DD HH24:MI:SS' );
+-- 2010/05/17 Ver1.5 add start by Yutaka.Kuboshima
+-- 管理元拠点の取得位置を変更
+            -- 管理元拠点を取得します
+            OPEN management_base_cur(g_rs_data_tab(ln_stack_cnt).resource_department);
+            FETCH management_base_cur INTO l_management_base_rec;
+            CLOSE management_base_cur;
+            -- 百貨店HHT区分が'1'の場合
+            IF (l_management_base_rec.dept_hht_div = cv_dept_div_mult) THEN
+              -- リソースグループに管理元拠点をセットします
+              g_rs_data_tab(ln_stack_cnt).resource_department := SUBSTRB( l_management_base_rec.management_base_code, 1, 4 );
+            END IF;
+            -- 変数初期化
+            l_management_base_rec := NULL;
+-- 2010/05/17 Ver1.5 add end by Yutaka.Kuboshima
           END IF;
         END IF;
         --
         CLOSE get_act_rs_data_cur;
         --
+-- 2010/05/17 Ver1.5 delete start by Yutaka.Kuboshima
+-- 管理元拠点の取得位置を変更
 -- 2009/08/04 Ver1.4 add start by Yutaka.Kuboshima
-        -- 管理元拠点を取得します
-        OPEN management_base_cur(g_rs_data_tab(ln_stack_cnt).resource_department);
-        FETCH management_base_cur INTO l_management_base_rec;
-        CLOSE management_base_cur;
-        -- 百貨店HHT区分が'1'の場合
-        IF (l_management_base_rec.dept_hht_div = cv_dept_div_mult) THEN
-          -- リソースグループに管理元拠点をセットします
-          g_rs_data_tab(ln_stack_cnt).resource_department := SUBSTRB( l_management_base_rec.management_base_code, 1, 4 );
-        END IF;
-        -- 変数初期化
-        l_management_base_rec := NULL;
+--        -- 管理元拠点を取得します
+--        OPEN management_base_cur(g_rs_data_tab(ln_stack_cnt).resource_department);
+--        FETCH management_base_cur INTO l_management_base_rec;
+--        CLOSE management_base_cur;
+--        -- 百貨店HHT区分が'1'の場合
+--        IF (l_management_base_rec.dept_hht_div = cv_dept_div_mult) THEN
+--          -- リソースグループに管理元拠点をセットします
+--          g_rs_data_tab(ln_stack_cnt).resource_department := SUBSTRB( l_management_base_rec.management_base_code, 1, 4 );
+--        END IF;
+--        -- 変数初期化
+--        l_management_base_rec := NULL;
 -- 2009/08/04 Ver1.4 add end by Yutaka.Kuboshima
+-- 2010/05/17 Ver1.5 delete end by Yutaka.Kuboshima
       END IF;
     END LOOP get_rs_data;
     --
