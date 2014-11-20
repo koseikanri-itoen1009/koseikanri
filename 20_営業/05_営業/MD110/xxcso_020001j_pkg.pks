@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(SPEC)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  chk_single_byte_kana      F    V     半角カナチェック（共通関数ラッピング）
  *  chk_account_many          P    -     アカウント複数チェック
  *  chk_cust_site_uses        P    -     顧客使用目的チェック
+ *  chk_validate_db           P    -     ＤＢ更新判定チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -49,6 +50,7 @@ AS
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009/11/29    1.3   D.Abe            [E_本稼動_00106]アカウント複数判定
  *  2010/01/12    1.4   D.Abe            [E_本稼動_00823]顧客マスタの整合性チェック対応
+ *  2010/01/15    1.5   D.Abe            [E_本稼動_00950]ＤＢ更新判定チェック対応
  *****************************************************************************************/
 --
   -- トランザクション初期化処理
@@ -331,5 +333,16 @@ AS
   );
 --
 -- 20100112_D.Abe E_本稼動_00823 Mod END
+-- 20100115_D.Abe E_本稼動_00950 Mod START
+  -- ＤＢ更新判定チェック
+  PROCEDURE chk_validate_db(
+    in_sp_decision_header_id      IN  NUMBER
+   ,id_last_update_date           IN  DATE
+   ,ov_errbuf                     OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+   ,ov_errmsg                     OUT VARCHAR2
+  );
+--
+-- 20100115_D.Abe E_本稼動_00950 Mod END
 END xxcso_020001j_pkg;
 /

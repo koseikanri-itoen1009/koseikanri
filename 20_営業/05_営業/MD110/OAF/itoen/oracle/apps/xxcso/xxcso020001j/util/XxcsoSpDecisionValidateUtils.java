@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -20,6 +20,7 @@
 * 2009-12-17 1.10 SCS阿部大輔  [E_本稼動_00514]郵便番号対応
 * 2010-01-08 1.11 SCS阿部大輔  [E_本稼動_01030]承認権限チェック対応
 * 2010-01-12 1.12 SCS阿部大輔  [E_本稼動_00823]顧客マスタの整合性チェック対応
+* 2010-01-15 1.13 SCS阿部大輔  [E_本稼動_00950]画面値、ＤＢ値チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -3415,7 +3416,126 @@ public class XxcsoSpDecisionValidateUtils
     return errorList;
   }
 
-  
+
+
+// 2010-01-15 [E_本稼動_00950] Add Start
+  /*****************************************************************************
+   * ＤＢ値の検証
+   * @param txn         OADBTransactionインスタンス
+   * @param headerVo    SP専決ヘッダ登録／更新用ビューインスタンス
+   * @return List       エラーリスト
+   *****************************************************************************
+   */
+  public static List validateDb(
+    OADBTransaction                     txn
+   ,XxcsoSpDecisionHeaderFullVOImpl     headerVo
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+    
+    List errorList = new ArrayList();
+   
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    XxcsoValidateUtils utils = XxcsoValidateUtils.getInstance(txn);
+
+    // 新規登録の場合は処理終了。
+    Number spDecisionHeaderId = headerRow.getSpDecisionHeaderId();
+    if (spDecisionHeaderId.intValue() < 0)
+    {
+      return errorList;
+    }
+
+    // ＤＢ値チェック処理
+    OracleCallableStatement stmt = null;
+    String errBuf  = "";
+    String retCode = "";
+    String errMsg  = "";
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+ 
+      sql.append("BEGIN");
+      sql.append("  xxcso_020001j_pkg.chk_validate_db(");
+      sql.append("    in_sp_decision_header_id      => :1");
+      sql.append("   ,id_last_update_date           => :2");
+      sql.append("   ,ov_errbuf                     => :3");
+      sql.append("   ,ov_retcode                    => :4");
+      sql.append("   ,ov_errmsg                     => :5");
+      sql.append("  );");
+      sql.append("END;");
+
+      XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.setNUMBER(1, headerRow.getSpDecisionHeaderId());
+      stmt.setDATE(2, headerRow.getLastUpdateDate());
+      stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(5, OracleTypes.VARCHAR);
+
+      stmt.execute();
+
+      errBuf  = stmt.getString(3);
+      retCode = stmt.getString(4);
+      errMsg  = stmt.getString(5);
+      
+      XxcsoUtils.debug(txn, "errBuf  = " + errBuf);
+      XxcsoUtils.debug(txn, "retCode = " + retCode);
+      XxcsoUtils.debug(txn, "errMsg  = " + errMsg);
+
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoSpDecisionConstants.TOKEN_VALUE_SITE_USE_CODE_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+
+    if ( ! "0".equals(retCode) )
+    {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00003
+             ,XxcsoConstants.TOKEN_RECORD
+             ,XxcsoConstants.TOKEN_VALUE_SP_DECISION_NUM +
+              headerRow.getSpDecisionNumber()
+            );
+        errorList.add(error);
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return errorList;
+  }
+// 2010-01-15 [E_本稼動_00950] Add End
+
+
 
   /*****************************************************************************
    * 売価別条件の検証

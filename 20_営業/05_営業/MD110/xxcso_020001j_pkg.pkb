@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  chk_single_byte_kana      F    V     半角カナチェック（共通関数ラッピング）
  *  chk_account_many          P    -     アカウント複数チェック
  *  chk_cust_site_uses        P    -     顧客使用目的チェック
+ *  chk_validate_db           P    -     ＤＢ更新判定チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -55,6 +56,7 @@ AS
  *  2009/10/26    1.10  K.Satomura       [E_T4_00075]損益分岐点の計算方法修正
  *  2009/11/29    1.11  D.Abe            [E_本稼動_00106]アカウント複数判定
  *  2010/01/12    1.12  D.Abe            [E_本稼動_00823]顧客マスタの整合性チェック対応
+ *  2010/01/15    1.13  D.Abe            [E_本稼動_00950]ＤＢ更新判定チェック対応
 *****************************************************************************************/
 --
   -- ===============================
@@ -2691,5 +2693,63 @@ AS
   END chk_cust_site_uses;
 --
 -- 20100112_D.Abe E_本稼動_00823 Mod END
+-- 20100115_D.Abe E_本稼動_00950 Mod START
+  /**********************************************************************************
+   * Function Name    : chk_validate_db
+   * Description      : ＤＢ更新判定チェック
+   ***********************************************************************************/
+  PROCEDURE chk_validate_db(
+    in_sp_decision_header_id      IN  NUMBER
+   ,id_last_update_date           IN  DATE
+   ,ov_errbuf                     OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+   ,ov_errmsg                     OUT VARCHAR2
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_validate_db';
+
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ld_last_update_date          DATE;
+    lb_return_value              BOOLEAN;
+--
+  BEGIN
+--
+    -- 初期化
+    ov_retcode := xxcso_common_pkg.gv_status_normal;
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+--
+    lb_return_value := FALSE;
+
+    SELECT  xsdh.last_update_date
+    INTO    ld_last_update_date
+    FROM    xxcso_sp_decision_headers  xsdh
+    WHERE   xsdh.sp_decision_header_id = in_sp_decision_header_id;
+
+    IF ( id_last_update_date < ld_last_update_date ) THEN
+      lb_return_value := TRUE;
+    END IF;
+
+    IF (lb_return_value) THEN
+      ov_retcode := xxcso_common_pkg.gv_status_warn;
+    END IF;
+    --
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_validate_db;
+--
+-- 20100115_D.Abe E_本稼動_00950 Mod END
 END xxcso_020001j_pkg;
 /

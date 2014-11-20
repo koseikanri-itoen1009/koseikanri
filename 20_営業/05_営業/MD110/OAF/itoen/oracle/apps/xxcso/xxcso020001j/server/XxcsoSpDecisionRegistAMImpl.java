@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2009-10-14 1.7  SCS阿部大輔   [共通課題IE554,IE573]住所対応
 * 2009-11-29 1.8  SCS阿部大輔   [E_本稼動_00106]アカウント複数対応
 * 2010-01-08 1.9  SCS阿部大輔   [E_本稼動_01031]取引条件チェック対応
+* 2010-01-15 1.10 SCS阿部大輔   [E_本稼動_00950]画面値、ＤＢ値チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -3897,7 +3898,22 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     {
       OAException.raiseBundledOAException(errorList);
     }
+// 2010-01-15 [E_本稼動_00950] Add Start
+    /////////////////////////////////////
+    // 検証処理：ＤＢ値検証
+    /////////////////////////////////////
+    errorList.addAll(
+      XxcsoSpDecisionValidateUtils.validateDb(
+        txn
+       ,headerVo
+      )
+    );
 
+    if ( errorList.size() > 0 )
+    {
+      OAException.raiseBundledOAException(errorList);
+    }
+// 2010-01-15 [E_本稼動_00950] Add End
     XxcsoUtils.debug(txn, "[END]");
   }
 
