@@ -1,0 +1,1 @@
+CREATE INDEX xxwip.xxwip_mtdtl_n02 ON xxwip.xxwip_material_detail(batch_id) TABLESPACE xxidx;
