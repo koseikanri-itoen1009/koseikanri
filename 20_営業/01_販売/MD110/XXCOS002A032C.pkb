@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *                                       [T1_1146]群コード取得条件不正対応
  *  2009/05/26    1.5   K.Kiriu          [T1_1213]顧客軒数カウント条件マスタ結合条件修正
  *  2009/08/31    1.6   K.Kiriu          [0000929]訪問軒数/有効訪問件数のカウント方法変更
+ *  2009/09/04    1.7   K.Kiriu          [0000900]PT対応
  *
  *****************************************************************************************/
 --
@@ -1069,6 +1070,11 @@ AS
                           )                                     AS  discount_amount
               FROM    (
                       SELECT
+/* 2009/09/04 Ver1.7 Add Start */
+                              /*+
+                                USE_NL(saeh)
+                              */
+/* 2009/09/04 Ver1.7 Add End   */
                               saeh.sales_base_code                      AS  sale_base_code,
                               saeh.results_employee_code                AS  results_employee_code,
                               saeh.delivery_date                        AS  dlv_date,
@@ -1425,6 +1431,14 @@ AS
                           )                                     AS  discount_amount
               FROM    (
                       SELECT
+/* 2009/09/04 Ver1.7 Add Start */
+                              /*+
+                                USE_NL(saeh)
+                                USE_NL(sael)
+                                USE_NL(xlvm)
+                                USE_NL(xlvs)
+                              */
+/* 2009/09/04 Ver1.7 Add End  */
                               saeh.delivery_date                        AS  dlv_date,
                               saeh.sales_base_code                      AS  sale_base_code,
                               saeh.results_employee_code                AS  results_employee_code,
@@ -1748,6 +1762,14 @@ AS
               cd_program_update_date                    AS  program_update_date
       FROM    (
               SELECT
+/* 2009/09/04 Ver1.7 Add Start */
+                      /*+
+                        USE_NL(xsti)
+                        USE_NL(xlvm)
+                        USE_NL(xlvd)
+                        USE_NL(xlvs)
+                      */
+/* 2009/09/04 Ver1.7 Add End   */
                       xsti.selling_date                         AS  dlv_date,
                       xsti.base_code                            AS  sale_base_code,
                       xsti.selling_emp_code                     AS  results_employee_code,
@@ -2329,6 +2351,13 @@ AS
               cd_program_update_date                    AS  program_update_date
       FROM    (
               SELECT
+/* 2009/09/04 Ver1.7 Add Start */
+                      /*+
+                        USE_NL(xsti)
+                        USE_NL(xlvs)
+                        USE_NL(iimb)
+                      */
+/* 2009/09/04 Ver1.7 Add End   */
                       xsti.selling_date                         AS  dlv_date,
                       xsti.base_code                            AS  sale_base_code,
                       xsti.selling_emp_code                     AS  results_employee_code,
@@ -2533,8 +2562,15 @@ AS
     --==================================
     BEGIN
       DELETE
-      FROM    xxcos_rep_bus_count_sum
-      WHERE   target_date = it_account_info.base_years
+/* 2009/09/04 Ver1.7 Mod Start */
+--      FROM    xxcos_rep_bus_count_sum
+--      WHERE   target_date = it_account_info.base_years
+      /*+
+        INDEX(xrbcs xxcos_rep_bus_count_sum_n02)
+      */
+      FROM    xxcos_rep_bus_count_sum xrbcs
+      WHERE   xrbcs.target_date = it_account_info.base_years
+/* 2009/09/04 Ver1.7 Mod End   */
       ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -2670,6 +2706,29 @@ AS
               program_update_date
               )
       SELECT
+/* 2009/09/04 Ver1.7 Add Start */
+              /*+
+                 LEADING(work.xrsi.jrrx_n)
+                 INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+                 INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+                 INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+                 USE_NL(work.xrsi.papf_n)
+                 USE_NL(work.xrsi.pept_n)
+                 USE_NL(work.xrsi.paaf_n)
+                 USE_NL(work.xrsi.jrgm_n)
+                 USE_NL(work.xrsi.jrgb_n)
+                 LEADING(work.xrsi.jrrx_o)
+                 INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+                 INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+                 INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+                 USE_NL(work.xrsi.papf_o)
+                 USE_NL(work.xrsi.pept_o)
+                 USE_NL(work.xrsi.paaf_o)
+                 USE_NL(work.xrsi.jrgm_o)
+                 USE_NL(work.xrsi.jrgb_o)
+                 USE_NL(work.xrsi)
+              */
+/* 2009/09/04 Ver1.7 Add End   */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_cuntomer
                                                         AS  record_id,
               it_account_info.base_years                AS  target_date,
@@ -2869,6 +2928,29 @@ AS
               program_update_date
               )
       SELECT
+/* 2009/09/04 Ver1.7 Add Start */
+              /*+
+                LEADING(work.xrsi.jrrx_n)
+                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+                USE_NL(work.xrsi.papf_n)
+                USE_NL(work.xrsi.pept_n)
+                USE_NL(work.xrsi.paaf_n)
+                USE_NL(work.xrsi.jrgm_n)
+                USE_NL(work.xrsi.jrgb_n)
+                LEADING(work.xrsi.jrrx_o)
+                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+                USE_NL(work.xrsi.papf_o)
+                USE_NL(work.xrsi.pept_o)
+                USE_NL(work.xrsi.paaf_o)
+                USE_NL(work.xrsi.jrgm_o)
+                USE_NL(work.xrsi.jrgb_o)
+                USE_NL(work.xrsi)
+              */
+/* 2009/09/04 Ver1.7 Add   End */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_no_visit
                                                         AS  record_id,
               it_account_info.base_years                AS  target_date,
@@ -3079,6 +3161,29 @@ AS
               program_update_date
               )
       SELECT
+/* 2009/09/04 Ver1.7 Add Start */
+              /*+
+                LEADING(work.xrsi.jrrx_n)
+                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+                USE_NL(work.xrsi.papf_n)
+                USE_NL(work.xrsi.pept_n)
+                USE_NL(work.xrsi.paaf_n)
+                USE_NL(work.xrsi.jrgm_n)
+                USE_NL(work.xrsi.jrgb_n)
+                LEADING(work.xrsi.jrrx_o)
+                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+                USE_NL(work.xrsi.papf_o)
+                USE_NL(work.xrsi.pept_o)
+                USE_NL(work.xrsi.paaf_o)
+                USE_NL(work.xrsi.jrgm_o)
+                USE_NL(work.xrsi.jrgb_o)
+                USE_NL(work.xrsi)
+              */
+/* 2009/09/04 Ver1.7 Add   End */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_no_trade
                                                         AS  record_id,
               it_account_info.base_years                AS  target_date,
@@ -3388,6 +3493,33 @@ AS
                 )
 --
       SELECT
+/* 2009/09/04 Ver1.7 Add Start */
+              /*+
+                LEADING(work.xrsi)
+                LEADING(work.xrsi.jrrx_n)
+                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+                USE_NL(work.xrsi.papf_n)
+                USE_NL(work.xrsi.pept_n)
+                USE_NL(work.xrsi.paaf_n)
+                USE_NL(work.xrsi.jrgm_n)
+                USE_NL(work.xrsi.jrgb_n)
+                LEADING(work.xrsi.jrrx_o)
+                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+                USE_NL(work.xrsi.papf_o)
+                USE_NL(work.xrsi.pept_o)
+                USE_NL(work.xrsi.paaf_o)
+                USE_NL(work.xrsi.jrgm_o)
+                USE_NL(work.xrsi.jrgb_o)
+                USE_NL(work.xrsi)
+                USE_NL(work.task)
+                INDEX(work.task.jtb xxcso_jtf_tasks_b_n18)
+                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n18)
+              */
+/* 2009/09/04 Ver1.7 Add   End */
               it_account_info.base_years                AS  target_date,
               gd_process_date                           AS  regist_bus_date,
               work.base_code                            AS  base_code,
@@ -3599,6 +3731,33 @@ AS
               program_update_date
               )
       SELECT
+/* 2009/09/04 Ver1.7 Add Start */
+              /*+
+                LEADING(work.xrsi)
+                LEADING(work.xrsi.jrrx_n)
+                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+                USE_NL(work.xrsi.papf_n)
+                USE_NL(work.xrsi.pept_n)
+                USE_NL(work.xrsi.paaf_n)
+                USE_NL(work.xrsi.jrgm_n)
+                USE_NL(work.xrsi.jrgb_n)
+                LEADING(work.xrsi.jrrx_o)
+                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+                USE_NL(work.xrsi.papf_o)
+                USE_NL(work.xrsi.pept_o)
+                USE_NL(work.xrsi.paaf_o)
+                USE_NL(work.xrsi.jrgm_o)
+                USE_NL(work.xrsi.jrgb_o)
+                USE_NL(work.xrsi)
+                USE_NL(work.task)
+                INDEX(work.task.jtb xxcso_jtf_tasks_b_n18)
+                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n18)
+              */
+/* 2009/09/04 Ver1.7 Add   End */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_valid
                                                         AS  record_id,
               it_account_info.base_years                AS  target_date,
@@ -3856,6 +4015,29 @@ AS
                 program_update_date
                 )
       SELECT
+/* 2009/09/04 Ver1.7 Add Start */
+              /*+
+                LEADING(work.xrsi.jrrx_n)
+                INDEX(work.xrsi.jrgm_n jtf_rs_group_members_n2)
+                INDEX(work.xrsi.jrgb_n jtf_rs_groups_b_u1)
+                INDEX(work.xrsi.jrrx_n xxcso_jrre_n02)
+                USE_NL(work.xrsi.papf_n)
+                USE_NL(work.xrsi.pept_n)
+                USE_NL(work.xrsi.paaf_n)
+                USE_NL(work.xrsi.jrgm_n)
+                USE_NL(work.xrsi.jrgb_n)
+                LEADING(work.xrsi.jrrx_o)
+                INDEX(work.xrsi.jrrx_o xxcso_jrre_n02)
+                INDEX(work.xrsi.jrgm_o jtf_rs_group_members_n2)
+                INDEX(work.xrsi.jrgb_o jtf_rs_groups_b_u1)
+                USE_NL(work.xrsi.papf_o)
+                USE_NL(work.xrsi.pept_o)
+                USE_NL(work.xrsi.paaf_o)
+                USE_NL(work.xrsi.jrgm_o)
+                USE_NL(work.xrsi.jrgb_o)
+                USE_NL(work.xrsi)
+              */
+/* 2009/09/04 Ver1.7 Add End   */
               it_account_info.base_years                AS  target_date,
               gd_process_date                           AS  regist_bus_date,
               work.base_code                            AS  base_code,
@@ -4317,8 +4499,15 @@ AS
     --  削除処理  （営業成績表 新規貢献売上集計テーブル）
     BEGIN
       DELETE
-      FROM    xxcos_rep_bus_newcust_sum
-      WHERE   dlv_date  <= lt_invalidity_date
+/* 2009/09/04 Ver1.7 Mod Start */
+--      FROM    xxcos_rep_bus_newcust_sum
+--      WHERE   dlv_date  <= lt_invalidity_date
+      /*+
+        INDEX(xrbns xxcos_rep_bus_newcust_sum_n03)
+      */
+      FROM    xxcos_rep_bus_newcust_sum xrbns
+      WHERE   xrbns.dlv_date  <= lt_invalidity_date
+/* 2009/09/04 Ver1.7 Mod End   */
       ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -4374,8 +4563,15 @@ AS
     --  削除処理  （営業成績表 売上実績集計テーブル）
     BEGIN
       DELETE
-      FROM    xxcos_rep_bus_sales_sum
-      WHERE   dlv_date  <= lt_invalidity_date
+/* 2009/09/04 Ver1.7 Mod Start */
+--      FROM    xxcos_rep_bus_sales_sum
+--      WHERE   dlv_date  <= lt_invalidity_date
+      /*+
+        INDEX (xrbss xxcos_rep_bus_sales_sum_n03)
+      */
+      FROM    xxcos_rep_bus_sales_sum xrbss
+      WHERE   xrbss.dlv_date  <= lt_invalidity_date
+/* 2009/09/04 Ver1.7 Mod End   */
       ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -4432,8 +4628,15 @@ AS
     --  削除処理  （営業成績表 政策群別実績集計テーブル）
     BEGIN
       DELETE
-      FROM    xxcos_rep_bus_s_group_sum
-      WHERE   dlv_date  <= lt_invalidity_date
+/* 2009/09/04 Ver1.7 Mod Start */
+--      FROM    xxcos_rep_bus_s_group_sum
+--      WHERE   dlv_date  <= lt_invalidity_date
+      /*+
+        INDEX(xrbsgs xxcos_rep_bus_s_group_sum_n03)
+      */
+      FROM    xxcos_rep_bus_s_group_sum xrbsgs
+      WHERE   xrbsgs.dlv_date  <= lt_invalidity_date
+/* 2009/09/04 Ver1.7 Mod End   */
       ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -4490,8 +4693,15 @@ AS
     --  削除処理  （営業成績表 営業件数集計テーブル）
     BEGIN
       DELETE
-      FROM    xxcos_rep_bus_count_sum
-      WHERE   target_date   <= lt_invalidity_years
+/* 2009/09/04 Ver1.7 Mod Start */
+--      FROM    xxcos_rep_bus_count_sum
+--     WHERE   target_date   <= lt_invalidity_years
+      /*+
+        INDEX(xrbcs xxcos_rep_bus_count_sum_n02)
+      */
+      FROM    xxcos_rep_bus_count_sum xrbcs
+      WHERE   xrbcs.target_date   <= lt_invalidity_years
+/* 2009/09/04 Ver1.7 Mod End   */
       ;
     EXCEPTION
       WHEN OTHERS THEN
