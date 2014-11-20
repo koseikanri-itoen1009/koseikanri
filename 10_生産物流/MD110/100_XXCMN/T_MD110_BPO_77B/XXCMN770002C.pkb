@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2008/12/15    1.28  N.Yoshida        本番障害725対応
  *  2008/12/17    1.29  A.Shiina         本番障害774対応
  *  2008/12/18    1.30  N.Yoshida        本番障害773対応
+ *  2008/12/19    1.31  A.Shiina         本番障害799対応
  *
  *****************************************************************************************/
 --
@@ -17339,10 +17340,17 @@ AS
           -- -----------------------------------------------------
           -- 明細データタグ出力
           -- -----------------------------------------------------
+-- 2008/12/19 v1.31 DELETE START
+/*
           -- 金額算出（原価管理区分が「標準原価」の場合）
           IF (lv_cost_kbn = gc_cost_st ) THEN
-            ln_amount := ln_unit_price * ln_quantity;
+-- 2008/12/19 v1.31 UPDATE START
+--            ln_amount := ln_unit_price * ln_quantity;
+            ln_amount := ROUND(ln_unit_price * ln_quantity);
+-- 2008/12/19 v1.31 UPDATE END
           END IF;
+*/
+-- 2008/12/19 v1.31 DELETE END
 -- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
 --          IF (lb_payout = TRUE) THEN
@@ -17573,10 +17581,17 @@ AS
           -- -----------------------------------------------------
           -- 明細データタグ出力
           -- -----------------------------------------------------
+-- 2008/12/19 v1.31 DELETE START
+/*
           -- 金額算出（原価管理区分が「標準原価」の場合）
           IF (lv_cost_kbn = gc_cost_st ) THEN
-            ln_amount := ln_unit_price * ln_quantity;
+-- 2008/12/19 v1.31 UPDATE START
+--            ln_amount := ln_unit_price * ln_quantity;
+            ln_amount := ROUND(ln_unit_price * ln_quantity);
+-- 2008/12/19 v1.31 UPDATE END
           END IF;
+*/
+-- 2008/12/19 v1.31 DELETE END
 -- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
 --          IF (lb_payout = TRUE) THEN
@@ -17794,10 +17809,17 @@ AS
           -- -----------------------------------------------------
           -- 明細データタグ出力
           -- -----------------------------------------------------
+-- 2008/12/19 v1.31 DELETE START
+/*
           -- 金額算出（原価管理区分が「標準原価」の場合）
           IF (lv_cost_kbn = gc_cost_st ) THEN
-            ln_amount := ln_unit_price * ln_quantity;
+-- 2008/12/19 v1.31 UPDATE START
+--            ln_amount := ln_unit_price * ln_quantity;
+            ln_amount := ROUND(ln_unit_price * ln_quantity);
+-- 2008/12/19 v1.31 UPDATE END
           END IF;
+*/
+-- 2008/12/19 v1.31 DELETE END
 -- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
 --          IF (lb_payout = TRUE) THEN
@@ -18007,10 +18029,17 @@ AS
           -- -----------------------------------------------------
           -- 明細データタグ出力
           -- -----------------------------------------------------
+-- 2008/12/19 v1.31 DELETE START
+/*
           -- 金額算出（原価管理区分が「標準原価」の場合）
           IF (lv_cost_kbn = gc_cost_st ) THEN
-            ln_amount := ln_unit_price * ln_quantity;
+-- 2008/12/19 v1.31 UPDATE START
+--            ln_amount := ln_unit_price * ln_quantity;
+            ln_amount := ROUND(ln_unit_price * ln_quantity);
+-- 2008/12/19 v1.31 UPDATE END
           END IF;
+*/
+-- 2008/12/19 v1.31 DELETE END
 -- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
 --          IF (lb_payout = TRUE) THEN
@@ -18212,10 +18241,17 @@ AS
           -- -----------------------------------------------------
           -- 明細データタグ出力
           -- -----------------------------------------------------
+-- 2008/12/19 v1.31 DELETE START
+/*
           -- 金額算出（原価管理区分が「標準原価」の場合）
           IF (lv_cost_kbn = gc_cost_st ) THEN
-            ln_amount := ln_unit_price * ln_quantity;
+-- 2008/12/19 v1.31 UPDATE START
+--            ln_amount := ln_unit_price * ln_quantity;
+            ln_amount := ROUND(ln_unit_price * ln_quantity);
+-- 2008/12/19 v1.31 UPDATE END
           END IF;
+*/
+-- 2008/12/19 v1.31 DELETE END
 -- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
 --          IF (lb_payout = TRUE) THEN
@@ -18425,10 +18461,17 @@ AS
           -- -----------------------------------------------------
           -- 明細データタグ出力
           -- -----------------------------------------------------
+-- 2008/12/19 v1.31 DELETE START
+/*
           -- 金額算出（原価管理区分が「標準原価」の場合）
           IF (lv_cost_kbn = gc_cost_st ) THEN
-            ln_amount := ln_unit_price * ln_quantity;
+-- 2008/12/19 v1.31 UPDATE START
+--            ln_amount := ln_unit_price * ln_quantity;
+            ln_amount := ROUND(ln_unit_price * ln_quantity);
+-- 2008/12/19 v1.31 UPDATE END
           END IF;
+*/
+-- 2008/12/19 v1.31 DELETE END
 -- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
 --          IF (lb_payout = TRUE) THEN
@@ -18697,10 +18740,17 @@ AS
           -- -----------------------------------------------------
           -- 明細データタグ出力
           -- -----------------------------------------------------
+-- 2008/12/19 v1.31 DELETE START
+/*
           -- 金額算出（原価管理区分が「標準原価」の場合）
           IF (lv_cost_kbn = gc_cost_st ) THEN
-            ln_amount := ln_unit_price * ln_quantity;
+-- 2008/12/19 v1.31 UPDATE START
+--            ln_amount := ln_unit_price * ln_quantity;
+            ln_amount := ROUND(ln_unit_price * ln_quantity);
+-- 2008/12/19 v1.31 UPDATE END
           END IF;
+*/
+-- 2008/12/19 v1.31 DELETE END
 -- 2008/08/28 v1.10 UPDATE START
           -- 払出項目の場合
 --          IF (lb_payout = TRUE) THEN
@@ -18895,8 +18945,15 @@ AS
         ln_quantity := ln_quantity + NVL( gt_main_data(i).trans_qty, 0 );
         -- 金額加算（原価管理区分が「実際原価」の場合）
         IF (lv_cost_kbn = gc_cost_ac ) THEN
-          ln_amount := ln_amount + (NVL(gt_main_data(i).trans_qty,0)
+-- 2008/12/19 v1.31 UPDATE START
+--          ln_amount := ln_amount + (NVL(gt_main_data(i).trans_qty,0)
+--                                    * NVL(gt_main_data(i).actual_unit_price,0));
+          ln_amount := ln_amount + ROUND(NVL(gt_main_data(i).trans_qty,0)
                                     * NVL(gt_main_data(i).actual_unit_price,0));
+        ELSE
+          ln_amount := ln_amount + ROUND(NVL(gt_main_data(i).trans_qty,0)
+                                    * ln_unit_price);
+-- 2008/12/19 v1.31 UPDATE END
         END IF;
 -- 2008/09/02 v1.11 UPDATE END
       END IF;
@@ -18907,11 +18964,18 @@ AS
     -- 終了処理
     -- =====================================================
 --
+-- 2008/12/19 v1.31 DELETE START
+/*
     -- 金額算出（原価管理区分が「標準原価」の場合）
     IF (lv_cost_kbn = gc_cost_st ) THEN
-      ln_amount := ln_unit_price * ln_quantity;
+-- 2008/12/19 v1.31 UPDATE START
+--      ln_amount := ln_unit_price * ln_quantity;
+      ln_amount := ROUND(ln_unit_price * ln_quantity);
+-- 2008/12/19 v1.31 UPDATE END
     END IF;
 -- 2008/08/28 v1.10 UPDATE START
+*/
+-- 2008/12/19 v1.31 DELETE END
     -- 払出項目の場合
 --    IF (lb_payout = TRUE) THEN
 --      ln_quantity := ln_quantity * -1;
