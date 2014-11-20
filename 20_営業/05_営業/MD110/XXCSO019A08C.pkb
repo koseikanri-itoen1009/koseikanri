@@ -39,6 +39,7 @@ AS
  *  2009-05-20    1.5   Makoto.Ohtsuki   ＳＴ障害対応(T1_0696)
  *  2009-06-03    1.6   Kazuo.Satomura   ＳＴ障害対応(T1_0696 SQLERRMを削除)
  *  2009-06-04    1.7   Kazuo.Satomura   ＳＴ障害対応(T1_1329)
+ *  2010-05-25    1.8   T.Maruyama       E_本稼動_02809 訪問回数取得できない場合ゼロとする
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -514,6 +515,9 @@ AS
     cv_sort_type1           CONSTANT VARCHAR2(1)     := '1';  -- ソートタイプ
     cv_zero                 CONSTANT VARCHAR2(1)     := '0';  -- 「0」
     cv_one                  CONSTANT VARCHAR2(1)     := '1';  -- 「1」
+    /* 2010/05/25 T.Maruyama E_本稼動_02809 START */
+    cn_zero                 CONSTANT NUMBER          := 0;  -- 「0」
+    /* 2010/05/25 T.Maruyama E_本稼動_02809 END */
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -574,7 +578,10 @@ AS
         );
         --
         IF (lv_retcode <> cv_status_normal) THEN
-          RAISE global_api_others_expt;
+          /* 2010/05/25 T.Maruyama E_本稼動_02809 START */
+          ln_visit_times := cn_zero;
+          --RAISE global_api_others_expt;
+          /* 2010/05/25 T.Maruyama E_本稼動_02809 END */
         END IF;
       /* 20090422_abe_T1_0680 START*/
       END IF;
