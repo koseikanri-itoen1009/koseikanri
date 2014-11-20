@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    支払運賃チェックリスト        (T_MD070_BPO_73F)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/08/04    1.9   Masayuki Nomura  内部変更要求#186対応
  *  2008/08/11    1.10  Takao Ohashi     T_TE080_BPO_730 指摘10対応
  *  2008/10/15    1.11  Yasuhisa Yamamoto 統合障害#300,331,T_TE080_BPO_730 指摘14対応
+ *  2008/12/15    1.12  野村 正幸        本番#40対応
  *
  *****************************************************************************************/
 --
@@ -634,6 +635,9 @@ AS
       AND   xd.judgement_date         BETWEEN xcar.start_date_active
                                       AND     NVL( xcar.end_date_active, xd.judgement_date )
       AND   xd.delivery_company_code  = xcar.party_number
+-- ##### 20081215 Ver.1.12 本番#40対応 START #####
+      AND   xcar.party_status         = 'A'
+-- ##### 20081215 Ver.1.12 本番#40対応 END   #####
 -- S 2008/07/17 1.5 MOD BY S.Takemoto---------------------------------------------------------- S --
       AND   xd.p_b_classe             = gc_p_b_classe_1
 -- E 2008/07/17 1.5 MOD BY S.Takemoto---------------------------------------------------------- E --
@@ -810,6 +814,9 @@ AS
                   BETWEEN xvs.start_date_active
                   AND     NVL( xvs.end_date_active, gt_main_data(i).judge_date )
           AND   xvs.vendor_site_code = gt_main_data(i).ship_to_code
+-- ##### 20081215 Ver.1.12 本番#40対応 START #####
+          AND  xvs.inactive_date  IS NULL       -- 無効日
+-- ##### 20081215 Ver.1.12 本番#40対応 END   #####
           ;
         ------------------------------------------------------------
         -- 配送先コード区分が「3」の場合
@@ -825,11 +832,20 @@ AS
                   BETWEEN xps.start_date_active
                   AND     NVL( xps.end_date_active, gt_main_data(i).judge_date )
           AND   xps.party_site_number = gt_main_data(i).ship_to_code
+-- ##### 20081215 Ver.1.12 本番#40対応 START #####
+          AND xps.party_site_status     = 'A'         -- パーティサイトマスタ.ステータス
+          AND xps.cust_acct_site_status = 'A'         -- 顧客サイトマスタ.ステータス
+          AND xps.cust_site_uses_status = 'A'         -- 顧客使用目的マスタ.ステータス
+-- ##### 20081215 Ver.1.12 本番#40対応 END   #####
           ;
         END IF ;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           gt_main_data(i).ship_to_name := NULL ;
+-- ##### 20081215 Ver.1.12 本番#40対応 START #####
+        WHEN TOO_MANY_ROWS THEN   -- *** データ取得エラー ***
+          gt_main_data(i).ship_to_name := NULL ;
+-- ##### 20081215 Ver.1.12 本番#40対応 END   #####
       END ;
     END LOOP ;
 --
@@ -850,6 +866,10 @@ AS
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           gt_main_data(i).deliv_div_name := NULL ;
+-- ##### 20081215 Ver.1.12 本番#40対応 START #####
+        WHEN TOO_MANY_ROWS THEN   -- *** データ取得エラー ***
+          gt_main_data(i).deliv_div_name := NULL ;
+-- ##### 20081215 Ver.1.12 本番#40対応 END   #####
       END ;
     END LOOP ;
 --

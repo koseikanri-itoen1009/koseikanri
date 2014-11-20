@@ -7,7 +7,7 @@ AS
  * Description      : 請求運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    請求運賃チェックリスト        (T_MD070_BPO_73G)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/08/19    1.9   Takao Ohashi     T_TE080_BPO_730 指摘10対応
  *  2008/10/15    1.10  Yasuhisa Yamamoto 統合障害#300,331
  *  2008/10/24    1.11  Masayuki Nomura  統合#439対応
+ *  2008/12/15    1.12  野村 正幸        本番#40対応
  *
  *****************************************************************************************/
 --
@@ -778,6 +779,9 @@ AS
                   BETWEEN xvs.start_date_active
                   AND     NVL( xvs.end_date_active, gt_main_data(i).judge_date )
           AND   xvs.vendor_site_code = gt_main_data(i).ship_to_code
+-- ##### 20081215 Ver.1.12 本番#40対応 START #####
+          AND  xvs.inactive_date  IS NULL       -- 無効日
+-- ##### 20081215 Ver.1.12 本番#40対応 END   #####
           ;
         ------------------------------------------------------------
         -- 配送先コード区分が「3」の場合
@@ -793,11 +797,20 @@ AS
                   BETWEEN xps.start_date_active
                   AND     NVL( xps.end_date_active, gt_main_data(i).judge_date )
           AND   xps.party_site_number = gt_main_data(i).ship_to_code
+-- ##### 20081215 Ver.1.12 本番#40対応 START #####
+          AND xps.party_site_status     = 'A'         -- パーティサイトマスタ.ステータス
+          AND xps.cust_acct_site_status = 'A'         -- 顧客サイトマスタ.ステータス
+          AND xps.cust_site_uses_status = 'A'         -- 顧客使用目的マスタ.ステータス
+-- ##### 20081215 Ver.1.12 本番#40対応 END   #####
           ;
         END IF ;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           gt_main_data(i).ship_to_name := NULL ;
+-- ##### 20081215 Ver.1.12 本番#40対応 START #####
+        WHEN TOO_MANY_ROWS THEN   -- *** データ取得エラー ***
+          gt_main_data(i).ship_to_name := NULL ;
+-- ##### 20081215 Ver.1.12 本番#40対応 END   #####
       END ;
     END LOOP loop_ship_to ;
 --
