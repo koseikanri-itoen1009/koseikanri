@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK023A04C(body)
  * Description      : 運送費実績情報と運送費予算情報を集計し、運送費管理表(速報)をCSV形式で作成します。
  * MD.050           : 運送費管理表出力 MD050_COK_023_A04
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/12/03    1.0   SCS T.Taniguchi  新規作成
  *  2009/02/06    1.1   SCS T.Taniguchi  [障害COK_018] クイックコードビューの有効日・無効日の判定追加
  *  2009/03/02    1.2   SCS T.Taniguchi  [障害COK_070] 入力パラメータ「職責タイプ」により、拠点の取得範囲を制御
+ *  2009/10/02    1.3   SCS S.Moriyama   [障害E_T3_00630] VDBM残高一覧表が出力されない（同類不具合調査）
  *
  *****************************************************************************************/
 --
@@ -594,7 +595,10 @@ AS
     -- 職責別に拠点を取得
     ELSE
       -- 共通関数より自拠点コードを取得する
-      lv_belong_base_cd := xxcok_common_pkg.get_base_code_f( SYSDATE,gn_user_id );
+-- 2009/10/02 Ver.1.3 [障害E_T3_00630] SCS S.Moriyama UPD START
+--      lv_belong_base_cd := xxcok_common_pkg.get_base_code_f( SYSDATE,gn_user_id );
+      lv_belong_base_cd := xxcok_common_pkg.get_base_code_f( gd_process_date, gn_user_id );
+-- 2009/10/02 Ver.1.3 [障害E_T3_00630] SCS S.Moriyama UPD END
       -- 自拠点コードが取得できなかった場合
       IF lv_belong_base_cd IS NULL THEN
         lv_errmsg := xxccp_common_pkg.get_msg(

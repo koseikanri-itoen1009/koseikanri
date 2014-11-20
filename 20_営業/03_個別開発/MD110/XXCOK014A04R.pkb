@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,8 @@ AS
  *  2009/05/19    1.6   SCS T.Taniguchi  [障害T1_1070] グローバルカーソルのソート順追加
  *  2009/07/15    1.7   SCS T.Taniguchi  [障害0000689] 銀行手数料負担者、全支払の保留フラグの取得先変更
  *  2009/09/17    1.8   SCS S.Moriyama   [障害0001390] パラメータ制御変更に伴う所属部門業務管理部チェックを削除
+ *  2009/10/02    1.9   SCS S.Moriyama   [障害E_T3_00630] VDBM残高一覧表が出力されない
+ *                                                        銀行コード、支店コードの異常桁数対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -67,8 +69,10 @@ AS
   cv_msg_code_00003          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00003';          -- プロファイル取得エラー
   cv_msg_code_10337          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10337';          -- 支払日フォーマットエラー
   cv_msg_code_10338          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10338';          -- 表示対象チェックエラー
-  cv_msg_code_00012          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00012';          -- 所属拠点取得エラー
-  cv_msg_code_10372          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10372';          -- 拠点セキュリティーエラー
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama DEL START
+--  cv_msg_code_00012          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00012';          -- 所属拠点取得エラー
+--  cv_msg_code_10372          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10372';          -- 拠点セキュリティーエラー
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama DEL END
   cv_msg_code_00048          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00048';          -- 売上計上拠点情報取得エラー
   cv_msg_code_00047          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00047';          -- 売上計上拠点情報複数件エラー
   cv_msg_code_00035          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00035';          -- 顧客情報取得エラー
@@ -113,7 +117,9 @@ AS
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
   cv_token_request_id        CONSTANT VARCHAR2(10)  := 'REQUEST_ID';
   -- プロファイル
-  cv_prof_aff2_dept_act      CONSTANT VARCHAR2(20)  := 'XXCOK1_AFF2_DEPT_ACT';               --部門コード_業務管理部
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama DEL START
+--  cv_prof_aff2_dept_act      CONSTANT VARCHAR2(20)  := 'XXCOK1_AFF2_DEPT_ACT';               --部門コード_業務管理部
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama DEL END
   cv_prof_error_mark         CONSTANT VARCHAR2(32)  := 'XXCOK1_BL_LIST_PROMPT_ERROR_MARK';   --残高一覧_ｴﾗｰﾏｰｸ見出し
   cv_prof_pay_stop_name      CONSTANT VARCHAR2(35)  := 'XXCOK1_BL_LIST_PROMPT_PAY_STOP_NAME';--残高一覧_停止中見出し
   cv_prof_bk_trns_fee_we     CONSTANT VARCHAR2(23)  := 'XXCOK1_BANK_TRNS_FEE_WE';            --振込手数料_当方
@@ -159,8 +165,10 @@ AS
   gn_normal_cnt              NUMBER        DEFAULT 0;    -- 正常件数
   gn_error_cnt               NUMBER        DEFAULT 0;    -- エラー件数
   gd_payment_date            DATE          DEFAULT NULL; -- 支払日
-  gv_base_code               VARCHAR2(4)   DEFAULT NULL; -- 所属拠点コード
-  gv_aff2_dept_act           VARCHAR2(4)   DEFAULT NULL; -- 業務管理部の部門コード
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama DEL START
+--  gv_base_code               VARCHAR2(4)   DEFAULT NULL; -- 所属拠点コード
+--  gv_aff2_dept_act           VARCHAR2(4)   DEFAULT NULL; -- 業務管理部の部門コード
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama DEL END
   gv_error_mark              VARCHAR2(2)   DEFAULT NULL; -- エラーマーク見出し
   gv_pay_stop_name           VARCHAR2(6)   DEFAULT NULL; -- 停止中見出し
   gv_bk_trns_fee_we          VARCHAR2(10)  DEFAULT NULL; -- 振込手数料_当方
@@ -181,9 +189,15 @@ AS
   -- 退避用
   gt_payment_code_bk         xxcok_rep_bm_balance.payment_code%TYPE               DEFAULT NULL; -- 支払先コード
   gt_payment_name_bk         xxcok_rep_bm_balance.payment_name%TYPE               DEFAULT NULL; -- 支払先名
-  gt_bank_no_bk              xxcok_rep_bm_balance.bank_no%TYPE                    DEFAULT NULL; -- 銀行番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD START
+--  gt_bank_no_bk              xxcok_rep_bm_balance.bank_no%TYPE                    DEFAULT NULL; -- 銀行番号
+  gt_bank_no_bk              ap_bank_branches.bank_number%TYPE                    DEFAULT NULL; -- 銀行番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD END
   gt_bank_name_bk            xxcok_rep_bm_balance.bank_name%TYPE                  DEFAULT NULL; -- 銀行名
-  gt_bank_branch_no_bk       xxcok_rep_bm_balance.bank_branch_no%TYPE             DEFAULT NULL; -- 銀行支店番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD START
+--  gt_bank_branch_no_bk       xxcok_rep_bm_balance.bank_branch_no%TYPE             DEFAULT NULL; -- 銀行支店番号
+  gt_bank_branch_no_bk       ap_bank_branches.bank_num%TYPE                       DEFAULT NULL; -- 銀行支店番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD END
   gt_bank_branch_name_bk     xxcok_rep_bm_balance.bank_branch_name%TYPE           DEFAULT NULL; -- 銀行支店名
   gt_bank_acct_type_bk       xxcok_rep_bm_balance.bank_acct_type%TYPE             DEFAULT NULL; -- 口座種別
   gt_bank_acct_type_name_bk  xxcok_rep_bm_balance.bank_acct_type_name%TYPE        DEFAULT NULL; -- 口座種別名
@@ -218,9 +232,15 @@ AS
   TYPE rep_bm_balance_rec IS RECORD(
     PAYMENT_CODE                 VARCHAR2(9)   -- 支払先コード
    ,PAYMENT_NAME                 VARCHAR2(240) -- 支払先名
-   ,BANK_NO                      VARCHAR2(4)   -- 銀行番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD START
+--   ,BANK_NO                      VARCHAR2(4)   -- 銀行番号
+   ,BANK_NO                      VARCHAR2(30)  -- 銀行番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD END
    ,BANK_NAME                    VARCHAR2(60)  -- 銀行名
-   ,BANK_BRANCH_NO               VARCHAR2(4)   -- 銀行支店番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD START
+--   ,BANK_BRANCH_NO               VARCHAR2(4)   -- 銀行支店番号
+   ,BANK_BRANCH_NO               VARCHAR2(25)  -- 銀行支店番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD END
    ,BANK_BRANCH_NAME             VARCHAR2(60)  -- 銀行支店名
    ,BANK_ACCT_TYPE               VARCHAR2(1)   -- 口座種別
    ,BANK_ACCT_TYPE_NAME          VARCHAR2(4)   -- 口座種別名
@@ -613,9 +633,15 @@ AS
     , gv_error_mark                                          -- 警告マーク(ヘッダ出力)
     , g_bm_balance_ttype(in_index).PAYMENT_CODE              -- 支払先コード
     , g_bm_balance_ttype(in_index).PAYMENT_NAME              -- 支払先名
-    , g_bm_balance_ttype(in_index).BANK_NO                   -- 銀行番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD START
+--    , g_bm_balance_ttype(in_index).BANK_NO                   -- 銀行番号
+    , SUBSTRB( g_bm_balance_ttype(in_index).BANK_NO , 1 , 4 )-- 銀行番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD END
     , g_bm_balance_ttype(in_index).BANK_NAME                 -- 銀行名
-    , g_bm_balance_ttype(in_index).BANK_BRANCH_NO            -- 銀行支店番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD START
+--    , g_bm_balance_ttype(in_index).BANK_BRANCH_NO            -- 銀行支店番号
+    , SUBSTRB( g_bm_balance_ttype(in_index).BANK_BRANCH_NO , 1 , 4 ) -- 銀行支店番号
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD END
     , g_bm_balance_ttype(in_index).BANK_BRANCH_NAME          -- 銀行支店名
     , g_bm_balance_ttype(in_index).BANK_ACCT_TYPE            -- 口座種別
     , g_bm_balance_ttype(in_index).BANK_ACCT_TYPE_NAME       -- 口座種別名
@@ -1881,32 +1907,34 @@ AS
                       );
         RAISE init_fail_expt;
     END IF;
-    -- ===============================================
-    -- 所属拠点取得
-    -- ===============================================
-    gv_base_code := xxcok_common_pkg.get_base_code_f( SYSDATE , cn_created_by );
-    IF ( gv_base_code IS NULL ) THEN
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_xxcok_appl_short_name
-                    , iv_name         => cv_msg_code_00012
-                    , iv_token_name1  => cv_token_user_id
-                    , iv_token_value1 => cn_created_by
-                    );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.LOG
-                    , iv_message  => lv_errmsg
-                    , in_new_line => cn_number_0
-                    );
-      RAISE init_fail_expt;
-    END IF;
-    -- ===============================================
-    -- プロファイル取得(部門コード_業務管理部)
-    -- ===============================================
-    gv_aff2_dept_act := FND_PROFILE.VALUE( cv_prof_aff2_dept_act );
-    IF ( gv_aff2_dept_act IS NULL ) THEN
-      lv_profile_nm := cv_prof_aff2_dept_act;
-      RAISE no_profile_expt;
-    END IF;
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama DEL START
+--    -- ===============================================
+--    -- 所属拠点取得
+--    -- ===============================================
+--    gv_base_code := xxcok_common_pkg.get_base_code_f( SYSDATE , cn_created_by );
+--    IF ( gv_base_code IS NULL ) THEN
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_xxcok_appl_short_name
+--                    , iv_name         => cv_msg_code_00012
+--                    , iv_token_name1  => cv_token_user_id
+--                    , iv_token_value1 => cn_created_by
+--                    );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.LOG
+--                    , iv_message  => lv_errmsg
+--                    , in_new_line => cn_number_0
+--                    );
+--      RAISE init_fail_expt;
+--    END IF;
+--    -- ===============================================
+--    -- プロファイル取得(部門コード_業務管理部)
+--    -- ===============================================
+--    gv_aff2_dept_act := FND_PROFILE.VALUE( cv_prof_aff2_dept_act );
+--    IF ( gv_aff2_dept_act IS NULL ) THEN
+--      lv_profile_nm := cv_prof_aff2_dept_act;
+--      RAISE no_profile_expt;
+--    END IF;
+-- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama DEL END
     -- ===============================================
     -- プロファイル取得(残高一覧_エラーマーク見出し)
     -- ===============================================

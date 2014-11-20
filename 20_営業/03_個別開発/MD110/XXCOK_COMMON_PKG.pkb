@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/04/09    1.9   K.YAMAGUCHI      [障害T1_0341] 請求先顧客取得 抽出条件変更
  *  2009/04/13    1.10  K.YAMAGUCHI      [障害T1_0411] 問屋請求書見積照合 抽出条件変更
  *  2009/04/15    1.11  K.YAMAGUCHI      [障害T1_0570] 担当営業員コード取得 組織プロファイル有効判定条件変更
+ *  2009/10/02    1.12  SCS S.Moriyama   [障害E_T3_00630] VDBM残高一覧表が出力されない
  *
  *****************************************************************************************/
   -- ==============================
@@ -2290,6 +2291,113 @@ AS
 --
   END put_message_f;
 --
+-- 2009/10/02 Ver.1.12 [障害E_T3_00630] SCS S.Moriyama UPD START
+--  /******************************************************************************
+--   *FUNCTION NAME : get_base_code_f
+--   *Desctiption   : 所属拠点コード取得
+--   ******************************************************************************/
+--  FUNCTION get_base_code_f(
+--    id_proc_date IN DATE   -- 処理日
+--  , in_user_id   IN NUMBER -- ユーザーID
+--  )
+--  RETURN VARCHAR2          -- 所属拠点コード
+--  IS
+--    -- =======================================================
+--    -- ローカル定数
+--    -- =======================================================
+--    cv_prg_name CONSTANT VARCHAR2(30) := 'get_base_code_f'; -- プログラム名
+--    -- =======================================================
+--    -- ローカル変数
+--    -- =======================================================
+--    ld_process_date             DATE;                                                   -- 業務日付
+--    lt_employee_id              fnd_user.employee_id%TYPE;                              -- 所属部門コード
+--    lt_max_object_version_num   per_all_assignments_f.object_version_number%TYPE;       -- 最新レコード判定変数
+--    lt_max_effective_start_date per_all_assignments_f.effective_start_date%TYPE;        -- 有効開始日
+--    lt_base_code                per_all_assignments_f.ass_attribute5%TYPE DEFAULT NULL; -- 所属拠点コード
+--    lt_announce_date            per_all_assignments_f.ass_attribute2%TYPE DEFAULT NULL; -- 発令日
+--    lt_new_base_code            per_all_assignments_f.ass_attribute5%TYPE DEFAULT NULL; -- 拠点コード（新）
+--    lt_old_base_code            per_all_assignments_f.ass_attribute6%TYPE DEFAULT NULL; -- 拠点コード（旧）
+----
+--  BEGIN
+--    -- ==========================================
+--    -- 業務日付取得
+--    -- ==========================================
+--    ld_process_date :=xxccp_common_pkg2.get_process_date;
+--    -- ==========================================
+--    -- ユーザテーブルから従業員ID取得
+--    -- ==========================================
+--    SELECT fu.employee_id AS employee_id -- 従業員ID
+--    INTO   lt_employee_id
+--    FROM   fnd_user fu
+--    WHERE  fu.user_id     = in_user_id
+--    AND    -- 業務日付が開始日以上
+--           -- もし開始日 = NULL -> 開始日 = 業務日付に変換
+--           NVL( fu.start_date, ld_process_date ) <= ld_process_date
+--    AND
+--           -- 業務日付が終了日以下
+--           -- もし終了日 = NULL -> 終了日 = 業務日付に変換
+--           NVL( fu.end_date  , ld_process_date ) >= ld_process_date;
+--    -- ==========================================
+--    -- PER_ALL_ASSIGNMENTS_Fからperson_idの
+--    -- 最新レコードを判定するキー情報取得
+--    -- ==========================================
+--    SELECT MAX( paa.object_version_number ) AS object_version_number -- バージョン番号
+--    INTO   lt_max_object_version_num
+--    FROM   per_all_assignments_f            paa
+--    WHERE  paa.person_id                    = lt_employee_id;
+----
+--    SELECT MAX( paa.effective_start_date )  AS effective_start_date -- 有効開始日
+--    INTO   lt_max_effective_start_date
+--    FROM   per_all_assignments_f            paa
+--    WHERE  paa.person_id                    = lt_employee_id;
+--    -- ==========================================
+--    -- PER_ALL_ASSIGNMENTS_Fから発令日,
+--    -- 拠点コード(新), 拠点コード(旧) 取得
+--    -- ==========================================
+--    SELECT paa.ass_attribute2        AS announce_date              -- 発令日
+--         , paa.ass_attribute5        AS new_base_code              -- 拠点コード（新）
+--         , paa.ass_attribute6        AS old_base_code              -- 拠点コード（旧）
+--    INTO   lt_announce_date                                        -- 発令日
+--         , lt_new_base_code                                        -- 拠点コード（新）
+--         , lt_old_base_code                                        -- 拠点コード（旧）
+--    FROM   per_all_assignments_f     paa                           -- アサイメントテーブル
+--    WHERE  paa.person_id             = lt_employee_id
+--    AND    paa.object_version_number = lt_max_object_version_num   -- バージョン番号=MAX(バージョン番号)
+--    AND    paa.effective_start_date  = lt_max_effective_start_date -- 有効開始日=MAX(有効開始日)
+--    AND    -- 業務日付が有効開始日以上
+--           -- もし有効開始日 = NULL -> 有効開始日 = 業務日付に変換
+--           NVL( paa.effective_start_date, ld_process_date ) <= ld_process_date
+--    AND    -- 業務日付が有効終了日以下
+--           -- もし有効終了日 = NULL -> 有効終了日 = 業務日付に変換
+--           NVL( paa.effective_end_date  , ld_process_date ) >= ld_process_date;
+--    -- ==========================================
+--    --拠点コード判定処理
+--    --INパラメータ:処理日,発令日を比較して
+--    -- 拠点コード(新)または拠点コード(旧) を
+--    --OUTパラメータに設定
+--    -- ==========================================
+--    IF( TO_DATE( lt_announce_date  ,'YYYYMMDD' ) <= id_proc_date ) THEN
+--      --発令日 >= INパラメータ:処理日
+--      --OUTパラメータ:所属拠点コードに拠点コード(新)を設定
+--      lt_base_code := lt_new_base_code;
+--    ELSE
+--      --発令日 >= INパラメータ:処理日
+--      --OUTパラメータ:所属拠点コードに拠点コード(旧)を設定
+--      lt_base_code := lt_old_base_code;
+--    END IF;
+----
+--    RETURN lt_base_code;                  -- 所属拠点コード
+----
+--  EXCEPTION
+--    WHEN NO_DATA_FOUND THEN
+--      --所属拠点コードにNULLを設定
+--      RETURN NULL;
+--    WHEN OTHERS THEN
+--      RAISE_APPLICATION_ERROR(
+--        -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM
+--      );
+----
+--  END get_base_code_f;
   /******************************************************************************
    *FUNCTION NAME : get_base_code_f
    *Desctiption   : 所属拠点コード取得
@@ -2299,103 +2407,75 @@ AS
   , in_user_id   IN NUMBER -- ユーザーID
   )
   RETURN VARCHAR2          -- 所属拠点コード
+    lv_base_code    VARCHAR2(4) := NULL;  -- 拠点コード
+    ln_user_id      NUMBER;
+    ld_target_date  DATE;
   IS
     -- =======================================================
     -- ローカル定数
     -- =======================================================
-    cv_prg_name CONSTANT VARCHAR2(30) := 'get_base_code_f'; -- プログラム名
+    cv_prg_name           CONSTANT VARCHAR2(30) := 'get_base_code_f';                 -- プログラム名
+--
+    cv_system_person_type CONSTANT per_person_types.system_person_type%TYPE := 'EMP';
+    cv_active_flag        CONSTANT per_person_types.active_flag%TYPE        := 'Y';
+    cv_date_fmt           CONSTANT VARCHAR2(8)                              := 'RRRRMMDD';
+--
     -- =======================================================
     -- ローカル変数
     -- =======================================================
-    ld_process_date             DATE;                                                   -- 業務日付
-    lt_employee_id              fnd_user.employee_id%TYPE;                              -- 所属部門コード
-    lt_max_object_version_num   per_all_assignments_f.object_version_number%TYPE;       -- 最新レコード判定変数
-    lt_max_effective_start_date per_all_assignments_f.effective_start_date%TYPE;        -- 有効開始日
-    lt_base_code                per_all_assignments_f.ass_attribute5%TYPE DEFAULT NULL; -- 所属拠点コード
-    lt_announce_date            per_all_assignments_f.ass_attribute2%TYPE DEFAULT NULL; -- 発令日
-    lt_new_base_code            per_all_assignments_f.ass_attribute5%TYPE DEFAULT NULL; -- 拠点コード（新）
-    lt_old_base_code            per_all_assignments_f.ass_attribute6%TYPE DEFAULT NULL; -- 拠点コード（旧）
+    lt_base_code    per_all_assignments_f.ass_attribute5%TYPE DEFAULT NULL; -- 所属拠点コード
+    ld_process_date DATE                                      DEFAULT NULL; -- 業務日付
+    lt_user_id      fnd_user.user_id%TYPE                     DEFAULT NULL; -- ユーザーID
 --
   BEGIN
-    -- ==========================================
-    -- 業務日付取得
-    -- ==========================================
-    ld_process_date :=xxccp_common_pkg2.get_process_date;
-    -- ==========================================
-    -- ユーザテーブルから従業員ID取得
-    -- ==========================================
-    SELECT fu.employee_id AS employee_id -- 従業員ID
-    INTO   lt_employee_id
-    FROM   fnd_user fu
-    WHERE  fu.user_id     = in_user_id
-    AND    -- 業務日付が開始日以上
-           -- もし開始日 = NULL -> 開始日 = 業務日付に変換
-           NVL( fu.start_date, ld_process_date ) <= ld_process_date
-    AND
-           -- 業務日付が終了日以下
-           -- もし終了日 = NULL -> 終了日 = 業務日付に変換
-           NVL( fu.end_date  , ld_process_date ) >= ld_process_date;
-    -- ==========================================
-    -- PER_ALL_ASSIGNMENTS_Fからperson_idの
-    -- 最新レコードを判定するキー情報取得
-    -- ==========================================
-    SELECT MAX( paa.object_version_number ) AS object_version_number -- バージョン番号
-    INTO   lt_max_object_version_num
-    FROM   per_all_assignments_f            paa
-    WHERE  paa.person_id                    = lt_employee_id;
---
-    SELECT MAX( paa.effective_start_date )  AS effective_start_date -- 有効開始日
-    INTO   lt_max_effective_start_date
-    FROM   per_all_assignments_f            paa
-    WHERE  paa.person_id                    = lt_employee_id;
-    -- ==========================================
-    -- PER_ALL_ASSIGNMENTS_Fから発令日,
-    -- 拠点コード(新), 拠点コード(旧) 取得
-    -- ==========================================
-    SELECT paa.ass_attribute2        AS announce_date              -- 発令日
-         , paa.ass_attribute5        AS new_base_code              -- 拠点コード（新）
-         , paa.ass_attribute6        AS old_base_code              -- 拠点コード（旧）
-    INTO   lt_announce_date                                        -- 発令日
-         , lt_new_base_code                                        -- 拠点コード（新）
-         , lt_old_base_code                                        -- 拠点コード（旧）
-    FROM   per_all_assignments_f     paa                           -- アサイメントテーブル
-    WHERE  paa.person_id             = lt_employee_id
-    AND    paa.object_version_number = lt_max_object_version_num   -- バージョン番号=MAX(バージョン番号)
-    AND    paa.effective_start_date  = lt_max_effective_start_date -- 有効開始日=MAX(有効開始日)
-    AND    -- 業務日付が有効開始日以上
-           -- もし有効開始日 = NULL -> 有効開始日 = 業務日付に変換
-           NVL( paa.effective_start_date, ld_process_date ) <= ld_process_date
-    AND    -- 業務日付が有効終了日以下
-           -- もし有効終了日 = NULL -> 有効終了日 = 業務日付に変換
-           NVL( paa.effective_end_date  , ld_process_date ) >= ld_process_date;
-    -- ==========================================
-    --拠点コード判定処理
-    --INパラメータ:処理日,発令日を比較して
-    -- 拠点コード(新)または拠点コード(旧) を
-    --OUTパラメータに設定
-    -- ==========================================
-    IF( TO_DATE( lt_announce_date  ,'YYYYMMDD' ) <= id_proc_date ) THEN
-      --発令日 >= INパラメータ:処理日
-      --OUTパラメータ:所属拠点コードに拠点コード(新)を設定
-      lt_base_code := lt_new_base_code;
+    IF ( id_proc_date IS NULL ) THEN
+      ld_process_date := xxccp_common_pkg2.get_process_date;
     ELSE
-      --発令日 >= INパラメータ:処理日
-      --OUTパラメータ:所属拠点コードに拠点コード(旧)を設定
-      lt_base_code := lt_old_base_code;
+      ld_process_date := TRUNC( id_proc_date );
     END IF;
+--
+    IF ( in_user_id IS NULL ) THEN
+      ln_user_id := fnd_global.user_id;
+    ELSE
+      ln_user_id := in_user_id;
+    END IF;
+--
+    SELECT  CASE
+              WHEN paaf.ass_attribute2 IS NULL THEN -- 発令日
+                paaf.ass_attribute5
+              WHEN TO_DATE( paaf.ass_attribute2, cv_date_fmt ) > ld_process_date THEN
+                paaf.ass_attribute6                 -- 拠点コード（旧）
+              ELSE
+                paaf.ass_attribute5                 -- 拠点コード（新）
+            END  AS base_code
+    INTO    lt_base_code                        -- 所属拠点コード
+    FROM    fnd_user              fu    -- ユーザーマスタ
+          , per_all_people_f      papf  -- 従業員マスタ
+          , per_person_types      ppt   -- 従業員区分マスタ
+          , per_all_assignments_f paaf  -- 従業員割当マスタ(アサイメント)
+    WHERE   fu.user_id              = ln_user_id
+      AND   papf.person_id          = fu.employee_id
+      AND   id_proc_date      BETWEEN NVL( TRUNC( papf.effective_start_date ), ld_target_date )
+                                  AND NVL( TRUNC( papf.effective_end_date   ), ld_target_date )
+      AND   ppt.person_type_id      = papf.person_type_id
+      AND   ppt.business_group_id   = papf.business_group_id
+      AND   ppt.system_person_type  = cv_system_person_type
+      AND   ppt.active_flag         = cv_active_flag
+      AND   papf.person_id          = paaf.person_id
+      AND   id_proc_date      BETWEEN NVL( TRUNC( paaf.effective_start_date ), ld_target_date )
+                                  AND NVL( TRUNC( paaf.effective_end_date   ), ld_target_date )
+    ;
 --
     RETURN lt_base_code;                  -- 所属拠点コード
 --
   EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-      --所属拠点コードにNULLを設定
-      RETURN NULL;
     WHEN OTHERS THEN
       RAISE_APPLICATION_ERROR(
         -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM
       );
 --
   END get_base_code_f;
+-- 2009/10/02 Ver.1.12 [障害E_T3_00630] SCS S.Moriyama UPD END
 --
   /**********************************************************************************
    * Procedure Name   : split_csv_data_p

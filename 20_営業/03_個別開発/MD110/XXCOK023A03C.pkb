@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK023A03C(body)
  * Description      : 運送費予算及び運送費実績を拠点別品目別（単品別）月別にCSVデータ形式で要求出力します。
  * MD.050           : 運送費予算一覧表出力 MD050_COK_023_A03
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,7 +28,8 @@ AS
  *  2009/02/06    1.1   SCS T.Taniguchi  [障害COK_017] クイックコードビューの有効日・無効日の判定追加
  *  2009/03/02    1.2   SCS T.Taniguchi  [障害COK_069] 入力パラメータ「職責タイプ」により、拠点の取得範囲を制御
  *  2009/05/15    1.3   SCS A.Yano       [障害T1_1001] 出力される金額単位を千円に修正
- *  2009/09/03    1.4   S.Moriyama       [障害0001257] OPM品目マスタ取得条件追加
+ *  2009/09/03    1.4   SCS S.Moriyama   [障害0001257] OPM品目マスタ取得条件追加
+ *  2009/10/02    1.5   SCS S.Moriyama   [障害E_T3_00630] VDBM残高一覧表が出力されない（同類不具合調査）
  *
  *****************************************************************************************/
 --
@@ -800,7 +801,10 @@ AS
       ----------------------------
       ELSE
         -- 所属拠点取得
-        lv_belong_base_cd := xxcok_common_pkg.get_base_code_f( SYSDATE , cn_created_by );
+-- 2009/10/02 Ver.1.5 [障害E_T3_00630] SCS S.Moriyama UPD START
+--        lv_belong_base_cd := xxcok_common_pkg.get_base_code_f( SYSDATE , cn_created_by );
+        lv_belong_base_cd := xxcok_common_pkg.get_base_code_f( gd_process_date, cn_created_by );
+-- 2009/10/02 Ver.1.5 [障害E_T3_00630] SCS S.Moriyama UPD END
         IF ( lv_belong_base_cd IS NULL ) THEN
           lv_errmsg := xxccp_common_pkg.get_msg(
                          iv_application  => cv_appl_name_xxcok,
