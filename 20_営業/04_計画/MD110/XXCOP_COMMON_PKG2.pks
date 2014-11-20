@@ -33,6 +33,7 @@ AS
  *  2009/01/20    1.0                   新規作成
  *  2009/04/08    1.1  SCS.Kikuchi      T1_0272,T1_0279,T1_0282,T1_0284対応
  *  2009/05/08    1.2  SCS.Kikuchi      T1_0918,T1_0919対応
+ *  2009/07/23    1.3  SCS.Fukada       0000670対応(共通課題：I_E_479)
  *
  *****************************************************************************************/
 --
@@ -179,15 +180,24 @@ AS
    * Procedure Name   : upd_assignment
    * Description      : 移動依頼・割当セットAPI起動
    ***********************************************************************************/
+--20090723_Ver1.3_0000670_SCS.Fukada_MOD_START
+--  PROCEDURE upd_assignment(
+--    iv_ship_to_locat_code   IN  VARCHAR2,     -- 入庫先
+--    iv_item_code            IN  VARCHAR2,     -- 品目
+--    in_quantity             IN  NUMBER,       -- 移動数
+--    iv_design_prod_date     IN  VARCHAR2,     -- 指定製造日
+--    iv_sche_arriv_date      IN  VARCHAR2,     -- 着日
+--    iv_process_type         IN  VARCHAR2,     -- 処理区分(0：加算、1：減算)
+--    ov_errbuf               OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--    ov_retcode              OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+--    ov_errmsg               OUT VARCHAR2);    --   ユーザー・エラー・メッセージ --# 固定 #
   PROCEDURE upd_assignment(
-    iv_ship_to_locat_code   IN  VARCHAR2,     -- 入庫先
-    iv_item_code            IN  VARCHAR2,     -- 品目
-    in_quantity             IN  NUMBER,       -- 移動数(0以上:加算、0未満:減算)
-    iv_design_prod_date     IN  VARCHAR2,     -- 指定製造日
-    iv_sche_arriv_date      IN  VARCHAR2,     -- 着日
+    iv_mov_num              IN  VARCHAR2,     -- 移動ヘッダID
+    iv_process_type         IN  VARCHAR2,     -- 処理区分(0：加算、1：減算)
     ov_errbuf               OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode              OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg               OUT VARCHAR2);    --   ユーザー・エラー・メッセージ --# 固定 #
+--20090723_Ver1.3_0000670_SCS.Fukada_MOD_END
   /**********************************************************************************
    * Procedure Name   : get_loct_info
    * Description      : 倉庫情報取得処理
