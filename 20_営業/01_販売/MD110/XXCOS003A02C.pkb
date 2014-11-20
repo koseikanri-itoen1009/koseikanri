@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS003A02C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS003A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A02C(body)
  * Description      : 単価マスタIF出力（データ抽出）
  * MD.050           : 単価マスタIF出力（データ抽出） MD050_COS_003_A02
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/05/28   1.3    S.Kayahara       [障害T1_1176] 単価の導出に端数処理追加
  *  2009/06/09   1.4    N.Maeda          [障害T1_1401] 端数処理取得テーブル修正
  *  2009/07/17   1.5    K.Shirasuna      [障害PT_00016]「単価マスタIF出力」処理の性能改善
+ *  2009/08/04   1.6    M.Sano           [障害0000933] 『単価マスタIF出力』PTの考慮
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -171,7 +172,11 @@ AS
 --カーソル
   CURSOR main_cur
   IS
-    SELECT  xseh.sales_exp_header_id          sales_exp_header_id               --販売実績ヘッダID
+--****************************** 2009/08/04 1.6  M.Sano MOD START ***********************************--
+--    SELECT  xseh.sales_exp_header_id          sales_exp_header_id               --販売実績ヘッダID
+    SELECT  /*+ leading(xsel) use_nl(xseh xsel) index(xsel xxcos_sales_exp_lines_n02) */
+            xseh.sales_exp_header_id          sales_exp_header_id               --販売実績ヘッダID
+--****************************** 2009/08/04 1.6  M.Sano MOD End   ***********************************--
            ,xseh.ship_to_customer_code        ship_to_customer_code             --顧客【納品先】
            ,xseh.orig_delivery_date           delivery_date                     --納品日（オリジナル納品日）
            ,xseh.tax_rate                     tax_rate                          --消費税率
@@ -216,7 +221,11 @@ AS
     AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
     AND     xsel.unit_price_mst_flag = cv_flag_off
     AND     NOT EXISTS
-            (SELECT NULL
+--****************************** 2009/08/04 1.6  M.Sano MOD START ***********************************--
+--            (SELECT NULL
+            (SELECT /*+ use_nl(flvl) */
+                    NULL
+--****************************** 2009/08/04 1.6  M.Sano MOD End   ***********************************--
              FROM   fnd_lookup_values flvl
              WHERE  flvl.lookup_type         = cv_lookup_type_gyotai
              AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
@@ -229,7 +238,11 @@ AS
              AND     flvl.enabled_flag        = cv_flag_on
              AND xseh.cust_gyotai_sho = meaning )
     AND     NOT EXISTS
-            (SELECT NULL
+--****************************** 2009/08/04 1.6  M.Sano MOD START ***********************************--
+---            (SELECT NULL
+            (SELECT /*+ use_nl(flvl) */
+                    NULL
+--****************************** 2009/08/04 1.6  M.Sano MOD End   ***********************************--
              FROM   fnd_lookup_values flvl
              WHERE  flvl.lookup_type         = cv_lookup_type_no_inv
              AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
@@ -242,7 +255,11 @@ AS
              AND     flvl.enabled_flag        = cv_flag_on
              AND xsel.item_code = lookup_code )
     UNION
-    SELECT  xseh.sales_exp_header_id          sales_exp_header_id               --販売実績ヘッダID
+--****************************** 2009/08/04 1.6  M.Sano MOD START ***********************************--
+--    SELECT  xseh.sales_exp_header_id          sales_exp_header_id               --販売実績ヘッダID
+    SELECT  /*+ leading(inl1.inl2.xsel) use_nl(inl1.inl2.xsel inl1.inl2.xseh) */
+            xseh.sales_exp_header_id          sales_exp_header_id               --販売実績ヘッダID
+--****************************** 2009/08/04 1.6  M.Sano MOD End   ***********************************--
            ,xseh.ship_to_customer_code        ship_to_customer_code             --顧客【納品先】
            ,xseh.orig_delivery_date           delivery_date                     --納品日（オリジナル納品日）
            ,xseh.tax_rate                     tax_rate                          --消費税率
@@ -274,7 +291,11 @@ AS
            ,(SELECT  MAX(xseh.digestion_ln_number) digestion_ln_number
                     ,inl2.order_no_hht
              FROM   xxcos_sales_exp_headers xseh
-                   ,(SELECT xseh.order_no_hht order_no_hht
+--****************************** 2009/08/04 1.6  M.Sano MOD START ***********************************--
+--                   ,(SELECT xseh.order_no_hht order_no_hht
+                   ,(SELECT /*+ index(xsel xxcos_sales_exp_lines_n02) */
+                             xseh.order_no_hht order_no_hht
+--****************************** 2009/08/04 1.6  M.Sano MOD End   ***********************************--
                      FROM    xxcos_sales_exp_headers xseh
                             ,xxcos_sales_exp_lines   xsel
                      WHERE   xseh.cancel_correct_class = cv_correct
