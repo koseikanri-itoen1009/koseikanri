@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           :  MD050_CSO_016_A04_情報系-EBSインターフェース：
  *                     (OUT)訪問実績データ
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,7 +37,7 @@ AS
  *  2009-02-26    1.1   K.Sai            レビュー結果反映 
  *  2009-03-05    1.1   Mio.Maruyama     販売実績テーブル仕様変更による
  *                                       データ抽出条件変更対応
- *
+ *  2009-04-22    1.2   Kazuo.Satomura   システムテスト障害対応(T1_0478,T1_0740)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1151,6 +1151,10 @@ AS
     cv_sld_out_clss1  CONSTANT VARCHAR2(1) := '1';   -- 1:売切区分有効(売切れ有り)
     cv_sld_out_clss2  CONSTANT VARCHAR2(1) := '2';   -- 2:売切区分無効(売切れ無し)
     cv_prcss_nm       CONSTANT VARCHAR2(100) := '販売実績ヘッダテーブル・販売実績明細テーブル';
+    /* 2009.04.22 K.Satomura T1_0740対応 START */
+    cv_dlv_gds_info CONSTANT VARCHAR2(1) := '3'; -- 登録区分=3:納品情報
+    cv_abrb_clclt   CONSTANT VARCHAR2(1) := '5'; -- 登録区分=5:消化計算
+    /* 2009.04.22 K.Satomura T1_0740対応 END */
     -- *** ローカル変数 ***
     --取得データ格納用
     ln_missing_column_number  NUMBER;
@@ -1185,7 +1189,10 @@ AS
                AND    xsv2.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
                AND    xsv2.cancel_correct_class IS NULL
               ) active_column_number                             -- 有効コラム数
-              ,(SELECT SUM(xsv3.sold_out_time) sold_out_time
+              /* 2009.04.22 K.Satomrua T1_0478対応 START */
+              --,(SELECT SUM(xsv3.sold_out_time) sold_out_time
+              ,(SELECT SUM(NVL(xsv3.sold_out_time, 0)) sold_out_time
+              /* 2009.04.22 K.Satomrua T1_0478対応 END */
                 FROM   xxcso_sales_v  xsv3  -- 売上実績ビュー
                 WHERE  xsv3.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
                 AND    xsv3.cancel_correct_class IS NULL
@@ -1196,7 +1203,7 @@ AS
            ,ln_active_column_number
            ,ln_missing_part_time
            ,lt_change_out_time_100
-           ,lt_change_out_time_10              
+           ,lt_change_out_time_10
       FROM  xxcso_sales_v  xsv   -- 売上実績ビュー
       WHERE xsv.order_no_hht = TO_NUMBER(io_get_data_rec.attribute13)
         AND xsv.cancel_correct_class IS NULL
@@ -1204,22 +1211,22 @@ AS
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-      -- 警告メッセージ取得
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_app_name                            --アプリケーション短縮名
-                    ,iv_name         => cv_tkn_number_13                       --メッセージコード
-                    ,iv_token_name1  => cv_tkn_prcss_nm                        --トークンコード1
-                    ,iv_token_value1 => cv_prcss_nm                            --トークン値1
-                    ,iv_token_name2  => cv_tkn_vst_dt                          --トークンコード2
-                    ,iv_token_value2 => TO_CHAR(
-                                          io_get_data_rec.actual_end_date,'yyyymmdd'
-                                        )                                      --トークン値2
-                    ,iv_token_name3  => cv_tkn_tsk_id                          --トークンコード3
-                    ,iv_token_value3 => TO_CHAR(io_get_data_rec.task_id)       --トークン値3
-                    ,iv_token_name4  => cv_tkn_errmsg                          --トークンコード4
-                    ,iv_token_value4 => SQLERRM                                --トークン値4
-                   );
-      lv_errbuf := lv_errmsg;
+        -- 警告メッセージ取得
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name                            --アプリケーション短縮名
+                      ,iv_name         => cv_tkn_number_13                       --メッセージコード
+                      ,iv_token_name1  => cv_tkn_prcss_nm                        --トークンコード1
+                      ,iv_token_value1 => cv_prcss_nm                            --トークン値1
+                      ,iv_token_name2  => cv_tkn_vst_dt                          --トークンコード2
+                      ,iv_token_value2 => TO_CHAR(
+                                            io_get_data_rec.actual_end_date,'yyyymmdd'
+                                          )                                      --トークン値2
+                      ,iv_token_name3  => cv_tkn_tsk_id                          --トークンコード3
+                      ,iv_token_value3 => TO_CHAR(io_get_data_rec.task_id)       --トークン値3
+                      ,iv_token_name4  => cv_tkn_errmsg                          --トークンコード4
+                      ,iv_token_value4 => SQLERRM                                --トークン値4
+                     );
+        lv_errbuf := lv_errmsg;
 --
       RAISE no_data_expt;
       -- OTHERS例外ハンドラ 
@@ -1546,6 +1553,10 @@ AS
     cv_invalid          CONSTANT VARCHAR2(1)     := '0';            -- 有効訪問区分 0:無効
     cv_dlv_gds_info     CONSTANT VARCHAR2(1)     := '3';            -- 登録区分     3:納品情報
     cv_abrb_clclt       CONSTANT VARCHAR2(1)     := '5';            -- 登録区分     5:消化計算
+    /* 2009.04.22 K.Satomura T1_0478対応 START */
+    cv_task_type_visit    CONSTANT VARCHAR2(30)  := 'XXCSO1_TASK_TYPE_VISIT';
+    cv_src_obj_tp_cd_opp  CONSTANT VARCHAR2(100) := 'OPPORTUNITY'; -- ソースタイプ
+    /* 2009.04.22 K.Satomura T1_0478対応 END */
     -- *** ローカル変数 ***
     -- OUTパラメータ格納用
     lv_from_value   VARCHAR2(2000); -- パラメータ更新日 FROM
@@ -1567,38 +1578,179 @@ AS
     -- 訪問実績データ抽出カーソル
     CURSOR get_vst_rslt_data_cur
     IS
-      SELECT  jtb.actual_end_date           actual_end_date              -- 訪問日
-             ,jtb.task_id                   task_id                      -- 訪問回数
-             ,jtb.attribute1                attribute1                   -- 訪問区分コード1
-             ,jtb.attribute2                attribute2                   -- 訪問区分コード2
-             ,jtb.attribute3                attribute3                   -- 訪問区分コード3
-             ,jtb.attribute4                attribute4                   -- 訪問区分コード4
-             ,jtb.attribute5                attribute5                   -- 訪問区分コード5
-             ,jtb.attribute6                attribute6                   -- 訪問区分コード6
-             ,jtb.attribute7                attribute7                   -- 訪問区分コード7
-             ,jtb.attribute8                attribute8                   -- 訪問区分コード8
-             ,jtb.attribute9                attribute9                   -- 訪問区分コード9
-             ,jtb.attribute10               attribute10                  -- 訪問区分コード10
-             ,TO_CHAR(jtb.actual_end_date,'hh24mi')  actual_end_hour     -- 訪問時間
-             ,jtb.deleted_flag              deleted_flag                 -- 削除フラグ
-             ,jtb.source_object_type_code   source_object_type_code      -- ソースタイプ
-             ,jtb.source_object_id          source_object_id             -- パーティID
-             ,jtb.attribute11               attribute11                  -- 有効訪問区分
-             ,jtb.attribute12               attribute12                  -- 登録元区分
-             ,jtb.attribute13               attribute13                  -- 登録元ソース番号
-             ,ppf.employee_number           employee_number              -- 営業員コード
-      FROM    jtf_tasks_b           jtb   -- タスクテーブル
-             ,per_people_f          ppf   -- 従業員マスタ
-             ,jtf_rs_resource_extns jrre  --リソースマスタ
-      WHERE  (TRUNC(jtb.last_update_date)
-               BETWEEN ld_from_value AND ld_to_value
-             )
-        AND  jtb.source_object_type_code = cv_src_obj_tp_cd
-        AND  jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
-        AND  jtb.owner_type_code         = cv_owner_tp_cd
-        AND  jtb.owner_id                = jrre.resource_id
-        AND  jrre.category               = cv_category
-        AND  jrre.source_id              = ppf.person_id
+      /* 2009.04.22 K.Satomura T1_0478対応 START */
+      --SELECT  jtb.actual_end_date           actual_end_date              -- 訪問日
+      --       ,jtb.task_id                   task_id                      -- 訪問回数
+      --       ,jtb.attribute1                attribute1                   -- 訪問区分コード1
+      --       ,jtb.attribute2                attribute2                   -- 訪問区分コード2
+      --       ,jtb.attribute3                attribute3                   -- 訪問区分コード3
+      --       ,jtb.attribute4                attribute4                   -- 訪問区分コード4
+      --       ,jtb.attribute5                attribute5                   -- 訪問区分コード5
+      --       ,jtb.attribute6                attribute6                   -- 訪問区分コード6
+      --       ,jtb.attribute7                attribute7                   -- 訪問区分コード7
+      --       ,jtb.attribute8                attribute8                   -- 訪問区分コード8
+      --       ,jtb.attribute9                attribute9                   -- 訪問区分コード9
+      --       ,jtb.attribute10               attribute10                  -- 訪問区分コード10
+      --       ,TO_CHAR(jtb.actual_end_date,'hh24mi')  actual_end_hour     -- 訪問時間
+      --       ,jtb.deleted_flag              deleted_flag                 -- 削除フラグ
+      --       ,jtb.source_object_type_code   source_object_type_code      -- ソースタイプ
+      --       ,jtb.source_object_id          source_object_id             -- パーティID
+      --       ,jtb.attribute11               attribute11                  -- 有効訪問区分
+      --       ,jtb.attribute12               attribute12                  -- 登録元区分
+      --       ,jtb.attribute13               attribute13                  -- 登録元ソース番号
+      --       ,ppf.employee_number           employee_number              -- 営業員コード
+      --FROM    jtf_tasks_b           jtb   -- タスクテーブル
+      --       ,per_people_f          ppf   -- 従業員マスタ
+      --       ,jtf_rs_resource_extns jrre  -- リソースマスタ
+      --WHERE  (TRUNC(jtb.last_update_date)
+      --         BETWEEN ld_from_value AND ld_to_value
+      --       )
+      --  AND  jtb.source_object_type_code = cv_src_obj_tp_cd
+      --  AND  jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
+      --  AND  jtb.owner_type_code         = cv_owner_tp_cd
+      --  AND  jtb.owner_id                = jrre.resource_id
+      --  AND  jrre.category               = cv_category
+      --  AND  jrre.source_id              = ppf.person_id
+      -- クローズされているタスク
+      SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+            ,jtb.task_id                           task_id                 -- 訪問回数
+            ,jtb.attribute1                        attribute1              -- 訪問区分コード1
+            ,jtb.attribute2                        attribute2              -- 訪問区分コード2
+            ,jtb.attribute3                        attribute3              -- 訪問区分コード3
+            ,jtb.attribute4                        attribute4              -- 訪問区分コード4
+            ,jtb.attribute5                        attribute5              -- 訪問区分コード5
+            ,jtb.attribute6                        attribute6              -- 訪問区分コード6
+            ,jtb.attribute7                        attribute7              -- 訪問区分コード7
+            ,jtb.attribute8                        attribute8              -- 訪問区分コード8
+            ,jtb.attribute9                        attribute9              -- 訪問区分コード9
+            ,jtb.attribute10                       attribute10             -- 訪問区分コード10
+            ,TO_CHAR(jtb.actual_end_date,'hh24mi') actual_end_hour         -- 訪問時間
+            ,jtb.deleted_flag                      deleted_flag            -- 削除フラグ
+            ,jtb.source_object_type_code           source_object_type_code -- ソースタイプ
+            ,jtb.source_object_id                  source_object_id        -- パーティID
+            ,jtb.attribute11                       attribute11             -- 有効訪問区分
+            ,jtb.attribute12                       attribute12             -- 登録元区分
+            ,jtb.attribute13                       attribute13             -- 登録元ソース番号
+            ,ppf.employee_number                   employee_number         -- 営業員コード
+      FROM   jtf_tasks_b           jtb -- タスクテーブル
+            ,per_people_f          ppf -- 従業員マスタ
+            ,jtf_rs_resource_extns jrr -- リソースマスタ
+      WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
+      AND    jtb.source_object_type_code = cv_src_obj_tp_cd
+      AND    jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
+      AND    jtb.owner_type_code         = cv_owner_tp_cd
+      AND    jtb.owner_id                = jrr.resource_id
+      AND    jrr.category                = cv_category
+      AND    jrr.source_id               = ppf.person_id
+      AND    jtb.actual_end_date         IS NOT NULL
+      AND    jtb.task_type_id            = fnd_profile.value(cv_task_type_visit)
+      -- クローズ以外の過去日付のタスク
+      UNION ALL
+      SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+            ,jtb.task_id                           task_id                 -- 訪問回数
+            ,jtb.attribute1                        attribute1              -- 訪問区分コード1
+            ,jtb.attribute2                        attribute2              -- 訪問区分コード2
+            ,jtb.attribute3                        attribute3              -- 訪問区分コード3
+            ,jtb.attribute4                        attribute4              -- 訪問区分コード4
+            ,jtb.attribute5                        attribute5              -- 訪問区分コード5
+            ,jtb.attribute6                        attribute6              -- 訪問区分コード6
+            ,jtb.attribute7                        attribute7              -- 訪問区分コード7
+            ,jtb.attribute8                        attribute8              -- 訪問区分コード8
+            ,jtb.attribute9                        attribute9              -- 訪問区分コード9
+            ,jtb.attribute10                       attribute10             -- 訪問区分コード10
+            ,TO_CHAR(jtb.actual_end_date,'hh24mi') actual_end_hour         -- 訪問時間
+            ,cv_yes                                deleted_flag            -- 削除フラグ
+            ,jtb.source_object_type_code           source_object_type_code -- ソースタイプ
+            ,jtb.source_object_id                  source_object_id        -- パーティID
+            ,jtb.attribute11                       attribute11             -- 有効訪問区分
+            ,jtb.attribute12                       attribute12             -- 登録元区分
+            ,jtb.attribute13                       attribute13             -- 登録元ソース番号
+            ,ppf.employee_number                   employee_number         -- 営業員コード
+      FROM   jtf_tasks_b           jtb -- タスクテーブル
+            ,per_people_f          ppf -- 従業員マスタ
+            ,jtf_rs_resource_extns jrr -- リソースマスタ
+      WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
+      AND    jtb.source_object_type_code =  cv_src_obj_tp_cd
+      AND    jtb.task_status_id          <> TO_NUMBER(lv_tsk_stts_cls)
+      AND    jtb.owner_type_code         =  cv_owner_tp_cd
+      AND    jtb.owner_id                =  jrr.resource_id
+      AND    jrr.category                =  cv_category
+      AND    jrr.source_id               =  ppf.person_id
+      AND    jtb.task_type_id            =  fnd_profile.value(cv_task_type_visit)
+      AND    TRUNC(jtb.actual_end_date)  <= TRUNC(ld_process_date)
+      UNION ALL
+      -- クローズされている商談タスク
+      SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+            ,jtb.task_id                           task_id                 -- 訪問回数
+            ,jtb.attribute1                        attribute1              -- 訪問区分コード1
+            ,jtb.attribute2                        attribute2              -- 訪問区分コード2
+            ,jtb.attribute3                        attribute3              -- 訪問区分コード3
+            ,jtb.attribute4                        attribute4              -- 訪問区分コード4
+            ,jtb.attribute5                        attribute5              -- 訪問区分コード5
+            ,jtb.attribute6                        attribute6              -- 訪問区分コード6
+            ,jtb.attribute7                        attribute7              -- 訪問区分コード7
+            ,jtb.attribute8                        attribute8              -- 訪問区分コード8
+            ,jtb.attribute9                        attribute9              -- 訪問区分コード9
+            ,jtb.attribute10                       attribute10             -- 訪問区分コード10
+            ,TO_CHAR(jtb.actual_end_date,'hh24mi') actual_end_hour         -- 訪問時間
+            ,jtb.deleted_flag                      deleted_flag            -- 削除フラグ
+            ,jtb.source_object_type_code           source_object_type_code -- ソースタイプ
+            ,ala.customer_id                       source_object_id        -- パーティID
+            ,jtb.attribute11                       attribute11             -- 有効訪問区分
+            ,jtb.attribute12                       attribute12             -- 登録元区分
+            ,jtb.attribute13                       attribute13             -- 登録元ソース番号
+            ,ppf.employee_number                   employee_number         -- 営業員コード
+      FROM   jtf_tasks_b           jtb -- タスクテーブル
+            ,per_people_f          ppf -- 従業員マスタ
+            ,jtf_rs_resource_extns jrr -- リソースマスタ
+            ,as_leads_all          ala -- 商談テーブル
+      WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
+      AND    jtb.source_object_type_code = cv_src_obj_tp_cd_opp
+      AND    jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
+      AND    jtb.owner_type_code         = cv_owner_tp_cd
+      AND    jtb.owner_id                = jrr.resource_id
+      AND    jrr.category                = cv_category
+      AND    jrr.source_id               = ppf.person_id
+      AND    jtb.actual_end_date         IS NOT NULL
+      AND    jtb.task_type_id            = fnd_profile.value(cv_task_type_visit)
+      AND    ala.lead_id                 = jtb.source_object_id
+      UNION ALL
+      -- クローズ以外の過去日付の商談タスク
+      SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
+            ,jtb.task_id                           task_id                 -- 訪問回数
+            ,jtb.attribute1                        attribute1              -- 訪問区分コード1
+            ,jtb.attribute2                        attribute2              -- 訪問区分コード2
+            ,jtb.attribute3                        attribute3              -- 訪問区分コード3
+            ,jtb.attribute4                        attribute4              -- 訪問区分コード4
+            ,jtb.attribute5                        attribute5              -- 訪問区分コード5
+            ,jtb.attribute6                        attribute6              -- 訪問区分コード6
+            ,jtb.attribute7                        attribute7              -- 訪問区分コード7
+            ,jtb.attribute8                        attribute8              -- 訪問区分コード8
+            ,jtb.attribute9                        attribute9              -- 訪問区分コード9
+            ,jtb.attribute10                       attribute10             -- 訪問区分コード10
+            ,TO_CHAR(jtb.actual_end_date,'hh24mi') actual_end_hour         -- 訪問時間
+            ,cv_yes                                deleted_flag            -- 削除フラグ
+            ,jtb.source_object_type_code           source_object_type_code -- ソースタイプ
+            ,ala.customer_id                       source_object_id        -- パーティID
+            ,jtb.attribute11                       attribute11             -- 有効訪問区分
+            ,jtb.attribute12                       attribute12             -- 登録元区分
+            ,jtb.attribute13                       attribute13             -- 登録元ソース番号
+            ,ppf.employee_number                   employee_number         -- 営業員コード
+      FROM   jtf_tasks_b           jtb -- タスクテーブル
+            ,per_people_f          ppf -- 従業員マスタ
+            ,jtf_rs_resource_extns jrr -- リソースマスタ
+            ,as_leads_all          ala -- 商談テーブル
+      WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
+      AND    jtb.source_object_type_code =  cv_src_obj_tp_cd_opp
+      AND    jtb.task_status_id          <> TO_NUMBER(lv_tsk_stts_cls)
+      AND    jtb.owner_type_code         =  cv_owner_tp_cd
+      AND    jtb.owner_id                =  jrr.resource_id
+      AND    jrr.category                =  cv_category
+      AND    jrr.source_id               =  ppf.person_id
+      AND    TRUNC(jtb.actual_end_date)  <= TRUNC(ld_process_date)
+      AND    jtb.task_type_id            =  fnd_profile.value(cv_task_type_visit)
+      AND    ala.lead_id                 =  jtb.source_object_id
+      /* 2009.04.22 K.Satomura T1_0478対応 END */
       ;
     -- 前回訪問日抽出カーソル
     CURSOR get_lst_vst_dt_cur(
@@ -1618,6 +1770,22 @@ AS
         AND  jtb.task_id                <> it_task_id
         AND  jtb.actual_end_date        <= it_act_end_dt
         AND  jtb.deleted_flag            = cv_no
+      /* 2009.04.22 K.Satomura T1_0478対応 START */
+      UNION ALL
+      SELECT jtb.actual_end_date actual_end_date -- 前回訪問日
+            ,jtb.attribute11     attribute11     -- 有効訪問区分
+            ,jtb.attribute12     attribute12     -- 登録区分
+      FROM   jtf_tasks_b  jtb -- タスクテーブル
+            ,as_leads_all ala -- 商談テーブル
+      WHERE  jtb.source_object_type_code =  cv_src_obj_tp_cd_opp
+      AND    jtb.task_status_id          =  TO_NUMBER(lv_tsk_stts_cls)
+      AND    jtb.owner_type_code         =  cv_owner_tp_cd
+      AND    jtb.task_id                 <> it_task_id
+      AND    jtb.actual_end_date         <= it_act_end_dt
+      AND    jtb.deleted_flag            =  cv_no
+      AND    ala.lead_id                 =  jtb.source_object_id
+      AND    ala.customer_id             =  it_srce_objct_id
+      /* 2009.04.22 K.Satomura T1_0478対応 END */
       ORDER BY actual_end_date DESC
     ;
 --
@@ -1834,9 +2002,12 @@ AS
 --
         -- 有効訪問区分が有効(1)かつ登録区分が納品情報(3)のもしくは消化計算(5)場合 
         IF (l_get_vst_rslt_dt_rec.attribute11 = cv_active) THEN
-          IF ((l_get_vst_rslt_dt_rec.attribute12 = cv_dlv_gds_info)
-            OR (l_get_vst_rslt_dt_rec.attribute12 = cv_abrb_clclt))
-          THEN
+          /* 2009.04.22 K.Satomur T1_0740対応 START */
+          --IF ((l_get_vst_rslt_dt_rec.attribute12 = cv_dlv_gds_info)
+          --  OR (l_get_vst_rslt_dt_rec.attribute12 = cv_abrb_clclt))
+          --THEN
+          IF (l_get_vst_rslt_dt_rec.attribute12 = cv_dlv_gds_info) THEN
+          /* 2009.04.22 K.Satomur T1_0740対応 END */
             -- ========================================
             -- A-9.販売実績ヘッダーテーブル・販売実績明細テーブル抽出
             -- ========================================
