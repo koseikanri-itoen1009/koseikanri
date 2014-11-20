@@ -19,6 +19,7 @@ SELECT  cii.external_reference        AS install_code
        ,xcasv.address1                AS address1
        ,xcasv.address2                AS address2
        ,cis.name                      AS status_name
+       ,cii.instance_id               AS instance_id
 FROM    csi_item_instances       cii
        ,xxcso_cust_acct_sites_v  xcasv
        ,csi_instance_statuses    cis
@@ -153,6 +154,19 @@ AND     NOT EXISTS (
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="50" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstanceId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="INSTANCE_ID"
+      Expression="INSTANCE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>

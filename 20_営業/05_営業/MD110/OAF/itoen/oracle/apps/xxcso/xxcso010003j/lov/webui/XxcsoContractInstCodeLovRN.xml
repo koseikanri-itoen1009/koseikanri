@@ -11,7 +11,8 @@ Search Install information LOV region by shared for regist CONTRACT_MANAGEMENTS 
 @see itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAMImpl.java
 
 HISTORY
-2009/01/27  H.Ogawa                Initialcode drop.-->
+2009/01/27  H.Ogawa                Initialcode drop.
+2009/05/15  N.Yanagitaira          T1_0230.-->
 <oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" advancedSearchAllowed="true" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAM">
    <ui:contents>
       <oa:table name="XxcsoContractInstCodeLovRN" id="InstallCodeTblRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallCodeTblRN">
@@ -25,6 +26,7 @@ HISTORY
             <oa:messageStyledText id="Address1" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="Address1" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Address1"/>
             <oa:messageStyledText id="Address2" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="Address2" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Address2"/>
             <oa:messageStyledText id="StatusName" dataType="VARCHAR2" viewName="XxcsoContractInstCodeLovVO1" viewAttr="StatusName" maximumLength="50" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/StatusName"/>
+            <oa:formValue id="InstanceId" dataType="NUMBER" viewName="XxcsoContractInstCodeLovVO1" viewAttr="InstanceId"/>
          </ui:contents>
       </oa:table>
    </ui:contents>

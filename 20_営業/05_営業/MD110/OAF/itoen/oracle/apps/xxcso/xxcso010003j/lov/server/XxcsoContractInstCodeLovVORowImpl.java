@@ -12,6 +12,7 @@
 package itoen.oracle.apps.xxcso.xxcso010003j.lov.server;
 import oracle.apps.fnd.framework.server.OAViewRowImpl;
 import oracle.jbo.server.AttributeDefImpl;
+import oracle.jbo.domain.Number;
 
 /*******************************************************************************
  * 物件コード取得LOVビューオブジェクトクラス
@@ -32,6 +33,7 @@ public class XxcsoContractInstCodeLovVORowImpl extends OAViewRowImpl
   protected static final int ADDRESS1 = 6;
   protected static final int ADDRESS2 = 7;
   protected static final int STATUSNAME = 8;
+  protected static final int INSTANCEID = 9;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -171,6 +173,8 @@ public class XxcsoContractInstCodeLovVORowImpl extends OAViewRowImpl
         return getAddress2();
       case STATUSNAME:
         return getStatusName();
+      case INSTANCEID:
+        return getInstanceId();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -207,6 +211,9 @@ public class XxcsoContractInstCodeLovVORowImpl extends OAViewRowImpl
         return;
       case STATUSNAME:
         setStatusName((String)value);
+        return;
+      case INSTANCEID:
+        setInstanceId((Number)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -266,5 +273,23 @@ public class XxcsoContractInstCodeLovVORowImpl extends OAViewRowImpl
   public void setStatusName(String value)
   {
     setAttributeInternal(STATUSNAME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstanceId
+   */
+  public Number getInstanceId()
+  {
+    return (Number)getAttributeInternal(INSTANCEID);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstanceId
+   */
+  public void setInstanceId(Number value)
+  {
+    setAttributeInternal(INSTANCEID, value);
   }
 }
