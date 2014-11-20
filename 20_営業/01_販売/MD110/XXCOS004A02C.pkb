@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,8 @@ AS
  *  2010/01/18    1.16  K.Atsushiba      [E_本稼動_01110]赤黒フラグの判定条件変更
  *  2010/02/15    1.17  M.Hokkanji       [E_本稼働_01393]店舗別消化計算情報のチェック処理
  *                                       を追加
+ *  2010/03/25    1.18  M.Hokkanji       [E_本稼働_02015]店舗別消化計算情報のチェック処理
+ *                                       を修正
  *
  *****************************************************************************************/
 --
@@ -2757,6 +2759,9 @@ AS
 --
     -- 初期化
     BEGIN
+--******************************* 2010/03/25 1.18 M.Hokkanji MOD START **************************************************************
+      -- INV月次在庫受払表に存在し、店舗別用消化計算明細テーブルに存在しないもしくは一致しないデータが存在するか確認を行う。
+--******************************* 2010/03/25 1.18 M.Hokkanji MOD END   **************************************************************
       SELECT A.inv_wear
         INTO ln_amount
         FROM (
@@ -2795,7 +2800,10 @@ AS
                                     ,SUM(xsdl.sales_quantity) inv_wear --販売数(棚卸減耗)
                                 FROM xxcos_shop_digestion_lns xsdl -- 店舗別用消化計算明細テーブル
                                     ,xxcos_shop_digestion_hdrs xsdh
-                               WHERE xsdl.delivery_base_code = it_rec_work_data.past_sale_base_code
+--******************************* 2010/03/25 1.18 M.Hokkanji MOD START **************************************************************
+--                               WHERE xsdl.delivery_base_code = it_rec_work_data.past_sale_base_code
+                               WHERE xsdh.sales_base_code = it_rec_work_data.past_sale_base_code
+--******************************* 2010/03/25 1.18 M.Hokkanji MOD END   **************************************************************
                                  AND xsdl.customer_number = it_rec_work_data.customer_number --顧客コード
                                  AND xsdl.digestion_due_date = gd_last_month_date
                                  AND xsdh.shop_digestion_hdr_id = xsdl.shop_digestion_hdr_id --店舗別用消化計算ヘッダID
@@ -2816,6 +2824,9 @@ AS
         NULL;
     END;
     BEGIN
+--******************************* 2010/03/25 1.18 M.Hokkanji MOD START **************************************************************
+      -- 店舗別用消化計算明細テーブルに存在し、INV月次在庫受払表に存在しないもしくは一致しないデータが存在するか確認を行う。
+--******************************* 2010/03/25 1.18 M.Hokkanji MOD END   **************************************************************
       SELECT A.inv_wear
         INTO ln_amount
         FROM (
@@ -2824,7 +2835,10 @@ AS
                      ,SUM(xsdl.sales_quantity) inv_wear --販売数(棚卸減耗)
                  FROM xxcos_shop_digestion_lns xsdl -- 店舗別用消化計算明細テーブル
                      ,xxcos_shop_digestion_hdrs xsdh
-                WHERE xsdl.delivery_base_code = it_rec_work_data.past_sale_base_code
+--******************************* 2010/03/25 1.18 M.Hokkanji MOD START **************************************************************
+--                WHERE xsdl.delivery_base_code = it_rec_work_data.past_sale_base_code
+                WHERE xsdh.sales_base_code = it_rec_work_data.past_sale_base_code
+--******************************* 2010/03/25 1.18 M.Hokkanji MOD END   **************************************************************
                   AND xsdl.customer_number = it_rec_work_data.customer_number --顧客コード
                   AND xsdl.digestion_due_date = gd_last_month_date
                   AND xsdh.shop_digestion_hdr_id = xsdl.shop_digestion_hdr_id --店舗別用消化計算ヘッダID
