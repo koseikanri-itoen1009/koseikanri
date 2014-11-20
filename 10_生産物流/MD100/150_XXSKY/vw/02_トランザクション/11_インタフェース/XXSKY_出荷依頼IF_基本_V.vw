@@ -119,17 +119,17 @@ SELECT
        ,XSH_XSL.case_quantity               --ケース数
        ,XSH_XSL.orderd_quantity             --数量
        ,XSH_XSL.shiped_quantity             --出荷実績数量
--- 2009/03/18 H.Iida MOD START 本番障害#1329
+-- 2009/03/25 H.Iida MOD START 本番障害#1329
 --       ,XSH_XSL.designated_production_date  --製造日
-       ,TO_CHAR( XSH_XSL.designated_production_date, 'YYYY/MM/DD HH24:MI:SS')
+       ,TO_CHAR( XSH_XSL.designated_production_date, 'YYYY/MM/DD')
                                             --製造日
--- 2009/03/18 H.Iida MOD END
+-- 2009/03/25 H.Iida MOD END
        ,XSH_XSL.original_character          --固有記号
--- 2009/03/18 H.Iida MOD START 本番障害#1329
+-- 2009/03/25 H.Iida MOD START 本番障害#1329
 --       ,XSH_XSL.use_by_date                 --賞味期限
-       ,TO_CHAR( XSH_XSL.use_by_date, 'YYYY/MM/DD HH24:MI:SS')
+       ,TO_CHAR( XSH_XSL.use_by_date, 'YYYY/MM/DD')
                                             --賞味期限
--- 2009/03/18 H.Iida MOD END
+-- 2009/03/25 H.Iida MOD END
        ,XSH_XSL.detailed_quantity           --内訳数量
        ,XSH_XSL.ship_to_quantity            --入庫実績数量
        ,XSH_XSL.reserved_status             --保留ステータス
