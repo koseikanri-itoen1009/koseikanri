@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO019A10C(body)
  * Description      : 訪問売上計画管理表（随時実行の帳票）用にサマリテーブルを作成します。
  * MD.050           :  MD050_CSO_019_A10_訪問売上計画管理集計バッチ
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2009-05-19    1.4   H.Ogawa          障害番号：T1_1024,T1_1037,T1_1038
  *  2009-05-25    1.4   T.Mori           業務処理日付、会計期間開始日がNULLである場合、
  *                                       エラーメッセージが出力されず、エラー終了しない
+ *  2009-08-28    1.5   Daisuke.Abe      【0001194】パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -1195,7 +1196,11 @@ AS
 --    union_res.sum_org_code                         -- 顧客コード
 --   ,union_res.gvm_type                             -- 一般／自販機／ＭＣ
 --   ,union_res.sales_date                           -- 販売年月日／販売年月
-    SELECT  inn_v.sum_org_code                 sum_org_code
+/* 20090828_abe_0001194 START*/
+    SELECT  /*+ FIRST_ROWS */
+            inn_v.sum_org_code                 sum_org_code
+--    SELECT  inn_v.sum_org_code                 sum_org_code
+/* 20090828_abe_0001194 END*/
            ,inn_v.group_base_code              group_base_code
            ,inn_v.sales_date                   sales_date
            ,NULL                               gvm_type
@@ -1409,7 +1414,11 @@ AS
                                    ROUND(xsv1.pure_amount / 1000)
                                END
                               ) pure_amount
-                      FROM    (SELECT  xsv.account_number     account_number
+/* 20090828_abe_0001194 START*/
+                      FROM    (SELECT  /*+ USE_NL(xsv.seh xsv.sel) */
+                                       xsv.account_number     account_number
+--                      FROM    (SELECT  xsv.account_number     account_number
+/* 20090828_abe_0001194 END*/
                                       ,xsv.delivery_date      delivery_date
                                       ,'N'                    other_flag
                                       ,SUM(xsv.pure_amount)   pure_amount
@@ -1419,7 +1428,11 @@ AS
                                  AND   xsv.delivery_pattern_class <> cv_delivery_pattern_cls_5
                                GROUP BY xsv.account_number, xsv.delivery_date
                                UNION ALL
-                               SELECT  xsv.account_number     account_number
+/* 20090828_abe_0001194 START*/
+                               SELECT  /*+ USE_NL(xsv.seh xsv.sel) */
+                                       xsv.account_number     account_number
+--                               SELECT  xsv.account_number     account_number
+/* 20090828_abe_0001194 END*/
                                       ,xsv.delivery_date      delivery_date
                                       ,'Y'                    other_flag
                                       ,SUM(xsv.pure_amount)   pure_amount
@@ -1476,7 +1489,11 @@ AS
                     ,xvv1.visit_num_x                          vis_x_num
                     ,xvv1.visit_num_y                          vis_y_num
                     ,xvv1.visit_num_z                          vis_z_num
-             FROM    (SELECT  xvv.party_id                                party_id
+/* 20090828_abe_0001194 START*/
+             FROM    (SELECT  /*+ index(xvv.jtb xxcso_jtf_tasks_b_n20) */
+                              xvv.party_id                                party_id
+--             FROM    (SELECT  xvv.party_id                                party_id
+/* 20090828_abe_0001194 END*/
                              ,TRUNC(xvv.actual_end_date)                  actual_end_date
                              ,COUNT(xvv.task_id)                          vis_num
                              ,SUM(
@@ -6822,62 +6839,64 @@ AS
       RAISE global_process_expt;
     END IF;
 --
---
-    -- =================================================
-    -- A-6.日別営業員別取得登録 
-    -- =================================================
-    insert_day_emp_dt(
-       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
-    );
---
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
---
---
-    -- =================================================
-    -- A-7.日別営業グループ別取得登録 
-    -- =================================================
-    insert_day_group_dt(
-       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
-    );
---
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
---
---
-    -- =================================================
-    -- A-8.日別拠点／課別取得登録 
-    -- =================================================
-    insert_day_base_dt(
-       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
-    );
---
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
---
---
-    -- =================================================
-    -- A-9.日別地区営業部／部別取得登録 
-    -- =================================================
-    insert_day_area_dt(
-       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
-    );
---
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
---
+/* 20090828_abe_0001194 START*/
+----
+--    -- =================================================
+--    -- A-6.日別営業員別取得登録 
+--    -- =================================================
+--    insert_day_emp_dt(
+--       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
+--      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
+--      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
+--    );
+----
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+----
+----
+--    -- =================================================
+--    -- A-7.日別営業グループ別取得登録 
+--    -- =================================================
+--    insert_day_group_dt(
+--       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
+--      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
+--      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
+--    );
+----
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+----
+----
+--    -- =================================================
+--    -- A-8.日別拠点／課別取得登録 
+--    -- =================================================
+--    insert_day_base_dt(
+--       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
+--      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
+--      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
+--    );
+----
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+----
+----
+--    -- =================================================
+--    -- A-9.日別地区営業部／部別取得登録 
+--    -- =================================================
+--    insert_day_area_dt(
+--       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
+--      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
+--      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
+--    );
+----
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+----
+/* 20090828_abe_0001194 END*/
 --
     -- =================================================
     -- A-10.月別顧客別取得登録 
@@ -6892,62 +6911,64 @@ AS
       RAISE global_process_expt;
     END IF;
 --
---
-    -- =================================================
-    -- A-11.月別営業員別取得登録 
-    -- =================================================
-    insert_mon_emp_dt(
-       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
-    );
---
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
---
---
-    -- =================================================
-    -- A-12.月別営業グループ別取得登録 
-    -- =================================================
-    insert_mon_group_dt(
-       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
-    );
---
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
---
---
-    -- =================================================
-    -- A-13.月別拠点／課別取得登録 
-    -- =================================================
-    insert_mon_base_dt(
-       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
-    );
---
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
---
---
-    -- =================================================
-    -- A-14.月別地区営業部／部別取得登録 
-    -- =================================================
-    insert_mon_area_dt(
-       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
-      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
-    );
---
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
---
+/* 20090828_abe_0001194 START*/
+----
+--    -- =================================================
+--    -- A-11.月別営業員別取得登録 
+--    -- =================================================
+--    insert_mon_emp_dt(
+--       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
+--      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
+--      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
+--    );
+----
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+----
+----
+--    -- =================================================
+--    -- A-12.月別営業グループ別取得登録 
+--    -- =================================================
+--    insert_mon_group_dt(
+--       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
+--      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
+--      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
+--    );
+----
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+----
+----
+--    -- =================================================
+--    -- A-13.月別拠点／課別取得登録 
+--    -- =================================================
+--    insert_mon_base_dt(
+--       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
+--      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
+--      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
+--    );
+----
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+----
+----
+--    -- =================================================
+--    -- A-14.月別地区営業部／部別取得登録 
+--    -- =================================================
+--    insert_mon_area_dt(
+--       ov_errbuf    => lv_errbuf    -- エラー・メッセージ            --# 固定 #
+--      ,ov_retcode   => lv_retcode   -- リターン・コード              --# 固定 #
+--      ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ  --# 固定 #
+--    );
+----
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+----
+/* 20090828_abe_0001194 END*/
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
