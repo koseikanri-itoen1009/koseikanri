@@ -32,6 +32,8 @@ AS
        AND   papf.person_id = paaf.person_id 
        AND   (paaf.effective_start_date IS NULL OR paaf.effective_start_date <= TRUNC(SYSDATE))
        AND   (paaf.effective_end_date IS NULL OR paaf.effective_end_date >= TRUNC(SYSDATE))
+       AND   (papf.effective_start_date IS NULL OR papf.effective_start_date <= TRUNC(SYSDATE))
+       AND   (papf.effective_end_date IS NULL OR papf.effective_end_date >= TRUNC(SYSDATE))
        AND   paaf.location_id = xlv.location_id 
        AND   (xlv.other_shipment_div IS NULL OR xlv.other_shipment_div = '0')
        AND   xlv.location_code = xcav.party_number) prty
@@ -39,6 +41,8 @@ AS
   AND   papf.person_id = paaf.person_id
   AND   (paaf.effective_start_date IS NULL OR paaf.effective_start_date <= TRUNC(SYSDATE))
   AND   (paaf.effective_end_date IS NULL OR paaf.effective_end_date >= TRUNC(SYSDATE))
+  AND   (papf.effective_start_date IS NULL OR papf.effective_start_date <= TRUNC(SYSDATE))
+  AND   (papf.effective_end_date IS NULL OR papf.effective_end_date >= TRUNC(SYSDATE))
   AND   paaf.location_id = xlv.location_id 
   AND   ((xlv.other_shipment_div = '1'
          AND xlv.other_shipment_div = prty.other_shipment_div)
