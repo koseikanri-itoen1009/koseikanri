@@ -7,7 +7,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.12
+ * Version          : 1.13
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -43,7 +43,7 @@ AS
  *  2008/11/28    1.10 Akiyosi Shiina   本番#227対応
  *  2008/12/06    1.11 Takahito Miyata  本番#521対応 
  *  2008/12/10    1.12 Takao Ohashi     本番#639対応
- *
+ *  2008/12/16    1.13 Naoki Fukuda     本番#639対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1299,8 +1299,26 @@ AS
 --      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm.xrpm iimb ximb gic mcb mct) use_nl(itc iaj ijm xrpm.xrpm flv iimb ximb gic mcb mct) */' ;
 -- 2008/12/06 v1.11 UPDATE END
 -- mod end ver1.8
-      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm gic mcb mct) use_nl(itc iaj ijm xrpm gic mcb mct) */' ;
+-- 2008/12/16 v1.13 Del Start
+      --lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm gic mcb mct) use_nl(itc iaj ijm xrpm gic mcb mct) */' ;
+-- 2008/12/16 v1.13 Del End
 -- mod end  ver1.12
+-- 2008/12/16 v1.13 Add Start
+      IF (gr_param.reason_code IS NOT NULL)                 -- xrpm.new_div_inventに指定がある
+        OR
+         (
+           (gr_param.out_item_ctl IS NOT NULL) AND          -- mcb.segment1に指定がある
+           (gr_param.reason_code IS NULL)      AND          -- xrpm.new_div_inventに指定がない
+           (gr_param.item_location_id IS NULL) AND          -- xilv.inventory_location_idに指定がない
+           (gr_param.item1 IS NULL)            AND          -- itc.item_id1～3に指定がない
+           (gr_param.item2 IS NULL)            AND
+           (gr_param.item3 IS NULL)
+         ) THEN
+        lv_sql_body := lv_sql_body || ' SELECT /*+ leading(xrpm itc iaj ijm xrpm gic mcb mct) use_nl(itc iaj ijm xrpm gic mcb mct) */' ;
+      ELSE
+        lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm gic mcb mct) use_nl(itc iaj ijm xrpm gic mcb mct) */' ;
+      END IF;
+-- 2008/12/16 v1.13 Add End
       lv_sql_body := lv_sql_body || '  NULL                        AS batch_id' ;
       lv_sql_body := lv_sql_body || ' ,xlv.location_code           AS dept_code' ;
       lv_sql_body := lv_sql_body || ' ,SUBSTRB(xlv.description,1,20)             AS dept_name' ;
@@ -1369,8 +1387,26 @@ AS
 --      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm.xrpm iimb ximb gic mcb mct) use_nl(itc iaj ijm xrpm.xrpm flv iimb ximb gic mcb mct) */' ;
 -- 2008/12/06 v1.11 UPDATE END
 -- mod end ver1.8
-      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm gic mcb mct) use_nl(itc iaj ijm xrpm gic mcb mct) */' ;
+-- 2008/12/16 v1.13 Del Start
+      --lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm gic mcb mct) use_nl(itc iaj ijm xrpm gic mcb mct) */' ;
+-- 2008/12/16 v1.13 Del End
 -- mod end ver1.12
+-- 2008/12/16 v1.13 Add Start
+      IF (gr_param.reason_code IS NOT NULL)                 -- xrpm.new_div_inventに指定がある
+        OR
+         (
+           (gr_param.out_item_ctl IS NOT NULL) AND          -- mcb.segment1に指定がある
+           (gr_param.reason_code IS NULL)      AND          -- xrpm.new_div_inventに指定がない
+           (gr_param.item_location_id IS NULL) AND          -- xilv.inventory_location_idに指定がない
+           (gr_param.item1 IS NULL)            AND          -- itc.item_id1～3に指定がない
+           (gr_param.item2 IS NULL)            AND
+           (gr_param.item3 IS NULL)
+         ) THEN
+        lv_sql_body := lv_sql_body || ' SELECT /*+ leading(xrpm itc iaj ijm xrpm gic mcb mct) use_nl(itc iaj ijm xrpm gic mcb mct) */' ;
+      ELSE
+        lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm gic mcb mct) use_nl(itc iaj ijm xrpm gic mcb mct) */' ;
+      END IF;
+-- 2008/12/16 v1.13 Add End
       lv_sql_body := lv_sql_body || '  NULL                        AS batch_id' ;
       lv_sql_body := lv_sql_body || ' ,xlv.location_code           AS dept_code' ;
       lv_sql_body := lv_sql_body || ' ,SUBSTRB(xlv.description,1,20)             AS dept_name' ;
