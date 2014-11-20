@@ -96,6 +96,9 @@ FROM   (SELECT 1                         record_type         -- çXêV
         AND    itp.lot_id             = xmd.lot_id
         AND    itp.lot_id             = ilm.lot_id
         AND    itp.item_id            = ilm.item_id
+/** 2009/02/24 D.Nihei Add Start ñ{î‘è·äQ#1229 **/
+        AND    itp.delete_mark        = 0
+/** 2009/02/24 D.Nihei Add End **/
         AND    xicv.item_id           = ximv.item_id
         AND    itp.location           = xmd.location_code
         AND    gmd.material_detail_id    = TO_NUMBER(:1)
