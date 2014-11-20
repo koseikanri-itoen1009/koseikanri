@@ -20,6 +20,7 @@ REM  AUTHOR
 REM    Sanjay Rastogi - 06/05/96
 REM    Yuta Suzuki    - 10/09/08 modify
 REM    Yuta Suzuki    - 11/11/08 bug fix
+REM    Yuta Suzuki    - 01/13/09 bug fix(#959)
 REM
 REM *hf************************************************************************
 
@@ -341,8 +342,11 @@ BEGIN
   IF ((INSERTING)
       AND (:new.program_update_date IS NULL)
       AND (:new.program_application_id IS NULL)
-      AND (:new.program_id IS NULL)
-      AND (:new.request_id IS NULL))
+--20090113 modify
+--      AND (:new.program_id IS NULL)
+--      AND (:new.request_id IS NULL))
+      AND (:new.program_id IS NULL))
+--20090113 modify
   OR ((UPDATING)
       AND (NVL(:old.program_update_date,SYSDATE-1) = NVL(:new.program_update_date,SYSDATE-1)))
   THEN
