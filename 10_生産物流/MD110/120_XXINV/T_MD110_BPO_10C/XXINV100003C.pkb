@@ -7,7 +7,7 @@ AS
  * Description      : 販売計画時系列表
  * MD.050/070       : 販売計画・引取計画 (T_MD050_BPO_100)
  *                    販売計画時系列表   (T_MD070_BPO_10C)
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/04/28    1.2   Sumie Nakamura   仕入･標準単価ヘッダ(アドオン)抽出条件漏れ対応
  *  2008/04/30    1.3   Yuko Kawano      内部変更要求#62,76
  *  2008/05/28    1.4   Kazuo Kumamoto   規約違反(varchar使用)対応
+ *  2008/07/02    1.5   Satoshi Yunba    禁則文字「'」「"」「<」「>」「&」対応
  *
  *****************************************************************************************/
 --
@@ -9203,7 +9204,7 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'プロファイル取得後：org_id='|| gn_org_id);
 --
     --データの場合
     IF (ic_type = 'D') THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>';
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>';
     END IF;

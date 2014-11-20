@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.5
+ * Version                : 1.6
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/06/12   1.3   Oracle 二瓶 大輔 システムテスト不具合対応#78(委託加工費更新関数修正)
  *  2008/06/25   1.4   Oracle 二瓶 大輔 システムテスト不具合対応#75
  *  2008/06/27   1.5   Oracle 二瓶 大輔 結合テスト不具合対応(原料追加関数修正)
+ *  2008/07/02   1.6   Oracle 伊藤ひとみ システムテスト不具合対応#343(荒茶製造情報取得関数修正)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -2709,6 +2710,12 @@ AS
       ;
 --
       IF (ln_temp <> 0) THEN
+-- 2008/07/02 H.Itou ADD START
+        lv_errmsg := 'エラー：処理区分が1:追加で、品質検査依頼情報に同一ロットID、品目IDのデータが存在します。' ||
+                     'ロットID：' || it_lot_id ||
+                     '品目ID：'   || it_item_id;
+        lv_errbuf := lv_errmsg;
+-- 2008/07/02 H.Itou ADD END
         -- エラー
         RAISE global_api_expt;
       END IF;
@@ -2741,6 +2748,10 @@ AS
         OR (lr_xxwip_qt_inspection.test_date2 IS NOT NULL)
         OR (lr_xxwip_qt_inspection.test_date3 IS NOT NULL) THEN
 --
+-- 2008/07/02 H.Itou ADD START
+          ov_errmsg := '警告：処理区分が2:更新かつ区分が1:生産以外で、検査日1 OR 検査日2 OR 検査日3 のいづれかに入力があります。';
+          ov_errbuf := ov_errmsg;
+-- 2008/07/02 H.Itou ADD END
           -- 警告
           ov_retcode :=gv_status_warn;
         END IF;
@@ -2752,6 +2763,10 @@ AS
         OR (lr_xxwip_qt_inspection.test_date2 IS NOT NULL)
         OR (lr_xxwip_qt_inspection.test_date3 IS NOT NULL) THEN
 --
+-- 2008/07/02 H.Itou ADD START
+          lv_errmsg := 'エラー：処理区分が3:削除で、検査日1 OR 検査日2 OR 検査日3 のいづれかに入力があります。';
+          lv_errbuf := lv_errmsg;
+-- 2008/07/02 H.Itou ADD END
           -- エラー
           RAISE global_api_expt;
 --
@@ -2890,6 +2905,10 @@ AS
       IF (ir_xxwip_qt_inspection.prod_dely_date <> lr_xxwip_qt_inspection.prod_dely_date)
       OR (ir_xxwip_qt_inspection.use_by_date    <> lr_xxwip_qt_inspection.use_by_date) THEN
 --
+-- 2008/07/02 H.Itou ADD START
+        ov_errmsg := '警告：処理区分が2:更新かつ区分が1:生産で、検査日1 OR 検査日2 OR 検査日3 のいづれかに入力があり、生産/納入日 OR 賞味期限が変更されています。';
+        ov_errbuf := ov_errmsg;
+-- 2008/07/02 H.Itou ADD END
         ov_retcode := gv_status_warn;
       END IF;
     END IF;
@@ -3327,8 +3346,14 @@ AS
           ,lr_xxwip_qt_inspection.unique_sign            -- 固有記号
     FROM   ic_lots_mst              ilm                  -- OPMロットマスタ
           ,xxcmn_item_mst_v         ximv                 -- OPM品目情報VIEW
-    WHERE  ximv.item_id           = it_item_id           -- 品目ID
-    AND    ilm.lot_id             = it_lot_id            -- ロットID
+-- 2008/07/02 H.Itou DEL START
+--    WHERE  ximv.item_id           = it_item_id           -- 品目ID
+--    AND    ilm.lot_id             = it_lot_id            -- ロットID
+-- 2008/07/02 H.Itou DEL END
+-- 2008/07/02 H.Itou ADD START
+    WHERE  ximv.item_id           = lr_xxwip_qt_inspection.item_id   -- 品目ID
+    AND    ilm.lot_id             = lr_xxwip_qt_inspection.lot_id    -- ロットID
+-- 2008/07/02 H.Itou ADD END
     AND    ilm.item_id            = ximv.item_id         -- 品目ID（結合条件）OPMロットマスタ AND OPM品目マスタVIEW
     ;
 --
@@ -3802,10 +3827,18 @@ AS
     -- 入力エラーチェック
     -- ================================
     IF (id_date IS NULL) THEN -- 日付NULLはエラー
+-- 2008/07/02 H.Itou ADD START
+      lv_errmsg := 'エラー：生産/納入日がNULLです。';
+      lv_errbuf := lv_errmsg;
+-- 2008/07/02 H.Itou ADD END
       RAISE global_api_expt;
     END IF;
 --
     IF (in_period IS NULL) OR (in_period < 0) THEN -- 期間未入力または0未満はエラー
+-- 2008/07/02 H.Itou ADD START
+      lv_errmsg := 'エラー：検査期間がNULLかマイナス値です。';
+      lv_errbuf := lv_errmsg;
+-- 2008/07/02 H.Itou ADD END
       RAISE global_api_expt;
     END IF;
 --
@@ -3815,6 +3848,10 @@ AS
     lv_orgn_code := FND_PROFILE.VALUE(cv_gmems_default_orgn);
 --
     IF (lv_orgn_code IS NULL) THEN -- プロファイルが取得できない場合はエラー
+-- 2008/07/02 H.Itou ADD START
+      lv_errmsg := 'エラー：プロファイル「GEMMS_DEFAULT_ORGN(GMA: デフォルト組織)」を取得できません。';
+      lv_errbuf := lv_errmsg;
+-- 2008/07/02 H.Itou ADD END
       RAISE global_api_expt;
     END IF;
 --
@@ -3830,9 +3867,15 @@ AS
       ln_cnt := ln_cnt + 1;
     END LOOP mr_shcl_dtl_loop;
 --
-   IF (ld_business_date IS NULL) THEN -- 日付が取れなかった場合はエラー
-     RAISE global_api_expt;
-   END IF;
+    IF (ld_business_date IS NULL) THEN -- 日付が取れなかった場合はエラー
+-- 2008/07/02 H.Itou ADD START
+      lv_errmsg := 'エラー：mr_shcl_dtl(製造カレンダー明細)からデータを取得できません。' ||
+                   'orgn_code：' || lv_orgn_code ||
+                   'calendar_date：' || id_date;
+      lv_errbuf := lv_errmsg;
+-- 2008/07/02 H.Itou ADD END
+      RAISE global_api_expt;
+    END IF;
 --
    od_business_date := ld_business_date;
 --

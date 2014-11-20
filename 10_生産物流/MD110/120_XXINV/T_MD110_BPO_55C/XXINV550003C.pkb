@@ -7,7 +7,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.0
+ * Version          : 1.5
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -35,6 +35,7 @@ AS
  *  2008/6/03     1.2  Takao Ohashi     結合テスト不具合
  *  2008/6/06     1.3  Takao Ohashi     結合テスト不具合
  *  2008/6/17     1.4  Kazuo Kumamoto   結合テスト不具合(ソート順変更・受入だけの伝票は先に出力)
+ *  2008/07/02    1.5  Satoshi Yunba    禁則文字「'」「"」「<」「>」「&」対応
  *
  *****************************************************************************************/
 --
@@ -419,7 +420,7 @@ AS
 --
     --データの場合
     IF (ic_type = 'D') THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>';
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>';
     END IF;
