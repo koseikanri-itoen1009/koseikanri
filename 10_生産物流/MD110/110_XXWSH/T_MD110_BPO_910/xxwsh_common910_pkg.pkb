@@ -6,17 +6,13 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.36
+ * Version                : 1.37
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
  *   Name                Type  Ret   Description
  *  -------------------- ---- ----- --------------------------------------------------
  *  comp_round_up          F         小数点切り上げ関数
- *  get_ship_method_precedence
- *                         F         配送区分優先順取得関数
- *  get_ship_method_search_code
- *                         P         配送区分検索用入出庫場所取得関数
  *  calc_total_value       P         B.積載効率チェック(合計値算出)
  *  calc_load_efficiency   P         C.積載効率チェック(積載効率算出)
  *  check_lot_reversal     P         D.ロット逆転防止チェック
@@ -73,13 +69,7 @@ AS
  *  2009/03/03   1.31  SCS   風間由紀   [出荷可否チェック] 本番障害#1243対応
  *  2009/03/19   1.32  SCS   飯田甫     [積載効率チェック(合計値算出)] 統合テスト指摘311対応
  *  2009/04/23   1.33  SCS   風間由紀   [リードタイム算出] 本番障害#1398対応
- *  2009/07/21   1.34  SCS   伊藤ひとみ [配送区分優先順取得関数] 本番障害#1336対応
- *                                      [配送区分検索用入出庫場所取得関数] 本番障害#1336対応
- *                                      [積載効率チェック(積載効率算出)] 本番障害#1336対応
- *  2009/07/28   1.35  SCS   伊藤ひとみ [積載効率チェック(積載効率算出)] 本番障害#1336再対応
- *  2009/07/30   1.36  SCS   伊藤ひとみ [配送区分優先順取得関数] 本番障害#1336再対応
- *                                      [配送区分検索用入出庫場所取得関数] 本番障害#1336再対応
- *                                      [積載効率チェック(積載効率算出)] 本番障害#1336再対応
+ *  2009/10/15   1.37  SCS   伊藤ひとみ [ロット逆転防止チェック] 本番障害#1661対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -146,474 +136,6 @@ AS
 --
   END comp_round_up;
 --
--- 2009/07/21 H.Itou Add Start 本番障害#1336
-  /**********************************************************************************
-   * Function Name    : get_ship_method_precedence
-   * Description      : 配送区分優先順取得関数
-   ***********************************************************************************/
-  FUNCTION get_ship_method_precedence(
-    it_code_class1                IN  xxcmn_delivery_lt2_v.code_class1               %TYPE        -- 01.コード区分１
-   ,it_entering_despatching_code1 IN  xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE        -- 02.入出庫場所１
-   ,it_code_class2                IN  xxcmn_delivery_lt2_v.code_class2               %TYPE        -- 03.コード区分２
-   ,it_entering_despatching_code2 IN  xxcmn_delivery_lt2_v.entering_despatching_code2%TYPE        -- 04.入出庫場所２
-   ,it_prod_class                 IN  xxcmn_item_categories_v.segment1               %TYPE        -- 05.商品区分
-   ,it_weight_capacity_class      IN  xxcmn_item_mst_v.weight_capacity_class         %TYPE        -- 06.重量容積区分
-   ,id_standard_date              IN  DATE                                                        -- 07.基準日
--- 2009/07/30 H.Itou Mod Start 本番障害#1336
---   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
-   ,iv_auto_process_type          IN  VARCHAR2                                                    -- 08.自動配車対象区分
--- 2009/07/30 H.Itou Mod End
-  ) RETURN VARCHAR2 -- 優先順を返す
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_ship_method_precedence';  --プログラム名
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
-    -- 入出庫場所ALL値
-    cv_z4             CONSTANT VARCHAR2(4) := 'ZZZZ';       -- 入出庫場所ALL値:ZZZZ
-    cv_z9             CONSTANT VARCHAR2(9) := 'ZZZZZZZZZ';  -- 入出庫場所ALL値:ZZZZZZZZZ
---
-    -- コード区分
-    cv_ship           CONSTANT VARCHAR2(2) := '9';          -- コード区分:配送先
-    cv_storage        CONSTANT VARCHAR2(2) := '4';          -- コード区分:倉庫
-    cv_supply         CONSTANT VARCHAR2(2) := '11';         -- コード区分:取引先
---
-    -- 商品区分
-    cv_prod_leaf      CONSTANT VARCHAR2(1) := '1';          -- 商品区分:リーフ
-    cv_prod_drink     CONSTANT VARCHAR2(1) := '2';          -- 商品区分:ドリンク
---
-    -- 重量容積区分
-    cv_weight         CONSTANT VARCHAR2(1) := '1';          -- 重量容積区分：重量
-    cv_capacity       CONSTANT VARCHAR2(1) := '2';          -- 重量容積区分：容積
---
--- 2009/07/30 H.Itou Del Start 本番障害#1336
---    -- 0条件追加フラグ
---    cv_where_zero_add CONSTANT VARCHAR2(1) := '0';          -- 0条件追加フラグ：重量容積>0を条件に追加
---    cv_where_zero_no  CONSTANT VARCHAR2(1) := '1';          -- 0条件追加フラグ：重量容積>0を条件に追加しない
--- 2009/07/30 H.Itou Del End
--- 2009/07/30 H.Itou Add Start 本番障害#1336
-    cv_auto           CONSTANT VARCHAR2(1) := '1';          -- 自動配車対象区分:YES
-    cv_manual         CONSTANT VARCHAR2(1) := '0';          -- 自動配車対象区分:NO
--- 2009/07/30 H.Itou Add End
---
-    -- RETURN値 優先順
-    cv_precedence_1   CONSTANT VARCHAR2(1) := '1';          -- 優先順:倉庫(個別コード)－配送先(個別コード)
-    cv_precedence_2   CONSTANT VARCHAR2(1) := '2';          -- 優先順:倉庫(ALL値)     －配送先(個別コード)
-    cv_precedence_3   CONSTANT VARCHAR2(1) := '3';          -- 優先順:倉庫(個別コード)－配送先(ALL値)
-    cv_precedence_4   CONSTANT VARCHAR2(1) := '4';          -- 優先順:倉庫(ALL値)     －配送先(ALL値)
-    cv_precedence_5   CONSTANT VARCHAR2(1) := '5';          -- 優先順:データなし
---
-    cv_log_level      CONSTANT VARCHAR2(1) := '6';          -- ログレベル
-    cv_colon          CONSTANT VARCHAR2(1) := ':';          -- コロン
---
-    -- *** ローカル変数 ***
-    ln_cnt                     NUMBER;
-    lv_sql                     VARCHAR2(32000);             -- SQL文格納
-    lv_all_z_dummy_code2       VARCHAR2(9);                 -- ダミー入出庫場所２
---
-    -- *** ローカル・カーソル ***
-    TYPE ref_cursor IS REF CURSOR;                          -- 動的カーソル型
-    check_cur       ref_cursor;                             -- チェックカーソルSQL
---
-    -- *** ローカル・レコード ***
---
-    -- ===============================
-    -- ユーザー定義例外
-    -- ===============================
---
-  BEGIN
-    -- ============================================================
-    -- 入出庫場所２ALL値設定
-    -- ============================================================
-    -- 出荷の場合
-    IF (it_code_class2 = cv_ship) THEN
-      lv_all_z_dummy_code2 := cv_z9;
---
-    -- 出荷以外の場合
-    ELSE
-      lv_all_z_dummy_code2 := cv_z4;
-    END IF;
---
-    -- ============================================================
-    -- SQL文生成
-    -- ============================================================
-    lv_sql := 
-     'SELECT COUNT(1)
-      FROM   xxcmn_delivery_lt2_v xdlv2                                      -- 配送L/T情報VIEW2
--- 2009/07/30 H.Itou Add Start 本番障害#1336
-            ,xxwsh_ship_method2_v  xsmv2                                     -- 配送区分情報VIEW2
--- 2009/07/30 H.Itou Add End
-      WHERE  xdlv2.code_class1                = :code_class1                 -- コード区分１
-      AND    xdlv2.entering_despatching_code1 = :entering_despatching_code1  -- 入出庫場所１
-      AND    xdlv2.code_class2                = :code_class2                 -- コード区分２
-      AND    xdlv2.entering_despatching_code2 = :entering_despatching_code2  -- 入出庫場所２
-      AND    xdlv2.ship_methods_id           IS NOT NULL
-      AND  ((xdlv2.lt_start_date_active      <= TRUNC(:standard_date))
-        OR  (xdlv2.lt_start_date_active      IS NULL))
-      AND  ((xdlv2.lt_end_date_active        >= TRUNC(:standard_date))
-        OR  (xdlv2.lt_end_date_active        IS NULL))
-      AND  ((xdlv2.sm_start_date_active      <= TRUNC(:standard_date))
-        OR  (xdlv2.sm_start_date_active      IS NULL))
-      AND  ((xdlv2.sm_end_date_active        >= TRUNC(:standard_date))
-        OR  (xdlv2.sm_end_date_active        IS NULL))
--- 2009/07/30 H.Itou Add Start 本番障害#1336
-      AND    xdlv2.ship_method                = xsmv2.ship_method_code
-      AND  ((xsmv2.start_date_active         <= TRUNC(:standard_date))
-        OR  (xsmv2.start_date_active         IS NULL))
-      AND  ((xsmv2.end_date_active           >= TRUNC(:standard_date))
-        OR  (xsmv2.end_date_active           IS NULL))
-      AND    xsmv2.mixed_class                = ''0''                        -- 混載区分=0(混載なし)
--- 2009/07/30 H.Itou Add End
-     ';
--- 2009/07/30 H.Itou Add Start 本番障害#1336
-    -- 自動配車対象区分に値があれば、条件に追加。
-    IF (iv_auto_process_type IS NOT NULL) THEN
-      lv_sql := lv_sql || 
-      'AND    NVL( xsmv2.auto_process_type, ''' || cv_manual || ''' ) = ''' || iv_auto_process_type || ''' -- 自動配車対象区分
-      ';
-    END IF;
--- 2009/07/30 H.Itou Add End
---
--- 2009/07/30 H.Itou Del Start 本番障害#1336 常に条件に追加する。
---    -- 0条件追加フラグが「0」の場合、重量容積>0を条件に追加
---    IF (iv_where_zero_flg = cv_where_zero_add) THEN
--- 2009/07/30 H.Itou Del End
-    -- リーフ重量の場合
-    IF ((it_prod_class            = cv_prod_leaf)
-    AND (it_weight_capacity_class = cv_weight))         THEN
-      lv_sql := lv_sql || 
-     'AND    xdlv2.leaf_deadweight            > 0                            -- リーフ積載重量＞0
-     ';
---
-    -- ドリンク重量の場合
-    ELSIF ((it_prod_class            = cv_prod_drink)
-    AND    (it_weight_capacity_class = cv_weight))      THEN
-      lv_sql := lv_sql || 
-     'AND    xdlv2.drink_deadweight           > 0                            -- ドリンク積載重量＞0
-     ';
---
-    -- リーフ容積の場合
-    ELSIF ((it_prod_class            = cv_prod_leaf)
-    AND    (it_weight_capacity_class = cv_capacity))    THEN
-      lv_sql := lv_sql || 
-     'AND    xdlv2.leaf_loading_capacity      > 0                            -- リーフ積載容積＞0
-     ';
---
-    -- ドリンク容積の場合
-    ELSIF ((it_prod_class            = cv_prod_drink)
-    AND    (it_weight_capacity_class = cv_capacity))    THEN
-      lv_sql := lv_sql || 
-     'AND    xdlv2.drink_loading_capacity     > 0                            -- ドリンク積載容積＞0
-     ';
-    END IF;
--- 2009/07/30 H.Itou Del Start 本番障害#1336 常に条件に追加する。
---    END IF;
--- 2009/07/30 H.Itou Del End
---
-    -- ============================================================
-    -- 1. 倉庫(個別コード)－配送先(個別コード) があるかチェック
-    -- ============================================================
-    EXECUTE IMMEDIATE lv_sql INTO ln_cnt
-    USING it_code_class1                  -- コード区分１
-         ,it_entering_despatching_code1   -- 入出庫場所１＝個別コード
-         ,it_code_class2                  -- コード区分２
-         ,it_entering_despatching_code2   -- 入出庫場所２＝個別コード
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
--- 2009/07/30 H.Itou Add Start 本番障害#1336
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
--- 2009/07/30 H.Itou Add End
-    ;
---
-    -- 倉庫(個別コード)－配送先(個別コード)があれば、優先順1
-    IF (ln_cnt >= 1) THEN
-      RETURN cv_precedence_1;
-    END IF;
---
-    -- ============================================================
-    -- 2. 倉庫(ALL値)－配送先(個別コード) があるかチェック
-    -- ============================================================
-    EXECUTE IMMEDIATE lv_sql INTO ln_cnt
-    USING it_code_class1                  -- コード区分１
-         ,cv_z4                           -- 入出庫場所１＝ALL値
-         ,it_code_class2                  -- コード区分２
-         ,it_entering_despatching_code2   -- 入出庫場所２＝個別コード
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
--- 2009/07/30 H.Itou Add Start 本番障害#1336
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
--- 2009/07/30 H.Itou Add End
-    ;
---
-    -- 倉庫(ALL値)－配送先(個別コード)があれば、優先順2
-    IF (ln_cnt >= 1) THEN
-      RETURN cv_precedence_2;
-    END IF;
---
-    -- ============================================================
-    -- 3. 倉庫(個別コード)－配送先(ALL値) があるかチェック
-    -- ============================================================
-    EXECUTE IMMEDIATE lv_sql INTO ln_cnt
-    USING it_code_class1                  -- コード区分１
-         ,it_entering_despatching_code1   -- 入出庫場所１＝個別コード
-         ,it_code_class2                  -- コード区分２
-         ,lv_all_z_dummy_code2            -- 入出庫場所２＝ALL値
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
--- 2009/07/30 H.Itou Add Start 本番障害#1336
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
--- 2009/07/30 H.Itou Add End
-    ;
---
-    -- 倉庫(個別コード)－配送先(ALL値)があれば、優先順3
-    IF (ln_cnt >= 1) THEN
-      RETURN cv_precedence_3;
-    END IF;
---
-    -- ============================================================
-    -- 4. 倉庫(ALL値)－配送先(ALL値) があるかチェック
-    -- ============================================================
-    EXECUTE IMMEDIATE lv_sql INTO ln_cnt
-    USING it_code_class1                  -- コード区分１
-         ,cv_z4                           -- 入出庫場所１＝個別コード
-         ,it_code_class2                  -- コード区分２
-         ,lv_all_z_dummy_code2            -- 入出庫場所２＝ALL値
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
--- 2009/07/30 H.Itou Add Start 本番障害#1336
-         ,id_standard_date                -- 適用日
-         ,id_standard_date                -- 適用日
--- 2009/07/30 H.Itou Add End
-    ;
---
-    -- 倉庫(ALL値)－配送先(ALL値)があれば、優先順4
-    IF (ln_cnt >= 1) THEN
-      RETURN cv_precedence_4;
-    END IF;
---
-    -- データを取得できない場合、5を返す。
-    RETURN cv_precedence_5;
---
-  EXCEPTION
---
---###############################  固定例外処理部 START   ###################################
---
-    WHEN OTHERS THEN
-      FND_LOG.STRING(cv_log_level
-                    ,gv_pkg_name      || cv_colon || cv_prg_name
-                    ,'コード区分１：' || it_code_class1
-                 || ',入出庫場所１：' || it_entering_despatching_code1
-                 || ',コード区分２：' || it_code_class2
-                 || ',コード区分２：' || it_entering_despatching_code2
-                 || ',商品区分：'     || it_prod_class
-                 || ',重量容積区分：' || it_weight_capacity_class
-                 || ',適用日：'       || TO_CHAR(id_standard_date,'YYYYMMDD HH24:MI:SS')
-                 || ',SQLERRM：'      || SQLERRM);
-      RAISE_APPLICATION_ERROR
-        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
---
---###################################  固定部 END   #########################################
---
-  END get_ship_method_precedence;
---
-  /**********************************************************************************
-   * Procedure Name   : get_ship_method_search_code
-   * Description      : 配送区分検索用入出庫場所取得関数
-   ***********************************************************************************/
-  PROCEDURE get_ship_method_search_code(
-    it_code_class1                IN  xxcmn_delivery_lt2_v.code_class1               %TYPE        -- 01.コード区分１
-   ,it_entering_despatching_code1 IN  xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE        -- 02.入出庫場所１
-   ,it_code_class2                IN  xxcmn_delivery_lt2_v.code_class2               %TYPE        -- 03.コード区分２
-   ,it_entering_despatching_code2 IN  xxcmn_delivery_lt2_v.entering_despatching_code2%TYPE        -- 04.入出庫場所２
-   ,it_prod_class                 IN  xxcmn_item_categories_v.segment1               %TYPE        -- 05.商品区分
-   ,it_weight_capacity_class      IN  xxcmn_item_mst_v.weight_capacity_class         %TYPE        -- 06.重量容積区分
-   ,id_standard_date              IN  DATE                                                        -- 07.基準日
--- 2009/07/30 H.Itou Mod Start 本番障害#1336
---   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
-   ,iv_auto_process_type          IN  VARCHAR2                                                    -- 08.自動配車対象区分
--- 2009/07/30 H.Itou Mod End
-   ,ov_retcode                    OUT NOCOPY VARCHAR2                                             -- 09.リターンコード
-   ,ov_errmsg                     OUT NOCOPY VARCHAR2                                             -- 10.エラーメッセージ
-   ,ot_entering_despatching_code1 OUT NOCOPY xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE -- 11.配送区分検索用入出庫場所１
-   ,ot_entering_despatching_code2 OUT NOCOPY xxcmn_delivery_lt2_v.entering_despatching_code2%TYPE -- 12.配送区分検索用入出庫場所２
-  )
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_ship_method_search_code'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
-    -- 入出庫場所ALL値
-    cv_z4           CONSTANT VARCHAR2(4) := 'ZZZZ';       -- 入出庫場所ALL値:ZZZZ
-    cv_z9           CONSTANT VARCHAR2(9) := 'ZZZZZZZZZ';  -- 入出庫場所ALL値:ZZZZZZZZZ
---
-    -- コード区分
-    cv_ship         CONSTANT VARCHAR2(2) := '9';          -- コード区分:配送先
-    cv_storage      CONSTANT VARCHAR2(2) := '4';          -- コード区分:倉庫
-    cv_supply       CONSTANT VARCHAR2(2) := '11';         -- コード区分:取引先
---
-    -- RETURN値 優先順
-    cv_precedence_1 CONSTANT VARCHAR2(1) := '1';          -- 優先順:倉庫(個別コード)－配送先(個別コード)
-    cv_precedence_2 CONSTANT VARCHAR2(1) := '2';          -- 優先順:倉庫(ALL値)     －配送先(個別コード)
-    cv_precedence_3 CONSTANT VARCHAR2(1) := '3';          -- 優先順:倉庫(個別コード)－配送先(ALL値)
-    cv_precedence_4 CONSTANT VARCHAR2(1) := '4';          -- 優先順:倉庫(ALL値)     －配送先(ALL値)
-    cv_precedence_5 CONSTANT VARCHAR2(1) := '5';          -- 優先順:データなし
---
-    cv_log_level    CONSTANT VARCHAR2(1) := '6';          -- ログレベル
-    cv_colon        CONSTANT VARCHAR2(1) := ':';          -- コロン
---
---
-    -- *** ローカル変数 ***
-    lv_precedence        VARCHAR2(1);                     -- 配送区分優先順
-    lv_all_z_dummy_code2 VARCHAR2(9);                     -- ダミー入出庫場所２
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
-    -- ===============================
-    -- ユーザー定義例外
-    -- ===============================
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := gv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ============================================================
-    -- 配送区分優先順取得
-    -- ============================================================
-    lv_precedence :=
-      get_ship_method_precedence(
-        it_code_class1                => it_code_class1                -- 01.コード区分１
-       ,it_entering_despatching_code1 => it_entering_despatching_code1 -- 02.入出庫場所１
-       ,it_code_class2                => it_code_class2                -- 03.コード区分２
-       ,it_entering_despatching_code2 => it_entering_despatching_code2 -- 04.入出庫場所２
-       ,it_prod_class                 => it_prod_class                 -- 05.商品区分
-       ,it_weight_capacity_class      => it_weight_capacity_class      -- 06.重量容積区分
-       ,id_standard_date              => id_standard_date              -- 07.基準日
--- 2009/07/30 H.Itou Mod Start 本番障害#1336
---       ,iv_where_zero_flg             => iv_where_zero_flg             -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
-       ,iv_auto_process_type          => iv_auto_process_type          -- 08.自動配車対象区分
--- 2009/07/30 H.Itou Mod End
-      );
---
-    -- 配送区分優先順5(データなし)かエラー終了の場合
-    IF (lv_precedence = cv_precedence_5) THEN
-      lv_errmsg := 'xxwsh_common910_pkg.get_ship_method_precedenceでデータ取得失敗';
-      RAISE global_api_expt;
---
-    ELSIF (lv_precedence IS NULL) THEN
-      RAISE global_api_others_expt;
-    END IF;
---
-    -- ============================================================
-    -- 入出庫場所２ALL値設定
-    -- ============================================================
-    -- 出荷の場合
-    IF (it_code_class2 = cv_ship) THEN
-      lv_all_z_dummy_code2 := cv_z9;
---
-    -- 出荷以外の場合
-    ELSE
-      lv_all_z_dummy_code2 := cv_z4;
-    END IF;
---
-    -- ============================================================
-    -- OUTパラメータ設定
-    -- ============================================================
-    -- 優先順:倉庫(個別コード)－配送先(個別コード)の場合
-    IF (lv_precedence = cv_precedence_1) THEN
-      ot_entering_despatching_code1 := it_entering_despatching_code1; -- 10.配送区分検索用入出庫場所１＝倉庫(個別コード)
-      ot_entering_despatching_code2 := it_entering_despatching_code2; -- 11.配送区分検索用入出庫場所２＝倉庫(個別コード)
---
-    -- 優先順:倉庫(ALL値)     －配送先(個別コード)の場合
-    ELSIF (lv_precedence = cv_precedence_2) THEN
-      ot_entering_despatching_code1 := cv_z4;                         -- 10.配送区分検索用入出庫場所１＝倉庫(ALL値)
-      ot_entering_despatching_code2 := it_entering_despatching_code2; -- 11.配送区分検索用入出庫場所２＝倉庫(個別コード)
---
-    -- 優先順:倉庫(個別コード)－配送先(ALL値)の場合
-    ELSIF (lv_precedence = cv_precedence_3) THEN
-      ot_entering_despatching_code1 := it_entering_despatching_code1; -- 10.配送区分検索用入出庫場所１＝倉庫(個別コード)
-      ot_entering_despatching_code2 := lv_all_z_dummy_code2;          -- 11.配送区分検索用入出庫場所２＝配送先(ALL値)
---
-    -- 優先順:倉庫(ALL値)     －配送先(ALL値)の場合
-    ELSIF (lv_precedence = cv_precedence_4) THEN
-      ot_entering_despatching_code1 := cv_z4;                         -- 10.配送区分検索用入出庫場所１＝倉庫(ALL値)
-      ot_entering_despatching_code2 := lv_all_z_dummy_code2;          -- 11.配送区分検索用入出庫場所２＝配送先(ALL値)
-    END IF;
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      FND_LOG.STRING(cv_log_level
-                    ,gv_pkg_name      || cv_colon || cv_prg_name
-                    ,'コード区分１：' || it_code_class1
-                 || ',入出庫場所１：' || it_entering_despatching_code1
-                 || ',コード区分２：' || it_code_class2
-                 || ',コード区分２：' || it_entering_despatching_code2
-                 || ',商品区分：'     || it_prod_class
-                 || ',重量容積区分：' || it_weight_capacity_class
-                 || ',適用日：'       || TO_CHAR(id_standard_date,'YYYYMMDD HH24:MI:SS')
-                 || ',lv_errmsg：'    || lv_errmsg);
-      ov_errmsg      := lv_errmsg;
-      ov_retcode     := gv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errmsg      := SQLERRM;
-      ov_retcode     := gv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      FND_LOG.STRING(cv_log_level
-                    ,gv_pkg_name      || cv_colon || cv_prg_name
-                    ,'コード区分１：' || it_code_class1
-                 || ',入出庫場所１：' || it_entering_despatching_code1
-                 || ',コード区分２：' || it_code_class2
-                 || ',コード区分２：' || it_entering_despatching_code2
-                 || ',商品区分：'     || it_prod_class
-                 || ',重量容積区分：' || it_weight_capacity_class
-                 || ',適用日：'       || TO_CHAR(id_standard_date,'YYYYMMDD HH24:MI:SS')
-                 || ',SQLERRM：'      || SQLERRM);
-      ov_errmsg      := SQLERRM;
-      ov_retcode     := gv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END get_ship_method_search_code;
--- 2009/07/21 H.Itou Add End
 -- 2008/10/06 H.Itou Del Start 統合テスト指摘240
 --  /**********************************************************************************
 --   * Procedure Name   : calc_total_value
@@ -1804,19 +1326,11 @@ AS
     cv_code_class_whse       CONSTANT VARCHAR2(10) := '4';  -- 配送先
     cv_code_class_ship       CONSTANT VARCHAR2(10) := '9';  -- 出荷
     cv_code_class_supply     CONSTANT VARCHAR2(10) := '11'; -- 支給
--- 2008/08/04 Add H.Itou End
 -- Ver1.26 M.Hokkanji Start
     cv_log_level            CONSTANT VARCHAR2(1)   := '6';                   -- ログレベル
     cv_colon                CONSTANT VARCHAR2(1)   := ':';                   -- コロン
 -- Ver1.26 M.Hokkanji End
--- 2009/07/21 H.Itou Add Start 本番障害#1336
-    -- 重量容積区分
-    cv_weight               CONSTANT VARCHAR2(1) := '1';    -- 重量容積区分：重量
-    cv_capacity             CONSTANT VARCHAR2(1) := '2';    -- 重量容積区分：容積
-    -- 0条件追加フラグ
-    cv_where_zero_add       CONSTANT VARCHAR2(1) := '0';          -- 0条件追加フラグ：重量容積>0を条件に追加
-    cv_where_zero_no        CONSTANT VARCHAR2(1) := '1';          -- 0条件追加フラグ：重量容積>0を条件に追加しない
--- 2009/07/21 H.Itou Add End
+-- 2008/08/04 Add H.Itou End
 -- 2008/08/04 H.Itou Del Start
 --    -- 動的SQL文
 --    -- メインSQL
@@ -1911,8 +1425,6 @@ AS
          '        ,xdlv.leaf_loading_capacity   loading_capacity       ';-- リーフ積載容積
     cv_select_drink_capacity CONSTANT VARCHAR2(32000) :=
          '        ,xdlv.drink_loading_capacity  loading_capacity       ';-- ドリンク積載容積
--- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合に必要なのでコメントアウト解除
--- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
     cv_select_sql_sort1      CONSTANT VARCHAR2(32000) :=
          '        ,1                            sql_sort               ';-- 優先① 入出庫場所（個別－個別）
     cv_select_sql_sort2      CONSTANT VARCHAR2(32000) :=
@@ -1921,8 +1433,6 @@ AS
          '        ,3                            sql_sort               ';-- 優先③ 入出庫場所（個別－ZZZZ）
     cv_select_sql_sort4      CONSTANT VARCHAR2(32000) :=
          '        ,4                            sql_sort               ';-- 優先④ 入出庫場所（ZZZZ－ZZZZ）
--- 2009/07/21 H.Itou Del End
--- 2009/07/28 H.Itou Mod End
     cv_from                  CONSTANT VARCHAR2(32000) := 
          '  FROM   xxcmn_delivery_lt2_v  xdlv                          ' -- 配送L/T情報VIEW2
       || '        ,xxwsh_ship_method2_v  xsmv                          ';-- 配送区分情報VIEW2
@@ -1955,11 +1465,7 @@ AS
          '  AND    xsmv.mixed_class                     = ''0''                          '; -- 混載区分='0'(混載なし)
     cv_order_by              CONSTANT VARCHAR2(32000) :=
          '  ORDER BY ship_method DESC ' -- 出荷方法         降順 
--- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合に必要なのでコメントアウト解除
--- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
       || '          ,sql_sort         ' -- 入出庫場所優先順 昇順 
--- 2009/07/21 H.Itou Del End
--- 2009/07/28 H.Itou Mod End
       ;
     cv_union_all             CONSTANT VARCHAR2(32000) := ' UNION ALL ';
 -- 2008/09/05 H.Itou Add End
@@ -2134,11 +1640,7 @@ AS
        ,mixed_ship_method_code     xxwsh_ship_method2_v.mixed_ship_method_code%TYPE -- 混載配送区分
        ,deadweight                 NUMBER                                       -- 積載重量
        ,loading_capacity           NUMBER                                       -- 積載容積
--- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合に必要なのでコメントアウト解除
--- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
        ,sql_sort                   NUMBER                                       -- ソート順 -- 2008/08/05 H.Itou Add
--- 2009/07/21 H.Itou Del End
--- 2009/07/28 H.Itou Mod End
       );
     lr_ref        ret_value ;
 -- 2008/09/05 H.Itou Mod End
@@ -2314,17 +1816,9 @@ AS
     ln_sum_capacity               := CEIL(TRUNC(in_sum_capacity, 1));-- 合計容積
 -- 2008/08/06 H.Itou Mod End
     lv_code_class1                := iv_code_class1;                 -- コード区分１
--- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合に必要なのでコメントアウト解除
--- 2009/07/21 H.Itou Del Start 本番障害#1336 入出庫場所コード１は関数で決定するため、ここでセットしない。
     lv_entering_despatching_code1 := iv_entering_despatching_code1;  -- 入出庫場所コード１
--- 2009/07/21 H.Itou Del End
--- 2009/07/28 H.Itou Mod End
     lv_code_class2                := iv_code_class2;                 -- コード区分２
--- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合に必要なのでコメントアウト解除
--- 2009/07/21 H.Itou Del Start 本番障害#1336 入出庫場所コード１は関数で決定するため、ここでセットしない。
     lv_entering_despatching_code2 := iv_entering_despatching_code2;  -- 入出庫場所コード２
--- 2009/07/21 H.Itou Del End
--- 2009/07/28 H.Itou Mod End
 -- 2008/10/15 H.Itou Mod Start 統合テスト指摘298
 --    lv_ship_method                := iv_ship_method;                 -- 出荷方法
     -- 出荷方法を混載なしの出荷方法に変換
@@ -2344,48 +1838,6 @@ AS
       lv_all_z_dummy_code2 := cv_all_4; -- 入出庫場所コード2のダミーコードはZZZZ
     END IF;
 -- 2008/09/05 H.Itou Add End
--- 2009/07/28 H.Itou Add Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合は優先順の考えは不要。配送区分→優先順の順で検索。
---                                           最適配送区分算出(出荷方法指定なし)の場合、優先順→配送区分の順で検索する。
-    -- 出荷方法に指定なしの場合、配送区分検索用入出庫場所取得を取得する。
-    IF (lv_ship_method IS NULL) THEN
--- 2009/07/28 H.Itou Add End
--- 2009/07/21 H.Itou Add Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
-      -- 入出庫場所１・入出庫場所２決定
-      -- 配送区分検索用入出庫場所取得
-      get_ship_method_search_code(
-        it_code_class1                => lv_code_class1                -- 01.コード区分１
-       ,it_entering_despatching_code1 => iv_entering_despatching_code1 -- 02.入出庫場所１
-       ,it_code_class2                => lv_code_class2                -- 03.コード区分２
-       ,it_entering_despatching_code2 => iv_entering_despatching_code2 -- 04.入出庫場所２
-       ,it_prod_class                 => lv_prod_class                 -- 05.商品区分
-       ,it_weight_capacity_class      => CASE                          -- 06.重量容積区分
-                                           WHEN (ln_sum_weight IS NOT NULL) THEN cv_weight   -- 重量に値がある場合、1
-                                           ELSE                                  cv_capacity -- 容積に値がある場合、2
-                                         END
-       ,id_standard_date              => ld_standard_date              -- 07.基準日
--- 2009/07/30 H.Itou Mod Start 本番障害#1336
----- 2009/07/28 H.Itou Add Start 本番障害#1336
-----       ,iv_where_zero_flg             => CASE                          -- 08.0条件追加フラグ
-----                                           WHEN (lv_ship_method IS NULL) THEN cv_where_zero_add  -- 出荷方法に値がない場合、重量容積>0を条件に追加する
-----                                           ELSE                               cv_where_zero_no   -- 出荷方法に値がある場合、重量容積>0を条件に追加しない
-----                                         END
---       ,iv_where_zero_flg             => cv_where_zero_add             -- 08.0条件追加フラグ 重量容積>0を条件に追加する
----- 2009/07/28 H.Itou Add End
-       ,iv_auto_process_type          => lv_auto_process_type          -- 08.自動配車対象区分
--- 2009/07/30 H.Itou Mod End
-       ,ov_retcode                    => lv_retcode                    -- 08.リターンコード
-       ,ov_errmsg                     => lv_errmsg                     -- 10.エラーメッセージ
-       ,ot_entering_despatching_code1 => lv_entering_despatching_code1 -- 11.配送区分検索用入出庫場所１
-       ,ot_entering_despatching_code2 => lv_entering_despatching_code2 -- 12.配送区分検索用入出庫場所２
-      );
---
-      IF (lv_retcode = gv_status_error) THEN
-        RAISE global_api_expt;
-      END IF;
--- 2009/07/21 H.Itou Add End
--- 2009/07/28 H.Itou Add Start 本番障害#1336
-    END IF;
--- 2009/07/28 H.Itou Add End
 --
 -- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応 動的SQLに変更
    -- 動的SQL生成
@@ -2433,254 +1885,110 @@ AS
      END IF;
    END IF;
 --
--- 2009/07/28 H.Itou Mod Start 本番障害#1336 積載効率算出(出荷方法指定あり)の場合は優先順の考えは不要。配送区分→優先順の順で検索。
---                                           最適配送区分算出(出荷方法指定なし)の場合、優先順→配送区分の順で検索する。
----- 2009/07/21 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可 コメントだけ削除
-----   lv_sql := -- 優先① 入出庫場所（個別－個別）
---   lv_sql :=
----- 2009/07/21 H.Itou Mod End
---             cv_select                   -- SELECT句   [不変項目]
---          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
---          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
----- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
-----          || cv_select_sql_sort1         -- SELECT句   [不変項目]ソート順=1
----- 2009/07/21 H.Itou Del End
---          || cv_from                     -- FROM句     [不変項目]
---          || cv_where                    -- WHERE句    [不変項目]
---          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
---          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
----- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
-----             -- 優先② 入出庫場所（ZZZZ－個別）
-----          || cv_union_all
-----          || cv_select                   -- SELECT句   [不変項目]
-----          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
-----          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
-----          || cv_select_sql_sort2         -- SELECT句   [不変項目]ソート順=2
-----          || cv_from                     -- FROM句     [不変項目]
-----          || cv_where                    -- WHERE句    [不変項目]
-----          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
-----          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
-----             -- 優先③ 入出庫場所（個別－ZZZZ）
-----          || cv_union_all
-----          || cv_select                   -- SELECT句   [不変項目]
-----          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
-----          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
-----          || cv_select_sql_sort3         -- SELECT句   [不変項目]ソート順=3
-----          || cv_from                     -- FROM句     [不変項目]
-----          || cv_where                    -- WHERE句    [不変項目]
-----          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
-----          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
-----             -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
-----          || cv_union_all
-----          || cv_select                   -- SELECT句   [不変項目]
-----          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
-----          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
-----          || cv_select_sql_sort4         -- SELECT句   [不変項目]ソート順=4
-----          || cv_from                     -- FROM句     [不変項目]
-----          || cv_where                    -- WHERE句    [不変項目]
-----          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
-----          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
----- 2009/07/21 H.Itou Del End
---          || cv_order_by                 -- ORDER BY句 [不変項目]
---          ;
----- 2008/09/05 H.Itou Add End
----- 2008/09/05 H.Itou Del Start PT 6-2_34 指摘#34対応 動的SQLに変更
------- 2008/08/04 H.Itou Add Start
-------    -- カーソルオープン
-------    OPEN lc_ref;
------- 2008/08/04 H.Itou Add End
----- 2008/09/05 H.Itou Del End
----- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応 動的SQLに変更
---    OPEN  lc_ref FOR lv_sql
----- 2009/07/21 H.Itou Mod Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可 コメントだけ削除
-----    USING -- 優先① 入出庫場所（個別－個別）
---    USING
----- 2009/07/21 H.Itou Mod End
---          lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
---         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
---         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
---         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
---         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
---         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
---         ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
---         ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
----- 2009/07/21 H.Itou Del Start 本番障害#1336 優先順以外の組み合わせの配送区分は使用不可
-----          -- 優先② 入出庫場所（ZZZZ－個別）
-----         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
-----         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
-----         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
-----         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
-----         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
-----         ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
-----         ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
-----          -- 優先③ 入出庫場所（個別－ZZZZ）
-----         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
-----         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
-----         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
-----         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
-----         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
-----         ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
-----         ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
-----          -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
-----         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
-----         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
-----         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
-----         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
-----         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
-----         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
-----         ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
-----         ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
----- 2009/07/21 H.Itou Del End
---    ;
----- 2008/09/05 H.Itou Mod End
-    -- 出荷方法に指定なしの場合
-    IF (lv_ship_method IS NULL) THEN
-      lv_sql :=
-               cv_select                   -- SELECT句   [不変項目]
-            || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
-            || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
-            || cv_select_sql_sort1         -- SELECT句   [不変項目]ソート順=1(ダミーで入れるが、使用しない。)
-            || cv_from                     -- FROM句     [不変項目]
-            || cv_where                    -- WHERE句    [不変項目]
-            || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
-            || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
-            || cv_order_by                 -- ORDER BY句 [不変項目]
-            ;
---
-      OPEN  lc_ref FOR lv_sql
-      USING
-            lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
-           ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
-           ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
-           ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
-           ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
-           ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
-           ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
-      ;
---
-    -- 出荷方法指定ありの場合
-    ELSE
-      lv_sql := -- 優先① 入出庫場所（個別－個別）
-               cv_select                   -- SELECT句   [不変項目]
-            || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
-            || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
-            || cv_select_sql_sort1         -- SELECT句   [不変項目]ソート順=1
-            || cv_from                     -- FROM句     [不変項目]
-            || cv_where                    -- WHERE句    [不変項目]
-            || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
-            || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
-               -- 優先② 入出庫場所（ZZZZ－個別）
-            || cv_union_all
-            || cv_select                   -- SELECT句   [不変項目]
-            || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
-            || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
-            || cv_select_sql_sort2         -- SELECT句   [不変項目]ソート順=2
-            || cv_from                     -- FROM句     [不変項目]
-            || cv_where                    -- WHERE句    [不変項目]
-            || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
-            || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
-               -- 優先③ 入出庫場所（個別－ZZZZ）
-            || cv_union_all
-            || cv_select                   -- SELECT句   [不変項目]
-            || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
-            || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
-            || cv_select_sql_sort3         -- SELECT句   [不変項目]ソート順=3
-            || cv_from                     -- FROM句     [不変項目]
-            || cv_where                    -- WHERE句    [不変項目]
-            || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
-            || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
-               -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
-            || cv_union_all
-            || cv_select                   -- SELECT句   [不変項目]
-            || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
-            || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
-            || cv_select_sql_sort4         -- SELECT句   [不変項目]ソート順=4
-            || cv_from                     -- FROM句     [不変項目]
-            || cv_where                    -- WHERE句    [不変項目]
-            || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
-            || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
-            || cv_order_by                 -- ORDER BY句 [不変項目]
-            ;
---
-      OPEN  lc_ref FOR lv_sql
-      USING -- 優先① 入出庫場所（個別－個別）
-            lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
-           ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
-           ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
-           ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
-           ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
-           ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
-           ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
-            -- 優先② 入出庫場所（ZZZZ－個別）
-           ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
-           ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
-           ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
-           ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
-           ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
-           ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
-           ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
-            -- 優先③ 入出庫場所（個別－ZZZZ）
-           ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
-           ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
-           ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
-           ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
-           ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
-           ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
-           ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
-            -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
-           ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
-           ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
-           ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
-           ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
-           ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
-           ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
-           ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
-           ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
-      ;
-    END IF;
--- 2009/07/28 H.Itou Add End
+   lv_sql := -- 優先① 入出庫場所（個別－個別）
+             cv_select                   -- SELECT句   [不変項目]
+          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+          || cv_select_sql_sort1         -- SELECT句   [不変項目]ソート順=1
+          || cv_from                     -- FROM句     [不変項目]
+          || cv_where                    -- WHERE句    [不変項目]
+          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+             -- 優先② 入出庫場所（ZZZZ－個別）
+          || cv_union_all
+          || cv_select                   -- SELECT句   [不変項目]
+          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+          || cv_select_sql_sort2         -- SELECT句   [不変項目]ソート順=2
+          || cv_from                     -- FROM句     [不変項目]
+          || cv_where                    -- WHERE句    [不変項目]
+          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+             -- 優先③ 入出庫場所（個別－ZZZZ）
+          || cv_union_all
+          || cv_select                   -- SELECT句   [不変項目]
+          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+          || cv_select_sql_sort3         -- SELECT句   [不変項目]ソート順=3
+          || cv_from                     -- FROM句     [不変項目]
+          || cv_where                    -- WHERE句    [不変項目]
+          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+             -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+          || cv_union_all
+          || cv_select                   -- SELECT句   [不変項目]
+          || lv_select_deadweight        -- SELECT句   [動的項目]積載重量
+          || lv_select_loading_capacity  -- SELECT句   [動的項目]積載容積
+          || cv_select_sql_sort4         -- SELECT句   [不変項目]ソート順=4
+          || cv_from                     -- FROM句     [不変項目]
+          || cv_where                    -- WHERE句    [不変項目]
+          || lv_where_remove_zero        -- WHERE句    [動的項目]積載重量OR積載容積＞0
+          || lv_where_mixed_class        -- WHERE句    [動的項目]混載区分=0
+          || cv_order_by                 -- ORDER BY句 [不変項目]
+          ;
+-- 2008/09/05 H.Itou Add End
+-- 2008/09/05 H.Itou Del Start PT 6-2_34 指摘#34対応 動的SQLに変更
+---- 2008/08/04 H.Itou Add Start
+----    -- カーソルオープン
+----    OPEN lc_ref;
+---- 2008/08/04 H.Itou Add End
+-- 2008/09/05 H.Itou Del End
+-- 2008/09/05 H.Itou Add Start PT 6-2_34 指摘#34対応 動的SQLに変更
+    OPEN  lc_ref FOR lv_sql
+    USING -- 優先① 入出庫場所（個別－個別）
+          lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+         ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
+         ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
+          -- 優先② 入出庫場所（ZZZZ－個別）
+         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+         ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
+         ,lv_entering_despatching_code2  -- WHERE句 入出庫場所２        = INパラメータ.入出庫場所２
+          -- 優先③ 入出庫場所（個別－ZZZZ）
+         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+         ,lv_entering_despatching_code1  -- WHERE句 入出庫場所１        = INパラメータ.入出庫場所１
+         ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
+          -- 優先④ 入出庫場所（ZZZZ－ZZZZ）
+         ,lv_code_class1                 -- WHERE句 コード区分１        = INパラメータ.コード区分１
+         ,lv_code_class2                 -- WHERE句 コード区分２        = INパラメータ.コード区分２
+         ,ld_standard_date               -- WHERE句 配送LT適用開始日   <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 配送LT適用終了日   >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用開始日 <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 出荷方法適用終了日 >= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効開始日         <= INパラメータ.基準日
+         ,ld_standard_date               -- WHERE句 有効終了日         >= INパラメータ.基準日
+         ,lv_ship_method                 -- WHERE句 出荷方法            = INパラメータ.出荷方法
+         ,lv_auto_process_type           -- WHERE句 自動配車対象区分    = INパラメータ.自動配車区分
+         ,cv_all_4                       -- WHERE句 入出庫場所１        = ダミー倉庫：ZZZZ
+         ,lv_all_z_dummy_code2           -- WHERE句 入出庫場所２        = ダミー倉庫：ZZZZ OR ZZZZZZZZZ
+    ;
+-- 2008/09/05 H.Itou Mod End
 --
     /**********************************
      *  最適出荷方法の算出(C-3)       *
@@ -2696,43 +2004,39 @@ AS
         -- 検索できた場合
         << delv_lt_loop >>
         LOOP
--- 2009/07/21 H.Itou Del Start 本番障害#1336 取得する配送区分に重複がないよう修正したので、ブレイク処理しない。
----- 2008/08/04 H.Itou Add Start 同一出荷方法中、入出庫場所優先順が最優先のレコードで比較する。
---          -- 出荷方法がブレイクした場合、積載効率を取得。
---          IF  ((ln_ship_method_tmp <> lr_ref.ship_method)
---            OR (ln_ship_method_tmp IS NULL)) THEN
----- 2008/08/04 H.Itou Add End
--- 2009/07/21 H.Itou Del End
+-- 2008/08/04 H.Itou Add Start 同一出荷方法中、入出庫場所優先順が最優先のレコードで比較する。
+          -- 出荷方法がブレイクした場合、積載効率を取得。
+          IF  ((ln_ship_method_tmp <> lr_ref.ship_method)
+            OR (ln_ship_method_tmp IS NULL)) THEN
+-- 2008/08/04 H.Itou Add End
 -- 2008/08/04 H.Itou Mod Start
-          -- 積載効率算出
-          IF ( in_sum_weight IS NOT NULL ) THEN
-            ln_load_efficiency_tmp
+            -- 積載効率算出
+            IF ( in_sum_weight IS NOT NULL ) THEN
+              ln_load_efficiency_tmp
 -- 2008/08/06 H.Itou Mod Start 合計重量・合計容積･･･小数点第一位を切り上げて計算する。
 --                 := ( in_sum_weight   / lr_ref.deadweight       ) * 100;
-               := ( ln_sum_weight   / lr_ref.deadweight       ) * 100;
+                 := ( ln_sum_weight   / lr_ref.deadweight       ) * 100;
 -- 2008/08/06 H.Itou Mod End
-          ELSE
-            ln_load_efficiency_tmp
+            ELSE
+              ln_load_efficiency_tmp
 -- 2008/08/06 H.Itou Mod Start 合計重量・合計容積･･･小数点第一位を切り上げて計算する。
 --                 := ( in_sum_capacity / lr_ref.loading_capacity ) * 100;
-               := ( ln_sum_capacity / lr_ref.loading_capacity ) * 100;
+                 := ( ln_sum_capacity / lr_ref.loading_capacity ) * 100;
 -- 2008/08/06 H.Itou Mod End
-          END IF;
+            END IF;
 --
 -- 2008/08/06 H.Itou Add Start 小数第三位を切り上げ
-          ln_load_efficiency_tmp := comp_round_up(ln_load_efficiency_tmp, 2);
+            ln_load_efficiency_tmp := comp_round_up(ln_load_efficiency_tmp, 2);
 -- 2008/08/06 H.Itou Add End
-          -- その他情報
-          ln_ship_method_tmp          := lr_ref.ship_method;             -- 出荷方法
-          ln_mixed_ship_method_cd_tmp := lr_ref.mixed_ship_method_code;  -- 混載配送区分
-          -- 100%を超えた場合、ループ終了
-          EXIT WHEN ( ln_load_efficiency_tmp > 100 );
+            -- その他情報
+            ln_ship_method_tmp          := lr_ref.ship_method;             -- 出荷方法
+            ln_mixed_ship_method_cd_tmp := lr_ref.mixed_ship_method_code;  -- 混載配送区分
+            -- 100%を超えた場合、ループ終了
+            EXIT WHEN ( ln_load_efficiency_tmp > 100 );
 -- 2008/08/04 H.Itou Mod End
--- 2009/07/21 H.Itou Del Start 本番障害#1336 取得する配送区分に重複がないよう修正したので、ブレイク処理しない。
----- 2008/08/04 H.Itou Add Start
---          END IF;
----- 2008/08/04 H.Itou Add End
--- 2009/07/21 H.Itou Del End
+-- 2008/08/04 H.Itou Add Start
+          END IF;
+-- 2008/08/04 H.Itou Add End
           -- 次レコード検索
           FETCH lc_ref INTO lr_ref;
           --
@@ -3235,7 +2539,10 @@ AS
     lv_err_cd             VARCHAR2(30);
     --
     ld_max_manufact_date           ic_lots_mst.attribute1%TYPE;           -- 最大製造年月日
-    lv_parent_item_no              xxcmn_item_mst2_v.item_no%TYPE;        -- 親品目コード
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--    lv_parent_item_no              xxcmn_item_mst2_v.item_no%TYPE;        -- 親品目コード
+    lv_parent_item_id              xxcmn_item_mst2_v.parent_item_id%TYPE; -- 親品目ID
+-- 2009/10/15 H.Itou Mod End
     --
     ld_max_ship_manufact_date      DATE;                                  -- 出荷指示製造年月日
     ld_max_ship_arrival_date       xxwsh_order_headers_all.arrival_date%type;
@@ -3374,16 +2681,25 @@ AS
      **********************************/
     -- OPM品目マスタから親品目コードを取得
     BEGIN
-      SELECT ximv2.item_no                                             -- 品目コード(親品目)
-      INTO   lv_parent_item_no
-      FROM   xxcmn_item_mst2_v         ximv1,                          -- OPM品目情報VIEW2(子)
-             xxcmn_item_mst2_v         ximv2                           -- OPM品目情報VIEW2(親)
-      WHERE  ximv1.item_no             =  iv_item_no                   -- 品目コード
-        AND  ximv1.start_date_active  <=  trunc( id_standard_date )
-        AND  ximv1.end_date_active    >=  trunc( id_standard_date )
-        AND  ximv2.item_id             =  ximv1.parent_item_id         -- 親品目ID
-        AND  ximv2.start_date_active  <=  trunc( id_standard_date )
-        AND  ximv2.end_date_active    >=  trunc( id_standard_date );
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--      SELECT ximv2.item_no                                             -- 品目コード(親品目)
+--      INTO   lv_parent_item_no
+--      FROM   xxcmn_item_mst2_v         ximv1,                          -- OPM品目情報VIEW2(子)
+--             xxcmn_item_mst2_v         ximv2                           -- OPM品目情報VIEW2(親)
+--      WHERE  ximv1.item_no             =  iv_item_no                   -- 品目コード
+--        AND  ximv1.start_date_active  <=  trunc( id_standard_date )
+--        AND  ximv1.end_date_active    >=  trunc( id_standard_date )
+--        AND  ximv2.item_id             =  ximv1.parent_item_id         -- 親品目ID
+--        AND  ximv2.start_date_active  <=  trunc( id_standard_date )
+--        AND  ximv2.end_date_active    >=  trunc( id_standard_date );
+      SELECT ximv.parent_item_id                                     -- 親品目ID
+      INTO   lv_parent_item_id
+      FROM   xxcmn_item_mst2_v         ximv                          -- OPM品目情報VIEW2
+      WHERE  ximv.item_no             =  iv_item_no                  -- 品目コード
+        AND  ximv.start_date_active  <=  trunc( id_standard_date )
+        AND  ximv.end_date_active    >=  trunc( id_standard_date )
+      ;
+-- 2009/10/15 H.Itou Mod End
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
       -- データなしは除外
@@ -3432,9 +2748,12 @@ AS
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                   )
 -- 2008/11/04 H.Itou Mod End
             AND   NVL( xola.delete_flag,  cv_no )
@@ -3503,9 +2822,12 @@ AS
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                   )
 -- 2008/11/04 H.Itou Mod End
             AND   NVL( xola.delete_flag, cv_no )  <>  cv_yes                    -- 削除フラグ'Y'以外
@@ -3535,9 +2857,12 @@ AS
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                   )
 -- 2008/11/04 H.Itou Mod End
             AND   NVL( xola.delete_flag, cv_no )  <>  cv_yes                    -- 削除フラグ'Y'以外
@@ -3622,9 +2947,12 @@ AS
                     FROM   xxcmn_item_mst2_v ximv
                     WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                     AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                    AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                     )
 -- 2008/11/04 H.Itou Mod End
               AND   NVL( xola.delete_flag, cv_no ) <> cv_yes                  -- 削除フラグ'Y'以外
@@ -3664,9 +2992,12 @@ AS
                     FROM   xxcmn_item_mst2_v ximv
                     WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                     AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                    AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                     )
 -- 2008/11/04 H.Itou Mod End
               AND   NVL( xola.delete_flag, cv_no ) <>  cv_yes                 -- 削除フラグ'Y'以外
@@ -3719,9 +3050,12 @@ AS
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                   )
 -- 2008/11/04 H.Itou Mod End
             AND   xmril.delete_flg          =  cv_no                           -- 取消フラグ
@@ -3758,9 +3092,12 @@ AS
                 FROM   xxcmn_item_mst2_v ximv1
                 WHERE  ximv1.start_date_active <= TRUNC(id_standard_date)
                 AND    ximv1.end_date_active   >= TRUNC(id_standard_date)
-                AND    LEVEL                   <= 2                 -- 子階層まで抽出
-                START WITH ximv1.item_no        = lv_parent_item_no -- 親品目から検索
-                CONNECT BY NOCYCLE PRIOR ximv1.item_id = ximv1.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                AND    ximv1.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                 )
 -- 2008/11/04 H.Itou Mod End
           AND   ximv.start_date_active    <= TRUNC(id_standard_date)
@@ -3798,9 +3135,12 @@ AS
                 FROM   xxcmn_item_mst2_v ximv
                 WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                 AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                 )
 -- 2008/11/04 H.Itou Mod End
           AND   xmril.delete_flg          =  cv_no                            -- 取消フラグ
@@ -3995,7 +3335,10 @@ AS
     lv_err_cd             VARCHAR2(30);
     --
     ld_max_manufact_date           ic_lots_mst.attribute1%TYPE;           -- 最大製造年月日
-    lv_parent_item_no              xxcmn_item_mst2_v.item_no%TYPE;        -- 親品目コード
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--    lv_parent_item_no              xxcmn_item_mst2_v.item_no%TYPE;        -- 親品目コード
+    lv_parent_item_id              xxcmn_item_mst2_v.parent_item_id%TYPE; -- 親品目ID
+-- 2009/10/15 H.Itou Mod End
     --
     ld_max_ship_manufact_date      DATE;                                  -- 出荷指示製造年月日
     ld_max_ship_arrival_date       xxwsh_order_headers_all.arrival_date%type;
@@ -4143,16 +3486,25 @@ AS
      **********************************/
     -- OPM品目マスタから親品目コードを取得
     BEGIN
-      SELECT ximv2.item_no                                             -- 品目コード(親品目)
-      INTO   lv_parent_item_no
-      FROM   xxcmn_item_mst2_v         ximv1,                          -- OPM品目情報VIEW2(子)
-             xxcmn_item_mst2_v         ximv2                           -- OPM品目情報VIEW2(親)
-      WHERE  ximv1.item_no             =  iv_item_no                   -- 品目コード
-        AND  ximv1.start_date_active  <=  trunc( id_standard_date )
-        AND  ximv1.end_date_active    >=  trunc( id_standard_date )
-        AND  ximv2.item_id             =  ximv1.parent_item_id         -- 親品目ID
-        AND  ximv2.start_date_active  <=  trunc( id_standard_date )
-        AND  ximv2.end_date_active    >=  trunc( id_standard_date );
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--      SELECT ximv2.item_no                                             -- 品目コード(親品目)
+--      INTO   lv_parent_item_no
+--      FROM   xxcmn_item_mst2_v         ximv1,                          -- OPM品目情報VIEW2(子)
+--             xxcmn_item_mst2_v         ximv2                           -- OPM品目情報VIEW2(親)
+--      WHERE  ximv1.item_no             =  iv_item_no                   -- 品目コード
+--        AND  ximv1.start_date_active  <=  trunc( id_standard_date )
+--        AND  ximv1.end_date_active    >=  trunc( id_standard_date )
+--        AND  ximv2.item_id             =  ximv1.parent_item_id         -- 親品目ID
+--        AND  ximv2.start_date_active  <=  trunc( id_standard_date )
+--        AND  ximv2.end_date_active    >=  trunc( id_standard_date );
+      SELECT ximv.parent_item_id                                     -- 親品目ID
+      INTO   lv_parent_item_id
+      FROM   xxcmn_item_mst2_v         ximv                          -- OPM品目情報VIEW2
+      WHERE  ximv.item_no             =  iv_item_no                  -- 品目コード
+        AND  ximv.start_date_active  <=  trunc( id_standard_date )
+        AND  ximv.end_date_active    >=  trunc( id_standard_date )
+      ;
+-- 2009/10/15 H.Itou Mod End
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
       -- データなしは除外
@@ -4200,9 +3552,12 @@ AS
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                   )
             AND   NVL( xola.delete_flag,  cv_no )
                                                 <>  cv_yes                       -- 削除フラグ'Y'以外
@@ -4246,9 +3601,12 @@ AS
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                   )
             AND   NVL( xola.delete_flag, cv_no )  <>  cv_yes                    -- 削除フラグ'Y'以外
             AND   xola.shipped_quantity            >  0                         -- 出荷実績数量0以上
@@ -4276,9 +3634,12 @@ AS
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                   )
             AND   NVL( xola.delete_flag, cv_no )  <>  cv_yes                    -- 削除フラグ'Y'以外
             AND   xola.shipped_quantity            >  0)                        -- 出荷実績数量0以上
@@ -4321,9 +3682,12 @@ AS
                     FROM   xxcmn_item_mst2_v ximv
                     WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                     AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                    AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                     )
               AND   NVL( xola.delete_flag, cv_no ) <> cv_yes                  -- 削除フラグ'Y'以外
               AND   xmld.mov_line_id               =  xola.order_line_id      -- 受注明細ID
@@ -4359,9 +3723,12 @@ AS
                     FROM   xxcmn_item_mst2_v ximv
                     WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                     AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                    AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                    START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                    CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                    AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                     )
               AND   NVL( xola.delete_flag, cv_no ) <>  cv_yes                 -- 削除フラグ'Y'以外
               AND   xmld.mov_line_id               =  xola.order_line_id      -- 受注明細ID
@@ -4408,9 +3775,12 @@ AS
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                  AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                  START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                  CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                  AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                   )
             AND   xmril.delete_flg          =  cv_no                           -- 取消フラグ
             AND   xmld.mov_line_id          =  xmril.mov_line_id               -- 移動明細ID
@@ -4444,9 +3814,12 @@ AS
                 FROM   xxcmn_item_mst2_v ximv1
                 WHERE  ximv1.start_date_active <= TRUNC(id_standard_date)
                 AND    ximv1.end_date_active   >= TRUNC(id_standard_date)
-                AND    LEVEL                   <= 2                 -- 子階層まで抽出
-                START WITH ximv1.item_no        = lv_parent_item_no -- 親品目から検索
-                CONNECT BY NOCYCLE PRIOR ximv1.item_id = ximv1.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                AND    ximv1.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                 )
           AND   ximv.start_date_active    <= TRUNC(id_standard_date)
           AND   ximv.end_date_active      >= TRUNC(id_standard_date)
@@ -4482,9 +3855,12 @@ AS
                 FROM   xxcmn_item_mst2_v ximv
                 WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                 AND    ximv.end_date_active   >= TRUNC(id_standard_date)
-                AND    LEVEL                  <= 2                 -- 子階層まで抽出
-                START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
-                CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+-- 2009/10/15 H.Itou Mod Start 本番障害#1661
+--                AND    LEVEL                  <= 2                 -- 子階層まで抽出
+--                START WITH ximv.item_no        = lv_parent_item_no -- 親品目から検索
+--                CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+                AND    ximv.parent_item_id     = lv_parent_item_id
+-- 2009/10/15 H.Itou Mod End
                 )
           AND   xmril.delete_flg          =  cv_no                            -- 取消フラグ
           AND   xmld.mov_line_id          =  xmril.mov_line_id                -- 移動明細ID

@@ -7,16 +7,12 @@ AS
  * Description      : 生産物流共通（出荷・移動チェック）
  * MD.050           : 生産物流共通（出荷・移動チェック）T_MD050_BPO_910
  * MD.070           : なし
- * Version          : 1.36
+ * Version          : 1.37
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
  *   Name                Type  Ret   Description
  *  -------------------- ---- ----- --------------------------------------------------
- *  get_ship_method_precedence
- *                         F         配送区分優先順取得関数
- *  get_ship_method_search_code
- *                         P         配送区分検索用入出庫場所取得関数
  *  calc_total_value       P         B.積載効率チェック(合計値算出)
  *  calc_load_efficiency   P         C.積載効率チェック(積載効率算出)
  *  check_lot_reversal     P         D.ロット逆転防止チェック
@@ -26,6 +22,7 @@ AS
  *  calc_lead_time         P         F.リードタイム算出
  *  check_shipping_judgment
  *                         P         G.出荷可否チェック
+ *
  * Change Record
  * ------------ ----- ---------------- -------------------------------------------------
  *  Date         Ver.  Editor           Description
@@ -73,50 +70,9 @@ AS
  *  2009/03/03   1.31  SCS   風間由紀   [出荷可否チェック] 本番障害#1243対応
  *  2009/03/19   1.32  SCS   飯田甫     [積載効率チェック(合計値算出)] 統合テスト指摘311対応
  *  2009/04/23   1.33  SCS   風間由紀   [リードタイム算出] 本番障害#1398対応
- *  2009/07/21   1.34  SCS   伊藤ひとみ [配送区分優先順取得関数] 本番障害#1336対応
- *                                      [配送区分検索用入出庫場所取得関数] 本番障害#1336対応
- *                                      [積載効率チェック(積載効率算出)] 本番障害#1336対応
- *  2009/07/28   1.35  SCS   伊藤ひとみ [積載効率チェック(積載効率算出)] 本番障害#1336再対応
- *  2009/07/30   1.36  SCS   伊藤ひとみ [配送区分優先順取得関数] 本番障害#1336再対応
- *                                      [配送区分検索用入出庫場所取得関数] 本番障害#1336再対応
- *                                      [積載効率チェック(積載効率算出)] 本番障害#1336再対応
+ *  2009/10/15   1.37  SCS   伊藤ひとみ [ロット逆転防止チェック] 本番障害#1661対応
  *****************************************************************************************/
 --
--- 2009/07/21 H.Itou Add Start 本番障害#1336
-  -- 配送区分優先順取得関数
-  FUNCTION get_ship_method_precedence(
-    it_code_class1                IN  xxcmn_delivery_lt2_v.code_class1               %TYPE        -- 01.コード区分１
-   ,it_entering_despatching_code1 IN  xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE        -- 02.入出庫場所１
-   ,it_code_class2                IN  xxcmn_delivery_lt2_v.code_class2               %TYPE        -- 03.コード区分２
-   ,it_entering_despatching_code2 IN  xxcmn_delivery_lt2_v.entering_despatching_code2%TYPE        -- 04.入出庫場所２
-   ,it_prod_class                 IN  xxcmn_item_categories_v.segment1               %TYPE        -- 05.商品区分
-   ,it_weight_capacity_class      IN  xxcmn_item_mst_v.weight_capacity_class         %TYPE        -- 06.重量容積区分
-   ,id_standard_date              IN  DATE                                                        -- 07.基準日
--- 2009/07/30 H.Itou Mod Start 本番障害#1336
---   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
-   ,iv_auto_process_type          IN  VARCHAR2                                                    -- 08.自動配車対象区分
--- 2009/07/30 H.Itou Mod End
-  ) RETURN VARCHAR2;
---
-  -- 配送区分検索用入出庫場所取得関数
-  PROCEDURE get_ship_method_search_code(
-    it_code_class1                IN  xxcmn_delivery_lt2_v.code_class1               %TYPE        -- 01.コード区分１
-   ,it_entering_despatching_code1 IN  xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE        -- 02.入出庫場所１
-   ,it_code_class2                IN  xxcmn_delivery_lt2_v.code_class2               %TYPE        -- 03.コード区分２
-   ,it_entering_despatching_code2 IN  xxcmn_delivery_lt2_v.entering_despatching_code2%TYPE        -- 04.入出庫場所２
-   ,it_prod_class                 IN  xxcmn_item_categories_v.segment1               %TYPE        -- 05.商品区分
-   ,it_weight_capacity_class      IN  xxcmn_item_mst_v.weight_capacity_class         %TYPE        -- 06.重量容積区分
-   ,id_standard_date              IN  DATE                                                        -- 07.基準日
--- 2009/07/30 H.Itou Mod Start 本番障害#1336
---   ,iv_where_zero_flg             IN  VARCHAR2                                                    -- 08.0:重量容積>0を条件に追加 1:重量容積>0を条件に追加しない
-   ,iv_auto_process_type          IN  VARCHAR2                                                    -- 08.自動配車対象区分
--- 2009/07/30 H.Itou Mod End
-   ,ov_retcode                    OUT NOCOPY VARCHAR2                                             -- 09.リターンコード
-   ,ov_errmsg                     OUT NOCOPY VARCHAR2                                             -- 10.エラーメッセージ
-   ,ot_entering_despatching_code1 OUT NOCOPY xxcmn_delivery_lt2_v.entering_despatching_code1%TYPE -- 11.配送区分検索用入出庫場所１
-   ,ot_entering_despatching_code2 OUT NOCOPY xxcmn_delivery_lt2_v.entering_despatching_code2%TYPE -- 12.配送区分検索用入出庫場所２
-  );
--- 2009/07/21 H.Itou Add End
 -- 2008/10/06 H.Itou Del Start 統合テスト指摘240
 --  -- 積載効率チェック(合計値算出)
 --  PROCEDURE calc_total_value(

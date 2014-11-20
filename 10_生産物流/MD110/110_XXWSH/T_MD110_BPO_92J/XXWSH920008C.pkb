@@ -48,6 +48,7 @@ AS
  *                                       本番障害#332対応（条件：出庫元不備対応）
  *  2009/01/28   1.9   SCS伊藤           本番障害#1028対応（パラメータに指示部署追加）
  *  2009/03/17   1.10  SCS北寒寺         本番障害#1323対応
+ *  2009/10/16   1.11  SCS菅原           本番障害#1611対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4077,11 +4078,18 @@ AS
 --
     -- *** ローカル・カーソル ***
     CURSOR cur_item_list IS
-      SELECT ximv.item_no
-      FROM   xxcmn_item_mst_v ximv
-      WHERE  LEVEL <= 2
-      START WITH ximv.item_no = iv_item_code
-     CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id;
+--20091016 V1.11 Mod Start --    
+--      SELECT ximv.item_no
+--      FROM   xxcmn_item_mst_v ximv
+--      WHERE  LEVEL <= 2
+--      START WITH ximv.item_no = iv_item_code
+--     CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id;
+      SELECT ximv1.item_no
+      FROM   xxcmn_item_mst_v         ximv1,                          -- OPM品目情報VIEW2(子)
+             xxcmn_item_mst_v         ximv2                           -- OPM品目情報VIEW2(親)
+      WHERE  ximv2.item_no             =  iv_item_code                   -- 品目コード
+        AND  ximv2.item_id             =  ximv1.parent_item_id;         -- 親品目ID
+--20091016 V1.11 Mod Start --
 --
     -- *** ローカル・レコード ***
 --
