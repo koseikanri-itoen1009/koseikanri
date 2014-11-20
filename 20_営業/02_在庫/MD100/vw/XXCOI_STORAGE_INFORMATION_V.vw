@@ -3,13 +3,14 @@
  *
  * View Name       : XXCOI_STORAGE_INFORMATION_V
  * Description     : 入庫確認／訂正入力画面ビュー
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2008-12-05    1.0   SCS S.Moriyama   新規作成
+ *  2008-12-05    1.0   S.Moriyama       新規作成
+ *  2009-03-30    1.1   S.Moriyama       バラ茶区分を追加
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcoi_storage_information_v
@@ -32,6 +33,7 @@ CREATE OR REPLACE VIEW xxcoi_storage_information_v
    , material_transaction_set_flag                                    -- 資材取引連携済フラグ
    , auto_store_check_flag                                            -- 自動入庫確認フラグ
    , check_warehouse_code                                             -- 確認倉庫コード
+   , baracha_div                                                      -- バラ茶区分
    , created_by                                                       -- 作成者
    , creation_date                                                    -- 作成日
    , last_updated_by                                                  -- 最終更新者
@@ -58,6 +60,7 @@ AS
          , xsi.material_transaction_set_flag                          -- 資材取引連携済フラグ
          , xsi.auto_store_check_flag                                  -- 自動入庫確認フラグ
          , xsi.check_warehouse_code                                   -- 確認倉庫コード
+         , xsib.baracha_div                                           -- バラ茶区分
          , xsi.created_by                                             -- 作成者
          , xsi.creation_date                                          -- 作成日
          , xsi.last_updated_by                                        -- 最終更新者
@@ -67,6 +70,7 @@ AS
          , fnd_lookup_values         flv
          , xxcmn_item_mst_b          ximb
          , ic_item_mst_b             iimb
+         , xxcmm_system_items_b      xsib
   WHERE    flv.lookup_type = 'XXCOI1_STOCKED_VOUCH_DIV'
   AND      flv.language = USERENV('LANG')
   AND      flv.enabled_flag = 'Y'
@@ -75,6 +79,7 @@ AS
   AND      flv.lookup_code = xsi.slip_type
   AND      iimb.item_id = ximb.item_id
   AND      xsi.item_code = iimb.item_no
+  AND      iimb.item_id = xsib.item_id
 /
 COMMENT ON TABLE xxcoi_storage_information_v IS '入庫確認／訂正画面ビュー'
 /
@@ -115,6 +120,8 @@ COMMENT ON COLUMN xxcoi_storage_information_v.material_transaction_set_flag IS '
 COMMENT ON COLUMN xxcoi_storage_information_v.auto_store_check_flag IS '自動入庫確認フラグ'
 /
 COMMENT ON COLUMN xxcoi_storage_information_v.check_warehouse_code IS '確認倉庫コード'
+/
+COMMENT ON COLUMN xxcoi_storage_information_v.baracha_div IS 'バラ茶区分'
 /
 COMMENT ON COLUMN xxcoi_storage_information_v.created_by IS '作成者'
 /
