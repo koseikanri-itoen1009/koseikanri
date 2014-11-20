@@ -1,0 +1,7246 @@
+CREATE OR REPLACE PACKAGE BODY xxwip730001c
+AS
+/*****************************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * Package Name     : xxwip730001a(spec)
+ * Description      : 支払運賃データ自動作成
+ * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
+ * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
+ * Version          : 1.0
+ *
+ * Program List
+ * ---------------------- ----------------------------------------------------------
+ *  Name                   Description
+ * ---------------------- ----------------------------------------------------------
+ *  chk_param_proc         パラメータチェック処理(A-1)
+ *  get_init               関連データ取得(A-2) 運賃用締日情報取得(A-3)
+ *  get_deliv_lock         ロック取得(A-4)
+ *
+ *  get_order              受注実績情報抽出(A-5)
+ *  get_order_other        受注関連情報抽出
+ *    get_order_ship         受注配送区分情報VIEW抽出(A-6)
+ *    get_order_distance     受注配送距離アドオンマスタ抽出(A-7)
+ *    get_order_company      受注運賃用運送業者アドオンマスタ抽出(A-8)
+ *
+ *  get_order_line         受注明細アドオン抽出(A-9)
+ *    get_order_line_item    受注OPM品目情報VIEW抽出(A-10)
+ *    get_order_line_calc    受注個数/数量算出(A-11)
+ *    get_order_line_sum     受注個数/数量集計(A-12)
+ *  set_order_deliv_line   受注運賃明細アドオンPL/SQL表格納(A-13)
+ *
+ *  get_move               移動実績情報抽出(A-14)
+ *  get_move_other         移動関連情報抽出
+ *    get_move_ship          移動配送区分情報VIEW抽出(A-15)
+ *    get_move_distance      移動配送距離アドオンマスタ抽出(A-16)
+ *    get_move_company       移動運賃用運送業者アドオンマスタ抽出(A-17)
+ *
+ *  get_move_line          移動明細アドオン抽出(A-18)
+ *    get_move_line_item     移動OPM品目情報VIEW抽出(A-19)
+ *    get_move_line_calc     移動個数/数量算出(A-20)
+ *    get_move_line_sum      移動個数/数量集計(A-21)
+ *  set_move_deliv_line    移動運賃明細アドオンPL/SQL表格納(A-22)
+ *
+ *  insert_deliv_line      運賃明細アドオン一括登録(A-23)
+ *  update_deliv_line_calc 運賃明細アドオン一括再計算更新(A-24)
+ *  update_deliv_line_desc 運賃明細アドオン一括適用更新(A-25)
+ *
+ *  get_delinov_line_desc  運賃明細アドオン対象配送No抽出(A-26)
+ *  get_deliv_line         運賃明細アドオン抽出(A-27)
+ *    get_deliv_mix_calc     運賃明細混載数算出(A-28)
+ *    get_deliv_fare_calc    運賃算出(A-29)
+ *  set_deliv_head         運賃ヘッダアドオンPL/SQL表格納(A-30)
+ *
+ *  get_carriers_schedule  配車配送計画抽出(A-31)
+ *  set_carri_deliv_head   配車のみ運賃ヘッダアドオンPL/SQL表格納(A-32)
+ *
+ *  insert_deliv_head      運賃ヘッダアドオン一括登録(A-33)
+ *  update_deliv_head      運賃ヘッダアドオン一括更新(A-34)
+ *  delete_deliv_head      運賃ヘッダアドオン一括削除(A-35)
+ *  update_deliv_cntl      運賃計算コントロール更新処理(A-36)
+ *
+ *  get_exch_deliv_line    洗替運賃明細アドオン抽出(A-37)
+ *  set_exch_deliv_line    洗替運賃明細アドオンPL/SQL表格納(A-38)
+ *  update_exch_deliv_line 洗替運賃明細アドオン一括更新(A-39)
+ *
+ *  get_exch_delino        洗替運賃明細アドオン対象配送No抽出(A-40)
+ *  get_exch_deliv_line_h  洗替運賃明細アドオン抽出(A-41)
+ *  set_exch_deliv_head_h  洗替運賃ヘッダアドオン明細項目更新用PL/SQL表格納(A-42)
+ *
+ *  update_exch_deliv_head_h 洗替運賃ヘッダアドオン明細項目一括更新(A-43)
+ *
+ *  get_exch_deliv_other   運賃ヘッダ関連 抽出
+ *    get_exch_deliv_head    洗替運賃ヘッダアドオン抽出(A-44)
+ *    get_exch_deliv_charg   洗替運賃アドオンマスタ抽出(A-45)
+ *  set_exch_deliv_hate    洗替運賃ヘッダアドオンPL/SQL表格納(A-46)
+ *
+ *  update_exch_deliv_head 洗替運賃アドオンマスタ一括更新(A-47)
+ *  delete_exch_deliv_head 洗替運賃アドオンマスタ一括削除(A-48)
+ *
+ *  submain                メイン処理プロシージャ
+ *  main                   コンカレント実行ファイル登録プロシージャ
+ *
+ * Change Record
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2008/04/01    1.0  Oracle 野村       初回作成
+ *  2008/05/27    1.1  Oracle 野村       結合障害 混載処理
+ *
+ *****************************************************************************************/
+--
+--#######################  固定グローバル定数宣言部 START   #######################
+--
+  gv_status_normal CONSTANT VARCHAR2(1) := '0';
+  gv_status_warn   CONSTANT VARCHAR2(1) := '1';
+  gv_status_error  CONSTANT VARCHAR2(1) := '2';
+  gv_sts_cd_normal CONSTANT VARCHAR2(1) := 'C';
+  gv_sts_cd_warn   CONSTANT VARCHAR2(1) := 'G';
+  gv_sts_cd_error  CONSTANT VARCHAR2(1) := 'E';
+  gv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
+  gv_msg_cont      CONSTANT VARCHAR2(3) := '.';
+--
+--################################  固定部 END   ##################################
+--
+--#######################  固定グローバル変数宣言部 START   #######################
+--
+  gv_out_msg       VARCHAR2(2000);
+  gv_sep_msg       VARCHAR2(2000);
+  gv_exec_user     VARCHAR2(100);
+  gv_conc_name     VARCHAR2(30);
+  gv_conc_status   VARCHAR2(30);
+  gn_target_cnt    NUMBER;                    -- 対象件数
+  gn_normal_cnt    NUMBER;                    -- 正常件数
+  gn_error_cnt     NUMBER;                    -- エラー件数
+  gn_warn_cnt      NUMBER;                    -- スキップ件数
+--
+--################################  固定部 END   ##################################
+--
+--##########################  固定共通例外宣言部 START  ###########################
+--
+  --*** 処理部共通例外 ***
+  global_process_expt       EXCEPTION;
+  --*** 共通関数例外 ***
+  global_api_expt           EXCEPTION;
+  --*** 共通関数OTHERS例外 ***
+  global_api_others_expt    EXCEPTION;
+--
+  PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000);
+--
+--################################  固定部 END   ##################################
+--
+  -- ===============================
+  -- ユーザー定義例外
+  -- ===============================
+  lock_expt                  EXCEPTION;  -- ロック取得例外
+--
+  PRAGMA EXCEPTION_INIT(lock_expt, -54); -- ロック取得例外
+--
+  -- ===============================
+  -- ユーザー定義グローバル定数
+  -- ===============================
+  gv_pkg_name                 CONSTANT VARCHAR2(100) := 'xxwip730001c'; -- パッケージ名
+--
+  -- アプリケーション短縮名
+  gv_xxcmn_msg_kbn            CONSTANT VARCHAR2(5) := 'XXCMN';
+  gv_xxwip_msg_kbn            CONSTANT VARCHAR2(5) := 'XXWIP';
+--
+  -- プロファイル
+  gv_prof_debug_flg   CONSTANT VARCHAR2(50) := 'XXWIP_730001C_DEBUG';  -- プロファイル：デバッグフラグ
+  gv_debug_on         CONSTANT VARCHAR2(1) := '1';  -- デバッグ ON
+  gv_debug_off        CONSTANT VARCHAR2(1) := '0';  -- デバッグ OFF
+--
+  -- メッセージ番号(XXCMN)
+  gv_xxcmn_msg_okcnt          CONSTANT VARCHAR2(15) := 'APP-XXCMN-00009'; -- 成功件数
+  gv_xxcmn_msg_notfnd         CONSTANT VARCHAR2(15) := 'APP-XXCMN-10001'; -- 対象データなし
+  gv_xxcmn_msg_toomny         CONSTANT VARCHAR2(15) := 'APP-XXCMN-10137'; -- 対象データが複数
+  gv_xxcmn_msg_para           CONSTANT VARCHAR2(15) := 'APP-XXCMN-10010'; -- パラメータエラー
+  gv_xxcom_noprof_err         CONSTANT VARCHAR2(15) := 'APP-XXCMN-10002'; -- プロファイル取得エラー
+  gv_xxwip_msg_lock_err       CONSTANT VARCHAR2(15) := 'APP-XXWIP-10029'; -- テーブルロックエラー
+  gv_xxwip_msg_deliv_line     CONSTANT VARCHAR2(15) := 'APP-XXWIP-00009'; -- 運賃明細アドオン処理件数
+  gv_xxwip_msg_deliv_ins      CONSTANT VARCHAR2(15) := 'APP-XXWIP-00010'; -- 運賃ヘッダアドオン処理件数
+  gv_xxwip_msg_deliv_del      CONSTANT VARCHAR2(15) := 'APP-XXWIP-00011'; -- 運賃ヘッダアドオン削除件数
+--
+  -- メッセー内容（名称）
+  gv_deliverys_ctrl           CONSTANT VARCHAR2(50) := '運賃計算用コントロールアドオン';
+  gv_exchange_type            CONSTANT VARCHAR2(50) := '洗替区分';
+  gv_deliverys                CONSTANT VARCHAR2(50) := '運賃ヘッダアドオン';
+  gv_delivery_lines           CONSTANT VARCHAR2(50) := '運賃明細アドオン';
+  gv_item_mst2_v              CONSTANT VARCHAR2(50) := 'OPM品目情報VIEW2';
+  gv_order_headers_all        CONSTANT VARCHAR2(50) := '受注明細アドオン';
+  gv_mov_req_instr_lines      CONSTANT VARCHAR2(50) := '移動依頼/指示明細アドオン';
+--
+  -- トークン
+  gv_tkn_parameter            CONSTANT VARCHAR2(10) := 'PARAMETER';
+  gv_tkn_value                CONSTANT VARCHAR2(10) := 'VALUE';
+  gv_tkn_table                CONSTANT VARCHAR2(10) := 'TABLE';
+  gv_tkn_key                  CONSTANT VARCHAR2(10) := 'KEY';
+  gv_tkn_cnt                  CONSTANT VARCHAR2(10) := 'CNT';
+  gv_tkn_ng_profile           CONSTANT VARCHAR2(10) := 'NG_PROFILE';
+--
+  -- 対象_対象外区分
+  gv_target_y                 CONSTANT VARCHAR2(1) := '1';
+  gv_target_n                 CONSTANT VARCHAR2(1) := '0';
+  -- YESNO区分
+  gv_ktg_yes                  CONSTANT VARCHAR2(1) := 'Y';
+  gv_ktg_no                   CONSTANT VARCHAR2(1) := 'N';
+--
+  -- コンカレントNo(運賃計算用コントロール)
+  gv_con_no_deliv             CONSTANT VARCHAR2(1) := '1';  -- 1:支払運賃データ自動作成
+  -- 支払請求区分
+  gv_pay                      CONSTANT VARCHAR2(1) := '1';  -- 1:支払
+  gv_claim                    CONSTANT VARCHAR2(1) := '2';  -- 2:請求
+  -- 商品区分
+  gv_prod_class_lef           CONSTANT VARCHAR2(1) := '1';  -- 1:リーフ
+  gv_prod_class_drk           CONSTANT VARCHAR2(1) := '2';  -- 2:ドリンク
+  -- 小口区分
+  gv_small_sum_yes            CONSTANT VARCHAR2(1) := '1';  -- 1:小口
+  gv_small_sum_no             CONSTANT VARCHAR2(1) := '0';  -- 0:車立
+  -- 支払判断区分
+  gv_pay_judg_g               CONSTANT VARCHAR2(1) := '1';  -- 1:発日
+  gv_pay_judg_c               CONSTANT VARCHAR2(1) := '2';  -- 2:着日
+  -- 出荷支給区分
+  gv_shipping                 CONSTANT VARCHAR2(1) := '1';  -- 1:出荷指示
+  gv_shikyu                   CONSTANT VARCHAR2(1) := '2';  -- 2:支給依頼
+  gv_kuragae                  CONSTANT VARCHAR2(1) := '3';  -- 3:倉替返品
+  -- 重量容積区分
+  gv_weight                   CONSTANT VARCHAR2(1) := '1';  -- 1:重量
+  gv_capacity                 CONSTANT VARCHAR2(1) := '2';  -- 2:容積
+  -- コード区分
+  gv_code_move                CONSTANT VARCHAR2(1) := '1';  -- 1:倉庫
+  gv_code_shikyu              CONSTANT VARCHAR2(1) := '2';  -- 2:取引先
+  gv_code_ship                CONSTANT VARCHAR2(1) := '3';  -- 3:配送先
+  -- タイプ
+  gv_type_ship                CONSTANT VARCHAR2(1) := '1';  -- 1:出荷
+  gv_type_shikyu              CONSTANT VARCHAR2(1) := '2';  -- 2:支給
+  gv_type_move                CONSTANT VARCHAR2(1) := '3';  -- 3:移動
+--
+  -- ===============================
+  -- ユーザー定義グローバル型
+  -- ===============================
+--
+  -- *****************************
+  -- * 受注実績 関連
+  -- *****************************
+  -- 受注実績情報 抽出項目
+  TYPE order_inf_rec IS RECORD(
+      order_header_id               xxwsh_order_headers_all.order_header_id%TYPE              -- 受注ヘッダアドオンID
+    , request_no                    xxwsh_order_headers_all.request_no%TYPE                   -- 依頼No
+    , slip_number                   xxwsh_order_headers_all.slip_number%TYPE                  -- 送り状No
+    , delivery_no                   xxwsh_order_headers_all.delivery_no%TYPE                  -- 配送No
+    , result_freight_carrier_code   xxwsh_order_headers_all.result_freight_carrier_code%TYPE  -- 運送業者_実績
+    , deliver_from                  xxwsh_order_headers_all.deliver_from%TYPE                 -- 出荷元保管場所
+    , result_shipping_method_code   xxwsh_order_headers_all.result_shipping_method_code%TYPE  -- 配送区分_実績
+    , deliver_to_code_class         VARCHAR2(1)                                               -- 配送先コード区分
+    , result_deliver_to             xxwsh_order_headers_all.result_deliver_to%TYPE            -- 出荷先_実績
+    , payments_judgment_classe      xxwip_delivery_company.payments_judgment_classe%TYPE      -- 支払判断区分(運賃)
+    , shipped_date                  xxwsh_order_headers_all.shipped_date%TYPE                 -- 出荷日
+    , arrival_date                  xxwsh_order_headers_all.arrival_date%TYPE                 -- 着荷日
+    , judgement_date                DATE                                                      -- 判断日
+    , prod_class                    xxwsh_order_headers_all.prod_class%TYPE                   -- 商品区分
+    , weight_capacity_class         xxwsh_order_headers_all.weight_capacity_class%TYPE        -- 重量容積区分
+    , small_quantity                xxwsh_order_headers_all.small_quantity%TYPE               -- 小口個数
+    , order_type                    VARCHAR2(1)                                               -- タイプ
+    , no_cont_freight_class         xxwsh_order_headers_all.no_cont_freight_class%TYPE        -- 契約外運賃区分
+    , transfer_location_code        xxwsh_order_headers_all.transfer_location_code%TYPE       -- 振替先
+    , shipping_instructions         VARCHAR2(40)                                              -- 出荷指示(40)
+    , small_amount_class            xxwsh_ship_method_v.small_amount_class%TYPE               -- 配送区分：小口区分
+    , mixed_class                   xxwsh_ship_method_v.mixed_class%TYPE                      -- 配送区分：混載区分
+    , ref_small_amount_class        VARCHAR2(1)                                               -- 配送区分：リーフ小口区分
+    , post_distance                 xxwip_delivery_distance.post_distance%TYPE                -- 配送距離：車立距離
+    , small_distance                xxwip_delivery_distance.small_distance%TYPE               -- 配送距離：小口距離
+    , consolid_add_distance         xxwip_delivery_distance.consolid_add_distance%TYPE        -- 配送距離：混載割増距離
+    , actual_distance               xxwip_delivery_distance.actual_distance%TYPE              -- 配送距離：実際距離
+    , small_weight                  xxwip_delivery_company.small_weight%TYPE                  -- 運送業者：小口重量
+    , pay_picking_amount            xxwip_delivery_company.pay_picking_amount%TYPE            -- 運送業者：支払ピッキング単価
+    , qty                           xxwip_deliverys.qty1%TYPE                                 -- 個数
+    , delivery_weight               xxwip_deliverys.delivery_weight1%TYPE                     -- 重量
+  );
+--
+  -- 対象データ情報を格納するテーブル型の定義
+  TYPE order_inf_tbl IS TABLE OF order_inf_rec INDEX BY PLS_INTEGER;
+  gt_order_inf_tab   order_inf_tbl;
+--
+  -- 受注明細情報 抽出項目
+  TYPE order_line_inf_rec IS RECORD(
+      order_header_id               xxwsh_order_lines_all.order_header_id%TYPE      -- 受注ヘッダアドオンID
+    , shipping_item_code            xxwsh_order_lines_all.shipping_item_code%TYPE   -- 出荷品目
+    , shipped_quantity              xxwsh_order_lines_all.shipped_quantity%TYPE     -- 出荷実績数量
+  );
+  TYPE order_line_inf_tbl IS TABLE OF order_line_inf_rec INDEX BY PLS_INTEGER;
+--
+  -- *****************************
+  -- * 移動実績 関連
+  -- *****************************
+  -- 移動実績情報 抽出項目
+  TYPE move_inf_rec IS RECORD(
+      mov_hdr_id                    xxinv_mov_req_instr_headers.mov_hdr_id%TYPE                   -- 移動ヘッダID
+    , mov_num                       xxinv_mov_req_instr_headers.mov_num%TYPE                      -- 移動番号
+    , slip_number                   xxinv_mov_req_instr_headers.slip_number%TYPE                  -- 送り状No
+    , delivery_no                   xxinv_mov_req_instr_headers.delivery_no%TYPE                  -- 配送No
+    , actual_freight_carrier_code   xxinv_mov_req_instr_headers.actual_freight_carrier_code%TYPE  -- 運送業者_実績
+    , shipped_locat_code            xxinv_mov_req_instr_headers.shipped_locat_code%TYPE           -- 出庫元保管場所
+    , shipping_method_code          xxinv_mov_req_instr_headers.shipping_method_code%TYPE         -- 配送区分
+    , deliver_to_code_class         VARCHAR2(1)                                                   -- 配送先コード区分
+    , ship_to_locat_code            xxinv_mov_req_instr_headers.ship_to_locat_code%TYPE           -- 入庫先保管場所
+    , payments_judgment_classe      xxwip_delivery_company.payments_judgment_classe%TYPE          -- 支払判断区分(運賃)
+    , actual_ship_date              xxinv_mov_req_instr_headers.actual_ship_date%TYPE             -- 出庫実績日
+    , actual_arrival_date           xxinv_mov_req_instr_headers.actual_arrival_date%TYPE          -- 入庫実績日
+    , judgement_date                DATE                                                          -- 判断日
+    , item_class                    xxinv_mov_req_instr_headers.item_class%TYPE                   -- 商品区分
+    , weight_capacity_class         xxinv_mov_req_instr_headers.weight_capacity_class%TYPE        -- 重量容積区分
+    , small_quantity                xxinv_mov_req_instr_headers.small_quantity%TYPE               -- 小口個数
+    , sum_quantity                  xxinv_mov_req_instr_headers.sum_quantity%TYPE                 -- 合計数量
+    , order_type                    VARCHAR2(1)                                                   -- タイプ
+    , no_cont_freight_class         xxinv_mov_req_instr_headers.no_cont_freight_class%TYPE        -- 契約外運賃区分
+    , transfer_location_code        VARCHAR2(4)                                                   -- 振替先
+    , description                   VARCHAR2(40)                                                  -- 摘要
+    , small_amount_class            xxwsh_ship_method_v.small_amount_class%TYPE               -- 配送区分：小口区分
+    , mixed_class                   xxwsh_ship_method_v.mixed_class%TYPE                      -- 配送区分：混載区分
+    , ref_small_amount_class        VARCHAR2(1)                                               -- 配送区分：リーフ小口区分
+    , post_distance                 xxwip_delivery_distance.post_distance%TYPE                -- 配送距離：車立距離
+    , small_distance                xxwip_delivery_distance.small_distance%TYPE               -- 配送距離：小口距離
+    , consolid_add_distance         xxwip_delivery_distance.consolid_add_distance%TYPE        -- 配送距離：混載割増距離
+    , actual_distance               xxwip_delivery_distance.actual_distance%TYPE              -- 配送距離：実際距離
+    , small_weight                  xxwip_delivery_company.small_weight%TYPE                  -- 運送業者：小口重量
+    , pay_picking_amount            xxwip_delivery_company.pay_picking_amount%TYPE            -- 運送業者：支払ピッキング単価
+    , qty                           xxwip_deliverys.qty1%TYPE                                 -- 個数
+    , delivery_weight               xxwip_deliverys.delivery_weight1%TYPE                     -- 重量
+  );
+--
+  -- 対象データ情報を格納するテーブル型の定義
+  TYPE move_inf_tbl IS TABLE OF move_inf_rec INDEX BY PLS_INTEGER;
+  gt_move_inf_tab   move_inf_tbl;
+--
+  -- 移動依頼/指示明細情報 抽出項目
+  TYPE move_line_inf_rec IS RECORD(
+      mov_hdr_id                  xxinv_mov_req_instr_lines.mov_hdr_id%TYPE         -- 移動ヘッダID
+    , item_id                     xxinv_mov_req_instr_lines.item_id%TYPE            -- OPM品目ID
+    , shipped_quantity            xxinv_mov_req_instr_lines.shipped_quantity%TYPE   -- 出荷実績数量
+  );
+  TYPE move_line_inf_tbl IS TABLE OF move_line_inf_rec INDEX BY PLS_INTEGER;
+--
+  -- *****************************
+  -- * 運賃明細アドオン 関連
+  -- *****************************
+  -- 運賃明細アドオン 配送No 抽出項目
+  TYPE delivno_deliv_line_rec IS RECORD(
+      delivery_no         xxwip_delivery_lines.delivery_no%TYPE       -- 配送No
+    , distance            xxwip_delivery_lines.actual_distance%TYPE   -- 最長距離（最大）
+    , qty                 xxwip_delivery_lines.qty%TYPE               -- 個数（合計）
+    , delivery_weight     xxwip_delivery_lines.delivery_weight%TYPE   -- 重量（合計）
+  );
+  TYPE delivno_deliv_line_tbl IS TABLE OF delivno_deliv_line_rec INDEX BY PLS_INTEGER;
+  gt_delivno_deliv_line_tab   delivno_deliv_line_tbl;
+--
+  -- 運賃明細アドオン 抽出項目
+  TYPE deliv_line_rec IS RECORD(
+      delivery_company_code       xxwip_delivery_lines.delivery_company_code%TYPE   -- 運送業者
+    , delivery_no                 xxwip_delivery_lines.delivery_no%TYPE             -- 配送No
+    , invoice_no                  xxwip_delivery_lines.invoice_no%TYPE              -- 送り状No
+    , payments_judgment_classe    xxwip_delivery_lines.payments_judgment_classe%TYPE-- 支払判断区分
+    , ship_date                   xxwip_delivery_lines.ship_date%TYPE               -- 出庫日
+    , arrival_date                xxwip_delivery_lines.arrival_date%TYPE            -- 到着日
+    , judgement_date              xxwip_delivery_lines.judgement_date%TYPE          -- 判断日
+    , goods_classe                xxwip_delivery_lines.goods_classe%TYPE            -- 商品区分
+    , mixed_code                  xxwip_delivery_lines.mixed_code%TYPE              -- 混載区分
+    , dellivary_classe            xxwip_delivery_lines.dellivary_classe%TYPE        -- 配送区分
+    , whs_code                    xxwip_delivery_lines.whs_code%TYPE                -- 代表出庫倉庫コード
+    , code_division               xxwip_delivery_lines.code_division%TYPE           -- 代表配送先コード区分
+    , shipping_address_code       xxwip_delivery_lines.shipping_address_code%TYPE   -- 代表配送先コード
+    , order_type                  xxwip_delivery_lines.order_type%TYPE              -- 代表タイプ
+    , weight_capacity_class       xxwip_delivery_lines.weight_capacity_class%TYPE   -- 重量容積区分
+    , actual_distance             xxwip_delivery_lines.actual_distance%TYPE         -- 最長実際距離
+    , outside_contract            xxwip_delivery_lines.outside_contract%TYPE        -- 契約外区分
+    , description                 xxwip_delivery_lines.description%TYPE             -- 振替先
+    , consolid_qty                xxwip_deliverys.consolid_qty%TYPE                 -- 混載数
+    , small_weight                xxwip_delivery_company.small_weight%TYPE          -- 小口重量
+    , pay_picking_amount          xxwip_delivery_company.pay_picking_amount%TYPE    -- 支払ピッキング単価
+    , shipping_expenses           xxwip_delivery_charges.shipping_expenses%TYPE     -- 運送費
+    , leaf_consolid_add           xxwip_delivery_charges.leaf_consolid_add%TYPE     -- リーフ混載割増
+    , consolid_surcharge          xxwip_deliverys.consolid_surcharge%TYPE           -- 混載割増金額
+    , picking_charge              xxwip_deliverys.picking_charge%TYPE               -- ピッキング料
+  );
+--
+  TYPE deliv_line_tbl IS TABLE OF deliv_line_rec INDEX BY PLS_INTEGER;
+  gt_deliv_line_tab   deliv_line_tbl;
+--
+  -- PL/SQL表型
+  -- 運賃明細アドオンID
+  TYPE line_deliv_lines_id_type   IS TABLE OF xxwip_delivery_lines.delivery_lines_id%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 依頼No
+  TYPE line_request_no_type       IS TABLE OF xxwip_delivery_lines.request_no%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 送り状No
+  TYPE line_invoice_no_type       IS TABLE OF xxwip_delivery_lines.invoice_no%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 配送No
+  TYPE line_deliv_no_type         IS TABLE OF xxwip_delivery_lines.delivery_no%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- リーフ小口区分
+  TYPE line_small_lot_cls_type    IS TABLE OF xxwip_delivery_lines.small_lot_class%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 運送業者
+  TYPE line_deliv_cmpny_cd_type   IS TABLE OF xxwip_delivery_lines.delivery_company_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 出庫倉庫コード
+  TYPE line_whs_code_type         IS TABLE OF xxwip_delivery_lines.whs_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 配送区分
+  TYPE line_delliv_cls_type       IS TABLE OF xxwip_delivery_lines.dellivary_classe%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 配送先コード区分
+  TYPE line_code_division_type    IS TABLE OF xxwip_delivery_lines.code_division%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 配送先コード
+  TYPE line_ship_addr_cd_type     IS TABLE OF xxwip_delivery_lines.shipping_address_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 支払判断区分
+  TYPE line_pay_judg_cls_type     IS TABLE OF xxwip_delivery_lines.payments_judgment_classe%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 出庫日
+  TYPE line_ship_date_type        IS TABLE OF xxwip_delivery_lines.ship_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 到着日
+  TYPE line_arrival_date_type     IS TABLE OF xxwip_delivery_lines.arrival_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 報告日
+  TYPE line_report_date_type      IS TABLE OF xxwip_delivery_lines.report_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 判断日
+  TYPE line_judg_date_type        IS TABLE OF xxwip_delivery_lines.judgement_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 商品区分
+  TYPE line_goods_cls_type        IS TABLE OF xxwip_delivery_lines.goods_classe%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 重量容積区分
+  TYPE line_weight_cap_cls_type   IS TABLE OF xxwip_delivery_lines.weight_capacity_class%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 距離
+  TYPE line_ditnc_type            IS TABLE OF xxwip_delivery_lines.distance%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 実際距離
+  TYPE line_actual_dstnc_type     IS TABLE OF xxwip_delivery_lines.actual_distance%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 個数
+  TYPE line_qty_type              IS TABLE OF xxwip_delivery_lines.qty%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 重量
+  TYPE line_deliv_weight_type     IS TABLE OF xxwip_delivery_lines.delivery_weight%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- タイプ
+  TYPE line_order_type_type       IS TABLE OF xxwip_delivery_lines.order_type%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 混載区分
+  TYPE line_mixed_code_type       IS TABLE OF xxwip_delivery_lines.mixed_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 契約外区分
+  TYPE line_outside_cntrct_type   IS TABLE OF xxwip_delivery_lines.outside_contract%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 振替先
+  TYPE line_trans_locat_type      IS TABLE OF xxwip_delivery_lines.transfer_location%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 摘要
+  TYPE line_description_type      IS TABLE OF xxwip_delivery_lines.description%TYPE
+  INDEX BY BINARY_INTEGER;
+--
+  -- 運賃明細アドオン 登録用変数定義
+  i_line_deliv_lines_id_tab   line_deliv_lines_id_type;     -- 運賃明細アドオンID
+  i_line_request_no_tab       line_request_no_type;         -- 依頼No
+  i_line_invoice_no_tab       line_invoice_no_type;         -- 送り状No
+  i_line_deliv_no_tab         line_deliv_no_type;           -- 配送No
+  i_line_small_lot_cls_tab    line_small_lot_cls_type;      -- リーフ小口区分
+  i_line_deliv_cmpny_cd_tab   line_deliv_cmpny_cd_type;     -- 運送業者
+  i_line_whs_code_tab         line_whs_code_type;           -- 出庫倉庫コード
+  i_line_delliv_cls_tab       line_delliv_cls_type;         -- 配送区分
+  i_line_code_division_tab    line_code_division_type;      -- 配送先コード区分
+  i_line_ship_addr_cd_tab     line_ship_addr_cd_type;       -- 配送先コード
+  i_line_pay_judg_cls_tab     line_pay_judg_cls_type;       -- 支払判断区分
+  i_line_ship_date_tab        line_ship_date_type;          -- 出庫日
+  i_line_arrival_date_tab     line_arrival_date_type;       -- 到着日
+  i_line_report_date_tab      line_report_date_type;        -- 報告日
+  i_line_judg_date_tab        line_judg_date_type;          -- 判断日
+  i_line_goods_cls_tab        line_goods_cls_type;          -- 商品区分
+  i_line_weight_cap_cls_tab   line_weight_cap_cls_type;     -- 重量容積区分
+  i_line_ditnc_tab            line_ditnc_type;              -- 距離
+  i_line_actual_dstnc_tab     line_actual_dstnc_type;       -- 実際距離
+  i_line_qty_tab              line_qty_type;                -- 個数
+  i_line_deliv_weight_tab     line_deliv_weight_type;       -- 重量
+  i_line_order_tab_tab        line_order_type_type;         -- タイプ
+  i_line_mixed_code_tab       line_mixed_code_type;         -- 混載区分
+  i_line_outside_cntrct_tab   line_outside_cntrct_type;     -- 契約外区分
+  i_line_trans_locat_tab      line_trans_locat_type;        -- 振替先
+  i_line_description_tab      line_description_type;        -- 摘要
+--
+  -- 運賃明細アドオン 再計算更新用変数定義
+  us_line_request_no_tab       line_request_no_type;         -- 依頼No
+  us_line_invoice_no_tab       line_invoice_no_type;         -- 送り状No
+  us_line_deliv_no_tab         line_deliv_no_type;           -- 配送No
+  us_line_small_lot_cls_tab    line_small_lot_cls_type;      -- リーフ小口区分
+  us_line_deliv_cmpny_cd_tab   line_deliv_cmpny_cd_type;     -- 運送業者
+  us_line_whs_code_tab         line_whs_code_type;           -- 出庫倉庫コード
+  us_line_delliv_cls_tab       line_delliv_cls_type;         -- 配送区分
+  us_line_code_division_tab    line_code_division_type;      -- 配送先コード区分
+  us_line_ship_addr_cd_tab     line_ship_addr_cd_type;       -- 配送先コード
+  us_line_pay_judg_cls_tab     line_pay_judg_cls_type;       -- 支払判断区分
+  us_line_ship_date_tab        line_ship_date_type;          -- 出庫日
+  us_line_arrival_date_tab     line_arrival_date_type;       -- 到着日
+  us_line_judg_date_tab        line_judg_date_type;          -- 判断日
+  us_line_goods_cls_tab        line_goods_cls_type;          -- 商品区分
+  us_line_weight_cap_cls_tab   line_weight_cap_cls_type;     -- 重量容積区分
+  us_line_ditnc_tab            line_ditnc_type;              -- 距離
+  us_line_actual_dstnc_tab     line_actual_dstnc_type;       -- 実際距離
+  us_line_qty_tab              line_qty_type;                -- 個数
+  us_line_deliv_weight_tab     line_deliv_weight_type;       -- 重量
+  us_line_order_tab_tab        line_order_type_type;         -- タイプ
+  us_line_mixed_code_tab       line_mixed_code_type;         -- 混載区分
+  us_line_outside_cntrct_tab   line_outside_cntrct_type;     -- 契約外区分
+  us_line_trans_locat_tab      line_trans_locat_type;        -- 振替先
+  us_line_description_tab      line_description_type;        -- 摘要
+--
+  -- 運賃明細アドオン 摘要更新用変数定義
+  ut_line_request_no_tab       line_request_no_type;         -- 依頼No
+  ut_line_description_tab      line_description_type;        -- 摘要
+--
+  -- *****************************
+  -- * 運賃ヘッダアドオン 関連
+  -- *****************************
+  -- PL/SQL表型
+  -- 運賃ヘッダーアドオンID
+  TYPE head_deliv_head_id_type        IS TABLE OF xxwip_deliverys.deliverys_header_id%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 運送業者
+  TYPE head_deliv_cmpny_cd_type       IS TABLE OF xxwip_deliverys.delivery_company_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 配送No
+  TYPE head_deliv_no_type             IS TABLE OF xxwip_deliverys.delivery_no%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 送り状No
+  TYPE head_invoice_no_type           IS TABLE OF xxwip_deliverys.invoice_no%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 支払請求区分
+  TYPE head_p_b_classe_type           IS TABLE OF xxwip_deliverys.p_b_classe%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 支払判断区分
+  TYPE head_pay_judg_cls_type         IS TABLE OF xxwip_deliverys.payments_judgment_classe%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 出庫日
+  TYPE head_ship_date_type            IS TABLE OF xxwip_deliverys.ship_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 到着日
+  TYPE head_arrival_date_type         IS TABLE OF xxwip_deliverys.arrival_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 報告日
+  TYPE head_report_date_type          IS TABLE OF xxwip_deliverys.report_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 判断日
+  TYPE head_judg_date_type            IS TABLE OF xxwip_deliverys.judgement_date%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 商品区分
+  TYPE head_goods_cls_type            IS TABLE OF xxwip_deliverys.goods_classe%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 混載区分
+  TYPE head_mixed_cd_type             IS TABLE OF xxwip_deliverys.mixed_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 請求運賃
+  TYPE head_charg_amount_type         IS TABLE OF xxwip_deliverys.charged_amount%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 契約運賃
+  TYPE head_contract_rate_type        IS TABLE OF xxwip_deliverys.contract_rate%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 差額
+  TYPE head_balance_type              IS TABLE OF xxwip_deliverys.balance%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 合計
+  TYPE head_total_amount_type         IS TABLE OF xxwip_deliverys.total_amount%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 諸料金
+  TYPE head_many_rate_type            IS TABLE OF xxwip_deliverys.many_rate%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 最長距離
+  TYPE head_distance_type             IS TABLE OF xxwip_deliverys.distance%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 配送区分
+  TYPE head_deliv_cls_type            IS TABLE OF xxwip_deliverys.delivery_classe%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 代表出庫倉庫コード
+  TYPE head_whs_cd_type               IS TABLE OF xxwip_deliverys.whs_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 代表配送先コード区分
+  TYPE head_cd_dvsn_type              IS TABLE OF xxwip_deliverys.code_division%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 代表配送先コード
+  TYPE head_ship_addr_cd_type         IS TABLE OF xxwip_deliverys.shipping_address_code%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 個数１
+  TYPE head_qty1_type                 IS TABLE OF xxwip_deliverys.qty1%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 個数２
+  TYPE head_qty2_type                 IS TABLE OF xxwip_deliverys.qty2%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 重量１
+  TYPE head_deliv_wght1_type          IS TABLE OF xxwip_deliverys.delivery_weight1%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 重量２
+  TYPE head_deliv_wght2_type          IS TABLE OF xxwip_deliverys.delivery_weight2%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 混載割増金額
+  TYPE head_cnsld_srhrg_type          IS TABLE OF xxwip_deliverys.consolid_surcharge%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 最長実際距離
+  TYPE head_actual_ditnc_type         IS TABLE OF xxwip_deliverys.actual_distance%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 通行料
+  TYPE head_cong_chrg_type            IS TABLE OF xxwip_deliverys.congestion_charge%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- ピッキング料
+  TYPE head_pick_charge_type          IS TABLE OF xxwip_deliverys.picking_charge%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 混載数
+  TYPE head_consolid_qty_type         IS TABLE OF xxwip_deliverys.consolid_qty%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 代表タイプ
+  TYPE head_order_type_type           IS TABLE OF xxwip_deliverys.order_type%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 重量容積区分
+  TYPE head_wigh_cpcty_cls_type       IS TABLE OF xxwip_deliverys.weight_capacity_class%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 契約外区分
+  TYPE head_out_cont_type             IS TABLE OF xxwip_deliverys.outside_contract%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 差異区分
+  TYPE head_output_flag_type          IS TABLE OF xxwip_deliverys.output_flag%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 支払確定区分
+  TYPE head_defined_flag_type         IS TABLE OF xxwip_deliverys.defined_flag%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 支払確定戻
+  TYPE head_return_flag_type          IS TABLE OF xxwip_deliverys.return_flag%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 画面更新有無区分
+  TYPE head_fm_upd_flg_type           IS TABLE OF xxwip_deliverys.form_update_flag%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 振替先
+  TYPE head_trans_lcton_type          IS TABLE OF xxwip_deliverys.transfer_location%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 外部業者変更回数
+  TYPE head_out_up_cnt_type           IS TABLE OF xxwip_deliverys.outside_up_count%TYPE
+  INDEX BY BINARY_INTEGER;
+  -- 運賃摘要
+  TYPE head_description_type          IS TABLE OF xxwip_deliverys.description%TYPE
+  INDEX BY BINARY_INTEGER;
+--
+  -- 運賃ヘッダアドオン 登録用変数定義
+  i_head_deliv_head_id_tab      head_deliv_head_id_type;   -- 運賃ヘッダーアドオンID
+  i_head_deliv_cmpny_cd_tab     head_deliv_cmpny_cd_type;  -- 運送業者
+  i_head_deliv_no_tab           head_deliv_no_type;        -- 配送No
+  i_head_invoice_no_tab         head_invoice_no_type;      -- 送り状No
+  i_head_p_b_classe_tab         head_p_b_classe_type;      -- 支払請求区分
+  i_head_pay_judg_cls_tab       head_pay_judg_cls_type;    -- 支払判断区分
+  i_head_ship_date_tab          head_ship_date_type;       -- 出庫日
+  i_head_arrival_date_tab       head_arrival_date_type;    -- 到着日
+  i_head_report_date_tab        head_report_date_type;     -- 報告日
+  i_head_judg_date_tab          head_judg_date_type;       -- 判断日
+  i_head_goods_cls_tab          head_goods_cls_type;       -- 商品区分
+  i_head_mixed_cd_tab           head_mixed_cd_type;        -- 混載区分
+  i_head_charg_amount_tab       head_charg_amount_type;    -- 請求運賃
+  i_head_contract_rate_tab      head_contract_rate_type;   -- 契約運賃
+  i_head_balance_tab            head_balance_type;         -- 差額
+  i_head_total_amount_tab       head_total_amount_type;    -- 合計
+  i_head_many_rate_tab          head_many_rate_type;       -- 諸料金
+  i_head_distance_tab           head_distance_type;        -- 最長距離
+  i_head_deliv_cls_tab          head_deliv_cls_type;       -- 配送区分
+  i_head_whs_cd_tab             head_whs_cd_type;          -- 代表出庫倉庫コード
+  i_head_cd_dvsn_tab            head_cd_dvsn_type;         -- 代表配送先コード区分
+  i_head_ship_addr_cd_tab       head_ship_addr_cd_type;    -- 代表配送先コード
+  i_head_qty1_tab               head_qty1_type;            -- 個数１
+  i_head_qty2_tab               head_qty2_type;            -- 個数２
+  i_head_deliv_wght1_tab        head_deliv_wght1_type;     -- 重量１
+  i_head_deliv_wght2_tab        head_deliv_wght2_type;     -- 重量２
+  i_head_cnsld_srhrg_tab        head_cnsld_srhrg_type;     -- 混載割増金額
+  i_head_actual_ditnc_tab       head_actual_ditnc_type;    -- 最長実際距離
+  i_head_cong_chrg_tab          head_cong_chrg_type;       -- 通行料
+  i_head_pick_charge_tab        head_pick_charge_type;     -- ピッキング料
+  i_head_consolid_qty_tab       head_consolid_qty_type;    -- 混載数
+  i_head_order_type_tab         head_order_type_type;      -- 代表タイプ
+  i_head_wigh_cpcty_cls_tab     head_wigh_cpcty_cls_type;  -- 重量容積区分
+  i_head_out_cont_tab           head_out_cont_type;        -- 契約外区分
+  i_head_output_flag_tab        head_output_flag_type;     -- 差異区分
+  i_head_defined_flag_tab       head_defined_flag_type;    -- 支払確定区分
+  i_head_return_flag_tab        head_return_flag_type;     -- 支払確定戻
+  i_head_fm_upd_flg_tab         head_fm_upd_flg_type;      -- 画面更新有無区分
+  i_head_trans_lcton_tab        head_trans_lcton_type;     -- 振替先
+  i_head_out_up_cnt_tab         head_out_up_cnt_type;      -- 外部業者変更回数
+  i_head_description_tab        head_description_type;     -- 運賃摘要
+--
+  -- 運賃ヘッダアドオン 更新用変数定義
+  u_head_deliv_cmpny_cd_tab     head_deliv_cmpny_cd_type;  -- 運送業者
+  u_head_deliv_no_tab           head_deliv_no_type;        -- 配送No
+  u_head_invoice_no_tab         head_invoice_no_type;      -- 送り状No
+  u_head_pay_judg_cls_tab       head_pay_judg_cls_type;    -- 支払判断区分
+  u_head_ship_date_tab          head_ship_date_type;       -- 出庫日
+  u_head_arrival_date_tab       head_arrival_date_type;    -- 到着日
+  u_head_judg_date_tab          head_judg_date_type;       -- 判断日
+  u_head_goods_cls_tab          head_goods_cls_type;       -- 商品区分
+  u_head_mixed_cd_tab           head_mixed_cd_type;        -- 混載区分
+  u_head_contract_rate_tab      head_contract_rate_type;   -- 契約運賃
+  u_head_balance_tab            head_balance_type;         -- 差額
+  u_head_total_amount_tab       head_total_amount_type;    -- 合計
+  u_head_distance_tab           head_distance_type;        -- 最長距離
+  u_head_deliv_cls_tab          head_deliv_cls_type;       -- 配送区分
+  u_head_whs_cd_tab             head_whs_cd_type;          -- 代表出庫倉庫コード
+  u_head_cd_dvsn_tab            head_cd_dvsn_type;         -- 代表配送先コード区分
+  u_head_ship_addr_cd_tab       head_ship_addr_cd_type;    -- 代表配送先コード
+  u_head_qty1_tab               head_qty1_type;            -- 個数１
+  u_head_deliv_wght1_tab        head_deliv_wght1_type;     -- 重量１
+  u_head_cnsld_srhrg_tab        head_cnsld_srhrg_type;     -- 混載割増金額
+  u_head_actual_ditnc_tab       head_actual_ditnc_type;    -- 最長実際距離
+  u_head_pick_charge_tab        head_pick_charge_type;     -- ピッキング料
+  u_head_consolid_qty_tab       head_consolid_qty_type;    -- 混載数
+  u_head_order_type_tab         head_order_type_type;      -- 代表タイプ
+  u_head_wigh_cpcty_cls_tab     head_wigh_cpcty_cls_type;  -- 重量容積区分
+  u_head_out_cont_tab           head_out_cont_type;        -- 契約外区分
+  u_head_trans_lcton_tab        head_trans_lcton_type;     -- 振替先
+  u_head_output_flag_tab        head_output_flag_type;     -- 差異区分
+  u_head_defined_flag_tab       head_defined_flag_type;    -- 支払確定区分
+  u_head_return_flag_tab        head_return_flag_type;     -- 支払確定戻
+--
+  -- 運賃ヘッダアドオン 削除用変数定義
+  d_head_deliv_no_tab           head_deliv_no_type;        -- 配送No
+--
+  -- *****************************
+  -- * 配車配送計画 関連
+  -- *****************************
+  -- 配車配送計画 抽出項目
+  TYPE carriers_schedule_rec IS RECORD(
+    -- 運送業者
+      delivery_company_code  xxwsh_carriers_schedule.result_freight_carrier_code%TYPE
+    -- 配送No
+    , delivery_no            xxwsh_carriers_schedule.delivery_no%TYPE
+    -- 出庫日
+    , ship_date              xxwsh_carriers_schedule.shipped_date%TYPE
+    -- 到着日
+    , arrival_date           xxwsh_carriers_schedule.arrival_date%TYPE
+    -- 配送区分
+    , dellivary_classe       xxwsh_carriers_schedule.result_shipping_method_code%TYPE
+    -- 代表出庫倉庫コード
+    , whs_code               xxwsh_carriers_schedule.deliver_from%TYPE
+    -- 代表配送先コード区分
+    , code_division          xxwsh_carriers_schedule.deliver_to_code_class%TYPE
+    -- 代表配送先コード
+    , shipping_address_code  xxwsh_carriers_schedule.deliver_to%TYPE
+    -- 重量容積区分
+    , weight_capacity_class  xxwsh_carriers_schedule.weight_capacity_class%TYPE
+    -- 支払判断区分
+    , payments_judgment_classe xxwip_deliverys.payments_judgment_classe%TYPE
+    -- 判断日
+    , judgement_date         xxwip_deliverys.judgement_date%TYPE
+    -- 混載区分
+    , mixed_code             xxwip_deliverys.mixed_code%TYPE
+  );
+--
+  TYPE carriers_schedule_tbl IS TABLE OF carriers_schedule_rec INDEX BY PLS_INTEGER;
+  gt_carriers_schedule_tab   carriers_schedule_tbl;
+--
+  -- *****************************
+  -- * 洗替 関連
+  -- *****************************
+  -- 洗替時 運賃明細アドオン 抽出項目
+  TYPE exch_deliv_line_rec IS RECORD(
+      request_no             xxwip_delivery_lines.request_no%TYPE                -- 依頼No
+    , small_lot_class        xxwip_delivery_lines.small_lot_class%TYPE           -- リーフ小口区分
+    , goods_classe           xxwip_delivery_lines.goods_classe%TYPE              -- 商品区分
+    , weight_capacity_class  xxwip_delivery_lines.weight_capacity_class%TYPE     -- 重量容積区分
+    , qty                    xxwip_delivery_lines.qty%TYPE                       -- 個数
+    , delivery_weight        xxwip_delivery_lines.delivery_weight%TYPE           -- 重量
+    , mixed_code             xxwip_delivery_lines.mixed_code%TYPE                -- 混載区分
+    , post_distance          xxwip_delivery_distance.post_distance%TYPE          -- 車立距離
+    , small_distance         xxwip_delivery_distance.small_distance%TYPE         -- 小口距離
+    , consolid_add_distance  xxwip_delivery_distance.consolid_add_distance%TYPE  -- 混載距離
+    , actual_distance        xxwip_delivery_distance.actual_distance%TYPE        -- 実際距離
+    , small_weight           xxwip_delivery_company.small_weight%TYPE            -- 小口重量
+  );
+--
+  TYPE exch_deliv_line_tbl IS TABLE OF exch_deliv_line_rec INDEX BY PLS_INTEGER;
+  gt_exch_deliv_line_tab   exch_deliv_line_tbl;
+--
+  -- 洗替 運賃明細アドオン 更新用変数定義
+  ue_line_request_no_tab       line_request_no_type;         -- 依頼No
+  ue_line_ditnc_tab            line_ditnc_type;              -- 距離
+  ue_line_actual_dstnc_tab     line_actual_dstnc_type;       -- 実際距離
+  ue_line_deliv_weight_tab     line_deliv_weight_type;       -- 重量
+--
+  -- 洗替 運賃明細アドオン 配送No 抽出項目
+  TYPE exch_delivno_line_rec IS RECORD(
+      delivery_no         xxwip_delivery_lines.delivery_no%TYPE       -- 配送No
+    , distance            xxwip_delivery_lines.distance%TYPE          -- 最長距離（最大）
+    , actual_distance     xxwip_delivery_lines.actual_distance%TYPE   -- 実際距離
+    , delivery_weight     xxwip_delivery_lines.delivery_weight%TYPE   -- 重量（合計）
+  );
+  TYPE exch_delivno_line_tbl IS TABLE OF exch_delivno_line_rec INDEX BY PLS_INTEGER;
+  gt_exch_delivno_line_tab   exch_delivno_line_tbl;
+--
+  -- 洗替 運賃ヘッダアドオン 更新用変数定義
+  ue_head_deliv_no_tab           head_deliv_no_type;        -- 配送No
+  ue_head_distance_tab           head_distance_type;        -- 最長距離
+  ue_head_deliv_wght1_tab        head_deliv_wght1_type;     -- 重量１
+  ue_head_actual_ditnc_tab       head_actual_ditnc_type;    -- 最長実際距離
+--
+  -- 洗替時 運賃ヘッダアドオン 抽出項目
+  TYPE exch_deliv_rec IS RECORD(
+      delivery_company_code xxwip_deliverys.delivery_company_code%TYPE  -- 運送業者
+    , delivery_no           xxwip_deliverys.delivery_no%TYPE            -- 配送No
+    , p_b_classe            xxwip_deliverys.p_b_classe%TYPE             -- 支払請求区分
+    , judgement_date        xxwip_deliverys.judgement_date%TYPE         -- 判断日
+    , goods_classe          xxwip_deliverys.goods_classe%TYPE           -- 商品区分
+    , mixed_code            xxwip_deliverys.mixed_code%TYPE             -- 混載区分
+    , charged_amount        xxwip_deliverys.charged_amount%TYPE         -- 請求運賃
+    , many_rate             xxwip_deliverys.many_rate%TYPE              -- 諸料金
+    , distance              xxwip_deliverys.distance%TYPE               -- 最長距離
+    , delivery_classe       xxwip_deliverys.delivery_classe%TYPE        -- 配送区分
+    , qty1                  xxwip_deliverys.qty1%TYPE                   -- 個数１
+    , delivery_weight1      xxwip_deliverys.delivery_weight1%TYPE       -- 重量１
+    , consolid_surcharge    xxwip_deliverys.consolid_surcharge%TYPE     -- 混載割増金額
+    , consolid_qty          xxwip_deliverys.consolid_qty%TYPE           -- 混載数
+    , output_flag           xxwip_deliverys.output_flag%TYPE            -- 差異区分
+    , defined_flag          xxwip_deliverys.defined_flag%TYPE           -- 支払確定区分
+    , return_flag           xxwip_deliverys.return_flag%TYPE            -- 支払確定戻
+    , pay_picking_amount    xxwip_delivery_company.pay_picking_amount%TYPE -- 運送：支払ピッキング単価
+    , shipping_expenses     xxwip_delivery_charges.shipping_expenses%TYPE  -- 運賃：運送費
+    , leaf_consolid_add     xxwip_delivery_charges.leaf_consolid_add%TYPE  -- 運賃：リーフ混載割増
+  );
+--
+  TYPE exch_deliv_tbl IS TABLE OF exch_deliv_rec INDEX BY PLS_INTEGER;
+  gt_exch_deliv_tab   exch_deliv_tbl;
+--
+  -- 洗替時 運賃ヘッダアドオン 更新用変数定義
+  ueh_head_deliv_no_tab           head_deliv_no_type;         -- 配送No
+  ueh_head_contract_rate_tab      head_contract_rate_type;    -- 契約運賃
+  ueh_head_balance_tab            head_balance_type;          -- 差額
+  ueh_head_total_amount_tab       head_total_amount_type;     -- 合計
+  ueh_head_cnsld_srhrg_tab        head_cnsld_srhrg_type;      -- 混載割増金額
+  ueh_head_pick_charge_tab        head_pick_charge_type;      -- ピッキング料
+  ueh_head_output_flag_tab        head_output_flag_type;      -- 差異区分
+  ueh_head_defined_flag_tab       head_defined_flag_type;     -- 支払確定区分
+  ueh_head_return_flag_tab        head_return_flag_type;      -- 支払確定戻
+--
+  -- 洗替時 運賃ヘッダアドオン 削除用変数定義
+  deh_head_deliv_no_tab           head_deliv_no_type;          -- 配送No
+--
+  -- ===============================
+  -- ユーザー定義グローバル変数
+  -- ===============================
+  gv_debug_flg           VARCHAR2(1);        -- デバッグフラグ
+--
+  gd_sysdate             DATE;              -- システム日付
+  gn_user_id             NUMBER;            -- ユーザID
+  gn_login_id            NUMBER;            -- 最終更新ログイン
+  gn_conc_request_id     NUMBER;            -- 要求ID
+  gn_prog_appl_id        NUMBER;            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑのｱﾌﾟﾘｹｰｼｮﾝID
+  gn_conc_program_id     NUMBER;            -- コンカレント・プログラムID
+--
+  gd_last_process_date   DATE;              -- 前回処理日付
+  gv_closed_day          VARCHAR2(1);       -- 締日判定
+  gd_target_date         DATE;              -- 締め前日付
+--
+  gn_deliv_line_ins_cnt      NUMBER := 0;            -- 運賃明細アドオン登録件数
+  gn_deliv_ins_cnt           NUMBER := 0;            -- 運賃ヘッダアドオン登録件数
+  gn_deliv_del_cnt           NUMBER := 0;            -- 運賃ヘッダアドオン登録件数
+--
+  /**********************************************************************************
+   * Procedure Name   : chk_param_proc
+   * Description      : パラメータチェック処理(A-1)
+   ***********************************************************************************/
+  PROCEDURE chk_param_proc(
+    iv_exchange_type   IN         VARCHAR2,     -- 洗替区分
+    ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_param_proc'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_count NUMBER;   -- チェック用カウンター
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- チェック用カウンターの初期化
+    ln_count := 0;
+--
+    -- 入力パラメータの存在チェック
+    SELECT COUNT(1) CNT                -- カウント
+    INTO   ln_count
+    FROM   xxcmn_lookup_values_v xlv   -- クイックコード情報VIEW
+    WHERE  xlv.lookup_type = 'XXCMN_YESNO'
+    AND    xlv.lookup_code = iv_exchange_type
+    AND    ROWNUM          = 1;
+--
+    -- 洗い替え区分が存在しない場合
+    IF (ln_count < 1) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                            gv_xxcmn_msg_para,
+                                            gv_tkn_parameter,
+                                            gv_exchange_type,
+                                            gv_tkn_value,
+                                           iv_exchange_type);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_param_proc;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_init
+   * Description      : 関連データ取得(A-2,3)
+   ***********************************************************************************/
+  PROCEDURE get_init(
+    iv_exchange_type IN         VARCHAR2,     -- 洗替区分
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_init'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_close_type VARCHAR2(1);
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    -- ****************************************************
+    -- プロファイル：支払運賃データ自動作成 デバッグフラグ
+    -- ****************************************************
+    gv_debug_flg := FND_PROFILE.VALUE(gv_prof_debug_flg);
+    -- プロファイルが取得できない場合はエラー
+    IF (gv_debug_flg IS NULL) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                            gv_xxcom_noprof_err,
+                                            gv_tkn_ng_profile,
+                                            gv_prof_debug_flg);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    gd_sysdate          := SYSDATE;                    -- システム日時
+    gn_user_id          := FND_GLOBAL.USER_ID;         -- ログインユーザID
+    gn_login_id         := FND_GLOBAL.LOGIN_ID;        -- ログインID
+    gn_conc_request_id  := FND_GLOBAL.CONC_REQUEST_ID; -- コンカレント要求ID
+    gn_prog_appl_id     := FND_GLOBAL.PROG_APPL_ID;    -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+    gn_conc_program_id  := FND_GLOBAL.CONC_PROGRAM_ID; -- コンカレント・プログラムID
+--
+    -- **************************************************
+    -- *** 運賃計算用コントロールより前回処理日付を取得
+    -- **************************************************
+    BEGIN
+      SELECT xdc.last_process_date    -- 前回処理日付
+      INTO   gd_last_process_date
+      FROM   xxwip_deliverys_ctrl xdc -- 運賃計算用コントロールアドオン
+      WHERE  xdc.concurrent_no = gv_con_no_deliv
+      FOR UPDATE NOWAIT;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                              gv_xxcmn_msg_notfnd,
+                                              gv_tkn_table,
+                                              gv_deliverys_ctrl,
+                                              gv_tkn_key,
+                                              gv_con_no_deliv);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+--
+      WHEN TOO_MANY_ROWS THEN   --*** データ複数取得エラー ***
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                              gv_xxcmn_msg_toomny,
+                                              gv_tkn_table,
+                                              gv_deliverys_ctrl,
+                                              gv_tkn_key,
+                                              gv_con_no_deliv);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+--
+      WHEN lock_expt THEN       --*** ロック取得エラー ***
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxwip_msg_kbn,
+                                              gv_xxwip_msg_lock_err,
+                                              gv_tkn_table,
+                                              gv_deliverys_ctrl);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--
+    -- **************************************************
+    -- *** 運賃用締日設定
+    -- **************************************************
+    -- 前月運賃締め後 判定
+    xxwip_common3_pkg.check_lastmonth_close(
+      lv_close_type,   -- 締め区分(Y:締日前、N:締日後)
+      lv_errbuf,       -- エラー・メッセージ
+      lv_retcode,      -- リターン・コード
+      lv_errmsg);      -- ユーザー・エラー・メッセージ
+--
+    IF (lv_retcode = gv_status_error) THEN
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- 締め前日付設定
+    IF (lv_close_type = gv_ktg_yes) THEN
+      -- システム日付の前月の初日を設定
+      gd_target_date := ADD_MONTHS(FND_DATE.STRING_TO_DATE(
+                          TO_CHAR(gd_sysdate, 'YYYYMM') || '01', 'YYYYMMDD'), -1);
+--
+    ELSIF (lv_close_type = gv_ktg_no) THEN
+      -- システム日付の初日を設定
+      gd_target_date := FND_DATE.STRING_TO_DATE(TO_CHAR(gd_sysdate, 'YYYYMM') || '01', 'YYYYMMDD');
+    END IF;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+    IF (gv_debug_flg = gv_debug_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_init：前回処理日時：' || 
+                                      TO_CHAR(gd_last_process_date, 'YYYY/MM/DD HH24:MI:SS'));
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_init：締日        ：' || 
+                                      TO_CHAR(gd_target_date, 'YYYY/MM/DD HH24:MI:SS'));
+    END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_init;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_deliv_lock
+   * Description      : ロック取得(A-4)
+   ***********************************************************************************/
+  PROCEDURE get_deliv_lock(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_deliv_lock'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lb_retcd          BOOLEAN;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- **************************************************
+    -- *** テーブルロック処理(運賃ヘッダアドオン)
+    -- **************************************************
+    lb_retcd := xxcmn_common_pkg.get_tbl_lock(gv_xxwip_msg_kbn,
+                                              'xxwip_deliverys');
+    -- 失敗
+    IF (NOT lb_retcd) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxwip_msg_kbn,
+                                            gv_xxwip_msg_lock_err,
+                                            gv_tkn_table,
+                                            gv_deliverys);
+      lv_errbuf := lv_errmsg ||gv_msg_part|| SQLERRM;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- **************************************************
+    -- *** テーブルロック処理(運賃明細アドオン)
+    -- **************************************************
+    lb_retcd := xxcmn_common_pkg.get_tbl_lock(gv_xxwip_msg_kbn,
+                                              'xxwip_delivery_lines');
+    -- 失敗
+    IF (NOT lb_retcd) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxwip_msg_kbn,
+                                            gv_xxwip_msg_lock_err,
+                                            gv_tkn_table,
+                                            gv_delivery_lines);
+      lv_errbuf := lv_errmsg ||gv_msg_part|| SQLERRM;
+      RAISE global_api_expt;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_deliv_lock;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_order
+   * Description      : 受注実績情報抽出(A-5)
+   ***********************************************************************************/
+  PROCEDURE get_order(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_order'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 受注実績情報 抽出
+    SELECT  xoha.order_header_id                  -- 受注ヘッダアドオンID
+          , xoha.request_no                       -- 依頼No
+          , xoha.slip_number                      -- 送り状No
+          , xoha.delivery_no                      -- 配送No
+          , xoha.result_freight_carrier_code      -- 運送業者_実績
+          , xoha.deliver_from                     -- 出荷元保管場所
+          , xoha.result_shipping_method_code      -- 配送区分_実績
+          , CASE xotv.shipping_shikyu_class       -- 配送コード区分
+            WHEN gv_shipping THEN gv_code_ship    --   出荷支給区分 3：配送先
+            WHEN gv_shikyu   THEN gv_code_shikyu  --                2：取引先
+            END
+          , xoha.result_deliver_to                -- 出荷先_実績
+          , xdec.payments_judgment_classe         -- 支払判断区分(運賃)
+          , xoha.shipped_date                     -- 出荷日
+          , xoha.arrival_date                     -- 着荷日
+          , CASE xdec.payments_judgment_classe    -- 判断日
+            WHEN gv_pay_judg_g THEN xoha.shipped_date -- 発日
+            WHEN gv_pay_judg_c THEN xoha.arrival_date -- 着日
+            END
+          , xoha.prod_class                       -- 商品区分
+          , xoha.weight_capacity_class            -- 重量容積区分
+          , xoha.small_quantity                   -- 小口個数
+          , CASE xotv.shipping_shikyu_class       -- タイプ
+            WHEN gv_shipping  THEN gv_type_ship   --   １：出荷
+            WHEN gv_shikyu    THEN gv_type_shikyu --   ２：支給
+            END
+          , xoha.no_cont_freight_class            -- 契約外運賃区分
+          , xoha.transfer_location_code           -- 振替先
+          , SUBSTRB(xoha.shipping_instructions, 1, 40) -- 出荷指示(40)
+          , NULL                                  -- 小口区分
+          , NULL                                  -- 混載区分
+          , NULL                                  -- リーフ小口区分
+          , NULL                                  -- 配送距離：車立距離
+          , NULL                                  -- 配送距離：小口距離
+          , NULL                                  -- 配送距離：混載割増距離
+          , NULL                                  -- 配送距離：実際距離
+          , NULL                                  -- 小口重量
+          , NULL                                  -- 支払ピッキング単価
+          , NULL                                  -- 個数
+          , NULL                                  -- 重量
+    BULK COLLECT INTO gt_order_inf_tab
+    FROM  xxwsh_order_headers_all        xoha,      -- 受注ヘッダアドオン
+          xxwsh_oe_transaction_types2_v  xotv,    -- 受注タイプ情報VIEW2
+          xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+    WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
+    AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
+    AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
+    AND   xoha.delivery_no  IS NOT NULL                   -- 配送No
+    AND   xoha.prod_class = xdec.goods_classe                             -- 商品区分
+    AND   xoha.result_freight_carrier_code = xdec.delivery_company_code   -- 運送業者
+    AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
+    AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
+    AND   xoha.order_type_id       = xotv.transaction_type_id -- 受注タイプID
+    AND   (
+            ((xdec.payments_judgment_classe = gv_pay_judg_g)    -- 支払判断区分（発日）
+            AND (xoha.shipped_date >=  gd_target_date))         -- 出荷日
+          OR
+            ((xdec.payments_judgment_classe = gv_pay_judg_c)    -- 支払判断区分（着日）
+            AND (xoha.arrival_date >=  gd_target_date))         -- 着荷日
+          )
+    AND (
+          (xotv.shipping_shikyu_class  = gv_shipping)         -- 出荷依頼
+        OR
+          ((xotv.shipping_shikyu_class  = gv_shikyu)            -- 支給依頼
+          AND (xotv.auto_create_po_class = '0'))                -- 自動作成発注区分「NO」
+        )
+    AND (
+          ((xoha.last_update_date > gd_last_process_date)  -- 受注ヘッダ：前回処理日付
+          AND  (xoha.last_update_date <= gd_sysdate))
+        OR (xoha.request_no IN (SELECT xola.request_no
+                              FROM xxwsh_order_lines_all xola    -- 受注明細アドオン
+                              WHERE (xola.last_update_date > gd_last_process_date)  -- 受注明細：前回処理日付
+                              AND   (xola.last_update_date <= gd_sysdate)))
+        );
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+    IF (gv_debug_flg = gv_debug_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order：受注実績抽出件数：' || TO_CHAR(gt_order_inf_tab.COUNT));
+    END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_order;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_order_other
+   * Description      : 受注関連情報抽出(A-6)
+   ***********************************************************************************/
+  PROCEDURE get_order_other(
+    ov_errbuf           OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg           OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_order_other'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    lr_ship_method_tab        xxwip_common3_pkg.ship_method_rec;        -- 配送区分
+    lr_delivery_distance_tab  xxwip_common3_pkg.delivery_distance_rec;  -- 配送距離
+    lr_delivery_company_tab   xxwip_common3_pkg.delivery_company_rec;   -- 運賃用運送業者
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 対象データ無の場合
+    IF (gt_order_inf_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<order_loop>>
+    FOR ln_index IN  gt_order_inf_tab.FIRST.. gt_order_inf_tab.LAST LOOP
+--
+      -- **************************************************
+      -- ***  配送区分情報取得(A-6)
+      -- **************************************************
+      xxwip_common3_pkg.get_ship_method(
+        gt_order_inf_tab(ln_index).result_shipping_method_code, -- 配送区分
+        gt_order_inf_tab(ln_index).judgement_date,              -- 判断日
+        lr_ship_method_tab,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- 小口区分設定
+      gt_order_inf_tab(ln_index).small_amount_class := lr_ship_method_tab.small_amount_class;
+      -- 混載区分設定
+      gt_order_inf_tab(ln_index).mixed_class        := lr_ship_method_tab.mixed_class;
+      -- リーフ小口区分設定（商品区分＝リーフ、小口区分＝小口）
+      IF ((gt_order_inf_tab(ln_index).prod_class = gv_prod_class_lef)
+        AND (gt_order_inf_tab(ln_index).small_amount_class = gv_small_sum_yes)) THEN
+        -- YESを設定
+        gt_order_inf_tab(ln_index).ref_small_amount_class := gv_ktg_yes;
+--
+      ELSE
+        -- NOを設定
+        gt_order_inf_tab(ln_index).ref_small_amount_class := gv_ktg_no;
+      END IF;
+--
+      -- **************************************************
+      -- ***  配送距離アドオンマスタ抽出(A-7)
+      -- **************************************************
+      xxwip_common3_pkg.get_delivery_distance(
+        gt_order_inf_tab(ln_index).prod_class,                    -- 商品区分
+        gt_order_inf_tab(ln_index).result_freight_carrier_code,   -- 運送業者
+        gt_order_inf_tab(ln_index).deliver_from,                  -- 出庫倉庫
+        gt_order_inf_tab(ln_index).deliver_to_code_class ,        -- コード区分
+        gt_order_inf_tab(ln_index).result_deliver_to,             -- 配送先コード
+        gt_order_inf_tab(ln_index).judgement_date,                -- 判断日
+        lr_delivery_distance_tab,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- 車立距離
+      gt_order_inf_tab(ln_index).post_distance := lr_delivery_distance_tab.post_distance;
+      -- 小口距離
+      gt_order_inf_tab(ln_index).small_distance  := lr_delivery_distance_tab.small_distance;
+      -- 混載割増距離
+      gt_order_inf_tab(ln_index).consolid_add_distance  := 
+                            lr_delivery_distance_tab.consolid_add_distance;
+      -- 実際距離
+      gt_order_inf_tab(ln_index).actual_distance := lr_delivery_distance_tab.actual_distance;
+--
+      -- **************************************************
+      -- ***  運賃用運送業者アドオンマスタ抽出(A-8)
+      -- **************************************************
+      xxwip_common3_pkg.get_delivery_company(
+        gt_order_inf_tab(ln_index).prod_class,                  -- 商品区分
+        gt_order_inf_tab(ln_index).result_freight_carrier_code, -- 運送業者
+        gt_order_inf_tab(ln_index).judgement_date,              -- 判断日
+        lr_delivery_company_tab,                                -- 運賃用運送業者レコード
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- 小口重量
+      gt_order_inf_tab(ln_index).small_weight       := lr_delivery_company_tab.small_weight;
+      -- 支払ピッキング単価
+      gt_order_inf_tab(ln_index).pay_picking_amount := lr_delivery_company_tab.pay_picking_amount;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：********** 受注関連情報抽出 **********：' || TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：***** 依頼No   *****：' || gt_order_inf_tab(ln_index).request_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：***** 運送業者 *****：' || gt_order_inf_tab(ln_index).result_freight_carrier_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：***** 配送No   *****：' || gt_order_inf_tab(ln_index).delivery_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：小口区分      ：' || gt_order_inf_tab(ln_index).small_amount_class);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：混載区分      ：' || gt_order_inf_tab(ln_index).mixed_class);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：リーフ小口区分：' || gt_order_inf_tab(ln_index).ref_small_amount_class);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：車立距離      ：' || TO_CHAR(gt_order_inf_tab(ln_index).post_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：小口距離      ：' || TO_CHAR(gt_order_inf_tab(ln_index).small_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：混載割増距離  ：' || TO_CHAR(gt_order_inf_tab(ln_index).consolid_add_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：実際距離      ：' || TO_CHAR(gt_order_inf_tab(ln_index).actual_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：小口重量          ：' || TO_CHAR(gt_order_inf_tab(ln_index).small_weight));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_other：支払ピッキング単価：' || TO_CHAR(gt_order_inf_tab(ln_index).pay_picking_amount));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+    END LOOP order_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_order_other;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_order_line
+   * Description      : 受注明細アドオン抽出(A-9)
+   ***********************************************************************************/
+  PROCEDURE get_order_line(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_order_line'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lt_order_line_inf_tab    order_line_inf_tbl;     --受注明細
+--
+    ln_item_id        xxcmn_item_mst2_v.item_id%TYPE;       -- 品目ID
+    ln_num_of_cases   xxcmn_item_mst2_v.num_of_cases%TYPE;  -- ケース入り数
+    ln_conv_unit      xxcmn_item_mst2_v.conv_unit%TYPE;     -- 入出庫換算単位
+    ln_unit           xxcmn_item_mst2_v.unit%TYPE;          -- 重量
+--
+    ln_qty                           xxwip_deliverys.qty1%TYPE;             -- 個数
+    ln_delivery_weight               xxwip_deliverys.delivery_weight1%TYPE; -- 重量
+    ln_sum_qty                       xxwip_deliverys.qty1%TYPE;             -- 個数（合計）
+    ln_sum_delivery_weight           xxwip_deliverys.delivery_weight1%TYPE; -- 重量（合計）
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：********** 受注明細アドオン抽出 **********');
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+    -- 対象データ無の場合
+    IF (gt_order_inf_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<order_loop>>
+    FOR ln_index IN  gt_order_inf_tab.FIRST.. gt_order_inf_tab.LAST LOOP
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：********** 受注ヘッダアドオン抽出 **********：' || TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：依頼No   ：' || gt_order_inf_tab(ln_index).request_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：運送業者 ：' || gt_order_inf_tab(ln_index).result_freight_carrier_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：配送No   ：' || gt_order_inf_tab(ln_index).delivery_no);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- ***  受注明細アドオン抽出(A-9)
+      -- **************************************************
+      -- 変数初期化
+      lt_order_line_inf_tab.DELETE;
+--
+      SELECT  xola.order_header_id                  -- 受注ヘッダアドオンID
+            , xola.shipping_item_code               -- 出荷品目
+            , xola.shipped_quantity                 -- 出荷実績数量
+      BULK COLLECT INTO lt_order_line_inf_tab
+      FROM  xxwsh_order_lines_all          xola     -- 受注明細アドオン
+      WHERE xola.order_header_id = 
+                gt_order_inf_tab(ln_index).order_header_id  -- 受注ヘッダアドオンID
+      AND   NVL(xola.delete_flag, gv_ktg_no)  = gv_ktg_no;  -- 削除フラグ
+--
+      -- 合計値 初期化
+      ln_sum_qty             := 0;  -- 個数（合計）
+      ln_sum_delivery_weight := 0;  -- 重量（合計）
+--
+      -- 対象データ無の場合
+      IF (lt_order_line_inf_tab.COUNT = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                      gv_xxcmn_msg_notfnd,
+                                      gv_tkn_table,
+                                      gv_order_headers_all,
+                                      gv_tkn_key,
+                                      gt_order_inf_tab(ln_index).order_header_id);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+      <<order_line_loop>>
+      FOR ln_line_index IN  lt_order_line_inf_tab.FIRST.. lt_order_line_inf_tab.LAST LOOP
+--
+        -- **************************************************
+        -- ***  受注OPM品目情報VIEW抽出(A-10)
+        -- **************************************************
+        -- 変数初期化
+        ln_num_of_cases := NULL;        -- ケース入り数
+        ln_conv_unit    := NULL;        -- 入出庫換算単位
+        ln_unit         := NULL;        -- 重量
+--
+        -- 入出庫換算単位、ケース入り数、重量 取得
+        BEGIN
+          SELECT ximv.item_id         -- 品目ID
+               , ximv.num_of_cases    -- ケース入り数
+               , ximv.conv_unit       -- 入出庫換算単位
+               , ximv.unit            -- 重量
+          INTO   ln_item_id
+               , ln_num_of_cases
+               , ln_conv_unit
+               , ln_unit
+          FROM   xxcmn_item_mst2_v    ximv    -- OPM品目情報VIEW2
+          WHERE  ximv.item_no = 
+                 lt_order_line_inf_tab(ln_line_index).shipping_item_code -- 品目コード
+          AND    gt_order_inf_tab(ln_index).judgement_date >= ximv.start_date_active  -- 適用開始日
+          AND    gt_order_inf_tab(ln_index).judgement_date <= ximv.end_date_active;   -- 適用終了日
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN   -- *** データ取得エラー ***
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                          gv_xxcmn_msg_notfnd,
+                                          gv_tkn_table,
+                                          gv_item_mst2_v,
+                                          gv_tkn_key,
+                                          lt_order_line_inf_tab(ln_line_index).shipping_item_code);
+            lv_errbuf := lv_errmsg;
+            RAISE global_api_expt;
+--
+          WHEN TOO_MANY_ROWS THEN   -- *** データ複数取得エラー ***
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                          gv_xxcmn_msg_toomny,
+                                          gv_tkn_table,
+                                          gv_item_mst2_v,
+                                          gv_tkn_key,
+                                          lt_order_line_inf_tab(ln_line_index).shipping_item_code);
+            lv_errbuf := lv_errmsg;
+            RAISE global_api_expt;
+        END;
+--
+        -- **************************************************
+        -- ***  受注個数／重量算出(A-11)
+        -- **************************************************
+        -- 変数初期化
+        ln_qty              := 0;
+        ln_delivery_weight  := 0;
+--
+        -- *** 個数 算出 ***
+        -- リーフ小口区分 ＝ Y の場合
+        IF (gt_order_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes) THEN
+          -- 個数に小口個数を設定
+          ln_qty := gt_order_inf_tab(ln_index).small_quantity;
+--
+        -- リーフ小口区分 ＝ N の場合
+        ELSE
+          -- 個数に deliv_rcv_ship_conv_qty の戻り値を設定
+          ln_qty := xxwip_common3_pkg.deliv_rcv_ship_conv_qty(
+                        lt_order_line_inf_tab(ln_line_index).shipping_item_code -- 品目コード
+                      , lt_order_line_inf_tab(ln_line_index).shipped_quantity); -- 数量
+        END IF;
+--
+        -- *** 重量 算出 ***
+        -- リーフ小口区分 ＝ Y 且つ 重量容積区分 ＝ 容積の場合
+        IF ((gt_order_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes )
+          AND (gt_order_inf_tab(ln_index).weight_capacity_class = gv_capacity )) THEN
+          -- 上記算出の個数 × 小口重量
+          ln_delivery_weight :=
+                ln_qty * gt_order_inf_tab(ln_index).small_weight;
+--
+        -- 上記以外
+        ELSE
+          -- 重量 × 出荷実績数量（四捨五入）
+          ln_delivery_weight :=
+                ROUND(ln_unit * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+        END IF;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+        IF (gv_debug_flg = gv_debug_on) THEN
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：********** 受注明細アドオン **********：' || TO_CHAR(ln_line_index));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：受注ヘッダアドオンID ：' || lt_order_line_inf_tab(ln_line_index).order_header_id);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：出荷品目             ：' || lt_order_line_inf_tab(ln_line_index).shipping_item_code);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：出荷実績数量         ：' || lt_order_line_inf_tab(ln_line_index).shipped_quantity);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：***** 条件 *****');
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：リーフ小口区分：' || gt_order_inf_tab(ln_index).ref_small_amount_class);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：重量容積区分  ：' || gt_order_inf_tab(ln_index).weight_capacity_class);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：***** OPM品目 *****');
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：品目ID        ：' || ln_item_id);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：ケース入り数  ：' || TO_CHAR(ln_num_of_cases));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：入出庫換算単位：' || ln_conv_unit);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：重量          ：' || TO_CHAR(ln_unit));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：***** 算出結果 *****');
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：個数         ：' || TO_CHAR(ln_qty));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：重量         ：' || TO_CHAR(ln_delivery_weight));
+        END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+        -- **************************************************
+        -- ***  受注個数／重量集計(A-12)
+        -- **************************************************
+        -- 個数（合計）
+        -- リーフ小口区分 ＝ Y の場合
+        IF (gt_order_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes) THEN
+          ln_sum_qty := ln_qty;
+        ELSE
+          ln_sum_qty := ln_sum_qty + ln_qty;
+        END IF;
+--
+        -- 重量（合計）
+        -- リーフ小口区分 ＝ Y 且つ 重量容積区分 ＝ 容積の場合
+        IF ((gt_order_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes )
+          AND (gt_order_inf_tab(ln_index).weight_capacity_class = gv_capacity )) THEN
+          ln_sum_delivery_weight := ln_delivery_weight;
+        ELSE
+          ln_sum_delivery_weight := ln_sum_delivery_weight + ln_delivery_weight;
+        END IF;
+--
+      END LOOP order_line_loop;
+--
+      -- 合計（個数、重量）設定
+      gt_order_inf_tab(ln_index).qty              := ln_sum_qty;
+      gt_order_inf_tab(ln_index).delivery_weight  := ln_sum_delivery_weight;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：********** 受注個数／重量集計 **********');
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：個数（合計）：' || TO_CHAR(gt_order_inf_tab(ln_index).qty));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：重量（合計）：' || TO_CHAR(gt_order_inf_tab(ln_index).delivery_weight));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+    END LOOP order_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_order_line;
+--
+  /**********************************************************************************
+   * Procedure Name   : set_order_deliv_line
+   * Description      : 受注運賃明細アドオンPL/SQL表格納(A-13)
+   ***********************************************************************************/
+  PROCEDURE set_order_deliv_line(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_order_deliv_line'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_delivery_company_code  xxwip_delivery_lines.delivery_company_code%TYPE;  -- 運送業者
+    lv_whs_code               xxwip_delivery_lines.whs_code%TYPE;               -- 出庫倉庫
+    lv_shipping_address_code  xxwip_delivery_lines.shipping_address_code%TYPE;  -- 配送先コード
+    lv_dellivary_classe       xxwip_delivery_lines.dellivary_classe%TYPE;       -- 配送区分
+    ln_qty                    xxwip_delivery_lines.qty%TYPE;                    -- 個数
+    ln_delivery_weight        xxwip_delivery_lines.delivery_weight%TYPE;        -- 重量
+--
+    ln_deliv_line_flg         VARCHAR2(1);      -- 受注明細アドオン 存在フラグ Y:有 N:無
+--
+    ln_line_insert_cnt        NUMBER;           -- 登録用PL/SQL表 件数
+    ln_line_calc_update_cnt   NUMBER;           -- 再計算更新用PL/SQL表 件数
+    ln_line_des_update_cnt    NUMBER;           -- 摘要登録用PL/SQL表 件数
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 件数初期化
+    ln_line_insert_cnt      := 0 ;  -- 登録用PL/SQL表 件数
+    ln_line_calc_update_cnt := 0 ;  -- 再計算更新用PL/SQL表 件数
+    ln_line_des_update_cnt  := 0 ;  -- 摘要登録用PL/SQL表 件数
+--
+    -- 対象データ無の場合
+    IF (gt_order_inf_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<order_loop>>
+    FOR ln_index IN  gt_order_inf_tab.FIRST.. gt_order_inf_tab.LAST LOOP
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：********** 受注運賃明細アドオンPL/SQL表格納 **********：' || TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：依頼No   ：' || gt_order_inf_tab(ln_index).request_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：運送業者 ：' || gt_order_inf_tab(ln_index).result_freight_carrier_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：配送No   ：' || gt_order_inf_tab(ln_index).delivery_no);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+      -- **************************************************
+      -- ***  運賃ヘッダアドオン抽出
+      -- **************************************************
+      -- 存在フラグ初期化
+      ln_deliv_line_flg := gv_ktg_yes;
+--
+      BEGIN
+        SELECT  xwdl.delivery_company_code  -- 運送業者
+              , xwdl.whs_code               -- 出庫倉庫
+              , xwdl.shipping_address_code  -- 配送先コード
+              , xwdl.dellivary_classe       -- 配送区分
+              , xwdl.qty                    -- 個数
+              , xwdl.delivery_weight        -- 重量
+        INTO    lv_delivery_company_code
+              , lv_whs_code
+              , lv_shipping_address_code
+              , lv_dellivary_classe
+              , ln_qty
+              , ln_delivery_weight
+        FROM   xxwip_delivery_lines xwdl    -- 運賃明細アドオン
+        WHERE  xwdl.request_no = gt_order_inf_tab(ln_index).request_no; -- 依頼No
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN   -- *** データ取得エラー ***
+          -- 存在フラグ Y を設定
+          ln_deliv_line_flg := gv_ktg_no;
+--
+        WHEN TOO_MANY_ROWS THEN   -- *** データ複数取得エラー ***
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                        gv_xxcmn_msg_toomny,
+                                        gv_tkn_table,
+                                        gv_delivery_lines,
+                                        gv_tkn_key,
+                                        gt_order_inf_tab(ln_index).request_no);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：********** 運賃ヘッダアドオン **********：' || ln_deliv_line_flg);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：運送業者     ：' || lv_delivery_company_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：出庫倉庫     ：' || lv_whs_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：配送先コード ：' || lv_shipping_address_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：配送区分     ：' || lv_dellivary_classe);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：個数         ：' || TO_CHAR(ln_qty));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：重量         ：' || TO_CHAR(ln_delivery_weight));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- ***  運賃明細アドオンにデータが存在しない場合
+      -- **************************************************
+      IF (ln_deliv_line_flg = gv_ktg_no) THEN
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+        IF (gv_debug_flg = gv_debug_on) THEN
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：運賃明細アドオン INSERT');
+        END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+        -- 登録用PL/SQL表 件数
+        ln_line_insert_cnt  := ln_line_insert_cnt + 1;
+--
+        -- 運賃明細登録用PL/SQL表 設定
+        -- 運賃明細アドオンID
+        i_line_deliv_lines_id_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).order_header_id;
+        -- 依頼No
+        i_line_request_no_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).request_no;
+        -- 送り状No
+        i_line_invoice_no_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).slip_number;
+        -- 配送No
+        i_line_deliv_no_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).delivery_no;
+        -- リーフ小口区分
+        i_line_small_lot_cls_tab(ln_line_insert_cnt)   := 
+                        gt_order_inf_tab(ln_index).ref_small_amount_class;
+         -- 運送業者
+        i_line_deliv_cmpny_cd_tab(ln_line_insert_cnt)  := 
+                        gt_order_inf_tab(ln_index).result_freight_carrier_code;
+        -- 出庫倉庫コード
+        i_line_whs_code_tab(ln_line_insert_cnt)        := 
+                        gt_order_inf_tab(ln_index).deliver_from;
+         -- 配送区分
+        i_line_delliv_cls_tab(ln_line_insert_cnt) := 
+                        gt_order_inf_tab(ln_index).result_shipping_method_code;
+        -- 配送先コード区分
+        i_line_code_division_tab(ln_line_insert_cnt) := 
+                        gt_order_inf_tab(ln_index).deliver_to_code_class;
+        -- 配送先コード
+        i_line_ship_addr_cd_tab(ln_line_insert_cnt) := 
+                        gt_order_inf_tab(ln_index).result_deliver_to;
+        -- 支払判断区分
+        i_line_pay_judg_cls_tab(ln_line_insert_cnt) := 
+                        gt_order_inf_tab(ln_index).payments_judgment_classe;
+        -- 出庫日
+        i_line_ship_date_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).shipped_date;  
+        -- 到着日
+        i_line_arrival_date_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).arrival_date;
+        -- 報告日
+        i_line_report_date_tab(ln_line_insert_cnt)  := NULL;
+        -- 判断日
+        i_line_judg_date_tab(ln_line_insert_cnt)  := gt_order_inf_tab(ln_index).judgement_date;
+        -- 商品区分
+        i_line_goods_cls_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).prod_class;
+        -- 重量容積区分
+        i_line_weight_cap_cls_tab(ln_line_insert_cnt)  := 
+                      gt_order_inf_tab(ln_index).weight_capacity_class;
+--
+        -- リーフ小口区分 ＝ Yの場合
+        IF (gt_order_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes) THEN
+            -- 小口距離
+            i_line_ditnc_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).small_distance;
+--
+        -- 商品区分 ＝ リーフ   又は 
+        -- 商品区分 ＝ ドリンク 且つ、混載区分 ＜＞ 混載 の場合
+        ELSIF (
+                  (gt_order_inf_tab(ln_index).prod_class = gv_prod_class_lef)
+                OR    
+                  ((gt_order_inf_tab(ln_index).prod_class = gv_prod_class_drk)
+                  AND (gt_order_inf_tab(ln_index).mixed_class <> gv_target_y))
+              ) THEN
+          -- 車立距離
+          i_line_ditnc_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).post_distance;
+--
+        -- 上記以外
+        ELSE
+          -- 車立距離 ＋ 混載割増距離
+          i_line_ditnc_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).post_distance +
+                                                  gt_order_inf_tab(ln_index).consolid_add_distance;
+        END IF;
+        -- 実際距離
+        i_line_actual_dstnc_tab(ln_line_insert_cnt) := 
+                                            gt_order_inf_tab(ln_index).actual_distance;
+        -- 個数
+        i_line_qty_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).qty;
+        -- 重量
+        i_line_deliv_weight_tab(ln_line_insert_cnt) := 
+                                            gt_order_inf_tab(ln_index).delivery_weight;
+        -- タイプ
+        i_line_order_tab_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).order_type;
+        -- 混載区分
+        i_line_mixed_code_tab(ln_line_insert_cnt) := gt_order_inf_tab(ln_index).mixed_class;
+        -- 契約外区分
+        i_line_outside_cntrct_tab(ln_line_insert_cnt) := 
+                                            gt_order_inf_tab(ln_index).no_cont_freight_class;
+        -- 振替先
+        i_line_trans_locat_tab(ln_line_insert_cnt) := 
+                                            gt_order_inf_tab(ln_index).transfer_location_code;
+        -- 摘要
+        i_line_description_tab(ln_line_insert_cnt) := 
+                                            gt_order_inf_tab(ln_index).shipping_instructions;
+--
+      -- **************************************************
+      -- ***  運賃明細アドオンにデータが存在する場合
+      -- **************************************************
+      ELSE
+        -- **************************************************
+        -- ***  登録されている内容より再計算が必要な場合
+        -- **************************************************
+        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、個数、重量
+        IF ((gt_order_inf_tab(ln_index).result_freight_carrier_code  <> lv_delivery_company_code )
+          OR (gt_order_inf_tab(ln_index).deliver_from                 <> lv_whs_code              )
+          OR (gt_order_inf_tab(ln_index).result_deliver_to            <> lv_shipping_address_code )
+          OR (gt_order_inf_tab(ln_index).result_shipping_method_code  <> lv_dellivary_classe      )
+          OR (gt_order_inf_tab(ln_index).qty                          <> ln_qty                   )
+          OR (gt_order_inf_tab(ln_index).delivery_weight              <> ln_delivery_weight       )) THEN
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+          IF (gv_debug_flg = gv_debug_on) THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：運賃明細アドオン UPDATE 再計算');
+          END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+          -- 再計算更新用PL/SQL表 件数
+          ln_line_calc_update_cnt   := ln_line_calc_update_cnt + 1;
+--
+          -- 運賃明細アドオン
+          -- 依頼No
+          us_line_request_no_tab(ln_line_calc_update_cnt) := 
+                          gt_order_inf_tab(ln_index).request_no;
+          -- 送り状No
+          us_line_invoice_no_tab(ln_line_calc_update_cnt) := 
+                                          gt_order_inf_tab(ln_index).slip_number;
+          -- 配送No
+          us_line_deliv_no_tab(ln_line_calc_update_cnt) := gt_order_inf_tab(ln_index).delivery_no;
+          -- リーフ小口区分
+          us_line_small_lot_cls_tab(ln_line_calc_update_cnt) := 
+                                          gt_order_inf_tab(ln_index).ref_small_amount_class;
+          -- 運送業者
+          us_line_deliv_cmpny_cd_tab(ln_line_calc_update_cnt) := 
+                                          gt_order_inf_tab(ln_index).result_freight_carrier_code;
+          -- 出庫倉庫コード
+          us_line_whs_code_tab(ln_line_calc_update_cnt) := 
+                                          gt_order_inf_tab(ln_index).deliver_from;
+          -- 配送区分
+          us_line_delliv_cls_tab(ln_line_calc_update_cnt) := 
+                                          gt_order_inf_tab(ln_index).result_shipping_method_code;
+          -- 配送先コード区分
+          us_line_code_division_tab(ln_line_calc_update_cnt)  :=
+                                          gt_order_inf_tab(ln_index).deliver_to_code_class;
+          -- 配送先コード
+          us_line_ship_addr_cd_tab(ln_line_calc_update_cnt) := 
+                                          gt_order_inf_tab(ln_index).result_deliver_to;
+          -- 支払判断区分
+          us_line_pay_judg_cls_tab(ln_line_calc_update_cnt) := 
+                                          gt_order_inf_tab(ln_index).payments_judgment_classe;
+          -- 出庫日
+          us_line_ship_date_tab(ln_line_calc_update_cnt) := gt_order_inf_tab(ln_index).shipped_date;
+          -- 到着日
+          us_line_arrival_date_tab(ln_line_calc_update_cnt) := 
+                                          gt_order_inf_tab(ln_index).arrival_date;
+          -- 判断日
+          us_line_judg_date_tab(ln_line_calc_update_cnt)         := 
+                                          gt_order_inf_tab(ln_index).judgement_date;
+          -- 商品区分
+          us_line_goods_cls_tab(ln_line_calc_update_cnt)  := 
+                                          gt_order_inf_tab(ln_index).prod_class;
+          -- 重量容積区分
+          us_line_weight_cap_cls_tab(ln_line_calc_update_cnt) := 
+                                          gt_order_inf_tab(ln_index).weight_capacity_class;
+--
+          -- リーフ小口区分 ＝ Yの場合
+          IF (gt_order_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes) THEN
+            -- 小口距離
+            us_line_ditnc_tab(ln_line_calc_update_cnt) := gt_order_inf_tab(ln_index).small_distance;
+--
+          -- 商品区分 ＝ リーフ   又は 
+          -- 商品区分 ＝ ドリンク 且つ、混載区分 ＜＞ 混載 の場合
+          ELSIF (
+                    (gt_order_inf_tab(ln_index).prod_class = gv_prod_class_lef)
+                  OR    
+                    ((gt_order_inf_tab(ln_index).prod_class = gv_prod_class_drk)
+                    AND (gt_order_inf_tab(ln_index).mixed_class <> gv_target_y))
+                ) THEN
+            -- 車立距離
+            us_line_ditnc_tab(ln_line_calc_update_cnt) := gt_order_inf_tab(ln_index).post_distance;
+--
+          -- 上記以外
+          ELSE
+            -- 車立距離 ＋ 混載割増距離
+            us_line_ditnc_tab(ln_line_calc_update_cnt) := 
+                                    gt_order_inf_tab(ln_index).post_distance +
+                                    gt_order_inf_tab(ln_index).consolid_add_distance;
+          END IF;
+          -- 実際距離
+          us_line_actual_dstnc_tab(ln_line_calc_update_cnt) := 
+                                            gt_order_inf_tab(ln_index).actual_distance;
+          -- 個数
+          us_line_qty_tab(ln_line_calc_update_cnt) := gt_order_inf_tab(ln_index).qty;
+          -- 重量
+          us_line_deliv_weight_tab(ln_line_calc_update_cnt) := 
+                                            gt_order_inf_tab(ln_index).delivery_weight;
+          -- タイプ
+          us_line_order_tab_tab(ln_line_calc_update_cnt)  := gt_order_inf_tab(ln_index).order_type;
+          -- 混載区分
+          us_line_mixed_code_tab(ln_line_calc_update_cnt) := gt_order_inf_tab(ln_index).mixed_class;
+          -- 契約外区分
+          us_line_outside_cntrct_tab(ln_line_calc_update_cnt) := 
+                                                gt_order_inf_tab(ln_index).no_cont_freight_class;
+          -- 振替先
+          us_line_trans_locat_tab(ln_line_calc_update_cnt) := 
+                                                gt_order_inf_tab(ln_index).transfer_location_code;
+          -- 摘要
+          us_line_description_tab(ln_line_calc_update_cnt) := 
+                                                gt_order_inf_tab(ln_index).shipping_instructions;
+--
+        -- **************************************************
+        -- ***  登録されている内容より再計算が必要でない場合
+        -- **************************************************
+        ELSE
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+          IF (gv_debug_flg = gv_debug_on) THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：運賃明細アドオン UPDATE 摘要');
+          END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+          -- 摘要登録用PL/SQL表 件数
+          ln_line_des_update_cnt := ln_line_des_update_cnt + 1;
+--
+          -- 運賃明細アドオン
+          -- 依頼No
+          ut_line_request_no_tab(ln_line_des_update_cnt)  := gt_order_inf_tab(ln_index).request_no;
+          -- 摘要
+          ut_line_description_tab(ln_line_des_update_cnt) := 
+                                gt_order_inf_tab(ln_index).shipping_instructions;
+--
+        END IF;
+      END IF;
+--
+    END LOOP order_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END set_order_deliv_line;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_move
+   * Description      : 移動実績情報抽出(A-14)
+   ***********************************************************************************/
+  PROCEDURE get_move(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_move'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 移動実績情報 抽出
+    SELECT    xmrih.mov_hdr_id                                    -- 移動ヘッダID
+            , xmrih.mov_num                                       -- 移動番号
+            , xmrih.slip_number                                   -- 送り状No
+            , xmrih.delivery_no                                   -- 配送No
+            , xmrih.actual_freight_carrier_code                   -- 運送業者_実績
+            , xmrih.shipped_locat_code                            -- 出庫元保管場所
+            , xmrih.actual_shipping_method_code                   -- 配送区分
+            , gv_code_move                                        -- 配送先コード区分（３：倉庫）
+            , xmrih.ship_to_locat_code                            -- 入庫先保管場所
+            , xdec.payments_judgment_classe                       -- 支払判断区分(運賃)
+            , xmrih.actual_ship_date                              -- 出庫実績日
+            , xmrih.actual_arrival_date                           -- 入庫実績日
+            , CASE xdec.payments_judgment_classe                  -- 判断日
+              WHEN gv_pay_judg_g  THEN xmrih.actual_ship_date     --   発日
+              WHEN gv_pay_judg_c  THEN xmrih.actual_arrival_date  --   着日
+              END
+            , xmrih.item_class                                    -- 商品区分
+            , xmrih.weight_capacity_class                         -- 重量容積区分
+            , xmrih.small_quantity                                -- 小口個数
+            , xmrih.sum_quantity                                  -- 合計数量
+            , gv_type_move                                        -- タイプ（３：移動）
+            , xmrih.no_cont_freight_class                         -- 契約外運賃区分
+            , NULL                                                -- 振替先
+            , SUBSTRB(xmrih.description, 1, 40)                   -- 摘要（40）
+            , NULL                                                -- 配送区分：小口区分
+            , NULL                                                -- 配送区分：混載区分
+            , NULL                                                -- 配送区分：リーフ小口区分
+            , NULL                                                -- 配送距離：車立距離
+            , NULL                                                -- 配送距離：小口距離
+            , NULL                                                -- 配送距離：混載割増距離
+            , NULL                                                -- 配送距離：実際距離
+            , NULL                                                -- 運送業者：小口重量
+            , NULL                                                -- 運送業者：支払ピッキング単価
+            , NULL                                                -- 個数
+            , NULL                                                -- 重量
+    BULK COLLECT INTO gt_move_inf_tab
+    FROM  xxinv_mov_req_instr_headers    xmrih,   -- 移動依頼/指示ヘッダ(アドオン)
+          xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
+    WHERE xmrih.actual_ship_date IS NOT NULL            -- 出庫実績日
+    AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
+    AND   xmrih.delivery_no IS NOT NULL                 -- 配送No
+    AND   xmrih.item_class = xdec.goods_classe                              -- 商品区分
+    AND   xmrih.actual_freight_carrier_code = xdec.delivery_company_code    -- 運送業者
+    AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                      -- 適用開始日
+    AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                      -- 適用終了日
+    AND   (
+            ((xdec.payments_judgment_classe = gv_pay_judg_g)      -- 支払判断区分（発日）
+            AND (xmrih.actual_ship_date    >=  gd_target_date))   -- 出庫実績日
+          OR
+            ((xdec.payments_judgment_classe = gv_pay_judg_c)      -- 支払判断区分（着日）
+            AND (xmrih.actual_arrival_date >=  gd_target_date))   -- 入庫実績日
+          )
+    AND (
+          ((xmrih.last_update_date    > gd_last_process_date)   -- 移動ヘッダ：前回処理日付
+          AND (xmrih.last_update_date <= gd_sysdate))
+        OR (xmrih.mov_hdr_id IN (SELECT xmril.mov_hdr_id
+                              FROM xxinv_mov_req_instr_lines  xmril                 -- 移動依頼/指示明細(アドオン)
+                              WHERE (xmril.last_update_date > gd_last_process_date) -- 移動明細：前回処理日付
+                              AND   (xmril.last_update_date <= gd_sysdate)))
+        );
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+    IF (gv_debug_flg = gv_debug_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move：移動実績情報抽出：' || TO_CHAR(gt_move_inf_tab.COUNT));
+    END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_move;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_move_other
+   * Description      : 移動関連情報抽出
+   ***********************************************************************************/
+  PROCEDURE get_move_other(
+    ov_errbuf           OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg           OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_move_other'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    lr_ship_method_tab        xxwip_common3_pkg.ship_method_rec;        -- 配送区分
+    lr_delivery_distance_tab  xxwip_common3_pkg.delivery_distance_rec;  -- 配送距離
+    lr_delivery_company_tab   xxwip_common3_pkg.delivery_company_rec;   -- 運賃用運送業者
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 対象データ無の場合
+    IF (gt_move_inf_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<move_loop>>
+    FOR ln_index IN  gt_move_inf_tab.FIRST.. gt_move_inf_tab.LAST LOOP
+--
+      -- **************************************************
+      -- ***  配送区分情報取得(A-15)
+      -- **************************************************
+      xxwip_common3_pkg.get_ship_method(
+        gt_move_inf_tab(ln_index).shipping_method_code, -- 配送区分
+        gt_move_inf_tab(ln_index).judgement_date,       -- 判断日
+        lr_ship_method_tab,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- 小口区分設定
+      gt_move_inf_tab(ln_index).small_amount_class := lr_ship_method_tab.small_amount_class;
+      -- 混載区分設定
+      gt_move_inf_tab(ln_index).mixed_class        := lr_ship_method_tab.mixed_class;
+      -- リーフ小口区分設定（商品区分＝リーフ、小口区分＝小口）
+      IF ((gt_move_inf_tab(ln_index).item_class = gv_prod_class_lef)
+        AND (gt_move_inf_tab(ln_index).small_amount_class = gv_small_sum_yes)) THEN
+        -- YESを設定
+        gt_move_inf_tab(ln_index).ref_small_amount_class := gv_ktg_yes;
+--
+      ELSE
+        -- NOを設定
+        gt_move_inf_tab(ln_index).ref_small_amount_class := gv_ktg_no;
+      END IF;
+--
+      -- **************************************************
+      -- ***  配送距離アドオンマスタ抽出(A-17)
+      -- **************************************************
+      xxwip_common3_pkg.get_delivery_distance(
+        gt_move_inf_tab(ln_index).item_class,                   -- 商品区分
+        gt_move_inf_tab(ln_index).actual_freight_carrier_code,  -- 運送業者
+        gt_move_inf_tab(ln_index).shipped_locat_code,           -- 出庫倉庫
+        gt_move_inf_tab(ln_index).deliver_to_code_class ,       -- コード区分
+        gt_move_inf_tab(ln_index).ship_to_locat_code,           -- 配送先コード
+        gt_move_inf_tab(ln_index).judgement_date,               -- 判断日
+        lr_delivery_distance_tab,
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- 車立距離
+      gt_move_inf_tab(ln_index).post_distance := 
+                                      lr_delivery_distance_tab.post_distance;
+      -- 小口距離
+      gt_move_inf_tab(ln_index).small_distance := lr_delivery_distance_tab.small_distance;
+      -- 混載割増距離
+      gt_move_inf_tab(ln_index).consolid_add_distance  := 
+                                      lr_delivery_distance_tab.consolid_add_distance;
+      -- 実際距離
+      gt_move_inf_tab(ln_index).actual_distance := lr_delivery_distance_tab.actual_distance;
+--
+      -- **************************************************
+      -- ***  運賃用運送業者アドオンマスタ抽出(A-8)
+      -- **************************************************
+      xxwip_common3_pkg.get_delivery_company(
+        gt_move_inf_tab(ln_index).item_class,                   -- 商品区分
+        gt_move_inf_tab(ln_index).actual_freight_carrier_code,  -- 運送業者
+        gt_move_inf_tab(ln_index).judgement_date,               -- 判断日
+        lr_delivery_company_tab,                                -- 運賃用運送業者レコード
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- 小口重量
+      gt_move_inf_tab(ln_index).small_weight  := lr_delivery_company_tab.small_weight;
+      -- 支払ピッキング単価
+      gt_move_inf_tab(ln_index).pay_picking_amount := lr_delivery_company_tab.pay_picking_amount;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：++++++++++ 移動関連情報抽出 ++++++++++：' || TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：+++++ 移動番号 +++++：' || gt_move_inf_tab(ln_index).mov_num);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：+++++ 運送業者 +++++：' || gt_move_inf_tab(ln_index).actual_freight_carrier_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：+++++ 配送No   +++++：' || gt_move_inf_tab(ln_index).delivery_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：小口区分      ：' || gt_move_inf_tab(ln_index).small_amount_class);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：混載区分      ：' || gt_move_inf_tab(ln_index).mixed_class);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：リーフ小口区分：' || gt_move_inf_tab(ln_index).ref_small_amount_class);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：車立距離      ：' || TO_CHAR(gt_move_inf_tab(ln_index).post_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：小口距離      ：' || TO_CHAR(gt_move_inf_tab(ln_index).small_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：混載割増距離  ：' || TO_CHAR(gt_move_inf_tab(ln_index).consolid_add_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：実際距離      ：' || TO_CHAR(gt_move_inf_tab(ln_index).actual_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：小口重量          ：' || TO_CHAR(gt_move_inf_tab(ln_index).small_weight));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_other：支払ピッキング単価：' || TO_CHAR(gt_move_inf_tab(ln_index).pay_picking_amount));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+    END LOOP move_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_move_other;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_move_line
+   * Description      : 移動明細アドオン抽出(A-18)
+   ***********************************************************************************/
+  PROCEDURE get_move_line(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_move_line'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lt_move_line_inf_tab    move_line_inf_tbl;     --移動依頼／指示明細
+--
+    ln_item_id        xxcmn_item_mst2_v.item_id%TYPE;       -- 品目ID
+    ln_num_of_cases   xxcmn_item_mst2_v.num_of_cases%TYPE;  -- ケース入り数
+    ln_conv_unit      xxcmn_item_mst2_v.conv_unit%TYPE;     -- 入出庫換算単位
+    ln_unit           xxcmn_item_mst2_v.unit%TYPE;          -- 重量
+--
+    ln_qty                     xxwip_deliverys.qty1%TYPE;             -- 個数
+    ln_delivery_weight         xxwip_deliverys.delivery_weight1%TYPE; -- 重量
+    ln_sum_qty                 xxwip_deliverys.qty1%TYPE;             -- 個数（合計）
+    ln_sum_delivery_weight     xxwip_deliverys.delivery_weight1%TYPE; -- 重量（合計）
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+    IF (gv_debug_flg = gv_debug_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：++++++++++ 移動明細アドオン抽出 ++++++++++');
+    END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+    -- 対象データ無の場合
+    IF (gt_move_inf_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<mover_loop>>
+    FOR ln_index IN  gt_move_inf_tab.FIRST.. gt_move_inf_tab.LAST LOOP
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+    IF (gv_debug_flg = gv_debug_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：++++++++++ 移動依頼/指示ヘッダ ++++++++++：' || TO_CHAR(ln_index));
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：移動番号 ：' || gt_move_inf_tab(ln_index).mov_num);
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：運送業者 ：' || gt_move_inf_tab(ln_index).actual_freight_carrier_code);
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：配送No   ：' || gt_move_inf_tab(ln_index).delivery_no);
+    END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- ***  移動明細アドオン抽出(A-18)
+      -- **************************************************
+      -- 変数初期化
+      lt_move_line_inf_tab.DELETE;
+--
+      SELECT  xmril.mov_hdr_id                  -- 移動ヘッダID
+            , xmril.item_id                     -- 品目ID
+            , xmril.shipped_quantity            -- 出荷実績数量
+      BULK COLLECT INTO lt_move_line_inf_tab
+      FROM  xxinv_mov_req_instr_lines   xmril       -- 受注明細アドオン
+      WHERE xmril.mov_hdr_id = gt_move_inf_tab(ln_index).mov_hdr_id -- 移動ヘッダID
+      AND   NVL(xmril.delete_flg, gv_ktg_no)  = gv_ktg_no;          -- 取消フラグ
+--
+      -- 合計値 初期化
+      ln_sum_qty             := 0;  -- 個数（合計）
+      ln_sum_delivery_weight := 0;  -- 重量（合計）
+--
+      -- 対象データ無の場合
+      IF (lt_move_line_inf_tab.COUNT = 0) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                      gv_xxcmn_msg_notfnd,
+                                      gv_tkn_table,
+                                      gv_mov_req_instr_lines,
+                                      gv_tkn_key,
+                                      gt_move_inf_tab(ln_index).mov_num);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+      <<move_line_loop>>
+      FOR ln_line_index IN  lt_move_line_inf_tab.FIRST.. lt_move_line_inf_tab.LAST LOOP
+--
+        -- **************************************************
+        -- ***  移動OPM品目情報VIEW抽出(A-19)
+        -- **************************************************
+        -- 変数初期化
+        ln_num_of_cases := NULL;        -- ケース入り数
+        ln_conv_unit    := NULL;        -- 入出庫換算単位
+        ln_unit         := NULL;        -- 重量
+--
+        -- 入出庫換算単位、ケース入り数、重量 取得
+        BEGIN
+          SELECT ximv.item_id         -- 品目ID
+               , ximv.num_of_cases    -- ケース入り数
+               , ximv.conv_unit       -- 入出庫換算単位
+               , ximv.unit            -- 重量
+          INTO   ln_item_id
+               , ln_num_of_cases
+               , ln_conv_unit
+               , ln_unit
+          FROM   xxcmn_item_mst2_v    ximv    -- OPM品目情報VIEW2
+          WHERE  ximv.item_id = lt_move_line_inf_tab(ln_line_index).item_id         -- 品目ID
+          AND    gt_move_inf_tab(ln_index).judgement_date >= ximv.start_date_active -- 適用開始日
+          AND    gt_move_inf_tab(ln_index).judgement_date <= ximv.end_date_active;  -- 適用終了日
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN   -- *** データ取得エラー ***
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                                  gv_xxcmn_msg_notfnd,
+                                                  gv_tkn_table,
+                                                  gv_item_mst2_v,
+                                                  gv_tkn_key,
+                                                  lt_move_line_inf_tab(ln_line_index).item_id);
+            lv_errbuf := lv_errmsg;
+            RAISE global_api_expt;
+--
+          WHEN TOO_MANY_ROWS THEN   --*** データ複数取得エラー ***
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                                  gv_xxcmn_msg_toomny,
+                                                  gv_tkn_table,
+                                                  gv_item_mst2_v,
+                                                  gv_tkn_key,
+                                                  lt_move_line_inf_tab(ln_line_index).item_id);
+            lv_errbuf := lv_errmsg;
+            RAISE global_api_expt;
+        END;
+--
+        -- **************************************************
+        -- ***  移動個数/数量算出(A-20)
+        -- **************************************************
+        -- 変数初期化
+        ln_qty              := 0;
+        ln_delivery_weight  := 0;
+--
+        -- *** 個数 算出 ***
+        -- リーフ小口区分 ＝ Y の場合
+        IF (gt_move_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes) THEN
+          -- 個数に小口個数を設定
+          ln_qty := gt_move_inf_tab(ln_index).small_quantity;
+--
+        -- リーフ小口区分 ＝ N の場合
+        ELSE
+          -- 個数に合計数量を設定
+          ln_qty := gt_move_inf_tab(ln_index).sum_quantity;
+        END IF;
+--
+        -- *** 重量 算出 ***
+        -- リーフ小口区分 ＝ Y 且つ、重量容積区分 ＝ 容積 の場合
+        IF ((gt_move_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes)
+          AND (gt_move_inf_tab(ln_index).weight_capacity_class = gv_capacity )) THEN
+          -- 上記算出の個数 × 小口重量
+          ln_delivery_weight :=
+                ln_qty * gt_move_inf_tab(ln_index).small_weight;
+--
+        -- 上記以外
+        ELSE
+          -- 重量 × 出荷実績数量（四捨五入）
+          ln_delivery_weight :=
+                ROUND(ln_unit * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+        END IF;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+        IF (gv_debug_flg = gv_debug_on) THEN
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：++++++++++ 移動依頼/指示明細アドオン ++++++++++：' || TO_CHAR(ln_line_index));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：移動ヘッダID ：' || lt_move_line_inf_tab(ln_line_index).mov_hdr_id);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：OPM品目ID    ：' || lt_move_line_inf_tab(ln_line_index).item_id);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：出荷実績数量 ：' || lt_move_line_inf_tab(ln_line_index).shipped_quantity);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：+++++ 条件 +++++');
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：リーフ小口区分：' || gt_move_inf_tab(ln_index).ref_small_amount_class);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：重量容積区分  ：' || gt_move_inf_tab(ln_index).weight_capacity_class);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：+++++ OPM品目 +++++');
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：品目ID        ：' || ln_item_id);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：ケース入り数  ：' || TO_CHAR(ln_num_of_cases));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：入出庫換算単位：' || ln_conv_unit);
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：重量          ：' || TO_CHAR(ln_unit));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：+++++ 算出結果 +++++');
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：個数         ：' || TO_CHAR(ln_qty));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：重量         ：' || TO_CHAR(ln_delivery_weight));
+        END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+        -- **************************************************
+        -- ***  移動個数/数量集計(A-21)
+        -- **************************************************
+        -- 個数（合計）
+        ln_sum_qty := ln_qty;
+--
+        -- 重量（合計）
+        -- リーフ小口区分 ＝ Y 且つ、重量容積区分 ＝ 容積 の場合
+        IF ((gt_move_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes)
+          AND (gt_move_inf_tab(ln_index).weight_capacity_class = gv_capacity )) THEN
+          ln_sum_delivery_weight := ln_delivery_weight;
+        ELSE
+          ln_sum_delivery_weight := ln_sum_delivery_weight + ln_delivery_weight;
+        END IF;
+--
+      END LOOP move_line_loop;
+--
+      -- 合計（個数、重量）設定
+      gt_move_inf_tab(ln_index).qty              := ln_sum_qty;
+      gt_move_inf_tab(ln_index).delivery_weight  := ln_sum_delivery_weight;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：++++++++++ 移動個数／重量集計 ++++++++++');
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：個数（合計）：' || TO_CHAR(gt_move_inf_tab(ln_index).qty));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：重量（合計）：' || TO_CHAR(gt_move_inf_tab(ln_index).delivery_weight));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+    END LOOP mover_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_move_line;
+--
+  /**********************************************************************************
+   * Procedure Name   : set_move_deliv_line
+   * Description      : 移動運賃明細アドオンPL/SQL表格納(A-22)
+   ***********************************************************************************/
+  PROCEDURE set_move_deliv_line(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_move_deliv_line'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_delivery_company_code  xxwip_delivery_lines.delivery_company_code%TYPE;  -- 運送業者
+    lv_whs_code               xxwip_delivery_lines.whs_code%TYPE;               -- 出庫倉庫
+    lv_shipping_address_code  xxwip_delivery_lines.shipping_address_code%TYPE;  -- 配送先コード
+    lv_dellivary_classe       xxwip_delivery_lines.dellivary_classe%TYPE;       -- 配送区分
+    ln_qty                    xxwip_delivery_lines.qty%TYPE;                    -- 個数
+    ln_delivery_weight        xxwip_delivery_lines.delivery_weight%TYPE;        -- 重量
+--
+    ln_deliv_line_flg         VARCHAR2(1);      -- 受注明細アドオン 存在フラグ Y:有 N:無
+--
+    ln_line_insert_cnt        NUMBER;           -- 登録用PL/SQL表 件数
+    ln_line_calc_update_cnt   NUMBER;           -- 再計算更新用PL/SQL表 件数
+    ln_line_des_update_cnt    NUMBER;           -- 摘要登録用PL/SQL表 件数
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 件数初期化
+    ln_line_insert_cnt      := i_line_deliv_lines_id_tab.COUNT ;  -- 登録用PL/SQL表 件数
+    ln_line_calc_update_cnt := us_line_request_no_tab.COUNT ;     -- 再計算更新用PL/SQL表 件数
+    ln_line_des_update_cnt  := ut_line_request_no_tab.COUNT ;     -- 摘要登録用PL/SQL表 件数
+--
+    -- 対象データ無の場合
+    IF (gt_move_inf_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<move_loop>>
+    FOR ln_index IN  gt_move_inf_tab.FIRST.. gt_move_inf_tab.LAST LOOP
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：++++++++++ 移動運賃明細アドオンPL/SQL表格納 ++++++++++：' || TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：移動番号 ：' || gt_move_inf_tab(ln_index).mov_num);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：運送業者 ：' || gt_move_inf_tab(ln_index).actual_freight_carrier_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：配送No   ：' || gt_move_inf_tab(ln_index).delivery_no);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- ***  運賃ヘッダアドオン抽出
+      -- **************************************************
+      -- 存在フラグ初期化
+      ln_deliv_line_flg := gv_ktg_yes;
+--
+      BEGIN
+        SELECT  xwdl.delivery_company_code  -- 運送業者
+              , xwdl.whs_code               -- 出庫倉庫
+              , xwdl.shipping_address_code  -- 配送先コード
+              , xwdl.dellivary_classe       -- 配送区分
+              , xwdl.qty                    -- 個数
+              , xwdl.delivery_weight        -- 重量
+        INTO    lv_delivery_company_code
+              , lv_whs_code
+              , lv_shipping_address_code
+              , lv_dellivary_classe
+              , ln_qty
+              , ln_delivery_weight
+        FROM   xxwip_delivery_lines xwdl    -- 運賃明細アドオン
+        WHERE  xwdl.request_no = gt_move_inf_tab(ln_index).mov_num; -- 移動番号
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN   -- *** データ取得エラー ***
+          -- 存在フラグ Y を設定
+          ln_deliv_line_flg := gv_ktg_no;
+--
+        WHEN TOO_MANY_ROWS THEN   -- *** データ複数取得エラー ***
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                                gv_xxcmn_msg_toomny,
+                                                gv_tkn_table,
+                                                gv_delivery_lines,
+                                                gv_tkn_key,
+                                                gt_move_inf_tab(ln_index).mov_num);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：++++++++++ 運賃ヘッダアドオン ++++++++++：' || ln_deliv_line_flg);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：運送業者     ：' || lv_delivery_company_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：出庫倉庫     ：' || lv_whs_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：配送先コード ：' || lv_shipping_address_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：配送区分     ：' || lv_dellivary_classe);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：個数         ：' || TO_CHAR(ln_qty));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：重量         ：' || TO_CHAR(ln_delivery_weight));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- ***  運賃明細アドオンにデータが存在しない場合
+      -- **************************************************
+      IF (ln_deliv_line_flg = gv_ktg_no) THEN
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+        IF (gv_debug_flg = gv_debug_on) THEN
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：運賃明細アドオン INSERT');
+        END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+        -- 登録用PL/SQL表 件数
+        ln_line_insert_cnt  := ln_line_insert_cnt + 1;
+--
+        -- 運賃明細登録用PL/SQL表 設定
+        -- 依頼No
+        i_line_request_no_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).mov_num;
+        -- 送り状No
+        i_line_invoice_no_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).slip_number;
+        -- 配送No
+        i_line_deliv_no_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).delivery_no;
+        -- リーフ小口区分
+        i_line_small_lot_cls_tab(ln_line_insert_cnt) := 
+                                            gt_move_inf_tab(ln_index).ref_small_amount_class;
+        -- 運送業者
+        i_line_deliv_cmpny_cd_tab(ln_line_insert_cnt) := 
+                                            gt_move_inf_tab(ln_index).actual_freight_carrier_code;
+        -- 出庫倉庫コード
+        i_line_whs_code_tab(ln_line_insert_cnt) := 
+                                            gt_move_inf_tab(ln_index).shipped_locat_code;
+        -- 配送区分
+        i_line_delliv_cls_tab(ln_line_insert_cnt) := 
+                                            gt_move_inf_tab(ln_index).shipping_method_code;
+        -- 配送先コード区分
+        i_line_code_division_tab(ln_line_insert_cnt) := 
+                                            gt_move_inf_tab(ln_index).deliver_to_code_class;
+        -- 配送先コード
+        i_line_ship_addr_cd_tab(ln_line_insert_cnt) := 
+                                            gt_move_inf_tab(ln_index).ship_to_locat_code;
+        -- 支払判断区分
+        i_line_pay_judg_cls_tab(ln_line_insert_cnt) := 
+                                            gt_move_inf_tab(ln_index).payments_judgment_classe;
+        -- 出庫日
+        i_line_ship_date_tab(ln_line_insert_cnt) := 
+                                            gt_move_inf_tab(ln_index).actual_ship_date;
+        -- 到着日
+        i_line_arrival_date_tab(ln_line_insert_cnt) := 
+                                            gt_move_inf_tab(ln_index).actual_arrival_date;
+        -- 報告日
+        i_line_report_date_tab(ln_line_insert_cnt) := NULL;
+        -- 判断日
+        i_line_judg_date_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).judgement_date;
+        -- 商品区分
+        i_line_goods_cls_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).item_class;
+        -- 重量容積区分
+        i_line_weight_cap_cls_tab(ln_line_insert_cnt)  := 
+                                            gt_move_inf_tab(ln_index).weight_capacity_class;
+--
+        -- リーフ小口区分 ＝ Yの場合
+        IF (gt_move_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes) THEN
+            -- 小口距離
+            i_line_ditnc_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).small_distance;
+--
+        -- 商品区分 ＝ リーフ   又は 
+        -- 商品区分 ＝ ドリンク 且つ、混載区分 ＜＞ 混載 の場合
+        ELSIF (
+                  (gt_move_inf_tab(ln_index).item_class = gv_prod_class_lef)
+                OR    
+                  ((gt_move_inf_tab(ln_index).item_class = gv_prod_class_drk)
+                  AND (gt_move_inf_tab(ln_index).mixed_class <> gv_target_y))
+              ) THEN
+          -- 車立距離
+          i_line_ditnc_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).post_distance;
+--
+        -- 上記以外
+        ELSE
+          -- 車立距離 ＋ 混載割増距離
+          i_line_ditnc_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).post_distance +
+                                                  gt_move_inf_tab(ln_index).consolid_add_distance;
+        END IF;
+        -- 実際距離
+        i_line_actual_dstnc_tab(ln_line_insert_cnt) := gt_move_inf_tab(ln_index).actual_distance;
+        -- 個数
+        i_line_qty_tab(ln_line_insert_cnt)             := gt_move_inf_tab(ln_index).qty;
+        -- 重量
+        i_line_deliv_weight_tab(ln_line_insert_cnt)    := gt_move_inf_tab(ln_index).delivery_weight;
+        -- タイプ
+        i_line_order_tab_tab(ln_line_insert_cnt)       := gt_move_inf_tab(ln_index).order_type;
+        -- 混載区分
+        i_line_mixed_code_tab(ln_line_insert_cnt)      := gt_move_inf_tab(ln_index).mixed_class;
+        -- 契約外区分
+        i_line_outside_cntrct_tab(ln_line_insert_cnt)  := 
+                                                  gt_move_inf_tab(ln_index).no_cont_freight_class;
+        -- 振替先
+        i_line_trans_locat_tab(ln_line_insert_cnt)     := 
+                                                  gt_move_inf_tab(ln_index).transfer_location_code;
+        -- 摘要
+        i_line_description_tab(ln_line_insert_cnt)     := gt_move_inf_tab(ln_index).description;
+--
+      -- **************************************************
+      -- ***  運賃明細アドオンにデータが存在する場合
+      -- **************************************************
+      ELSE
+        -- **************************************************
+        -- ***  登録されている内容より再計算が必要な場合
+        -- **************************************************
+        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、個数、重量
+        IF ((gt_move_inf_tab(ln_index).actual_freight_carrier_code <> lv_delivery_company_code )
+          OR (gt_move_inf_tab(ln_index).shipped_locat_code   <> lv_whs_code              )
+          OR (gt_move_inf_tab(ln_index).ship_to_locat_code   <> lv_shipping_address_code )
+          OR (gt_move_inf_tab(ln_index).shipping_method_code <> lv_dellivary_classe      )
+          OR (gt_move_inf_tab(ln_index).qty                  <> ln_qty                   )
+          OR (gt_move_inf_tab(ln_index).delivery_weight      <> ln_delivery_weight       )) THEN
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+          IF (gv_debug_flg = gv_debug_on) THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：運賃明細アドオン UPDATE 再計算');
+          END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+          -- 再計算更新用PL/SQL表 件数
+          ln_line_calc_update_cnt   := ln_line_calc_update_cnt + 1;
+--
+          -- 運賃明細アドオン
+          -- 依頼No
+          us_line_request_no_tab(ln_line_calc_update_cnt)        := 
+                                            gt_move_inf_tab(ln_index).mov_num;
+          -- 送り状No
+          us_line_invoice_no_tab(ln_line_calc_update_cnt)        := 
+                                            gt_move_inf_tab(ln_index).slip_number;
+          -- 配送No
+          us_line_deliv_no_tab(ln_line_calc_update_cnt)          := 
+                                            gt_move_inf_tab(ln_index).delivery_no;
+          -- リーフ小口区分
+          us_line_small_lot_cls_tab(ln_line_calc_update_cnt)     := 
+                                            gt_move_inf_tab(ln_index).ref_small_amount_class;
+          -- 運送業者
+          us_line_deliv_cmpny_cd_tab(ln_line_calc_update_cnt)    := 
+                                            gt_move_inf_tab(ln_index).actual_freight_carrier_code;
+          -- 出庫倉庫コード
+          us_line_whs_code_tab(ln_line_calc_update_cnt)          := 
+                                            gt_move_inf_tab(ln_index).shipped_locat_code;
+          -- 配送区分
+          us_line_delliv_cls_tab(ln_line_calc_update_cnt)        := 
+                                            gt_move_inf_tab(ln_index).shipping_method_code;
+          -- 配送先コード区分
+          us_line_code_division_tab(ln_line_calc_update_cnt)     := 
+                                            gt_move_inf_tab(ln_index).deliver_to_code_class;
+          -- 配送先コード区分
+          us_line_ship_addr_cd_tab(ln_line_calc_update_cnt)      := 
+                                            gt_move_inf_tab(ln_index).ship_to_locat_code;
+          -- 支払判断区分
+          us_line_pay_judg_cls_tab(ln_line_calc_update_cnt)      := 
+                                            gt_move_inf_tab(ln_index).payments_judgment_classe;
+          -- 出庫日
+          us_line_ship_date_tab(ln_line_calc_update_cnt)         := 
+                                            gt_move_inf_tab(ln_index).actual_ship_date;
+          -- 到着日
+          us_line_arrival_date_tab(ln_line_calc_update_cnt)      := 
+                                            gt_move_inf_tab(ln_index).actual_arrival_date;
+          -- 判断日
+          us_line_judg_date_tab(ln_line_calc_update_cnt)         := 
+                                            gt_move_inf_tab(ln_index).judgement_date;
+          -- 商品区分
+          us_line_goods_cls_tab(ln_line_calc_update_cnt)         := 
+                                            gt_move_inf_tab(ln_index).item_class;
+          -- 重量容積区分
+          us_line_weight_cap_cls_tab(ln_line_calc_update_cnt)    := 
+                                            gt_move_inf_tab(ln_index).weight_capacity_class;
+--
+          -- リーフ小口区分 ＝ Yの場合
+          IF (gt_move_inf_tab(ln_index).ref_small_amount_class = gv_ktg_yes) THEN
+              -- 小口距離
+              us_line_ditnc_tab(ln_line_calc_update_cnt) := gt_move_inf_tab(ln_index).small_distance;
+--
+          -- 商品区分 ＝ リーフ   又は 
+          -- 商品区分 ＝ ドリンク 且つ、混載区分 ＜＞ 混載 の場合
+          ELSIF (
+                  (gt_move_inf_tab(ln_index).item_class = gv_prod_class_lef)
+                OR    
+                  ((gt_move_inf_tab(ln_index).item_class = gv_prod_class_drk)
+                  AND (gt_move_inf_tab(ln_index).mixed_class <> gv_target_y))
+              ) THEN
+            -- 車立距離
+            us_line_ditnc_tab(ln_line_calc_update_cnt) := gt_move_inf_tab(ln_index).post_distance;
+--
+          -- 上記以外
+          ELSE
+            -- 車立距離 ＋ 混載割増距離
+            us_line_ditnc_tab(ln_line_calc_update_cnt) := gt_move_inf_tab(ln_index).post_distance +
+                                                    gt_move_inf_tab(ln_index).consolid_add_distance;
+          END IF;
+          -- 実際距離
+          us_line_actual_dstnc_tab(ln_line_calc_update_cnt)      := 
+                                                  gt_move_inf_tab(ln_index).actual_distance;
+          -- 個数
+          us_line_qty_tab(ln_line_calc_update_cnt)               := 
+                                                  gt_move_inf_tab(ln_index).qty;
+          -- 重量
+          us_line_deliv_weight_tab(ln_line_calc_update_cnt)      := 
+                                                  gt_move_inf_tab(ln_index).delivery_weight;
+          -- タイプ
+          us_line_order_tab_tab(ln_line_calc_update_cnt)         := 
+                                                  gt_move_inf_tab(ln_index).order_type;
+          -- 混載区分
+          us_line_mixed_code_tab(ln_line_calc_update_cnt)        := 
+                                                  gt_move_inf_tab(ln_index).mixed_class;
+          -- 契約外区分
+          us_line_outside_cntrct_tab(ln_line_calc_update_cnt)    := 
+                                                  gt_move_inf_tab(ln_index).no_cont_freight_class;
+          -- 振替先
+          us_line_trans_locat_tab(ln_line_calc_update_cnt)       := 
+                                                  gt_move_inf_tab(ln_index).transfer_location_code;
+          -- 摘要
+          us_line_description_tab(ln_line_calc_update_cnt)       := 
+                                                  gt_move_inf_tab(ln_index).description;
+--
+        -- **************************************************
+        -- ***  登録されている内容より再計算が必要でない場合
+        -- **************************************************
+        ELSE
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+          IF (gv_debug_flg = gv_debug_on) THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：運賃明細アドオン UPDATE 摘要');
+          END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+          -- 摘要登録用PL/SQL表 件数
+          ln_line_des_update_cnt := ln_line_des_update_cnt + 1;
+--
+          -- 運賃明細アドオン
+          -- 依頼No
+          ut_line_request_no_tab(ln_line_des_update_cnt)  := 
+                              gt_move_inf_tab(ln_index).mov_num;
+          -- 摘要
+          ut_line_description_tab(ln_line_des_update_cnt) := gt_move_inf_tab(ln_index).description;
+--
+        END IF;
+      END IF;
+--
+    END LOOP move_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END set_move_deliv_line;
+--
+  /**********************************************************************************
+   * Procedure Name   : insert_deliv_line
+   * Description      : 運賃明細アドオン一括登録(A-23)
+   ***********************************************************************************/
+  PROCEDURE insert_deliv_line(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'insert_deliv_line'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    IF (i_line_request_no_tab.COUNT <> 0) THEN 
+--
+      -- **************************************************
+      -- * 運賃明細アドオン 登録
+      -- **************************************************
+      FORALL ln_index IN i_line_request_no_tab.FIRST .. i_line_request_no_tab.LAST
+        INSERT INTO xxwip_delivery_lines
+        ( delivery_lines_id           -- 運賃明細アドオンID
+        , request_no                  -- 依頼No
+        , invoice_no                  -- 送り状No
+        , delivery_no                 -- 配送No
+        , small_lot_class             -- リーフ小口区分
+        , delivery_company_code       -- 運送業者
+        , whs_code                    -- 出庫倉庫コード
+        , dellivary_classe            -- 配送区分
+        , code_division               -- 配送先コード区分
+        , shipping_address_code       -- 配送先コード
+        , payments_judgment_classe    -- 支払判断区分
+        , ship_date                   -- 出庫日
+        , arrival_date                -- 到着日
+        , report_date                 -- 報告日
+        , judgement_date              -- 判断日
+        , goods_classe                -- 商品区分
+        , weight_capacity_class       -- 重量容積区分
+        , distance                    -- 距離
+        , actual_distance             -- 実際距離
+        , qty                         -- 個数
+        , delivery_weight             -- 重量
+        , order_type                  -- タイプ
+        , mixed_code                  -- 混載区分
+        , outside_contract            -- 契約外区分
+        , transfer_location           -- 振替先
+        , description                 -- 摘要
+        , created_by                  -- 作成者
+        , creation_date               -- 作成日
+        , last_updated_by             -- 最終更新者
+        , last_update_date            -- 最終更新日
+        , last_update_login           -- 最終更新ログイン
+        , request_id                  -- 要求ID
+        , program_application_id      -- コンカレント・プログラム・アプリケーションID
+        , program_id                  -- コンカレント・プログラムID
+        , program_update_date         -- プログラム更新日
+        ) VALUES (
+          xxwip_delivery_lines_id_s1.NEXTVAL    -- 運賃明細アドオンID
+        , i_line_request_no_tab(ln_index)       -- 依頼No
+        , i_line_invoice_no_tab(ln_index)       -- 送り状No
+        , i_line_deliv_no_tab(ln_index)         -- 配送No
+        , i_line_small_lot_cls_tab(ln_index)    -- リーフ小口区分
+        , i_line_deliv_cmpny_cd_tab(ln_index)   -- 運送業者
+        , i_line_whs_code_tab(ln_index)         -- 出庫倉庫コード
+        , i_line_delliv_cls_tab(ln_index)       -- 配送区分
+        , i_line_code_division_tab(ln_index)    -- 配送先コード区分
+        , i_line_ship_addr_cd_tab(ln_index)     -- 配送先コード
+        , i_line_pay_judg_cls_tab(ln_index)     -- 支払判断区分
+        , i_line_ship_date_tab(ln_index)        -- 出庫日
+        , i_line_arrival_date_tab(ln_index)     -- 到着日
+        , i_line_report_date_tab(ln_index)      -- 報告日
+        , i_line_judg_date_tab(ln_index)        -- 判断日
+        , i_line_goods_cls_tab(ln_index)        -- 商品区分
+        , i_line_weight_cap_cls_tab(ln_index)   -- 重量容積区分
+        , i_line_ditnc_tab(ln_index)            -- 距離
+        , i_line_actual_dstnc_tab(ln_index)     -- 実際距離
+        , i_line_qty_tab(ln_index)              -- 個数
+        , i_line_deliv_weight_tab(ln_index)     -- 重量
+        , i_line_order_tab_tab(ln_index)        -- タイプ
+        , i_line_mixed_code_tab(ln_index)       -- 混載区分
+        , i_line_outside_cntrct_tab(ln_index)   -- 契約外区分
+        , i_line_trans_locat_tab(ln_index)      -- 振替先
+        , i_line_description_tab(ln_index)      -- 摘要
+        , gn_user_id                            -- 作成者
+        , gd_sysdate                            -- 作成日
+        , gn_user_id                            -- 最終更新者
+        , gd_sysdate                            -- 最終更新日
+        , gn_login_id                           -- 最終更新ログイン
+        , gn_conc_request_id                    -- 要求ID
+        , gn_prog_appl_id                       -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+        , gn_conc_program_id                    -- コンカレント・プログラムID
+        , gd_sysdate);                          -- プログラム更新日
+--
+      -- **************************************************
+      -- 件数設定
+      -- **************************************************
+      gn_deliv_line_ins_cnt := gn_deliv_line_ins_cnt + SQL%ROWCOUNT;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END insert_deliv_line;
+--
+  /**********************************************************************************
+   * Procedure Name   : update_deliv_line_calc
+   * Description      : 運賃明細アドオン一括再計算更新(A-24)
+   ***********************************************************************************/
+  PROCEDURE update_deliv_line_calc(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_deliv_line_calc'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    IF (us_line_request_no_tab.COUNT <> 0) THEN
+--
+      -- **************************************************
+      -- * 運賃明細アドオン 再計算 更新
+      -- **************************************************
+      FORALL ln_index IN us_line_request_no_tab.FIRST .. us_line_request_no_tab.LAST
+        UPDATE xxwip_delivery_lines       -- 運賃明細アドオン
+        SET     invoice_no                = us_line_invoice_no_tab(ln_index)      -- 送り状No
+              , delivery_no               = us_line_deliv_no_tab(ln_index)        -- 配送No
+              , small_lot_class           = us_line_small_lot_cls_tab(ln_index)   -- リーフ小口区分
+              , delivery_company_code     = us_line_deliv_cmpny_cd_tab(ln_index)  -- 運送業者
+              , whs_code                  = us_line_whs_code_tab(ln_index)        -- 出庫倉庫コード
+              , dellivary_classe          = us_line_delliv_cls_tab(ln_index)      -- 配送区分
+              , code_division             = us_line_code_division_tab(ln_index)   -- 配送先コード区分
+              , shipping_address_code     = us_line_ship_addr_cd_tab(ln_index)    -- 配送先コード
+              , payments_judgment_classe  = us_line_pay_judg_cls_tab(ln_index)    -- 支払判断区分
+              , ship_date                 = us_line_ship_date_tab(ln_index)       -- 出庫日
+              , arrival_date              = us_line_arrival_date_tab(ln_index)    -- 到着日
+              , judgement_date            = us_line_judg_date_tab(ln_index)       -- 判断日
+              , goods_classe              = us_line_goods_cls_tab(ln_index)       -- 商品区分
+              , weight_capacity_class     = us_line_weight_cap_cls_tab(ln_index)  -- 重量容積区分
+              , distance                  = us_line_ditnc_tab(ln_index)           -- 距離
+              , actual_distance           = us_line_actual_dstnc_tab(ln_index)    -- 実際距離
+              , qty                       = us_line_qty_tab(ln_index)             -- 個数
+              , delivery_weight           = us_line_deliv_weight_tab(ln_index)    -- 重量
+              , order_type                = us_line_order_tab_tab(ln_index)       -- タイプ
+              , mixed_code                = us_line_mixed_code_tab(ln_index)      -- 混載区分
+              , outside_contract          = us_line_outside_cntrct_tab(ln_index)  -- 契約外区分
+              , transfer_location         = us_line_trans_locat_tab(ln_index)     -- 振替先
+              , description               = us_line_description_tab(ln_index)     -- 摘要
+              , last_updated_by           = gn_user_id                 -- 最終更新者
+              , last_update_date          = gd_sysdate                 -- 最終更新日
+              , last_update_login         = gn_login_id                -- 最終更新ログイン
+              , request_id                = gn_conc_request_id         -- 要求ID
+              , program_application_id    = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+              , program_id                = gn_conc_program_id         -- コンカレント・プログラムID
+              , program_update_date       = gd_sysdate                 -- プログラム更新日
+        WHERE  request_no = us_line_request_no_tab(ln_index);
+--
+      -- **************************************************
+      -- 件数設定
+      -- **************************************************
+      gn_deliv_line_ins_cnt := gn_deliv_line_ins_cnt + SQL%ROWCOUNT;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_deliv_line_calc;
+--
+  /**********************************************************************************
+   * Procedure Name   : update_deliv_line_desc
+   * Description      : 運賃明細アドオン一括適用更新(A-25)
+   ***********************************************************************************/
+  PROCEDURE update_deliv_line_desc(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_deliv_line_desc'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    IF (ut_line_request_no_tab.COUNT <> 0) THEN
+--
+      -- **************************************************
+      -- * 運賃明細アドオン 適用 更新
+      -- **************************************************
+      FORALL ln_index IN ut_line_request_no_tab.FIRST .. ut_line_request_no_tab.LAST
+        UPDATE xxwip_delivery_lines       -- 運賃明細アドオン
+        SET     description               = ut_line_description_tab(ln_index)   -- 摘要
+              , last_updated_by           = gn_user_id           -- 最終更新者
+              , last_update_date          = gd_sysdate           -- 最終更新日
+              , last_update_login         = gn_login_id          -- 最終更新ログイン
+              , request_id                = gn_conc_request_id   -- 要求ID
+              , program_application_id    = gn_prog_appl_id      -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+              , program_id                = gn_conc_program_id   -- コンカレント・プログラムID
+              , program_update_date       = gd_sysdate           -- プログラム更新日
+        WHERE  request_no = ut_line_request_no_tab(ln_index);
+--
+      -- **************************************************
+      -- 件数設定
+      -- **************************************************
+      gn_deliv_line_ins_cnt := gn_deliv_line_ins_cnt + SQL%ROWCOUNT;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_deliv_line_desc;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_delinov_line_desc
+   * Description      : 運賃明細アドオン対象配送No抽出(A-26)
+   ***********************************************************************************/
+  PROCEDURE get_delinov_line_desc(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_deliv_line_delino'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+-- ##### 20080537 MOD 結合障害 混載処理 START #####
+/***
+    -- 運賃明細アドオン 配送No抽出
+    SELECT  xdl.delivery_no             -- 配送No
+          , MAX(xdl.distance)           -- 最長距離
+          , SUM(xdl.qty)                -- 個数
+          , SUM(xdl.delivery_weight)    -- 重量
+    BULK COLLECT INTO gt_delivno_deliv_line_tab
+    FROM   xxwip_delivery_lines    xdl          -- 運賃明細アドオン
+    WHERE  xdl.last_update_date =  gd_sysdate   -- 最終更新日
+    GROUP BY xdl.delivery_no                    -- 配送No（集約）
+    ORDER BY xdl.delivery_no;                   -- 配送No（順序）
+***/
+    -- 運賃明細アドオン 配送No抽出
+    SELECT  xdl.delivery_no             -- 配送No
+          , MAX(xdl.distance)           -- 最長距離
+          , SUM(xdl.qty)                -- 個数
+          , SUM(xdl.delivery_weight)    -- 重量
+    BULK COLLECT INTO gt_delivno_deliv_line_tab
+    FROM   xxwip_delivery_lines    xdl  -- 運賃明細アドオン
+    WHERE  xdl.delivery_no IN ( SELECT  xdl.delivery_no                     -- 配送No
+                                FROM    xxwip_delivery_lines    xdl         -- 運賃明細アドオン
+                                WHERE   xdl.last_update_date =  gd_sysdate  -- 最終更新日
+                                GROUP BY xdl.delivery_no)                   -- 配送No
+    GROUP BY xdl.delivery_no    -- 配送No（集約）
+    ORDER BY xdl.delivery_no;   -- 配送No（順序）
+--
+-- ##### 20080537 MOD 結合障害 混載処理 END   #####
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+    IF (gv_debug_flg = gv_debug_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line_delino：運賃明細アドオン対象配送No抽出 件数：' ||
+                                                    TO_CHAR(gt_delivno_deliv_line_tab.COUNT));
+    END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_delinov_line_desc;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_deliv_line
+   * Description      : 運賃明細アドオン抽出(A-27)
+   ***********************************************************************************/
+  PROCEDURE get_deliv_line(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_deliv_line'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lr_delivery_company_tab   xxwip_common3_pkg.delivery_company_rec;   -- 運賃用運送業者
+    lr_delivery_charges_tab   xxwip_common3_pkg.delivery_charges_rec;   -- 運賃
+    ln_deliv_no_cnt           NUMBER;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 対象データ無の場合
+    IF (gt_delivno_deliv_line_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<delivno_loop>>
+    FOR ln_index IN  gt_delivno_deliv_line_tab.FIRST.. gt_delivno_deliv_line_tab.LAST LOOP
+--
+      -- **************************************************
+      -- * 運賃明細アドオン 抽出
+      -- **************************************************
+        BEGIN
+          SELECT   delivery_company_code     -- 運送業者
+                 , delivery_no               -- 配送No
+                 , invoice_no                -- 送り状No
+                 , payments_judgment_classe  -- 支払判断区分
+                 , ship_date                 -- 出庫日
+                 , arrival_date              -- 到着日
+                 , judgement_date            -- 判断日
+                 , goods_classe              -- 商品区分
+                 , mixed_code                -- 混載区分
+                 , dellivary_classe          -- 配送区分
+                 , whs_code                  -- 代表出庫倉庫コード
+                 , code_division             -- 代表配送先コード区分
+                 , shipping_address_code     -- 代表配送先コード
+                 , order_type                -- 代表タイプ
+                 , weight_capacity_class     -- 重量容積区分
+                 , actual_distance           -- 最長実際距離
+                 , outside_contract          -- 契約外区分
+                 , transfer_location         -- 振替先
+                 , NULL                      -- 混載数
+                 , NULL                      -- 小口重量
+                 , NULL                      -- 支払ピッキング単価
+                 , NULL                      -- 運送費
+                 , NULL                      -- リーフ混載割増
+                 , NULL                      -- 混載割増金額
+                 , NULL                      -- ピッキング料
+          INTO  gt_deliv_line_tab(ln_index)
+          FROM
+            (
+              SELECT  delivery_company_code     -- 運送業者
+                    , delivery_no               -- 配送No
+                    , invoice_no                -- 送り状No
+                    , payments_judgment_classe  -- 支払判断区分
+                    , ship_date                 -- 出庫日
+                    , arrival_date              -- 到着日
+                    , judgement_date            -- 判断日
+                    , goods_classe              -- 商品区分
+                    , mixed_code                -- 混載区分
+                    , dellivary_classe          -- 配送区分
+                    , whs_code                  -- 代表出庫倉庫コード
+                    , code_division             -- 代表配送先コード区分
+                    , shipping_address_code     -- 代表配送先コード
+                    , order_type                -- 代表タイプ
+                    , weight_capacity_class     -- 重量容積区分
+                    , actual_distance           -- 最長実際距離
+                    , outside_contract          -- 契約外区分
+                    , transfer_location         -- 振替先
+              FROM   xxwip_delivery_lines    xdl        -- 運賃明細アドオン
+              WHERE  xdl.delivery_no  = gt_delivno_deliv_line_tab(ln_index).delivery_no -- 配送No
+              AND    xdl.distance     = gt_delivno_deliv_line_tab(ln_index).distance    -- 最長距離
+              ORDER BY xdl.delivery_no                   -- 配送No（順序）
+            ) max_deliv_line
+        WHERE ROWNUM = 1;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN   -- *** データ取得エラー ***
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                                gv_xxcmn_msg_notfnd,
+                                                gv_tkn_table,
+                                                gv_delivery_lines,
+                                                gv_tkn_key,
+                                                gt_delivno_deliv_line_tab(ln_index).delivery_no
+                                                || ',' ||
+                                                gt_delivno_deliv_line_tab(ln_index).distance);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+--
+        WHEN TOO_MANY_ROWS THEN   -- *** データ複数取得エラー ***
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                                gv_xxcmn_msg_toomny,
+                                                gv_tkn_table,
+                                                gv_delivery_lines,
+                                                gv_tkn_key,
+                                                gt_delivno_deliv_line_tab(ln_index).delivery_no
+                                                || ',' ||
+                                                gt_delivno_deliv_line_tab(ln_index).distance);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：########## 運賃明細アドオン抽出 ##########：' || TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：運送業者：' || gt_deliv_line_tab(ln_index).delivery_company_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：配送No  ：' || gt_deliv_line_tab(ln_index).delivery_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：最長距離：' || TO_CHAR(gt_delivno_deliv_line_tab(ln_index).distance));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- * 運賃明細混載数算出（A-28）
+      -- **************************************************
+      BEGIN
+        SELECT COUNT(*)
+        INTO   ln_deliv_no_cnt
+        FROM
+          (
+            SELECT  xdl.delivery_no           as delivery_no
+                  , xdl.code_division         as code_division
+                  , xdl.shipping_address_code as shipping_address_code
+            FROM    xxwip_delivery_lines    xdl          -- 運賃明細アドオン
+            WHERE   xdl.delivery_no = gt_delivno_deliv_line_tab(ln_index).delivery_no    -- 配送No
+            GROUP BY  xdl.delivery_no                   -- 配送No          （集約）
+                    , xdl.code_division                 -- 配送先コード区分（集約）
+                    , xdl.shipping_address_code        -- 配送先コード    （集約）
+          ) deliv_line;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN   -- *** データ取得エラー ***
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                                gv_xxcmn_msg_notfnd,
+                                                gv_tkn_table,
+                                                gv_delivery_lines,
+                                                gv_tkn_key,
+                                                gt_delivno_deliv_line_tab(ln_index).delivery_no);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+--
+        WHEN TOO_MANY_ROWS THEN   -- *** データ複数取得エラー ***
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                                gv_xxcmn_msg_toomny,
+                                                gv_tkn_table,
+                                                gv_delivery_lines,
+                                                gv_tkn_key,
+                                                gt_delivno_deliv_line_tab(ln_index).delivery_no);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+--
+      -- 混載区分 ＝ 混載 の場合
+      IF (gt_deliv_line_tab(ln_index).mixed_code = gv_target_y) THEN
+        -- 混載数に 取得件数－１ を設定
+        gt_deliv_line_tab(ln_index).consolid_qty := ln_deliv_no_cnt -1;
+--
+      -- 上記以外の場合
+      ELSE
+        -- 混載数に０を設定
+        gt_deliv_line_tab(ln_index).consolid_qty := 0;
+      END IF;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：##### 運賃明細混載数算出 #####');
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：混載区分：' || gt_deliv_line_tab(ln_index).mixed_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：混載数  ：' || TO_CHAR(gt_deliv_line_tab(ln_index).consolid_qty));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- * 運賃算出（A-29）
+      -- **************************************************
+      -- 運賃用運送業者アドオンマスタ 抽出
+      xxwip_common3_pkg.get_delivery_company(
+        gt_deliv_line_tab(ln_index).goods_classe,           -- 商品区分
+        gt_deliv_line_tab(ln_index).delivery_company_code,  -- 運送業者
+        gt_deliv_line_tab(ln_index).judgement_date,         -- 判断日
+        lr_delivery_company_tab,                            -- 運賃用運送業者レコード
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- *** 小口重量 ***
+      gt_deliv_line_tab(ln_index).small_weight      := lr_delivery_company_tab.small_weight;
+      -- *** 支払ピッキング単価 ***
+      gt_deliv_line_tab(ln_index).pay_picking_amount:= lr_delivery_company_tab.pay_picking_amount;
+--
+      -- 運賃アドオンマスタ抽出
+      xxwip_common3_pkg.get_delivery_charges(
+        gv_pay,                                                 -- 支払請求区分
+        gt_deliv_line_tab(ln_index).goods_classe,               -- 商品区分
+        gt_deliv_line_tab(ln_index).delivery_company_code,      -- 運送業者
+        gt_deliv_line_tab(ln_index).dellivary_classe,           -- 配送区分
+        gt_delivno_deliv_line_tab(ln_index).distance,           -- 運賃距離
+        gt_delivno_deliv_line_tab(ln_index).delivery_weight,    -- 重量
+        gt_deliv_line_tab(ln_index).judgement_date,             -- 判断日
+        lr_delivery_charges_tab,                                -- 運賃アドオンレコード
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- *** 運送費 ***
+      gt_deliv_line_tab(ln_index).shipping_expenses := 
+                          lr_delivery_charges_tab.shipping_expenses;
+      -- *** リーフ混載割増 ***
+      gt_deliv_line_tab(ln_index).leaf_consolid_add := 
+                          lr_delivery_charges_tab.leaf_consolid_add;
+--
+      -- *** 混載割増金額 ***
+      -- 商品区分＝リーフ、且つ、混載区分＝混載 の場合
+      IF ((gt_deliv_line_tab(ln_index).goods_classe = gv_prod_class_lef)
+        AND (gt_deliv_line_tab(ln_index).mixed_code = gv_target_y)) THEN
+        -- リーフ混載割増 × 混載数
+        gt_deliv_line_tab(ln_index).consolid_surcharge  := 
+                                    gt_deliv_line_tab(ln_index).leaf_consolid_add *
+                                    gt_deliv_line_tab(ln_index).consolid_qty;
+      ELSE
+        gt_deliv_line_tab(ln_index).consolid_surcharge  := 0;
+      END IF;
+--
+      -- *** ピッキング料 ***
+      -- 個数 × 支払ピッキング単価
+      gt_deliv_line_tab(ln_index).picking_charge  := 
+                                    ROUND(gt_delivno_deliv_line_tab(ln_index).qty *
+                                    gt_deliv_line_tab(ln_index).pay_picking_amount);
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：########## 運賃算出 ##########');
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：小口重量          ：' || TO_CHAR(gt_deliv_line_tab(ln_index).small_weight));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：支払ピッキング単価：' || TO_CHAR(gt_deliv_line_tab(ln_index).pay_picking_amount));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：##### 運賃アドオンマスタ #####');
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：運送費        ：' || TO_CHAR(gt_deliv_line_tab(ln_index).shipping_expenses));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：リーフ混載割増：' || TO_CHAR(gt_deliv_line_tab(ln_index).leaf_consolid_add));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：##### 条件 #####');
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：商品区分：' || gt_deliv_line_tab(ln_index).goods_classe);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：混載区分：' || gt_deliv_line_tab(ln_index).mixed_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：個数    ：' || TO_CHAR(gt_delivno_deliv_line_tab(ln_index).qty));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：##### 算出結果 #####');
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：混載割増金額：' || TO_CHAR(gt_deliv_line_tab(ln_index).consolid_surcharge));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_deliv_line：ピッキング料：' || TO_CHAR(gt_deliv_line_tab(ln_index).picking_charge));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+    END LOOP delivno_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_deliv_line;
+--
+--
+  /**********************************************************************************
+   * Procedure Name   : set_deliv_head
+   * Description      : 運賃ヘッダアドオンPL/SQL表格納(A-30)
+   ***********************************************************************************/
+  PROCEDURE set_deliv_head(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_deliv_head'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_charged_amount   xxwip_deliverys.charged_amount%TYPE;  -- 請求運賃
+    lv_many_rate        xxwip_deliverys.many_rate%TYPE;       -- 諸料金
+    lv_defined_flag     xxwip_deliverys.defined_flag%TYPE;    -- 支払確定区分
+    lv_return_flag      xxwip_deliverys.return_flag%TYPE;     -- 支払確定戻
+--
+    ln_deliv_flg        VARCHAR2(1);    -- 受注ヘッダアドオン 存在フラグ Y:有 N:無
+--
+    ln_insert_cnt   NUMBER;  -- 登録用PL/SQL表 件数
+    ln_update_cnt   NUMBER;  -- 更新用PL/SQL表 件数
+    ln_delete_cnt   NUMBER;  -- 削除用PL/SQL表 件数
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 件数初期化
+    ln_insert_cnt   := 0;
+    ln_update_cnt   := 0;
+    ln_delete_cnt   := 0;
+--
+    -- 対象データ無の場合
+    IF (gt_deliv_line_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<deliv_loop>>
+    FOR ln_index IN  gt_deliv_line_tab.FIRST.. gt_deliv_line_tab.LAST LOOP
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：########## 受注明細アドオン #####：' || TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：運送業者：' || gt_deliv_line_tab(ln_index).delivery_company_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：配送No  ：' || gt_deliv_line_tab(ln_index).delivery_no);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- ***  運賃ヘッダアドオン抽出
+      -- **************************************************
+      -- 存在フラグ初期化
+      ln_deliv_flg := gv_ktg_no;
+--
+      BEGIN
+        SELECT  xd.charged_amount   -- 請求運賃
+              , xd.many_rate        -- 諸料金
+              , xd.defined_flag     -- 支払確定区分
+              , xd.return_flag      -- 支払確定戻
+        INTO    lv_charged_amount
+              , lv_many_rate
+              , lv_defined_flag
+              , lv_return_flag
+        FROM   xxwip_deliverys      xd      -- 運賃ヘッダアドオン
+        WHERE  xd.delivery_no = gt_deliv_line_tab(ln_index).delivery_no -- 配送No
+        AND    xd.p_b_classe  = gv_pay ;                  -- 支払請求区分（支払）
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN   -- *** データ取得エラー ***
+          -- 存在フラグ Y を設定
+          ln_deliv_flg := gv_ktg_yes;
+--
+        WHEN TOO_MANY_ROWS THEN   -- *** データ複数取得エラー ***
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                                gv_xxcmn_msg_toomny,
+                                                gv_tkn_table,
+                                                gv_deliverys,
+                                                gv_tkn_key,
+                                                gv_pay || ',' ||
+                                                gt_deliv_line_tab(ln_index).delivery_no);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：########## 運賃ヘッダアドオン抽出 ##########：' || ln_deliv_flg);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：請求運賃    ：' || TO_CHAR(lv_charged_amount));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：諸料金      ：' || TO_CHAR(lv_many_rate));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：支払確定区分：' || lv_defined_flag);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：支払確定戻  ：' || lv_return_flag);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- ***  運賃ヘッダアドオンにデータが存在しない場合
+      -- **************************************************
+      IF (ln_deliv_flg = gv_ktg_yes) THEN
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+        IF (gv_debug_flg = gv_debug_on) THEN
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：運賃ヘッダアドオン INSERT');
+        END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+        -- 登録用PL/SQL表 件数
+        ln_insert_cnt  := ln_insert_cnt + 1;
+--
+        -- 運送業者
+        i_head_deliv_cmpny_cd_tab(ln_insert_cnt) := 
+                                    gt_deliv_line_tab(ln_index).delivery_company_code ;
+        -- 配送No
+        i_head_deliv_no_tab(ln_insert_cnt)       := gt_deliv_line_tab(ln_index).delivery_no ;
+        -- 送り状No
+        i_head_invoice_no_tab(ln_insert_cnt)     := gt_deliv_line_tab(ln_index).invoice_no ;
+        -- 支払請求区分（支払）
+        i_head_p_b_classe_tab(ln_insert_cnt)     := gv_pay ;
+        -- 支払判断区分
+        i_head_pay_judg_cls_tab(ln_insert_cnt)   := 
+                                    gt_deliv_line_tab(ln_index).payments_judgment_classe ;
+        -- 出庫日
+        i_head_ship_date_tab(ln_insert_cnt)      := gt_deliv_line_tab(ln_index).ship_date ;
+        -- 到着日
+        i_head_arrival_date_tab(ln_insert_cnt)   := gt_deliv_line_tab(ln_index).arrival_date ;
+        -- 報告日
+        i_head_report_date_tab(ln_insert_cnt)    := NULL ;
+        -- 判断日
+        i_head_judg_date_tab(ln_insert_cnt)      := gt_deliv_line_tab(ln_index).judgement_date ;
+        -- 商品区分
+        i_head_goods_cls_tab(ln_insert_cnt)      := gt_deliv_line_tab(ln_index).goods_classe ;
+        -- 混載区分
+        i_head_mixed_cd_tab(ln_insert_cnt)       := gt_deliv_line_tab(ln_index).mixed_code ;
+        -- 請求運賃
+        i_head_charg_amount_tab(ln_insert_cnt)   := NULL ;
+        -- 契約運賃
+        i_head_contract_rate_tab(ln_insert_cnt)  := gt_deliv_line_tab(ln_index).shipping_expenses ;
+        -- 諸料金
+        i_head_many_rate_tab(ln_insert_cnt)      := NULL ;
+        -- 最長距離
+        i_head_distance_tab(ln_insert_cnt)       := gt_delivno_deliv_line_tab(ln_index).distance ;
+        -- 配送区分
+        i_head_deliv_cls_tab(ln_insert_cnt)      := gt_deliv_line_tab(ln_index).dellivary_classe ;
+        -- 代表出庫倉庫コード
+        i_head_whs_cd_tab(ln_insert_cnt)         := gt_deliv_line_tab(ln_index).whs_code ;
+        -- 代表配送先コード区分
+        i_head_cd_dvsn_tab(ln_insert_cnt)        := gt_deliv_line_tab(ln_index).code_division ;
+        -- 代表配送先コード
+        i_head_ship_addr_cd_tab(ln_insert_cnt)   := 
+                                    gt_deliv_line_tab(ln_index).shipping_address_code ;
+        -- 個数１
+        i_head_qty1_tab(ln_insert_cnt)           := gt_delivno_deliv_line_tab(ln_index).qty ;
+        -- 個数２
+        i_head_qty2_tab(ln_insert_cnt)           := NULL ;
+        -- 重量１
+        i_head_deliv_wght1_tab(ln_insert_cnt)    := 
+                                    gt_delivno_deliv_line_tab(ln_index).delivery_weight ;
+        -- 重量２
+        i_head_deliv_wght2_tab(ln_insert_cnt)    := NULL ;
+        -- 混載割増金額
+        i_head_cnsld_srhrg_tab(ln_insert_cnt)    := gt_deliv_line_tab(ln_index).consolid_surcharge ;
+        -- 最長実際距離
+        i_head_actual_ditnc_tab(ln_insert_cnt)   := gt_deliv_line_tab(ln_index).actual_distance ;
+        -- 通行料
+        i_head_cong_chrg_tab(ln_insert_cnt)      := NULL ;
+        -- ピッキング料
+        i_head_pick_charge_tab(ln_insert_cnt)    := gt_deliv_line_tab(ln_index).picking_charge ;
+        -- 混載数
+        i_head_consolid_qty_tab(ln_insert_cnt)   := gt_deliv_line_tab(ln_index).consolid_qty ;
+        -- 代表タイプ
+        i_head_order_type_tab(ln_insert_cnt)     := gt_deliv_line_tab(ln_index).order_type ;
+        -- 重量容積区分
+        i_head_wigh_cpcty_cls_tab(ln_insert_cnt) := 
+                                    gt_deliv_line_tab(ln_index).weight_capacity_class ;
+        -- 契約外区分
+        i_head_out_cont_tab(ln_insert_cnt)       := gt_deliv_line_tab(ln_index).outside_contract ;
+        i_head_output_flag_tab(ln_insert_cnt)    := gv_ktg_yes ;   -- 差異区分
+        i_head_defined_flag_tab(ln_insert_cnt)   := gv_ktg_no ;    -- 支払確定区分
+        i_head_return_flag_tab(ln_insert_cnt)    := gv_ktg_no ;    -- 支払確定戻
+        i_head_fm_upd_flg_tab(ln_insert_cnt)     := gv_ktg_no ;    -- 画面更新有無区分
+        -- 振替先
+        i_head_trans_lcton_tab(ln_insert_cnt)    := gt_deliv_line_tab(ln_index).description ;
+        -- 外部業者変更回数
+        i_head_out_up_cnt_tab(ln_insert_cnt)     := 0 ;
+        -- 運賃摘要
+        i_head_description_tab(ln_insert_cnt)    := NULL ;
+--
+        -- 合計（運送費＋混載割増金額＋ピッキング料）
+        i_head_total_amount_tab(ln_insert_cnt)   := 
+                                      gt_deliv_line_tab(ln_index).shipping_expenses +
+                                      gt_deliv_line_tab(ln_index).consolid_surcharge +
+                                      gt_deliv_line_tab(ln_index).picking_charge ;
+        -- 差額（合計 × -1）
+        i_head_balance_tab(ln_insert_cnt)        := 
+                                      (gt_deliv_line_tab(ln_index).shipping_expenses +
+                                       gt_deliv_line_tab(ln_index).consolid_surcharge +
+                                       gt_deliv_line_tab(ln_index).picking_charge) * -1 ;
+--
+      -- **************************************************
+      -- ***  運賃ヘッダアドオンにデータが存在する場合
+      -- **************************************************
+      ELSE
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+        IF (gv_debug_flg = gv_debug_on) THEN
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：運賃ヘッダアドオン UPDATE');
+        END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+        -- 更新用PL/SQL表 件数
+        ln_update_cnt   := ln_update_cnt + 1;
+--
+        -- 運送業者
+        u_head_deliv_cmpny_cd_tab(ln_update_cnt):= 
+                              gt_deliv_line_tab(ln_index).delivery_company_code ;
+        -- 配送No
+        u_head_deliv_no_tab(ln_update_cnt)      := gt_deliv_line_tab(ln_index).delivery_no ;
+        -- 送り状No
+        u_head_invoice_no_tab(ln_update_cnt)    := gt_deliv_line_tab(ln_index).invoice_no ;
+        -- 支払判断区分
+        u_head_pay_judg_cls_tab(ln_update_cnt)  := gv_pay ;
+        -- 出庫日
+        u_head_ship_date_tab(ln_update_cnt)     := gt_deliv_line_tab(ln_index).ship_date ;
+        -- 到着日
+        u_head_arrival_date_tab(ln_update_cnt)  := gt_deliv_line_tab(ln_index).arrival_date ;
+        -- 判断日
+        u_head_judg_date_tab(ln_update_cnt)     := gt_deliv_line_tab(ln_index).judgement_date ;
+        -- 商品区分
+        u_head_goods_cls_tab(ln_update_cnt)     := gt_deliv_line_tab(ln_index).goods_classe ;
+        -- 混載区分
+        u_head_mixed_cd_tab(ln_update_cnt)      := gt_deliv_line_tab(ln_index).mixed_code ;
+        -- 契約運賃
+        u_head_contract_rate_tab(ln_update_cnt) := gt_deliv_line_tab(ln_index).shipping_expenses;
+        -- 最長距離
+        u_head_distance_tab(ln_update_cnt)      := gt_delivno_deliv_line_tab(ln_index).distance ;
+        -- 配送区分
+        u_head_deliv_cls_tab(ln_update_cnt)     := gt_deliv_line_tab(ln_index).dellivary_classe ;
+        -- 代表出庫倉庫コード
+        u_head_whs_cd_tab(ln_update_cnt)        := gt_deliv_line_tab(ln_index).whs_code ;
+        -- 代表配送先コード区分
+        u_head_cd_dvsn_tab(ln_update_cnt)       := gt_deliv_line_tab(ln_index).code_division ;
+        -- 代表配送先コード
+        u_head_ship_addr_cd_tab(ln_update_cnt)  := 
+                              gt_deliv_line_tab(ln_index).shipping_address_code ;
+        -- 個数１
+        u_head_qty1_tab(ln_update_cnt)          := gt_delivno_deliv_line_tab(ln_index).qty ;
+        -- 重量１
+        u_head_deliv_wght1_tab(ln_update_cnt)   := gt_delivno_deliv_line_tab(ln_index).delivery_weight ;
+        -- 混載割増金額
+        u_head_cnsld_srhrg_tab(ln_update_cnt)   := gt_deliv_line_tab(ln_index).consolid_surcharge ;
+        -- 最長実際距離
+        u_head_actual_ditnc_tab(ln_update_cnt)  := gt_deliv_line_tab(ln_index).actual_distance ;
+        -- ピッキング料
+        u_head_pick_charge_tab(ln_update_cnt)   := gt_deliv_line_tab(ln_index).picking_charge ;
+        -- 混載数
+        u_head_consolid_qty_tab(ln_update_cnt)  := gt_deliv_line_tab(ln_index).consolid_qty ;
+        -- 代表タイプ
+        u_head_order_type_tab(ln_update_cnt)    := gt_deliv_line_tab(ln_index).order_type ;
+        -- 重量容積区分
+        u_head_wigh_cpcty_cls_tab(ln_update_cnt):= 
+                              gt_deliv_line_tab(ln_index).weight_capacity_class ;
+        -- 契約外区分
+        u_head_out_cont_tab(ln_update_cnt)      := gt_deliv_line_tab(ln_index).outside_contract ;
+        -- 振替先
+        u_head_trans_lcton_tab(ln_update_cnt)   := gt_deliv_line_tab(ln_index).description ;
+--
+        -- 合計（運送費＋混載割増運賃＋ピッキング料＋諸料金）
+        u_head_total_amount_tab(ln_update_cnt)        := 
+                                      gt_deliv_line_tab(ln_index).shipping_expenses +
+                                      gt_deliv_line_tab(ln_index).consolid_surcharge +
+                                      gt_deliv_line_tab(ln_index).picking_charge +
+                                                          NVL(lv_many_rate, 0) ;
+        -- 差額（請求運賃 － 合計）
+        u_head_balance_tab(ln_update_cnt)             := 
+                                      NVL(lv_charged_amount, 0) -
+                                      (gt_deliv_line_tab(ln_index).shipping_expenses +
+                                      gt_deliv_line_tab(ln_index).consolid_surcharge +
+                                      gt_deliv_line_tab(ln_index).picking_charge +
+                                      NVL(lv_many_rate, 0)) ;
+--
+        -- *** 差異区分 ***
+        -- 請求運賃 ＝ NULL の場合
+        IF (lv_charged_amount IS NULL) THEN
+          -- Y を設定
+          u_head_output_flag_tab(ln_update_cnt)   := gv_ktg_yes ;
+--
+        -- 請求運賃 ＝ NULL以外、且つ、差額＝0 以外の場合
+        ELSIF ((lv_charged_amount IS NOT NULL)
+          AND (u_head_balance_tab(ln_update_cnt) <> 0)) THEN
+          -- Y を設定
+          u_head_output_flag_tab(ln_update_cnt)   := gv_ktg_yes ;
+--
+        -- 上記以外
+        ELSE
+          -- N を設定
+          u_head_output_flag_tab(ln_update_cnt)   := gv_ktg_no ;
+        END IF;
+--
+        -- *** 支払確定区分 ***
+        IF (u_head_output_flag_tab(ln_update_cnt) = gv_ktg_yes) THEN
+          -- N を設定
+          u_head_defined_flag_tab(ln_update_cnt)  := gv_ktg_no ;
+        ELSE
+          -- Y を設定
+          u_head_defined_flag_tab(ln_update_cnt)  := gv_ktg_yes ;
+        END IF;
+--
+        -- *** 支払確定戻 ***
+        -- 元の支払確定区分 ＝ Y、且つ、差額 <> 0 の場合
+        IF ((lv_defined_flag = gv_ktg_yes)
+          AND ( u_head_balance_tab(ln_update_cnt) <> 0) ) THEN
+          -- Y を設定
+          u_head_return_flag_tab(ln_update_cnt)   := gv_ktg_yes ;
+--
+        -- 元の支払確定区分 ＝ Y、且つ、差額 = 0 の場合
+        ELSIF ((lv_defined_flag = gv_ktg_yes)
+          AND ( u_head_balance_tab(ln_update_cnt) = 0) ) THEN
+          -- N を設定
+          u_head_return_flag_tab(ln_update_cnt)   := gv_ktg_no ;
+--
+        -- 上記以外の場合
+        ELSE
+          -- 登録済みの支払確定戻 を設定
+          u_head_return_flag_tab(ln_update_cnt)   := lv_return_flag ;
+        END IF;
+--
+        -- 削除用PL/SQL表 登録
+        -- 差額 <> 0 または、契約運賃 = 0 の場合
+        IF (u_head_balance_tab(ln_update_cnt) <> 0)
+          OR (gt_deliv_line_tab(ln_index).shipping_expenses = 0 ) THEN
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+        IF (gv_debug_flg = gv_debug_on) THEN
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：運賃ヘッダアドオン DELETE');
+        END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+          -- 削除用PL/SQL表 件数
+          ln_delete_cnt   := ln_delete_cnt + 1;
+          -- 配送No
+          d_head_deliv_no_tab(ln_delete_cnt)  := gt_deliv_line_tab(ln_index).delivery_no ;
+        END IF;
+--
+      END IF;
+--
+    END LOOP deliv_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END set_deliv_head;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_carriers_schedule
+   * Description      : 配車配送計画抽出(A-31)
+   ***********************************************************************************/
+  PROCEDURE get_carriers_schedule(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_carriers_schedule'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 配車配送計画 抽出
+    SELECT    xcs.result_freight_carrier_code       -- 運送業者
+            , xcs.delivery_no                       -- 配送No
+            , xcs.shipped_date                      -- 出庫日
+            , xcs.arrival_date                      -- 到着日
+            , xcs.result_shipping_method_code       -- 配送区分
+            , xcs.deliver_from                      -- 代表出庫倉庫コード
+            , xcs.deliver_to_code_class             -- 代表配送先コード区分
+            , xcs.deliver_to                        -- 代表配送先コード
+            , xcs.weight_capacity_class             -- 重量容積区分
+            , xdec.payments_judgment_classe         -- 支払判断区分
+            , CASE xdec.payments_judgment_classe    -- 支払判断区分
+              WHEN gv_pay_judg_g  THEN xcs.shipped_date -- 発日：出荷日
+              WHEN gv_pay_judg_c  THEN xcs.arrival_date -- 着日：着荷日
+              END
+            , xott2v.mixed_class                    -- 混載区分
+    BULK COLLECT INTO gt_carriers_schedule_tab
+    FROM  xxwsh_carriers_schedule       xcs,        -- 配車配送計画（アドオン）
+          xxwsh_ship_method2_v          xott2v,     -- 配送区分情報VIEW2
+          xxwip_delivery_company        xdec        -- 運賃用運送業者アドオンマスタ
+    WHERE xcs.shipped_date IS NOT NULL              -- 出荷日
+    AND   gv_prod_class_lef = xdec.goods_classe                         -- 商品区分（リーフ固定）
+    AND   xcs.result_freight_carrier_code = xdec.delivery_company_code  -- 運送業者
+    AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                  -- 適用開始日
+    AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                  -- 適用終了日
+    AND   xcs.result_shipping_method_code = xott2v.ship_method_code     -- 配送区分
+    AND   xott2v.start_date_active  <= TRUNC(gd_sysdate)                -- 有効開始日
+    AND   NVL(xott2v.end_date_active,TO_DATE('99991231','YYYYMMDD'))
+                                     >= TRUNC(gd_sysdate)                -- 有効終了日
+    AND   (
+            ((xdec.payments_judgment_classe = gv_pay_judg_g)      -- 支払判断区分（発日）
+            AND (xcs.shipped_date >=  gd_target_date))            -- 出荷日
+          OR
+            ((xdec.payments_judgment_classe = gv_pay_judg_c)      -- 支払判断区分（着日）
+            AND (xcs.arrival_date >=  gd_target_date))            -- 着荷日
+          )
+    AND ((xcs.last_update_date > gd_last_process_date)            -- 前回処理日付
+          AND  (xcs.last_update_date <= gd_sysdate));
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+    IF (gv_debug_flg = gv_debug_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_carriers_schedule：配車配送計画抽出：' || TO_CHAR(gt_carriers_schedule_tab.COUNT));
+    END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_carriers_schedule;
+--
+  /**********************************************************************************
+   * Procedure Name   : set_carri_deliv_head
+   * Description      : 配車のみ運賃ヘッダアドオンPL/SQL表格納(A-32)
+   ***********************************************************************************/
+  PROCEDURE set_carri_deliv_head(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_carri_deliv_head'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_delivery_no      xxwip_deliverys.delivery_no%TYPE;   -- 配送No
+    lv_output_flag      xxwip_deliverys.output_flag%TYPE;   -- 諸料金
+    lv_defined_flag     xxwip_deliverys.defined_flag%TYPE;  -- 支払確定区分
+    lv_return_flag      xxwip_deliverys.return_flag%TYPE;   -- 支払確定戻
+--
+    ln_order_flg        VARCHAR2(1);    -- 受注ヘッダアドオン 存在フラグ Y:有 N:無
+    ln_move_flg         VARCHAR2(1);    -- 受注明細アドオン   存在フラグ Y:有 N:無
+    ln_deliv_flg        VARCHAR2(1);    -- 運賃ヘッダアドオン 存在フラグ Y:有 N:無
+--
+    ln_order_cnt        NUMBER;   -- 受注ヘッダアドオン 件数
+    ln_move_cnt         NUMBER;   -- 受注明細アドオン   件数
+--
+    ln_insert_cnt   NUMBER;  -- 登録用PL/SQL表 件数
+    ln_update_cnt   NUMBER;  -- 更新用PL/SQL表 件数
+    ln_delete_cnt   NUMBER;  -- 削除用PL/SQL表 件数
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 件数初期化
+    ln_insert_cnt   := i_head_deliv_no_tab.COUNT;
+    ln_update_cnt   := u_head_deliv_no_tab.COUNT;
+    ln_delete_cnt   := d_head_deliv_no_tab.COUNT;
+--
+    -- 対象データ無の場合
+    IF (gt_carriers_schedule_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<deliv_loop>>
+    FOR ln_index IN  gt_carriers_schedule_tab.FIRST.. gt_carriers_schedule_tab.LAST LOOP
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：$$$$$$$$$$ 配車配送計画 存在確認 $$$$$$$$$$：' || TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：運送業者 ：' || gt_carriers_schedule_tab(ln_index).delivery_company_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：配送No   ：' || gt_carriers_schedule_tab(ln_index).delivery_no);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- ***  受注ヘッダアドオン 存在確認
+      -- **************************************************
+      -- 変数初期化
+      ln_order_cnt := 0;
+--
+      SELECT  COUNT(xoha.delivery_no)   -- 配送No
+      INTO    ln_order_cnt
+      FROM   xxwsh_order_headers_all  xoha  -- 受注ヘッダアドオン
+      WHERE  xoha.delivery_no = gt_carriers_schedule_tab(ln_index).delivery_no; -- 配送No
+--
+      IF (ln_order_cnt = 0) THEN
+        ln_deliv_flg := gv_ktg_no;
+      ELSE
+        ln_deliv_flg := gv_ktg_yes;
+      END IF;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：$$$$$ 受注ヘッダ 存在確認 $$$$$：' || ln_deliv_flg);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- ***  移動依頼/指示ヘッダアドオン 存在確認
+      -- **************************************************
+      -- 変数初期化
+      ln_move_cnt := 0;
+--
+      SELECT  COUNT(xmrih.delivery_no)            -- 配送No
+      INTO    ln_move_cnt
+      FROM   xxinv_mov_req_instr_headers  xmrih   -- 移動依頼/指示ヘッダアドオン
+      WHERE  xmrih.delivery_no = gt_carriers_schedule_tab(ln_index).delivery_no; -- 配送No
+--
+      IF (ln_move_cnt = 0) THEN
+        ln_move_flg := gv_ktg_no;
+      ELSE
+        ln_move_flg := gv_ktg_yes;
+      END IF;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：$$$$$ 移動ヘッダ 存在確認 $$$$$：' || ln_move_flg);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- 受注ヘッダアドオン、移動依頼/指示ヘッダアドオンに存在しない場合
+      IF ((ln_deliv_flg = gv_ktg_no) AND (ln_deliv_flg = gv_ktg_no)) THEN
+--
+        -- **************************************************
+        -- ***  運賃ヘッダアドオン抽出
+        -- **************************************************
+        -- 存在フラグ初期化
+        ln_deliv_flg := gv_ktg_yes;
+--
+        BEGIN
+          SELECT  xd.delivery_no        -- 配送No
+                , xd.output_flag        -- 諸料金
+                , xd.defined_flag       -- 支払確定区分
+                , xd.return_flag        -- 支払確定戻
+          INTO    lv_delivery_no
+                , lv_output_flag
+                , lv_defined_flag
+                , lv_return_flag
+          FROM   xxwip_deliverys      xd      -- 運賃ヘッダアドオン
+          WHERE  xd.delivery_no = gt_carriers_schedule_tab(ln_index).delivery_no -- 配送No
+          AND    xd.p_b_classe = gv_pay ;                           -- 支払請求区分（支払）
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN   -- *** データ取得エラー ***
+            -- 存在フラグ Y を設定
+            ln_deliv_flg := gv_ktg_no;
+--
+          WHEN TOO_MANY_ROWS THEN   -- *** データ複数取得エラー ***
+            lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                                  gv_xxcmn_msg_toomny,
+                                                  gv_tkn_table,
+                                                  gv_deliverys,
+                                                  gv_tkn_key,
+                                                  gv_pay || ',' ||
+                                                  gt_carriers_schedule_tab(ln_index).delivery_no);
+            lv_errbuf := lv_errmsg;
+            RAISE global_api_expt;
+        END;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+    IF (gv_debug_flg = gv_debug_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：$$$$$ 運賃ヘッダアドオン $$$$$：' || ln_deliv_flg);
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：配送No      ：'|| lv_delivery_no);
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：諸料金      ：'|| TO_CHAR(lv_output_flag));
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：支払確定区分：'|| lv_defined_flag);
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：支払確定戻  ：'|| lv_return_flag);
+    END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+        -- **************************************************
+        -- ***  運賃ヘッダアドオンにデータが存在しない場合
+        -- **************************************************
+        IF (ln_deliv_flg = gv_ktg_no) THEN
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+          IF (gv_debug_flg = gv_debug_on) THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：運賃ヘッダアドオン INSERT');
+          END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+          -- 登録用PL/SQL表 件数
+          ln_insert_cnt  := ln_insert_cnt + 1;
+--
+          -- 運送業者
+          i_head_deliv_cmpny_cd_tab(ln_insert_cnt) := 
+                            gt_carriers_schedule_tab(ln_index).delivery_company_code ;
+          -- 配送No
+          i_head_deliv_no_tab(ln_insert_cnt)       := 
+                            gt_carriers_schedule_tab(ln_index).delivery_no ;
+          -- 送り状No
+          i_head_invoice_no_tab(ln_insert_cnt)     := NULL ;
+          -- 支払請求区分
+          i_head_p_b_classe_tab(ln_insert_cnt)     := gv_pay ;
+          -- 支払判断区分
+          i_head_pay_judg_cls_tab(ln_insert_cnt)   := 
+                            gt_carriers_schedule_tab(ln_index).payments_judgment_classe ;
+          -- 出庫日
+          i_head_ship_date_tab(ln_insert_cnt)      := gt_carriers_schedule_tab(ln_index).ship_date ;
+          -- 到着日
+          i_head_arrival_date_tab(ln_insert_cnt)   := 
+                            gt_carriers_schedule_tab(ln_index).arrival_date ;
+          -- 報告日
+          i_head_report_date_tab(ln_insert_cnt)    := NULL ;
+          -- 判断日
+          i_head_judg_date_tab(ln_insert_cnt)      := 
+                            gt_carriers_schedule_tab(ln_index).judgement_date ;
+          i_head_goods_cls_tab(ln_insert_cnt)      := NULL ;  -- 商品区分
+          -- 混載区分
+          i_head_mixed_cd_tab(ln_insert_cnt)       := 
+                            gt_carriers_schedule_tab(ln_index).mixed_code  ;
+          i_head_charg_amount_tab(ln_insert_cnt)   := NULL ;  -- 請求運賃
+          i_head_contract_rate_tab(ln_insert_cnt)  := 0 ;     -- 契約運賃
+          i_head_balance_tab(ln_insert_cnt)        := 0 ;     -- 差額
+          i_head_total_amount_tab(ln_insert_cnt)   := 0 ;     -- 合計
+          i_head_many_rate_tab(ln_insert_cnt)      := NULL ;  -- 諸料金
+          i_head_distance_tab(ln_insert_cnt)       := 0 ;     -- 最長距離
+          -- 配送区分
+          i_head_deliv_cls_tab(ln_insert_cnt)      := 
+                            gt_carriers_schedule_tab(ln_index).dellivary_classe ;
+          -- 代表出庫倉庫コード
+          i_head_whs_cd_tab(ln_insert_cnt)         := 
+                            gt_carriers_schedule_tab(ln_index).whs_code;
+          -- 代表配送先コード区分
+          xxwip_common3_pkg.change_code_division(
+            gt_carriers_schedule_tab(ln_index).code_division,
+            i_head_cd_dvsn_tab(ln_insert_cnt),
+            lv_errbuf,
+            lv_retcode,
+            lv_errmsg);
+--
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE global_api_expt;
+          END IF;
+--
+          -- 代表配送先コード
+          i_head_ship_addr_cd_tab(ln_insert_cnt) := 
+                            gt_carriers_schedule_tab(ln_index).shipping_address_code;
+          i_head_qty1_tab(ln_insert_cnt)           := 0 ;           -- 個数１
+          i_head_qty2_tab(ln_insert_cnt)           := NULL ;        -- 個数２
+          i_head_deliv_wght1_tab(ln_insert_cnt)    := 0 ;           -- 重量１
+          i_head_deliv_wght2_tab(ln_insert_cnt)    := NULL ;        -- 重量２
+          i_head_cnsld_srhrg_tab(ln_insert_cnt)    := 0 ;           -- 混載割増金額
+          i_head_actual_ditnc_tab(ln_insert_cnt)   := 0 ;           -- 最長実際距離
+          i_head_cong_chrg_tab(ln_insert_cnt)      := NULL ;        -- 通行料
+          i_head_pick_charge_tab(ln_insert_cnt)    := 0 ;           -- ピッキング料
+          i_head_consolid_qty_tab(ln_insert_cnt)   := 0 ;           -- 混載数
+          i_head_order_type_tab(ln_insert_cnt)     := NULL ;        -- 代表タイプ
+          -- 重量容積区分
+          i_head_wigh_cpcty_cls_tab(ln_insert_cnt) := 
+                            gt_carriers_schedule_tab(ln_index).weight_capacity_class ;
+          i_head_out_cont_tab(ln_insert_cnt)       := NULL ;        -- 契約外区分
+          i_head_output_flag_tab(ln_insert_cnt)    := gv_ktg_yes ;  -- 差異区分
+          i_head_defined_flag_tab(ln_insert_cnt)   := gv_ktg_no  ;  -- 支払確定区分
+          i_head_return_flag_tab(ln_insert_cnt)    := gv_ktg_no  ;  -- 支払確定戻
+          i_head_fm_upd_flg_tab(ln_insert_cnt)     := gv_ktg_no  ;  -- 画面更新有無区分
+          i_head_trans_lcton_tab(ln_insert_cnt)    := NULL ;        -- 振替先
+          i_head_out_up_cnt_tab(ln_insert_cnt)     := 0 ;           -- 外部業者変更回数
+          i_head_description_tab(ln_insert_cnt)    := NULL ;        -- 運賃摘要
+--
+        -- **************************************************
+        -- ***  運賃ヘッダアドオンにデータが存在する場合
+        -- **************************************************
+        ELSE
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+          IF (gv_debug_flg = gv_debug_on) THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：運賃ヘッダアドオン UPDATE＆DELETE');
+          END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+          -- 更新用PL/SQL表 件数
+          ln_update_cnt   := ln_update_cnt + 1;
+--
+          -- 運送業者
+          u_head_deliv_cmpny_cd_tab(ln_update_cnt) := 
+                                gt_carriers_schedule_tab(ln_index).delivery_company_code ;
+          -- 配送No
+          u_head_deliv_no_tab(ln_update_cnt)       := 
+                                gt_carriers_schedule_tab(ln_index).delivery_no ;
+          u_head_invoice_no_tab(ln_update_cnt)     := NULL ; -- 送り状No
+          -- 支払判断区分
+          u_head_pay_judg_cls_tab(ln_update_cnt)   := 
+                                gt_carriers_schedule_tab(ln_index).payments_judgment_classe ;
+          -- 出庫日
+          u_head_ship_date_tab(ln_update_cnt)      := 
+                                gt_carriers_schedule_tab(ln_index).ship_date ;
+          -- 到着日
+          u_head_arrival_date_tab(ln_update_cnt)   := 
+                                gt_carriers_schedule_tab(ln_index).arrival_date ;
+          -- 判断日
+          u_head_judg_date_tab(ln_update_cnt)      := 
+                                gt_carriers_schedule_tab(ln_index).judgement_date ;
+          u_head_goods_cls_tab(ln_update_cnt)      := NULL ; -- 商品区分
+          -- 混載区分
+          u_head_mixed_cd_tab(ln_update_cnt)       := 
+                                gt_carriers_schedule_tab(ln_index).mixed_code ;
+          u_head_contract_rate_tab(ln_update_cnt)  := 0 ;    -- 契約運賃
+          u_head_balance_tab(ln_update_cnt)        := 0 ;    -- 差額
+          u_head_total_amount_tab(ln_update_cnt)   := 0 ;    -- 合計
+          u_head_distance_tab(ln_update_cnt)       := 0 ;    -- 最長距離
+          -- 配送区分
+          u_head_deliv_cls_tab(ln_update_cnt)      := 
+                            gt_carriers_schedule_tab(ln_index).dellivary_classe ;
+          -- 代表出庫倉庫コード
+          u_head_whs_cd_tab(ln_update_cnt)         := gt_carriers_schedule_tab(ln_index).whs_code;
+--
+          -- 代表配送先コード
+          xxwip_common3_pkg.change_code_division(
+            gt_carriers_schedule_tab(ln_index).code_division,
+            u_head_cd_dvsn_tab(ln_update_cnt),
+            lv_errbuf,
+            lv_retcode,
+            lv_errmsg);
+          -- 代表配送先コード
+          u_head_ship_addr_cd_tab(ln_update_cnt) :=
+                            gt_carriers_schedule_tab(ln_index).shipping_address_code;
+--
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE global_api_expt;
+          END IF;
+--
+          u_head_qty1_tab(ln_update_cnt)           := 0 ;    -- 個数１
+          u_head_deliv_wght1_tab(ln_update_cnt)    := 0 ;    -- 重量１
+          u_head_cnsld_srhrg_tab(ln_update_cnt)    := 0 ;    -- 混載割増金額
+          u_head_actual_ditnc_tab(ln_update_cnt)   := 0 ;    -- 最長実際距離
+          u_head_pick_charge_tab(ln_update_cnt)    := 0 ;    -- ピッキング料
+          u_head_consolid_qty_tab(ln_update_cnt)   := 0 ;    -- 混載数
+          u_head_order_type_tab(ln_update_cnt)     := NULL ; -- 代表タイプ
+          -- 重量容積区分
+          u_head_wigh_cpcty_cls_tab(ln_update_cnt) := 
+                            gt_carriers_schedule_tab(ln_index).weight_capacity_class ;
+          u_head_out_cont_tab(ln_update_cnt)       := NULL ; -- 契約外区分
+          u_head_trans_lcton_tab(ln_update_cnt)    := NULL ; -- 振替先
+          u_head_output_flag_tab(ln_update_cnt)    := gv_ktg_yes;       -- 差異区分
+          u_head_defined_flag_tab(ln_update_cnt)   := gv_ktg_no;        -- 支払確定区分
+          u_head_return_flag_tab(ln_update_cnt)    := lv_return_flag ;  -- 支払確定戻
+--
+          -- 更新対象となった配送Noはの請求情報は全て削除対象
+          -- 削除用PL/SQL表 件数インクリメント
+          ln_delete_cnt   := ln_delete_cnt + 1;
+          -- 配送No
+          d_head_deliv_no_tab(ln_delete_cnt)  := gt_deliv_line_tab(ln_index).delivery_no ;
+--
+        END IF;
+--
+      END IF;
+--
+    END LOOP deliv_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END set_carri_deliv_head;
+--
+  /**********************************************************************************
+   * Procedure Name   : insert_deliv_head
+   * Description      : 運賃ヘッダアドオン一括登録(A-33)
+   ***********************************************************************************/
+  PROCEDURE insert_deliv_head(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'insert_deliv_head'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    IF (i_head_deliv_no_tab.COUNT <> 0) THEN
+--
+      -- **************************************************
+      -- * 運賃ヘッダアドオン 登録
+      -- **************************************************
+      FORALL ln_index IN i_head_deliv_no_tab.FIRST .. i_head_deliv_no_tab.LAST
+        INSERT INTO xxwip_deliverys
+        ( deliverys_header_id         -- 運賃ヘッダーアドオンID
+        , delivery_company_code       -- 運送業者
+        , delivery_no                 -- 配送No
+        , invoice_no                  -- 送り状No
+        , p_b_classe                  -- 支払請求区分
+        , payments_judgment_classe    -- 支払判断区分
+        , ship_date                   -- 出庫日
+        , arrival_date                -- 到着日
+        , report_date                 -- 報告日
+        , judgement_date              -- 判断日
+        , goods_classe                -- 商品区分
+        , mixed_code                  -- 混載区分
+        , charged_amount              -- 請求運賃
+        , contract_rate               -- 契約運賃
+        , balance                     -- 差額
+        , total_amount                -- 合計
+        , many_rate                   -- 諸料金
+        , distance                    -- 最長距離
+        , delivery_classe             -- 配送区分
+        , whs_code                    -- 代表出庫倉庫コード
+        , code_division               -- 代表配送先コード区分
+        , shipping_address_code       -- 代表配送先コード
+        , qty1                        -- 個数１
+        , qty2                        -- 個数２
+        , delivery_weight1            -- 重量１
+        , delivery_weight2            -- 重量２
+        , consolid_surcharge          -- 混載割増金額
+        , actual_distance             -- 最長実際距離
+        , congestion_charge           -- 通行料
+        , picking_charge              -- ピッキング料
+        , consolid_qty                -- 混載数
+        , order_type                  -- 代表タイプ
+        , weight_capacity_class       -- 重量容積区分
+        , outside_contract            -- 契約外区分
+        , output_flag                 -- 差異区分
+        , defined_flag                -- 支払確定区分
+        , return_flag                 -- 支払確定戻
+        , form_update_flag            -- 画面更新有無区分
+        , transfer_location           -- 振替先
+        , outside_up_count            -- 外部業者変更回数
+        , description                 -- 運賃摘要
+        , created_by                  -- 作成者
+        , creation_date               -- 作成日
+        , last_updated_by             -- 最終更新者
+        , last_update_date            -- 最終更新日
+        , last_update_login           -- 最終更新ログイン
+        , request_id                  -- 要求ID
+        , program_application_id      -- コンカレント・プログラム・アプリケーションID
+        , program_id                  -- コンカレント・プログラムID
+        , program_update_date         -- プログラム更新日
+        ) VALUES (
+          xxwip_deliverys_id_s1.NEXTVAL         -- 運賃ヘッダーアドオンID
+        , i_head_deliv_cmpny_cd_tab(ln_index)   -- 運送業者
+        , i_head_deliv_no_tab(ln_index)         -- 配送No
+        , i_head_invoice_no_tab(ln_index)       -- 送り状No
+        , i_head_p_b_classe_tab(ln_index)       -- 支払請求区分
+        , i_head_pay_judg_cls_tab(ln_index)     -- 支払判断区分
+        , i_head_ship_date_tab(ln_index)        -- 出庫日
+        , i_head_arrival_date_tab(ln_index)     -- 到着日
+        , i_head_report_date_tab(ln_index)      -- 報告日
+        , i_head_judg_date_tab(ln_index)        -- 判断日
+        , i_head_goods_cls_tab(ln_index)        -- 商品区分
+        , i_head_mixed_cd_tab(ln_index)         -- 混載区分
+        , i_head_charg_amount_tab(ln_index)     -- 請求運賃
+        , i_head_contract_rate_tab(ln_index)    -- 契約運賃
+        , i_head_balance_tab(ln_index)          -- 差額
+        , i_head_total_amount_tab(ln_index)     -- 合計
+        , i_head_many_rate_tab(ln_index)        -- 諸料金
+        , i_head_distance_tab(ln_index)         -- 最長距離
+        , i_head_deliv_cls_tab(ln_index)        -- 配送区分
+        , i_head_whs_cd_tab(ln_index)           -- 代表出庫倉庫コード
+        , i_head_cd_dvsn_tab(ln_index)          -- 代表配送先コード区分
+        , i_head_ship_addr_cd_tab(ln_index)     -- 代表配送先コード
+        , i_head_qty1_tab(ln_index)             -- 個数１
+        , i_head_qty2_tab(ln_index)             -- 個数２
+        , i_head_deliv_wght1_tab(ln_index)      -- 重量１
+        , i_head_deliv_wght2_tab(ln_index)      -- 重量２
+        , i_head_cnsld_srhrg_tab(ln_index)      -- 混載割増金額
+        , i_head_actual_ditnc_tab(ln_index)     -- 最長実際距離
+        , i_head_cong_chrg_tab(ln_index)        -- 通行料
+        , i_head_pick_charge_tab(ln_index)      -- ピッキング料
+        , i_head_consolid_qty_tab(ln_index)     -- 混載数
+        , i_head_order_type_tab(ln_index)       -- 代表タイプ
+        , i_head_wigh_cpcty_cls_tab(ln_index)   -- 重量容積区分
+        , i_head_out_cont_tab(ln_index)         -- 契約外区分
+        , i_head_output_flag_tab(ln_index)      -- 差異区分
+        , i_head_defined_flag_tab(ln_index)     -- 支払確定区分
+        , i_head_return_flag_tab(ln_index)      -- 支払確定戻
+        , i_head_fm_upd_flg_tab(ln_index)       -- 画面更新有無区分
+        , i_head_trans_lcton_tab(ln_index)      -- 振替先
+        , i_head_out_up_cnt_tab(ln_index)       -- 外部業者変更回数
+        , i_head_description_tab(ln_index)      -- 運賃摘要
+        , gn_user_id                            -- 作成者
+        , gd_sysdate                            -- 作成日
+        , gn_user_id                            -- 最終更新者
+        , gd_sysdate                            -- 最終更新日
+        , gn_login_id                           -- 最終更新ログイン
+        , gn_conc_request_id                    -- 要求ID
+        , gn_prog_appl_id                       -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+        , gn_conc_program_id                    -- コンカレント・プログラムID
+        , gd_sysdate);                          -- プログラム更新日
+--
+      -- **************************************************
+      -- 件数設定
+      -- **************************************************
+      gn_deliv_ins_cnt := gn_deliv_ins_cnt + SQL%ROWCOUNT;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END insert_deliv_head;
+--
+  /**********************************************************************************
+   * Procedure Name   : update_deliv_head
+   * Description      : 運賃ヘッダアドオン一括更新(A-34)
+   ***********************************************************************************/
+  PROCEDURE update_deliv_head(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_deliv_head'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    IF (u_head_deliv_no_tab.COUNT <> 0) THEN
+--
+      -- **************************************************
+      -- * 運賃ヘッダアドオン 更新
+      -- **************************************************
+      FORALL ln_index IN u_head_deliv_no_tab.FIRST .. u_head_deliv_no_tab.LAST
+        UPDATE xxwip_deliverys            -- 運賃ヘッダアドオン
+        SET     delivery_company_code     = u_head_deliv_cmpny_cd_tab(ln_index)-- 運送業者
+              , delivery_no               = u_head_deliv_no_tab(ln_index)      -- 配送No
+              , invoice_no                = u_head_invoice_no_tab(ln_index)    -- 送り状No
+              , payments_judgment_classe  = u_head_pay_judg_cls_tab(ln_index)  -- 支払判断区分
+              , ship_date                 = u_head_ship_date_tab(ln_index)     -- 出庫日
+              , arrival_date              = u_head_arrival_date_tab(ln_index)  -- 到着日
+              , judgement_date            = u_head_judg_date_tab(ln_index)     -- 判断日
+              , goods_classe              = u_head_goods_cls_tab(ln_index)     -- 商品区分
+              , mixed_code                = u_head_mixed_cd_tab(ln_index)      -- 混載区分
+              , contract_rate             = u_head_contract_rate_tab(ln_index) -- 契約運賃
+              , balance                   = u_head_balance_tab(ln_index)       -- 差額
+              , total_amount              = u_head_total_amount_tab(ln_index)  -- 合計
+              , distance                  = u_head_distance_tab(ln_index)      -- 最長距離
+              , delivery_classe           = u_head_deliv_cls_tab(ln_index)     -- 配送区分
+              , whs_code                  = u_head_whs_cd_tab(ln_index)        -- 代表出庫倉庫コード
+              , code_division             = u_head_cd_dvsn_tab(ln_index)       -- 代表配送先コード区分
+              , shipping_address_code     = u_head_ship_addr_cd_tab(ln_index)  -- 代表配送先コード
+              , qty1                      = u_head_qty1_tab(ln_index)          -- 個数１
+              , delivery_weight1          = u_head_deliv_wght1_tab(ln_index)   -- 重量１
+              , consolid_surcharge        = u_head_cnsld_srhrg_tab(ln_index)   -- 混載割増金額
+              , actual_distance           = u_head_actual_ditnc_tab(ln_index)  -- 最長実際距離
+              , picking_charge            = u_head_pick_charge_tab(ln_index)   -- ピッキング料
+              , consolid_qty              = u_head_consolid_qty_tab(ln_index)  -- 混載数
+              , order_type                = u_head_order_type_tab(ln_index)    -- 代表タイプ
+              , weight_capacity_class     = u_head_wigh_cpcty_cls_tab(ln_index)-- 重量容積区分
+              , outside_contract          = u_head_out_cont_tab(ln_index)      -- 契約外区分
+              , transfer_location         = u_head_trans_lcton_tab(ln_index)   -- 振替先
+              , output_flag               = u_head_output_flag_tab(ln_index)   -- 差異区分
+              , defined_flag              = u_head_defined_flag_tab(ln_index)  -- 支払確定区分
+              , return_flag               = u_head_return_flag_tab(ln_index)   -- 支払確定戻
+              , last_updated_by           = gn_user_id                 -- 最終更新者
+              , last_update_date          = gd_sysdate                 -- 最終更新日
+              , last_update_login         = gn_login_id                -- 最終更新ログイン
+              , request_id                = gn_conc_request_id         -- 要求ID
+              , program_application_id    = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+              , program_id                = gn_conc_program_id         -- コンカレント・プログラムID
+              , program_update_date       = gd_sysdate                 -- プログラム更新日
+        WHERE   delivery_no = u_head_deliv_no_tab(ln_index)       -- 配送No
+        AND     p_b_classe  = gv_pay;                             -- 支払請求区分
+--
+      -- **************************************************
+      -- 件数設定
+      -- **************************************************
+      gn_deliv_ins_cnt := gn_deliv_ins_cnt + SQL%ROWCOUNT;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_deliv_head;
+--
+  /**********************************************************************************
+   * Procedure Name   : delete_deliv_head
+   * Description      : 運賃ヘッダアドオン一括削除(A-35)
+   ***********************************************************************************/
+  PROCEDURE delete_deliv_head(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'delete_deliv_head'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    IF (d_head_deliv_no_tab.COUNT <> 0) THEN
+--
+      -- **************************************************
+      -- * 運賃ヘッダアドオン 削除
+      -- **************************************************
+      FORALL ln_index IN d_head_deliv_no_tab.FIRST .. d_head_deliv_no_tab.LAST
+        DELETE FROM  xxwip_deliverys  -- 運賃ヘッダアドオン
+        WHERE   delivery_no = d_head_deliv_no_tab(ln_index) -- 配送No
+        AND     p_b_classe  = gv_claim;                     -- 支払請求区分（請求）
+--
+      -- **************************************************
+      -- 件数設定
+      -- **************************************************
+      gn_deliv_del_cnt := gn_deliv_del_cnt + SQL%ROWCOUNT;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END delete_deliv_head;
+--
+  /**********************************************************************************
+   * Procedure Name   : update_deliv_cntl
+   * Description      : 運賃計算コントロール更新処理(A-36)
+   ***********************************************************************************/
+  PROCEDURE update_deliv_cntl(
+    iv_exchange_type IN         VARCHAR2,     -- 洗い替え区分
+    ov_errbuf        OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_deliv_ctrl_proc'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 入力パラメータ.洗い替え区分 = 「NO」の場合
+    IF (iv_exchange_type = gv_ktg_no) THEN
+--
+      -- 運賃計算用コントロールの前回処理日付を更新
+      UPDATE xxwip_deliverys_ctrl xdc   -- 運賃計算用コントロールアドオン
+      SET    xdc.last_process_date      = gd_sysdate         -- 前回処理日付
+            ,xdc.last_updated_by        = gn_user_id         -- 最終更新者
+            ,xdc.last_update_date       = gd_sysdate         -- 最終更新日
+            ,xdc.last_update_login      = gn_login_id        -- 最終更新ログイン
+            ,xdc.request_id             = gn_conc_request_id -- 要求ID
+            ,xdc.program_application_id = gn_prog_appl_id    -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+            ,xdc.program_id             = gn_conc_program_id -- コンカレント・プログラムID
+            ,xdc.program_update_date    = gd_sysdate         -- プログラム更新日
+      WHERE  xdc.concurrent_no          = gv_con_no_deliv;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_deliv_cntl;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_exch_deliv_line
+   * Description      : 洗替運賃明細アドオン抽出(A-37)
+   ***********************************************************************************/
+  PROCEDURE get_exch_deliv_line(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_exch_deliv_line'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 運賃明細アドオン 抽出
+    SELECT    xdl.request_no                      -- 依頼No
+            , xdl.small_lot_class                 -- リーフ小口区分
+            , xdl.goods_classe                    -- 商品区分
+            , xdl.weight_capacity_class           -- 重量容積区分
+            , xdl.qty                             -- 個数
+            , xdl.delivery_weight                 -- 重量
+            , xdl.mixed_code                      -- 混載区分
+            , NVL(xdd.post_distance, 0)           -- 配送距離：車立距離
+            , NVL(xdd.small_distance, 0)          -- 配送距離：小口距離
+            , NVL(xdd.consolid_add_distance, 0)   -- 配送距離：混載距離
+            , NVL(xdd.actual_distance, 0)         -- 配送距離：実際距離
+            , NVL(xdc.small_weight, 0)      -- 運送業者：小口重量
+    BULK COLLECT INTO gt_exch_deliv_line_tab
+    FROM  xxwip_delivery_lines        xdl,      -- 運賃明細アドオン
+          xxwip_delivery_distance     xdd,      -- 配送距離アドオンマスタ
+          xxwip_delivery_company      xdc       -- 運賃用運送業者アドオンマスタ
+    WHERE xdl.judgement_date >= gd_target_date                        -- 判断日 >= 締日
+    AND   xdl.goods_classe            = xdd.goods_classe(+)           -- 配送距離：商品区分
+    AND   xdl.delivery_company_code   = xdd.delivery_company_code(+)  -- 配送距離：運送業者
+    AND   xdl.whs_code                = xdd.origin_shipment(+)        -- 配送距離：出庫倉庫
+    AND   xdl.code_division           = xdd.code_division(+)          -- 配送距離：コード区分
+    AND   xdl.shipping_address_code   = xdd.shipping_address_code(+)  -- 配送距離：配送先コード
+    AND   TRUNC(xdl.judgement_date)  >= xdd.start_date_active(+)      -- 配送距離：適用開始日
+    AND   TRUNC(xdl.judgement_date)  <= xdd.end_date_active(+)        -- 配送距離：適用終了日
+    AND   xdl.goods_classe            = xdc.goods_classe(+)           -- 運送業者：商品区分
+    AND   xdl.delivery_company_code   = xdc.delivery_company_code(+)  -- 運送業者：運送業者
+    AND   TRUNC(xdl.judgement_date)   >= xdc.start_date_active(+)     -- 運送業者：適用開始日
+    AND   TRUNC(xdl.judgement_date)  <= xdc.end_date_active(+)        -- 運送業者：適用終了日
+    ORDER BY xdl.request_no;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+    IF (gv_debug_flg = gv_debug_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_line：洗替運賃明細アドオン抽出：' || TO_CHAR(gt_exch_deliv_line_tab.COUNT));
+    END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_exch_deliv_line;
+--
+  /**********************************************************************************
+   * Procedure Name   : set_exch_deliv_line
+   * Description      : 洗替運賃明細アドオンPL/SQL表格納(A-38)
+   ***********************************************************************************/
+  PROCEDURE set_exch_deliv_line(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_exch_deliv_line'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 対象データ無の場合
+    IF (gt_exch_deliv_line_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<deliv_line_loop>>
+    FOR ln_index IN  gt_exch_deliv_line_tab.FIRST.. gt_exch_deliv_line_tab.LAST LOOP
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：%%%%%%%%%% 洗替 運賃明細アドオン %%%%%%%%%%：' || TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：依頼No：' || gt_exch_deliv_line_tab(ln_index).request_no);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- *** 依頼No ***
+      ue_line_request_no_tab(ln_index)    := gt_exch_deliv_line_tab(ln_index).request_no ;
+--
+      -- *** 距離 ***
+      -- リーフ小口区分 = Y の場合
+      IF (gt_exch_deliv_line_tab(ln_index).small_lot_class = gv_ktg_yes) THEN
+        -- 小口距離を設定
+        ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).small_distance ;
+--
+      -- 商品区分 ＝ リーフ   又は 
+      -- 商品区分 ＝ ドリンク 且つ、混載区分 ＜＞ 混載 の場合
+      ELSIF (
+                (gt_exch_deliv_line_tab(ln_index).goods_classe = gv_prod_class_lef)
+              OR    
+                ((gt_exch_deliv_line_tab(ln_index).goods_classe = gv_prod_class_drk)
+                AND (gt_exch_deliv_line_tab(ln_index).mixed_code <> gv_target_y))
+            ) THEN
+        -- 車立距離を設定
+        ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).post_distance ;
+--
+      -- 上記以外の場合
+      ELSE
+        -- 車立距離＋混載距離を設定
+        ue_line_ditnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).post_distance +
+                                        gt_exch_deliv_line_tab(ln_index).consolid_add_distance;
+      END IF;
+--
+      -- *** 実際距離 ***
+      ue_line_actual_dstnc_tab(ln_index)  := gt_exch_deliv_line_tab(ln_index).actual_distance ;
+--
+      -- *** 重量 ***
+      -- リーフ小口区分 = Y 、且つ、重量容積区分=容積 の場合
+      IF (gt_exch_deliv_line_tab(ln_index).small_lot_class = gv_ktg_yes) THEN
+        -- 個数 × 小口重量
+        ue_line_deliv_weight_tab(ln_index) := gt_exch_deliv_line_tab(ln_index).qty *
+                                              gt_exch_deliv_line_tab(ln_index).small_weight;
+      ELSE
+        -- 重量
+        ue_line_deliv_weight_tab(ln_index) := gt_exch_deliv_line_tab(ln_index).delivery_weight;
+      END IF;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：リーフ小口区分：' || gt_exch_deliv_line_tab(ln_index).small_lot_class);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：混載区分      ：' || gt_exch_deliv_line_tab(ln_index).mixed_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：小口距離：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).small_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：車立距離：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).post_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：混載距離：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).consolid_add_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：実際距離：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).actual_distance));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：個数      ：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).qty));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：小口重量  ：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).small_weight));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_line：重量      ：' || TO_CHAR(gt_exch_deliv_line_tab(ln_index).delivery_weight));
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+    END LOOP deliv_line_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END set_exch_deliv_line;
+--
+  /**********************************************************************************
+   * Procedure Name   : update_exch_deliv_line
+   * Description      : 洗替運賃明細アドオン一括更新(A-39)
+   ***********************************************************************************/
+  PROCEDURE update_exch_deliv_line(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_exch_deliv_line'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    IF (ue_line_request_no_tab.COUNT <> 0) THEN
+--
+      -- **************************************************
+      -- * 運賃明細アドオン 更新
+      -- **************************************************
+      FORALL ln_index IN ue_line_request_no_tab.FIRST .. ue_line_request_no_tab.LAST
+      UPDATE xxwip_delivery_lines       -- 運賃明細アドオン
+        SET     distance                  = ue_line_ditnc_tab(ln_index)         -- 距離
+              , actual_distance           = ue_line_actual_dstnc_tab(ln_index)  -- 実際距離
+              , delivery_weight           = ue_line_deliv_weight_tab(ln_index)  -- 重量
+              , last_updated_by           = gn_user_id                 -- 最終更新者
+              , last_update_date          = gd_sysdate                 -- 最終更新日
+              , last_update_login         = gn_login_id                -- 最終更新ログイン
+              , request_id                = gn_conc_request_id         -- 要求ID
+              , program_application_id    = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+              , program_id                = gn_conc_program_id         -- コンカレント・プログラムID
+              , program_update_date       = gd_sysdate                 -- プログラム更新日
+        WHERE  request_no = ue_line_request_no_tab(ln_index);           -- 依頼No
+--
+      -- **************************************************
+      -- 件数設定
+      -- **************************************************
+      gn_deliv_line_ins_cnt := gn_deliv_line_ins_cnt + SQL%ROWCOUNT;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_exch_deliv_line;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_exch_delino
+   * Description      : 洗替運賃明細アドオン対象配送No抽出(A-40)
+   ***********************************************************************************/
+  PROCEDURE get_exch_delino(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_exch_delino'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 運賃明細アドオン 配送No抽出
+    BEGIN
+      SELECT  xdl.delivery_no             -- 配送No
+            , MAX(xdl.distance)           -- 最長距離
+            , NULL                        -- 実際距離
+            , SUM(xdl.delivery_weight)    -- 重量
+      BULK COLLECT INTO gt_exch_delivno_line_tab
+      FROM   xxwip_delivery_lines    xdl                -- 運賃明細アドオン
+      WHERE  xdl.judgement_date >= gd_target_date       -- 判断日 >= 締め日
+      GROUP BY xdl.delivery_no                          -- 配送No（集約）
+      ORDER BY xdl.delivery_no;                         -- 配送No（順序）
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN   -- *** データ取得エラー ***
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                              gv_xxcmn_msg_notfnd,
+                                              gv_tkn_table,
+                                              gv_delivery_lines,
+                                              gv_tkn_key,
+                                              TO_CHAR(gd_target_date,'YYYY/MM/DD HH24:MI:SS'));
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+--
+      WHEN TOO_MANY_ROWS THEN   -- *** データ複数取得エラー ***
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                              gv_xxcmn_msg_toomny,
+                                              gv_tkn_table,
+                                              gv_delivery_lines,
+                                              gv_tkn_key,
+                                              TO_CHAR(gd_target_date,'YYYY/MM/DD HH24:MI:SS'));
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+    IF (gv_debug_flg = gv_debug_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_delino：洗替運賃明細アドオン対象配送No抽出' || TO_CHAR(gt_exch_delivno_line_tab.COUNT));
+    END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_exch_delino;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_exch_deliv_line_h
+   * Description      : 洗替運賃明細アドオン抽出(A-41)
+   ***********************************************************************************/
+  PROCEDURE get_exch_deliv_line_h(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_exch_deliv_line_h'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 対象データ無の場合
+    IF (gt_exch_delivno_line_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<delivno_loop>>
+    FOR ln_index IN  gt_exch_delivno_line_tab.FIRST.. gt_exch_delivno_line_tab.LAST LOOP
+--
+      -- **************************************************
+      -- * 運賃明細アドオン 抽出
+      -- **************************************************
+      BEGIN
+        SELECT  xdl.actual_distance     -- 実際距離
+        INTO    gt_exch_delivno_line_tab(ln_index).actual_distance
+        FROM    xxwip_delivery_lines    xdl        -- 運賃明細アドオン
+        WHERE   xdl.delivery_no = gt_exch_delivno_line_tab(ln_index).delivery_no  -- 配送No
+        AND     xdl.distance    = gt_exch_delivno_line_tab(ln_index).distance;    -- 距離
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN   -- *** データ取得エラー ***
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                                gv_xxcmn_msg_notfnd,
+                                                gv_tkn_table,
+                                                gv_delivery_lines,
+                                                gv_tkn_key,
+                                                gt_exch_delivno_line_tab(ln_index).delivery_no
+                                                || ',' ||
+                                                gt_exch_delivno_line_tab(ln_index).distance);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+--
+        WHEN TOO_MANY_ROWS THEN   -- *** データ複数取得エラー ***
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn,
+                                                gv_xxcmn_msg_toomny,
+                                                gv_tkn_table,
+                                                gv_delivery_lines,
+                                                gv_tkn_key,
+                                                gt_exch_delivno_line_tab(ln_index).delivery_no
+                                                || ',' ||
+                                                gt_exch_delivno_line_tab(ln_index).distance);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+--
+    END LOOP delivno_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_exch_deliv_line_h;
+--
+  /**********************************************************************************
+   * Procedure Name   : set_exch_deliv_line
+   * Description      : 洗替運賃ヘッダアドオン明細項目更新用PL/SQL表格納(A-42)
+   ***********************************************************************************/
+  PROCEDURE set_exch_deliv_head_h(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_exch_deliv_head_h'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 対象データ無の場合
+    IF (gt_exch_delivno_line_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<deliv_line_loop>>
+    FOR ln_index IN  gt_exch_delivno_line_tab.FIRST.. gt_exch_delivno_line_tab.LAST LOOP
+--
+      -- 配送No
+      ue_head_deliv_no_tab(ln_index)      := gt_exch_delivno_line_tab(ln_index).delivery_no;
+      -- 最長距離
+      ue_head_distance_tab(ln_index)      := gt_exch_delivno_line_tab(ln_index).distance;
+      -- 重量１
+      ue_head_deliv_wght1_tab(ln_index)   := gt_exch_delivno_line_tab(ln_index).delivery_weight;
+      -- 最長実際距離
+      ue_head_actual_ditnc_tab(ln_index)  := gt_exch_delivno_line_tab(ln_index).actual_distance;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：%%%%%%%%%% 洗替運賃ヘッダアドオン明細項目 %%%%%%%%%%：' || TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：配送No  ：' || gt_exch_delivno_line_tab(ln_index).delivery_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：距離    ：' || gt_exch_delivno_line_tab(ln_index).distance);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：実際距離：' || gt_exch_delivno_line_tab(ln_index).actual_distance);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_exch_deliv_head_h：重量    ：' || gt_exch_delivno_line_tab(ln_index).delivery_weight);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+    END LOOP deliv_line_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END set_exch_deliv_head_h;
+--
+  /**********************************************************************************
+   * Procedure Name   : update_exch_deliv_head_h
+   * Description      : 洗替運賃ヘッダアドオン明細項目一括更新(A-43)
+   ***********************************************************************************/
+  PROCEDURE update_exch_deliv_head_h(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_exch_deliv_head_h'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- **************************************************
+    -- * 運賃ヘッダアドオン 更新
+    -- **************************************************
+    FORALL ln_index IN ue_head_deliv_no_tab.FIRST .. ue_head_deliv_no_tab.LAST
+      UPDATE xxwip_deliverys          -- 運賃ヘッダアドオン
+      SET     distance                  = ue_head_distance_tab(ln_index)       -- 最長距離
+            , delivery_weight1          = ue_head_deliv_wght1_tab(ln_index)    -- 重量１
+            , actual_distance           = ue_head_actual_ditnc_tab(ln_index)   -- 最長実際距離
+            , last_updated_by           = gn_user_id                  -- 最終更新者
+            , last_update_date          = gd_sysdate                  -- 最終更新日
+            , last_update_login         = gn_login_id                 -- 最終更新ログイン
+            , request_id                = gn_conc_request_id          -- 要求ID
+            , program_application_id    = gn_prog_appl_id             -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+            , program_id                = gn_conc_program_id          -- コンカレント・プログラムID
+            , program_update_date       = gd_sysdate                  -- プログラム更新日
+      WHERE  delivery_no = ue_head_deliv_no_tab(ln_index)             -- 配送No
+      AND    p_b_classe  = gv_pay ;                                   -- 支払請求区分（支払）
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_exch_deliv_head_h;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_exch_deliv_head
+   * Description      : 洗替運賃ヘッダアドオン抽出(A-44)
+   ***********************************************************************************/
+  PROCEDURE get_exch_deliv_head(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_exch_deliv_head'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 運賃ヘッダアドオン 抽出
+    SELECT    xd.delivery_company_code  -- 運送業者
+            , xd.delivery_no            -- 配送No
+            , xd.p_b_classe             -- 支払請求区分
+            , xd.judgement_date         -- 判断日
+            , xd.goods_classe           -- 商品区分
+            , xd.mixed_code             -- 混載区分
+            , xd.charged_amount         -- 請求運賃
+            , xd.many_rate              -- 諸料金
+            , xd.distance               -- 最長距離
+            , xd.delivery_classe        -- 配送区分
+            , xd.qty1                   -- 個数１
+            , xd.delivery_weight1       -- 重量１
+            , xd.consolid_surcharge     -- 混載割増金額
+            , xd.consolid_qty           -- 混載数
+            , xd.output_flag            -- 差異区分
+            , xd.defined_flag           -- 支払確定区分
+            , xd.return_flag            -- 支払確定戻
+            , NVL(xdec.pay_picking_amount, 0) -- 運送業者：支払ピッキング単価
+            , NULL                            -- 運賃：運送費
+            , NULL                            -- 運賃：リーフ混載割増
+    BULK COLLECT INTO gt_exch_deliv_tab
+    FROM  xxwip_deliverys         xd,   -- 運賃ヘッダアドオン
+          xxwip_delivery_company  xdec  -- 運賃用運送業者アドオンマスタ
+    WHERE xd.p_b_classe = gv_pay                      -- 支払請求区分（支払）
+    AND   xd.judgement_date >= gd_target_date         -- 判断日 >= 締め日
+    AND   xd.goods_classe IS NOT NULL                 -- 商品区分
+    AND   xd.goods_classe           = xdec.goods_classe(+)          -- 商品区分
+    AND   xd.delivery_company_code  = xdec.delivery_company_code(+) -- 運送業者
+    AND   TRUNC(xd.judgement_date) >= xdec.start_date_active(+)     -- 適用開始日
+    AND   TRUNC(xd.judgement_date) <= xdec.end_date_active(+)       -- 適用終了日
+    ORDER BY delivery_no;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+    IF (gv_debug_flg = gv_debug_on) THEN
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_head：洗替運賃ヘッダアドオン抽出：' || TO_CHAR(gt_exch_deliv_tab.COUNT));
+    END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_exch_deliv_head;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_exch_deliv_charg
+   * Description      : 洗替運賃アドオンマスタ抽出(A-45)
+   ***********************************************************************************/
+  PROCEDURE get_exch_deliv_charg(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_exch_deliv_charg'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lr_delivery_charges_tab   xxwip_common3_pkg.delivery_charges_rec;   -- 運賃
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 対象データ無の場合
+    IF (gt_exch_deliv_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<deliv_loop>>
+    FOR ln_index IN  gt_exch_deliv_tab.FIRST.. gt_exch_deliv_tab.LAST LOOP
+--
+      -- **************************************************
+      -- * 運賃アドオンマスタ抽出
+      -- **************************************************
+      xxwip_common3_pkg.get_delivery_charges(
+        gt_exch_deliv_tab(ln_index).p_b_classe,             -- 支払請求区分
+        gt_exch_deliv_tab(ln_index).goods_classe,           -- 商品区分
+        gt_exch_deliv_tab(ln_index).delivery_company_code,  -- 運送業者
+        gt_exch_deliv_tab(ln_index).delivery_classe,        -- 配送区分
+        gt_exch_deliv_tab(ln_index).distance,               -- 運賃距離
+        gt_exch_deliv_tab(ln_index).delivery_weight1,       -- 重量
+        gt_exch_deliv_tab(ln_index).judgement_date,         -- 判断日
+        lr_delivery_charges_tab,                            -- 運賃アドオンレコード
+        lv_errbuf,
+        lv_retcode,
+        lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- *** 運送費 ***
+      gt_exch_deliv_tab(ln_index).shipping_expenses := lr_delivery_charges_tab.shipping_expenses;
+      -- *** リーフ混載割増 ***
+      gt_exch_deliv_tab(ln_index).leaf_consolid_add := lr_delivery_charges_tab.leaf_consolid_add;
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：********** 洗替運賃アドオンマスタ抽出 **********：'|| TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：運送業者：' || gt_exch_deliv_tab(ln_index).delivery_company_code);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：配送No  ：' || gt_exch_deliv_tab(ln_index).delivery_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：運送費        ：' || gt_exch_deliv_tab(ln_index).shipping_expenses);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：リーフ混載割増：' || gt_exch_deliv_tab(ln_index).leaf_consolid_add);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+    END LOOP deliv_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_exch_deliv_charg;
+--
+  /**********************************************************************************
+   * Procedure Name   : set_exch_deliv_hate
+   * Description      : 洗替運賃ヘッダアドオンPL/SQL表格納(A-46)
+   ***********************************************************************************/
+  PROCEDURE set_exch_deliv_hate(
+    ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'set_exch_deliv_hate'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_delete_cnt   NUMBER;       -- 削除件数
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 変数初期化
+    ln_delete_cnt := 0 ;
+--
+    -- 対象データ無の場合
+    IF (gt_exch_deliv_tab.COUNT = 0) THEN
+      RETURN;
+    END IF;
+--
+    <<deliv_loop>>
+    FOR ln_index IN  gt_exch_deliv_tab.FIRST.. gt_exch_deliv_tab.LAST LOOP
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：********** 洗替 更新用PL/SQL表 設定 **********：'|| TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：配送No：' || gt_exch_deliv_tab(ln_index).delivery_no);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+      -- **************************************************
+      -- * 更新用PL/SQL表 設定
+      -- **************************************************
+      -- 配送No
+      ueh_head_deliv_no_tab(ln_index)       := gt_exch_deliv_tab(ln_index).delivery_no ;
+      -- 契約運賃
+      ueh_head_contract_rate_tab(ln_index)  := gt_exch_deliv_tab(ln_index).shipping_expenses ;
+--
+      -- *** 混載割増金額 ***
+      -- 商品区分 = リーフ、且つ、混載区分 = 混載 の場合
+      IF ((gt_exch_deliv_tab(ln_index).goods_classe = gv_prod_class_lef )
+        AND (gt_exch_deliv_tab(ln_index).mixed_code = gv_target_y)) THEN
+        -- リーフ混載割増 × 混載数
+        ueh_head_cnsld_srhrg_tab(ln_index)  := gt_exch_deliv_tab(ln_index).leaf_consolid_add *
+                                                  gt_exch_deliv_tab(ln_index).consolid_qty;
+      ELSE
+        -- 混載割増金額
+        ueh_head_cnsld_srhrg_tab(ln_index)  := gt_exch_deliv_tab(ln_index).consolid_surcharge;
+      END IF;
+--
+      -- *** ピッキング料 ***
+      -- 個数 × 支払ピッキング単価
+      ueh_head_pick_charge_tab(ln_index)  := ROUND(gt_exch_deliv_tab(ln_index).qty1 *
+                                              gt_exch_deliv_tab(ln_index).pay_picking_amount);
+--
+      -- *** 合計 ***
+      -- 契約運賃＋混載割増金額＋ピッキング料＋諸料金
+      ueh_head_total_amount_tab(ln_index) :=  gt_exch_deliv_tab(ln_index).shipping_expenses +
+                                              gt_exch_deliv_tab(ln_index).consolid_surcharge +
+                                              ueh_head_pick_charge_tab(ln_index) +
+                                              NVL(gt_exch_deliv_tab(ln_index).many_rate,0);
+--
+      -- *** 差額 ***
+      -- 請求運賃－合計
+      ueh_head_balance_tab(ln_index)  :=  NVL(gt_exch_deliv_tab(ln_index).charged_amount, 0) -
+                                            ueh_head_total_amount_tab(ln_index);
+--
+      -- *** 差異区分 ***
+      -- 請求運賃 = NULLの場合
+      IF (gt_exch_deliv_tab(ln_index).charged_amount IS NULL) THEN
+        -- Y を設定
+        ueh_head_output_flag_tab(ln_index) := gv_ktg_yes ;
+--
+      -- 請求運賃 <> NULL、且つ、差額 = 0場合
+      ELSIF ((gt_exch_deliv_tab(ln_index).charged_amount IS NOT NULL)
+        AND  (ueh_head_balance_tab(ln_index) = 0)) THEN
+        -- N を設定
+        ueh_head_output_flag_tab(ln_index) := gv_ktg_no ;
+--
+      -- 上記以外の場合
+      ELSE
+        -- Y を設定
+        ueh_head_output_flag_tab(ln_index) := gv_ktg_yes ;
+      END IF;
+--
+      -- *** 支払確定区分 ***
+      -- 差異区分 = N の場合
+      IF (ueh_head_output_flag_tab(ln_index) = gv_ktg_no) THEN
+        ueh_head_defined_flag_tab(ln_index) :=  gv_ktg_yes;
+--
+      -- 差異区分 = Y の場合
+      ELSE
+        ueh_head_defined_flag_tab(ln_index) :=  gv_ktg_no;
+      END IF;
+--
+      -- *** 支払確定戻 ***
+      -- 元の支払確定区分 = Y 且つ 設定する支払確定区分 = N の場合
+      IF ((gt_exch_deliv_tab(ln_index).defined_flag = gv_ktg_yes )
+        AND (ueh_head_defined_flag_tab(ln_index) = gv_ktg_no)) THEN
+        -- Y を設定
+        ueh_head_return_flag_tab(ln_index)  := gv_ktg_yes ;
+--
+      -- 上記以外の場合
+      ELSE
+        -- N を設定
+        ueh_head_return_flag_tab(ln_index)  := gv_ktg_no ;
+      END IF;
+--
+      -- **************************************************
+      -- * 削除用PL/SQL表 設定
+      -- **************************************************
+      -- 差異区分 = Y の場合
+      IF (ueh_head_output_flag_tab(ln_index) = gv_ktg_yes) THEN
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+      IF (gv_debug_flg = gv_debug_on) THEN
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：********** 洗替 削除用PL/SQL表 設定 **********：'|| TO_CHAR(ln_index));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_exch_deliv_charg：配送No：' || gt_exch_deliv_tab(ln_index).delivery_no);
+      END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+        --削除用 PL/SQL表に設定
+        ln_delete_cnt := ln_delete_cnt + 1;
+        deh_head_deliv_no_tab(ln_delete_cnt) := gt_exch_deliv_tab(ln_index).delivery_no;
+      END IF;
+--
+    END LOOP deliv_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END set_exch_deliv_hate;
+--
+  /**********************************************************************************
+   * Procedure Name   : update_exch_deliv_head
+   * Description      : 洗替運賃アドオンマスタ一括更新(A-47)
+   ***********************************************************************************/
+  PROCEDURE update_exch_deliv_head(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_exch_deliv_head'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    IF (ueh_head_deliv_no_tab.COUNT <> 0) THEN
+--
+      -- **************************************************
+      -- * 運賃ヘッダアドオン 更新
+      -- **************************************************
+      FORALL ln_index IN ueh_head_deliv_no_tab.FIRST .. ueh_head_deliv_no_tab.LAST
+      UPDATE xxwip_deliverys            -- 運賃ヘッダアドオン
+        SET     contract_rate           = ueh_head_contract_rate_tab(ln_index)-- 契約運賃
+              , balance                 = ueh_head_balance_tab(ln_index)      -- 差額
+              , total_amount            = ueh_head_total_amount_tab(ln_index) -- 合計
+              , consolid_surcharge      = ueh_head_cnsld_srhrg_tab(ln_index)  -- 混載割増金額
+              , picking_charge          = ueh_head_pick_charge_tab(ln_index)  -- ピッキング料
+              , output_flag             = ueh_head_output_flag_tab(ln_index)  -- 差異区分
+              , defined_flag            = ueh_head_defined_flag_tab(ln_index) -- 支払確定区分
+              , return_flag             = ueh_head_return_flag_tab(ln_index)  -- 支払確定戻
+              , last_updated_by         = gn_user_id                 -- 最終更新者
+              , last_update_date        = gd_sysdate                 -- 最終更新日
+              , last_update_login       = gn_login_id                -- 最終更新ログイン
+              , request_id              = gn_conc_request_id         -- 要求ID
+              , program_application_id  = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+              , program_id              = gn_conc_program_id         -- コンカレント・プログラムID
+              , program_update_date     = gd_sysdate                 -- プログラム更新日
+        WHERE   delivery_no = ueh_head_deliv_no_tab(ln_index)        -- 配送No
+        AND     p_b_classe  = gv_pay;                                -- 支払請求区分
+--
+      -- **************************************************
+      -- 件数設定
+      -- **************************************************
+      gn_deliv_ins_cnt := gn_deliv_ins_cnt + SQL%ROWCOUNT;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_exch_deliv_head;
+--
+  /**********************************************************************************
+   * Procedure Name   : delete_exch_deliv_head
+   * Description      : 洗替運賃アドオンマスタ一括削除(A-48)
+   ***********************************************************************************/
+  PROCEDURE delete_exch_deliv_head(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'delete_exch_deliv_head'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    IF (deh_head_deliv_no_tab.COUNT <> 0) THEN
+--
+      -- **************************************************
+      -- * 運賃明細アドオン 再計算 更新
+      -- **************************************************
+      FORALL ln_index IN deh_head_deliv_no_tab.FIRST .. deh_head_deliv_no_tab.LAST
+      DELETE FROM  xxwip_deliverys  -- 運賃ヘッダアドオン
+        WHERE   delivery_no = deh_head_deliv_no_tab(ln_index) -- 配送No
+        AND     p_b_classe  = gv_claim;                       -- 支払請求区分（請求）
+--
+      -- **************************************************
+      -- 件数設定
+      -- **************************************************
+      gn_deliv_del_cnt := gn_deliv_del_cnt + SQL%ROWCOUNT;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END delete_exch_deliv_head;
+--
+  /**********************************************************************************
+   * Procedure Name   : submain
+   * Description      : メイン処理プロシージャ
+   **********************************************************************************/
+  PROCEDURE submain(
+    iv_exchange_type  IN         VARCHAR2,     -- 洗い替え区分
+    ov_errbuf         OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode        OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg         OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+--
+--#####################  固定ローカル定数変数宣言部 START   ####################
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'submain'; -- プログラム名
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_message    VARCHAR2(5000);  -- メッセージ出力
+    lv_target_flg VARCHAR2(1);     -- 対象データ有無フラグ 0:無し、1:有り
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+--
+    -- グローバル変数の初期化
+    gn_target_cnt := 0;
+    gn_normal_cnt := 0;
+    gn_error_cnt  := 0;
+    gn_warn_cnt   := 0;
+--
+    --*********************************************
+    --***      MD.050のフロー図を表す           ***
+    --***      分岐と処理部の呼び出しを行う     ***
+    --*********************************************
+--
+    -- =========================================
+    -- パラメータチェック処理(C-1)
+    -- =========================================
+    chk_param_proc(
+      iv_exchange_type,  -- 洗い替え区分
+      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+      lv_retcode,        -- リターン・コード             --# 固定 #
+      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    -- =========================================
+    -- 関連データ取得(C-2)
+    -- =========================================
+    get_init(
+      iv_exchange_type,  -- 洗い替え区分
+      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+      lv_retcode,        -- リターン・コード             --# 固定 #
+      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    -- =========================================
+    -- ロック取得(A-4)
+    -- =========================================
+    get_deliv_lock(
+      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+      lv_retcode,        -- リターン・コード             --# 固定 #
+      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 洗替区分 = N の場合
+    IF (iv_exchange_type = gv_ktg_no) THEN
+--
+      -- =========================================
+      -- 受注実績情報抽出(A-5)
+      -- =========================================
+      get_order(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 受注関連情報抽出(A-6)
+      -- =========================================
+      get_order_other(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 受注明細アドオン抽出(A-9)
+      -- =========================================
+      get_order_line(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 受注運賃明細アドオンPL/SQL表格納(A-13)
+      -- =========================================
+      set_order_deliv_line(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 移動実績情報抽出(A-14)
+      -- =========================================
+      get_move(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 移動関連情報抽出
+      -- =========================================
+      get_move_other(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 移動明細アドオン抽出(A-18)
+      -- =========================================
+      get_move_line(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 移動運賃明細アドオンPL/SQL表格納(A-22)
+      -- =========================================
+      set_move_deliv_line(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 運賃明細アドオン一括登録(A-23)
+      -- =========================================
+      insert_deliv_line(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 運賃明細アドオン一括再計算更新(A-24)
+      -- =========================================
+      update_deliv_line_calc(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 運賃明細アドオン一括適用更新(A-25)
+      -- =========================================
+      update_deliv_line_desc(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 運賃明細アドオン対象配送No抽出(A-26)
+      -- =========================================
+      get_delinov_line_desc(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 運賃明細アドオン抽出(A-27)
+      -- =========================================
+      get_deliv_line(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 運賃ヘッダアドオンPL/SQL表格納(A-30)
+      -- =========================================
+      set_deliv_head(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 配車配送計画抽出(A-31)
+      -- =========================================
+      get_carriers_schedule(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 配車のみ運賃ヘッダアドオンPL/SQL表格納(A-32)
+      -- =========================================
+      set_carri_deliv_head(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 運賃ヘッダアドオン一括登録(A-33)
+      -- =========================================
+      insert_deliv_head(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 運賃ヘッダアドオン一括更新(A-34)
+      -- =========================================
+      update_deliv_head(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 運賃ヘッダアドオン一括削除(A-35)
+      -- =========================================
+      delete_deliv_head(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 運賃計算コントロール更新処理(A-36)
+      -- =========================================
+      update_deliv_cntl(
+        iv_exchange_type,  -- 洗い替え区分
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+    -- 洗替区分 = Y の場合
+    ELSE
+--
+      -- =========================================
+      -- 洗替運賃明細アドオン抽出(A-37)
+      -- =========================================
+      get_exch_deliv_line(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 洗替運賃明細アドオンPL/SQL表格納(A-38)
+      -- =========================================
+      set_exch_deliv_line(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 洗替運賃明細アドオン一括更新(A-39)
+      -- =========================================
+      update_exch_deliv_line(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 洗替運賃明細アドオン対象配送No抽出(A-40)
+      -- =========================================
+      get_exch_delino(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 洗替運賃明細アドオン抽出(A-41)
+      -- =========================================
+      get_exch_deliv_line_h(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 洗替運賃ヘッダアドオン明細項目更新用PL/SQL表格納(A-42)
+      -- =========================================
+      set_exch_deliv_head_h(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 洗替運賃ヘッダアドオン明細項目一括更新(A-43)
+      -- =========================================
+      update_exch_deliv_head_h(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 洗替運賃ヘッダアドオン抽出(A-44)
+      -- =========================================
+      get_exch_deliv_head(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 洗替運賃アドオンマスタ抽出(A-45)
+      -- =========================================
+      get_exch_deliv_charg(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 洗替運賃ヘッダアドオンPL/SQL表格納(A-46)
+      -- =========================================
+      set_exch_deliv_hate(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 洗替運賃アドオンマスタ一括更新(A-47)
+      -- =========================================
+      update_exch_deliv_head(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- =========================================
+      -- 洗替運賃アドオンマスタ一括削除(A-48)
+      -- =========================================
+      delete_exch_deliv_head(
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ###################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--####################################  固定部 END   ##########################################
+--
+  END submain;
+--
+  /**********************************************************************************
+   * Procedure Name   : main
+   * Description      : コンカレント実行ファイル登録プロシージャ
+   **********************************************************************************/
+--
+  PROCEDURE main(
+    errbuf            OUT NOCOPY VARCHAR2,      --   エラー・メッセージ  --# 固定 #
+    retcode           OUT NOCOPY VARCHAR2,      --   リターン・コード    --# 固定 #
+    iv_exchange_type  IN         VARCHAR2       --   荒い替え区分
+  )
+--
+--###########################  固定部 START   ###########################
+--
+  IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'main';  -- プログラム名
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+    lv_message VARCHAR2(5000);  -- ユーザー・メッセージ
+--
+  BEGIN
+--
+--###########################  固定部 START   #####################################################
+--
+    -- ======================
+    -- 固定出力用変数セット
+    -- ======================
+    --実行ユーザ名取得
+    gv_exec_user := fnd_global.user_name;
+    --実行コンカレント名取得
+    SELECT fcp.concurrent_program_name
+    INTO   gv_conc_name
+    FROM   fnd_concurrent_programs fcp
+    WHERE  fcp.application_id        = fnd_global.prog_appl_id
+    AND    fcp.concurrent_program_id = fnd_global.conc_program_id
+    AND    ROWNUM                    = 1;
+--
+    -- ======================
+    -- 固定出力
+    -- ======================
+    --実行ユーザ名出力
+    gv_out_msg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-00001','USER',gv_exec_user);
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--
+    --実行コンカレント名出力
+    gv_out_msg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-00002','CONC',gv_conc_name);
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--
+    --起動時間出力
+    gv_out_msg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-10118',
+                                           'TIME', TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MM:SS'));
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_out_msg);
+--
+    --区切り文字出力
+    gv_sep_msg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-00003');
+--
+--###########################  固定部 END   #############################
+--
+    -- ===============================================
+    -- submainの呼び出し（実際の処理はsubmainで行う）
+    -- ===============================================
+    submain(
+      iv_exchange_type,  -- 洗い替え区分
+      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+      lv_retcode,        -- リターン・コード             --# 固定 #
+      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+    -- ======================
+    -- エラー・メッセージ出力
+    -- ======================
+    IF (lv_retcode = gv_status_error) THEN
+      IF (lv_errmsg IS NULL) THEN
+        --定型メッセージ・セット
+        lv_errmsg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-10030');
+      END IF;
+      FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf);
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+    END IF;
+    -- ==================================
+    -- リターン・コードのセット、終了処理
+    -- ==================================
+    --区切り文字列出力
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_sep_msg);
+--
+    -- =========================================
+    -- メッセージ出力(C-16)
+    -- =========================================
+--
+    -- 運賃ヘッダアドオン処理件数メッセージ
+    lv_message := xxcmn_common_pkg.get_msg(gv_xxwip_msg_kbn, gv_xxwip_msg_deliv_ins);
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_message);
+--
+    -- 成功件数出力
+    lv_message := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn, gv_xxcmn_msg_okcnt,
+                                           gv_tkn_cnt,
+                                           TO_CHAR(gn_deliv_ins_cnt));
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_message);
+--
+    -- 運賃明細アドオン処理件数メッセージ
+    lv_message := xxcmn_common_pkg.get_msg(gv_xxwip_msg_kbn, gv_xxwip_msg_deliv_line);
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_message);
+--
+    -- 成功件数出力
+    lv_message := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn, gv_xxcmn_msg_okcnt,
+                                           gv_tkn_cnt,
+                                           TO_CHAR(gn_deliv_line_ins_cnt));
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_message);
+--
+    -- 運賃ヘッダ請求削除件数メッセージ
+    lv_message := xxcmn_common_pkg.get_msg(gv_xxwip_msg_kbn, gv_xxwip_msg_deliv_del);
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_message);
+--
+    -- 成功件数出力
+    lv_message := xxcmn_common_pkg.get_msg(gv_xxcmn_msg_kbn, gv_xxcmn_msg_okcnt,
+                                           gv_tkn_cnt,
+                                           TO_CHAR(gn_deliv_del_cnt));
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_message);
+--
+    --ステータス出力
+    SELECT flv.meaning
+    INTO   gv_conc_status
+    FROM   fnd_lookup_values flv
+    WHERE  flv.language            = userenv('LANG')
+    AND    flv.view_application_id = 0
+    AND    flv.security_group_id   = fnd_global.lookup_security_group(flv.lookup_type,
+                                                                      flv.view_application_id)
+    AND    flv.lookup_type         = 'CP_STATUS_CODE'
+    AND    flv.lookup_code         = DECODE(lv_retcode,
+                                            gv_status_normal,gv_sts_cd_normal,
+                                            gv_status_warn,gv_sts_cd_warn,
+                                            gv_sts_cd_error)
+    AND    ROWNUM                  = 1;
+--
+    --処理ステータス出力
+    gv_out_msg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-00012','STATUS',gv_conc_status);
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+--
+    --ステータスセット
+    retcode := lv_retcode;
+    --終了ステータスがエラーの場合はROLLBACKする
+    IF (retcode = gv_status_error) THEN
+      ROLLBACK;
+    END IF;
+--
+  EXCEPTION
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      retcode := gv_status_error;
+  END main;
+--
+END xxwip730001c;
+/
