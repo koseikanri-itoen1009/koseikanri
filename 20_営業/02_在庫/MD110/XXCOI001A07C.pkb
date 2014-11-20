@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A07C(body)
  * Description      : その他取引データOIF更新
  * MD.050           : その他取引データOIF更新 MD050_COI_001_A07
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/05/18    1.3   T.Nakamura       システムテスト障害T1_0640対応
  *  2009/11/13    1.4   N.Abe            [E_T4_00189]品目1桁目が5,6を資材として処理
  *  2010/01/21    1.5   H.Sasaki         [E_本稼動_00859]専門店の資材の取引タイプを変更
+ *  2010/02/19    1.6   N.Abe            [E_本稼動_01622]保管場所取得時に無効日を参照
  *
  *****************************************************************************************/
 --
@@ -121,8 +122,10 @@ AS
   cv_item_status_chk_err_msg     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10072'; -- 品目ステータス有効チェックエラーメッセージ
   cv_primary_found_chk_err_msg   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10073'; -- 基準単位存在チェックエラーメッセージ
   cv_primary_valid_chk_err_msg   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10074'; -- 基準単位有効チェックエラーメッセージ
-  cv_subinv_found_chk_err_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10075'; -- 保管場所存在チェックエラーメッセージ
-  cv_subinv_valid_chk_err_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10076'; -- 保管場所有効チェックエラーメッセージ
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+--  cv_subinv_found_chk_err_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10075'; -- 保管場所存在チェックエラーメッセージ
+--  cv_subinv_valid_chk_err_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10076'; -- 保管場所有効チェックエラーメッセージ
+-- == 2010/02/19 V1.6 Deleted END   =============================================================
   cv_act_type_found_chk_err_msg  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10077'; -- 勘定科目別名存在チェックエラーメッセージ
   cv_act_type_valid_chk_err_msg  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10078'; -- 勘定科目別名有効チェックエラーメッセージ
   cv_inv_acc_period_chk_err_msg  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10079'; -- 伝票日付在庫会計期間チェックエラーメッセージ
@@ -130,8 +133,12 @@ AS
   cv_table_lock_err_2_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10325'; -- ロックエラーメッセージ（入庫情報一時表）
   cv_no_data_inside_info_msg     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10350'; -- 入庫情報一時表データ取得エラーメッセージ
 -- == 2010/01/21 V1.5 Added START =============================================================
-  cv_msg_xxcoi1_00032             CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-00032'; -- プロファイル値取得エラー
+  cv_msg_xxcoi1_00032            CONSTANT VARCHAR2(30)  := 'APP-XXCOI1-00032'; -- プロファイル値取得エラー
 -- == 2010/01/21 V1.5 Added END   =============================================================
+-- == 2010/02/19 V1.6 Added START =============================================================
+  cv_msg_xxcoi1_10412            CONSTANT VARCHAR2(30)  := 'APP-XXCOI1-10412'; -- 保管場所存在有効チェックエラーメッセージ
+  cv_msg_xxcoi1_10413            CONSTANT VARCHAR2(30)  := 'APP-XXCOI1-10413'; -- 保管場所複数取得エラーメッセージ
+-- == 2010/02/19 V1.6 Added END   =============================================================
   -- トークン
   cv_tkn_item_code               CONSTANT VARCHAR2(20)  := 'ITEM_CODE';            -- 親品目コード
   cv_tkn_org_code                CONSTANT VARCHAR2(20)  := 'ORG_CODE_TOK';         -- 在庫組織コード
@@ -1002,8 +1009,10 @@ AS
     lt_inventory_item_id         mtl_system_items_b.inventory_item_id%TYPE;             -- 品目ID
     -- 基準単位チェック
     lt_disable_date              mtl_units_of_measure_tl.disable_date%TYPE;             -- 無効日
-    -- 保管場所コードチェック
-    lt_sec_inv_disable_date      mtl_secondary_inventories.disable_date%TYPE;           -- 無効日
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+--    -- 保管場所コードチェック
+--    lt_sec_inv_disable_date      mtl_secondary_inventories.disable_date%TYPE;           -- 無効日
+-- == 2010/02/19 V1.6 Deleted END   =============================================================
     -- 在庫会計期間チェック
     lb_chk_result                BOOLEAN;                                               -- ステータス
     --
@@ -1036,7 +1045,9 @@ AS
     -- 保管場所コードチェック
     gt_sec_inv_nm              := NULL; -- 保管場所コード
     gt_sec_inv_nm_2            := NULL; -- 保管場所コード(伝票区分が「20」)
-    lt_sec_inv_disable_date    := NULL; -- 無効日
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+--    lt_sec_inv_disable_date    := NULL; -- 無効日
+-- == 2010/02/19 V1.6 Deleted END   =============================================================
     -- 勘定科目別名チェック
     gn_disposition_id          := NULL; -- 勘定科目別名ID
     gn_disposition_id_2        := NULL; -- 勘定科目別名ID(梱包材料原価振替)
@@ -1195,22 +1206,41 @@ AS
       IF ( gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code IS NULL ) THEN
 --
         -- 保管場所コードのチェック
-        xxcoi_common_pkg.get_subinventory_info1(
-            iv_base_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code            -- 拠点コード
-          , iv_whse_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).check_warehouse_code -- 確認倉庫コード
-          , ov_sec_inv_nm   => gt_sec_inv_nm                                                      -- 保管場所コード
-          , od_disable_date => lt_sec_inv_disable_date                                            -- 無効日
-          , ov_errbuf       => lv_errbuf                                                          -- エラーメッセージ
-          , ov_retcode      => lv_retcode                                                         -- リターン・コード
-          , ov_errmsg       => lv_errmsg                                                          -- ユーザー・エラーメッセージ
-        );
+-- == 2010/02/19 V1.6 Modified START =============================================================
+--        xxcoi_common_pkg.get_subinventory_info1(
+--            iv_base_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code            -- 拠点コード
+--          , iv_whse_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).check_warehouse_code -- 確認倉庫コード
+--          , ov_sec_inv_nm   => gt_sec_inv_nm                                                      -- 保管場所コード
+--          , od_disable_date => lt_sec_inv_disable_date                                            -- 無効日
+--          , ov_errbuf       => lv_errbuf                                                          -- エラーメッセージ
+--          , ov_retcode      => lv_retcode                                                         -- リターン・コード
+--          , ov_errmsg       => lv_errmsg                                                          -- ユーザー・エラーメッセージ
+--        );
 --
-        -- 戻り値の保管場所コードがNULLの場合
-        IF ( gt_sec_inv_nm IS NULL ) THEN
-          -- 保管場所存在チェックエラー
+        BEGIN
+          SELECT  msi.secondary_inventory_name
+          INTO    gt_sec_inv_nm
+          FROM    mtl_secondary_inventories msi
+          WHERE   msi.attribute7                              = gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
+                                                                                                    -- 拠点コード
+          AND     SUBSTRB(msi.secondary_inventory_name, 6, 2) = gt_inside_info_tab( gn_inside_info_loop_cnt ).check_warehouse_code
+                                                                                                    -- 確認倉庫コード
+          AND     msi.attribute1                             IN ('1', '4')                          -- 倉庫、専門店
+          AND     NVL(TRUNC(msi.disable_date), gd_date + 1)   > gd_date
+          ;
+--
+--        -- 戻り値の保管場所コードがNULLの場合
+--        IF ( gt_sec_inv_nm IS NULL ) THEN
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+-- == 2010/02/19 V1.6 Modified END   =============================================================
+          -- 保管場所存在有効チェックエラー
           lv_errmsg  := xxccp_common_pkg.get_msg(
                             iv_application  => cv_application_short_name
-                          , iv_name         => cv_subinv_found_chk_err_msg
+-- == 2010/02/19 V1.6 Modified START =============================================================
+--                          , iv_name         => cv_subinv_found_chk_err_msg
+                          , iv_name         => cv_msg_xxcoi1_10412
+-- == 2010/02/19 V1.6 Modified END   =============================================================
                           , iv_token_name1  => cv_tkn_base_code
                           , iv_token_value1 => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
                           , iv_token_name2  => cv_tkn_store_code
@@ -1227,48 +1257,92 @@ AS
               which  => FND_FILE.OUTPUT
             , buff   => ov_errmsg --エラーメッセージ
           );
-        -- 戻り値の無効日がTRUNC(NVL(無効日, システム日付+1)) <= TRUNC(システム日付)の場合
-        ELSIF ( TRUNC( NVL( lt_sec_inv_disable_date, cd_creation_date + 1 ) ) <= TRUNC( cd_creation_date ) ) THEN
-          -- 保管場所有効チェックエラー
-          lv_errmsg  := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_application_short_name
-                          , iv_name         => cv_subinv_valid_chk_err_msg
-                          , iv_token_name1  => cv_tkn_subinventory_code
-                          , iv_token_value1 => gt_sec_inv_nm
-                          , iv_token_name2  => cv_tkn_den_no
-                          , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
-                        );
-          lv_errbuf  := lv_errmsg;
-          ov_errmsg  := lv_errmsg;
-          ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
-          ov_retcode := cv_status_warn;
-          -- メッセージ出力
-          FND_FILE.PUT_LINE(
-              which  => FND_FILE.OUTPUT
-            , buff   => ov_errmsg --エラーメッセージ
-          );
-        END IF;
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+--        -- 戻り値の無効日がTRUNC(NVL(無効日, システム日付+1)) <= TRUNC(システム日付)の場合
+--        ELSIF ( TRUNC( NVL( lt_sec_inv_disable_date, cd_creation_date + 1 ) ) <= TRUNC( cd_creation_date ) ) THEN
+--          -- 保管場所有効チェックエラー
+--          lv_errmsg  := xxccp_common_pkg.get_msg(
+--                            iv_application  => cv_application_short_name
+--                          , iv_name         => cv_subinv_valid_chk_err_msg
+--                          , iv_token_name1  => cv_tkn_subinventory_code
+--                          , iv_token_value1 => gt_sec_inv_nm
+--                          , iv_token_name2  => cv_tkn_den_no
+--                          , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
+--                        );
+--          lv_errbuf  := lv_errmsg;
+--          ov_errmsg  := lv_errmsg;
+--          ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+--          ov_retcode := cv_status_warn;
+--          -- メッセージ出力
+--          FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--            , buff   => ov_errmsg --エラーメッセージ
+--          );
+--        END IF;
+-- == 2010/02/19 V1.6 Deleted END   =============================================================
+-- == 2010/02/19 V1.6 Added START =============================================================
+          WHEN TOO_MANY_ROWS THEN
+            -- 保管場所複数取得チェックエラー
+            lv_errmsg  := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_application_short_name
+                            , iv_name         => cv_msg_xxcoi1_10413
+                            , iv_token_name1  => cv_tkn_base_code
+                            , iv_token_value1 => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
+                            , iv_token_name2  => cv_tkn_store_code
+                            , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).check_warehouse_code
+                            , iv_token_name3  => cv_tkn_den_no
+                            , iv_token_value3 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
+                          );
+            lv_errbuf  := lv_errmsg;
+            ov_errmsg  := lv_errmsg;
+            ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+            ov_retcode := cv_status_warn;
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(
+                which  => FND_FILE.OUTPUT
+              , buff   => ov_errmsg --エラーメッセージ
+            );
+        END;
+-- == 2010/02/19 V1.6 Added END   =============================================================
 --
       -- 転送先倉庫コードがNULLでない場合
       ELSIF ( gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code IS NOT NULL ) THEN
 --
         -- 保管場所コードのチェック
-        xxcoi_common_pkg.get_subinventory_info2(
-            iv_base_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code           -- 拠点コード
-          , iv_shop_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code -- 転送先倉庫コード
-          , ov_sec_inv_nm   => gt_sec_inv_nm                                                     -- 保管場所コード
-          , od_disable_date => lt_sec_inv_disable_date                                           -- 無効日
-          , ov_errbuf       => lv_errbuf                                                         -- エラーメッセージ
-          , ov_retcode      => lv_retcode                                                        -- リターン・コード
-          , ov_errmsg       => lv_errmsg                                                         -- ユーザー・エラーメッセージ
-        );
+-- == 2010/02/19 V1.6 Modified START =============================================================
+--        xxcoi_common_pkg.get_subinventory_info2(
+--            iv_base_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code           -- 拠点コード
+--          , iv_shop_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code -- 転送先倉庫コード
+--          , ov_sec_inv_nm   => gt_sec_inv_nm                                                     -- 保管場所コード
+--          , od_disable_date => lt_sec_inv_disable_date                                           -- 無効日
+--          , ov_errbuf       => lv_errbuf                                                         -- エラーメッセージ
+--          , ov_retcode      => lv_retcode                                                        -- リターン・コード
+--          , ov_errmsg       => lv_errmsg                                                         -- ユーザー・エラーメッセージ
+--        );
+        BEGIN
+          SELECT  msi.secondary_inventory_name
+          INTO    gt_sec_inv_nm
+          FROM    mtl_secondary_inventories msi
+          WHERE   msi.attribute7                              = gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
+                                                                                                    -- 拠点コード
+          AND     SUBSTRB(msi.secondary_inventory_name, 6, 5) = gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code
+                                                                                                    -- 転送先倉庫コード 
+          AND     msi.attribute1                              = '3'                                 -- 預け先
+          AND     NVL(TRUNC(msi.disable_date), gd_date + 1)   > gd_date
+          ;
 --
         -- 戻り値の保管場所コードがNULLの場合
-        IF ( gt_sec_inv_nm IS NULL ) THEN
-          -- 保管場所存在チェックエラー
+--        IF ( gt_sec_inv_nm IS NULL ) THEN
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+-- == 2010/02/19 V1.6 Modified END   =============================================================
+          -- 保管場所存在有効チェックエラー
           lv_errmsg  := xxccp_common_pkg.get_msg(
                             iv_application  => cv_application_short_name
-                          , iv_name         => cv_subinv_found_chk_err_msg
+-- == 2010/02/19 V1.6 Modified START =============================================================
+--                          , iv_name         => cv_subinv_found_chk_err_msg
+                          , iv_name         => cv_msg_xxcoi1_10412
+-- == 2010/02/19 V1.6 Modified END   =============================================================
                           , iv_token_name1  => cv_tkn_base_code
                           , iv_token_value1 => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
                           , iv_token_name2  => cv_tkn_store_code
@@ -1285,27 +1359,53 @@ AS
               which  => FND_FILE.OUTPUT
             , buff   => ov_errmsg --エラーメッセージ
           );
-        -- 戻り値の無効日がTRUNC(NVL(無効日, システム日付+1)) <= TRUNC(システム日付)の場合
-        ELSIF ( TRUNC( NVL( lt_sec_inv_disable_date, cd_creation_date + 1 ) ) <= TRUNC( cd_creation_date ) ) THEN
-          -- 保管場所有効チェックエラー
-          lv_errmsg  := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_application_short_name
-                          , iv_name         => cv_subinv_valid_chk_err_msg
-                          , iv_token_name1  => cv_tkn_subinventory_code
-                          , iv_token_value1 => gt_sec_inv_nm
-                          , iv_token_name2  => cv_tkn_den_no
-                          , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
-                        );
-          lv_errbuf  := lv_errmsg;
-          ov_errmsg  := lv_errmsg;
-          ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
-          ov_retcode := cv_status_warn;
-          -- メッセージ出力
-          FND_FILE.PUT_LINE(
-              which  => FND_FILE.OUTPUT
-            , buff   => ov_errmsg --エラーメッセージ
-          );
-        END IF;
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+--        -- 戻り値の無効日がTRUNC(NVL(無効日, システム日付+1)) <= TRUNC(システム日付)の場合
+--        ELSIF ( TRUNC( NVL( lt_sec_inv_disable_date, cd_creation_date + 1 ) ) <= TRUNC( cd_creation_date ) ) THEN
+--          -- 保管場所有効チェックエラー
+--          lv_errmsg  := xxccp_common_pkg.get_msg(
+--                            iv_application  => cv_application_short_name
+--                          , iv_name         => cv_subinv_valid_chk_err_msg
+--                          , iv_token_name1  => cv_tkn_subinventory_code
+--                          , iv_token_value1 => gt_sec_inv_nm
+--                          , iv_token_name2  => cv_tkn_den_no
+--                          , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
+--                        );
+--          lv_errbuf  := lv_errmsg;
+--          ov_errmsg  := lv_errmsg;
+--          ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+--          ov_retcode := cv_status_warn;
+--          -- メッセージ出力
+--          FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--            , buff   => ov_errmsg --エラーメッセージ
+--          );
+--        END IF;
+-- == 2010/02/19 V1.6 Deleted END   =============================================================
+-- == 2010/02/19 V1.6 Added START =============================================================
+          WHEN TOO_MANY_ROWS THEN
+            -- 保管場所複数取得チェックエラー
+            lv_errmsg  := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_application_short_name
+                            , iv_name         => cv_msg_xxcoi1_10413
+                            , iv_token_name1  => cv_tkn_base_code
+                            , iv_token_value1 => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
+                            , iv_token_name2  => cv_tkn_store_code
+                            , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code
+                            , iv_token_name3  => cv_tkn_den_no
+                            , iv_token_value3 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
+                          );
+            lv_errbuf  := lv_errmsg;
+            ov_errmsg  := lv_errmsg;
+            ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+            ov_retcode := cv_status_warn;
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(
+                which  => FND_FILE.OUTPUT
+              , buff   => ov_errmsg --エラーメッセージ
+            );
+        END;
+-- == 2010/02/19 V1.6 Added END   =============================================================
 --
       END IF;
 --
@@ -1313,22 +1413,41 @@ AS
     ELSIF ( gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_type = cv_slip_type_20 ) THEN
 --
       -- 確認倉庫コードに紐づく保管場所コードのチェック
-      xxcoi_common_pkg.get_subinventory_info1(
-          iv_base_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code            -- 拠点コード
-        , iv_whse_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).check_warehouse_code -- 確認倉庫コード
-        , ov_sec_inv_nm   => gt_sec_inv_nm_2                                                    -- 保管場所コード
-        , od_disable_date => lt_sec_inv_disable_date                                            -- 無効日
-        , ov_errbuf       => lv_errbuf                                                          -- エラーメッセージ
-        , ov_retcode      => lv_retcode                                                         -- リターン・コード
-        , ov_errmsg       => lv_errmsg                                                          -- ユーザー・エラーメッセージ
-      );
+-- == 2010/02/19 V1.6 Modified START =============================================================
+--      xxcoi_common_pkg.get_subinventory_info1(
+--          iv_base_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code            -- 拠点コード
+--        , iv_whse_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).check_warehouse_code -- 確認倉庫コード
+--        , ov_sec_inv_nm   => gt_sec_inv_nm_2                                                    -- 保管場所コード
+--        , od_disable_date => lt_sec_inv_disable_date                                            -- 無効日
+--        , ov_errbuf       => lv_errbuf                                                          -- エラーメッセージ
+--        , ov_retcode      => lv_retcode                                                         -- リターン・コード
+--        , ov_errmsg       => lv_errmsg                                                          -- ユーザー・エラーメッセージ
+--      );
 --
-      -- 戻り値の保管場所コードがNULLの場合
-      IF ( gt_sec_inv_nm_2 IS NULL ) THEN
-        -- 保管場所存在チェックエラー
+      BEGIN
+        SELECT  msi.secondary_inventory_name
+        INTO    gt_sec_inv_nm_2
+        FROM    mtl_secondary_inventories msi
+        WHERE   msi.attribute7                              = gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
+                                                                                                  -- 拠点コード
+        AND     SUBSTRB(msi.secondary_inventory_name, 6, 2) = gt_inside_info_tab( gn_inside_info_loop_cnt ).check_warehouse_code
+                                                                                                  -- 確認倉庫コード
+        AND     msi.attribute1                             IN ('1', '4')                          -- 倉庫、専門店
+        AND     NVL(TRUNC(msi.disable_date), gd_date + 1)   > gd_date
+        ;
+--
+--      -- 戻り値の保管場所コードがNULLの場合
+--      IF ( gt_sec_inv_nm_2 IS NULL ) THEN
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+-- == 2010/02/19 V1.6 Modified END   =============================================================
+        -- 保管場所存在有効チェックエラー
         lv_errmsg  := xxccp_common_pkg.get_msg(
                           iv_application  => cv_application_short_name
-                        , iv_name         => cv_subinv_found_chk_err_msg
+-- == 2010/02/19 V1.6 Modified START =============================================================
+--                        , iv_name         => cv_subinv_found_chk_err_msg
+                        , iv_name         => cv_msg_xxcoi1_10412
+-- == 2010/02/19 V1.6 Modified END   =============================================================
                         , iv_token_name1  => cv_tkn_base_code
                         , iv_token_value1 => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
                         , iv_token_name2  => cv_tkn_store_code
@@ -1345,54 +1464,100 @@ AS
             which  => FND_FILE.OUTPUT
           , buff   => ov_errmsg --エラーメッセージ
         );
-      -- 戻り値の無効日がTRUNC(NVL(無効日, システム日付+1)) <= TRUNC(システム日付)の場合
-      ELSIF ( TRUNC( NVL( lt_sec_inv_disable_date, cd_creation_date + 1 ) ) <= TRUNC( cd_creation_date ) ) THEN
-        -- 保管場所有効チェックエラー
-        lv_errmsg  := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_application_short_name
-                        , iv_name         => cv_subinv_valid_chk_err_msg
-                        , iv_token_name1  => cv_tkn_subinventory_code
-                        , iv_token_value1 => gt_sec_inv_nm_2
-                        , iv_token_name2  => cv_tkn_den_no
-                        , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
-                      );
-        lv_errbuf  := lv_errmsg;
-        ov_errmsg  := lv_errmsg;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
-        ov_retcode := cv_status_warn;
-        -- メッセージ出力
-        FND_FILE.PUT_LINE(
-            which  => FND_FILE.OUTPUT
-          , buff   => ov_errmsg --エラーメッセージ
-        );
-      END IF;
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+--      -- 戻り値の無効日がTRUNC(NVL(無効日, システム日付+1)) <= TRUNC(システム日付)の場合
+--      ELSIF ( TRUNC( NVL( lt_sec_inv_disable_date, cd_creation_date + 1 ) ) <= TRUNC( cd_creation_date ) ) THEN
+--        -- 保管場所有効チェックエラー
+--        lv_errmsg  := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_application_short_name
+--                        , iv_name         => cv_subinv_valid_chk_err_msg
+--                        , iv_token_name1  => cv_tkn_subinventory_code
+--                        , iv_token_value1 => gt_sec_inv_nm_2
+--                        , iv_token_name2  => cv_tkn_den_no
+--                        , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
+--                      );
+--        lv_errbuf  := lv_errmsg;
+--        ov_errmsg  := lv_errmsg;
+--        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+--        ov_retcode := cv_status_warn;
+--        -- メッセージ出力
+--        FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--          , buff   => ov_errmsg --エラーメッセージ
+--        );
+--      END IF;
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+-- == 2010/02/19 V1.6 Added START =============================================================
+        WHEN TOO_MANY_ROWS THEN
+          -- 保管場所複数取得チェックエラー
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_application_short_name
+                          , iv_name         => cv_msg_xxcoi1_10413
+                          , iv_token_name1  => cv_tkn_base_code
+                          , iv_token_value1 => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
+                          , iv_token_name2  => cv_tkn_store_code
+                          , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).check_warehouse_code
+                          , iv_token_name3  => cv_tkn_den_no
+                          , iv_token_value3 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
+                        );
+          lv_errbuf  := lv_errmsg;
+          ov_errmsg  := lv_errmsg;
+          ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+          ov_retcode := cv_status_warn;
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+              which  => FND_FILE.OUTPUT
+            , buff   => ov_errmsg --エラーメッセージ
+          );
+      END;
+-- == 2010/02/19 V1.6 Added START =============================================================
 --
       -- 保管場所コードがNULLの場合はスキップ
       IF ( gt_sec_inv_nm_2 IS NOT NULL ) THEN
 --
-        -- ローカル変数の初期化(無効日)
-        lt_sec_inv_disable_date := NULL;
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+--        -- ローカル変数の初期化(無効日)
+--        lt_sec_inv_disable_date := NULL;
+-- == 2010/02/19 V1.6 Deleted END   =============================================================
 --
         -- 転送先倉庫コードが2桁の場合
         IF ( LENGTHB( gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code ) = 2 ) THEN
 --
           -- 転送先コードに紐づく保管場所コードのチェック
-          xxcoi_common_pkg.get_subinventory_info1(
-              iv_base_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code           -- 拠点コード
-            , iv_whse_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code -- 転送先倉庫コード
-            , ov_sec_inv_nm   => gt_sec_inv_nm                                                     -- 保管場所コード
-            , od_disable_date => lt_sec_inv_disable_date                                           -- 無効日
-            , ov_errbuf       => lv_errbuf                                                         -- エラーメッセージ
-            , ov_retcode      => lv_retcode                                                        -- リターン・コード
-            , ov_errmsg       => lv_errmsg                                                         -- ユーザー・エラーメッセージ
-          );
+-- == 2010/02/19 V1.6 Modified START =============================================================
+--          xxcoi_common_pkg.get_subinventory_info1(
+--              iv_base_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code           -- 拠点コード
+--            , iv_whse_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code -- 転送先倉庫コード
+--            , ov_sec_inv_nm   => gt_sec_inv_nm                                                     -- 保管場所コード
+--            , od_disable_date => lt_sec_inv_disable_date                                           -- 無効日
+--            , ov_errbuf       => lv_errbuf                                                         -- エラーメッセージ
+--            , ov_retcode      => lv_retcode                                                        -- リターン・コード
+--            , ov_errmsg       => lv_errmsg                                                         -- ユーザー・エラーメッセージ
+--          );
 --
-          -- 戻り値の保管場所コードがNULLの場合
-          IF ( gt_sec_inv_nm IS NULL ) THEN
-            -- 保管場所存在チェックエラー
+          BEGIN
+            SELECT  msi.secondary_inventory_name
+            INTO    gt_sec_inv_nm
+            FROM    mtl_secondary_inventories msi
+            WHERE   msi.attribute7                              = gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
+                                                                                                      -- 拠点コード
+            AND     SUBSTRB(msi.secondary_inventory_name, 6, 2) = gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code
+                                                                                                      -- 転送先倉庫コード
+            AND     msi.attribute1                             IN ('1', '4')                          -- 倉庫、専門店
+            AND     NVL(TRUNC(msi.disable_date), gd_date + 1)   > gd_date
+            ;
+--
+--          -- 戻り値の保管場所コードがNULLの場合
+--          IF ( gt_sec_inv_nm IS NULL ) THEN
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+            -- 保管場所存在有効チェックエラー
             lv_errmsg  := xxccp_common_pkg.get_msg(
                               iv_application  => cv_application_short_name
-                            , iv_name         => cv_subinv_found_chk_err_msg
+-- == 2010/02/19 V1.6 Modified START =============================================================
+--                            , iv_name         => cv_subinv_found_chk_err_msg
+                            , iv_name         => cv_msg_xxcoi1_10412
+-- == 2010/02/19 V1.6 Modified END   =============================================================
                             , iv_token_name1  => cv_tkn_base_code
                             , iv_token_value1 => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
                             , iv_token_name2  => cv_tkn_store_code
@@ -1409,48 +1574,93 @@ AS
                 which  => FND_FILE.OUTPUT
               , buff   => ov_errmsg --エラーメッセージ
             );
-          -- 戻り値の無効日がTRUNC(NVL(無効日, システム日付+1)) <= TRUNC(システム日付)の場合
-          ELSIF ( TRUNC( NVL( lt_sec_inv_disable_date, cd_creation_date + 1 ) ) <= TRUNC( cd_creation_date ) ) THEN
-            -- 保管場所有効チェックエラー
-            lv_errmsg  := xxccp_common_pkg.get_msg(
-                              iv_application  => cv_application_short_name
-                            , iv_name         => cv_subinv_valid_chk_err_msg
-                            , iv_token_name1  => cv_tkn_subinventory_code
-                            , iv_token_value1 => gt_sec_inv_nm
-                            , iv_token_name2  => cv_tkn_den_no
-                            , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
-                          );
-            lv_errbuf  := lv_errmsg;
-            ov_errmsg  := lv_errmsg;
-            ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
-            ov_retcode := cv_status_warn;
-            -- メッセージ出力
-            FND_FILE.PUT_LINE(
-                which  => FND_FILE.OUTPUT
-              , buff   => ov_errmsg --エラーメッセージ
-            );
-          END IF;
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+--          -- 戻り値の無効日がTRUNC(NVL(無効日, システム日付+1)) <= TRUNC(システム日付)の場合
+--          ELSIF ( TRUNC( NVL( lt_sec_inv_disable_date, cd_creation_date + 1 ) ) <= TRUNC( cd_creation_date ) ) THEN
+--            -- 保管場所有効チェックエラー
+--            lv_errmsg  := xxccp_common_pkg.get_msg(
+--                              iv_application  => cv_application_short_name
+--                            , iv_name         => cv_subinv_valid_chk_err_msg
+--                            , iv_token_name1  => cv_tkn_subinventory_code
+--                            , iv_token_value1 => gt_sec_inv_nm
+--                            , iv_token_name2  => cv_tkn_den_no
+--                            , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
+--                          );
+--            lv_errbuf  := lv_errmsg;
+--            ov_errmsg  := lv_errmsg;
+--            ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+--            ov_retcode := cv_status_warn;
+--            -- メッセージ出力
+--            FND_FILE.PUT_LINE(
+--                which  => FND_FILE.OUTPUT
+--              , buff   => ov_errmsg --エラーメッセージ
+--            );
+--          END IF;
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+-- == 2010/02/19 V1.6 Added START =============================================================
+            WHEN TOO_MANY_ROWS THEN
+              -- 保管場所存在有効チェックエラー
+              lv_errmsg  := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_application_short_name
+                              , iv_name         => cv_msg_xxcoi1_10413
+                              , iv_token_name1  => cv_tkn_base_code
+                              , iv_token_value1 => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
+                              , iv_token_name2  => cv_tkn_store_code
+                              , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code
+                              , iv_token_name3  => cv_tkn_den_no
+                              , iv_token_value3 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
+                            );
+              lv_errbuf  := lv_errmsg;
+              ov_errmsg  := lv_errmsg;
+              ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+              ov_retcode := cv_status_warn;
+              -- メッセージ出力
+              FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                , buff   => ov_errmsg --エラーメッセージ
+              );
+          END;
+-- == 2010/02/19 V1.6 Added START =============================================================
 --
         -- 転送先倉庫コードが5桁の場合
         ELSIF ( LENGTHB( gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code ) = 5 ) THEN
 --
           -- 転送先コードに紐づく保管場所コードのチェック
-          xxcoi_common_pkg.get_subinventory_info2(
-              iv_base_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code           -- 拠点コード
-            , iv_shop_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code -- 転送先倉庫コード
-            , ov_sec_inv_nm   => gt_sec_inv_nm                                                     -- 保管場所コード
-            , od_disable_date => lt_sec_inv_disable_date                                           -- 無効日
-            , ov_errbuf       => lv_errbuf                                                         -- エラーメッセージ
-            , ov_retcode      => lv_retcode                                                        -- リターン・コード
-            , ov_errmsg       => lv_errmsg                                                         -- ユーザー・エラーメッセージ
-          );
+-- == 2010/02/19 V1.6 Modified START =============================================================
+--          xxcoi_common_pkg.get_subinventory_info2(
+--              iv_base_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code           -- 拠点コード
+--            , iv_shop_code    => gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code -- 転送先倉庫コード
+--            , ov_sec_inv_nm   => gt_sec_inv_nm                                                     -- 保管場所コード
+--            , od_disable_date => lt_sec_inv_disable_date                                           -- 無効日
+--            , ov_errbuf       => lv_errbuf                                                         -- エラーメッセージ
+--            , ov_retcode      => lv_retcode                                                        -- リターン・コード
+--            , ov_errmsg       => lv_errmsg                                                         -- ユーザー・エラーメッセージ
+--          );
 --
-          -- 戻り値の保管場所コードがNULLの場合
-          IF ( gt_sec_inv_nm IS NULL ) THEN
-            -- 保管場所存在チェックエラー
+          BEGIN
+            SELECT  msi.secondary_inventory_name
+            INTO    gt_sec_inv_nm
+            FROM    mtl_secondary_inventories msi
+            WHERE   msi.attribute7                              = gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
+                                                                                                      -- 拠点コード
+            AND     SUBSTRB(msi.secondary_inventory_name, 6, 5) = gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code
+                                                                                                      -- 転送先倉庫コード
+            AND     msi.attribute1                              = '3'                                 -- 預け先
+            AND     NVL(TRUNC(msi.disable_date), gd_date + 1)   > gd_date
+            ;
+--
+--          -- 戻り値の保管場所コードがNULLの場合
+--          IF ( gt_sec_inv_nm IS NULL ) THEN
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+-- == 2010/02/19 V1.6 Modified END   =============================================================
+            -- 保管場所存在有効チェックエラー
             lv_errmsg  := xxccp_common_pkg.get_msg(
                               iv_application  => cv_application_short_name
-                            , iv_name         => cv_subinv_found_chk_err_msg
+-- == 2010/02/19 V1.6 Modified START =============================================================
+--                            , iv_name         => cv_subinv_found_chk_err_msg
+                            , iv_name         => cv_msg_xxcoi1_10412
+-- == 2010/02/19 V1.6 Modified END   =============================================================
                             , iv_token_name1  => cv_tkn_base_code
                             , iv_token_value1 => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
                             , iv_token_name2  => cv_tkn_store_code
@@ -1467,27 +1677,53 @@ AS
                 which  => FND_FILE.OUTPUT
               , buff   => ov_errmsg --エラーメッセージ
             );
-          -- 戻り値の無効日がTRUNC(NVL(無効日, システム日付+1)) <= TRUNC(システム日付)の場合
-          ELSIF ( TRUNC( NVL( lt_sec_inv_disable_date, cd_creation_date + 1 ) ) <= TRUNC( cd_creation_date ) ) THEN
-            -- 保管場所有効チェックエラー
-            lv_errmsg  := xxccp_common_pkg.get_msg(
-                              iv_application  => cv_application_short_name
-                            , iv_name         => cv_subinv_valid_chk_err_msg
-                            , iv_token_name1  => cv_tkn_subinventory_code
-                            , iv_token_value1 => gt_sec_inv_nm
-                            , iv_token_name2  => cv_tkn_den_no
-                            , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
-                          );
-            lv_errbuf  := lv_errmsg;
-            ov_errmsg  := lv_errmsg;
-            ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
-            ov_retcode := cv_status_warn;
-            -- メッセージ出力
-            FND_FILE.PUT_LINE(
-                which  => FND_FILE.OUTPUT
-              , buff   => ov_errmsg --エラーメッセージ
-            );
-          END IF;
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+--          -- 戻り値の無効日がTRUNC(NVL(無効日, システム日付+1)) <= TRUNC(システム日付)の場合
+--          ELSIF ( TRUNC( NVL( lt_sec_inv_disable_date, cd_creation_date + 1 ) ) <= TRUNC( cd_creation_date ) ) THEN
+--            -- 保管場所有効チェックエラー
+--            lv_errmsg  := xxccp_common_pkg.get_msg(
+--                              iv_application  => cv_application_short_name
+--                            , iv_name         => cv_subinv_valid_chk_err_msg
+--                            , iv_token_name1  => cv_tkn_subinventory_code
+--                            , iv_token_value1 => gt_sec_inv_nm
+--                            , iv_token_name2  => cv_tkn_den_no
+--                            , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
+--                          );
+--            lv_errbuf  := lv_errmsg;
+--            ov_errmsg  := lv_errmsg;
+--            ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+--            ov_retcode := cv_status_warn;
+--            -- メッセージ出力
+--            FND_FILE.PUT_LINE(
+--                which  => FND_FILE.OUTPUT
+--              , buff   => ov_errmsg --エラーメッセージ
+--            );
+--          END IF;
+-- == 2010/02/19 V1.6 Deleted START =============================================================
+-- == 2010/02/19 V1.6 Added START =============================================================
+            WHEN TOO_MANY_ROWS THEN
+              -- 保管場所複数取得チェックエラー
+              lv_errmsg  := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_application_short_name
+                              , iv_name         => cv_msg_xxcoi1_10413
+                              , iv_token_name1  => cv_tkn_base_code
+                              , iv_token_value1 => gt_inside_info_tab( gn_inside_info_loop_cnt ).base_code
+                              , iv_token_name2  => cv_tkn_store_code
+                              , iv_token_value2 => gt_inside_info_tab( gn_inside_info_loop_cnt ).ship_warehouse_code
+                              , iv_token_name3  => cv_tkn_den_no
+                              , iv_token_value3 => gt_inside_info_tab( gn_inside_info_loop_cnt ).slip_num
+                            );
+              lv_errbuf  := lv_errmsg;
+              ov_errmsg  := lv_errmsg;
+              ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+              ov_retcode := cv_status_warn;
+              -- メッセージ出力
+              FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                , buff   => ov_errmsg --エラーメッセージ
+              );
+          END;
+-- == 2010/02/19 V1.6 Added END   =============================================================
 --
         END IF;
 --
