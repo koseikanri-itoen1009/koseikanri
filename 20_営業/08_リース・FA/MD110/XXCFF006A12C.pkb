@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF006A12C(body)
  * Description      : リース契約情報連携
  * MD.050           : リース契約情報連携 MD050_CFF_006_A12
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/22    1.0   SCS奥河          main新規作成
  *  2009/03/04    1.1   SCS松中          [障害CFF_069] 現契約リース料(税抜)不正出力不具合対応
+ *  2009/05/21    1.2   SCS礒崎          [障害T1_1054] 不要なリース契約情報を作成してしまう。
  *
  *****************************************************************************************/
 --
@@ -146,6 +147,9 @@ AS
     FROM     xxcff_object_headers   xoh                              --リース物件
             ,xxcff_contract_headers xch1                             --リース契約リース契約(現)
             ,xxcff_contract_lines   xcl1                             --リース契約明細リース契約(現)
+-- T1_1054 2009/05/21 ADD START --
+            ,csi_item_instances     cii                              --インストールベースマスタ
+-- T1_1054 2009/05/21 ADD END   --
             ,(
              SELECT xch.contract_header_id
                     ,xcl.object_header_id
@@ -167,6 +171,10 @@ AS
     AND      (xcl1.last_update_date > xcl1.vd_if_date OR xcl1.vd_if_date IS NULL)
     AND      (i_object_code_from IS NULL OR xoh.object_code >= i_object_code_from)
     AND      (i_object_code_to   IS NULL OR xoh.object_code <= i_object_code_to  )
+-- T1_1054 2009/05/21 ADD START --
+    AND      xoh.object_code     =  cii.external_reference
+    AND      (cii.attribute5  IS NULL OR cii.attribute5  = 'N')
+-- T1_1054 2009/05/21 ADD END   --
     ORDER BY  xoh.object_code
     ;
     TYPE g_lease_ttype IS TABLE OF get_lease_cur%ROWTYPE INDEX BY PLS_INTEGER;
