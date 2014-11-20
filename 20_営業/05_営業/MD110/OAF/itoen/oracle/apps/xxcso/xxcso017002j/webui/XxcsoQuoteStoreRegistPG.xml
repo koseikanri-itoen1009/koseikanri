@@ -422,7 +422,7 @@ HISTORY
                                     <oa:sortableHeader id="ThisTimeNetPriceColHdr" cellNoWrapFormat="true" use="/itoen/oracle/apps/xxcso/xxcso017002j/attributesets/XxcsoQuoteStoreRegistAttrSets/ThisTimeNetPriceColHdr"/>
                                  </ui:columnHeader>
                                  <ui:contents>
-                                    <oa:messageTextInput id="ThisTimeNetPrice" dataType="VARCHAR2" viewAttr="ThisTimeNetPrice" maximumLength="9" columns="10">
+                                    <oa:messageTextInput id="ThisTimeNetPrice" dataType="VARCHAR2" viewAttr="ThisTimeNetPrice" maximumLength="9" columns="10" readOnly="${oa.XxcsoQuoteLinesStoreFullVO1.ThisTimeDelivReadOnly}">
                                        <ui:primaryClientAction>
                                           <ui:firePartialAction event="NetPriceChangeEvent">
                                              <ui:parameters>
@@ -487,6 +487,8 @@ HISTORY
                                  </ui:contents>
                               </oa:column>
                               <oa:formValue id="InventoryItemId" dataType="NUMBER" prompt="InventoryItemId" viewAttr="InventoryItemId"/>
+                              <oa:formValue id="BowlIncNum" dataType="NUMBER" prompt="BowlIncNum" viewAttr="BowlIncNum"/>
+                              <oa:formValue id="CaseIncNum" dataType="NUMBER" prompt="CaseIncNum" viewAttr="CaseIncNum"/>
                               <oa:formValue id="BusinessPrice" dataType="NUMBER" prompt="BusinessPrice" viewAttr="BusinessPrice"/>
                            </ui:contents>
                            <ui:tableSelection>

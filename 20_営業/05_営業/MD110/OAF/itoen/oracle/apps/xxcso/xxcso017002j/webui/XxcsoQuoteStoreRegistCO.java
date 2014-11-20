@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteStoreRegistCO
 * 概要説明   : 帳合問屋用見積入力画面コントローラクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2009-01-07 1.0  SCS及川領  新規作成
+* 2009-01-07 1.0  SCS及川領    新規作成
+* 2009-07-23 1.1  SCS阿部大輔 【0000806】マージン額／マージン率の計算対象変更
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.webui;
@@ -108,6 +109,11 @@ public class XxcsoQuoteStoreRegistCO extends OAControllerImpl
 
     // ポップリスト初期化
     am.invokeMethod("initPoplist");
+
+/* 20090723_abe_0000806 START*/
+    // 問屋明細行表示属性プロパティ設定
+    am.invokeMethod("setLineProperty");
+/* 20090723_abe_0000806 END*/
 
     //Tableリージョンの表示行数設定関数    
     OAException oaeMsg
@@ -463,6 +469,10 @@ public class XxcsoQuoteStoreRegistCO extends OAControllerImpl
 
     // 販売用見積情報設定
     am.invokeMethod("setAttributeProperty");
+/* 20090723_abe_0000806 START*/
+    // 問屋明細行表示属性プロパティ設定
+    am.invokeMethod("setLineProperty");
+/* 20090723_abe_0000806 END*/
 
     XxcsoUtils.debug(pageContext, "[END]");
   }
