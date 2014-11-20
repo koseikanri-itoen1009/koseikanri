@@ -1,8 +1,8 @@
 <?xml version = '1.0' encoding = 'UTF-8'?>
 <!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
-<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" blockSize="20" viewName="XxpoOrderDetailsTabVO1">
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" blockSize="20" viewName="XxpoOrderDetailsTabVO1" width="80%">
    <ui:contents>
-      <oa:column id="column1">
+      <oa:column id="column1" columnDataFormat="numberFormat" width="5%">
          <ui:columnHeader>
             <oa:sortableHeader id="LineNumberHdr" prompt="No"/>
          </ui:columnHeader>
@@ -59,7 +59,7 @@
             <oa:messageStyledText id="UnitName" shortDesc="単位" viewAttr="UnitName"/>
          </ui:contents>
       </oa:column>
-      <oa:column id="column7" columnDataFormat="iconButtonFormat">
+      <oa:column id="column7" columnDataFormat="iconButtonFormat" width="5%">
          <ui:columnHeader>
             <oa:sortableHeader id="DecisionAmountHdr" prompt="数確"/>
          </ui:columnHeader>
@@ -67,7 +67,7 @@
             <oa:messageCheckBox id="DecisionAmount" shortDesc="数量確定" viewAttr="DecisionAmountFlag" readOnly="true"/>
          </ui:contents>
       </oa:column>
-      <oa:column id="column8" columnDataFormat="iconButtonFormat">
+      <oa:column id="column8" columnDataFormat="iconButtonFormat" width="5%">
          <ui:columnHeader>
             <oa:sortableHeader id="DecisionMoneyHDr" prompt="金確"/>
          </ui:columnHeader>

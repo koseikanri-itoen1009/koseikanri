@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptAMImpl
 * 概要説明   : 受入実績作成:受入実績作成アプリケーションモジュール
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-04 1.0  吉元強樹     新規作成
 * 2008-05-23 1.1  吉元強樹     内部課題#42、結合不具合ログ#1,2を対応
 * 2008-06-11 1.2  吉元強樹     ST不具合ログ#72を対応
+* 2008-06-26 1.3  北寒寺正夫   結合テスト指摘No02対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.server;
@@ -44,7 +45,7 @@ import itoen.oracle.apps.xxpo.util.XxpoUtility;
 /***************************************************************************
  * 受入実績作成:受入実績作成アプリケーションモジュールです。
  * @author  SCS 吉元 強樹
- * @version 1.0
+ * @version 1.3
  ***************************************************************************
  */
 public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -911,6 +912,9 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
 
       orderDetailsTabVO.next();
     }
+    // 20080627 Add Start
+    orderDetailsTabVO.first();
+    // 20080627 Add End
   } // readOnlyChangedReceiptDetails2
 
   /***************************************************************************
@@ -1670,11 +1674,14 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
 	          // *   paramsRet(0) : 有効日引当可能数 * //
 	          // *   paramsRet(1) : 総引当可能数     * //
 	          // ************************************* //
+// 20080630 yoshimoto mod Start
 	          HashMap paramsRet = XxpoUtility.getReservedQuantity(
 	                                            getOADBTransaction(),
 	                                            opmItemId,            // OPM品目ID
 	                                            locationCode,         // 納入先コード
-	                                            lotId);               // ロットID
+	                                            lotId,                // ロットID
+                                              "");
+// 20080630 yoshimoto mod End
 	
 	          // 発注数量を取得
 	          String orderAmount = (String)orderDetailsTabVORow.getAttribute("OrderAmount");
@@ -3242,12 +3249,14 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     // *   paramsRet(0) : 有効日引当可能数 * //
     // *   paramsRet(1) : 総引当可能数     * //
     // ************************************* //
+// 20080630 yoshimoto mod Start
     HashMap paramsRet = XxpoUtility.getReservedQuantity(
                                       getOADBTransaction(),
                                       opmItemId,            // OPM品目ID
                                       locationCode,         // 納入先コード
-                                      lotId);               // ロットID
-
+                                      lotId,               // ロットID
+                                      "");
+// 20080630 yoshimoto mod End
 
     // ************************************* //
     // * (相手先倉庫)引当可能数量を取得    * //
@@ -3256,19 +3265,26 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     // ************************************* //
     HashMap paramsRet2 = new HashMap();
 
+// 20080627 Upd Start
     // 生産実績処理タイプを取得
-    String productResultType = (String)orderDetailsVORow.getAttribute("ProductResultType");
-
+//    String productResultType = (String)orderDetailsVORow.getAttribute("ProductResultType");
     // 生産実績処理タイプが相手先在庫(1)の場合
-    if (XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType))
-    {
+//    if (XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType))
+    // 発注区分を取得
+    String orderDivision = (String)orderDetailsVORow.getAttribute("OrderDivision");
 
+    // 発注区分が相手先在庫である場合
+    if (XxpoConstants.PO_TYPE_3.equals(orderDivision))
+    {
+// 20080627 End
+// 20080630 yoshimoto mod Start
       paramsRet2 = XxpoUtility.getReservedQuantity(
                                  getOADBTransaction(),
                                  opmItemId,            // OPM品目ID
                                  vendorStockWhse,      // 相手先在庫入庫先
-                                 lotId);               // ロットID
-
+                                 lotId,                // ロットID
+                                 XxpoConstants.PO_TYPE_3);       // 発注区分
+// 20080630 yoshimoto mod End
     }
 
     // swが初回受入処理の場合
@@ -3451,13 +3467,20 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     // ************************************ //
     // * 処理4:受入増数計上チェック       * //
     // ************************************ //
+// 20080627 Upd Start
     // 生産実績処理タイプを取得
-    String productResultType = (String)orderDetailsVORow.getAttribute("ProductResultType");
+//    String productResultType = (String)orderDetailsVORow.getAttribute("ProductResultType");
     
     // 受入数量が発注数量を上回る且つ、生産実績処理タイプが相手先在庫(1)の場合
+//    if ((XxcmnUtility.chkCompareNumeric(1, Double.toString(rcvRtnQtyTotal), sOrderAmount))
+//      && (XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType)))
+    // 発注区分を取得
+    String orderDivision = (String)orderDetailsVORow.getAttribute("OrderDivision");
+
     if ((XxcmnUtility.chkCompareNumeric(1, Double.toString(rcvRtnQtyTotal), sOrderAmount))
-      && (XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType)))
+      && (XxpoConstants.PO_TYPE_3.equals(orderDivision)))
     {
+// 20080627 Upd End
       // 増数数量 = (画面.総計)受入数量 - (総計)発注数量
       double masAmount = rcvRtnQtyTotal - Double.parseDouble(sOrderAmount);
 
@@ -3610,13 +3633,20 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     // ************************************ //
     // * 処理6-2:増数訂正チェック         * //
     // ************************************ //
+// 20080627 Upd Start
     // 生産実績処理タイプを取得
-    String productResultType = (String)orderDetailsVORow.getAttribute("ProductResultType");
+//    String productResultType = (String)orderDetailsVORow.getAttribute("ProductResultType");
 
     // 受入数量が訂正前受入数量を上回る且つ、生産実績処理タイプが相手先在庫(1)の場合
+//    if ((XxcmnUtility.chkCompareNumeric(1, bRcvRtnQtyTotal, bQuantityTotal))
+//      && (XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType)))
+    // 発注区分を取得
+    String orderDivision = (String)orderDetailsVORow.getAttribute("OrderDivision");
+
     if ((XxcmnUtility.chkCompareNumeric(1, bRcvRtnQtyTotal, bQuantityTotal))
-      && (XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType)))
+      && (XxpoConstants.PO_TYPE_3.equals(orderDivision)))
     {
+// 20080627 Upd End
       // 増数数量 = (画面.総計)受入数量 - (総計)訂正前受入数量
       double masAmount = rcvRtnQtyTotal- quantityTotal;
 

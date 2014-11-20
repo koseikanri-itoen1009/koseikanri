@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptMakeCO
 * 概要説明   : 受入実績作成:発注受入入力コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-04 1.0  吉元強樹     新規作成
+* 2008-06-27 1.1  北寒寺正夫   適用ボタン押下時の処理を修正
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.webui;
@@ -34,7 +35,7 @@ import oracle.apps.fnd.common.MessageToken;
 /***************************************************************************
  * 受入実績作成:発注受入入力コントローラです。
  * @author  SCS 吉元 強樹
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoOrderReceiptMakeCO extends XxcmnOAControllerImpl
@@ -173,7 +174,12 @@ public class XxpoOrderReceiptMakeCO extends XxcmnOAControllerImpl
       {
 
         // 処理は行わない。画面を再表示
+// 20080627 Add Start
+      } else if (pageContext.getParameter("ERROR") != null) 
+      {
 
+        pageContext.removeParameter("ERROR");
+// 20080627 Add End
       // ********************************* //
       // *      前画面からの遷移時       * //
       // ********************************* //
@@ -283,9 +289,25 @@ public class XxpoOrderReceiptMakeCO extends XxcmnOAControllerImpl
         if (!rowCount.equals(XxcmnConstants.STRING_ZERO)) 
         {
 
+// 20080627 Upd Start
           // 登録・更新前チェック処理
-          HashMap messageCode = (HashMap)am.invokeMethod("dataCheck2");
+          HashMap messageCode = null;
+          try {
+            messageCode = (HashMap)am.invokeMethod("dataCheck2");
+          } catch(OAException oe)
+          {
 
+            HashMap params = new HashMap();
+            params.put("ERROR", "ERROR");
+
+            pageContext.putDialogMessage(oe);
+
+            pageContext.forwardImmediatelyToCurrentPage(
+              params,
+              true,
+              OAWebBeanConstants.ADD_BREAD_CRUMB_NO);
+          }
+// 20080627 Upd End
           // 引当可能数において警告があった場合、確認ダイアログを生成
           if (messageCode.size() > 0)
           {

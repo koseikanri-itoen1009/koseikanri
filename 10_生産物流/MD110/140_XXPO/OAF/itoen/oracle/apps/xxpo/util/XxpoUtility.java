@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-06-17 1.2  二瓶大輔     ST不具合ログ#126を対応
 * 2008-06-18 1.3  伊藤ひとみ   結合バグ 発注明細IFの単価、仕入定価を
 *                              仕入/標準単価ヘッダの内訳合計に変更。
+* 2008-06-30 1.4  吉元強樹     ST不具合ログ#41を対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -32,7 +33,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -4719,6 +4720,7 @@ public class XxpoUtility
    * @param itemId OPM品目ID
    * @param locationCode 納入先コード
    * @param lotId ロットID
+   * @param orderDivision 発注区分
    * @return HashMap
    * @throws OAException OA例外
    ****************************************************************************/
@@ -4726,7 +4728,8 @@ public class XxpoUtility
     OADBTransaction trans,
     Number itemId,
     String locationCode,
-    Number lotId
+    Number lotId,
+    String orderDivision
   ) throws OAException
   {
 
@@ -4744,11 +4747,22 @@ public class XxpoUtility
     sb.append("   ln_location_id          NUMBER;                              ");   // OPM保管倉庫ID
     sb.append(" BEGIN ");
     
-    // OPM保管倉庫IDを取得
-    sb.append("   SELECT xcilv.location_id                                     ");
-    sb.append("   INTO  ln_location_id                                         ");
-    sb.append("   FROM xxcmn_item_locations_v xcilv                            ");
-    sb.append("   WHERE xcilv.segment1 = :1;                                   ");     // INパラメータ1(納入先コード)
+// 20080630 yoshimoto add Start
+    if (XxpoConstants.PO_TYPE_3.equals(orderDivision)) 
+    {
+      sb.append("   SELECT xcilv.inventory_location_id                           ");
+      sb.append("   INTO  ln_location_id                                         ");
+      sb.append("   FROM xxcmn_item_locations_v xcilv                            ");
+      sb.append("   WHERE xcilv.segment1 = :1;                                   ");     // INパラメータ1(相手先在庫入庫先コード)
+    } else 
+    {
+// 20080630 yoshimoto add Start
+      // OPM保管倉庫IDを取得
+      sb.append("   SELECT xcilv.location_id                                     ");
+      sb.append("   INTO  ln_location_id                                         ");
+      sb.append("   FROM xxcmn_item_locations_v xcilv                            ");
+      sb.append("   WHERE xcilv.segment1 = :1;                                   ");     // INパラメータ1(納入先コード)
+    }
 
     // 有効日ベース引当可能数を取得
     sb.append("   :2 := xxcmn_common_pkg.get_can_enc_in_time_qty(              ");     // OUTパラメータ4(有効日ベース引当可能数)
