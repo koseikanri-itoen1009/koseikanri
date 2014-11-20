@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : 売上実績振替情報の作成（振替割合） MD050_COK_008_A06
- * Version          : 2.2
+ * Version          : 2.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -54,7 +54,8 @@ AS
  *  2009/09/28    2.1   K.Yamaguchi      [E_T3_00590]振替割合が100％でない場合の対応
  *                                                   納品数量がゼロの場合の対応
  *  2009/10/15    2.2   S.Moriyama       [E_T3_00632]売上実績振替情報登録時に売上振替元顧客コードを設定するように変更
- *
+ *  2009/11/27    2.3   K.Yamaguchi      [E_本稼動_00141]振り戻しデータの数量に-1を掛けるように修正
+ *  
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -1413,13 +1414,19 @@ AS
       , get_xsti_lock_rec.h_c                          -- h_c
       , get_xsti_lock_rec.column_no                    -- column_no
       , get_xsti_lock_rec.item_code                    -- item_code
-      , get_xsti_lock_rec.qty                          -- qty
+-- 2009/11/27 Ver.2.3 [障害E_本稼動_00141] SCS K.Yamaguchi REPAIR START
+--      , get_xsti_lock_rec.qty                          -- qty
+      , -1 * get_xsti_lock_rec.qty                          -- qty
+-- 2009/11/27 Ver.2.3 [障害E_本稼動_00141] SCS K.Yamaguchi REPAIR END
       , get_xsti_lock_rec.unit_type                    -- unit_type
       , get_xsti_lock_rec.delivery_unit_price          -- delivery_unit_price
       , -1 * get_xsti_lock_rec.selling_amt             -- selling_amt
       , -1 * get_xsti_lock_rec.selling_amt_no_tax      -- selling_amt_no_tax
       , -1 * get_xsti_lock_rec.trading_cost            -- trading_cost
-      , get_xsti_lock_rec.selling_cost_amt             -- selling_cost_amt
+-- 2009/11/27 Ver.2.3 [障害E_本稼動_00141] SCS K.Yamaguchi REPAIR START
+--      , get_xsti_lock_rec.selling_cost_amt             -- selling_cost_amt
+      , -1 * get_xsti_lock_rec.selling_cost_amt             -- selling_cost_amt
+-- 2009/11/27 Ver.2.3 [障害E_本稼動_00141] SCS K.Yamaguchi REPAIR END
       , get_xsti_lock_rec.tax_code                     -- tax_code
       , get_xsti_lock_rec.tax_rate                     -- tax_rate
       , get_xsti_lock_rec.delivery_base_code           -- delivery_base_code
