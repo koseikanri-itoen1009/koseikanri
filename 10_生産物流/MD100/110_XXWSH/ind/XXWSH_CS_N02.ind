@@ -1,0 +1,1 @@
+CREATE INDEX xxwsh.xxwsh_cs_n02 ON xxwsh.xxwsh_carriers_schedule( delivery_no,default_line_number ) TABLESPACE xxidx;

@@ -1,0 +1,1 @@
+CREATE INDEX xxinv.xxinv_sir_n01 ON xxinv.xxinv_stc_inventory_result( lot_id,item_code ) TABLESPACE xxidx;

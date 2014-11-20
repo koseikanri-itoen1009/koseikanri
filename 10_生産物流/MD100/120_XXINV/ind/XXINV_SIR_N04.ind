@@ -1,0 +1,1 @@
+CREATE INDEX xxinv.xxinv_sir_n04 ON xxinv.xxinv_stc_inventory_result( item_code,invent_whse_code,maker_date,limit_date ) TABLESPACE xxidx;

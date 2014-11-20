@@ -1,0 +1,1 @@
+CREATE INDEX xxwsh.xxwsh_oh_n18 ON xxwsh.xxwsh_order_headers_all( input_sales_branch ) TABLESPACE xxidx;

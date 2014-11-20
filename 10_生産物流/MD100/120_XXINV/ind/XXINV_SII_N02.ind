@@ -1,0 +1,1 @@
+CREATE INDEX xxinv.xxinv_sii_n02 ON xxinv.xxinv_stc_inventory_interface( creation_date ) TABLESPACE xxidx;

@@ -1,1 +1,0 @@
-CREATE INDEX xxcmn.xxcmn_imb_n02 ON xxcmn.xxcmn_item_mst_b(item_id) TABLESPACE xxidx;
