@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2011/03/07    1.21  S.Ochiai         [E_本稼動_06590]オーダー№追加連携対応
  *  2011/07/07    1.22  S.Niki           [E_本稼動_07848]販売実績明細の集約条件修正
  *  2012/03/30    1.23  Y.Horikawa       [E_本稼動_09039]パフォーマンス改善対応
+ *  2013/04/12    1.24  T.Ishiwata       [E_本稼動_10660]入金データ更新項目追加対応
  *
  *****************************************************************************************/
 --
@@ -2205,6 +2206,12 @@ AS
              ,NULL                dlv_invoice_class_code              -- 伝票区分コード
              ,NULL                dlv_visit_time                      -- 訪問日時
              ,NULL                dlv_dlv_date                        -- 納品日
+-- 2013/04/12 Ver.1.24 Add Start
+             ,NULL                performance_by_code                 -- 成績者コード
+             ,NULL                performance_by_name                 -- 成績者名
+             ,NULL                consumption_tax_class_mst           -- 消費税区分（マスタ)
+             ,NULL                consum_tax_calss_entered            -- 消費税区分（入力)
+-- 2013/04/12 Ver.1.24 Add End
       FROM    xxcos_rep_dlv_chk_list    xrdcl           -- 納品書チェックリスト帳票ワークテーブル
              ,fnd_lookup_values         flv             -- ルックアップ
       WHERE  xrdcl.request_id      = cn_request_id
@@ -2532,10 +2539,22 @@ AS
                 ,xrdcl.input_class                              -- 入力区分
                 ,xrdcl.invoice_class                            -- 伝票区分
                 ,xrdcl.invoice_classification_code              -- 伝票分類コード
+-- 2013/04/12 Ver.1.24 Add Start
+                ,xrdcl.performance_by_code                      -- 成績者コード
+                ,xrdcl.performance_by_name                      -- 成績者名
+                ,xrdcl.consumption_tax_class_mst                -- 消費税区分（マスタ)
+                ,xrdcl.consum_tax_calss_entered                 -- 消費税区分（入力)
+-- 2013/04/12 Ver.1.24 Add End
         INTO     gt_payment_tbl(ln_idx).dlv_card_sale_class
                 ,gt_payment_tbl(ln_idx).dlv_input_class
                 ,gt_payment_tbl(ln_idx).dlv_invoice_class
                 ,gt_payment_tbl(ln_idx).dlv_invoice_class_code
+-- 2013/04/12 Ver.1.24 Add Start
+                ,gt_payment_tbl(ln_idx).performance_by_code
+                ,gt_payment_tbl(ln_idx).performance_by_name
+                ,gt_payment_tbl(ln_idx).consumption_tax_class_mst
+                ,gt_payment_tbl(ln_idx).consum_tax_calss_entered
+-- 2013/04/12 Ver.1.24 Add End
         FROM   xxcos_rep_dlv_chk_list    xrdcl           -- 納品書チェックリスト帳票ワークテーブル
         WHERE  xrdcl.request_id      = cn_request_id                            -- 要求ID
         AND    xrdcl.target_date     = gt_payment_tbl(ln_idx).target_date       -- 対象日付
@@ -2561,6 +2580,12 @@ AS
                  ,xrdcl.invoice_classification_code  = gt_payment_tbl(ln_idx).dlv_invoice_class_code             -- 伝票分類コード
                  ,xrdcl.visit_time                   = gt_payment_tbl(ln_idx).dlv_visit_time                     -- 訪問日時
                  ,xrdcl.dlv_date                     = gt_payment_tbl(ln_idx).dlv_dlv_date                       -- 納品日
+-- 2013/04/12 Ver.1.24 Add Start
+                 ,xrdcl.performance_by_code          = gt_payment_tbl(ln_idx).performance_by_code                -- 成績者コード
+                 ,xrdcl.performance_by_name          = gt_payment_tbl(ln_idx).performance_by_name                -- 成績者名
+                 ,xrdcl.consumption_tax_class_mst    = gt_payment_tbl(ln_idx).consumption_tax_class_mst          -- 消費税区分（マスタ)
+                 ,xrdcl.consum_tax_calss_entered     = gt_payment_tbl(ln_idx).consum_tax_calss_entered           -- 消費税区分（入力)
+-- 2013/04/12 Ver.1.24 Add End
           WHERE  xrdcl.rowid                         = gt_payment_tbl(ln_idx).row_id
           ;
         EXCEPTION
