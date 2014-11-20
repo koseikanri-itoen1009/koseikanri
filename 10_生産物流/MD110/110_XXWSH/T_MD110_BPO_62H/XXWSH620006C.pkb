@@ -7,7 +7,7 @@ AS
  * Description      : 出庫調整表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫調整表 T_MD070_BPO_62H
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *                                       禁則文字「'」「"」「<」「>」「＆」対応
  *  2008/07/10    1.4   Naoki Fukuda     移動の換算単位不具合対応
  *  2008/07/16    1.5   Kazuo Kumamoto   結合テスト障害対応(配送No未設定時は依頼No毎に運送業者情報を出力)
+ *  2008/10/22    1.6   Yuko  Kawano     課題#32対応(指示なし実績情報を対象外とする)
  *
  *****************************************************************************************/
 --
@@ -134,6 +135,9 @@ AS
   -- 移動ステータス
   gc_move_status_ordered     CONSTANT  VARCHAR2(2)  := '02' ;       -- 依頼済
   gc_move_status_not         CONSTANT  VARCHAR2(2)  := '99' ;       -- 取消
+-- 2008/10/22 Y.Kawano Add Start
+  gc_class_y                 CONSTANT  VARCHAR2(2)  := 'Y' ;        -- 指示なし実績
+-- 2008/10/22 Y.Kawano Add End
   ------------------------------
   -- クイックコード関連
   ------------------------------
@@ -903,6 +907,10 @@ AS
              xmrih.mov_type   <>  gc_mov_type_not_ship   --移動タイプ:積送なし
         AND  xmrih.status     >=  gc_move_status_ordered --ステータス:依頼済
         AND  xmrih.status     <>  gc_move_status_not     --ステータス:取消
+-- 2008/10/22 Y.Kawano Add Start
+        AND ((xmrih.no_instr_actual_class IS NULL)
+         OR  (xmrih.no_instr_actual_class <>  gc_class_y)) -- 指示なし実績は対象外
+-- 2008/10/22 Y.Kawano Add End
         -- 03:配車配送計画(アドオン)
         AND  xmrih.delivery_no      =  xcs.delivery_no(+)
         -- 04:OPM保管場所情報(出庫元)

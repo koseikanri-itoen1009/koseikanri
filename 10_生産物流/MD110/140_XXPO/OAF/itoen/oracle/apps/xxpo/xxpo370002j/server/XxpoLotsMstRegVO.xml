@@ -38,8 +38,12 @@ SELECT ilm.attribute8    AS attribute8
       ,ilm.last_update_login AS last_update_login
       ,ilm.attribute1 AS pre_attribute1
       ,TO_CHAR(ilm.last_update_date, 'YYYY/MM/DD HH24:MI:SS') AS ilmlast_update_date
-FROM xxcmn_vendors_v xvdr
-  ,xxcmn_item_mst_v ximv
+-- 2008-10-23 H.Itou Mod Start T_S_530
+--FROM xxcmn_vendors_v xvdr
+--  ,xxcmn_item_mst_v ximv
+FROM xxcmn_vendors2_v  xvdr
+    ,xxcmn_item_mst2_v ximv
+-- 2008-10-23 H.Itou Mod End
   ,ic_lots_mst ilm
   ,(SELECT clvv.lookup_code
          , clvv.description 
@@ -48,6 +52,12 @@ FROM xxcmn_vendors_v xvdr
 WHERE ilm.attribute8    = xvdr.segment1
 AND   ximv.item_id      = ilm.item_id
 AND   lu.lookup_code(+) = ilm.attribute12
+-- 2008/10/23 H.Itou Add Start T_S_530
+AND   ximv.start_date_active <= TRUNC( ilm.creation_date )
+AND   ximv.end_date_active   >= TRUNC( ilm.creation_date )
+AND   xvdr.start_date_active <= TRUNC( ilm.creation_date )
+AND   xvdr.end_date_active   >= TRUNC( ilm.creation_date )
+-- 2008/10/23 H.Itou Add End
 AND   ilm.lot_id        = :1
    ]]></SQLQuery>
    <DesignTime>

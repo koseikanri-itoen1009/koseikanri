@@ -272,6 +272,18 @@
                                           <oa:formValue id="HiddenQtInspectReqNo" viewName="XxwipQtInspectionSummaryVO1" viewAttr="QtInspectReqNo" prompt="" dataType="NUMBER"/>
                                        </ui:contents>
                                     </oa:cellFormat>
+                                    <oa:cellFormat id="JudgeTimesPromptRN" width="60" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="JudgeTimesPrompt1" prompt="判定回数" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="JudgeTimesCllFmtRN" styleClass="OraBGAccentLight" width="160" height="25" vAlign="middle">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="JudgeTimes" viewName="XxwipQtInspectionSummaryVO1" viewAttr="JudgeTimes" styleClass="LegendText" readOnly="true" shortDesc="判定回数" maximumLength="240"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="DummyCellRN01" width="60" height="25" vAlign="middle"/>
+                                    <oa:cellFormat id="DummyCellRN02" width="160" height="25" vAlign="middle"/>
                                  </ui:contents>
                               </oa:rowLayout>
                               <oa:rowLayout id="DummyRwLytRN3">

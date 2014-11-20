@@ -7,7 +7,7 @@ AS
  * Description      : 入庫依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 入庫依頼表 T_MD070_BPO_62D
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/08/04    1.7   Takao Ohashi     結合出荷テスト(出荷追加_19)修正
  *  2008/10/06    1.8   Yuko Kawano      統合指摘#242修正(出庫日FROMを任意に変更)
  *                                       T_S_501(ソート順の変更),統合指摘#341(配送No未設定時タグ修正)
+ *  2008/10/20    1.9   Yuko Kawano      課題#32,変更#168対応
  *
  *****************************************************************************************/
 --
@@ -136,6 +137,10 @@ AS
   gv_item_cd_sizai           CONSTANT  VARCHAR2(1)  := '2' ;        -- 品目区分:資材
   gv_item_cd_hanseihin       CONSTANT  VARCHAR2(1)  := '4' ;        -- 品目区分:半製品
 -- add end   1.8
+-- 2008/10/20 Y.Kawano Add Start
+  -- 区分
+  gc_class_y                 CONSTANT  VARCHAR2(1)  := 'Y' ;        -- 'Y'
+-- 2008/10/20 Y.Kawano Add End
   ------------------------------
   -- プロファイル関連
   ------------------------------
@@ -575,13 +580,21 @@ AS
                   WHEN ( xicv4.prod_class_code = gc_prod_cd_drink
                      AND xicv4.item_class_code = gc_item_cd_prdct
                      AND ximv.conv_unit IS NOT NULL
-                  ) THEN (xmld.actual_quantity / TO_NUMBER(
-                                                   CASE WHEN ximv.num_of_cases > 0 
-                                                          THEN  ximv.num_of_cases
-                                                        ELSE TO_CHAR(1)
-                                                   END)
-                         )
-                  ELSE xmld.actual_quantity
+-- 2008/10/20 Y.Kawano Mod Start
+                     AND ximv.num_of_cases > 0
+                     )
+                 THEN
+                   ( xmld.actual_quantity / TO_NUMBER ( ximv.num_of_cases ) )
+                 ELSE
+                   xmld.actual_quantity
+--                  ) THEN (xmld.actual_quantity / TO_NUMBER(
+--                                                   CASE WHEN ximv.num_of_cases > 0 
+--                                                          THEN  ximv.num_of_cases
+--                                                        ELSE TO_CHAR(1)
+--                                                   END)
+--                         )
+--                   ELSE xmld.actual_quantity
+-- 2008/10/20 Y.Kawano Mod End
                  END
                )
                -- 引当されていない場合
@@ -590,13 +603,21 @@ AS
                   WHEN ( xicv4.prod_class_code = gc_prod_cd_drink
                      AND xicv4.item_class_code = gc_item_cd_prdct
                      AND ximv.conv_unit IS NOT NULL
-                  ) THEN (xmril.instruct_qty / TO_NUMBER(
-                                                   CASE WHEN ximv.num_of_cases > 0 
-                                                          THEN  ximv.num_of_cases
-                                                        ELSE TO_CHAR(1)
-                                                   END)
-                         )
-                  ELSE xmril.instruct_qty
+-- 2008/10/20 Y.Kawano Mod Start
+                     AND ximv.num_of_cases > 0
+                     )
+                 THEN 
+                   ( xmril.instruct_qty / TO_NUMBER( ximv.num_of_cases ) )
+                 ELSE
+                   xmril.instruct_qty
+--                  ) THEN (xmril.instruct_qty / TO_NUMBER(
+--                                                   CASE WHEN ximv.num_of_cases > 0 
+--                                                          THEN  ximv.num_of_cases
+--                                                        ELSE TO_CHAR(1)
+--                                                   END)
+--                         )
+--                  ELSE xmril.instruct_qty
+-- 2008/10/20 Y.Kawano Mod End
                  END
                )
              END                           AS  quantity                  --数量
@@ -604,9 +625,13 @@ AS
               WHEN ( xicv4.prod_class_code = gc_prod_cd_drink
                  AND xicv4.item_class_code = gc_item_cd_prdct
                  AND ximv.conv_unit IS NOT NULL
+-- 2008/10/20 Y.Kawano Add Start
+                 AND ximv.num_of_cases > 0
+-- 2008/10/20 Y.Kawano Add End
               ) THEN ximv.conv_unit
               ELSE ximv.item_um
              END                           AS  conv_unit                 --入出庫換算単位
+-- 2008/10/20 Y.Kawano Mod End
 -- 2008/07/15 A.Shiina v1.6 UPDATE Start
 ---- 2008/07/10 A.Shiina v1.4 ADD Start
 --            ,xmrih.freight_charge_class    AS freight_charge_code        -- 運賃区分
@@ -668,6 +693,10 @@ AS
         AND  xmrih.mov_type             <>  gc_mov_type_not_ship
         AND  xmrih.status               >=  gc_status_reqed
         AND  xmrih.status               <>  gc_status_not
+-- 2008/10/20 Y.Kawano Add Start
+        AND ((xmrih.no_instr_actual_class IS NULL)
+         OR  (xmrih.no_instr_actual_class <>  gc_class_y))
+-- 2008/10/20 Y.Kawano Add End
         AND  (gt_param.dept IS NULL
           OR  xmrih.instruction_post_code = gt_param.dept
         )

@@ -14,25 +14,37 @@
    <SQLQuery><![CDATA[
 SELECT wpi.qt_inspect_req_no qt_inspect_req_no
       ,wpi.inspect_due_date1 inspect_due_date1
-      ,wpi.test_date1 test_date1
-      ,clvv1.meaning qt_effect1
+      ,wpi.test_date1        test_date1
+      ,clvv1.meaning         qt_effect1
       ,wpi.inspect_due_date2 inspect_due_date2
-      ,wpi.test_date2 test_date2
-      ,clvv2.meaning qt_effect2
+      ,wpi.test_date2        test_date2
+      ,clvv2.meaning         qt_effect2
       ,wpi.inspect_due_date3 inspect_due_date3
-      ,wpi.test_date3 test_date3
-      ,clvv3.meaning qt_effect3
-      ,wpi.created_by created_by
-      ,wpi.creation_date creation_date
-      ,wpi.last_updated_by last_updated_by
-      ,wpi.last_update_date last_update_date
+      ,wpi.test_date3        test_date3
+      ,clvv3.meaning         qt_effect3
+      ,wpi.created_by        created_by
+      ,wpi.creation_date     creation_date
+      ,wpi.last_updated_by   last_updated_by
+      ,wpi.last_update_date  last_update_date
       ,wpi.last_update_login last_update_login
-      ,TO_CHAR(wpi.last_update_date, 'YYYY/MM/DD HH24:MI:SS') AS xqilast_update_date
+      ,TO_CHAR(wpi.last_update_date, 'YYYY/MM/DD HH24:MI:SS') 
+                          AS xqilast_update_date
+-- 2008/10/23 H.Itou Add Start T_S_530
+      ,ximv.judge_times      judge_times  -- 検査回数
+-- 2008/10/23 H.Itou Add End
 FROM xxwip_qt_inspection wpi
     ,xxcmn_lookup_values_v clvv1  -- ルックアップ1
     ,xxcmn_lookup_values_v clvv2  -- ルックアップ2
     ,xxcmn_lookup_values_v clvv3  -- ルックアップ3
+-- 2008/10/23 H.Itou Add Start T_S_530
+    ,xxcmn_item_mst2_v     ximv   -- 品目情報VIEW2
+-- 2008/10/23 H.Itou Add End
 WHERE wpi.qt_inspect_req_no = :1
+-- 2008/10/23 H.Itou Add Start T_S_530
+AND   wpi.item_id = ximv.item_id
+AND   ximv.start_date_active <= TRUNC( wpi.creation_date )
+AND   ximv.end_date_active   >= TRUNC( wpi.creation_date )
+-- 2008/10/23 H.Itou Add End
 AND   clvv1.lookup_type     = 'XXWIP_QT_STATUS'
 AND   clvv1.lookup_code     = wpi.qt_effect1
 AND   clvv2.lookup_type     = 'XXWIP_QT_STATUS'
@@ -259,6 +271,19 @@ AND   clvv3.lookup_code     = wpi.qt_effect3
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="19" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="JudgeTimes"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="JUDGE_TIMES"
+      Expression="JUDGE_TIMES"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>

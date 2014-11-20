@@ -30,14 +30,25 @@ SELECT   ilm.attribute8               -- 取引先
         ,clvv3.meaning qt_effect3     -- 結果３
 FROM     ic_lots_mst               ilm    -- OPMロットマスタ
         ,xxwip_qt_inspection       xqi    -- 品質検査依頼情報アドオン
-        ,xxcmn_item_mst_v          ximv   -- OPM品目情報VIEW
-        ,xxcmn_vendors_v           xvv    -- OPM仕入先情報VIEW
+-- 2008/10/23 H.Itou Mod Start T_S_530
+--        ,xxcmn_item_mst_v          ximv   -- OPM品目情報VIEW
+        ,xxcmn_item_mst2_v          ximv   -- OPM品目情報VIEW
+-- 2008/10/23 H.Itou Mod End
+-- 2008/10/23 H.Itou Del Start T_S_530
+--        ,xxcmn_vendors_v           xvv    -- OPM仕入先情報VIEW
+-- 2008/10/23 H.Itou Del End
         ,xxcmn_item_categories5_v  xicv   -- 品目カテゴリ割当情報VIEW5
         ,xxcmn_lookup_values_v     clvv1  -- ルックアップ1
         ,xxcmn_lookup_values_v     clvv2  -- ルックアップ2
         ,xxcmn_lookup_values_v     clvv3  -- ルックアップ3
 WHERE    ilm.item_id = ximv.item_id
-AND      ilm.attribute8          = xvv.segment1
+-- 2008/10/23 H.Itou Add Start T_S_530
+AND      ximv.start_date_active <= TRUNC( ilm.creation_date )
+AND      ximv.end_date_active   >= TRUNC( ilm.creation_date )
+-- 2008/10/23 H.Itou Add End
+-- 2008/10/23 H.Itou Del Start T_S_530
+--AND      ilm.attribute8          = xvv.segment1
+-- 2008/10/23 H.Itou Del End
 AND      ilm.attribute22         = xqi.qt_inspect_req_no(+)
 AND      ilm.attribute24         = '1'
 AND      ximv.item_id            = xicv.item_id

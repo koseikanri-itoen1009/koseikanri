@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/07/10    1.7   上原  正好       変更要求#91対応 配送区分情報VIEWを外部結合に変更
  *  2008/07/15    1.8   熊本  和郎       TE080指摘事項#3対応(受注明細アドオン.削除フラグを条件に追加)
  *  2008/07/31    1.9   Yuko  Kawano     結合テスト不具合対応(総重量/総容積の算出ロジック変更)
+ *  2008/10/20    1.10  Yuko  Kawano     課題＃32,48,62、統合指摘＃294、T_S_627対応
  *
  *****************************************************************************************/
 --
@@ -609,10 +610,20 @@ AS
                                     ELSE                                 xim2v.num_of_cases
                                    END
              END                                                        -- 総数
+-- v1.10 Update Start
             ,CASE
-              WHEN xim2v.conv_unit IS NULL THEN xim2v.item_um
-              ELSE                              xim2v.conv_unit
+              WHEN (( xim2v.conv_unit IS NOT NULL )
+                AND ( xim2v.num_of_cases  > '0' ) )
+              THEN
+                xim2v.conv_unit
+              ELSE
+                xim2v.item_um
              END                                                        -- 総数（単位）
+--            ,CASE
+--              WHEN xim2v.conv_unit IS NULL THEN xim2v.item_um
+--              ELSE                              xim2v.conv_unit
+--             END                                                        -- 総数（単位）
+-- v1.10 Update End
             ,NVL(xim2v.num_of_cases, '-')                               -- 入数
             ,CASE 
               WHEN xsm2v.small_amount_class = '1' THEN
@@ -639,8 +650,12 @@ AS
             ,CASE 
               WHEN xsm2v.small_amount_class = '1' THEN
                               CASE 
-                                WHEN xoha.weight_capacity_class = '1' THEN xoha.sum_weight
-                                WHEN xoha.weight_capacity_class = '2' THEN xoha.sum_capacity
+-- v1.10 Update Start
+--                                WHEN xoha.weight_capacity_class = '1' THEN xoha.sum_weight
+--                                WHEN xoha.weight_capacity_class = '2' THEN xoha.sum_capacity
+                                WHEN xoha.weight_capacity_class = '1' THEN CEIL(TRUNC(xoha.sum_weight,1))
+                                WHEN xoha.weight_capacity_class = '2' THEN CEIL(TRUNC(xoha.sum_capacity,1))
+-- v1.10 Update End
                               END 
               -- MOD START 1.7
               WHEN NVL(xsm2v.small_amount_class,'0') = '0' THEN
@@ -650,12 +665,18 @@ AS
                                 WHEN xoha.weight_capacity_class = '1'
 -- 2008/07/31 Y.Kawano mod start
 --                                 THEN xola.pallet_weight + xoha.sum_weight
-                                 THEN xoha.sum_pallet_weight + xoha.sum_weight
+-- v1.10 Update Start
+--                                 THEN xoha.sum_pallet_weight + xoha.sum_weight
+                                 THEN CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_weight,1))
+-- v1.10 Update End
 -- 2008/07/31 Y.Kawano mod end
                                 WHEN xoha.weight_capacity_class = '2'
 -- 2008/07/31 Y.Kawano mod start
 --                                 THEN xola.pallet_weight + xoha.sum_capacity
-                                 THEN xoha.sum_pallet_weight + xoha.sum_capacity
+-- v1.10 Update Start
+--                                 THEN xoha.sum_pallet_weight + xoha.sum_capacity
+                                 THEN CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_capacity,1))
+-- v1.10 Update End
 -- 2008/07/31 Y.Kawano mod end
                               END
              END                                                        -- 総重量/総容積
@@ -777,6 +798,10 @@ AS
         AND NVL(xola.delete_flag,gv_nodelete) = gv_nodelete
                                        -- 受注明細アドオン.削除フラグ＝未削除
 --add end 1.8
+-- v1.10 Add Start
+        AND xoha.schedule_ship_date          IS NOT NULL
+                                       -- 受注ヘッダアドオン.出荷予定日IS NOT NULL 出荷の指示無し実績は除外
+-- v1.10 Add End
 -- 2008/07/04 ST不具合対応#406 Start
 --        AND xim2v.item_id                    = xic4v.item_id
                                        -- OPM品目マスタ.品目ID＝OPM品目カテゴリマスタ.品目ID
