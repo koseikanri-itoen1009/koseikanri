@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(SPEC)
  * Description            : 共通関数(SPEC)
  * MD.070(CMD.050)        : なし
- * Version                : 1.47
+ * Version                : 1.48
  *
  * Program List
  *  ---------------------    ---- ----- --------------------------------------------------
@@ -102,6 +102,7 @@ AS
  *  2009/03/04   1.45  SCS    北寒寺正夫[配車解除関数]本番#1268対応
  *  2009/03/05   1.46  SCS    北寒寺正夫[重量容積小口個数更新関数]本番#1068対応
  *  2009/05/07   1.47  SCS    伊藤ひとみ[引当解除関数]本番#1443対応 減数チェックエラー時も引当を解除する。
+ *  2009/06/25   1.48  SCS    伊藤ひとみ[稼働日算出関数]本番#1463対応 日付＋LTも算出できるよう変更
  *****************************************************************************************/
 --
   -- ===============================
@@ -143,6 +144,20 @@ AS
     -- 14.パレット最大枚数
     on_palette_max_qty            OUT xxcmn_ship_methods.palette_max_qty%TYPE)
     RETURN NUMBER;
+--
+-- 2009/06/25 H.Itou Add Start 本番障害#1463対応 日付＋LTも算出できるよう変更
+  -- 稼働日算出関数
+  FUNCTION get_oprtn_day(
+    id_date             IN  DATE,         -- 日付
+    iv_whse_code        IN  VARCHAR2,     -- 保管倉庫コード
+    iv_deliver_to_code  IN  VARCHAR2,     -- 配送先コード
+    in_lead_time        IN  NUMBER,       -- リードタイム
+    iv_prod_class       IN  VARCHAR2,     -- 商品区分
+    od_oprtn_day        OUT NOCOPY DATE,  -- 稼働日日付
+    in_type             IN  NUMBER        -- -1:日付－LT, 1:日付＋LT
+    )
+    RETURN NUMBER;
+-- 2009/06/25 H.Itou Add End
 --
   -- 稼働日算出関数
   FUNCTION get_oprtn_day(

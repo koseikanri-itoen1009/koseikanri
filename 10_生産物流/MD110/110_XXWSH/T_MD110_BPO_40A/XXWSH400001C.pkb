@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -56,8 +56,9 @@ AS
  *  2008/10/16    1.15  Oracle 丸下        管轄拠点をCSVファイルのコード値を使用するように修正
  *  2008/11/19    1.16  Oracle 伊藤ひとみ  統合テスト指摘683対応
  *  2008/11/20    1.17  Oracle 伊藤ひとみ  統合テスト指摘141,658対応
- *  2009/01/08    1.18  Oracle 伊藤ひとみ  本番障害#894対応
+ *  2009/01/08    1.18  SCS    伊藤ひとみ  本番障害#894対応
  *  2009/01/30    1.19  SCS    伊藤ひとみ  本番障害#994対応
+ *  2009/06/25    1.20  SCS    伊藤ひとみ  本番障害#1436対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1319,6 +1320,9 @@ AS
                                    ,0                           -- リードタイム   in 0
                                    ,gt_to_plan(gn_i).skbn       -- 商品区分       in 商品区分(リーフ)
                                    ,gd_work_day                 -- 稼働日日付    out 稼働日
+-- 2009/06/25 H.Itou Add Start 本番障害#1436対応 出荷予定日算出で渡す日付が稼働日でないと-1日されてしまうため、直後の稼働日を取得する。
+                                   ,1                           -- 1:日付＋LT     in TYPE 
+-- 2009/06/25 H.Itou Add End
                                   );
 --
 -- 2008/11/20 H.Itou Add Start 統合テスト指摘658
@@ -1443,44 +1447,59 @@ AS
     -- 明細番号[1]の場合のみヘッダ単位チェックの数値を取得する。2明細目以降は1明細目の値を参照。
     IF (gn_line_number = 1) THEN
 -- 2009/01/30 H.Itou Add End
-      ln_result := xxwsh_common_pkg.get_oprtn_day
-                                    (
-                                      gt_to_plan(gn_i).for_date -- 日付           in 着荷予定日
-                                     ,gt_to_plan(gn_i).ship_fr  -- 保管倉庫コード in 出荷元
-                                     ,NULL                      -- 配送先コード   in NULL
-                                     ,gv_delivery_lt            -- リードタイム   in 配送リードタイム
-                                     ,gt_to_plan(gn_i).skbn     -- 商品区分       in 商品区分(リーフ)
-                                     ,gd_ship_day               -- 稼働日日付    out 出荷予定日
-                                    );
+-- 2009/06/25 H.Itou Add Start 本番障害#1436対応 配送LTが0の場合は出荷予定日＝着荷予定日なので算出しない。
+      -- 配送LTが0の場合
+      IF (gv_delivery_lt = 0) THEN
+        -- 出荷予定日＝着荷予定日
+        gd_ship_day := gt_to_plan(gn_i).for_date;
+--
+      -- 配送LTが0でない場合
+      ELSE
+-- 2009/06/25 H.Itou Add End
+        ln_result := xxwsh_common_pkg.get_oprtn_day
+                                      (
+-- 2009/06/25 H.Itou Add Start 本番障害#1436対応 渡す日付が稼働日でないと-1日されてしまうため、直後の稼働日をで算出する。
+--                                      gt_to_plan(gn_i).for_date -- 日付           in 着荷予定日
+                                        gd_work_day               -- 日付           in 着荷予定日(稼働日でない場合は、直後の稼働日)
+-- 2009/06/25 H.Itou Add End
+                                       ,gt_to_plan(gn_i).ship_fr  -- 保管倉庫コード in 出荷元
+                                       ,NULL                      -- 配送先コード   in NULL
+                                       ,gv_delivery_lt            -- リードタイム   in 配送リードタイム
+                                       ,gt_to_plan(gn_i).skbn     -- 商品区分       in 商品区分(リーフ)
+                                       ,gd_ship_day               -- 稼働日日付    out 出荷予定日
+                                      );
 --
 -- 2008/11/20 H.Itou Add Start 統合テスト指摘658
-      -- 共通関数エラー時、エラー
-      IF (ln_result = gn_status_error) THEN
+        -- 共通関数エラー時、エラー
+        IF (ln_result = gn_status_error) THEN
 --
-        -- エラーリスト作成
-        pro_err_list_make
-          (
-            iv_kind         => gv_tkn_msg_err            --  in 種別   'エラー'
-           ,iv_dec          => gv_tkn_msg_hfn            --  in 確定   '-'
-           ,iv_req_no       => gv_req_no                 --  in 依頼No
-           ,iv_kyoten       => gt_to_plan(gn_i).ktn      --  in 管轄拠点
-           ,iv_item         => gt_to_plan(gn_i).item_no  --  in 品目
-           ,in_qty          => gt_to_plan(gn_i).amount   --  in 数量
-           ,iv_ship_date    => gv_tkn_msg_hfn            --  in 出庫日  '-'
-           ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
-                                                         --  in 着日
-           ,iv_err_msg      => lv_errmsg                 --  in エラーメッセージ
-           ,iv_err_clm      => gv_tkn_msg26              --  in エラー項目
-           ,ov_errbuf       => lv_errbuf                 -- out エラー・メッセージ
-           ,ov_retcode      => lv_retcode                -- out リターン・コード
-           ,ov_errmsg       => lv_errmsg                 -- out ユーザー・エラー・メッセージ
-          );
-        -- 共通エラーメッセージ 終了ST エラー登録
-        gv_err_sts := gv_status_error;
+          -- エラーリスト作成
+          pro_err_list_make
+            (
+              iv_kind         => gv_tkn_msg_err            --  in 種別   'エラー'
+             ,iv_dec          => gv_tkn_msg_hfn            --  in 確定   '-'
+             ,iv_req_no       => gv_req_no                 --  in 依頼No
+             ,iv_kyoten       => gt_to_plan(gn_i).ktn      --  in 管轄拠点
+             ,iv_item         => gt_to_plan(gn_i).item_no  --  in 品目
+             ,in_qty          => gt_to_plan(gn_i).amount   --  in 数量
+             ,iv_ship_date    => gv_tkn_msg_hfn            --  in 出庫日  '-'
+             ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
+                                                           --  in 着日
+             ,iv_err_msg      => lv_errmsg                 --  in エラーメッセージ
+             ,iv_err_clm      => gv_tkn_msg26              --  in エラー項目
+             ,ov_errbuf       => lv_errbuf                 -- out エラー・メッセージ
+             ,ov_retcode      => lv_retcode                -- out リターン・コード
+             ,ov_errmsg       => lv_errmsg                 -- out ユーザー・エラー・メッセージ
+            );
+          -- 共通エラーメッセージ 終了ST エラー登録
+          gv_err_sts := gv_status_error;
 --
-        RAISE err_header_expt;
-      END IF;
+          RAISE err_header_expt;
+        END IF;
 -- 2008/11/20 H.Itou Add End
+-- 2009/06/25 H.Itou Add Start 本番障害#1436対応
+      END IF;
+-- 2009/06/25 H.Itou Add End
 -- 2009/01/30 H.Itou Add Start 本番障害#994対応
     END IF;
 -- 2009/01/30 H.Itou Add End

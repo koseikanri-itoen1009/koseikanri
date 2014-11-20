@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.47
+ * Version                : 1.48
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -102,6 +102,7 @@ AS
  *  2009/03/04   1.45  SCS    北寒寺正夫[配車解除関数]本番#1268対応
  *  2009/03/05   1.46  SCS    北寒寺正夫[重量容積小口個数更新関数]本番#1068対応
  *  2009/05/07   1.47  SCS    伊藤ひとみ[引当解除関数]本番#1443対応 減数チェックエラー時も引当を解除する。
+ *  2009/06/25   1.48  SCS    伊藤ひとみ[稼働日算出関数]本番#1463対応 日付＋LTも算出できるよう変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1008,7 +1009,11 @@ AS
     iv_deliver_to_code  IN  VARCHAR2,     -- 配送先コード
     in_lead_time        IN  NUMBER,       -- リードタイム
     iv_prod_class       IN  VARCHAR2,     -- 商品区分
-    od_oprtn_day        OUT NOCOPY DATE)  -- 稼働日日付
+    od_oprtn_day        OUT NOCOPY DATE   -- 稼働日日付
+-- 2009/06/25 H.Itou Add Start 本番障害#1463対応 日付＋LTも算出できるよう変更
+   ,in_type             IN  NUMBER        -- -1:日付－LT, 1:日付＋LT
+-- 2009/06/25 H.Itou Add End
+    )
     RETURN NUMBER
   IS
     -- ===============================
@@ -1112,7 +1117,10 @@ AS
         od_oprtn_day := ld_date;
         ln_days      := ln_days + 1;
       END IF;
-      ld_date := ld_date - 1;
+-- 2009/06/25 H.Itou Mod Start 本番障害#1463対応 日付＋LTも算出できるよう変更
+--      ld_date := ld_date - 1;
+      ld_date := ld_date + in_type;
+-- 2009/06/25 H.Itou Mod End
     END LOOP oprtn_day_loop;
 --
     RETURN gv_status_normal;
@@ -1129,6 +1137,69 @@ AS
 --
   END get_oprtn_day;
 --
+-- 2009/06/25 H.Itou Add Start 本番障害#1436対応 INパラメータTYPEがない場合はTYPE=-1(日付－LT)。
+  /**********************************************************************************
+   * Function Name    : get_oprtn_day
+   * Description      : 稼働日算出関数(日付－LT)
+   ***********************************************************************************/
+  FUNCTION get_oprtn_day(
+    id_date             IN  DATE,         -- 日付
+    iv_whse_code        IN  VARCHAR2,     -- 保管倉庫コード
+    iv_deliver_to_code  IN  VARCHAR2,     -- 配送先コード
+    in_lead_time        IN  NUMBER,       -- リードタイム
+    iv_prod_class       IN  VARCHAR2,     -- 商品区分
+    od_oprtn_day        OUT NOCOPY DATE   -- 稼働日日付
+    )
+    RETURN NUMBER
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_oprtn_day';  --プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_retcode    NUMBER;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+--
+  BEGIN
+--
+    -- 稼働日算出関数(日付－LT 固定)
+    ln_retcode := get_oprtn_day(
+                    id_date            => id_date            -- 日付
+                   ,iv_whse_code       => iv_whse_code       -- 保管倉庫コード
+                   ,iv_deliver_to_code => iv_deliver_to_code -- 配送先コード
+                   ,in_lead_time       => in_lead_time       -- リードタイム
+                   ,iv_prod_class      => iv_prod_class      -- 商品区分
+                   ,od_oprtn_day       => od_oprtn_day       -- 稼働日日付
+                   ,in_type            => -1                 -- -1:日付－LT 固定
+                  );
+--
+    RETURN ln_retcode;
+--
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END get_oprtn_day;
+-- 2009/06/25 H.Itou Add End
   /**********************************************************************************
    * Function Name    : get_same_request_number
    * Description      : 同一依頼No検索関数
