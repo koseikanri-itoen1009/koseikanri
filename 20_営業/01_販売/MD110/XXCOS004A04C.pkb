@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,7 @@ AS
  *  2010/02/25   1.27  N.Maeda           [E_本稼動_01477]締日の休日対応修正
  *  2010/03/24   1.28  K.Atsushiba       [E_本稼動_01805]顧客移行対応
  *  2010/04/06   1.29  H.Sasaki          [E_本稼動_01688]集約フラグを追加
+ *  2010/04/28   1.30  K.Atsushiba       [E_本稼動_02483]販売実績登録エラー対応
  *
  *****************************************************************************************/
 --
@@ -3682,6 +3683,12 @@ AS
           --納品明細番号初期化
           ln_line_index := 1;
 --**************************** 2009/03/30 1.10 T.kitajima ADD  END  ****************************
+-- 2010/04/28 Ver.1.30 Add Start
+          -- 販売実績登録用PL/SQL表からレコードを削除
+          IF ( gt_tab_sales_exp_headers.EXISTS(ln_h) = TRUE ) THEN
+            gt_tab_sales_exp_headers.DELETE(ln_h);
+          END IF;
+-- 2010/04/28 Ver.1.30 Add End
         ELSE --存在しなかった
           --ヘッダデータ設定
 /* 2010/02/01 Ver1.24 Mod Start */
@@ -3955,6 +3962,9 @@ AS
 --
     -- *** ローカル変数 ***
     ln_i    NUMBER;
+-- 2010/04/28 Ver.1.30 Add Start
+    lv_msg    VARCHAR2(2000);
+-- 2010/04/28 Ver.1.30 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -3981,7 +3991,10 @@ AS
 --
       -- エラー処理（データ追加エラー）
       WHEN OTHERS THEN
-        FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+-- 2010/04/28 Ver.1.30 Mod Start
+        lv_msg := SQLERRM;
+--        FND_FILE.PUT_LINE(FND_FILE.LOG, SQLERRM);
+-- 2010/04/28 Ver.1.30 Mod End
         RAISE global_insert_expt;
 --
     END;
@@ -3995,6 +4008,10 @@ AS
       ov_errmsg := xxccp_common_pkg.get_msg(
                      iv_application        =>  ct_xxcos_appl_short_name,
                      iv_name               =>  cv_msg_inser_lines_err
+-- 2010/04/28 Ver.1.30 Mod Start
+                     , iv_token_name1      =>  cv_tkn_parm_data1
+                     , iv_token_value1     =>  lv_msg
+-- 2010/04/28 Ver.1.30 Mod End
                    );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
@@ -4041,6 +4058,9 @@ AS
 --
     -- *** ローカル変数 ***
     ln_i    NUMBER;
+-- 2010/04/28 Ver.1.30 Add Start
+    lv_msg    VARCHAR2(2000);
+-- 2010/04/28 Ver.1.30 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -4097,6 +4117,9 @@ AS
 --
       -- エラー処理（データ追加エラー）
       WHEN OTHERS THEN
+-- 2010/04/28 Ver.1.30 Add Start
+          lv_msg := SQLERRM;
+-- 2010/04/28 Ver.1.30 Add End
         RAISE global_insert_expt;
 --
     END;
@@ -4110,6 +4133,10 @@ AS
       ov_errmsg := xxccp_common_pkg.get_msg(
                      iv_application        =>  ct_xxcos_appl_short_name,
                      iv_name               =>  cv_msg_inser_headers_err
+-- 2010/04/28 Ver.1.30 Mod Start
+                     , iv_token_name1      =>  cv_tkn_parm_data1
+                     , iv_token_value1     =>  lv_msg
+-- 2010/04/28 Ver.1.30 Mod End
                    );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
