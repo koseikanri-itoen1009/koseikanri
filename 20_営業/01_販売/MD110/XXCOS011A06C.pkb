@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS011A06C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS011A06C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/07/07    1.5   N.Maeda         [T1_1356]レビュー指摘対応
  *  2009/07/13    1.5   N.Maeda         [T1_1359]レビュー指摘対応
  *  2009/07/29    1.5   K.Kiriu         [T1_1359]レビュー指摘対応
+ *  2009/09/03    1.6   N.Maeda         [0001199]販売実績明細の排他制御削除
  *
  *****************************************************************************************/
 --
@@ -2093,8 +2094,11 @@ AS
              ,xsel.sales_exp_line_id
 --************************************* 2009/05/28 T.Tominaga Var1.4 MOD END   ******************************************
       FOR UPDATE OF
-              xseh.sales_exp_header_id
-             ,xsel.sales_exp_line_id NOWAIT
+-- ************ 2009/09/03 1.6 N.Maeda MOD START ********* --
+              xseh.sales_exp_header_id NOWAIT
+--              xseh.sales_exp_header_id
+--             ,xsel.sales_exp_line_id NOWAIT
+-- ************ 2009/09/03 1.6 N.Maeda MOD  END  ********* --
       ;
     -- *** ローカル・レコード ***
 --
