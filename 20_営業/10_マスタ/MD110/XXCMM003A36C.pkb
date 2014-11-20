@@ -31,6 +31,7 @@ AS
  *  2009/06/03    1.5   Yutaka.Kuboshima    障害T1_1321の対応
  *  2009/06/30    1.6   Yutaka.Kuboshima    統合テスト障害0000328の対応
  *  2009/07/13    1.7   Yutaka.Kuboshima    統合テスト障害0000655,0000656の対応
+ *  2009/09/30    1.8   Yutaka.Kuboshima    統合テスト障害0001350の対応
  *
  *****************************************************************************************/
 --
@@ -7155,6 +7156,64 @@ AS
         RAISE;
     END;
 -- 2009/07/13 Ver1.7 障害0000655,0000656 add end by Yutaka.Kuboshima
+-- 2009/09/30 Ver1.8 障害0001350 add start by Yutaka.Kuboshima
+    -- 1-94.請求書印刷単位取得
+    DECLARE
+      CURSOR inv_print_unit_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCMM_INVOICE_PRINTING_UNIT'
+        AND    flv.enabled_flag = cv_y_flag
+        ORDER BY flv.lookup_code;
+      inv_print_unit_rec inv_print_unit_cur%ROWTYPE;
+    BEGIN
+      OPEN inv_print_unit_cur;
+        << inv_print_unit_loop >>
+        LOOP
+          FETCH inv_print_unit_cur INTO inv_print_unit_rec;
+          EXIT WHEN inv_print_unit_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               inv_print_unit_rec.lv_ref_type     -- 参照タイプ
+              ,inv_print_unit_rec.lv_ref_code     -- 参照コード
+              ,inv_print_unit_rec.lv_ref_name     -- 名称
+              ,inv_print_unit_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,inv_print_unit_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP inv_print_unit_loop;
+      CLOSE inv_print_unit_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCMM_INVOICE_PRINTING_UNIT');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+-- 2009/09/30 Ver1.8 障害0001350 add end by Yutaka.Kuboshima
 --
     -- ===============================
     -- 2.品目カテゴリの取得
