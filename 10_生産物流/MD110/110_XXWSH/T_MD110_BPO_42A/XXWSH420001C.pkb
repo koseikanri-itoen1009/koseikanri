@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/05/22    1.3   Oracle 宮田 隆史   受注明細作成時の単価NULL対応
  *  2008/06/12    1.4   Oracle 丸下 博宣   受注ヘッダ、明細更新時の対象WHOカラムを追加
  *  2008/06/27    1.5   Oracle 丸下 博宣   受注明細登録時の削除フラグにNを設定
+ *  2008/09/01    1.6   Oracle 山根 一浩   課題#64変更#176対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -154,6 +155,9 @@ AS
                          := 'APP-XXWSH-11558';  -- 訂正前受注アドオン情報取得エラー
   gv_msg_42a_024         CONSTANT VARCHAR2(15)
                          := 'APP-XXWSH-11559';  -- 使用目的ID取得エラー
+-- 2008/09/01 Add
+  gv_msg_42a_025         CONSTANT VARCHAR2(15)
+                         := 'APP-XXWSH-13181';  -- 未来日エラーメッセージ
 --
   --トークン(固定処理)
   gv_tkn_status          CONSTANT VARCHAR2(15) := 'STATUS';
@@ -179,6 +183,13 @@ AS
   gv_tkn_header_id       CONSTANT VARCHAR2(15) := 'HEADER_ID';
   gv_tkn_message_tokun   CONSTANT VARCHAR2(15) := 'MESSAGE_TOKUN';
   gv_tkn_search          CONSTANT VARCHAR2(15) := 'SEARCH';
+-- 2008/09/01 Add
+  gv_tkn_para_date       CONSTANT VARCHAR2(15) := 'PARA_DATE';
+  gv_tkn_param1          CONSTANT VARCHAR2(15) := 'PARAM1';
+  gv_tkn_param2          CONSTANT VARCHAR2(15) := 'PARAM2';
+  gv_tkn_param3          CONSTANT VARCHAR2(15) := 'PARAM3';
+  gv_tkn_param4          CONSTANT VARCHAR2(15) := 'PARAM4';
+--
   -- トークン表示用
   gv_api_name_1          CONSTANT VARCHAR2(30) := '予約';
   gv_api_name_2          CONSTANT VARCHAR2(30) := 'ピックリリースパッチ作成';
@@ -1163,8 +1174,19 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- 2008/09/01 Add ↓
+    lv_select1          VARCHAR2(32000) DEFAULT NULL;
+    lv_select2          VARCHAR2(32000) DEFAULT NULL;
+    lv_select_where     VARCHAR2(32000) DEFAULT NULL;
+    lv_select_lock      VARCHAR2(32000) DEFAULT NULL;
+    lv_select_order     VARCHAR2(32000) DEFAULT NULL;
+-- 2008/09/01 Add ↑
 --
     -- *** ローカル・カーソル ***
+-- 2008/09/01 Mod ↓
+    TYPE   ref_cursor IS REF CURSOR ;
+    cur_order_data ref_cursor ;
+/*
 --
     CURSOR cur_order_data IS
       SELECT xottv1.transaction_type_id,                                -- 受注タイプID
@@ -1320,6 +1342,8 @@ AS
       AND    ximv.item_no  = xola.shipping_item_code
       FOR UPDATE OF xoha.order_header_id,xola.order_line_id NOWAIT
       ORDER BY xoha.request_no,xoha.order_header_id,xola.order_line_id;
+*/
+-- 2008/09/01 Mod ↑
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -1333,9 +1357,186 @@ AS
     -- ***************************************
     -- ***       受注アドオン情報取得      ***
     -- ***************************************
+-- 2008/09/01 Add ↓
+    -- カーソル作成
+    lv_select1 := 'SELECT xottv1.transaction_type_id,'                     -- 受注タイプID
+        ||   ' xottv1.transaction_type_code,'                              -- 受注タイプコード
+        ||   ' xottv1.order_category_code,'                                -- 受注カテゴリ
+        ||   ' xottv1.shipping_shikyu_class,'                              -- 出荷支給区分
+        ||   ' xoha.order_header_id,'                                      -- 受注ヘッダアドオンID
+        ||   ' xoha.header_id,'                                            -- 受注ヘッダID
+        ||   ' xoha.organization_id,'                                      -- 組織ID
+        ||   ' xoha.ordered_date,'                                         -- 受注日
+        ||   ' xoha.customer_id,'                                          -- 顧客ID
+        ||   ' xoha.customer_code,'                                        -- 顧客
+        ||   ' xoha.deliver_to_id,'                                        -- 出荷先ID
+        ||   ' xoha.deliver_to,'                                           -- 出荷先
+        ||   ' xoha.shipping_instructions,'                                -- 出荷指示
+        ||   ' xoha.career_id,'                                            -- 運送業者ID
+        ||   ' xoha.freight_carrier_code,'                                 -- 運送業者
+        ||   ' xoha.shipping_method_code,'                                 -- 配送区分
+        ||   ' xoha.cust_po_number,'                                       -- 顧客発注
+        ||   ' xoha.price_list_id,'                                        -- 価格表
+        ||   ' xoha.request_no,'                                           -- 依頼NO
+        ||   ' xoha.req_status,'                                           -- ステータス
+        ||   ' xoha.delivery_no,'                                          -- 配送NO
+        ||   ' xoha.prev_delivery_no,'                                     -- 前回配送NO
+        ||   ' xoha.schedule_ship_date,'                                   -- 出荷予定日
+        ||   ' xoha.schedule_arrival_date,'                                -- 着荷予定日
+        ||   ' xoha.mixed_no,'                                             -- 混載元NO
+        ||   ' xoha.collected_pallet_qty,'                                 -- パレット回収枚数
+        ||   ' xoha.confirm_request_class,'                                -- 物流担当確認依頼区分
+        ||   ' xoha.freight_charge_class,'                                 -- 運賃区分
+        ||   ' xoha.shikyu_instruction_class,'                             -- 支給出庫指示区分
+        ||   ' xoha.shikyu_inst_rcv_class,'                                -- 支給指示受領区分
+        ||   ' xoha.amount_fix_class,'                                     -- 有償金額確定区分
+        ||   ' xoha.takeback_class,'                                       -- 引取区分
+        ||   ' xoha.deliver_from_id,'                                      -- 出荷元ID
+        ||   ' xoha.deliver_from,'                                         -- 出荷元保管場所
+        ||   ' xoha.head_sales_branch,'                                    -- 管轄拠点
+        ||   ' xoha.input_sales_branch,'                                   -- 入力拠点
+        ||   ' xoha.po_no,'                                                -- 発注NO
+        ||   ' xoha.prod_class,'                                           -- 商品区分
+        ||   ' xoha.item_class,'                                           -- 品目区分
+        ||   ' xoha.no_cont_freight_class,'                                -- 契約外運賃区分
+        ||   ' xoha.arrival_time_from,'                                    -- 着荷時間FROM
+        ||   ' xoha.arrival_time_to,'                                      -- 着荷時間TO
+        ||   ' xoha.designated_item_id,'                                   -- 製造品目ID
+        ||   ' xoha.designated_item_code,'                                 -- 製造品目
+        ||   ' xoha.designated_production_date,'                           -- 製造日
+        ||   ' xoha.designated_branch_no,'                                 -- 製造枝番
+        ||   ' xoha.slip_number,'                                          -- 送り状NO
+        ||   ' xoha.sum_quantity,'                                         -- 合計数量
+        ||   ' xoha.small_quantity,'                                       -- 小口個数
+        ||   ' xoha.label_quantity,'                                       -- ラベル枚数
+        ||   ' xoha.loading_efficiency_weight,'                            -- 重量積載効率
+        ||   ' xoha.loading_efficiency_capacity,'                          -- 容積積載効率
+        ||   ' xoha.based_weight,'                                         -- 基本重量
+        ||   ' xoha.based_capacity,'                                       -- 基本容積
+        ||   ' xoha.sum_weight,'                                           -- 積載重量合計
+        ||   ' xoha.sum_capacity,'                                         -- 積載容積合計
+        ||   ' xoha.mixed_ratio,'                                          -- 混載率
+        ||   ' xoha.pallet_sum_quantity,'                                  -- パレット合計枚数
+        ||   ' xoha.real_pallet_quantity,'                                 -- パレット実績枚数
+        ||   ' xoha.sum_pallet_weight,'                                    -- 合計パレット重量
+        ||   ' xoha.order_source_ref,'                                     -- 受注ソース参照
+        ||   ' xoha.result_freight_carrier_id,'                            -- 運送業者_実績ID
+        ||   ' xoha.result_freight_carrier_code,'                          -- 運送業者_実績
+        ||   ' xoha.result_shipping_method_code,'                          -- 配送区分_実績
+        ||   ' xoha.result_deliver_to_id,'                                 -- 出荷先_実績ID
+        ||   ' xoha.result_deliver_to,'                                    -- 出荷先_実績
+        ||   ' xoha.shipped_date,'                                         -- 出荷日
+        ||   ' xoha.arrival_date,'                                         -- 着荷日
+        ||   ' xoha.weight_capacity_class,'                                -- 重量容積区分
+        ||   ' xoha.notif_status,'                                         -- 通知ステータス
+        ||   ' xoha.prev_notif_status,'                                    -- 前回通知ステータス
+        ||   ' xoha.notif_date,'                                           -- 確定通知実施日時
+        ||   ' xoha.new_modify_flg,'                                       -- 新規修正フラグ
+        ||   ' xoha.process_status,'                                       -- 処理経過ステータス
+        ||   ' xoha.performance_management_dept,'                          -- 成績管理部署
+        ||   ' xoha.instruction_dept,'                                     -- 指示部署
+        ||   ' xoha.transfer_location_id,'                                 -- 振替先ID
+        ||   ' xoha.transfer_location_code,'                               -- 振替先
+        ||   ' xoha.mixed_sign,'                                           -- 混載記号
+        ||   ' xoha.screen_update_date,'                                   -- 画面更新日時
+        ||   ' xoha.screen_update_by,'                                     -- 画面更新者
+        ||   ' xoha.tightening_date,'                                      -- 出荷依頼締め日時
+        ||   ' xoha.vendor_id,'                                            -- 取引先ID
+        ||   ' xoha.vendor_code,'                                          -- 取引先
+        ||   ' xoha.vendor_site_id,'                                       -- 取引先サイトID
+        ||   ' xoha.vendor_site_code,'                                     -- 取引先サイト
+        ||   ' xoha.registered_sequence,'                                  -- 登録順序
+        ||   ' xoha.tightening_program_id,'                                -- 締めコンカレントID
+        ||   ' xoha.corrected_tighten_class,'                              -- 締め後修正区分
+        ||   ' xola.order_line_id,'                                        -- 受注明細アドオンID
+        ||   ' xola.order_line_number,'                                    -- 明細番号
+        ||   ' xola.line_id,'                                              -- 受注明細ID
+        ||   ' xola.request_no line_request_no,'                           -- 依頼No
+        ||   ' xola.shipping_inventory_item_id,'                           -- 出荷品目ID
+        ||   ' xola.shipping_item_code,'                                   -- 出荷品目
+        ||   ' xola.quantity,'                                             -- 数量
+        ||   ' xola.uom_code,'                                             -- 単位
+        ||   ' xola.unit_price,'                                           -- 単価
+        ||   ' xola.shipped_quantity,'                                     -- 出荷実績数量
+        ||   ' xola.designated_production_date line_designated_prod_date,' -- 指定製造日
+        ||   ' xola.based_request_quantity,'                               -- 拠点依頼数量
+        ||   ' xola.request_item_id,'                                      -- 依頼品目ID
+        ||   ' xola.request_item_code,'                                    -- 依頼品目
+        ||   ' xola.ship_to_quantity,'                                     -- 入庫実績数量
+        ||   ' xola.futai_code,'                                           -- 付帯コード
+        ||   ' xola.designated_date,'                                      -- 指定日付（リーフ）
+        ||   ' xola.move_number,'                                          -- 移動NO
+        ||   ' xola.po_number,'                                            -- 発注NO
+        ||   ' xola.cust_po_number line_cust_po_number,'                   -- 顧客発注
+        ||   ' xola.pallet_quantity,'                                      -- パレット数
+        ||   ' xola.layer_quantity,'                                       -- 段数
+        ||   ' xola.case_quantity,'                                        -- ケース数
+        ||   ' xola.weight,'                                               -- 重量
+        ||   ' xola.capacity,'                                             -- 容積
+        ||   ' xola.pallet_qty,'                                           -- パレット枚数
+        ||   ' xola.pallet_weight,'                                        -- パレット重量
+        ||   ' xola.reserved_quantity,'                                    -- 引当数
+        ||   ' xola.automanual_reserve_class,'                             -- 自動手動引当区分
+        ||   ' xola.warning_class,'                                        -- 警告区分
+        ||   ' xola.warning_date,'                                         -- 警告日付
+        ||   ' xola.line_description,'                                     -- 摘要
+        ||   ' xola.rm_if_flg,'                                            -- 倉替返品IF済フラグ
+        ||   ' xola.shipping_request_if_flg,'                              -- 出荷依頼IF済フラグ
+        ||   ' xola.shipping_result_if_flg,'                               -- 出荷実績IF済フラグ
+        ||   ' xilv.distribution_block,'                                   -- ブロック
+        ||   ' xilv.mtl_organization_id,'                                  -- 在庫組織ID
+        ||   ' xilv.location_id,'                                          -- 事業所ID
+        ||   ' xilv.subinventory_code,'                                    -- 保管場所コード
+        ||   ' xilv.inventory_location_id,'                                -- 倉庫ID
+        ||   ' xcav.cust_account_id,'                                      -- 顧客ID
+        ||   ' ximv.lot_ctl'                                               -- ロット管理
+        ||' FROM   xxwsh_order_headers_all     xoha,'                      -- 受注ヘッダアドオン
+        ||   '       xxwsh_order_lines_all        xola,'                   -- 受注明細アドオン
+        ||   '       xxwsh_oe_transaction_types_v xottv1,'                 -- 受注タイプVIEW1
+        ||   '       xxcmn_item_locations_v       xilv,'                   -- OPM保管場所情報VIEW
+        ||   '       xxcmn_cust_accounts_v        xcav,'                   -- 顧客情報VIEW
+        ||   '       xxcmn_item_mst_v             ximv';                   -- OPM品目情報VIEW
+--
+    lv_select_where := ' WHERE  xottv1.transaction_type_id = xoha.order_type_id'
+        ||   ' AND    xcav.party_id = xoha.customer_id'
+        ||   ' AND    xola.order_header_id = xoha.order_header_id'
+        ||   ' AND    xilv.segment1 = xoha.deliver_from'
+        ||   ' AND    ximv.item_no  = xola.shipping_item_code'
+        ||   ' AND    NVL(xoha.actual_confirm_class, '''|| gv_no || ''') = ''' || gv_no || ''''
+        ||   ' AND    ((xoha.latest_external_flag = ''' || gv_yes || ''')'
+        ||   ' OR      (xottv1.shipping_shikyu_class = ''' || gv_ship_class_3 || '''))'
+        ||   ' AND    NVL(xola.delete_flag,'''|| gv_no || ''') = ''' || gv_no || ''''
+        ||   ' AND    xoha.req_status IN (''' || gv_order_status_04 || ''','''|| gv_order_status_08 || ''')';
+--
+    -- 依頼No
+    IF (gt_request_no IS NOT NULL) THEN
+      lv_select_where := lv_select_where
+          || ' AND    xoha.request_no = ''' || gt_request_no || '''';
+    END IF;
+--
+    -- 出荷元保管場所
+    IF (gt_deliver_from IS NOT NULL) THEN
+      lv_select_where := lv_select_where
+          || ' AND    xoha.deliver_from =  ''' || gt_deliver_from || '''';
+    END IF;
+--
+    -- ブロック
+    IF (gt_block IS NOT NULL) THEN
+      lv_select_where := lv_select_where
+          || ' AND    xilv.distribution_block = ''' || gt_block || '''';
+    END IF;
+--
+    lv_select_lock  := ' FOR UPDATE OF xoha.order_header_id,xola.order_line_id NOWAIT';
+    lv_select_order := ' ORDER BY xoha.request_no,xoha.order_header_id,xola.order_line_id';
+-- 2008/09/01 Add ↑
     -- カーソルオープン
     BEGIN
+-- 2008/09/01 Mod ↓
+/*
       OPEN cur_order_data;
+*/
+      OPEN cur_order_data FOR lv_select1 || lv_select_where || lv_select_lock || lv_select_order;
+-- 2008/09/01 Mod ↑
       -- バルクフェッチ
       FETCH cur_order_data BULK COLLECT INTO or_order_info_tbl ;
       -- カーソルクローズ
@@ -1348,6 +1549,8 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
     END;
+-- 2008/09/01 Mod ↓
+/*
     -- 依頼No単位の件数を取得(A3の件数は明細単位のため)
     SELECT COUNT(xoha.request_no)
     INTO   gn_input_cnt
@@ -1356,7 +1559,7 @@ AS
            xxcmn_item_locations_v xilv                                -- OPM保管場所情報VIEW
     WHERE  xoha.req_status IN (gv_order_status_04,gv_order_status_08)
     AND    xoha.request_no = NVL(gt_request_no,xoha.request_no)
-    AND    xoha.deliver_from =  NVL(gt_deliver_from,xoha.deliver_from)
+    AND    xoha.deliver_from = NVL(gt_deliver_from,xoha.deliver_from)
     AND    xilv.segment1 = xoha.deliver_from
     AND    xilv.distribution_block = NVL(gt_block,xilv.distribution_block)
     AND    NVL(xoha.actual_confirm_class,gv_no) = gv_no
@@ -1372,6 +1575,44 @@ AS
         AND   NVL(xola.delete_flag,gv_no) = gv_no
         AND   ximv.item_no  = xola.shipping_item_code
     );
+*/
+    lv_select2 := 'SELECT COUNT(xoha.request_no)'
+        ||       ' FROM   xxwsh_order_headers_all      xoha,'
+        ||       '       xxwsh_oe_transaction_types_v  xottv1,'
+        ||       '       xxcmn_item_locations_v        xilv'
+        ||       ' WHERE  xoha.req_status IN (''' || gv_order_status_04 || ''','''|| gv_order_status_08 || ''')'
+        ||       ' AND    xilv.segment1 = xoha.deliver_from'
+        ||       ' AND    xottv1.transaction_type_id = xoha.order_type_id'
+        ||       ' AND    NVL(xoha.actual_confirm_class, '''|| gv_no || ''') = ''' || gv_no || ''''
+        ||       ' AND    ((xoha.latest_external_flag = ''' || gv_yes || ''')'
+        ||       ' OR      (xottv1.shipping_shikyu_class = ''' || gv_ship_class_3 || '''))';
+--
+    -- 依頼No
+    IF (gt_request_no IS NOT NULL) THEN
+      lv_select2 := lv_select2 || ' AND    xoha.request_no = ''' || gt_request_no || '''';
+    END IF;
+--
+    -- 出荷元保管場所
+    IF (gt_deliver_from IS NOT NULL) THEN
+      lv_select2 := lv_select2 || ' AND    xoha.deliver_from = ''' || gt_deliver_from || '''';
+    END IF;
+--
+    -- ブロック
+    IF (gt_block IS NOT NULL) THEN
+      lv_select2 := lv_select2 || ' AND    xilv.distribution_block = ''' || gt_block || '''';
+    END IF;
+--
+    lv_select2 := lv_select2 
+        ||       ' AND EXISTS ('
+        ||       ' SELECT xola.order_header_id'
+        ||       ' FROM   xxwsh_order_lines_all xola,'
+        ||       '        xxcmn_item_mst_v      ximv'
+        ||       ' WHERE xola.order_header_id = xoha.order_header_id'
+        ||       ' AND   NVL(xola.delete_flag,'''|| gv_no || ''') = ''' || gv_no || ''''
+        ||       ' AND   ximv.item_no  = xola.shipping_item_code )';
+--
+    EXECUTE IMMEDIATE lv_select2 INTO gn_input_cnt;
+-- 2008/09/01 Mod ↑
 --
   EXCEPTION
 --
@@ -1404,7 +1645,7 @@ AS
 --
   END get_order_info;
   /***********************************************************************************
-   * Procedure Name   : get_order_info
+   * Procedure Name   : get_same_request_number
    * Description      : A4同一依頼No検索処理
    ***********************************************************************************/
   PROCEDURE get_same_request_number(
@@ -5096,6 +5337,7 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    lv_param_name   CONSTANT VARCHAR2(100) := '出荷日';       -- 2008/09/01 Add
 --
     -- *** ローカル変数 ***
      ln_same_request_no_count NUMBER;                                           -- 同一依頼No件数
@@ -5176,7 +5418,31 @@ AS
 --
     -- 入力件数が0件より大きい場合に処理を行う
     IF (gn_input_cnt > 0) THEN
-
+--2008/09/01 Add ↓
+      -- ===============================
+      -- 出荷日が未来日かどうかのチェック
+      -- ===============================
+      <<chk_tbl_loop>>
+      FOR i IN lt_order_tbl.FIRST .. lt_order_tbl.LAST LOOP
+        -- 出荷日がシステム日付より未来日の場合エラー
+        IF (lt_order_tbl(i).shipped_date > TRUNC(SYSDATE)) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_wsh,
+                                                gv_msg_42a_025,
+                                                gv_tkn_para_date,
+                                                lv_param_name,
+                                                gv_tkn_param1,
+                                                lt_order_tbl(i).delivery_no,
+                                                gv_tkn_param2,
+                                                lt_order_tbl(i).request_no,
+                                                gv_tkn_param3,
+                                                TO_CHAR(lt_order_tbl(i).shipped_date,'YYYY/MM/DD'),
+                                                gv_tkn_param4,
+                                                TO_CHAR(lt_order_tbl(i).arrival_date,'YYYY/MM/DD'));
+          RAISE check_sub_main_expt;
+        END IF;
+      END LOOP chk_tbl_loop;
+--2008/09/01 Add ↑
+--
       -- 受入インターフェースで使用するグループIDを取得
       SELECT rcv_interface_groups_s.NEXTVAL
       INTO   gn_group_id
