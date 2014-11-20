@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS014A09C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS014A09C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A09C (body)
  * Description      : 百貨店送り状データ作成 
  * MD.050           : 百貨店送り状データ作成 MD050_COS_014_A09
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/03/18    1.1   Y.Tsubomatsu     [障害COS_156] パラメータの桁拡張(帳票コード,帳票様式)
  *  2009/03/19    1.2   Y.Tsubomatsu     [障害COS_158] パラメータの編集(百貨店コード,百貨店店舗コード,枝番)
  *  2009/04/17    1.3   T.Kitajima       [T1_0375] エラーメッセージ受注番号修正(伝票番号→受注No)
+ *  2009/09/07    1.4   N.Maeda          [0000403] 検索キー項目の任意化に伴い枝番毎のループ処理追加
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -110,6 +111,9 @@ AS
   ct_prf_post_code                CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_POST_CODE';                    --XXCOS:郵便番号
   ct_prf_cmn_rep_chain_code       CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_CMN_REP_CHAIN_CODE';           --XXCOS:共通帳票様式用チェーン店コード
   ct_prf_org_id                   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'ORG_ID';                              --ORG_ID
+-- ************ 2009/09/07 1.4 N.Maeda ADD START *********** --
+  cv_tkn_xxcos1_dept_target_all   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_DEPT_TARGET_ALL';              --XXCOS:百貨店名称
+-- ************ 2009/09/07 1.4 N.Maeda ADD  END  *********** --
 --
   --メッセージ
   ct_msg_if_header                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00094';                    --XXCCP:ヘッダレコード識別子
@@ -153,6 +157,10 @@ AS
   ct_msg_integeral_num_err        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13601';                    --整数チェックエラー
   ct_msg_koguchi_count_err        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13602';                    --小口数項目数エラー
   ct_msg_line_count_err           CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13603';                    --仕入伝票明細行数エラー
+-- ************ 2009/09/07 1.4 N.Maeda ADD START *********** --
+  ct_msg_rep_form_add_info_err    CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13617';                    --帳票様式付加情報の抽出エラー
+  ct_msg_dept_target_all          CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13618';                    --メッセージ用文字列「XXCOS:百貨店名称」
+-- ************ 2009/09/07 1.4 N.Maeda ADD  END  *********** --
 --
   --トークン
   cv_tkn_data                     CONSTANT VARCHAR2(4)   := 'DATA';                                 --データ
@@ -180,13 +188,19 @@ AS
   cv_tkn_item                     CONSTANT VARCHAR2(20)  := 'ITEM';                                 --項目名
   cv_tkn_num_of_item              CONSTANT VARCHAR2(11)  := 'NUM_OF_ITEM';                          --項目数
   cv_tkn_value                    CONSTANT VARCHAR2(30)  := 'VALUE';                                --枝番
-  cv_tkn_key                      CONSTANT VARCHAR2(8)   := 'KEY_DATA';                               --キー情報
+  cv_tkn_key                      CONSTANT VARCHAR2(8)   := 'KEY_DATA';                             --キー情報
+-- ************ 2009/09/07 1.4 N.Maeda ADD START *********** --
+  cv_tkn_report_code           CONSTANT VARCHAR2(30)  := 'REPORT_CODE';                       --帳票種別コード
+-- ************ 2009/09/07 1.4 N.Maeda ADD  END  *********** --
 --
   --参照タイプ
   ct_dept_mst                     CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_DEPARTMENT_MST';        --参照タイプ.百貨店マスタ
   ct_dept_slip_class              CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_DEPARTMENT_SLIP_CLASS'; --参照タイプ.百貨店伝票区分
   ct_dept_buy_class               CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_DEPARTMENT_BUY_CLASS';  --参照タイプ.百貨店買取消化打出区分
   ct_dept_tax_class               CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_DEPARTMENT_TAX_CLASS';  --参照タイプ.百貨店税種区分
+-- ************ 2009/09/07 1.4 N.Maeda ADD START *********** --
+  ct_report_forms_add_info        CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_REPORT_FORMS_ADD_INFO'; --参照タイプ.帳票様式付加情報
+-- ************ 2009/09/07 1.4 N.Maeda ADD  END  *********** --
 --
   --固定値
   cn_cnt_sep_koguchi              CONSTANT NUMBER        := 3;                                      --小口数のカンマ数
@@ -261,7 +275,7 @@ AS
    ,publish_div               VARCHAR2(100)                                      --納品書発行区分
    ,publish_flag_seq          xxcos_report_forms_register.publish_flag_seq%TYPE  --納品書発行フラグ順番
 -- 2009/03/19 Y.Tsubomatsu Ver.1.2 add start
-    --検索キー
+--    --検索キー
    ,key_dept_code             xxcmm_cust_accounts.parnt_dept_shop_code%TYPE      --百貨店コード(検索キー)
    ,key_dept_store_code       xxcmm_cust_accounts.store_code%TYPE                --百貨店店舗コード(検索キー)
    ,key_edaban                VARCHAR2(100)                                      --枝番(検索キー)
@@ -377,6 +391,8 @@ AS
   gv_filename2               VARCHAR2(100);                                      --ファイル名2
   gv_invoice_file            VARCHAR2(100);                                      --送り状ファイル名
   gv_supply_file             VARCHAR2(100);                                      --仕入伝票ファイル名
+  gt_invoice_flag            xxcos_lookup_values_v.attribute1%TYPE;              --送り状出力フラグ
+  gt_supply_flag             xxcos_lookup_values_v.attribute2%TYPE;              --仕入伝票出力フラグ
 --
   -- ===============================
   -- ユーザー定義グローバルTABLE型
@@ -859,139 +875,200 @@ AS
       );
     END IF;
 --
-    --==============================================================
-    --百貨店マスタ情報取得
-    --==============================================================
-    BEGIN
-      SELECT   xdm.attribute1                     account_number                --顧客コード
-              ,xdm.attribute2                     item_distinction_num          --品別番号
-              ,xdm.attribute3                     sales_place                   --売場
-              ,xdm.attribute4                     delivery_place                --納品場所
-              ,xdm.attribute5                     display_place                 --店出場所
-              ,xdm.attribute6                     slip_class                    --伝票区分
-              ,xdm.attribute7                     a_column_class                --A欄区分
-              ,xdm.attribute8                     a_column                      --A欄
-              ,xdm.attribute9                     cost_indication_class         --表示区分
-              ,xdm.attribute10                    buy_digestion_class           --買取消化打出区分
-              ,xdm.attribute11                    tax_type_class                --税種区分
-              ,xdsc.meaning                       slip_class_name               --伝票区分名称
-              ,xdsc.attribute1                    publish_class_invoice         --送り状発行フラグ
-              ,xdsc.attribute2                    publish_class_supply          --仕入伝票発行フラグ
-              ,xdbc.meaning                       buy_digestion_class_name      --買取消化打出区分名称
-              ,xdtc.meaning                       tax_type_class_name           --税種区分名称
-      INTO     l_depart_rec.account_number
-              ,l_depart_rec.item_distinction_num
-              ,l_depart_rec.sales_place
-              ,l_depart_rec.delivery_place
-              ,l_depart_rec.display_place
-              ,l_depart_rec.slip_class
-              ,l_depart_rec.a_column_class
-              ,l_depart_rec.a_column
-              ,l_depart_rec.cost_indication_class
-              ,l_depart_rec.buy_digestion_class
-              ,l_depart_rec.tax_type_class
-              ,l_depart_rec.slip_class_name
-              ,l_depart_rec.publish_class_invoice
-              ,l_depart_rec.publish_class_supply
-              ,l_depart_rec.buy_digestion_class_name
-              ,l_depart_rec.tax_type_class_name
-      FROM     xxcos_lookup_values_v              xdm                           --百貨店マスタ
-              ,xxcos_lookup_values_v              xdsc                          --百貨店伝票区分
-              ,xxcos_lookup_values_v              xdbc                          --買取消化打出区分
-              ,xxcos_lookup_values_v              xdtc                          --税種区分
-      --百貨店マスタ抽出条件
-      WHERE    xdm.lookup_type  = ct_dept_mst                                   --参照タイプ.百貨店マスタ
--- 2009/03/19 Y.Tsubomatsu Ver.1.2 mod start
---      AND      xdm.lookup_code = g_input_rec.dept_code || g_input_rec.dept_store_code || g_input_rec.edaban
-      AND      xdm.lookup_code = g_input_rec.key_dept_code || g_input_rec.key_dept_store_code || g_input_rec.key_edaban
--- 2009/03/19 Y.Tsubomatsu Ver.1.2 mod end
-      AND      xxccp_common_pkg2.get_process_date
-               BETWEEN xdm.start_date_active
-               AND     NVL(xdm.end_date_active,xxccp_common_pkg2.get_process_date)
-      --百貨店伝票区分抽出条件
-      AND   xdsc.lookup_type    = ct_dept_slip_class                            --参照タイプ.百貨店伝票区分
-      AND   xdsc.lookup_code    = xdm.attribute6
-      AND   xxccp_common_pkg2.get_process_date
-        BETWEEN xdsc.start_date_active
-        AND     NVL(xdsc.end_date_active,xxccp_common_pkg2.get_process_date)
-      --買取消化打出区分抽出条件
-      AND   xdbc.lookup_type    = ct_dept_buy_class                             --参照タイプ.買取消化打出区分
-      AND   xdbc.lookup_code    = xdm.attribute10
-      AND   xxccp_common_pkg2.get_process_date
-        BETWEEN xdbc.start_date_active
-        AND     NVL(xdbc.end_date_active,xxccp_common_pkg2.get_process_date)
-      --税種区分名称抽出条件
-      AND   xdtc.lookup_type    = ct_dept_tax_class                             --参照タイプ.税種区分
-      AND   xdtc.lookup_code    = xdm.attribute11
-      AND   xxccp_common_pkg2.get_process_date
-        BETWEEN xdtc.start_date_active
-        AND     NVL(xdtc.end_date_active,xxccp_common_pkg2.get_process_date)
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        lb_error  := TRUE;
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                     cv_apl_name
-                    ,ct_msg_dept_mst_notfound
-                    ,cv_tkn_value
--- 2009/03/19 Y.Tsubomatsu Ver.1.2 mod start
---                    ,g_input_rec.dept_code || g_input_rec.dept_store_code || g_input_rec.edaban
-                    ,g_input_rec.key_dept_code || g_input_rec.key_dept_store_code || g_input_rec.key_edaban
--- 2009/03/19 Y.Tsubomatsu Ver.1.2 mod end
-                   );
-      FND_FILE.PUT_LINE(
-         which  => FND_FILE.OUTPUT
-        ,buff   => lv_errmsg
-      );
-    END;
+-- ************ 2009/09/07 1.4 N.Maeda MOD START *********** --
+    -- =========================================================
+    -- プロファイル「XXCOS:百貨店名称」取得
+    -- =========================================================
+    IF ( g_input_rec.dept_name IS NULL ) THEN
+      g_input_rec.dept_name := FND_PROFILE.VALUE( cv_tkn_xxcos1_dept_target_all );
 --
-    --==============================================================
-    --顧客ID取得
-    --==============================================================
+      IF ( g_input_rec.dept_name IS NULL ) THEN
+        lb_error := TRUE;
+        lt_tkn := xxccp_common_pkg.get_msg(cv_apl_name,ct_msg_dept_target_all );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       cv_apl_name
+                      ,ct_msg_prf
+                      ,cv_tkn_prf
+                      ,lt_tkn
+                     );
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg
+        );
+      END IF;
+    END IF;
+--
+    -- =========================================================
+    -- 出力対象帳票フラグ取得
+    -- =========================================================
     BEGIN
-      SELECT   hca.cust_account_id                cust_account_id               --顧客ID
-      INTO     l_depart_rec.cust_account_id
-      FROM     hz_cust_accounts                   hca                           --顧客マスタ
-      WHERE    hca.account_number = l_depart_rec.account_number                 --顧客コード
+      SELECT   rfai.attribute1  invoice_flag  -- 送り状出力フラグ
+              ,rfai.attribute2  supply_flag   -- 仕入伝票出力フラグ
+      INTO     gt_invoice_flag
+              ,gt_supply_flag
+      FROM    xxcos_lookup_values_v  rfai
+      WHERE   rfai.lookup_type = ct_report_forms_add_info
+      AND     rfai.lookup_code = g_input_rec.report_code
       ;
+--    --==============================================================
+--    --百貨店マスタ情報取得
+--    --==============================================================
+--    BEGIN
+--      SELECT   xdm.attribute1                     account_number                --顧客コード
+--              ,xdm.attribute2                     item_distinction_num          --品別番号
+--              ,xdm.attribute3                     sales_place                   --売場
+--              ,xdm.attribute4                     delivery_place                --納品場所
+--              ,xdm.attribute5                     display_place                 --店出場所
+--              ,xdm.attribute6                     slip_class                    --伝票区分
+--              ,xdm.attribute7                     a_column_class                --A欄区分
+--              ,xdm.attribute8                     a_column                      --A欄
+--              ,xdm.attribute9                     cost_indication_class         --表示区分
+--              ,xdm.attribute10                    buy_digestion_class           --買取消化打出区分
+--              ,xdm.attribute11                    tax_type_class                --税種区分
+--              ,xdsc.meaning                       slip_class_name               --伝票区分名称
+--              ,xdsc.attribute1                    publish_class_invoice         --送り状発行フラグ
+--              ,xdsc.attribute2                    publish_class_supply          --仕入伝票発行フラグ
+--              ,xdbc.meaning                       buy_digestion_class_name      --買取消化打出区分名称
+--              ,xdtc.meaning                       tax_type_class_name           --税種区分名称
+--      INTO     l_depart_rec.account_number
+--              ,l_depart_rec.item_distinction_num
+--              ,l_depart_rec.sales_place
+--              ,l_depart_rec.delivery_place
+--              ,l_depart_rec.display_place
+--              ,l_depart_rec.slip_class
+--              ,l_depart_rec.a_column_class
+--              ,l_depart_rec.a_column
+--              ,l_depart_rec.cost_indication_class
+--              ,l_depart_rec.buy_digestion_class
+--              ,l_depart_rec.tax_type_class
+--              ,l_depart_rec.slip_class_name
+--              ,l_depart_rec.publish_class_invoice
+--              ,l_depart_rec.publish_class_supply
+--              ,l_depart_rec.buy_digestion_class_name
+--              ,l_depart_rec.tax_type_class_name
+--      FROM     xxcos_lookup_values_v              xdm                           --百貨店マスタ
+--              ,xxcos_lookup_values_v              xdsc                          --百貨店伝票区分
+--              ,xxcos_lookup_values_v              xdbc                          --買取消化打出区分
+--              ,xxcos_lookup_values_v              xdtc                          --税種区分
+--      --百貨店マスタ抽出条件
+--      WHERE    xdm.lookup_type  = ct_dept_mst                                   --参照タイプ.百貨店マスタ
+---- 2009/03/19 Y.Tsubomatsu Ver.1.2 mod start
+----      AND      xdm.lookup_code = g_input_rec.dept_code || g_input_rec.dept_store_code || g_input_rec.edaban
+--      AND      xdm.lookup_code = g_input_rec.key_dept_code || g_input_rec.key_dept_store_code || g_input_rec.key_edaban
+---- 2009/03/19 Y.Tsubomatsu Ver.1.2 mod end
+--      AND      xxccp_common_pkg2.get_process_date
+--               BETWEEN xdm.start_date_active
+--               AND     NVL(xdm.end_date_active,xxccp_common_pkg2.get_process_date)
+--      --百貨店伝票区分抽出条件
+--      AND   xdsc.lookup_type    = ct_dept_slip_class                            --参照タイプ.百貨店伝票区分
+--      AND   xdsc.lookup_code    = xdm.attribute6
+--      AND   xxccp_common_pkg2.get_process_date
+--        BETWEEN xdsc.start_date_active
+--        AND     NVL(xdsc.end_date_active,xxccp_common_pkg2.get_process_date)
+--      --買取消化打出区分抽出条件
+--      AND   xdbc.lookup_type    = ct_dept_buy_class                             --参照タイプ.買取消化打出区分
+--      AND   xdbc.lookup_code    = xdm.attribute10
+--      AND   xxccp_common_pkg2.get_process_date
+--        BETWEEN xdbc.start_date_active
+--        AND     NVL(xdbc.end_date_active,xxccp_common_pkg2.get_process_date)
+--      --税種区分名称抽出条件
+--      AND   xdtc.lookup_type    = ct_dept_tax_class                             --参照タイプ.税種区分
+--      AND   xdtc.lookup_code    = xdm.attribute11
+--      AND   xxccp_common_pkg2.get_process_date
+--        BETWEEN xdtc.start_date_active
+--        AND     NVL(xdtc.end_date_active,xxccp_common_pkg2.get_process_date)
+--      ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         lb_error  := TRUE;
         lv_errmsg := xxccp_common_pkg.get_msg(
                      cv_apl_name
-                    ,ct_msg_cust_notfound
-                    ,cv_tkn_value
-                    ,l_depart_rec.account_number
-                   );
+                    ,ct_msg_rep_form_add_info_err
+                    ,cv_tkn_report_code
+                    ,g_input_rec.report_code
+                    );
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                     cv_apl_name
+--                    ,ct_msg_dept_mst_notfound
+--                    ,cv_tkn_value
+---- 2009/03/19 Y.Tsubomatsu Ver.1.2 mod start
+----                    ,g_input_rec.dept_code || g_input_rec.dept_store_code || g_input_rec.edaban
+--                    ,g_input_rec.key_dept_code || g_input_rec.key_dept_store_code || g_input_rec.key_edaban
+---- 2009/03/19 Y.Tsubomatsu Ver.1.2 mod end
+--                   );
       FND_FILE.PUT_LINE(
          which  => FND_FILE.OUTPUT
         ,buff   => lv_errmsg
       );
     END;
+----
+--    --==============================================================
+--    --顧客ID取得
+--    --==============================================================
+--    BEGIN
+--      SELECT   hca.cust_account_id                cust_account_id               --顧客ID
+--      INTO     l_depart_rec.cust_account_id
+--      FROM     hz_cust_accounts                   hca                           --顧客マスタ
+--      WHERE    hca.account_number = l_depart_rec.account_number                 --顧客コード
+--      ;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        lb_error  := TRUE;
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                     cv_apl_name
+--                    ,ct_msg_cust_notfound
+--                    ,cv_tkn_value
+--                    ,l_depart_rec.account_number
+--                   );
+--      FND_FILE.PUT_LINE(
+--         which  => FND_FILE.OUTPUT
+--        ,buff   => lv_errmsg
+--      );
+--    END;
+-- ************ 2009/09/07 1.4 N.Maeda MOD  END  *********** --
 --
     IF (lb_error) THEN
       lv_errmsg := NULL;
       RAISE global_api_expt;
     END IF;
 --
-    --百貨店マスタ.送り状発行フラグが'Y'の場合、送り状
-    IF l_depart_rec.publish_class_invoice = cv_enabled_flag THEN
-      gb_invoice := TRUE;
-    ELSE
-      gb_invoice := FALSE;
-    END IF;
+-- ************ 2009/09/07 1.4 N.Maeda MOD START *********** --
 --
-    --百貨店マスタ.仕入伝票発行フラグが'Y'の場合、仕入伝票
-    IF l_depart_rec.publish_class_supply = cv_enabled_flag THEN
-      gb_supply := TRUE;
-    ELSE
-      gb_supply := FALSE;
-    END IF;
+      --帳票様式付加情報.送り状発行フラグが'Y'の場合、
+      IF (gt_invoice_flag = cv_enabled_flag ) THEN
+        gb_invoice := TRUE;
+      ELSE
+        gb_invoice := FALSE;
+      END IF;
+--
+      --帳票様式付加情報.送り状発行フラグが'Y'でないかつ仕入伝票発行フラグが'Y'の場合
+      IF (gt_invoice_flag <> cv_enabled_flag ) AND ( gt_supply_flag = cv_enabled_flag ) THEN
+        gb_supply := TRUE;
+      ELSE
+        gb_supply := FALSE;
+      END IF;
+--
+--    --百貨店マスタ.送り状発行フラグが'Y'の場合、送り状
+--    IF l_depart_rec.publish_class_invoice = cv_enabled_flag THEN
+--      gb_invoice := TRUE;
+--    ELSE
+--      gb_invoice := FALSE;
+--    END IF;
+----
+--    --百貨店マスタ.仕入伝票発行フラグが'Y'の場合、仕入伝票
+--    IF l_depart_rec.publish_class_supply = cv_enabled_flag THEN
+--      gb_supply := TRUE;
+--    ELSE
+--      gb_supply := FALSE;
+--    END IF;
+-- ************ 2009/09/07 1.4 N.Maeda MOD  END  *********** --
 --
     --==============================================================
     --グローバル変数のセット
     --==============================================================
-    g_depart_rec        := l_depart_rec;
+-- ************ 2009/09/07 1.4 N.Maeda DEL START *********** --
+--    g_depart_rec        := l_depart_rec;
+-- ************ 2009/09/07 1.4 N.Maeda DEL  END  *********** --
     g_prf_rec           := l_prf_rec;
     g_other_rec         := l_other_rec;
     g_record_layout_tab := l_record_layout_tab;
@@ -1830,6 +1907,9 @@ AS
     ln_idx_supply                      NUMBER;                                    --出力データ情報インデックス(仕入伝票)
     lv_table_name                      all_tables.table_name%TYPE;
     lv_key_info                        VARCHAR2(100);
+-- ************** 2009/09/07 1.4 N.Maeda ADD START *********** --
+    lv_key_dept_store_edaban           VARCHAR2(500);                             --KEY枝番
+-- ************** 2009/09/07 1.4 N.Maeda ADD  END  *********** --
     --項目チェックエリア
     ln_koguchi_count                   NUMBER;                                    --カンマを含んだ桁数
     ln_no_del                          NUMBER;                                    --カンマを無くした桁数
@@ -1868,9 +1948,11 @@ AS
     -- *** ローカル・カーソル ***
     CURSOR cur_data_record(i_input_rec     g_input_rtype
                           ,i_prf_rec       g_prf_rtype
-                          ,i_depart_rec    g_depart_rtype
-                          ,i_cust_dept_rec g_cust_dept_rtype
-                          ,i_cust_shop_rec g_cust_shop_rtype
+-- ************** 2009/09/07 1.4 N.Maeda DEL START *********** --
+--                          ,i_depart_rec    g_depart_rtype
+--                          ,i_cust_dept_rec g_cust_dept_rtype
+--                          ,i_cust_shop_rec g_cust_shop_rtype
+-- ************** 2009/09/07 1.4 N.Maeda DEL  END  *********** --
                           ,i_msg_rec       g_msg_rtype
                           ,i_other_rec     g_other_rtype
     )
@@ -1891,6 +1973,32 @@ AS
             ,NVL( oola.unit_selling_price, cn_number0 )                         unit_selling_price          --単価
             ,NVL( oola.attribute10       , cn_number0 )                         selling_price               --売単価
             ,NVL( ximb.item_short_name   , g_msg_rec.item_notfound )            product_name                --品目略称
+-- ************** 2009/09/07 1.4 N.Maeda ADD START *********** --
+      ------------------------------------------------------百貨店情報------------------------------------------------------------
+            ,xdm.attribute1                                                     account_number                --顧客コード
+            ,xdm.attribute2                                                     item_distinction_num          --品別番号
+            ,xdm.attribute3                                                     sales_place                   --売場
+            ,xdm.attribute4                                                     delivery_place                --納品場所
+            ,xdm.attribute5                                                     display_place                 --店出場所
+            ,xdm.attribute6                                                     slip_class                    --伝票区分
+            ,xdm.attribute7                                                     a_column_class                --A欄区分
+            ,xdm.attribute8                                                     a_column                      --A欄
+            ,xdm.attribute9                                                     cost_indication_class         --表示区分
+            ,xdm.attribute10                                                    buy_digestion_class           --買取消化打出区分
+            ,xdm.attribute11                                                    tax_type_class                --税種区分
+            ,xdsc.meaning                                                       slip_class_name               --伝票区分名称
+            ,xdsc.attribute1                                                    publish_class_invoice         --送り状発行フラグ
+            ,xdsc.attribute2                                                    publish_class_supply          --仕入伝票発行フラグ
+            ,xdbc.meaning                                                       buy_digestion_class_name      --買取消化打出区分名称
+            ,xdtc.meaning                                                       tax_type_class_name           --税種区分名称
+            ,hca.cust_account_id                                                cust_account_id               --顧客ID(枝番)
+            ,xca_s.store_code                                                   store_code                    --店舗コード
+            ,xca_s.cust_store_name                                              cust_store_name               --店舗名称
+            ,xca_s.torihikisaki_code                                            torihikisaki_code             --取引先コード
+            ,hca_d.cust_account_id                                              dept_cust_id                  --百貨店顧客ID
+            ,hp_d.party_name                                                    dept_name                     --百貨店名
+            ,xca_d.parnt_dept_shop_code                                         dept_shop_code                --百貨店伝区コード
+-- ************** 2009/09/07 1.4 N.Maeda ADD  END  *********** --
       FROM   oe_order_headers_all                                               ooha                        --受注ヘッダ情報テーブル
             ,oe_order_lines_all                                                 oola                        --受注明細情報テーブル
             ,oe_order_sources                                                   oos                         --受注ソース
@@ -1898,11 +2006,51 @@ AS
             ,oe_transaction_types_tl                                            ottt_l                      --受注タイプ明細
             ,ic_item_mst_b                                                      iimb                        --OPM品目マスタ
             ,xxcmn_item_mst_b                                                   ximb                        --OPM品目マスタアドオン
+-- ************** 2009/09/07 1.4 N.Maeda ADD START *********** --
+            ,(
+              SELECT
+                 xdm.lookup_type     lookup_type
+                ,xdm.lookup_code     lookup_code
+                ,xdm.attribute1      attribute1
+                ,xdm.attribute2      attribute2
+                ,xdm.attribute3      attribute3
+                ,xdm.attribute4      attribute4
+                ,xdm.attribute5      attribute5
+                ,xdm.attribute6      attribute6
+                ,xdm.attribute7      attribute7
+                ,xdm.attribute8      attribute8
+                ,xdm.attribute9      attribute9
+                ,xdm.attribute10     attribute10
+                ,xdm.attribute11     attribute11
+                ,SUBSTRB(xdm.lookup_code,7,5) edaban_code
+              FROM
+                xxcos_lookup_values_v       xdm
+              WHERE
+                    xdm.lookup_type     = ct_dept_mst                                   --参照タイプ.百貨店マスタ
+              AND   xdm.lookup_code     LIKE lv_key_dept_store_edaban
+              AND   i_other_rec.process_date
+                BETWEEN xdm.start_date_active
+              AND     NVL(xdm.end_date_active,i_other_rec.process_date)
+             )                                                                  xdm
+            ,xxcos_lookup_values_v                                              xdsc                          --百貨店伝票区分
+            ,xxcos_lookup_values_v                                              xdbc                          --買取消化打出区分
+            ,xxcos_lookup_values_v                                              xdtc                          --税種区分
+            ,hz_cust_accounts                                                   hca                           --顧客マスタ(枝番)
+            ,hz_cust_accounts                                                   hca_s                         --顧客マスタ（店舗）
+            ,xxcmm_cust_accounts                                                xca_s                         --顧客マスタアドオン（店舗）
+            ,hz_cust_accounts                                                   hca_d                         --顧客マスタ(百貨店)
+            ,xxcmm_cust_accounts                                                xca_d                         --顧客マスタアドオン(百貨店)
+            ,hz_parties                                                         hp_d                          --パーティマスタ(百貨店)
+            ,xxcos_dept_store_security_v                                        xdsv                        --百貨店店舗セキュリティビュー
+-- ************** 2009/09/07 1.4 N.Maeda ADD  END  *********** --
       --受注ヘッダ抽出条件
       WHERE  ooha.org_id = i_prf_rec.org_id                                                                 --組織ID
       AND    ooha.flow_status_code <> cv_cancel                                                             --ステータス≠取消
       AND    ooha.flow_status_code <> cv_entered                                                            --ステータス≠入力済み
-      AND    ooha.sold_to_org_id = g_depart_rec.cust_account_id                                             --顧客ID
+-- ************** 2009/09/07 1.4 N.Maeda ADD START *********** --
+      AND    ooha.sold_to_org_id = hca.cust_account_id                                                      --顧客ID
+--      AND    ooha.sold_to_org_id = g_depart_rec.cust_account_id                                             --顧客ID
+-- ************** 2009/09/07 1.4 N.Maeda ADD  END  *********** --
       AND    TRUNC( ooha.request_date )
              BETWEEN TO_DATE( i_input_rec.shop_delivery_date_from, cv_date_fmt )
              AND     TO_DATE( i_input_rec.shop_delivery_date_to, cv_date_fmt )                              --店舗納品日
@@ -1910,10 +2058,11 @@ AS
                i_input_rec.publish_flag_seq                                                                 --納品書発行フラグ順番
               ,ooha.global_attribute1                                                                       --共通帳票様式用納品書発行フラグエリア
                ) = i_input_rec.publish_div                                                                  --入力パラメータ.納品書発行フラグ
--- 2009/03/19 Y.Tsubomatsu Ver.1.2 mod start
---      AND    ooha.attribute16       = i_input_rec.edaban                                                    --入力パラメータ.枝番
-      AND    ooha.attribute16       = i_input_rec.key_edaban                                                --入力パラメータ.枝番
--- 2009/03/19 Y.Tsubomatsu Ver.1.2 mod end
+-- ************** 2009/09/07 1.4 N.Maeda ADD START *********** --
+      AND ( i_input_rec.key_edaban IS NULL 
+          OR i_input_rec.key_edaban IS NOT NULL AND ooha.attribute16 = i_input_rec.key_edaban )             --入力パラメータ.枝番
+--      AND    ooha.attribute16       = i_input_rec.key_edaban                                                --入力パラメータ.枝番
+-- ************** 2009/09/07 1.4 N.Maeda ADD  END  *********** --
       --受注明細
       AND    oola.header_id         = ooha.header_id                                                        --受注ヘッダID
       AND    oola.flow_status_code <> cv_cancel                                                             --ステータス≠取消
@@ -1942,11 +2091,53 @@ AS
       AND    TRUNC( ooha.request_date )                                                                     --要求日
              BETWEEN NVL( ximb.start_date_active ,TRUNC( ooha.request_date ) )                              --適用開始日
              AND     NVL( ximb.end_date_active   ,TRUNC( ooha.request_date ) )                              --適用終了日
+-- ************** 2009/09/07 1.4 N.Maeda ADD START *********** --
+      --百貨店マスタ抽出条件
+      AND   xdm.edaban_code     = ooha.attribute16
+      --百貨店伝票区分抽出条件
+      AND   xdsc.lookup_type    = ct_dept_slip_class                            --参照タイプ.百貨店伝票区分
+      AND   xdsc.lookup_code    = xdm.attribute6
+      AND   i_other_rec.process_date
+        BETWEEN xdsc.start_date_active
+        AND     NVL(xdsc.end_date_active,i_other_rec.process_date)
+      --買取消化打出区分抽出条件
+      AND   xdbc.lookup_type    = ct_dept_buy_class                             --参照タイプ.買取消化打出区分
+      AND   xdbc.lookup_code    = xdm.attribute10
+      AND   i_other_rec.process_date
+        BETWEEN xdbc.start_date_active
+        AND     NVL(xdbc.end_date_active,i_other_rec.process_date)
+      --税種区分名称抽出条件
+      AND   xdtc.lookup_type    = ct_dept_tax_class                             --参照タイプ.税種区分
+      AND   xdtc.lookup_code    = xdm.attribute11
+      AND   i_other_rec.process_date
+        BETWEEN xdtc.start_date_active
+        AND     NVL(xdtc.end_date_active,i_other_rec.process_date)
+      AND   hca.account_number  = xdm.attribute1                                --顧客コード
+      -- 店舗抽出条件
+      AND   hca_s.cust_account_id       = hca.cust_account_id                   --顧客ID（顧客）= 顧客ID（枝番）
+      AND   hca_s.customer_class_code   = cv_cust_class_cust                    --顧客区分（顧客）
+      AND   hca_s.cust_account_id       = xca_s.customer_id                     --顧客ID（顧客）
+      -- 百貨店抽出条件
+      AND   xca_d.parnt_dept_shop_code  = xca_s.child_dept_shop_code           -- 顧客アドオン.親百貨店伝区(百貨店) = 顧客アドオン.子百貨店伝区(顧客)
+      AND   xca_d.customer_id           = hca_d.cust_account_id                -- 顧客アドオン(百貨店)= 顧客マスタ顧客ID(百貨店)
+      AND   hca_d.customer_class_code   = cv_cust_class_dept                   -- 顧客区分（百貨店）
+      AND   ( i_input_rec.dept_code IS NULL
+              OR ( i_input_rec.dept_code IS NOT NULL
+                 AND xca_d.parnt_dept_shop_code  = i_input_rec.dept_code )
+            )                -- 顧客アドオン(百貨店).百貨店コード = INPUT百貨店コード
+      AND   hp_d.party_id               = hca_d.party_id
+      -- 百貨店店舗セキュリティビュー抽出条件
+      AND   xdsv.dept_code        = xca_d.parnt_dept_shop_code                 -- 百貨店コード
+      AND   xdsv.dept_store_code  = xca_s.store_code                           -- 百貨店店舗コード
+      AND   xdsv.user_id          = i_input_rec.user_id                        -- 百貨店店舗セキュリティビュー.ユーザーID = INパラ.ユーザーID
+      AND   xdsv.account_number   = hca.account_number                         -- 顧客コード
+-- ************** 2009/09/07 1.4 N.Maeda ADD  END  *********** --
       ORDER BY ooha.request_date                                                                            --受注ヘッダ.店舗納品日
               ,ooha.attribute15                                                                             --受注ヘッダ.伝票番号
               ,oola.line_number                                                                             --受注明細.明細番号
       FOR UPDATE OF ooha.header_id NOWAIT                                                                   --ロック
      ;
+--
 --
     --小口数取得関数
     FUNCTION get_koguchi(
@@ -2008,55 +2199,72 @@ AS
     --メッセージ文字列(受注ソース)取得
     g_msg_rec.order_source      := xxccp_common_pkg.get_msg(cv_apl_name, ct_msg_order_source);
 --
-    --==============================================================
-    --顧客マスタ（百貨店）情報取得
-    --==============================================================
-    BEGIN
-      SELECT hca.cust_account_id                                                dept_cust_id                 --百貨店顧客ID
-            ,hp.party_name                                                      dept_name                    --百貨店名
-            ,xca.parnt_dept_shop_code                                           dept_shop_code               --百貨店伝区コード
-      INTO   l_cust_dept_rec.dept_cust_id
-            ,l_cust_dept_rec.dept_name
-            ,l_cust_dept_rec.dept_shop_code
-      FROM   hz_cust_accounts                                                   hca                          --顧客マスタ(百貨店)
-            ,xxcmm_cust_accounts                                                xca                          --顧客マスタアドオン(百貨店)
-            ,hz_parties                                                         hp                           --パーティマスタ(百貨店)
-      WHERE  hca.customer_class_code   = cv_cust_class_dept                                                  --顧客区分（百貨店）
-      AND    xca.customer_id           = hca.cust_account_id                                                 --顧客ID
-      AND    xca.parnt_dept_shop_code  = g_input_rec.dept_code                                               --百貨店コード
-      AND    hp.party_id               = hca.party_id
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        l_cust_dept_rec.dept_name := g_msg_rec.customer_notfound;
-    END;
+-- ************** 2009/09/07 1.4 N.Maeda DEL START *********** --
+--    --==============================================================
+--    --顧客マスタ（百貨店）情報取得
+--    --==============================================================
+--    BEGIN
+--      SELECT hca.cust_account_id                                                dept_cust_id                 --百貨店顧客ID
+--            ,hp.party_name                                                      dept_name                    --百貨店名
+--            ,xca.parnt_dept_shop_code                                           dept_shop_code               --百貨店伝区コード
+--      INTO   l_cust_dept_rec.dept_cust_id
+--            ,l_cust_dept_rec.dept_name
+--            ,l_cust_dept_rec.dept_shop_code
+--      FROM   hz_cust_accounts                                                   hca                          --顧客マスタ(百貨店)
+--            ,xxcmm_cust_accounts                                                xca                          --顧客マスタアドオン(百貨店)
+--            ,hz_parties                                                         hp                           --パーティマスタ(百貨店)
+--      WHERE  hca.customer_class_code   = cv_cust_class_dept                                                  --顧客区分（百貨店）
+--      AND    xca.customer_id           = hca.cust_account_id                                                 --顧客ID
+--      AND    xca.parnt_dept_shop_code  = g_input_rec.dept_code                                               --百貨店コード
+--      AND    hp.party_id               = hca.party_id
+--      ;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        l_cust_dept_rec.dept_name := g_msg_rec.customer_notfound;
+--    END;
+----
+--    --==============================================================
+--    --顧客マスタ（店舗）情報取得
+--    --==============================================================
+--    BEGIN
+--      SELECT xca.store_code                                                     store_code                   --店舗コード
+--            ,xca.cust_store_name                                                cust_store_name              --店舗名称
+--            ,xca.torihikisaki_code                                              torihikisaki_code            --取引先コード
+--      INTO   l_cust_shop_rec.store_code
+--            ,l_cust_shop_rec.cust_store_name
+--            ,l_cust_shop_rec.torihikisaki_code
+--      FROM   hz_cust_accounts                                                   hca                          --顧客マスタ（店舗）
+--            ,xxcmm_cust_accounts                                                xca                          --顧客マスタアドオン（店舗）
+--      WHERE  hca.customer_class_code   = cv_cust_class_cust                                                  --顧客区分（顧客）
+--      AND    hca.cust_account_id       = xca.customer_id                                                     --顧客ID
+--      AND    hca.cust_account_id       = g_depart_rec.cust_account_id
+--      ;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        l_cust_shop_rec.cust_store_name := g_msg_rec.customer_notfound;
+--    END;
+-- ************** 2009/09/07 1.4 N.Maeda DEL  END  *********** --
 --
-    --==============================================================
-    --顧客マスタ（店舗）情報取得
-    --==============================================================
-    BEGIN
-      SELECT xca.store_code                                                     store_code                   --店舗コード
-            ,xca.cust_store_name                                                cust_store_name              --店舗名称
-            ,xca.torihikisaki_code                                              torihikisaki_code            --取引先コード
-      INTO   l_cust_shop_rec.store_code
-            ,l_cust_shop_rec.cust_store_name
-            ,l_cust_shop_rec.torihikisaki_code
-      FROM   hz_cust_accounts                                                   hca                          --顧客マスタ（店舗）
-            ,xxcmm_cust_accounts                                                xca                          --顧客マスタアドオン（店舗）
-      WHERE  hca.customer_class_code   = cv_cust_class_cust                                                  --顧客区分（顧客）
-      AND    hca.cust_account_id       = xca.customer_id                                                     --顧客ID
-      AND    hca.cust_account_id       = g_depart_rec.cust_account_id
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        l_cust_shop_rec.cust_store_name := g_msg_rec.customer_notfound;
-    END;
---
-    --==============================================================
-    --グローバル変数の設定
-    --==============================================================
-    g_cust_dept_rec  := l_cust_dept_rec;
-    g_cust_shop_rec  := l_cust_shop_rec;
+-- ************** 2009/09/07 1.4 N.Maeda ADD START *********** --
+    IF ( ( g_input_rec.key_dept_code || g_input_rec.key_dept_store_code || g_input_rec.key_edaban ) IS NULL ) THEN
+       lv_key_dept_store_edaban := '%';
+    ELSE
+       IF ( g_input_rec.key_dept_code IS NOT NULL ) AND ( g_input_rec.key_dept_store_code IS NULL ) AND ( g_input_rec.key_edaban IS NULL ) THEN
+         lv_key_dept_store_edaban := g_input_rec.key_dept_code || '%';
+       ELSIF ( g_input_rec.key_dept_code IS NOT NULL ) AND ( g_input_rec.key_dept_store_code IS NOT NULL ) AND ( g_input_rec.key_edaban IS NULL ) THEN
+         lv_key_dept_store_edaban := g_input_rec.key_dept_code || g_input_rec.key_dept_store_code || '%';
+       ELSIF ( g_input_rec.key_dept_code IS NOT NULL ) AND ( g_input_rec.key_dept_store_code IS NOT NULL ) AND ( g_input_rec.key_edaban IS NOT NULL ) THEN
+         lv_key_dept_store_edaban := g_input_rec.key_dept_code || g_input_rec.key_dept_store_code || g_input_rec.key_edaban;
+       END IF;
+    END IF;
+-- ************** 2009/09/07 1.4 N.Maeda ADD  END  *********** --
+-- ************** 2009/09/07 1.4 N.Maeda DEL START *********** --
+--    --==============================================================
+--    --グローバル変数の設定
+--    --==============================================================
+--    g_cust_dept_rec  := l_cust_dept_rec;
+--    g_cust_shop_rec  := l_cust_shop_rec;
+-- ************** 2009/09/07 1.4 N.Maeda DEL  END  *********** --
 --
     --データ件数の初期化
     ln_data_cnt := 0;
@@ -2085,9 +2293,11 @@ AS
     FOR rec_main IN cur_data_record(
       g_input_rec
      ,g_prf_rec
-     ,g_depart_rec
-     ,g_cust_dept_rec
-     ,g_cust_shop_rec
+-- ************** 2009/09/07 1.4 N.Maeda DEL START *********** --
+--     ,g_depart_rec
+--     ,g_cust_dept_rec
+--     ,g_cust_shop_rec
+-- ************** 2009/09/07 1.4 N.Maeda DEL  END  *********** --
      ,g_msg_rec
      ,g_other_rec
     )
@@ -2106,6 +2316,38 @@ AS
       lb_output_invoice  := FALSE;    --出力フラグ(送り状)
       lb_output_supply   := FALSE;    --出力フラグ(仕入伝票)
 --
+-- ************** 2009/09/07 1.4 N.Maeda ADD START *********** --
+      -- 初期化
+      l_cust_dept_rec := NULL;
+      l_cust_shop_rec := NULL;
+      g_depart_rec    := NULL;
+      -- 百貨店情報の取得
+      l_cust_dept_rec.dept_cust_id         := rec_main.dept_cust_id;              --百貨店顧客ID
+      l_cust_dept_rec.dept_name            := rec_main.dept_name;                 --百貨店名
+      l_cust_dept_rec.dept_shop_code       := rec_main.dept_shop_code;            --百貨店伝区コード
+      -- 百貨店店舗情報の取得
+      l_cust_shop_rec.store_code           := rec_main.store_code;                --店舗コード
+      l_cust_shop_rec.cust_store_name      := rec_main.cust_store_name;           --店舗名称
+      l_cust_shop_rec.torihikisaki_code    := rec_main.torihikisaki_code;         --取引先コード
+      -- 百貨店枝番情報の取得
+      g_depart_rec.account_number          := rec_main.account_number;            --顧客コード
+      g_depart_rec.item_distinction_num    := rec_main.item_distinction_num;      --品別番号
+      g_depart_rec.sales_place             := rec_main.sales_place;               --売場名
+      g_depart_rec.delivery_place          := rec_main.delivery_place;            --納品場所
+      g_depart_rec.display_place           := rec_main.display_place;             --店出場所
+      g_depart_rec.slip_class              := rec_main.slip_class;                --伝票区分
+      g_depart_rec.a_column_class          := rec_main.a_column_class;            --A欄区分
+      g_depart_rec.a_column                := rec_main.a_column;                  --A欄
+      g_depart_rec.cost_indication_class   := rec_main.cost_indication_class;     --表示区分
+      g_depart_rec.buy_digestion_class     := rec_main.buy_digestion_class;       --買取消化打出区分
+      g_depart_rec.tax_type_class          := rec_main.tax_type_class;            --税種区分
+      g_depart_rec.slip_class_name         := rec_main.slip_class_name;           --伝票区分名称
+      g_depart_rec.publish_class_invoice   := rec_main.publish_class_invoice;     --送り状発行フラグ
+      g_depart_rec.publish_class_supply    := rec_main.publish_class_supply;      --仕入伝票発行フラグ
+      g_depart_rec.buy_digestion_class_name:= rec_main.buy_digestion_class_name;  --買取消化打出区分名称
+      g_depart_rec.tax_type_class_name     := rec_main.tax_type_class_name;       --税種区分名称
+      g_depart_rec.cust_account_id         := rec_main.cust_account_id;           --顧客ID
+-- ************** 2009/09/07 1.4 N.Maeda ADD  END  *********** --
       --==============================================================
       --判定フラグセット(レコード格納、出力、集計)(A-5)
       --==============================================================
@@ -2328,7 +2570,10 @@ AS
         l_data_tab_invoice('BASE_CODE')                     := g_input_rec.base_code;                                 --拠点（部門）コード
         l_data_tab_invoice('REPORT_CODE')                   := g_input_rec.report_code;                               --帳票コード
         l_data_tab_invoice('REPORT_SHOW_NAME')              := g_input_rec.report_name;                               --帳票表示名
-        l_data_tab_invoice('COMPANY_NAME')                  := g_input_rec.dept_name;                                 --社名（漢字）
+-- ************** 2009/09/07 1.4 N.Maeda MOD START *********** --
+--        l_data_tab_invoice('COMPANY_NAME')                  := g_input_rec.dept_name;                                 --社名（漢字）
+        l_data_tab_invoice('COMPANY_NAME')                  := l_cust_dept_rec.dept_name;                             --社名（漢字）
+-- ************** 2009/09/07 1.4 N.Maeda MOD  END  *********** --
         l_data_tab_invoice('SHOP_NAME')                     := l_cust_shop_rec.cust_store_name;                       --店名（漢字）
         l_data_tab_invoice('SHOP_DELIVERY_DATE')            := TO_CHAR( rec_main.shop_delivery_date, cv_date_fmt );   --店舗納品日
         l_data_tab_invoice('INVOICE_NUMBER')                := rec_main.invoice_number;                               --伝票番号
@@ -2765,6 +3010,7 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+--
     --==============================================================
     --ヘッダレコード作成処理
     --==============================================================
@@ -2912,11 +3158,32 @@ AS
 --
 -- 2009/03/19 Y.Tsubomatsu Ver.1.2 add start
     --百貨店コード(検索キー)
-    l_input_rec.key_dept_code       := LPAD( iv_dept_code, cn_length_dept_code, cv_number0 );
+-- ************ 2009/09/07 1.4 N.Maeda MOD START *********** --
+    IF ( iv_dept_code IS NOT NULL ) THEN
+      l_input_rec.key_dept_code       := LPAD( iv_dept_code, cn_length_dept_code, cv_number0 );
+    ELSE
+      l_input_rec.key_dept_code       := NULL;
+    END IF;
+--    l_input_rec.key_dept_code       := LPAD( iv_dept_code, cn_length_dept_code, cv_number0 );
+-- ************ 2009/09/07 1.4 N.Maeda MOD  END  *********** --
     --百貨店店舗コード(検索キー)
-    l_input_rec.key_dept_store_code := LPAD( iv_dept_store_code, cn_length_dept_store_code, cv_number0 );
+-- ************ 2009/09/07 1.4 N.Maeda MOD START *********** --
+    IF ( iv_dept_store_code IS NOT NULL ) THEN
+      l_input_rec.key_dept_store_code := LPAD( iv_dept_store_code, cn_length_dept_store_code, cv_number0 );
+    ELSE
+      l_input_rec.key_dept_store_code := NULL;
+    END IF;
+--    l_input_rec.key_dept_store_code := LPAD( iv_dept_store_code, cn_length_dept_store_code, cv_number0 );
+-- ************ 2009/09/07 1.4 N.Maeda MOD  END  *********** --
     --枝番(検索キー)
-    l_input_rec.key_edaban          := SUBSTRB( iv_edaban, ( LENGTHB( iv_edaban ) - cn_length_edaban + 1 ) );
+-- ************ 2009/09/07 1.4 N.Maeda MOD START *********** --
+    IF ( iv_edaban IS NOT NULL ) THEN
+      l_input_rec.key_edaban          := SUBSTRB( iv_edaban, ( LENGTHB( iv_edaban ) - cn_length_edaban + 1 ) );
+    ELSE
+      l_input_rec.key_edaban          := NULL;
+    END IF;
+--    l_input_rec.key_edaban          := SUBSTRB( iv_edaban, ( LENGTHB( iv_edaban ) - cn_length_edaban + 1 ) );
+-- ************ 2009/09/07 1.4 N.Maeda MOD  END  *********** --
 -- 2009/03/19 Y.Tsubomatsu Ver.1.2 add end
     g_input_rec := l_input_rec;
 --
