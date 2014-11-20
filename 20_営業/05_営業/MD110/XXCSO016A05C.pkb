@@ -54,6 +54,7 @@ AS
  *  2009-08-06    1.11  K.Satomura       SCS障害管理番号(0000935) 対応
  *  2009-09-03    1.12  M.Maruyama       SCS障害管理番号(0001192) 対応
  *  2009-11-27    1.13  K.Satomura       E_本稼動_00118対応
+ *  2009-12-09    1.14  T.Maruyama       E_本稼動_00117対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1582,7 +1583,12 @@ AS
                   --WHEN l_get_rec.last_jotai_kbn = cv_jotai_kbn1_2 THEN
                   WHEN l_get_rec.last_jotai_kbn IN (cv_jotai_kbn1_2, cv_jotai_kbn1_3) THEN
                   /* 2009.08.06 K.Satomura 0000935対応 END */
-                    xcav.account_number       -- 顧客コード
+                    /* 2009.12.09 T.Maruyama E_本稼動_00117 START */
+                    --xcav.account_number       -- 顧客コード
+                    xcav.sale_base_code       -- 売上担当拠点コード
+                  ELSE
+                    xcav.sale_base_code       -- 売上担当拠点コード
+                    /* 2009.12.09 T.Maruyama E_本稼動_00117 END */
                   END) last_month_base_cd
                ,l_get_rec.last_inst_cust_code  -- 先月末顧客コード
           INTO  lv_last_month_base_cd           -- 先月末売上拠点コード
