@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.20
+ * Version          : 1.21
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -49,6 +49,9 @@ AS
  *  2009/05/14    1.18  K.KIN            T1_0795
  *  2009/05/15    1.19  K.KIN            T1_0776
  *  2009/05/20    1.20  K.KIN            T1_1078
+ *  2009/07/27    1.21  K.Kiriu          [0000829]PT対応
+ *  2009/07/30    1.21  M.Sano           [0000829]PT追加対応
+ *                                       [0000899]伝票入力者取得SQL条件追加
  *
  *****************************************************************************************/
 --
@@ -169,6 +172,11 @@ AS
   cv_jour_no_msg            CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12785'; -- 仕訳パターンない
   cv_receipt_id_msg         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12789'; -- 支払方法が未設定
   cv_tax_no_msg             CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12790'; -- 対象外税金コード取得エラー
+/* 2009/07/30 Ver1.21 Add Start */
+  cv_goods_prod_cls         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12791'; -- XXCOI:商品製品区分カテゴリセット名
+  cv_no_cate_set_id_msg     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12792'; -- カテゴリセットID取得エラー
+  cv_no_cate_id_msg         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12793'; -- カテゴリID取得エラーメッセージ
+/* 2009/07/30 Ver1.21 Add End   */
 --
   -- トークン
   cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';         -- プロファイル
@@ -217,6 +225,14 @@ AS
   cv_site_code              CONSTANT  VARCHAR2(10) := 'BILL_TO';         -- サイトコード
   cn_ship_flg_on            CONSTANT  NUMBER       := 1;                 -- 出荷先顧客フラグがON
   cn_ship_flg_off           CONSTANT  NUMBER       := 0;                 -- 出荷先顧客フラグがOFF
+/* 2009/07/27 Ver1.21 Add Start */
+  cv_cust_relate_status     CONSTANT  VARCHAR2(1)  := 'A';               -- 顧客関連ステータス(有効)
+  cv_cust_bill              CONSTANT  VARCHAR2(1)  := '1';               -- 関連分類(請求)
+  cv_cust_cash              CONSTANT  VARCHAR2(1)  := '2';               -- 関連分類(入金)
+  cv_cust_class_uri         CONSTANT  VARCHAR2(2)  := '14';              -- 顧客区分(売掛金管理先顧客)
+  cv_cust_class_cust        CONSTANT  VARCHAR2(2)  := '10';              -- 顧客区分(顧客)
+  cv_cust_class_ue          CONSTANT  VARCHAR2(2)  := '12';              -- 顧客区分(上様)
+/* 2009/07/27 Ver1.21 Add End   */
 --
   -- クイックコードタイプ
   cv_qct_card_cls           CONSTANT  VARCHAR2(50) := 'XXCOS1_CARD_SALE_CLASS';         -- カード売区分特定マスタ
@@ -268,6 +284,12 @@ AS
   cv_date_format_yyyymm       CONSTANT VARCHAR2(8)  := 'YYYY/MM/';
   cv_substr_st                CONSTANT NUMBER       := 7;
   cv_substr_cnt               CONSTANT NUMBER       := 2;
+/* 2009/07/27 Ver1.21 Add Start */
+--
+  -- 抽出条件用
+  ct_lang                  CONSTANT  fnd_lookup_values.language%TYPE := USERENV('LANG'); -- 言語
+  cd_sysdate               CONSTANT  DATE           := SYSDATE;                          -- システム日付
+/* 2009/07/27 Ver1.21 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -440,6 +462,11 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
   gv_disc_msg                         VARCHAR2(20);                                 -- 文字列:売上値引
   gv_item_tax                         VARCHAR2(30);                                 -- 品目明細摘要(TAX)
   gv_dis_item_cd                      VARCHAR2(30);                                 -- 売上値引品目コード
+/* 2009/07/30 Ver1.21 Add Start */
+  gv_goods_prod_cls                   VARCHAR2(30);                                 -- 商品製品区分カテゴリセット名
+  gt_category_id                      mtl_categories_b.category_id%TYPE;            -- カテゴリID
+  gt_category_set_id                  mtl_category_sets_tl.category_set_id%TYPE;    -- カテゴリセットID
+/* 2009/07/30 Ver1.21 Add End   */
 --
   gt_cust_cls_cd                      hz_cust_accounts.customer_class_code%TYPE;    -- 顧客区分（上様）
   gt_cash_sale_cls                    fnd_lookup_values.lookup_code%TYPE;           -- カード売り区分(現金:0)
@@ -484,7 +511,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
             flvl.lookup_type          = cv_qct_jour_cls
       AND   flvl.lookup_code          LIKE cv_qcc_code
       AND   flvl.enabled_flag         = cv_enabled_yes
-      AND   flvl.language             = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--      AND   flvl.language             = USERENV( 'LANG' )
+      AND   flvl.language             = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
       AND   gd_process_date BETWEEN   NVL( flvl.start_date_active, gd_process_date )
                             AND       NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -530,9 +560,16 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                                                -- XXCOS:業務管理部担当者
     ct_dis_item_cd           CONSTANT VARCHAR2(30) := 'XXCOS1_DISCOUNT_ITEM_CODE';
                                                                -- XXCOS:売上値引品目
+/* 2009/07/30 Ver1.21 Add Start */
+    ct_goods_prod_cls        CONSTANT VARCHAR2(30) := 'XXCOI1_GOODS_PRODUCT_CLASS';
+                                                               -- XXCOI:商品製品区分カテゴリセット名
+/* 2009/07/30 Ver1.21 Add End   */
 --
     -- *** ローカル変数 ***
     lv_profile_name          VARCHAR2(50);                     -- プロファイル名
+/* 2009/07/30 Ver1.21 Add Start */
+    lt_category_set_id       mtl_category_sets_tl.category_set_id%TYPE;  -- カテゴリセットID
+/* 2009/07/30 Ver1.21 Add End   */
 --
     -- *** ローカル例外 ***
 --
@@ -779,6 +816,27 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+/* 2009/07/30 Ver1.21 Add Start */
+    -- ===============================
+    -- XXCOS：商品製品区分カテゴリセット名
+    -- ===============================
+    gv_goods_prod_cls := FND_PROFILE.VALUE( ct_goods_prod_cls );
+    -- プロファイルが取得できない場合
+    IF ( gv_goods_prod_cls IS NULL ) THEN
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_nm                           -- アプリケーション短縮名
+        ,iv_name        => cv_goods_prod_cls                           -- メッセージID
+      );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcos_short_nm
+                     , iv_name         => cv_pro_msg
+                     , iv_token_name1  => cv_tkn_pro
+                     , iv_token_value1 => lv_profile_name
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+/* 2009/07/30 Ver1.21 Add End */
 --
     --==================================
     -- 5.クイックコード取得
@@ -791,7 +849,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       WHERE  flvl.lookup_type            = cv_qct_card_cls
         AND  flvl.attribute3             = cv_attribute_y
         AND  flvl.enabled_flag           = cv_enabled_yes
-        AND  flvl.language               = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--        AND  flvl.language               = USERENV( 'LANG' )
+        AND  flvl.language               = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
     EXCEPTION
@@ -817,7 +878,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       WHERE  flvl.lookup_type            = cv_qcv_tax_cls
         AND  flvl.attribute4             = cv_attribute_y
         AND  flvl.enabled_flag           = cv_enabled_yes
-        AND  flvl.language               = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--        AND  flvl.language               = USERENV( 'LANG' )
+        AND  flvl.language               = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -844,7 +908,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       WHERE  flvl.lookup_type            = cv_qcv_tax_cls
         AND  flvl.attribute3             = cv_attribute_2
         AND  flvl.enabled_flag           = cv_enabled_yes
-        AND  flvl.language               = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--        AND  flvl.language               = USERENV( 'LANG' )
+        AND  flvl.language               = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -871,7 +938,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       WHERE  flvl.lookup_type            = cv_qcv_tax_cls
         AND  flvl.attribute3             = cv_attribute_1
         AND  flvl.enabled_flag           = cv_enabled_yes
-        AND  flvl.language               = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--        AND  flvl.language               = USERENV( 'LANG' )
+        AND  flvl.language               = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -897,7 +967,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       FROM   fnd_lookup_values           flvl
       WHERE  flvl.lookup_type            = cv_out_tax_cls
         AND  flvl.enabled_flag           = cv_enabled_yes
-        AND  flvl.language               = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--        AND  flvl.language               = USERENV( 'LANG' )
+        AND  flvl.language               = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -922,7 +995,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       WHERE  flvl.lookup_type            = cv_qct_cust_cls
         AND  flvl.lookup_code            LIKE cv_qcc_code
         AND  flvl.enabled_flag           = cv_enabled_yes
-        AND  flvl.language               = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--        AND  flvl.language               = USERENV( 'LANG' )
+        AND  flvl.language               = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -948,7 +1024,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         AND  flvl.lookup_code               LIKE cv_qcc_code
         AND  flvl.attribute2                = cv_attribute_a
         AND  flvl.enabled_flag              = cv_enabled_yes
-        AND  flvl.language                  = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--        AND  flvl.language                  = USERENV( 'LANG' )
+        AND  flvl.language                  = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
         AND  gd_process_date BETWEEN        NVL( flvl.start_date_active, gd_process_date )
                              AND            NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -976,7 +1055,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         AND  flvl.lookup_code               LIKE cv_qcc_code
         AND  flvl.attribute2                = cv_attribute_b
         AND  flvl.enabled_flag              = cv_enabled_yes
-        AND  flvl.language                  = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--        AND  flvl.language                  = USERENV( 'LANG' )
+        AND  flvl.language                  = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
         AND  gd_process_date BETWEEN        NVL( flvl.start_date_active, gd_process_date )
                              AND            NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -1004,7 +1086,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         AND  flvl.lookup_code               LIKE cv_qcc_code
         AND  flvl.attribute2                = cv_attribute_n
         AND  flvl.enabled_flag              = cv_enabled_yes
-        AND  flvl.language                  = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--        AND  flvl.language                  = USERENV( 'LANG' )
+        AND  flvl.language                  = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
         AND  gd_process_date BETWEEN        NVL( flvl.start_date_active, gd_process_date )
                              AND            NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -1022,6 +1107,51 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         lv_errbuf := lv_errmsg;
         RAISE global_no_lookup_expt;
     END;
+/* 2009/07/30 Ver1.21 Add Start */
+--
+    -- カテゴリセットIDを取得
+    BEGIN
+      SELECT mcst.category_set_id  -- カテゴリセットID
+      INTO   gt_category_set_id
+      FROM   mtl_category_sets_tl mcst
+/* 2009/07/27 Ver1.21 Mod Start */
+--      WHERE  mcst.language          = USERENV( 'LANG' )
+      WHERE  mcst.language          = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
+      AND    mcst.category_set_name = gv_goods_prod_cls
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- カテゴリセットID取得出来ない場合
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application   => cv_xxcos_short_nm
+                      , iv_name          => cv_no_cate_set_id_msg
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--
+    --カテゴリIDを取得
+    BEGIN
+      SELECT mcb.category_id       -- カテゴリID
+      INTO   gt_category_id
+      FROM   mtl_category_sets_b mcsb
+            ,mtl_categories_b    mcb
+      WHERE  mcsb.category_set_id = gt_category_set_id
+      AND    mcsb.structure_id    = mcb.structure_id
+      AND    mcb.segment1         = cv_goods_prod_syo
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- カテゴリID取得出来ない場合
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application   => cv_xxcos_short_nm
+                      , iv_name          => cv_no_cate_id_msg
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+/* 2009/07/30 Ver1.21 Add End   */
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -1110,110 +1240,538 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     CURSOR sales_data_cur
     IS
       SELECT
-             xseh.sales_exp_header_id          sales_exp_header_id     -- 販売実績ヘッダID
-           , xseh.dlv_invoice_number           dlv_invoice_number      -- 納品伝票番号
-           , xseh.dlv_invoice_class            dlv_invoice_class       -- 納品伝票区分
-           , xseh.cust_gyotai_sho              cust_gyotai_sho         -- 業態小分類
-           , xseh.delivery_date                delivery_date           -- 納品日
-           , xseh.inspect_date                 inspect_date            -- 検収日
-           , xseh.ship_to_customer_code        ship_to_customer_code   -- 顧客【納品先】
-           , xseh.tax_code                     tax_code                -- 税金コード
-           , xseh.tax_rate                     tax_rate                -- 消費税率
-           , xseh.consumption_tax_class        consumption_tax_class   -- 消費税区分
-           , xseh.results_employee_code        results_employee_code   -- 成績計上者コード
-           , xseh.sales_base_code              sales_base_code         -- 売上拠点コード
-           , xseh.receiv_base_code             receiv_base_code        -- 入金拠点コード
-           , xseh.create_class                 create_class            -- 作成元区分
-           , NVL( xseh.card_sale_class, cv_cash_class )
+/* 2009/07/27 Ver1.21 Mod Start */
+--             xseh.sales_exp_header_id          sales_exp_header_id     -- 販売実績ヘッダID
+--           , xseh.dlv_invoice_number           dlv_invoice_number      -- 納品伝票番号
+--           , xseh.dlv_invoice_class            dlv_invoice_class       -- 納品伝票区分
+--           , xseh.cust_gyotai_sho              cust_gyotai_sho         -- 業態小分類
+--           , xseh.delivery_date                delivery_date           -- 納品日
+--           , xseh.inspect_date                 inspect_date            -- 検収日
+--           , xseh.ship_to_customer_code        ship_to_customer_code   -- 顧客【納品先】
+--           , xseh.tax_code                     tax_code                -- 税金コード
+--           , xseh.tax_rate                     tax_rate                -- 消費税率
+--           , xseh.consumption_tax_class        consumption_tax_class   -- 消費税区分
+--           , xseh.results_employee_code        results_employee_code   -- 成績計上者コード
+--           , xseh.sales_base_code              sales_base_code         -- 売上拠点コード
+--           , xseh.receiv_base_code             receiv_base_code        -- 入金拠点コード
+--           , xseh.create_class                 create_class            -- 作成元区分
+--           , NVL( xseh.card_sale_class, cv_cash_class )
+--                                               card_sale_class         -- カード売り区分
+             xsehv.sales_exp_header_id          sales_exp_header_id    -- 販売実績ヘッダID
+           , xsehv.dlv_invoice_number           dlv_invoice_number     -- 納品伝票番号
+           , xsehv.dlv_invoice_class            dlv_invoice_class      -- 納品伝票区分
+           , xsehv.cust_gyotai_sho              cust_gyotai_sho        -- 業態小分類
+           , xsehv.delivery_date                delivery_date          -- 納品日
+           , xsehv.inspect_date                 inspect_date           -- 検収日
+           , xsehv.ship_to_customer_code        ship_to_customer_code  -- 顧客【納品先】
+           , xsehv.tax_code                     tax_code               -- 税金コード
+           , xsehv.tax_rate                     tax_rate               -- 消費税率
+           , xsehv.consumption_tax_class        consumption_tax_class  -- 消費税区分
+           , xsehv.results_employee_code        results_employee_code  -- 成績計上者コード
+           , xsehv.sales_base_code              sales_base_code        -- 売上拠点コード
+           , xsehv.receiv_base_code             receiv_base_code       -- 入金拠点コード
+           , xsehv.create_class                 create_class           -- 作成元区分
+           , NVL( xsehv.card_sale_class, cv_cash_class )
                                                card_sale_class         -- カード売り区分
+/* 2009/07/27 Ver1.21 Mod End   */
            , xsel.dlv_invoice_line_number      dlv_inv_line_no         -- 納品明細番号
            , xsel.item_code                    item_code               -- 品目コード
            , xsel.sales_class                  sales_class             -- 売上区分
            , xsel.red_black_flag               red_black_flag          -- 赤黒フラグ
-           , CASE 
-               WHEN mcavd.subinventory_code IS NULL THEN cv_goods_prod_sei
-               ELSE                            xgpc.goods_prod_class_code
-             END AS                            goods_prod_cls          -- 品目区分（製品・商品）
+/* 2009/07/27 Ver1.21 Mod Start */
+--           , CASE 
+--               WHEN mcavd.subinventory_code IS NULL THEN cv_goods_prod_sei
+--               ELSE                            xgpc.goods_prod_class_code
+--             END AS                            goods_prod_cls          -- 品目区分（製品・商品）
+           , ( CASE
+/* 2009/07/30 Ver1.21 Mod Start */
+--                 WHEN (
+--                        SELECT COUNT(1)
+--                        FROM   mtl_category_accounts_v  mcav
+--                        WHERE  mcav.subinventory_code = xsel.ship_from_subinventory_code
+--                        AND    ROWNUM                 = 1
+--                      ) = 0
+                 WHEN NOT EXISTS (
+                        SELECT 1
+                        FROM   mtl_category_accounts  mca
+                        WHERE  mca.category_id        = gt_category_id
+                        AND    mca.organization_id    = gv_org_id
+                        AND    mca.subinventory_code  = xsel.ship_from_subinventory_code
+                        )
+/* 2009/07/30 Ver1.21 Mod End   */
+                 THEN
+                   cv_goods_prod_sei
+                 ELSE
+                   (
+                     SELECT  mcb.segment1           goods_prod_class_code
+                     FROM    mtl_system_items_b     msib  --品目マスタ
+                            ,mtl_item_categories    mic   --品目カテゴリマスタ
+                            ,mtl_categories_b       mcb   --カテゴリマスタ
+                     WHERE   msib.organization_id   = gv_org_id
+                     AND     msib.segment1          = xsel.item_code
+                     AND     msib.enabled_flag      = cv_y_flag
+                     AND     cd_sysdate             BETWEEN NVL( msib.start_date_active, cd_sysdate )
+                                                    AND     NVL( msib.end_date_active, cd_sysdate)
+                     AND     msib.organization_id   = mic.organization_id
+                     AND     msib.inventory_item_id = mic.inventory_item_id
+                     AND     mic.category_set_id    = gt_category_set_id
+                     AND     mic.category_id        = mcb.category_id
+                     AND     (
+                               mcb.disable_date IS NULL
+                               OR
+                               mcb.disable_date > cd_sysdate
+                             )
+                     AND     mcb.enabled_flag       = cv_y_flag
+                     AND     cd_sysdate             BETWEEN NVL( mcb.start_date_active, cd_sysdate ) 
+                                                    AND     NVL( mcb.end_date_active, cd_sysdate )
+                   )
+               END
+             )                                 goods_prod_cls          -- 品目区分（製品・商品）
+/* 2009/07/27 Ver1.21 Mod End   */
            , xsel.pure_amount                  pure_amount             -- 本体金額
            , xsel.tax_amount                   tax_amount              -- 消費税額
            , NVL( xsel.cash_and_card, 0 )      cash_and_card           -- 現金・カード併用額
-           , rcrmv.receipt_method_id           rcrm_receipt_id         -- 顧客支払方法ID
-           , xchv.ship_account_id              xchv_cust_id_s          -- 出荷先顧客ID
-           , xchv.bill_account_id              xchv_cust_id_b          -- 請求先顧客ID
-           , xchv.bill_account_number          xchv_cust_number_b      -- 請求先顧客コード
-           , xchv.cash_account_id              xchv_cust_id_c          -- 入金先顧客ID
+/* 2009/07/27 Ver1.21 Mod Start */
+--           , rcrmv.receipt_method_id           rcrm_receipt_id         -- 顧客支払方法ID
+--           , xchv.ship_account_id              xchv_cust_id_s          -- 出荷先顧客ID
+--           , xchv.bill_account_id              xchv_cust_id_b          -- 請求先顧客ID
+--           , xchv.bill_account_number          xchv_cust_number_b      -- 請求先顧客コード
+--           , xchv.cash_account_id              xchv_cust_id_c          -- 入金先顧客ID
+           , (
+               SELECT rcrm.receipt_method_id
+               FROM   ra_cust_receipt_methods  rcrm
+                     ,hz_cust_site_uses_all    scsua
+               WHERE  rcrm.customer_id        = xsehv.bill_account_id
+               AND    rcrm.primary_flag       = cv_y_flag
+               AND    rcrm.site_use_id        = scsua.site_use_id
+               AND    gd_process_date         BETWEEN NVL( rcrm.start_date, gd_process_date )
+                                                  AND NVL( rcrm.end_date, gd_process_date )
+               AND    scsua.cust_acct_site_id = hcsb.cust_acct_site_id
+               AND    scsua.site_use_code     = cv_site_code
+               AND    ROWNUM                  = 1
+             )                                 rcrm_receipt_id         -- 顧客支払方法ID
+           , xsehv.ship_account_id             xchv_cust_id_s          -- 出荷先顧客ID
+           , xsehv.bill_account_id             xchv_cust_id_b          -- 請求先顧客ID
+           , xsehv.bill_account_number         xchv_cust_number_b      -- 請求先顧客コード
+           , xsehv.cash_account_id             xchv_cust_id_c          -- 入金先顧客ID
+/* 2009/07/27 Ver1.21 Mod End   */
            , hcss.cust_acct_site_id            hcss_org_sys_id         -- 顧客所在地参照ID（出荷先）
            , hcsb.cust_acct_site_id            hcsb_org_sys_id         -- 顧客所在地参照ID（請求先）
            , hcsc.cust_acct_site_id            hcsc_org_sys_id         -- 顧客所在地参照ID（入金先）
-           , xchv.bill_payment_term_id         xchv_bill_pay_id        -- 支払条件ID
-           , xchv.bill_payment_term2           xchv_bill_pay_id2       -- 支払条件2
-           , xchv.bill_payment_term3           xchv_bill_pay_id3       -- 支払条件3
-           , xchv.bill_tax_round_rule          xchv_tax_round          -- 税金－端数処理
-           , xseh.rowid                        xseh_rowid              -- ROWID
+/* 2009/07/27 Ver1.21 Mod Start */
+--           , xchv.bill_payment_term_id         xchv_bill_pay_id        -- 支払条件ID
+--           , xchv.bill_payment_term2           xchv_bill_pay_id2       -- 支払条件2
+--           , xchv.bill_payment_term3           xchv_bill_pay_id3       -- 支払条件3
+--           , xchv.bill_tax_round_rule          xchv_tax_round          -- 税金－端数処理
+--           , xseh.rowid                        xseh_rowid              -- ROWID
+           , hcub.payment_term_id               xchv_bill_pay_id       -- 支払条件ID
+           , hcub.attribute2                    xchv_bill_pay_id2      -- 支払条件2
+           , hcub.attribute3                    xchv_bill_pay_id3      -- 支払条件3
+           , hcub.tax_rounding_rule             xchv_tax_round         -- 税金－端数処理
+           , xsehv.xseh_rowid                  xseh_rowid              -- ROWID
+/* 2009/07/27 Ver1.21 Mod End   */
            , NULL                              oif_trx_number          -- AR取引番号
            , NULL                              oif_dff4                -- DFF4：伝票No＋シーケンス
            , NULL                              oif_tax_dff4            -- DFF4税金用：伝票No＋シーケンス
            , xsel.sales_exp_line_id            line_id                 -- 販売実績明細番号
-           , xseh.receiv_base_code             card_receiv_base        -- カード入金拠点コード
-           , xchv.bill_account_number          pay_cust_number         -- 支払条件用請求先顧客コード
+/* 2009/07/27 Ver1.21 Mod Start */
+--           , xseh.receiv_base_code             card_receiv_base        -- カード入金拠点コード
+--           , xchv.bill_account_number          pay_cust_number         -- 支払条件用請求先顧客コード
+           , xsehv.receiv_base_code            card_receiv_base        -- カード入金拠点コード
+           , xsehv.bill_account_number         pay_cust_number         -- 支払条件用請求先顧客コード
+/* 2009/07/27 Ver1.21 Mod End   */
       FROM
-             xxcos_sales_exp_headers           xseh                    -- 販売実績ヘッダテーブル
+             xxcos_sales_exp_headers           xseh                    -- 販売実績ヘッダテーブル(ロック用)
+/* 2009/07/27 Ver1.21 Add Start */
+           , (
+               -- ①入金先顧客＆請求先顧客－出荷先顧客
+               SELECT /*+
+                          LEADING (xseh) 
+                          INDEX   (xseh xxcos_sales_exp_headers_n02) 
+                          USE_NL  (hcas)
+                      */
+                      xseh.sales_exp_header_id      sales_exp_header_id
+                     ,xseh.dlv_invoice_number       dlv_invoice_number
+                     ,xseh.dlv_invoice_class        dlv_invoice_class
+                     ,xseh.cust_gyotai_sho          cust_gyotai_sho
+                     ,xseh.delivery_date            delivery_date
+                     ,xseh.inspect_date             inspect_date
+                     ,xseh.ship_to_customer_code    ship_to_customer_code
+                     ,xseh.tax_code                 tax_code
+                     ,xseh.tax_rate                 tax_rate
+                     ,xseh.consumption_tax_class    consumption_tax_class
+                     ,xseh.results_employee_code    results_employee_code
+                     ,xseh.sales_base_code          sales_base_code
+                     ,xseh.receiv_base_code         receiv_base_code
+                     ,xseh.create_class             create_class
+                     ,xseh.card_sale_class          card_sale_class
+                     ,xseh.rowid                    xseh_rowid
+                     ,hcas.account_number           ship_account_number
+                     ,hcas.cust_account_id          ship_account_id
+                     ,hcas.customer_class_code      customer_class_code
+                     ,hcab.account_number           bill_account_number
+                     ,hcab.cust_account_id          bill_account_id
+                     ,hcac.account_number           cash_account_number
+                     ,hcac.cust_account_id          cash_account_id
+               FROM   xxcos_sales_exp_headers  xseh
+                     ,hz_cust_accounts         hcas     -- 出荷先顧客
+                     ,hz_cust_acct_relate      hcar_sb  -- 顧客関連(請求)
+                     ,hz_cust_accounts         hcab     -- 請求先顧客
+                     ,hz_cust_accounts         hcac     -- 入金先顧客
+               WHERE  xseh.ar_interface_flag            = cv_n_flag                   -- ARインタフェース済フラグ:N(未送信)
+               AND    xseh.delivery_date               <= gd_process_date             -- 納品日 <= 業務日付
+               AND    hcas.account_number               = xseh.ship_to_customer_code
+               AND    hcar_sb.related_cust_account_id   = hcas.cust_account_id
+               AND    hcar_sb.status                    = cv_cust_relate_status       -- 顧客関連ステータス:A(有効)
+               AND    hcar_sb.attribute1                = cv_cust_bill                -- 関連分類:1(請求)
+               AND    hcab.cust_account_id              = hcar_sb.cust_account_id
+               AND    hcab.customer_class_code          = cv_cust_class_uri           -- 顧客区分(請求):14(売掛金管理先顧客)
+               AND    hcac.cust_account_id              = hcab.cust_account_id
+               AND    EXISTS (
+                        SELECT /*+ USE_NL(ship_hasa_1 ship_hsua_1 ship_hzad_1 bill_hasa_1 bill_hsua_1 bill_hzad_1) */
+                               'X'
+                        FROM   hz_cust_acct_sites     ship_hasa_1
+                              ,hz_cust_site_uses      ship_hsua_1
+                              ,xxcmm_cust_accounts    ship_hzad_1
+                              ,hz_cust_acct_sites     bill_hasa_1
+                              ,hz_cust_site_uses      bill_hsua_1
+                              ,xxcmm_cust_accounts    bill_hzad_1
+                        WHERE  ship_hasa_1.cust_account_id     = hcas.cust_account_id
+                        AND    ship_hsua_1.cust_acct_site_id   = ship_hasa_1.cust_acct_site_id
+                        AND    ship_hzad_1.customer_id         = hcas.cust_account_id
+                        AND    bill_hasa_1.cust_account_id     = hcab.cust_account_id
+                        AND    bill_hsua_1.cust_acct_site_id   = bill_hasa_1.cust_acct_site_id
+                        AND    bill_hsua_1.site_use_code       = cv_site_code                   -- サイトコード:BILL_TO
+                        AND    bill_hzad_1.customer_id         = hcab.cust_account_id
+                        AND    ship_hsua_1.bill_to_site_use_id = bill_hsua_1.site_use_id
+                        AND    NOT EXISTS (
+                                 SELECT /*+ USE_NL(cash_hcar_1) */
+                                       'X'
+                                FROM   hz_cust_acct_relate  cash_hcar_1
+                                WHERE  cash_hcar_1.status                  = cv_cust_relate_status  -- 顧客関連ステータス:A(有効)
+                                AND    cash_hcar_1.attribute1              = cv_cust_cash           -- 関連分類:2(入金)
+                                AND    cash_hcar_1.related_cust_account_id = hcab.cust_account_id
+                                AND    ROWNUM                              = 1
+                               )
+                        AND    ROWNUM                          = 1
+                      )
+               UNION ALL
+               --②入金先顧客－請求先顧客－出荷先顧客
+               SELECT /*+
+                          LEADING (xseh)
+                          INDEX   (xseh xxcos_sales_exp_headers_n02)
+                          USE_NL  (hcas)
+                      */
+                      xseh.sales_exp_header_id      sales_exp_header_id
+                     ,xseh.dlv_invoice_number       dlv_invoice_number
+                     ,xseh.dlv_invoice_class        dlv_invoice_class
+                     ,xseh.cust_gyotai_sho          cust_gyotai_sho
+                     ,xseh.delivery_date            delivery_date
+                     ,xseh.inspect_date             inspect_date
+                     ,xseh.ship_to_customer_code    ship_to_customer_code
+                     ,xseh.tax_code                 tax_code
+                     ,xseh.tax_rate                 tax_rate
+                     ,xseh.consumption_tax_class    consumption_tax_class
+                     ,xseh.results_employee_code    results_employee_code
+                     ,xseh.sales_base_code          sales_base_code
+                     ,xseh.receiv_base_code         receiv_base_code
+                     ,xseh.create_class             create_class
+                     ,xseh.card_sale_class          card_sale_class
+                     ,xseh.rowid                    xseh_rowid
+                     ,hcas.account_number           ship_account_number
+                     ,hcas.cust_account_id          ship_account_id
+                     ,hcas.customer_class_code      customer_class_code
+                     ,hcab.account_number           bill_account_number
+                     ,hcab.cust_account_id          bill_account_id
+                     ,hcac.account_number           cash_account_number
+                     ,hcac.cust_account_id          cash_account_id
+               FROM   xxcos_sales_exp_headers  xseh
+                     ,hz_cust_accounts         hcas    -- 出荷先顧客
+                     ,hz_cust_acct_relate      hcar_sb -- 顧客関連(請求)
+                     ,hz_cust_accounts         hcab    -- 請求先顧客
+                     ,hz_cust_acct_relate      hcar_sc -- 顧客関連(入金)
+                     ,hz_cust_accounts         hcac    -- 入金先顧客
+               WHERE  xseh.ar_interface_flag             = cv_n_flag                  -- ARインタフェース済フラグ:N(未送信)
+               AND    xseh.delivery_date                <= gd_process_date            -- 納品日 <= 業務日付
+               AND    hcas.account_number                = xseh.ship_to_customer_code
+               AND    hcas.customer_class_code          IN ( cv_cust_class_cust, cv_cust_class_ue ) -- 顧客区分:10(顧客),12(上様)
+               AND    hcar_sb.related_cust_account_id    = hcas.cust_account_id
+               AND    hcar_sb.status                     = cv_cust_relate_status      -- 顧客関連(請求)ステータス:A(有効)
+               AND    hcar_sb.attribute1                 = cv_cust_bill               -- 関連分類:1(請求)
+               AND    hcab.cust_account_id               = hcar_sb.cust_account_id
+               AND    hcar_sc.related_cust_account_id    = hcab.cust_account_id
+               AND    hcar_sc.status                     = cv_cust_relate_status      -- 顧客関連(入金)ステータス:A(有効)
+               AND    hcar_sc.attribute1                 = cv_cust_cash               -- 関連分類(入金)
+               AND    hcac.cust_account_id               = hcar_sc.cust_account_id
+               AND    hcac.customer_class_code           = cv_cust_class_uri          -- 顧客区分(入金):14(売掛金管理先顧客)
+               AND    EXISTS (
+                        SELECT /*+ USE_NL(ship_hasa_2 ship_hsua_2 ship_hzad_2 bill_hasa_2 bill_hsua_2 bill_hzad_2 cash_hasa_2 cash_hzad_2) */
+                               'X'
+                        FROM   hz_cust_acct_sites     ship_hasa_2
+                              ,hz_cust_site_uses      ship_hsua_2
+                              ,xxcmm_cust_accounts    ship_hzad_2
+                              ,hz_cust_acct_sites     bill_hasa_2
+                              ,hz_cust_site_uses      bill_hsua_2
+                              ,xxcmm_cust_accounts    bill_hzad_2
+                              ,hz_cust_acct_sites     cash_hasa_2
+                              ,xxcmm_cust_accounts    cash_hzad_2
+                        WHERE  ship_hasa_2.cust_account_id     = hcas.cust_account_id
+                        AND    ship_hsua_2.cust_acct_site_id   = ship_hasa_2.cust_acct_site_id
+                        AND    ship_hzad_2.customer_id         = hcas.cust_account_id
+                        AND    bill_hasa_2.cust_account_id     = hcab.cust_account_id
+                        AND    bill_hsua_2.cust_acct_site_id   = bill_hasa_2.cust_acct_site_id
+                        AND    bill_hsua_2.site_use_code       = cv_site_code                   -- サイトコード:BILL_TO
+                        AND    bill_hzad_2.customer_id         = hcab.cust_account_id
+                        AND    cash_hasa_2.cust_account_id     = hcac.cust_account_id
+                        AND    cash_hzad_2.customer_id         = hcac.cust_account_id
+                        AND    ship_hsua_2.bill_to_site_use_id = bill_hsua_2.site_use_id
+                        AND    ROWNUM                          = 1
+                      )
+               UNION ALL
+               --③入金先顧客－請求先顧客＆出荷先顧客
+               SELECT /*+
+                          LEADING (xseh)
+                          INDEX   (xseh xxcos_sales_exp_headers_n02)
+                          USE_NL  (hcas)
+                      */
+                      xseh.sales_exp_header_id      sales_exp_header_id
+                     ,xseh.dlv_invoice_number       dlv_invoice_number
+                     ,xseh.dlv_invoice_class        dlv_invoice_class
+                     ,xseh.cust_gyotai_sho          cust_gyotai_sho
+                     ,xseh.delivery_date            delivery_date
+                     ,xseh.inspect_date             inspect_date
+                     ,xseh.ship_to_customer_code    ship_to_customer_code
+                     ,xseh.tax_code                 tax_code
+                     ,xseh.tax_rate                 tax_rate
+                     ,xseh.consumption_tax_class    consumption_tax_class
+                     ,xseh.results_employee_code    results_employee_code
+                     ,xseh.sales_base_code          sales_base_code
+                     ,xseh.receiv_base_code         receiv_base_code
+                     ,xseh.create_class             create_class
+                     ,xseh.card_sale_class          card_sale_class
+                     ,xseh.rowid                    xseh_rowid
+                     ,hcas.account_number           ship_account_number
+                     ,hcas.cust_account_id          ship_account_id
+                     ,hcas.customer_class_code      customer_class_code
+                     ,hcab.account_number           bill_account_number
+                     ,hcab.cust_account_id          bill_account_id
+                     ,hcac.account_number           cash_account_number
+                     ,hcac.cust_account_id          cash_account_id
+               FROM   xxcos_sales_exp_headers  xseh
+                     ,hz_cust_accounts         hcas     -- 出荷先顧客
+                     ,hz_cust_accounts         hcab     -- 請求先顧客
+                     ,hz_cust_acct_relate      hcar_sc  -- 顧客関連(入金)
+                     ,hz_cust_accounts         hcac     -- 入金先顧客
+               WHERE  xseh.ar_interface_flag            = cv_n_flag                  -- ARインタフェース済フラグ:N(未送信)
+               AND    xseh.delivery_date               <= gd_process_date            -- 納品日 <= 業務日付
+               AND    hcas.account_number               = xseh.ship_to_customer_code
+               AND    hcas.customer_class_code         IN ( cv_cust_class_cust, cv_cust_class_ue ) -- 顧客区分:10(顧客),12(上様)
+               AND    hcab.cust_account_id              = hcas.cust_account_id
+               AND    hcar_sc.related_cust_account_id   = hcas.cust_account_id
+               AND    hcar_sc.status                    = cv_cust_relate_status      -- 顧客関連(入金)ステータス:A(有効)
+               AND    hcar_sc.attribute1                = cv_cust_cash               -- 関連分類(入金)
+               AND    hcac.cust_account_id              = hcar_sc.cust_account_id
+               AND    hcac.customer_class_code          = cv_cust_class_uri          -- 顧客区分(入金):14(売掛金管理先顧客)
+               AND    EXISTS (
+                        SELECT /*+ USE_NL(ship_hasa_3 ship_hsua_3 ship_hzad_3 bill_hasa_3 bill_hsua_3 cash_hasa_3 cash_hzad_3) */
+                               'X'
+                        FROM   hz_cust_acct_sites     ship_hasa_3
+                              ,hz_cust_site_uses      ship_hsua_3
+                              ,xxcmm_cust_accounts    ship_hzad_3
+                              ,hz_cust_acct_sites     bill_hasa_3
+                              ,hz_cust_site_uses      bill_hsua_3
+                              ,hz_cust_acct_sites     cash_hasa_3
+                              ,xxcmm_cust_accounts    cash_hzad_3
+                        WHERE  ship_hasa_3.cust_account_id     = hcas.cust_account_id
+                        AND    ship_hsua_3.cust_acct_site_id   = ship_hasa_3.cust_acct_site_id
+                        AND    ship_hzad_3.customer_id         = hcas.cust_account_id
+                        AND    bill_hasa_3.cust_account_id     = hcab.cust_account_id
+                        AND    bill_hsua_3.cust_acct_site_id   = bill_hasa_3.cust_acct_site_id
+                        AND    bill_hsua_3.site_use_code       = cv_site_code                   -- サイトコード:BILL_TO
+                        AND    cash_hasa_3.cust_account_id     = hcac.cust_account_id
+                        AND    cash_hzad_3.customer_id         = hcac.cust_account_id
+                        AND    ship_hsua_3.bill_to_site_use_id = bill_hsua_3.site_use_id
+                        AND    ROWNUM                          = 1
+                      )
+               AND    NOT EXISTS (
+                        SELECT /*+ USE_NL(ex_hcar_3) */
+                               'X'
+                        FROM   hz_cust_acct_relate  ex_hcar_3
+                        WHERE  ex_hcar_3.cust_account_id = hcas.cust_account_id
+                        AND    ex_hcar_3.status          = cv_cust_relate_status -- 顧客関連ステータス:A(有効)
+                        AND    ROWNUM                    = 1
+                      )
+               UNION ALL
+               --④入金先顧客＆請求先顧客＆出荷先顧客
+               SELECT /*+
+                          LEADING (xseh)
+                          INDEX   (xseh xxcos_sales_exp_headers_n02)
+                          USE_NL  (hcas)
+                          USE_NL  (hcab)
+                      */
+                      xseh.sales_exp_header_id      sales_exp_header_id
+                     ,xseh.dlv_invoice_number       dlv_invoice_number
+                     ,xseh.dlv_invoice_class        dlv_invoice_class
+                     ,xseh.cust_gyotai_sho          cust_gyotai_sho
+                     ,xseh.delivery_date            delivery_date
+                     ,xseh.inspect_date             inspect_date
+                     ,xseh.ship_to_customer_code    ship_to_customer_code
+                     ,xseh.tax_code                 tax_code
+                     ,xseh.tax_rate                 tax_rate
+                     ,xseh.consumption_tax_class    consumption_tax_class
+                     ,xseh.results_employee_code    results_employee_code
+                     ,xseh.sales_base_code          sales_base_code
+                     ,xseh.receiv_base_code         receiv_base_code
+                     ,xseh.create_class             create_class
+                     ,xseh.card_sale_class          card_sale_class
+                     ,xseh.rowid                    xseh_rowid
+                     ,hcas.account_number           ship_account_number
+                     ,hcas.cust_account_id          ship_account_id
+                     ,hcas.customer_class_code      customer_class_code
+                     ,hcab.account_number           bill_account_number
+                     ,hcab.cust_account_id          bill_account_id
+                     ,hcac.account_number           cash_account_number
+                     ,hcac.cust_account_id          cash_account_id
+               FROM   xxcos_sales_exp_headers  xseh
+                     ,hz_cust_accounts         hcas  -- 出荷先顧客
+                     ,hz_cust_accounts         hcab  -- 請求先顧客
+                     ,hz_cust_accounts         hcac  -- 入金先顧客
+              WHERE   xseh.ar_interface_flag     = cv_n_flag                   -- ARインタフェース済フラグ:N(未送信)
+              AND     xseh.delivery_date        <= gd_process_date             -- 納品日 <= 業務日付
+              AND     hcas.account_number        = xseh.ship_to_customer_code
+              AND     hcas.customer_class_code  IN ( cv_cust_class_cust, cv_cust_class_ue ) -- 顧客区分:10(顧客),12(上様)
+              AND     hcab.cust_account_id       = hcas.cust_account_id
+              AND     hcac.cust_account_id       = hcas.cust_account_id
+              AND     EXISTS (
+                        SELECT /*+ USE_NL(ship_hasa_4 ship_hsua_4 ship_hzad_4 bill_hasa_4 bill_hsua_4) */
+                               'X'
+                        FROM   hz_cust_acct_sites     ship_hasa_4
+                              ,hz_cust_site_uses      ship_hsua_4
+                              ,xxcmm_cust_accounts    ship_hzad_4
+                              ,hz_cust_acct_sites     bill_hasa_4
+                              ,hz_cust_site_uses      bill_hsua_4
+                        WHERE  ship_hasa_4.cust_account_id     = hcas.cust_account_id
+                        AND    ship_hsua_4.cust_acct_site_id   = ship_hasa_4.cust_acct_site_id
+                        AND    ship_hzad_4.customer_id         = hcas.cust_account_id
+                        AND    bill_hasa_4.cust_account_id     = hcab.cust_account_id
+                        AND    bill_hsua_4.cust_acct_site_id   = bill_hasa_4.cust_acct_site_id
+                        AND    bill_hsua_4.site_use_code       = cv_site_code                   -- サイトコード:BILL_TO
+                        AND    ship_hsua_4.bill_to_site_use_id = bill_hsua_4.site_use_id
+                        AND    ROWNUM                          = 1
+                      )
+              AND   NOT EXISTS (
+                      SELECT /*+ USE_NL(ex_hcar_4) */
+                             'X'
+                      FROM   hz_cust_acct_relate  ex_hcar_4
+                      WHERE  ex_hcar_4.cust_account_id = hcas.cust_account_id
+                      AND    ex_hcar_4.status          = cv_cust_relate_status  -- 顧客関連ステータス:A(有効)
+                      AND    ROWNUM                    = 1
+                    )
+             AND    NOT EXISTS (
+                      SELECT /*+ USE_NL(ex_hcar_4) */
+                             'X'
+                      FROM   hz_cust_acct_relate  ex_hcar_4
+                      WHERE  ex_hcar_4.related_cust_account_id = hcas.cust_account_id
+                      AND    ex_hcar_4.status                  = cv_cust_relate_status  -- 顧客関連ステータス:A(有効)
+                      AND    ROWNUM                            = 1
+                    )
+             )                                 xsehv                   -- 販売実績ヘッダテーブル(顧客階層込み)
+/* 2009/07/27 Ver1.21 Add End   */
            , xxcos_sales_exp_lines             xsel                    -- 販売実績明細テーブル
            , ar_vat_tax_all_b                  avta                    -- 税金マスタ
-           , hz_cust_accounts                  hcas                    -- 顧客マスタ（出荷先）
-           , hz_cust_accounts                  hcab                    -- 顧客マスタ（請求先）
-           , hz_cust_accounts                  hcac                    -- 顧客マスタ（入金先）
+/* 2009/07/27 Ver1.21 Del Start */
+--           , hz_cust_accounts                  hcas                    -- 顧客マスタ（出荷先）
+--           , hz_cust_accounts                  hcab                    -- 顧客マスタ（請求先）
+--           , hz_cust_accounts                  hcac                    -- 顧客マスタ（入金先）
+/* 2009/07/27 Ver1.21 Del End   */
            , hz_cust_acct_sites_all            hcss                    -- 顧客所在地（出荷先）
            , hz_cust_acct_sites_all            hcsb                    -- 顧客所在地（請求先）
            , hz_cust_acct_sites_all            hcsc                    -- 顧客所在地（入金先）
-           , xxcos_good_prod_class_v           xgpc                    -- 品目区分View
-           , xxcos_cust_hierarchy_v            xchv                    -- 顧客階層ビュー
-           , ( SELECT DISTINCT
-                   mcav.subinventory_code      subinventory_code
-               FROM mtl_category_accounts_v    mcav                    -- 専門店View
-             ) mcavd
-           , ( SELECT DISTINCT
-                   rcrm.customer_id      customer_id
-                 , receipt_method_id     receipt_method_id
-               FROM ra_cust_receipt_methods           rcrm                    -- 顧客支払方法
-                  , hz_cust_site_uses_all             scsua                   -- 顧客使用目的
-               WHERE rcrm.primary_flag                     = cv_y_flag
-                 AND rcrm.site_use_id                      = scsua.site_use_id
-                 AND gd_process_date BETWEEN               NVL( rcrm.start_date, gd_process_date )
-                                     AND                   NVL( rcrm.end_date,   gd_process_date )
-                 AND scsua.site_use_code                   = cv_site_code
-             ) rcrmv
+/* 2009/07/27 Ver1.21 Add Start */
+           , hz_cust_site_uses_all             hcub                    -- 顧客サイト（請求）
+/* 2009/07/27 Ver1.21 Add End   */
+/* 2009/07/27 Ver1.21 Del Start */
+--           , xxcos_good_prod_class_v           xgpc                    -- 品目区分View
+--           , xxcos_cust_hierarchy_v            xchv                    -- 顧客階層ビュー
+--           , ( SELECT DISTINCT
+--                   mcav.subinventory_code      subinventory_code
+--               FROM mtl_category_accounts_v    mcav                    -- 専門店View
+--             ) mcavd
+--           , ( SELECT DISTINCT
+--                   rcrm.customer_id      customer_id
+--                 , receipt_method_id     receipt_method_id
+--               FROM ra_cust_receipt_methods           rcrm                    -- 顧客支払方法
+--                  , hz_cust_site_uses_all             scsua                   -- 顧客使用目的
+--               WHERE rcrm.primary_flag                     = cv_y_flag
+--                 AND rcrm.site_use_id                      = scsua.site_use_id
+--                 AND gd_process_date BETWEEN               NVL( rcrm.start_date, gd_process_date )
+--                                     AND                   NVL( rcrm.end_date,   gd_process_date )
+--                 AND scsua.site_use_code                   = cv_site_code
+--             ) rcrmv
+/* 2009/07/27 Ver1.21 Del End   */
       WHERE
-          xseh.sales_exp_header_id              = xsel.sales_exp_header_id
-      AND xseh.dlv_invoice_number               = xsel.dlv_invoice_number
-      AND xseh.ar_interface_flag                = cv_n_flag
-      AND xseh.delivery_date                   <= gd_process_date
+/* 2009/07/27 Ver1.21 Mod Start   */
+--          xseh.sales_exp_header_id              = xsel.sales_exp_header_id
+--      AND xseh.dlv_invoice_number               = xsel.dlv_invoice_number
+--      AND xseh.ar_interface_flag                = cv_n_flag
+--      AND xseh.delivery_date                   <= gd_process_date
+--      AND xsel.item_code                       <> gv_var_elec_item_cd
+--      AND xchv.ship_account_number              = xseh.ship_to_customer_code
+--      AND hcss.org_id                           = TO_NUMBER( gv_mo_org_id )
+--      AND hcsb.org_id                           = TO_NUMBER( gv_mo_org_id )
+--      AND hcsc.org_id                           = TO_NUMBER( gv_mo_org_id )
+--      AND hcas.account_number                   = xseh.ship_to_customer_code
+--      AND hcab.account_number                   = xchv.bill_account_number
+--      AND hcac.account_number                   = xchv.cash_account_number
+--      AND hcas.customer_class_code             <> gt_cust_cls_cd
+--      AND ( xseh.cust_gyotai_sho               <> gt_gyotai_fvd
+--         OR ( xseh.cust_gyotai_sho              = gt_gyotai_fvd
+--           AND NVL( xseh.card_sale_class, cv_cash_class )
+--                                               <> gt_cash_sale_cls )
+--         OR ( xseh.cust_gyotai_sho              = gt_gyotai_fvd
+--           AND NVL( xseh.card_sale_class, cv_cash_class )
+--                                                = gt_cash_sale_cls
+--           AND NVL( xsel.cash_and_card, 0 )    <> 0 ) )
+--      AND avta.tax_code                         = xseh.tax_code
+          xsehv.sales_exp_header_id             = xseh.sales_exp_header_id
+      AND xsehv.sales_exp_header_id             = xsel.sales_exp_header_id
+      AND xsehv.dlv_invoice_number              = xsel.dlv_invoice_number
       AND xsel.item_code                       <> gv_var_elec_item_cd
-      AND xchv.ship_account_number              = xseh.ship_to_customer_code
+      AND hcss.cust_account_id                  = xsehv.ship_account_id
       AND hcss.org_id                           = TO_NUMBER( gv_mo_org_id )
+      AND hcsb.cust_account_id                  = xsehv.bill_account_id
       AND hcsb.org_id                           = TO_NUMBER( gv_mo_org_id )
+      AND hcsc.cust_account_id                  = xsehv.cash_account_id
       AND hcsc.org_id                           = TO_NUMBER( gv_mo_org_id )
-      AND hcas.account_number                   = xseh.ship_to_customer_code
-      AND hcab.account_number                   = xchv.bill_account_number
-      AND hcac.account_number                   = xchv.cash_account_number
-      AND hcas.customer_class_code             <> gt_cust_cls_cd
-      AND ( xseh.cust_gyotai_sho               <> gt_gyotai_fvd
-         OR ( xseh.cust_gyotai_sho              = gt_gyotai_fvd
-           AND NVL( xseh.card_sale_class, cv_cash_class )
+      AND hcub.cust_acct_site_id                = hcsb.cust_acct_site_id
+      AND hcub.site_use_code                    = cv_site_code
+      AND xsehv.customer_class_code            <> gt_cust_cls_cd
+      AND ( xsehv.cust_gyotai_sho              <> gt_gyotai_fvd
+         OR ( xsehv.cust_gyotai_sho             = gt_gyotai_fvd
+           AND NVL( xsehv.card_sale_class, cv_cash_class )
                                                <> gt_cash_sale_cls )
-         OR ( xseh.cust_gyotai_sho              = gt_gyotai_fvd
-           AND NVL( xseh.card_sale_class, cv_cash_class )
+         OR ( xsehv.cust_gyotai_sho = gt_gyotai_fvd
+           AND NVL( xsehv.card_sale_class, cv_cash_class )
                                                 = gt_cash_sale_cls
-           AND NVL( xsel.cash_and_card, 0 )    <> 0 ) )
-      AND avta.tax_code                         = xseh.tax_code
+           AND NVL( xsel.cash_and_card, 0 )    <> 0 )
+          )
+      AND avta.tax_code                         = xsehv.tax_code
+/* 2009/07/27 Ver1.21 Mod End   */
       AND avta.set_of_books_id                  = TO_NUMBER( gv_set_bks_id )
       AND avta.enabled_flag                     = cv_enabled_yes
       AND gd_process_date BETWEEN               NVL( avta.start_date, gd_process_date )
                           AND                   NVL( avta.end_date,   gd_process_date )
-          AND xgpc.segment1( + )                = xsel.item_code
-      AND xseh.create_class                     NOT IN (
+/* 2009/07/27 Ver1.21 Del Start */
+--        AND xgpc.segment1( + )                = xsel.item_code
+/* 2009/07/27 Ver1.21 Del End   */
+/* 2009/07/27 Ver1.21 Mod Start */
+--      AND xseh.create_class                     NOT IN (
+--          SELECT
+--              flvl.meaning                      meaning
+      AND NOT EXISTS (
           SELECT
-              flvl.meaning                      meaning
+              'X'
+/* 2009/07/27 Ver1.21 Mod End */
           FROM
               fnd_lookup_values                 flvl
           WHERE
@@ -1221,13 +1779,24 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           AND flvl.lookup_code                  LIKE cv_qcc_code
           AND flvl.attribute2                   = cv_attribute_y
           AND flvl.enabled_flag                 = cv_enabled_yes
-          AND flvl.language                     = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--          AND flvl.language                     = USERENV( 'LANG' )
+          AND flvl.language                     = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
           AND gd_process_date BETWEEN           NVL( flvl.start_date_active, gd_process_date )
                               AND               NVL( flvl.end_date_active,   gd_process_date )
+/* 2009/07/27 Ver1.21 Add Start */
+          AND flvl.meaning                      = xsehv.create_class
+/* 2009/07/27 Ver1.21 Add End   */
           )
-      AND xsel.sales_class                      NOT IN (
+/* 2009/07/27 Ver1.21 Mod Start */
+--      AND xsel.sales_class                      NOT IN (
+--          SELECT
+--              flvl.meaning                      meaning
+      AND NOT EXISTS (
           SELECT
-              flvl.meaning                      meaning
+              'X'
+/* 2009/07/27 Ver1.21 Mod End   */
           FROM
               fnd_lookup_values                 flvl
           WHERE
@@ -1235,21 +1804,36 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           AND flvl.lookup_code                  LIKE cv_qcc_code
           AND flvl.attribute1                   = cv_attribute_y
           AND flvl.enabled_flag                 = cv_enabled_yes
-          AND flvl.language                     = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--          AND flvl.language                     = USERENV( 'LANG' )
+          AND flvl.language                     = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
           AND gd_process_date BETWEEN           NVL( flvl.start_date_active, gd_process_date )
                               AND               NVL( flvl.end_date_active,   gd_process_date )
+/* 2009/07/27 Ver1.21 Add Start */
+          AND flvl.meaning                      = xsel.sales_class
+/* 2009/07/27 Ver1.21 Add End   */
           )
-      AND hcss.cust_account_id                  = hcas.cust_account_id
-      AND hcsb.cust_account_id                  = hcab.cust_account_id
-      AND hcsc.cust_account_id                  = hcac.cust_account_id
-      AND xchv.ship_account_id                  = hcas.cust_account_id
-      AND rcrmv.customer_id( + )                = hcab.cust_account_id
-      AND mcavd.subinventory_code( + )          = xsel.ship_from_subinventory_code
-      ORDER BY xseh.sales_exp_header_id
-             , xseh.dlv_invoice_number
-             , xseh.dlv_invoice_class
-             , NVL( xseh.card_sale_class, cv_cash_class )
-             , xseh.cust_gyotai_sho
+/* 2009/07/27 Ver1.21 Del Start */
+--      AND hcss.cust_account_id                  = hcas.cust_account_id
+--      AND hcsb.cust_account_id                  = hcab.cust_account_id
+--      AND hcsc.cust_account_id                  = hcac.cust_account_id
+--      AND xchv.ship_account_id                  = hcas.cust_account_id
+--      AND rcrmv.customer_id( + )                = hcab.cust_account_id
+--      AND mcavd.subinventory_code( + )          = xsel.ship_from_subinventory_code
+/* 2009/07/27 Ver1.21 Del End   */
+/* 2009/07/27 Ver1.21 Mod Start */
+--      ORDER BY xseh.sales_exp_header_id
+--             , xseh.dlv_invoice_number
+--             , xseh.dlv_invoice_class
+--             , NVL( xseh.card_sale_class, cv_cash_class )
+--             , xseh.cust_gyotai_sho
+      ORDER BY xsehv.sales_exp_header_id
+             , xsehv.dlv_invoice_number
+             , xsehv.dlv_invoice_class
+             , NVL( xsehv.card_sale_class, cv_cash_class )
+             , xsehv.cust_gyotai_sho
+/* 2009/07/27 Ver1.21 Mod End */
              , xsel.item_code
              , xsel.red_black_flag
     FOR UPDATE OF  xseh.sales_exp_header_id
@@ -1687,7 +2271,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
         AND  flvi.lookup_code               LIKE cv_qcc_code
         AND  flvi.attribute1                = cv_tax
         AND  flvi.enabled_flag              = cv_enabled_yes
-        AND  flvi.language                  = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--        AND  flvi.language                  = USERENV( 'LANG' )
+        AND  flvi.language                  = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
         AND  gd_process_date BETWEEN        NVL( flvi.start_date_active, gd_process_date )
                              AND            NVL( flvi.end_date_active,   gd_process_date );
 --
@@ -2354,7 +2941,11 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           lv_trx_sent_dv := gt_sel_trx_type_tbl( lv_trx_idx ).attribute2;
         ELSE
           BEGIN
-            SELECT flvm.attribute1 || flvd.attribute1
+/* 2009/07/27 Ver1.21 Mod Start */
+--            SELECT flvm.attribute1 || flvd.attribute1
+            SELECT /*+ USE_NL( flvd ) */
+                   flvm.attribute1 || flvd.attribute1
+/* 2009/07/27 Ver1.21 Mod End   */
                  , rctt.attribute1
             INTO   lv_trx_type_nm
                  , lv_trx_sent_dv
@@ -2371,8 +2962,12 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
               AND  rctt.org_id                    = gv_mo_org_id
               AND  flvm.enabled_flag              = cv_enabled_yes
               AND  flvd.enabled_flag              = cv_enabled_yes
-              AND  flvm.language                  = USERENV( 'LANG' )
-              AND  flvd.language                  = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--              AND  flvm.language                  = USERENV( 'LANG' )
+--              AND  flvd.language                  = USERENV( 'LANG' )
+              AND  flvm.language                  = ct_lang
+              AND  flvd.language                  = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
               AND  gd_process_date BETWEEN        NVL( flvm.start_date_active, gd_process_date )
                                    AND            NVL( flvm.end_date_active,   gd_process_date )
               AND  gd_process_date BETWEEN        NVL( flvd.start_date_active, gd_process_date )
@@ -2469,7 +3064,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
               AND  flvi.attribute2                = NVL( lt_goods_prod_class,
                                                          lt_goods_item_code )
               AND  flvi.enabled_flag              = cv_enabled_yes
-              AND  flvi.language                  = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--              AND  flvi.language                  = USERENV( 'LANG' )
+              AND  flvi.language                  = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
               AND  gd_process_date BETWEEN        NVL( flvi.start_date_active, gd_process_date )
                                    AND            NVL( flvi.end_date_active,   gd_process_date );
 --
@@ -2541,6 +3139,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           FROM   fnd_user             fu
                 ,per_all_people_f     papf
           WHERE  fu.employee_id       = papf.person_id
+/* 2009/07/30 Ver1.21 ADD START */
+            AND  gt_sales_norm_tbl2( ln_trx_idx ).inspect_date
+                   BETWEEN papf.effective_start_date AND papf.effective_end_date
+/* 2009/07/30 Ver1.21 ADD End   */
             AND  papf.employee_number = gt_sales_norm_tbl2( ln_trx_idx ).results_employee_code;
 --
           EXCEPTION
@@ -4215,7 +4817,11 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           lv_trx_sent_dv := gt_sel_trx_type_tbl( lv_trx_idx ).attribute2;
         ELSE
           BEGIN
-            SELECT flvm.attribute1 || flvd.attribute1
+/* 2009/07/27 Ver1.21 Mod Start */
+--            SELECT flvm.attribute1 || flvd.attribute1
+            SELECT /*+ USE_NL( flvd ) */
+                   flvm.attribute1 || flvd.attribute1
+/* 2009/07/27 Ver1.21 Mod End   */
                  , rctt.attribute1
             INTO   lv_trx_type_nm
                  , lv_trx_sent_dv
@@ -4232,8 +4838,12 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
               AND  rctt.org_id                    = gv_mo_org_id
               AND  flvm.enabled_flag              = cv_enabled_yes
               AND  flvd.enabled_flag              = cv_enabled_yes
-              AND  flvm.language                  = USERENV( 'LANG' )
-              AND  flvd.language                  = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--              AND  flvm.language                  = USERENV( 'LANG' )
+--              AND  flvd.language                  = USERENV( 'LANG' )
+              AND  flvm.language                  = ct_lang
+              AND  flvd.language                  = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
               AND  gd_process_date BETWEEN        NVL( flvm.start_date_active, gd_process_date )
                                    AND            NVL( flvm.end_date_active,   gd_process_date )
               AND  gd_process_date BETWEEN        NVL( flvd.start_date_active, gd_process_date )
@@ -4329,7 +4939,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
               AND  flvi.attribute2                = NVL( lt_goods_prod_class,
                                                          lt_goods_item_code )
               AND  flvi.enabled_flag              = cv_enabled_yes
-              AND  flvi.language                  = USERENV( 'LANG' )
+/* 2009/07/27 Ver1.21 Mod Start */
+--              AND  flvi.language                  = USERENV( 'LANG' )
+              AND  flvi.language                  = ct_lang
+/* 2009/07/27 Ver1.21 Mod End   */
               AND  gd_process_date BETWEEN        NVL( flvi.start_date_active, gd_process_date )
                                    AND            NVL( flvi.end_date_active,   gd_process_date );
 --
@@ -4400,6 +5013,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           FROM   fnd_user             fu
                 ,per_all_people_f     papf
           WHERE  fu.employee_id       = papf.person_id
+/* 2009/07/30 Ver1.21 ADD START */
+            AND  gt_sales_norm_tbl2( ln_trx_idx ).inspect_date
+                   BETWEEN papf.effective_start_date AND papf.effective_end_date
+/* 2009/07/30 Ver1.21 ADD End   */
             AND  papf.employee_number = gv_busi_emp_cd;
 --
           EXCEPTION
