@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/02/29    1.0  Oracle 和田 大輝  初回作成
  *  2008/05/01    1.1  Oracle 野村 正幸  内部変更要求#59、#75対応
  *  2008/06/09    1.2  Oracle 野村 正幸  TE080指摘事項対応
+ *  2008/06/27    1.3  Oracle 丸下 博宣  内部変更要求144
  *
  *****************************************************************************************/
 --
@@ -823,6 +824,7 @@ AS
 -- ********** 20080508 内部変更要求 seq#75 MOD END   **********
     AND    xotv.shipping_shikyu_class = '1'      -- 「1:出荷依頼」
     AND    xola.shipping_item_code    = ximv.item_no
+    AND    xola.delete_flag           = 'N'      -- 削除されていない明細
     AND    FND_DATE.STRING_TO_DATE(TO_CHAR(xoha.arrival_date, 'YYYYMM') || '01', 'YYYYMMDD')
       BETWEEN ximv.start_date_active AND ximv.end_date_active
     AND    xpv.party_number = xoha.head_sales_branch

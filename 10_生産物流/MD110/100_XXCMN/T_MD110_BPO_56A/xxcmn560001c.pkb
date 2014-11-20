@@ -7,7 +7,7 @@ AS
  * Description      : トレーサビリティ
  * MD.050           : トレーサビリティ T_MD050_BPO_560
  * MD.070           : トレーサビリティ(56A) T_MD070_BPO_56A
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/01/08    1.0   ORACLE 岩佐智治  main新規作成
  *  2008/05/27    1.1   Masayuki Ikeda   不具合修正
  *  2008/07/02    1.2   ORACLE 丸下博宣  循環参照防止にバッチIDを追加
+ *  2008/07/03    1.3   ORACLE 丸下博宣  循環参照防止条件修正
  *
  *****************************************************************************************/
 --
@@ -1313,7 +1314,7 @@ AS
 --
     IF ( iv_batch_id IS NOT NULL ) THEN
       lv_sql_where_01 := lv_sql_where_01 
-                    || 'AND   pp.batch_id    > ' || iv_batch_id || ' ';
+                    || 'AND   pp.batch_id    < ' || iv_batch_id || ' ';
     END IF;
 --
     -- WHERE句(定義)定義
@@ -1327,7 +1328,7 @@ AS
 --
     IF ( iv_batch_id IS NOT NULL ) THEN
       lv_sql_where_02 := lv_sql_where_02 
-                    || 'AND   pp.batch_id    < ' || iv_batch_id || ' ';
+                    || 'AND   pp.batch_id    > ' || iv_batch_id || ' ';
     END IF;
 --
     -- 出力制御(1：ロットトレース)
