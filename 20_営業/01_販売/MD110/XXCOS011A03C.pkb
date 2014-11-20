@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2010/07/08    1.22  S.Niki           [E_本稼動_02637]顧客品目重複登録対応
  *  2011/02/15    1.23  N.Horigome       [E_本稼動_02155]クイック受注の伝票番号の修正対応
  *  2011/04/27    1.24  K.Kiriu          [E_本稼動_07182]納品予定データ作成処理遅延対応
+ *  2011/09/03    1.25  K.Kiriu          [E_本稼動_07906]流通BMS対応
  *
  *****************************************************************************************/
 --
@@ -699,6 +700,10 @@ AS
 /* 2009/04/28 Ver1.7 Add Start */
   cv_attribute                CONSTANT VARCHAR2(50)  := 'ATTRIBUTE';                     -- 予備エリア
 /* 2009/04/28 Ver1.7 Add End   */
+/* 2011/09/03 Ver1.25 Add Start */
+  cv_bms_header_data          CONSTANT VARCHAR2(50)  := 'BMS_HEADER_DATA';               -- 流通ＢＭＳヘッダデータ
+  cv_bms_line_data            CONSTANT VARCHAR2(50)  := 'BMS_LINE_DATA';                 -- 流通ＢＭＳ明細データ
+/* 2011/09/03 Ver1.25 Add End   */
 -- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
   cv_online                   CONSTANT VARCHAR2(50)  := 'Online';                        -- 受注ソース(ONLINE)
 -- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
@@ -1208,6 +1213,10 @@ AS
 /* 2011/04/26 Ver1.24 Add Start */
           ,oola.line_id                         line_id                        -- 受注明細.内部ID
 /* 2011/04/26 Ver1.24 Add End   */
+/* 2011/09/03 Ver1.25 Add Start */
+          ,xeh.bms_header_data                  bms_header_data               -- 流通ＢＭＳヘッダデータ
+          ,xel.bms_line_data                    bms_line_data                 -- 流通ＢＭＳ明細データ
+/* 2011/09/03 Ver1.25 Add End   */
     FROM   xxcos_edi_headers                    xeh    -- EDIヘッダ情報
           ,xxcos_edi_lines                      xel    -- EDI明細情報
           ,oe_order_headers_all                 ooha   -- 受注ヘッダ
@@ -2975,10 +2984,13 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-/* 2009/04/28 Ver1.7 Mod Start */
---    lv_header_output  VARCHAR2(1000);  -- ヘッダー出力用
-    lv_header_output  VARCHAR2(5000);  -- ヘッダー出力用
-/* 2009/04/28 Ver1.7 Mod End   */
+/* 2011/09/03 Ver1.25 Mod Start */
+--/* 2009/04/28 Ver1.7 Mod Start */
+----    lv_header_output  VARCHAR2(1000);  -- ヘッダー出力用
+--    lv_header_output  VARCHAR2(5000);  -- ヘッダー出力用
+    lv_header_output  VARCHAR2(32767);  -- ヘッダー出力用
+--/* 2009/04/28 Ver1.7 Mod End   */
+/* 2011/09/03 Ver1.25 Mod End   */
     ln_dummy          NUMBER;          -- ヘッダ出力のレコード件数用(使用されない)
 --
     -- *** ローカル・カーソル ***
@@ -4419,6 +4431,10 @@ AS
 /* 2009/04/28 Ver1.7 Add Start */
       gt_data_tab(ln_data_cnt)(cv_attribute)                  := NULL;  -- 予備エリア
 /* 2009/04/28 Ver1.7 Add End   */
+/* 2011/09/03 Ver1.25 Add Start */
+      gt_data_tab(ln_data_cnt)(cv_bms_header_data)            := gt_edi_order_tab(ln_loop_cnt).bms_header_data;  --流通ＢＭＳヘッダデータ
+      gt_data_tab(ln_data_cnt)(cv_bms_line_data)              := gt_edi_order_tab(ln_loop_cnt).bms_line_data;    --流通ＢＭＳ明細データ
+/* 2011/09/03 Ver1.25 Add End   */
 --
       --==============================================================
       -- 伝票別合計算出
@@ -4712,10 +4728,13 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-/* 2009/04/28 Ver1.7 Mod Start */
---    lv_footer_output  VARCHAR2(1000);  -- フッタ出力用
-    lv_footer_output  VARCHAR2(5000);  -- フッタ出力用
-/* 2009/04/28 Ver1.7 Mod End   */
+/* 2011/09/03 Ver1.25 Mod Start */
+--/* 2009/04/28 Ver1.7 Mod Start */
+----    lv_footer_output  VARCHAR2(1000);  -- フッタ出力用
+--    lv_footer_output  VARCHAR2(5000);  -- フッタ出力用
+    lv_footer_output  VARCHAR2(32767);  -- フッタ出力用
+--/* 2009/04/28 Ver1.7 Mod End   */
+/* 2011/09/03 Ver1.25 Mod End   */
     lv_dummy1         VARCHAR2(1);     -- IF元業務系列コード(フッタでは使用しない)
     lv_dummy2         VARCHAR2(1);     -- 拠点コード(フッタでは使用しない)
     lv_dummy3         VARCHAR2(1);     -- 拠点名称(フッタでは使用しない)
@@ -4753,7 +4772,10 @@ AS
       ,iv_base_name       =>  lv_dummy3         -- 拠点名称
       ,iv_chain_code      =>  lv_dummy4         -- チェーン店コード
       ,iv_chain_name      =>  lv_dummy5         -- チェーン店名称
-      ,iv_data_kind       =>  lv_dummy6         -- データ種コード
+/* 2011/09/03 Ver1.25 Mod Start */
+--      ,iv_data_kind       =>  lv_dummy6         -- データ種コード
+      ,iv_data_kind       =>  gt_data_type_code -- データ種コード
+/* 2011/09/03 Ver1.25 Mod End   */
       ,iv_row_number      =>  lv_dummy7         -- 並列処理番号
       ,in_num_of_records  =>  gn_target_cnt     -- レコード件数
       ,ov_retcode         =>  lv_retcode        -- リターンコード

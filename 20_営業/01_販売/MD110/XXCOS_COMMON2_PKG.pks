@@ -6,7 +6,7 @@ AS
  * Package Name           : XXCOS_COMMON2_PKG(spec)
  * Description            : 
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.9
+ * Version                : 1.10
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2010/07/12    1.8  S.Niki           [E_本稼動_02637]品目コード変換（EBS→EDI)パラメータ追加
  *  2011/04/26    1.9  K.kiriu          [E_本稼動_07182]納品予定データ作成処理遅延対応
  *                                      [E_本稼動_07218]納品予定プルーフリスト作成処理遅延対応
+ *  2011/09/07    1.10 K.kiriu          [E_本稼動_07906]流通ＢＭＳ対応
  *
  *****************************************************************************************/
 --
@@ -59,11 +60,17 @@ AS
   TYPE g_record_layout_ttype IS TABLE OF g_record_layout INDEX BY BINARY_INTEGER;
   --
   --ファイル出力情報格納用テーブルタイプ
-  TYPE g_layout_ttype        IS TABLE OF varchar2(1000)   INDEX BY VARCHAR2(100);
+/* 2011/09/07 Ver1.10 Mod Start */
+--  TYPE g_layout_ttype        IS TABLE OF varchar2(1000)   INDEX BY VARCHAR2(100);
+  TYPE g_layout_ttype        IS TABLE OF varchar2(2000)   INDEX BY VARCHAR2(100);
+/* 2011/09/07 Ver1.10 MOd End   */
   --
   --レイアウト区分定義
   gv_layout_class_order                       CONSTANT VARCHAR2(1) := '0';    --受注系
   gv_layout_class_stock                       CONSTANT VARCHAR2(1) := '1';    --在庫
+/* 2011/09/07 Ver1.10 Add Start */
+  gv_layout_class_order2                      CONSTANT VARCHAR2(1) := '2';    --受注系(流通ＢＭＳ以外)
+/* 2011/09/07 Ver1.10 Add End   */
   --ファイル形式定義
   gv_file_type_fix                            CONSTANT VARCHAR2(1) := '0';    --固定長
   gv_file_type_variable                       CONSTANT VARCHAR2(1) := '1';    --可変長

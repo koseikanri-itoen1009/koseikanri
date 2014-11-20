@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_common2_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.10
+ * Version                : 1.11
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2010/07/14    1.9  S.Niki           [E_本稼動_02637]顧客品目コード重複登録対応
  *  2011/04/26    1.10 K.kiriu          [E_本稼動_07182]納品予定データ作成処理遅延対応
  *                                      [E_本稼動_07218]納品予定プルーフリスト作成処理遅延対応
+ *  2011/09/07    1.11 K.kiriu          [E_本稼動_07906]流通ＢＭＳ対応
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -899,6 +900,10 @@ AS
                                                                               --受注系
     cv_layout_type_stock                      CONSTANT VARCHAR2(100) := 'XXCOS1_INV_TAB_COLUMNS';
                                                                               --在庫
+/* 2011/09/07 Ver1.11 Add Start */
+                                                                              --受注系(流通ＢＭＳ以外)
+    cv_layout_type_order2                     CONSTANT VARCHAR2(100) := 'XXCOS1_OM_TAB_COLUMNS2';
+/* 2011/09/07 Ver1.11 Add End   */
     --
     cv_token_file_type                        CONSTANT VARCHAR2(12) := 'iv_file_type';
     cv_token_layout_class                     CONSTANT VARCHAR2(15) := 'iv_layout_class';
@@ -980,6 +985,10 @@ AS
         lv_look_up := cv_layout_type_order;
       WHEN gv_layout_class_stock THEN                                         --在庫
         lv_look_up := cv_layout_type_stock;
+/* 2011/09/07 Ver1.11 Add Start */
+      WHEN gv_layout_class_order2 THEN                                        --受注系(流通ＢＭＳ以外)
+        lv_look_up := cv_layout_type_order2;
+/* 2011/09/07 Ver1.11 Add End   */
       ELSE
         lv_errmsg  := xxccp_common_pkg.get_msg( iv_application     => gv_application
                                                ,iv_name            => gv_app_xxcos1_00019
@@ -1117,7 +1126,10 @@ AS
     lv_message1                                        VARCHAR2(1000);        --メッセージエリア
     lv_prg_name                                        VARCHAR2(100);         --メッセージ用プログラム名設定エリア
     lv_csv_header                                      VARCHAR2(1000);        --ヘッダ編集エリア
-    lv_out_unit_data                                   VARCHAR2(1000);        --出力用エリア
+/* 2011/09/07 Ver1.11 Mod Start */
+--    lv_out_unit_data                                   VARCHAR2(1000);        --出力用エリア
+    lv_out_unit_data                                   VARCHAR2(2000);        --出力用エリア
+/* 2011/09/07 Ver1.11 MOd End   */
     lv_edit_data                                       VARCHAR2(1000);        --編集用エリア
     lv_number_type                                     VARCHAR2(1000);        --編集数値エリア
     lv_minus_data                                      VARCHAR2(1000);        --変換用エリア
