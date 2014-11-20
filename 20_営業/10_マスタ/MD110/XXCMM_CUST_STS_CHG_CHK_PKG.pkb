@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM_CUST_STS_CHK_PKG(body)
  * Description      : 顧客ステータスを「中止」に変更する際、ステータス変更が可能か判定を行います。
  * MD.050           : MD050_CMM_003_A11_顧客ステータス変更チェック
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,6 +16,9 @@ AS
  *  item_ins               物件情報存在チェック(A-2)
  *  cust_base_chk          基準在庫数・釣銭基準額チェック処理(A-3)
  *  cust_balance_chk       売掛残高チェック処理(A-4)
+-- 2011/03/07 Ver1.5 add start
+ *  cust_tran_chk          月内取引存在チェック処理(A-5)
+-- 2011/03/07 Ver1.5 add end
  *  submain                メイン処理プロシージャ
  *  main                   実行ファイル登録プロシージャ(A-5 終了処理)
  *
@@ -28,6 +31,7 @@ AS
  *  2009/09/11    1.2   Yutaka.Kuboshima 障害0001350 業態(小分類)の必須チェックの削除
  *  2010/02/15    1.3   Yutaka.Kuboshima 障害E_本稼動_01528 PT対応：残高情報チェックSQL
  *  2010/08/04    1.4   Shigeto.NIki     障害E_本稼動_04245 業態関係なく売掛残高チェック
+ *  2011/03/07    1.5   Masato.Hirose    障害E_本稼動_02443 月内取引の存在チェック追加
  *
  *****************************************************************************************/
 --
@@ -68,11 +72,18 @@ AS
   cv_msg_xxcmm_10313   CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10313';              -- 有効物件中止チェックエラー
   cv_msg_xxcmm_10314   CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10314';              -- 中止チェック起動エラー
   cv_msg_xxcmm_10315   CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10315';              -- 残高中止チェック起動エラー
+-- 2011/03/07 Ver1.5 add start
+  cv_msg_xxcmm_00018   CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00018';              -- 業務日付取得エラー
+  cv_msg_xxcmm_00356   CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00356';              -- 月内取引存在チェックエラー
+-- 2011/03/07 Ver1.5 add end
   --トークン
   cv_cnst_tkn_citem    CONSTANT VARCHAR2(15)  := 'CHECK_ITEM';                    -- トークン(チェック項目名)
   cv_cnst_tkn_tnum     CONSTANT VARCHAR2(15)  := 'TOTAL_NUM';                     -- トークン(サマリー結果)
   cv_cnst_tkn_cid      CONSTANT VARCHAR2(15)  := 'CUST_ID';                       -- トークン(顧客ID)
   cv_cnst_tkn_gsyo     CONSTANT VARCHAR2(15)  := 'GTAI_SYO';                      -- トークン(業態分類（小分類）)
+-- 2011/03/07 Ver1.5 add start
+  cv_cnst_tkn_ccd      CONSTANT VARCHAR2(15)  := 'CUST_CODE';                     -- 顧客コードトークン
+-- 2011/03/07 Ver1.5 add end
 --
   cv_sts_check_ok      CONSTANT VARCHAR2(1)   := '1';                             -- チェックステータス(OK)
   cv_sts_check_ng      CONSTANT VARCHAR2(1)   := '0';                             -- チェックステータス(NG)
@@ -88,6 +99,10 @@ AS
   cv_status_cl         CONSTANT VARCHAR2(2)   := 'CL';                            --ステータス(クローズ)
 --  cn_ins_sts_cd        CONSTANT NUMBER        := 6;                               --インスタンスステータスID(物件削除済)
   cv_ins_sts_cd        CONSTANT VARCHAR2(20)  := '物件削除済';                    --インスタンスステータスID(物件削除済)
+-- 2011/03/07 Ver1.5 add start
+  cv_gtal_dai_vd       CONSTANT VARCHAR2(2)   := '05';                            --業態分類(大分類)(VD)
+  cv_date_mm           CONSTANT VARCHAR2(2)   := 'MM';                            --フォーマット('MM')
+-- 2011/03/07 Ver1.5 add end
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -96,6 +111,9 @@ AS
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
+-- 2011/03/07 Ver1.5 add start
+  gd_process_date      DATE;                                                      -- 業務日付
+-- 2011/03/07 Ver1.5 add end
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -142,6 +160,19 @@ AS
       RAISE init_err_expt;
     END IF;
 --
+-- 2011/03/07 Ver1.5 add start
+    -- 業務日付取得
+    gd_process_date  := xxccp_common_pkg2.get_process_date;
+--
+    -- 業務日付が取得できなかったらエラー
+    IF ( gd_process_date IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_cnst_msg_kbn
+                    ,iv_name         => cv_msg_xxcmm_00018);
+      RAISE init_err_expt;
+    END IF;
+--
+-- 2011/03/07 Ver1.5 add end
   EXCEPTION
     --*** 初期処理エラー ***
     WHEN init_err_expt THEN
@@ -467,6 +498,98 @@ AS
 --
   END cust_balance_chk;
 --
+-- 2011/03/07 Ver1.5 add start
+  /**********************************************************************************
+   * Procedure Name   : cust_tran_chk
+   * Description      : 月内取引存在チェック処理(A-5)
+   ***********************************************************************************/
+  PROCEDURE cust_tran_chk(
+    in_cust_id      IN  NUMBER,       --   顧客ID
+    ov_check_status OUT VARCHAR2,     --   チェックステータス
+    ov_err_message  OUT VARCHAR2      --   エラーメッセージ
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'cust_tran_chk'; -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_add_date_vd     CONSTANT NUMBER := -1;  -- 対象とする取引月（VD）
+    cn_add_date_not_vd CONSTANT NUMBER := -2;  -- 対象とする取引月（VD以外）
+--
+    -- *** ローカル変数 ***
+    lv_errmsg     VARCHAR2(5000);                            -- ユーザー・エラー・メッセージ
+    lv_cust_code  hz_cust_accounts.account_number%TYPE;      -- ローカル変数・顧客コード
+--
+  BEGIN
+--
+    --チェックステータス初期化部
+    ov_check_status := cv_sts_check_ok;
+    --ローカル変数初期化部
+    lv_cust_code := NULL;
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    BEGIN
+      -- 月内取引存在チェック
+      --  業態分類(大分類)  = VD  → 最終取引日 >= 1ヶ月前の月初日
+      --  業態分類(大分類) <> VD  → 最終取引日 >= 2ヶ月前の月初日
+      SELECT xca.customer_code AS customer_code  -- 顧客コード
+      INTO   lv_cust_code
+      FROM   xxcmm_cust_accounts         xca   -- 顧客追加情報
+            ,xxcos_business_conditions_v xbcv  -- 業態分類ビュー
+      WHERE  xca.customer_id        = in_cust_id          -- 内部ID
+      AND    xca.business_low_type  = xbcv.s_lookup_code  -- 業態分類(小分類)
+      AND    xca.final_tran_date   >= TRUNC(
+                                        ADD_MONTHS( gd_process_date  -- 業務日付
+                                                  , DECODE( xbcv.d_lookup_code  -- 業態分類(大分類)
+                                                          , cv_gtal_dai_vd      -- VD('05')
+                                                          , cn_add_date_vd      -- VDは、1ヶ月前の月初以内(-1)
+                                                          , cn_add_date_not_vd  -- VD以外は、2ヶ月前の月初以内(-2)
+                                                    )
+                                        )
+                                      , cv_date_mm  -- 月初日を取得('MM')
+                                      )
+      ;
+    EXCEPTION
+      --*** 対象レコードなしエラー ***
+      WHEN NO_DATA_FOUND THEN
+        lv_cust_code := NULL;
+    END;
+--
+    -- 月内取引が存在すれば中止NG
+    IF ( lv_cust_code IS NOT NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(cv_cnst_msg_kbn,
+                                            cv_msg_xxcmm_00356,
+                                            cv_cnst_tkn_ccd,
+                                            lv_cust_code);
+      RAISE stop_err_expt;
+    END IF;
+--
+  EXCEPTION
+    --*** 中止チェックエラー ***
+    WHEN stop_err_expt THEN
+      ov_check_status := cv_sts_check_ng;            --チェックステータス
+      ov_err_message  := lv_errmsg;                  --エラーメッセージ
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_err_message  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_check_status := cv_sts_check_ng;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_err_message  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_check_status := cv_sts_check_ng;
+--
+  END cust_tran_chk;
+--
+-- 2011/03/07 Ver1.5 add end
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -571,6 +694,22 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2011/03/07 Ver1.5 insert start
+    -- ===============================
+    -- <月内取引存在チェック>
+    -- ===============================
+    cust_tran_chk(
+      in_cust_id      =>  in_cust_id,        -- 顧客ID
+      ov_check_status =>  lv_check_status,   -- チェックステータス
+      ov_err_message  =>  lv_err_message     -- エラーメッセージ
+      );
+--
+    IF ( lv_check_status = cv_sts_check_ng ) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    END IF;
+--
+-- 2011/03/07 Ver1.5 insert end
   EXCEPTION
 --
     -- *** 処理部共通例外ハンドラ ***
