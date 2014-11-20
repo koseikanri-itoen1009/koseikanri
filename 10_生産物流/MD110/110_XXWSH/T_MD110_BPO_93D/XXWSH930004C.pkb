@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -37,6 +37,9 @@ AS
  *  2008/10/09    1.7   Oracle福田直樹   統合テスト障害#338対応
  *  2008/10/17    1.8   Oracle福田直樹   課題T_S_458対応(部署を任意入力パラメータに変更。PACKAGEの修正はなし)
  *  2008/10/17    1.8   Oracle福田直樹   変更要求#210対応
+ *  2008/10/20    1.9   Oracle福田直樹   課題T_S_486対応
+ *  2008/10/20    1.9   Oracle福田直樹   統合テスト障害#394(1)対応
+ *  2008/10/20    1.9   Oracle福田直樹   統合テスト障害#394(2)対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -131,6 +134,13 @@ AS
   -- 出荷依頼ＩＦ：保留ステータス
   gc_reserved_status_y    CONSTANT VARCHAR2(1) := '1' ;     -- 保留
 --
+  -- 2008/10/10 統合テスト障害#394(1) Add Start --------------------------
+  -- 中間テーブル：指示実績区分
+  gc_inst_rslt_div_h      CONSTANT VARCHAR2(1) := '0' ;     -- 保留
+  gc_inst_rslt_div_i      CONSTANT VARCHAR2(1) := '1' ;     -- 指示
+  gc_inst_rslt_div_r      CONSTANT VARCHAR2(1) := '2' ;     -- 実績
+  -- 2008/10/10 統合テスト障害#394(1) Add Start --------------------------
+--
   ------------------------------
   -- その他
   ------------------------------
@@ -182,6 +192,7 @@ AS
      ,quant_i               xxwsh_930d_tmp.quant_i%TYPE             -- 入庫数
      ,quant_o               xxwsh_930d_tmp.quant_o%TYPE             -- 出庫数
      ,reason                xxwsh_930d_tmp.reason%TYPE              -- 差異事由
+     ,inst_rslt_div         xxwsh_930d_tmp.inst_rslt_div%TYPE       -- 指示実績区分(0:保留 1：指示 2：実績) 2008/10/20 統合テスト障害#394(1)
     ) ;
 --    
   -- 抽出データ格納用レコード変数
@@ -296,6 +307,9 @@ AS
   TYPE reason_type               IS TABLE OF
     xxwsh_930d_tmp.reason%TYPE                             INDEX BY BINARY_INTEGER;--差異事由
 --
+  TYPE inst_rslt_div             IS TABLE OF                                                      -- 2008/10/20 統合テスト障害#394(1) Add
+    xxwsh_930d_tmp.inst_rslt_div%TYPE                      INDEX BY BINARY_INTEGER;--指示実績区分 -- 2008/10/20 統合テスト障害#394(1) Add
+--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -339,6 +353,7 @@ AS
   gt_quant_i_tbl           quant_i_type;          -- 入庫数
   gt_quant_o_tbl           quant_o_type;          -- 出庫数
   gt_reason_tbl            reason_type;           -- 差異事由
+  gt_inst_rslt_div_tbl     inst_rslt_div;         -- 指示実績区分  2008/10/20 統合テスト障害#394(1) Add
 --
 --#####################  固定共通例外宣言部 START   ####################
 --
@@ -481,6 +496,7 @@ AS
       || ' AND   NVL(x9t.delivery_no,''X'') = NVL(:V2,''X'')'
 -- mod end ver1.1
       || ' AND    x9t.request_no   = :V3'
+      || ' AND    x9t.inst_rslt_div = :V4'    -- 2008/10/20 統合テスト障害#394(1) Add
       ;
     cv_sql_order_1    CONSTANT VARCHAR2(32000)
       := ' ORDER BY TO_NUMBER( x9t.item_code )'
@@ -509,6 +525,7 @@ AS
             ,mst.ship_method_name    -- 配送区分名称
             ,mst.delivery_no         -- 配送No
             ,mst.request_no          -- 移動No
+            ,mst.inst_rslt_div       -- 指示実績区分        2008/10/20 統合テスト障害#394(1) Add
       FROM
       (
         SELECT DISTINCT
@@ -524,6 +541,7 @@ AS
               ,x9t.ship_method_name  AS ship_method_name
               ,x9t.delivery_no       AS delivery_no
               ,x9t.request_no        AS request_no
+              ,x9t.inst_rslt_div     AS inst_rslt_div       -- 2008/10/20 統合テスト障害#394(1) Add
         FROM xxwsh_930d_tmp   x9t
         WHERE x9t.item_code = NVL( p_item_code, x9t.item_code )
       ) mst
@@ -535,6 +553,7 @@ AS
               ,mst.arvl_date
               ,mst.delivery_no
               ,mst.request_no
+              ,mst.inst_rslt_div   -- 2008/10/20 統合テスト障害#394(1) Add
     ;    
     -- ==================================================
     -- 変  数  宣  言
@@ -648,6 +667,7 @@ AS
       USING lv_param_reason
            ,re_data.delivery_no
            ,re_data.request_no
+           ,re_data.inst_rslt_div   -- 2008/10/20 統合テスト障害#394(1) Add
       ;
       FETCH lc_ref INTO lr_ref ;
 --
@@ -1048,6 +1068,7 @@ AS
          ,quant_i                       -- 入庫数
          ,quant_o                       -- 出庫数
          ,reason                        -- 差異事由
+         ,inst_rslt_div                 -- 指示実績区分      2008/10/20 統合テスト障害#394(1) Add
          ,created_by                    -- 作成者
          ,creation_date                 -- 作成日
          ,last_updated_by               -- 最終更新者
@@ -1083,6 +1104,7 @@ AS
          ,SUBSTRB( gt_quant_i_tbl(i)          , 1, 12 )  -- 入庫数
          ,SUBSTRB( gt_quant_o_tbl(i)          , 1, 12 )  -- 出庫数
          ,SUBSTRB( gt_reason_tbl(i)           , 1, 6  )  -- 差異事由
+         ,SUBSTRB( gt_inst_rslt_div_tbl(i)    , 1, 1  )  -- 指示実績区分   2008/10/20 統合テスト障害#394(1) Add
          ,gn_created_by               -- 作成者
          ,SYSDATE                     -- 作成日
          ,gn_last_updated_by          -- 最終更新者
@@ -1260,6 +1282,40 @@ AS
     or_temp_tab.item_code := ir_get_data.item_code ;  -- 品目コード
     or_temp_tab.item_name := ir_get_data.item_name ;  -- 品目名称
 --
+    -- 2008/10/10 統合テスト障害#394(1) Add Start -----------------------------------
+    --------------------------------------------------
+    -- 指示・実績区分設定
+    --------------------------------------------------
+    -- 保留データの場合
+    IF ( ir_get_data.status IS NULL ) THEN
+--
+      or_temp_tab.inst_rslt_div := gc_inst_rslt_div_h ; -- 保留
+--
+    -- 保留データ以外の場合
+    ELSE
+      -- 指示レコードであるかを確認する
+      SELECT COUNT( xmrih.mov_hdr_id )
+      INTO   ln_temp_cnt
+      FROM   xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
+      WHERE xmrih.career_id             = ir_get_data.career_id
+      AND   xmrih.shipping_method_code  = ir_get_data.ship_method_code
+      AND   xmrih.schedule_ship_date    = ir_get_data.ship_date
+      AND   xmrih.schedule_arrival_date = ir_get_data.arvl_date
+      AND   xmrih.mov_num               = or_temp_tab.request_no  -- 移動Ｎｏ
+      ;
+--
+      -- 指示レコードの場合
+      IF ln_temp_cnt > 0 THEN
+        or_temp_tab.inst_rslt_div := gc_inst_rslt_div_i ; -- 指示
+--
+      -- 指示レコードではない場合
+      ELSE
+        or_temp_tab.inst_rslt_div := gc_inst_rslt_div_r ; -- 実績
+      END IF ;
+--
+    END IF;
+    -- 2008/10/10 統合テスト障害#394(1) Add End ----------------------------------
+--
     --------------------------------------------------
     -- ロット情報設定
     --------------------------------------------------
@@ -1322,7 +1378,7 @@ AS
 --                      ELSE 0
 --                    END )                                    -- 出庫数
               ,SUM( CASE
-                      WHEN (xmld.record_type_code = gc_rec_type_inst) THEN 
+                      WHEN (xmld.record_type_code = gc_rec_type_inst) THEN  -- 指示の場合
                         CASE 
 -- 2008/07/28 A.Shiina v1.6 UPDATE Start
 --                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
@@ -1343,21 +1399,31 @@ AS
 ---- mod start ver1.2
 ----                              (xmld.actual_quantity/ir_get_data.num_of_cases)
 --                              ROUND((xmld.actual_quantity/ir_get_data.num_of_cases),3)
-                           ROUND((NVL(xmld.actual_quantity, ir_get_data.quant_r)
-                                   /ir_get_data.num_of_cases),3)
+--
+                           -- 2008/10/20 課題T_S_486 Del Start ---------------------------
+                           --ROUND((NVL(xmld.actual_quantity, ir_get_data.quant_r)
+                           --        /ir_get_data.num_of_cases),3)
+                           -- 2008/10/20 課題T_S_486 Del End -----------------------------
+                           -- 2008/10/20 課題T_S_486 Add Start ---------------------------
+                           ROUND(ir_get_data.quant_r / ir_get_data.num_of_cases, 3)
+                           -- 2008/10/20 課題T_S_486 Add End -----------------------------
+--
 -- 2008/07/28 A.Shiina v1.6 UPDATE End
 -- mod end ver1.2
                         ELSE
                               -- 換算しない
 -- 2008/07/28 A.Shiina v1.6 UPDATE Start
 --                              (xmld.actual_quantity/1)
-                           NVL(xmld.actual_quantity, ir_get_data.quant_r)
+--
+                           --NVL(xmld.actual_quantity, ir_get_data.quant_r)  -- 2008/10/20 課題T_S_486 Del
+                           ir_get_data.quant_r                               -- 2008/10/20 課題T_S_486 Add
+--
 -- 2008/07/28 A.Shiina v1.6 UPDATE End
                         END
                       ELSE 0
                     END )                                    -- 依頼数
               ,SUM( CASE
-                      WHEN (xmld.record_type_code = gc_rec_type_dlvr) THEN 
+                      WHEN (xmld.record_type_code = gc_rec_type_dlvr) THEN   -- 入庫実績
                         CASE
 -- 2008/07/28 A.Shiina v1.6 UPDATE Start
 --                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
@@ -1387,7 +1453,7 @@ AS
                       ELSE 0
                     END )                                    -- 入庫数
               ,SUM( CASE
-                      WHEN (xmld.record_type_code = gc_rec_type_stck) THEN 
+                      WHEN (xmld.record_type_code = gc_rec_type_stck) THEN  -- 出庫実績
                         CASE
 -- 2008/07/28 A.Shiina v1.6 UPDATE Start
 --                          WHEN xicv.item_class_code = '5'             -- 品目区分が製品
@@ -1563,11 +1629,6 @@ AS
       ;
 --
       lv_eos_data_type := ir_get_data.order_type;   -- 2008/10/18 変更要求#210 Add
-      
-            FND_FILE.PUT_LINE(FND_FILE.LOG, 'ir_get_data.order_type' || ir_get_data.order_type);
-      
-      
-      
 --
       IF ((lv_reserved_status = gc_reserved_status_y)
         AND (lv_eos_data_type = cv_eos_data_cd_220)) THEN
@@ -1588,56 +1649,60 @@ AS
     -- 保留ステータス：「保留」
     ------------------------------
     IF ( lv_reserved_status = gc_reserved_status_y ) THEN
--- 2008/07/28 A.Shiina v1.6 UPDATE Start
 --
---      or_temp_tab.quant_r       := ir_get_data.quant_r ;  -- 依頼数
---      or_temp_tab.quant_i       := ir_get_data.quant_i ;  -- 入庫数
---      or_temp_tab.quant_o       := ir_get_data.quant_o ;  -- 出庫数
-      or_temp_tab.quant_r       := 0 ;  -- 依頼数
-      -- 出庫対象の場合
-      IF (ln_quant_kbn = 1) THEN
-        or_temp_tab.quant_i       := 0 ;                                              -- 入庫数
-        or_temp_tab.quant_o       := NVL(ir_get_data.quant_d, ir_get_data.quant_r) ;  -- 出庫数
-      -- 入庫対象の場合
-      ELSIF (ln_quant_kbn = 2) THEN
-        or_temp_tab.quant_i       := NVL(ir_get_data.quant_d, ir_get_data.quant_r) ;  -- 入庫数
-        or_temp_tab.quant_o       := 0 ;                                              -- 出庫数
-      END IF;
--- 2008/07/28 A.Shiina v1.6 UPDATE End
+      IF ( ir_get_data.status IS NULL ) THEN -- 保留データの場合  2008/10/20 統合テスト障害#394(2) Add
 --
-      -- ロット情報取得
-      BEGIN
-        SELECT xsli.lot_no
-              ,xsli.designated_production_date
-              ,xsli.use_by_date
-              ,xsli.original_character
-              ,NULL
-        INTO   or_temp_tab.lot_no                 -- ロット番号
-              ,or_temp_tab.product_date           -- 製造日
-              ,or_temp_tab.use_by_date            -- 賞味期限
-              ,or_temp_tab.original_char          -- 固有記号
-              ,or_temp_tab.lot_status             -- 品質
-        FROM xxwsh_shipping_headers_if  xshi      -- 出荷依頼インタフェースヘッダアドオン
-            ,xxwsh_shipping_lines_if    xsli      -- 出荷依頼インタフェース明細アドオン
-        WHERE xsli.line_id          = ir_get_data.order_line_id
-        AND   xshi.header_id        = xsli.header_id
-        AND   xshi.delivery_no      = ir_get_data.delivery_no   -- 配送Ｎｏ
-        AND   xshi.order_source_ref = ir_get_data.request_no    -- 移動Ｎｏ
-        ;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          or_temp_tab.lot_no        := NULL ; -- ロット番号
-          or_temp_tab.product_date  := NULL ; -- 製造日
-          or_temp_tab.use_by_date   := NULL ; -- 賞味期限
-          or_temp_tab.original_char := NULL ; -- 固有記号
-          or_temp_tab.lot_status    := NULL ; -- 品質
-        WHEN TOO_MANY_ROWS THEN
-          or_temp_tab.lot_no        := NULL ; -- ロット番号
-          or_temp_tab.product_date  := NULL ; -- 製造日
-          or_temp_tab.use_by_date   := NULL ; -- 賞味期限
-          or_temp_tab.original_char := NULL ; -- 固有記号
-          or_temp_tab.lot_status    := NULL ; -- 品質
-      END ;
+        -- 2008/07/28 A.Shiina v1.6 UPDATE Start ---------------------------------------------
+        --or_temp_tab.quant_r       := ir_get_data.quant_r ;  -- 依頼数
+        --or_temp_tab.quant_i       := ir_get_data.quant_i ;  -- 入庫数
+        --or_temp_tab.quant_o       := ir_get_data.quant_o ;  -- 出庫数
+        --or_temp_tab.quant_r       := 0 ;  -- 依頼数
+        -- 出庫対象の場合
+        IF (ln_quant_kbn = 1) THEN
+          or_temp_tab.quant_i       := 0 ;                                              -- 入庫数
+          or_temp_tab.quant_o       := NVL(ir_get_data.quant_d, ir_get_data.quant_r) ;  -- 出庫数
+        -- 入庫対象の場合
+        ELSIF (ln_quant_kbn = 2) THEN
+          or_temp_tab.quant_i       := NVL(ir_get_data.quant_d, ir_get_data.quant_r) ;  -- 入庫数
+          or_temp_tab.quant_o       := 0 ;                                              -- 出庫数
+        END IF;
+        -- 2008/07/28 A.Shiina v1.6 UPDATE End ------------------------------------------------
+--
+        -- ロット情報取得
+        BEGIN
+          SELECT xsli.lot_no
+                ,xsli.designated_production_date
+                ,xsli.use_by_date
+                ,xsli.original_character
+                ,NULL
+          INTO   or_temp_tab.lot_no                 -- ロット番号
+                ,or_temp_tab.product_date           -- 製造日
+                ,or_temp_tab.use_by_date            -- 賞味期限
+                ,or_temp_tab.original_char          -- 固有記号
+                ,or_temp_tab.lot_status             -- 品質
+          FROM xxwsh_shipping_headers_if  xshi      -- 出荷依頼インタフェースヘッダアドオン
+              ,xxwsh_shipping_lines_if    xsli      -- 出荷依頼インタフェース明細アドオン
+          WHERE xsli.line_id          = ir_get_data.order_line_id
+          AND   xshi.header_id        = xsli.header_id
+          AND   xshi.delivery_no      = ir_get_data.delivery_no   -- 配送Ｎｏ
+          AND   xshi.order_source_ref = ir_get_data.request_no    -- 移動Ｎｏ
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            or_temp_tab.lot_no        := NULL ; -- ロット番号
+            or_temp_tab.product_date  := NULL ; -- 製造日
+            or_temp_tab.use_by_date   := NULL ; -- 賞味期限
+            or_temp_tab.original_char := NULL ; -- 固有記号
+            or_temp_tab.lot_status    := NULL ; -- 品質
+          WHEN TOO_MANY_ROWS THEN
+            or_temp_tab.lot_no        := NULL ; -- ロット番号
+            or_temp_tab.product_date  := NULL ; -- 製造日
+            or_temp_tab.use_by_date   := NULL ; -- 賞味期限
+            or_temp_tab.original_char := NULL ; -- 固有記号
+            or_temp_tab.lot_status    := NULL ; -- 品質
+        END ;
+--
+      END IF;   -- 2008/10/20 統合テスト障害#394(2) Add
 --
       or_temp_tab.reason := gc_reason_rsrv ;  -- 保留
 --
@@ -2371,6 +2436,7 @@ AS
         gt_quant_i_tbl(lv_data_count)            := lr_temp_tab.quant_i;          -- 入庫数
         gt_quant_o_tbl(lv_data_count)            := lr_temp_tab.quant_o;          -- 出庫数
         gt_reason_tbl(lv_data_count)             := lr_temp_tab.reason;           -- 差異事由
+        gt_inst_rslt_div_tbl(lv_data_count)      := lr_temp_tab.inst_rslt_div;    -- 指示実績区分  2008/10/20 統合テスト障害#394(1) Add
 --
       END LOOP main_loop ;
       --------------------------------------------------
@@ -2470,6 +2536,7 @@ AS
         gt_quant_i_tbl(lv_data_count)            := lr_temp_tab.quant_i;          -- 入庫数
         gt_quant_o_tbl(lv_data_count)            := lr_temp_tab.quant_o;          -- 出庫数
         gt_reason_tbl(lv_data_count)             := lr_temp_tab.reason;           -- 差異事由
+        gt_inst_rslt_div_tbl(lv_data_count)      := lr_temp_tab.inst_rslt_div;    -- 指示実績区分   2008/10/20 統合テスト障害#394(1) Add
       END LOOP main_loop ;
 --
       --------------------------------------------------

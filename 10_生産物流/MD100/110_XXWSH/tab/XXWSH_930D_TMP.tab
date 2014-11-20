@@ -23,6 +23,7 @@ CREATE TABLE xxwsh.xxwsh_930d_tmp
     quant_i                   NUMBER(12),
     quant_o                   NUMBER(12),
     reason                    VARCHAR2(6),
+    inst_rslt_div             VARCHAR2(1),
     created_by                NUMBER(15)    NOT NULL,
     creation_date             DATE          NOT NULL,
     last_updated_by           NUMBER(15)    NOT NULL,
@@ -58,6 +59,7 @@ COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.quant_r                  IS '依頼数';
 COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.quant_i                  IS '入庫数';
 COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.quant_o                  IS '出庫数';
 COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.reason                   IS '差異事由';
+COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.inst_rslt_div            IS '指示実績区分';
 COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.created_by               IS '作成者' ;
 COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.creation_date            IS '作成日' ;
 COMMENT ON COLUMN xxwsh.xxwsh_930d_tmp.last_updated_by          IS '最終更新者' ;
