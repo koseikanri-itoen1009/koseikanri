@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,7 +32,8 @@ AS
  *  2009/12/06    1.7   Yutaka.Kuboshima 障害E_本稼動_00327の対応
  *  2009/12/09    1.8   Yutaka.Kuboshima 障害E_本稼動_00371の対応
  *  2011/03/07    1.9   Naoki.Horigome   障害E_本稼動_05329の対応
- *  2011/05/16    1.10  Shigeto.Niki     障害E_本稼動_07429の対応 
+ *  2011/05/16    1.10  Shigeto.Niki     障害E_本稼動_07429の対応
+ *  2011/10/18    1.11  Yasuhiro.Horikawa 障害E_本稼動_08440の対応
  *
  *****************************************************************************************/
 --
@@ -1330,7 +1331,10 @@ AS
         END IF;
         --出力文字列作成
         lv_output_str := lv_output_str || cv_dqu   || NVL(SUBSTRB(cust_data_rec.account_number, 1, 9), cv_date_null)                    || cv_dqu;  --顧客コード
-        lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(lv_customer_name, 1, 50), cv_date_null)                     || cv_dqu;  --顧客名称
+-- 2011/10/18 Ver1.11 E_本稼動_08440 mod start by Yasuhiro.Horikawa
+--        lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(lv_customer_name, 1, 50), cv_date_null)                     || cv_dqu;  --顧客名称
+        lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(lv_customer_name, 1, 100), cv_date_null)                     || cv_dqu;  --顧客名称
+-- 2011/10/18 Ver1.11 E_本稼動_08440 mod end by Yasuhiro.Horikawa
         lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.tax_div, 1, 1), cv_date_null)                 || cv_dqu;  --消費税区分
         lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.vd_contract_form, 1, 1), cv_date_null)        || cv_dqu;  --ベンダ契約形態
         lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.mode_div, 1, 1), cv_date_null)                || cv_dqu;  --態様区分
