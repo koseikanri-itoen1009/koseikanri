@@ -1,0 +1,1 @@
+CREATE INDEX xxcmn.xxcmn_rpm_n08 ON xxcmn.xxcmn_rcv_pay_mst( doc_type, dealings_div, stock_adjustment_div, ship_prov_rcv_pay_category ) TABLESPACE xxidx;
