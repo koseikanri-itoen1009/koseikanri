@@ -1,0 +1,56 @@
+# $Header$
+
+# dbdrv: exec fnd bin FNDLOAD bin &phase=daa+51 checkfile:~PROD:~PATH:~FILE &ui_apps 0 Y UPLOAD @FND:patch/115/import/afsload.lct @~PROD:~PATH/~FILE
+LANGUAGE = "JA"
+LDRCONFIG = "afsload.lct 115.60"
+
+#Source Database tebs06
+
+#RELEASE_NAME 11.5.10.2
+
+# -- Begin Entity Definitions -- 
+
+DEFINE FORM
+  KEY   APPLICATION_SHORT_NAME          VARCHAR2(4000)
+  KEY   FORM_NAME                       VARCHAR2(4000)
+  BASE  AUDIT_ENABLED_FLAG              VARCHAR2(1)
+  BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+  TRANS USER_FORM_NAME                  VARCHAR2(80)
+  TRANS DESCRIPTION                     VARCHAR2(240)
+  CTX   OWNER                           VARCHAR2(4000)
+END FORM
+# -- End Entity Definitions -- 
+
+
+
+BEGIN FORM "XXCSM" "XXCSM002A04F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/03/24"
+  USER_FORM_NAME = "年間商品計画登録"
+  DESCRIPTION = "年間商品計画登録"
+  OWNER = "MST000"
+END FORM
+
+BEGIN FORM "XXCSM" "XXCSM002A06F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/03/24"
+  USER_FORM_NAME = "年間商品計画単品別登録修正"
+  DESCRIPTION = "年間商品計画単品別登録修正"
+  OWNER = "MST000"
+END FORM
+
+BEGIN FORM "XXCSM" "XXCSM004A01F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/03/24"
+  USER_FORM_NAME = "資格ポイント・ポイント付与条件登録"
+  DESCRIPTION = "資格ポイント・ポイント付与条件登録"
+  OWNER = "MST000"
+END FORM
+
+BEGIN FORM "XXCSM" "XXCSM005A01F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/03/24"
+  USER_FORM_NAME = "群別販売速報出力対象商品選択"
+  DESCRIPTION = "群別販売速報出力対象商品選択"
+  OWNER = "MST000"
+END FORM

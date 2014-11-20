@@ -1,0 +1,911 @@
+# $Header$
+
+# dbdrv: exec fnd bin FNDLOAD bin &phase=daa+64 checkfile:~PROD:~PATH:~FILE &ui_apps 0 Y UPLOAD @FND:patch/115/import/afcprset.lct @~PROD:~PATH/~FILE
+LANGUAGE = "US"
+LDRCONFIG = "afcprset.lct 115.28"
+
+#Source Database tebs06
+
+#RELEASE_NAME 11.5.10.2
+
+# -- Begin Entity Definitions -- 
+
+DEFINE REQ_SET
+  KEY   APPLICATION_SHORT_NAME          VARCHAR2(50)
+  KEY   REQUEST_SET_NAME                VARCHAR2(30)
+  CTX   OWNER                           VARCHAR2(4000)
+  BASE  ALLOW_CONSTRAINTS_FLAG          VARCHAR2(1)
+  BASE  PRINT_TOGETHER_FLAG             VARCHAR2(1)
+  BASE  START_DATE_ACTIVE               VARCHAR2(11)
+  BASE  START_STAGE_NAME                VARCHAR2(30)
+  BASE  END_DATE_ACTIVE                 VARCHAR2(11)
+  BASE  CONCURRENT_PROGRAM_NAME         VARCHAR2(30)
+  BASE  OWNER_USER_NAME                 VARCHAR2(100)
+  BASE  PRINTER                         VARCHAR2(30)
+  BASE  PRINT_STYLE                     VARCHAR2(30)
+  TRANS USER_REQUEST_SET_NAME           VARCHAR2(240)
+  TRANS DESCRIPTION                     VARCHAR2(240)
+  BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+
+  DEFINE STAGE
+    KEY   STAGE_NAME                      VARCHAR2(30)
+    CTX   OWNER                           VARCHAR2(4000)
+    BASE  CRITICAL                        VARCHAR2(1)
+    BASE  OUTCOME                         VARCHAR2(1)
+    BASE  ALLOW_CONSTRAINTS_FLAG          VARCHAR2(1)
+    BASE  DISPLAY_SEQUENCE                VARCHAR2(50)
+    BASE  FUNCTION_APPLICATION            VARCHAR2(50)
+    BASE  FUNCTION                        VARCHAR2(30)
+    BASE  SUCCESS_LINK                    VARCHAR2(30)
+    BASE  WARNING_LINK                    VARCHAR2(30)
+    BASE  ERROR_LINK                      VARCHAR2(30)
+    BASE  CONCURRENT_PROGRAM_NAME         VARCHAR2(30)
+    TRANS USER_STAGE_NAME                 VARCHAR2(240)
+    TRANS DESCRIPTION                     VARCHAR2(240)
+    BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+
+    DEFINE STAGE_PROG
+      KEY   SEQUENCE                        VARCHAR2(50)
+      CTX   OWNER                           VARCHAR2(4000)
+      BASE  PROGRAM_APPLICATION             VARCHAR2(50)
+      BASE  PROGRAM_NAME                    VARCHAR2(30)
+      BASE  NLS_LANGUAGE                    VARCHAR2(30)
+      BASE  NLS_TERRITORY                   VARCHAR2(30)
+      BASE  CRITICAL                        VARCHAR2(1)
+      BASE  NUMBER_OF_COPIES                VARCHAR2(50)
+      BASE  PRINTER                         VARCHAR2(30)
+      BASE  PRINT_STYLE                     VARCHAR2(30)
+      BASE  SAVE_OUTPUT_FLAG                VARCHAR2(1)
+      BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+
+      DEFINE PROG_ARGS
+        KEY   DESC_FLEX_APPL                  VARCHAR2(50)
+        KEY   DESC_FLEX_NAME                  VARCHAR2(50)
+        KEY   COL_NAME                        VARCHAR2(30)
+        CTX   OWNER                           VARCHAR2(4000)
+        BASE  DISPLAY_FLAG                    VARCHAR2(1)
+        BASE  INSERT_FLAG                     VARCHAR2(1)
+        BASE  UPDATE_FLAG                     VARCHAR2(1)
+        BASE  DEFAULT_TYPE                    VARCHAR2(1)
+        BASE  DEFAULT_VALUE                   VARCHAR2(2000)
+        BASE  SHARED_PARAMETER_NAME           VARCHAR2(30)
+        BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+      END PROG_ARGS
+    END STAGE_PROG
+  END STAGE
+END REQ_SET
+
+# -- End Entity Definitions -- 
+
+
+BEGIN REQ_SET "XXCFR" "XXCFR00501Q"
+  OWNER = "AR001"
+  ALLOW_CONSTRAINTS_FLAG = "N"
+  PRINT_TOGETHER_FLAG = "N"
+  START_DATE_ACTIVE = "2000/01/01"
+  START_STAGE_NAME = "STAGE10"
+  USER_REQUEST_SET_NAME = "ロックボックスインポート処理自動化 - データ更新要求セット"
+  DESCRIPTION = "ロックボックスインポート処理自動化 - データ更新要求セット"
+  LAST_UPDATE_DATE = "2009/04/21"
+
+  BEGIN STAGE "STAGE10"
+    OWNER = "MST000"
+    CRITICAL = "N"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "10"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE20"
+    WARNING_LINK = "STAGE20"
+    ERROR_LINK = "STAGE20"
+    USER_STAGE_NAME = "ロックボックスインポート処理自動化"
+    DESCRIPTION = "ロックボックスインポート処理自動化"
+    LAST_UPDATE_DATE = "2009/03/25"
+  
+    BEGIN STAGE_PROG "10"
+      OWNER = "MST000"
+      PROGRAM_APPLICATION = "XXCFR"
+      PROGRAM_NAME = "XXCFR005A01C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2009/03/25"
+    
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE20"
+    OWNER = "MST000"
+    CRITICAL = "N"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "20"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    USER_STAGE_NAME = "ロックボックスデータ更新"
+    DESCRIPTION = "ロックボックスデータ更新"
+    LAST_UPDATE_DATE = "2009/03/25"
+  
+    BEGIN STAGE_PROG "20"
+      OWNER = "MST000"
+      PROGRAM_APPLICATION = "XXCFR"
+      PROGRAM_NAME = "XXCFR005A02C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2009/03/25"
+    
+    END STAGE_PROG
+    
+  END STAGE
+  
+END REQ_SET
+
+BEGIN REQ_SET "XXCFR" "XXCFR00301Q"
+  OWNER = "AR001"
+  ALLOW_CONSTRAINTS_FLAG = "N"
+  PRINT_TOGETHER_FLAG = "N"
+  START_DATE_ACTIVE = "2000/01/01"
+  START_STAGE_NAME = "STAGE10"
+  USER_REQUEST_SET_NAME = "請求データ作成処理 - リカバリ用要求セット"
+  DESCRIPTION = "請求データ作成処理 - リカバリ用要求セット"
+  LAST_UPDATE_DATE = "2009/03/31"
+
+  BEGIN STAGE "STAGE10"
+    OWNER = "MST000"
+    CRITICAL = "N"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "10"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE20"
+    USER_STAGE_NAME = "請求ヘッダデータ作成(手動)"
+    DESCRIPTION = "請求ヘッダデータ作成(手動)"
+    LAST_UPDATE_DATE = "2009/03/25"
+  
+    BEGIN STAGE_PROG "10"
+      OWNER = "MST000"
+      PROGRAM_APPLICATION = "XXCFR"
+      PROGRAM_NAME = "XXCFR003A02C2"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2009/03/25"
+    
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE20"
+    OWNER = "MST000"
+    CRITICAL = "N"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "20"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    USER_STAGE_NAME = "請求明細データ作成"
+    DESCRIPTION = "請求明細データ作成"
+    LAST_UPDATE_DATE = "2009/03/25"
+  
+    BEGIN STAGE_PROG "20"
+      OWNER = "MST000"
+      PROGRAM_APPLICATION = "XXCFR"
+      PROGRAM_NAME = "XXCFR003A03C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2009/03/25"
+    
+    END STAGE_PROG
+    
+  END STAGE
+  
+END REQ_SET
+
+BEGIN REQ_SET "XX03" "XX034JI001RS"
+  OWNER = "ANONYMOUS"
+  ALLOW_CONSTRAINTS_FLAG = "Y"
+  PRINT_TOGETHER_FLAG = "N"
+  START_DATE_ACTIVE = "2004/03/09"
+  START_STAGE_NAME = "STAGE10"
+  CONCURRENT_PROGRAM_NAME = "XX034JI001RS"
+  USER_REQUEST_SET_NAME = "承認済仕入先請求書の転送"
+  DESCRIPTION = "承認済仕入先請求書の転送"
+  LAST_UPDATE_DATE = "2005/03/17"
+
+  BEGIN STAGE "STAGE10"
+    OWNER = "ORACLE"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "10"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE20"
+    WARNING_LINK = "STAGE20"
+    USER_STAGE_NAME = "承認済仕入先請求書の転送(10)"
+    LAST_UPDATE_DATE = "2004/04/22"
+  
+    BEGIN STAGE_PROG "1"
+      OWNER = "ORACLE"
+      PROGRAM_APPLICATION = "XX03"
+      PROGRAM_NAME = "XX034PT001C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2004/03/25"
+    
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX034PT001C" "ATTRIBUTE1"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "XX03_ENTRY"
+        LAST_UPDATE_DATE = "2004/03/25"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE20"
+    OWNER = "ORACLE"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "20"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE30"
+    USER_STAGE_NAME = "買掛/未払金オープン・インタフェース・インポート(20)"
+    LAST_UPDATE_DATE = "2004/03/25"
+  
+    BEGIN STAGE_PROG "1"
+      OWNER = "ORACLE"
+      PROGRAM_APPLICATION = "SQLAP"
+      PROGRAM_NAME = "APXIIMPT"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2004/04/01"
+    
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APXIIMPT" "ATTRIBUTE1"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "部門入力"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APXIIMPT" "ATTRIBUTE2"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APXIIMPT" "ATTRIBUTE3"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APXIIMPT" "ATTRIBUTE4"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APXIIMPT" "ATTRIBUTE5"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APXIIMPT" "ATTRIBUTE6"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APXIIMPT" "ATTRIBUTE7"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "S"
+        DEFAULT_VALUE =
+       "select meaning from fnd_lookups where lookup_type = 'YES_NO' and lookup_code = 'Y'"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APXIIMPT" "ATTRIBUTE10"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "S"
+        DEFAULT_VALUE =
+       "select meaning from fnd_lookups where lookup_type = 'YES_NO' and lookup_code = 'N'"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE30"
+    OWNER = "ORACLE"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "30"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE40"
+    USER_STAGE_NAME = "請求書検証(30)"
+    LAST_UPDATE_DATE = "2004/06/16"
+  
+    BEGIN STAGE_PROG "1"
+      OWNER = "ORACLE"
+      PROGRAM_APPLICATION = "SQLAP"
+      PROGRAM_NAME = "XX032AP001C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      PRINT_STYLE = "LANDSCAPE"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2004/04/28"
+    
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.XX032AP001C" "ATTRIBUTE1"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "全て"
+        LAST_UPDATE_DATE = "2004/04/28"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.XX032AP001C" "ATTRIBUTE8"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "P"
+        DEFAULT_VALUE = "USERID"
+        LAST_UPDATE_DATE = "2004/04/28"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.XX032AP001C" "ATTRIBUTE2"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/28"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.XX032AP001C" "ATTRIBUTE3"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/28"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.XX032AP001C" "ATTRIBUTE4"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/28"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.XX032AP001C" "ATTRIBUTE5"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/28"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.XX032AP001C" "ATTRIBUTE6"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/28"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.XX032AP001C" "ATTRIBUTE7"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/28"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE40"
+    OWNER = "ORACLE"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "40"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE50"
+    USER_STAGE_NAME = "買掛/未払金会計処理(40)"
+    LAST_UPDATE_DATE = "2004/03/25"
+  
+    BEGIN STAGE_PROG "1"
+      OWNER = "ORACLE"
+      PROGRAM_APPLICATION = "SQLAP"
+      PROGRAM_NAME = "APACCENG"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2004/04/01"
+    
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APACCENG" "ATTRIBUTE1"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APACCENG" "ATTRIBUTE2"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APACCENG" "ATTRIBUTE3"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "全て"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APACCENG" "ATTRIBUTE4"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "No"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APACCENG" "ATTRIBUTE5"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "No"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APACCENG" "ATTRIBUTE6"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "No"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APACCENG" "ATTRIBUTE7"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "No"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE50"
+    OWNER = "ANONYMOUS"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "50"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE55"
+    USER_STAGE_NAME = "一般会計への買掛/未払金転送(50)"
+    LAST_UPDATE_DATE = "2005/03/17"
+  
+    BEGIN STAGE_PROG "1"
+      OWNER = "ORACLE"
+      PROGRAM_APPLICATION = "SQLAP"
+      PROGRAM_NAME = "APGLTRANS"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2004/04/01"
+    
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APGLTRANS" "ATTRIBUTE4"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "P"
+        DEFAULT_VALUE = "GL_SET_OF_BKS_NAME"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APGLTRANS" "ATTRIBUTE5"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "No"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APGLTRANS" "ATTRIBUTE8"
+        OWNER = "ANONYMOUS"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "S"
+        DEFAULT_VALUE =
+       "SELECT xx00_date_pkg.date_to_canonical(NVL(MAX(gps.end_date), TRUNC(SYSDATE, 'DD'))) FROM gl_period_statuses gps WHERE gps.set_of_books_id = xx00_profile_pkg.value('GL_SET_OF_BKS_ID') AND gps.adjustment_period_flag = 'N' AND gps.application_id = 101 AND gps.closing_status = 'O'"
+        LAST_UPDATE_DATE = "2005/11/17"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APGLTRANS" "ATTRIBUTE10"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "仕入請求書"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APGLTRANS" "ATTRIBUTE16"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "No"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APGLTRANS" "ATTRIBUTE11"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "詳細"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APGLTRANS" "ATTRIBUTE12"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "No"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APGLTRANS" "ATTRIBUTE6"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APGLTRANS" "ATTRIBUTE7"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE60"
+    OWNER = "ORACLE"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "60"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE65"
+    USER_STAGE_NAME = "AP仕訳付加情報付加 (60)"
+    LAST_UPDATE_DATE = "2004/05/20"
+  
+    BEGIN STAGE_PROG "1"
+      OWNER = "ORACLE"
+      PROGRAM_APPLICATION = "XX03"
+      PROGRAM_NAME = "XX032JU001C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2004/03/25"
+    
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE70"
+    OWNER = "ORACLE"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "70"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE80"
+    USER_STAGE_NAME = "GL仕訳インポートの起動(70)"
+    LAST_UPDATE_DATE = "2004/03/25"
+  
+    BEGIN STAGE_PROG "1"
+      OWNER = "ORACLE"
+      PROGRAM_APPLICATION = "XX03"
+      PROGRAM_NAME = "XX031JI001C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2004/03/25"
+    
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX031JI001C" "ATTRIBUTE7"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/03/25"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX031JI001C" "ATTRIBUTE8"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "O"
+        LAST_UPDATE_DATE = "2004/03/25"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX031JI001C" "ATTRIBUTE2"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "買掛管理"
+        LAST_UPDATE_DATE = "2004/03/25"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX031JI001C" "ATTRIBUTE3"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/03/25"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX031JI001C" "ATTRIBUTE4"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "N"
+        LAST_UPDATE_DATE = "2004/03/25"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX031JI001C" "ATTRIBUTE5"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "N"
+        LAST_UPDATE_DATE = "2004/03/25"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX031JI001C" "ATTRIBUTE6"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/03/25"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE80"
+    OWNER = "ORACLE"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "80"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    USER_STAGE_NAME = "GL自動転記(80)"
+    LAST_UPDATE_DATE = "2004/03/25"
+  
+    BEGIN STAGE_PROG "1"
+      OWNER = "ORACLE"
+      PROGRAM_APPLICATION = "SQLGL"
+      PROGRAM_NAME = "XX031AP001C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2004/04/01"
+    
+      BEGIN PROG_ARGS "SQLGL" "$SRS$.XX031AP001C" "ATTRIBUTE2"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "XX03_AP_AUTOPOST_SET"
+        LAST_UPDATE_DATE = "2004/04/01"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE65"
+    OWNER = "ORACLE"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "65"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE70"
+    WARNING_LINK = "STAGE70"
+    USER_STAGE_NAME = "GLI/Fエラーチェック(65)"
+    LAST_UPDATE_DATE = "2004/05/20"
+  
+    BEGIN STAGE_PROG "1"
+      OWNER = "ORACLE"
+      PROGRAM_APPLICATION = "XX03"
+      PROGRAM_NAME = "XX031EC001C"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      PRINTER = "XX03 Pasta Dummy"
+      PRINT_STYLE = "XX03_LANDWIDE_COMMON"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2004/05/20"
+    
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX031EC001C" "ATTRIBUTE2"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "Y"
+        LAST_UPDATE_DATE = "2004/05/20"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX031EC001C" "ATTRIBUTE3"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "買掛管理"
+        LAST_UPDATE_DATE = "2004/05/20"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX031EC001C" "ATTRIBUTE5"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "S"
+        DEFAULT_VALUE =
+       "select attribute1 from gl_je_sources  where user_je_source_name = '買掛管理'"
+        LAST_UPDATE_DATE = "2004/05/20"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "XX03" "$SRS$.XX031EC001C" "ATTRIBUTE4"
+        OWNER = "ORACLE"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        LAST_UPDATE_DATE = "2004/05/20"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+  BEGIN STAGE "STAGE55"
+    OWNER = "ANONYMOUS"
+    CRITICAL = "Y"
+    OUTCOME = "C"
+    ALLOW_CONSTRAINTS_FLAG = "N"
+    DISPLAY_SEQUENCE = "55"
+    FUNCTION_APPLICATION = "FND"
+    FUNCTION = "FNDRSSTE"
+    SUCCESS_LINK = "STAGE60"
+    USER_STAGE_NAME = "一括追加作成(55)"
+    LAST_UPDATE_DATE = "2005/03/17"
+  
+    BEGIN STAGE_PROG "1"
+      OWNER = "ANONYMOUS"
+      PROGRAM_APPLICATION = "SQLAP"
+      PROGRAM_NAME = "APMACR"
+      CRITICAL = "Y"
+      NUMBER_OF_COPIES = "0"
+      SAVE_OUTPUT_FLAG = "Y"
+      LAST_UPDATE_DATE = "2005/03/17"
+    
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APMACR" "ATTRIBUTE1"
+        OWNER = "ANONYMOUS"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "S"
+        DEFAULT_VALUE =
+       "SELECT xx00_date_pkg.date_to_canonical(NVL(MAX(gps.end_date), TRUNC(SYSDATE, 'DD'))) FROM gl_period_statuses gps WHERE gps.set_of_books_id = xx00_profile_pkg.value('GL_SET_OF_BKS_ID') AND gps.adjustment_period_flag = 'N' AND gps.application_id = 101 AND gps.closing_status = 'O'"
+        LAST_UPDATE_DATE = "2005/11/17"
+      END PROG_ARGS
+      
+      BEGIN PROG_ARGS "SQLAP" "$SRS$.APMACR" "ATTRIBUTE2"
+        OWNER = "PO000"
+        DISPLAY_FLAG = "N"
+        INSERT_FLAG = "N"
+        UPDATE_FLAG = "N"
+        DEFAULT_TYPE = "C"
+        DEFAULT_VALUE = "固定資産台帳"
+        LAST_UPDATE_DATE = "2009/03/26"
+      END PROG_ARGS
+      
+    END STAGE_PROG
+    
+  END STAGE
+  
+END REQ_SET

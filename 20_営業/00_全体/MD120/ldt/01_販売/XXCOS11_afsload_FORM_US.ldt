@@ -1,0 +1,73 @@
+# $Header$
+
+# dbdrv: exec fnd bin FNDLOAD bin &phase=daa+51 checkfile:~PROD:~PATH:~FILE &ui_apps 0 Y UPLOAD @FND:patch/115/import/afsload.lct @~PROD:~PATH/~FILE
+LANGUAGE = "US"
+LDRCONFIG = "afsload.lct 115.60"
+
+#Source Database tebs06
+
+#RELEASE_NAME 11.5.10.2
+
+# -- Begin Entity Definitions -- 
+
+DEFINE FORM
+  KEY   APPLICATION_SHORT_NAME          VARCHAR2(4000)
+  KEY   FORM_NAME                       VARCHAR2(4000)
+  BASE  AUDIT_ENABLED_FLAG              VARCHAR2(1)
+  BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+  TRANS USER_FORM_NAME                  VARCHAR2(80)
+  TRANS DESCRIPTION                     VARCHAR2(240)
+  CTX   OWNER                           VARCHAR2(4000)
+END FORM
+
+# -- End Entity Definitions -- 
+
+
+BEGIN FORM "XXCOS" "XXCOS001A09F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/03/19"
+  USER_FORM_NAME = "入金入力画面"
+  DESCRIPTION = "入金入力画面"
+  OWNER = "MST000"
+END FORM
+
+BEGIN FORM "XXCOS" "XXCOS014A07F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/03/19"
+  USER_FORM_NAME = "帳票発行アドオン画面"
+  DESCRIPTION = "帳票発行アドオン画面"
+  OWNER = "MST000"
+END FORM
+
+BEGIN FORM "XXCOS" "XXCOS001A04F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/03/19"
+  USER_FORM_NAME = "納品入力画面"
+  DESCRIPTION = "納品入力画面"
+  OWNER = "MST000"
+END FORM
+
+BEGIN FORM "XXCOS" "XXCOS011A07F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/03/19"
+  USER_FORM_NAME = "納品予定更新（荷番情報）画面"
+  DESCRIPTION = "納品予定更新（荷番情報）画面"
+  OWNER = "MST000"
+END FORM
+
+BEGIN FORM "XXCOS" "XXCOS011A09F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/03/19"
+  USER_FORM_NAME = "納品予定更新（オリコン）画面"
+  DESCRIPTION = "納品予定更新（オリコン）画面"
+  OWNER = "MST000"
+END FORM
+
+BEGIN FORM "XXCOS" "XXCOS011A08F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/03/19"
+  USER_FORM_NAME = "入庫予定更新画面"
+  DESCRIPTION = "入庫予定更新画面"
+  OWNER = "MST000"
+END FORM
+

@@ -1,0 +1,33 @@
+# $Header$
+
+# dbdrv: exec fnd bin FNDLOAD bin &phase=daa+51 checkfile:~PROD:~PATH:~FILE &ui_apps 0 Y UPLOAD @FND:patch/115/import/afsload.lct @~PROD:~PATH/~FILE
+LANGUAGE = "JA"
+LDRCONFIG = "afsload.lct 115.60"
+
+#Source Database tebs06
+
+#RELEASE_NAME 11.5.10.2
+
+# -- Begin Entity Definitions -- 
+
+DEFINE FORM
+  KEY   APPLICATION_SHORT_NAME          VARCHAR2(4000)
+  KEY   FORM_NAME                       VARCHAR2(4000)
+  BASE  AUDIT_ENABLED_FLAG              VARCHAR2(1)
+  BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+  TRANS USER_FORM_NAME                  VARCHAR2(80)
+  TRANS DESCRIPTION                     VARCHAR2(240)
+  CTX   OWNER                           VARCHAR2(4000)
+END FORM
+
+# -- End Entity Definitions -- 
+
+
+BEGIN FORM "XXCOP" "XXCOP004A02F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/03/19"
+  USER_FORM_NAME = "新引取計画画面"
+  DESCRIPTION = "新引取計画画面"
+  OWNER = "MST000"
+END FORM
+

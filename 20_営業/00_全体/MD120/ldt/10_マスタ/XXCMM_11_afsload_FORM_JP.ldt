@@ -1,0 +1,57 @@
+# $Header$
+
+# dbdrv: exec fnd bin FNDLOAD bin &phase=daa+51 checkfile:~PROD:~PATH:~FILE &ui_apps 0 Y UPLOAD @FND:patch/115/import/afsload.lct @~PROD:~PATH/~FILE
+LANGUAGE = "JA"
+LDRCONFIG = "afsload.lct 115.60"
+
+#Source Database tebs06
+
+#RELEASE_NAME 11.5.10.2
+
+# -- Begin Entity Definitions -- 
+
+DEFINE FORM
+  KEY   APPLICATION_SHORT_NAME          VARCHAR2(4000)
+  KEY   FORM_NAME                       VARCHAR2(4000)
+  BASE  AUDIT_ENABLED_FLAG              VARCHAR2(1)
+  BASE  LAST_UPDATE_DATE                VARCHAR2(10)
+  TRANS USER_FORM_NAME                  VARCHAR2(80)
+  TRANS DESCRIPTION                     VARCHAR2(240)
+  CTX   OWNER                           VARCHAR2(4000)
+END FORM
+
+# -- End Entity Definitions -- 
+
+
+BEGIN FORM "XXCMM" "XXCMM003A01F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/05/01"
+  USER_FORM_NAME = "å⁄ãqñ@êlèÓïÒâÊñ "
+  DESCRIPTION = "å⁄ãqñ@êlèÓïÒâÊñ "
+  OWNER = "MST000"
+END FORM
+
+BEGIN FORM "XXCMM" "XXCMM003A02F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/05/01"
+  USER_FORM_NAME = "å⁄ãqí«â¡èÓïÒâÊñ "
+  DESCRIPTION = "å⁄ãqí«â¡èÓïÒâÊñ "
+  OWNER = "MST000"
+END FORM
+
+BEGIN FORM "XXCMM" "XXCMM004A01F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/05/01"
+  USER_FORM_NAME = "ïiñ⁄ìoò^âÊñ "
+  DESCRIPTION = "ïiñ⁄ìoò^âÊñ "
+  OWNER = "MST000"
+END FORM
+
+BEGIN FORM "XXCMM" "XXCMM004A02F"
+  AUDIT_ENABLED_FLAG = "N"
+  LAST_UPDATE_DATE = "2009/05/01"
+  USER_FORM_NAME = "ïœçXó\ñÒâÊñ "
+  DESCRIPTION = "ïœçXó\ñÒâÊñ "
+  OWNER = "MST000"
+END FORM
+

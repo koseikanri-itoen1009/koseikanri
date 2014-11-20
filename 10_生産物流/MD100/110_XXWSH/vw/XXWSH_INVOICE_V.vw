@@ -118,8 +118,18 @@ WHERE
   AND  xilv.location_id             = xlv.location_id
   -- 出荷先情報
   AND  xoha.head_sales_branch       =  xcav.party_number
-  AND  xoha.result_deliver_to_id    = xcasv1.party_site_id(+)
-  AND  xoha.deliver_to_id    = xcasv2.party_site_id(+)
+--mod start 2009/05/28 本番障害#1398
+--  AND  xoha.result_deliver_to_id    = xcasv1.party_site_id(+)
+--  AND  xoha.deliver_to_id    = xcasv2.party_site_id(+)
+  AND  xoha.result_deliver_to       = xcasv1.party_site_number(+)
+  AND  xoha.deliver_to              = xcasv2.party_site_number(+)
+--mod end 2009/05/28
+--add start 2009/05/28 本番障害#1398
+  AND  NVL(xcasv1.party_site_status, 'A')     = 'A'  -- 有効な出荷先
+  AND  NVL(xcasv1.cust_acct_site_status, 'A') = 'A'  -- 有効な出荷先
+  AND  NVL(xcasv2.party_site_status, 'A')     = 'A'  -- 有効な出荷先
+  AND  NVL(xcasv2.cust_acct_site_status, 'A') = 'A'  -- 有効な出荷先
+--add end 2009/05/28
   ----------------------------------------------------------------------------------
 --del start 2008/07/14
 --  -- 明細情報
