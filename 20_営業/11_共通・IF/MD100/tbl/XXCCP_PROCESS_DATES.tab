@@ -11,7 +11,8 @@ CREATE TABLE xxccp.xxccp_process_dates
   program_application_id      NUMBER(15),
   program_id                  NUMBER(15),
   program_update_date         DATE,
-  CONSTRAINT xxccp_process_dates PRIMARY KEY ( process_date_id )
+  CONSTRAINT xxccp_process_dates_pk PRIMARY KEY ( process_date_id ) 
+  USING INDEX TABLESPACE xxidx2
   ) ;
 --
 COMMENT ON COLUMN xxccp.xxccp_process_dates.process_date_id               IS '業務日付アドオンID';
