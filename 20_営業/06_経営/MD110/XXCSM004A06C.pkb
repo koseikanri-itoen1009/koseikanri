@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた什器ポイントデータを
  *                  : 新規獲得ポイント顧客別履歴テーブルに取込みます。
  * MD.050           : MD050_CSM_004_A06_什器ポイント一括取込
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,7 +38,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/03/03    1.0   SCS M.Ohtsuki    新規作成
  *  2009/04/06    1.1   SCS M.Ohtsuki    [障害T1_0241]開始日取得NVL対応
- *
+ *  2009/04/09    1.2   SCS M.Ohtsuki    [障害T1_0416]業務日付とシステム日付比較の不具合
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -235,8 +235,13 @@ AS
       WHERE    flv.lookup_type        = cv_vending_item                                             -- 什器ポイントデータ項目定義
         AND    flv.language           = USERENV('LANG')                                             -- 言語('JA')
         AND    flv.enabled_flag       = 'Y'                                                         -- 使用可能フラグ
-        AND    flv.start_date_active <= gd_process_date                                             -- 適用開始日
-        AND    NVL(flv.end_date_active,SYSDATE)   >= gd_process_date                                -- 適用終了日
+--//+UPD START 2009/04/09 T1_0416 M.Ohtsuki
+--        AND    flv.start_date_active <= gd_process_date                                             -- 適用開始日
+--        AND    NVL(flv.end_date_active,SYSDATE)   >= gd_process_date                                -- 適用終了日
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+        AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date                        -- 適用開始日
+        AND    NVL(flv.end_date_active,gd_process_date)   >= gd_process_date                        -- 適用終了日
+--//+UPD END   2009/04/09 T1_0416 M.Ohtsuki
       ORDER BY flv.lookup_code   ASC;                                                               -- ルックアップコード
 --
   BEGIN
@@ -314,7 +319,11 @@ AS
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓適用開始日NVL対応
       AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date                          -- 適用開始日
 --//+UPD END   2009/04/06 T1_0241 M.Ohtsuki
-      AND    NVL(flv.end_date_active,SYSDATE)   >= gd_process_date;                                 -- 適用終了日
+--//+UPD START 2009/04/09 T1_0416 M.Ohtsuki
+--      AND    NVL(flv.end_date_active,SYSDATE)   >= gd_process_date;                                 -- 適用終了日
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓適用開始日NVL対応
+      AND    NVL(flv.end_date_active,gd_process_date)   >= gd_process_date;                                 -- 適用終了日
+--//+UPD END   2009/04/09 T1_0416 M.Ohtsuki
 --
     --==============================================================
     --A-1 ⑥INパラメータの出力
@@ -1759,3 +1768,5 @@ AS
   END main;
 --
 END XXCSM004A06C;
+/
+

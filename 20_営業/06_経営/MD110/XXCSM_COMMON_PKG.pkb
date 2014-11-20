@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcsm_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_CSM_共通関数
- * Version                : 1.0
+ * Version                : 1.1
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008-11-27    1.0  T.Tsukino       新規作成
+ *  2009-04-09    1.1  M.Ohtsuki      ［障害T1_0416］業務日付とシステム日付比較の不具合
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -125,8 +126,13 @@ AS
           ,fnd_flex_values  ffv                                                 -- 値セット明細
     WHERE  ffvs.flex_value_set_name = lv_carender_name                          -- カレンダー名で紐付け
     AND    ffvs.flex_value_set_id   = ffv.flex_value_set_id
-    AND   (ld_comparison_date BETWEEN  NVL(ffv.start_date_active, ld_process_date)
-                                          AND  NVL(ffv.end_date_active,ld_process_date))
+--//+UPD START 2009/04/09 T1_0416 M.Ohtsuki
+--    AND   (ld_comparison_date BETWEEN  NVL(ffv.start_date_active, ld_process_date)
+--                                          AND  NVL(ffv.end_date_active,ld_process_date))
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+    AND   (ld_comparison_date BETWEEN  NVL(ffv.start_date_active,ld_comparison_date)
+                                  AND  NVL(ffv.end_date_active,ld_comparison_date))
+--//+UPD END   2009/04/09 T1_0416 M.Ohtsuki
     AND  ffv.enabled_flag  = 'Y';
     -- 対象年度取得処理にて、対象年度が取得できなかった場合
     IF (ln_active_year IS NULL) THEN

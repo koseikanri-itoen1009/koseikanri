@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた年間計画データを
  *                  : 販売計画テーブル(アドオン)に取込みます。
  * MD.050           : 予算データチェック取込    MD050_CSM_001_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/03/16    1.2   SCS M.Ohtsuki    [障害T1_0011]メッセージ不正の対応
  *  2009/04/06    1.3   SCS M.Ohtsuki    [障害T1_0241]開始日取得NVL対応
  *  2009/04/06    1.3   SCS M.Ohtsuki    [障害T1_0250]項目順不具合の対応
+ *  2009/04/09    1.4   SCS M.Ohtsuki    [障害T1_0416]業務日付とシステム日付比較の不具合
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -236,8 +237,13 @@ AS
       WHERE    flv.lookup_type        = cv_sales_pl_item                                            -- 販売計画データ項目定義
         AND    flv.language           = USERENV('LANG')                                             -- 言語('JA')
         AND    flv.enabled_flag       = 'Y'                                                         -- 使用可能フラグ
-        AND    flv.start_date_active <= gd_process_date                                             -- 適用開始日
-        AND    NVL(flv.end_date_active,SYSDATE)   >= gd_process_date                                -- 適用終了日
+--//+UPD START 2009/04/09 T1_0416 M.Ohtsuki
+--        AND    flv.start_date_active <= gd_process_date                                             -- 適用開始日
+--        AND    NVL(flv.end_date_active,SYSDATE)   >= gd_process_date                                -- 適用終了日
+--
+        AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date                        -- 適用開始日
+        AND    NVL(flv.end_date_active,gd_process_date)   >= gd_process_date                        -- 適用終了日
+--//+UPD END   2009/04/09 T1_0416 M.Ohtsuki
       ORDER BY flv.lookup_code   ASC;
 --
   BEGIN
@@ -337,7 +343,11 @@ AS
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓適用開始日NVL対応
       AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date                          -- 適用開始日
 --//+UPD END   2009/04/06 T1_0241 M.Ohtsuki
-      AND    NVL(flv.end_date_active,SYSDATE)   >= gd_process_date;                                 -- 適用終了日
+--//+UPD START 2009/04/09 T1_0416 M.Ohtsuki
+--      AND    NVL(flv.end_date_active,SYSDATE)   >= gd_process_date;                                 -- 適用終了日
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓業務日付の比較
+      AND    NVL(flv.end_date_active,gd_process_date)   >= gd_process_date;                         -- 適用終了日
+--//+UPD END   2009/04/09 T1_0416 M.Ohtsuki
 --
     --==============================================================
     --A-1 INパラメータの出力

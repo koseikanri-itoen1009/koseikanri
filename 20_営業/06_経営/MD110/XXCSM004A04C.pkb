@@ -7,7 +7,7 @@ AS
  * Description      : 顧客マスタから新規獲得した顧客を抽出し、新規獲得ポイント顧客別履歴テーブル
  *                  : にデータを登録します。
  * MD.050           : 新規獲得ポイント集計（新規獲得ポイント集計処理）MD050_CSM_004_A04
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,8 +42,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/11/27    1.0   n.izumi
- *
+ *  2008/11/27    1.0   n.izumi         新規作成
+ *  2009/04/09    1.1   M.Ohtsuki      ［障害T1_0416］業務日付とシステム日付比較の不具合
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -984,8 +984,13 @@ AS
                  WHERE  flv.lookup_type        = cv_point_custom_status                             -- 顧客ステータスルックアップタイプ
                    AND  flv.language           = cv_lang                                            -- 言語('JA')
                    AND  flv.enabled_flag       = cv_flg_y                                           -- 有効フラグ
-                   AND  flv.start_date_active <= gd_process_date
-                   AND  NVL(flv.end_date_active,SYSDATE)   >= gd_process_date
+--//+UPD START 2009/04/09 T1_0416 M.Ohtsuki
+--                   AND  flv.start_date_active <= gd_process_date
+--                   AND  NVL(flv.end_date_active,SYSDATE)   >= gd_process_date
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                   AND  NVL(flv.start_date_active,gd_process_date) <= gd_process_date
+                   AND  NVL(flv.end_date_active,gd_process_date)   >= gd_process_date
+--//+UPD END   2009/04/09 T1_0416 M.Ohtsuki
                 )
          AND  NVL(xca.new_point,0) <> 0                                                             -- 新規ポイントが未設定または0以外
       ;
