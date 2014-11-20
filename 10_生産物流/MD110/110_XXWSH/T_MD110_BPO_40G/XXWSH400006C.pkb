@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確定処理
  * MD.050           : T_MD050_BPO_401_出荷依頼
  * MD.070           : 出荷依頼確定処理 T_MD070_EDO_BPO_40G
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2008/4/23     1.1   R.Matusita       内部変更要求#63
  *  2008/6/05     1.2   N.Yoshida        配送先コード⇒配送先ID変換対応(内部不具合)
  *  2009/4/20     1.3   Y.Kazama         本番障害#1398対応
+ *  2009/11/25    1.4   M.Miyagawa       本番障害#1671対応
  *
  *****************************************************************************************/
 --
@@ -191,11 +192,15 @@ AS
       BEGIN
         SELECT party_site_id
         INTO   ivv_deliver_to_id
-        FROM   xxcmn_cust_acct_sites2_v
-        WHERE  ship_to_no  = iv_deliver_to_id
+-- Ver1.4 M.Miyagawa 本番障害#1671 Mod Start
+--        FROM   xxcmn_cust_acct_sites2_v
+        FROM   xxcmn_cust_acct_sites_v
+-- Ver1.4 M.Miyagawa 本番障害#1671 Mod End
+        WHERE  ship_to_no  = iv_deliver_to_id;
 -- Ver1.3 Y.Kazama 本番障害#1398 Mod Start
-        AND    party_site_status = 'A'  -- サイトステータス[A:有効]
-        ;
+-- Ver1.4 M.Miyagawa 本番障害#1671 Del Start
+--        AND    party_site_status = 'A'  -- サイトステータス[A:有効];
+-- Ver1.4 M.Miyagawa 本番障害#1671 Del End        
 --        GROUP BY party_site_id;
 -- Ver1.3 Y.Kazama 本番障害#1398 Mod End
       EXCEPTION
