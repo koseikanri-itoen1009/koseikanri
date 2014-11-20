@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/07/09    1.9   H.Sasaki         [0000338]SVF起動関数のパラメータ修正
  *  2009/07/30    1.10  N.Abe            [0000638]単位の取得項目修正
  *  2009/09/08    1.11  H.Sasaki         [0001266]OPM品目アドオンの版管理対応
+ *  2010/10/27    1.12  H.Sasaki         [E_本稼動_05114]PT対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -198,6 +199,10 @@ AS
 -- == 2009/05/13 V1.1 Added START ===============================================================
   gn_slip_number_mask       NUMBER;                                           -- 伝票№マスク(990000000000)
 -- == 2009/05/13 V1.1 Added END   ===============================================================
+-- == 2010/10/27 V1.12 Added START ===============================================================
+  gd_trans_date_from        DATE;                                             --  取引日FROM
+  gd_trans_date_to          DATE;                                             --  取引日TO
+-- == 2010/10/27 V1.12 Added END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : del_work
@@ -1120,10 +1125,14 @@ AS
                ( mmt.transaction_type_id  = cn_ido_order ) )
           OR ( ( gr_param.transaction_type IS NULL ) AND
                ( mmt.transaction_type_id  = ln_kuragae) ) )
-        AND  ( ( ( gr_param.a_day IS NULL ) AND 
-               ( TO_CHAR ( mmt.transaction_date, 'YYYYMM' ) = gr_param.year_month ) )
-          OR ( ( gr_param.a_day IS NOT NULL ) AND 
-               ( TO_CHAR ( mmt.transaction_date, 'YYYYMMDD' ) = gr_param.year_month||gr_param.a_day ) ) )
+-- == 2010/10/27 V1.12 Modified START ===============================================================
+--        AND  ( ( ( gr_param.a_day IS NULL ) AND 
+--               ( TO_CHAR ( mmt.transaction_date, 'YYYYMM' ) = gr_param.year_month ) )
+--          OR ( ( gr_param.a_day IS NOT NULL ) AND 
+--               ( TO_CHAR ( mmt.transaction_date, 'YYYYMMDD' ) = gr_param.year_month||gr_param.a_day ) ) )
+        AND   mmt.transaction_date              >=  gd_trans_date_from
+        AND   mmt.transaction_date              <   gd_trans_date_to
+-- == 2010/10/27 V1.12 Modified END   ===============================================================
         AND  mmt.subinventory_code               =  msi1.secondary_inventory_name
         AND  mmt.transfer_subinventory           =  msi2.secondary_inventory_name
 -- == 2009/06/03 V1.8 Added START ===============================================================
@@ -1146,7 +1155,10 @@ AS
 -- == 2009/05/21 V1.5 Added START ==================================================================
         AND  mmt.transaction_quantity            <  0
 -- == 2009/05/21 V1.5 Added END   ==================================================================
-      UNION
+-- == 2010/10/27 V1.12 Modified START ===============================================================
+--      UNION
+      UNION ALL
+-- == 2010/10/27 V1.12 Modified END   ===============================================================
       --廃却
       SELECT  mmt.transaction_id
              ,DECODE(mmt.transaction_type_id,ln_haikyaku_b,ln_haikyaku
@@ -1180,10 +1192,14 @@ AS
                ( mmt.transaction_type_id IN (ln_haikyaku,ln_haikyaku_b) ) )
           OR ( ( gr_param.transaction_type IS NULL ) AND
                ( mmt.transaction_type_id IN (ln_haikyaku,ln_haikyaku_b) ) ) )
-        AND  ( ( ( gr_param.a_day IS NULL ) AND 
-               ( TO_CHAR ( mmt.transaction_date, 'YYYYMM' ) = gr_param.year_month ) )
-          OR ( ( gr_param.a_day IS NOT NULL ) AND 
-               ( TO_CHAR ( mmt.transaction_date, 'YYYYMMDD' ) = gr_param.year_month||gr_param.a_day ) ) )
+-- == 2010/10/27 V1.12 Modified START ===============================================================
+--        AND  ( ( ( gr_param.a_day IS NULL ) AND 
+--               ( TO_CHAR ( mmt.transaction_date, 'YYYYMM' ) = gr_param.year_month ) )
+--          OR ( ( gr_param.a_day IS NOT NULL ) AND 
+--               ( TO_CHAR ( mmt.transaction_date, 'YYYYMMDD' ) = gr_param.year_month||gr_param.a_day ) ) )
+        AND   mmt.transaction_date              >=  gd_trans_date_from
+        AND   mmt.transaction_date              <   gd_trans_date_to
+-- == 2010/10/27 V1.12 Modified END   ===============================================================
         AND  mmt.subinventory_code               =  msi.secondary_inventory_name
 -- == 2009/06/03 V1.8 Added START ===============================================================
         AND  mmt.organization_id                 =  msi.organization_id
@@ -1199,7 +1215,10 @@ AS
         AND  mmt.transaction_date  BETWEEN ximb.start_date_active
                                    AND     NVL(ximb.end_date_active, mmt.transaction_date)
 -- == 2009/09/08 V1.11 Added END   ==================================================================
-      UNION
+-- == 2010/10/27 V1.12 Modified START ===============================================================
+--      UNION
+      UNION ALL
+-- == 2010/10/27 V1.12 Modified END   ===============================================================
       --工場倉替,工場返品
       SELECT  mmt.transaction_id
              ,DECODE(mmt.transaction_type_id,ln_kojo_henpin_b,ln_kojo_henpin,
@@ -1244,10 +1263,14 @@ AS
                ( mmt.transaction_type_id IN (ln_kojo_kuragae,ln_kojo_kuragae_b) ) )
           OR ( ( gr_param.transaction_type IS NULL ) AND
                ( mmt.transaction_type_id IN (ln_kojo_henpin,ln_kojo_henpin_b,ln_kojo_kuragae,ln_kojo_kuragae_b) ) ) )
-        AND  ( ( ( gr_param.a_day IS NULL ) AND 
-               ( TO_CHAR ( mmt.transaction_date, 'YYYYMM' ) = gr_param.year_month ) )
-          OR ( ( gr_param.a_day IS NOT NULL ) AND 
-               ( TO_CHAR ( mmt.transaction_date, 'YYYYMMDD' ) = gr_param.year_month||gr_param.a_day ) ) )
+-- == 2010/10/27 V1.12 Modified START ===============================================================
+--        AND  ( ( ( gr_param.a_day IS NULL ) AND 
+--               ( TO_CHAR ( mmt.transaction_date, 'YYYYMM' ) = gr_param.year_month ) )
+--          OR ( ( gr_param.a_day IS NOT NULL ) AND 
+--               ( TO_CHAR ( mmt.transaction_date, 'YYYYMMDD' ) = gr_param.year_month||gr_param.a_day ) ) )
+        AND   mmt.transaction_date              >=  gd_trans_date_from
+        AND   mmt.transaction_date              <   gd_trans_date_to
+-- == 2010/10/27 V1.12 Modified END   ===============================================================
         AND  mmt.subinventory_code               =  msi.secondary_inventory_name
 -- == 2009/06/03 V1.8 Added START ===============================================================
         AND  mmt.organization_id                 =  msi.organization_id
@@ -1267,12 +1290,14 @@ AS
         AND  mmt.transaction_date  BETWEEN ximb.start_date_active
                                    AND     NVL(ximb.end_date_active, mmt.transaction_date)
 -- == 2009/09/08 V1.11 Added END   ==================================================================
-        ORDER BY out_base_code
-                ,in_base_code
-                ,transaction_date
-                ,slip_no
-                ,inventory_item_id
-                ,transaction_type_id
+-- == 2010/10/27 V1.12 Deleted START ===============================================================
+--        ORDER BY out_base_code
+--                ,in_base_code
+--                ,transaction_date
+--                ,slip_no
+--                ,inventory_item_id
+--                ,transaction_type_id
+-- == 2010/10/27 V1.12 Deleted END   ===============================================================
       ;
 --
     -- ローカル・レコード
@@ -1580,7 +1605,7 @@ AS
                                         ,ov_retcode       => lv_retcode                              -- リターンコード
                                         ,ov_errbuf        => lv_errbuf                               -- エラーメッセージ
                                         ,ov_errmsg        => lv_errmsg);                             -- エラーメッセージ
-
+--
       IF (lv_retcode <> cv_status_normal) THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_app_name
@@ -2219,6 +2244,22 @@ AS
       RAISE global_api_expt;
     END IF;
 -- == 2009/05/13 V1.1 Added END   ===============================================================
+--
+-- == 2010/10/27 V1.12 Added START ===============================================================
+    --  取引日はXX以上(>=)、XX未満(<)で範囲指定する
+    -- ===============================
+    -- 対象取引日指定
+    -- ===============================
+    IF  (gr_param.a_day IS NULL)  THEN
+      --  月指定のみの場合、指定月１日から翌月１日
+      gd_trans_date_from    :=  TRUNC(TO_DATE(gr_param.year_month || '01', 'YYYYMMDD'));
+      gd_trans_date_to      :=  ADD_MONTHS(gd_trans_date_from, 1);
+    ELSE
+      --  日付指定ありの場合、指定年月日から翌日
+      gd_trans_date_from    :=  TRUNC(TO_DATE(gr_param.year_month || gr_param.a_day, 'YYYYMMDD'));
+      gd_trans_date_to      :=  gd_trans_date_from + 1;
+    END IF;
+-- == 2010/10/27 V1.12 Added END   ===============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
