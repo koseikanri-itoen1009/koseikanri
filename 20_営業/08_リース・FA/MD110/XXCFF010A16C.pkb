@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF010A16C(body)
  * Description      : リース仕訳作成
  * MD.050           : MD050_CFF_010_A16_リース仕訳作成
- * Version          : 1.1
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/02/18    1.1   SCS渡辺学        [障害CFF_038]仕訳元データ(リース取引)抽出条件不具合対応
  *  2009/04/17    1.2   SCS礒崎祐次      [障害T1_0356]リース料部門賦課仕訳の配賦先部門の取得先変更対応
  *  2009/05/14    1.3   SCS礒崎祐次      [障害T1_0874]資産仕訳時の設定内容変更対応
+ *  2009/05/26    1.4   SCS松中俊樹      [障害T1_1157]振替時の控除額から消費税分を削除
  *
  *****************************************************************************************/
 --
@@ -594,10 +595,17 @@ AS
            ,pay_plan.fin_interest_due        AS pay_interest       -- 支払利息(FINリース支払利息)
            ,pay_plan.fin_debt                AS liab_amt           -- リース債務額
            ,pay_plan.fin_tax_debt            AS liab_tax_amt       -- リース債務額_消費税
-           ,pay_plan.lease_deduction
-              + pay_plan.lease_tax_deduction AS deduction          -- リース控除額
+           --T1_1157 2009/05/26 MOD START
+           --,pay_plan.lease_deduction
+           --   + pay_plan.lease_tax_deduction AS deduction          -- リース控除額
+           ,pay_plan.lease_deduction         AS deduction          -- リース控除額
+           --T1_1157 2009/05/26 MOD END
            ,pay_plan.lease_charge            AS charge             -- リース料
-           ,pay_plan.lease_tax_charge        AS charge_tax         -- リース料_消費税
+           --T1_1157 2009/05/26 MOD START
+           --,pay_plan.lease_tax_charge        AS charge_tax         -- リース料_消費税
+           ,pay_plan.lease_tax_charge
+              - pay_plan.lease_tax_deduction AS charge_tax         -- リース料_消費税
+           --T1_1157 2009/05/26 MOD END
            ,ctrct_head.tax_code              AS tax_code           -- 税コード
     FROM
            xxcff_pay_planning      pay_plan      -- リース支払計画
