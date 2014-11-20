@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.42
+ * Version          : 1.43
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -69,6 +69,8 @@ AS
  *  2008/01/08    1.40  Yasuhisa Yamamoto  本番指摘 #957対応
  *  2008/02/10    1.41  Yukari Kanami      本番指摘 #1168対応
  *  2009/02/13    1.42  Yasuhisa Yamamoto  本番指摘 #1186対応
+ *  2009/08/05    1.43  Masayuki Nomura    本番指摘 #1592対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2576,21 +2578,31 @@ AS
           ln_invent_month_stock := gt_main_data(i).case_amt;
 --
       ELSIF ( ir_param.iv_um_class = gc_um_class_case ) THEN
+-- *----------* 2009/08/05 Ver.1.43 本番#1592対応 start *----------*
         -- 単位区分（ケース）
-        BEGIN
-          SELECT ROUND( TO_NUMBER( NVL( ximv.num_of_cases, '1' ) ), 3 ) -- ケース入数
-          INTO   ln_num_of_cases
-          FROM   xxcmn_item_mst2_v  ximv                                -- OPM品目情報VIEW2
-          WHERE  ximv.item_id     = gt_main_data(i).item_id
-          AND    ximv.item_no     = gt_main_data(i).item_no
-          AND    gd_date_ym_first BETWEEN ximv.start_date_active
-                                  AND     ximv.end_date_active
-          ;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            ln_num_of_cases := 0;
-        END;
-          ln_invent_month_stock := ROUND( gt_main_data(i).case_amt / ln_num_of_cases, 3 );
+--        BEGIN
+--          SELECT ROUND( TO_NUMBER( NVL( ximv.num_of_cases, '1' ) ), 3 ) -- ケース入数
+--          INTO   ln_num_of_cases
+--          FROM   xxcmn_item_mst2_v  ximv                                -- OPM品目情報VIEW2
+--          WHERE  ximv.item_id     = gt_main_data(i).item_id
+--          AND    ximv.item_no     = gt_main_data(i).item_no
+--          AND    gd_date_ym_first BETWEEN ximv.start_date_active
+--                                  AND     ximv.end_date_active
+--          ;
+--        EXCEPTION
+--          WHEN NO_DATA_FOUND THEN
+--            ln_num_of_cases := 0;
+--        END;
+--          ln_invent_month_stock := ROUND( gt_main_data(i).case_amt / ln_num_of_cases, 3 );
+        -- 実棚月末在庫数 ケース換算
+        -- 入出庫数と同様の換算を行う
+        -- （製品：ケース入り数、半製品・原料：在庫入数、資材：代表入数）
+        IF ( ln_quantity = 0 ) THEN
+          ln_invent_month_stock := ROUND( gt_main_data(i).case_amt / 1, 3 );
+        ELSE
+          ln_invent_month_stock := ROUND( gt_main_data(i).case_amt / ln_quantity, 3 );
+        END IF;
+-- *----------* 2009/08/05 Ver.1.43 本番#1592対応 end   *----------*
       END IF;
 --
       -- 実棚積送在庫数
