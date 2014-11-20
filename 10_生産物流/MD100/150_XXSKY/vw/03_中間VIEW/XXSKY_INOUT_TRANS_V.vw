@@ -3055,7 +3055,11 @@ UNION ALL
          ,xlc_out_om2_e.location_name                   AS loct_name              -- 部署名
          ,'2'                                           AS in_out_kbn             -- 入出庫区分（2:出庫）
          ,xoha_out_om2_e.shipped_date                   AS leaving_date           -- 入出庫日_発日
-         ,xoha_out_om2_e.arrival_date                   AS arrival_date           -- 入出庫日_着日
+-- *----------* 2009/04/23 M.Nomura update start *----------*
+--         ,xoha_out_om2_e.arrival_date                   AS arrival_date           -- 入出庫日_着日
+         ,NVL(xoha_out_om2_e.arrival_date,
+              xoha_out_om2_e.shipped_date)              AS arrival_date           -- 入出庫日_着日
+-- *----------* 2009/04/23 M.Nomura update end   *----------*
          ,xoha_out_om2_e.shipped_date                   AS standard_date          -- 基準日（発日）
          ,xoha_out_om2_e.vendor_site_code               AS ukebaraisaki_code      -- 受払先コード
          ,xvsv_out_om2_e.vendor_site_name               AS ukebaraisaki_name      -- 受払先名
