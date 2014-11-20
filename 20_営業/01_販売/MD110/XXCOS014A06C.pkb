@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2010/04/22    1.19  M.Sano           [E_本稼動_02249] 品目の結合をEDI→受注に変更
  *  2010/06/18    1.20  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
  *  2011/04/28    1.21  T.Ishiwata       [E_本稼動_07218] 事由取得の共通関数化対応
+ *  2011/09/29    1.22  A.Shirakawa      [E_本稼動_07906] EDIの流通BMS対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -2650,6 +2651,9 @@ AS
                     ,xeh.l3_column                                                      l3_column                     --Ｌ－３欄
                     ,xeh.chain_peculiar_area_header                                     chain_peculiar_area_header    --チェーン店固有エリア（ヘッダー）
                     ,xeh.order_connection_number                                        order_connection_number       --受注関連番号（仮）
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD START
+                    ,xeh.bms_header_data                                                bms_header_data               --流通ＢＭＳヘッダデータ
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD END
                     ------------------------------------------------明細情報------------------------------------------------
 --******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
                     ,TO_CHAR(xeh.line_no)                                               line_no                       --行Ｎｏ
@@ -2944,6 +2948,9 @@ AS
 --                    ,xel.general_add_item10                                             general_add_item10            --汎用付加項目１０
 --                    ,xel.chain_peculiar_area_line                                       chain_peculiar_area_line      --チェーン店固有エリア（明細）
 --******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD START
+                    ,xeh.bms_line_data                                                  bms_line_data                 --流通ＢＭＳ明細データ
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD END
                     ------------------------------------------------フッタ情報------------------------------------------------
                     ,NULL                                                               invoice_indv_order_qty        --（伝票計）発注数量（バラ）
                     ,NULL                                                               invoice_case_order_qty        --（伝票計）発注数量（ケース）
@@ -3257,6 +3264,9 @@ AS
                             ,xeh.ar_sale_class                                           ar_sale_class                 --特売区分
 -- ************************* 2009/08/18 1.12 N.Maeda MOD  MOD  ************************************* --
 --******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD START
+                            ,xeh.bms_header_data                                         bms_header_data               --流通ＢＭＳヘッダデータ
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD END
                             ,xel.line_no                                                 line_no                       -- 行Ｎｏ
                             ,xel.sum_order_qty                                           sum_order_qty                 -- 発注数量（合計、バラ）
                             ,xel.item_code                                               item_code                     -- 品目コード
@@ -3330,6 +3340,9 @@ AS
                             ,xel.chain_peculiar_area_line                                chain_peculiar_area_line      -- チェーン店固有エリア（明細）
                             ,xel.order_connection_line_number                            order_connection_line_number  -- 受注関連明細番号
 --******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD START
+                            ,xel.bms_line_data                                           bms_line_data                 --流通ＢＭＳ明細データ
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD END
 -- ********* 2009/10/06 1.14 N.Maeda ADD START ********* --
                             ,cdm.base_account_number                                         base_account_number
                             ,cdm.base_name                                               base_name
@@ -4365,6 +4378,9 @@ AS
                     ,NULL                                                               l3_column                     --Ｌ－３欄
                     ,NULL                                                               chain_peculiar_area_header    --チェーン店固有エリア（ヘッダー）
                     ,NULL                                                               order_connection_number       --受注関連番号（仮）
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD START
+                    ,NULL                                                               bms_header_data               --流通ＢＭＳヘッダデータ
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD END
                     ------------------------------------------------明細情報------------------------------------------------
                     ,TO_CHAR(oola.line_number)                                          line_no                       --行Ｎｏ
                     ,cv_number00                                                        stockout_class                --欠品区分
@@ -4601,6 +4617,9 @@ AS
                     ,NULL                                                               general_add_item9             --汎用付加項目９
                     ,NULL                                                               general_add_item10            --汎用付加項目１０
                     ,NULL                                                               chain_peculiar_area_line      --チェーン店固有エリア（明細）
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD START
+                    ,NULL                                                               bms_line_data                 --流通ＢＭＳ明細データ
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD END
                     ------------------------------------------------フッタ情報------------------------------------------------
                     ,NULL                                                               invoice_indv_order_qty        --（伝票計）発注数量（バラ）
                     ,NULL                                                               invoice_case_order_qty        --（伝票計）発注数量（ケース）
@@ -5413,6 +5432,9 @@ AS
        ,l_data_tab('L3_COLUMN')                                                                               --Ｌ－３欄
        ,l_data_tab('CHAIN_PECULIAR_AREA_HEADER')                                                              --チェーン店固有エリア（ヘッダー）
        ,l_data_tab('ORDER_CONNECTION_NUMBER')                                                                 --受注関連番号（仮）
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD START
+       ,l_data_tab('BMS_HEADER_DATA')                                                                         --流通ＢＭＳヘッダデータ
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD END
             ------------------------------------------------明細情報------------------------------------------------
        ,l_data_tab('LINE_NO')                                                                                 --行Ｎｏ
        ,l_data_tab('STOCKOUT_CLASS')                                                                          --欠品区分
@@ -5503,6 +5525,9 @@ AS
        ,l_data_tab('GENERAL_ADD_ITEM9')                                                                       --汎用付加項目９
        ,l_data_tab('GENERAL_ADD_ITEM10')                                                                      --汎用付加項目１０
        ,l_data_tab('CHAIN_PECULIAR_AREA_LINE')                                                                --チェーン店固有エリア（明細）
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD START
+       ,l_data_tab('BMS_LINE_DATA')                                                                           --流通ＢＭＳ明細データ
+-- 2011/09/29 A.Shirakawa Ver.1.22 ADD END
             ------------------------------------------------フッタ情報------------------------------------------------
        ,l_data_tab('INVOICE_INDV_ORDER_QTY')                                                                  --（伝票計）発注数量（バラ）
        ,l_data_tab('INVOICE_CASE_ORDER_QTY')                                                                  --（伝票計）発注数量（ケース）
