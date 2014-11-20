@@ -28,44 +28,8 @@ SELECT  XPS.party_site_id
    AND  XPS.party_id          = HPS.party_id
    AND  XPS.location_id       = HPS.location_id
    AND  HPS.location_id       = HZL.location_id
--- 2010/01/28 M.Miyagawa ADD Start 本番障害#1694
-UNION ALL
-SELECT  XPS.party_site_id
-       ,XPS.party_id
-       ,XPS.location_id
-       ,HZL.province
-       ,XPS.party_site_name
-       ,XPS.party_site_short_name
-       ,XPS.start_date_active
-       ,XPS.end_date_active
-  FROM  XXCMN.xxcmn_party_sites   XPS
-       ,apps.hz_party_sites       HPS
-       ,apps.hz_locations         HZL
- WHERE  XPS.party_site_id = HPS.party_site_id
-   AND  XPS.party_id      = HPS.party_id
-   AND  XPS.location_id   = HPS.location_id
-   AND  HPS.location_id   = HZL.location_id
-   AND  HZL.province IS NOT NULL
-   AND  NOT EXISTS(
-        SELECT 'X'
-        FROM   apps.hz_party_sites       x1
-              ,apps.hz_locations         x2
-        WHERE x1.location_id       = x2.location_id
-        AND   x1.status            = 'A'
-        AND   x2.province = HZL.province
-)
-   AND  NOT EXISTS(
-                SELECT 'Y'
-        FROM   apps.hz_party_sites       y1
-              ,apps.hz_locations         y2
-        WHERE y1.location_id       = y2.location_id
-        AND   y1.status            = 'I'
-        AND   y2.province          = HZL.province
-        AND   y1.LAST_UPDATE_DATE  > hps.LAST_UPDATE_DATE
-)
--- 2010/01/28 M.Miyagawa ADD End
 /
-COMMENT ON TABLE APPS.XXSKY_PARTY_SITES_V IS 'SKYLINK用中間VIEW 配送先情報VIEWM'
+COMMENT ON TABLE APPS.XXSKY_PARTY_SITES_V IS 'SKYLINK用中間VIEW 配送先情報VIEW'
 /
 COMMENT ON COLUMN APPS.XXSKY_PARTY_SITES_V.PARTY_SITE_ID         IS 'パーティサイトID'
 /
