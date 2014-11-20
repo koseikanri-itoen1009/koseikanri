@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A11C (body)
  * Description      : 個別商品販売実績ＥＤＩデータ作成
  * MD.050           : 個別商品販売実績ＥＤＩデータ作成 MD050_COS_011_A11
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2011/02/25    1.0   Oukou            新規作成
  *  2011/03/25    1.1   Oukou            [E_本稼動_06945]個別商品販売実績作成の内容の対応
+ *  2011/04/07    1.2   Oukou            [E_本稼動_07120]見本データを対象外にする対応
  *****************************************************************************************/
 --
 --
@@ -176,6 +177,9 @@ AS
   -- クイックコードタイプ
   cv_lt_edi_specific_item         CONSTANT VARCHAR2(30)  := 'XXCOS1_EDI_SPECIFIC_ITEM';      -- 品目コード
   cv_lt_edi_specific_industry     CONSTANT VARCHAR2(30)  := 'XXCOS1_EDI_SPECIFIC_INDUSTRY';  -- 業種コード
+/* 2011/04/07 Ver1.2 ADD Start */
+  cv_lt_edi_specific_sale_class   CONSTANT VARCHAR2(30)  := 'XXCOS1_EDI_SPECIFIC_SALE_CLASS';  -- 個別商品販売実績売上区分
+/* 2011/04/07 Ver1.2 ADD END   */
   --
   -- その他
   cv_lang                         CONSTANT VARCHAR2(5)   := USERENV('LANG');     -- 言語
@@ -1044,6 +1048,17 @@ AS
                 AND  gd_business_date    >= NVL(flv2.start_date_active, gd_business_date)
                 AND  gd_business_date    <= NVL(flv2.end_date_active, gd_business_date)
              )  flv1
+/* 2011/04/07 Ver1.2 ADD Start */
+            ,(
+              SELECT flv4.lookup_code  lookup_code      -- 売上区分
+              FROM   fnd_lookup_values flv4
+              WHERE  flv4.lookup_type     = cv_lt_edi_specific_sale_class
+                AND  flv4.language        = cv_lang
+                AND  flv4.enabled_flag    = cv_y
+                AND  gd_business_date    >= NVL(flv4.start_date_active, gd_business_date)
+                AND  gd_business_date    <= NVL(flv4.end_date_active, gd_business_date)
+             )  flv3
+/* 2011/04/07 Ver1.2 ADD END   */
       WHERE xseh.sales_exp_header_id       = xsel.sales_exp_header_id
         AND xseh.item_sales_send_flag      IS NULL
         AND xseh.business_date             >= gd_business_date_start
@@ -1065,6 +1080,9 @@ AS
         AND hcas.status                    = cv_cust_status
         AND hps.location_id                = hlo.location_id
         AND xca.industry_div               = flv1.lookup_code1(+)
+/* 2011/04/07 Ver1.2 ADD Start */
+        AND xsel.sales_class                = flv3.lookup_code
+/* 2011/04/07 Ver1.2 ADD END   */
       ORDER BY xseh.orig_delivery_date
                ,hlo.address3
                ,DECODE(xca.industry_div, NULL, xca.industry_div,
@@ -1112,6 +1130,17 @@ AS
                 AND  gd_business_date    >= NVL(flv2.start_date_active, gd_business_date)
                 AND  gd_business_date    <= NVL(flv2.end_date_active, gd_business_date)
              )  flv1
+/* 2011/04/07 Ver1.2 ADD Start */
+            ,(
+              SELECT flv4.lookup_code  lookup_code
+              FROM   fnd_lookup_values flv4
+              WHERE  flv4.lookup_type     = cv_lt_edi_specific_sale_class
+                AND  flv4.language        = cv_lang
+                AND  flv4.enabled_flag    = cv_y
+                AND  gd_business_date    >= NVL(flv4.start_date_active, gd_business_date)
+                AND  gd_business_date    <= NVL(flv4.end_date_active, gd_business_date)
+             )  flv3
+/* 2011/04/07 Ver1.2 ADD END   */
       WHERE xseh.sales_exp_header_id       = xsel.sales_exp_header_id
         AND xseh.item_sales_send_flag      IS NULL
         AND xseh.business_date             >= gd_business_date_start
@@ -1134,6 +1163,9 @@ AS
         AND hps.location_id                = hlo.location_id
         AND xca.industry_div               = flv1.lookup_code1(+)
         AND xseh.item_sales_send_date      = id_date
+/* 2011/04/07 Ver1.2 ADD Start */
+        AND xsel.sales_class                = flv3.lookup_code
+/* 2011/04/07 Ver1.2 ADD END   */
       ORDER BY xseh.orig_delivery_date
                ,hlo.address3
                ,DECODE(xca.industry_div, NULL, xca.industry_div,
