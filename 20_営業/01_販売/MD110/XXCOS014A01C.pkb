@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/05/15    1.9   M.Sano           [T1_0983] チェーン店指定時の納品拠点取得修正
  *  2009/05/21    1.10  M.Sano           [T1_0967] 取消済の受注明細を出力しない
  *                                       [T1_1088] 受注明細タイプ「30_値引」の出力時の項目不正対応
+ *  2009/05/28    1.11  M.Sano           [T1_0968] 1明細目の伝票計不正対応
  *
  *****************************************************************************************/
 --
@@ -3652,7 +3653,9 @@ AS
             RAISE global_api_expt;
 -- 2009/02/20 T.Nakamura Ver.1.4 mod end
           END IF;
-          lv_break_key_old  :=  lv_break_key_new;                             --ブレイクキー設定
+-- 2009/05/28 M.Sano Ver.1.11 del start
+--          lv_break_key_old  :=  lv_break_key_new;                             --ブレイクキー設定
+-- 2009/05/28 M.Sano Ver.1.11 del end
         END LOOP;
     --合計数量の初期化
         lt_invoice_indv_order_qty      := 0;
@@ -3680,6 +3683,10 @@ AS
         lt_tbl := lt_tbl_init;
     --親テーブルインデックスの初期化
         ln_cnt := 0;
+-- 2009/05/28 M.Sano Ver.1.11 add start
+    --ブレイクキーの取得
+        lv_break_key_old := lv_break_key_new;
+-- 2009/05/28 M.Sano Ver.1.11 add start
       END IF;
   --親テーブルインデックスのインクリメント
       ln_cnt := ln_cnt + 1;
