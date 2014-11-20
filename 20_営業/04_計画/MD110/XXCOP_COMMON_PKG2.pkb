@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP_COMMON_PKG(spec)
  * Description      : 共通関数パッケージ2(計画)
  * MD.050           : 共通関数    MD070_IPO_COP
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/20    1.0                   新規作成
+ *  2009/04/08    1.1  SCS.Kikuchi      T1_0272,T1_0279,T1_0282,T1_0284対応
  *
  *****************************************************************************************/
 --
@@ -135,7 +136,10 @@ AS
     ov_item_no           :=  lv_item_no;
     ov_item_name         :=  lv_item_name;
     ov_prod_class_code   :=  lv_prod_class_code;
-    on_num_of_case       :=  TO_NUMBER(lv_num_of_case);
+--20090408_Ver1.1_T1_0282_SCS.Kikuchi_MOD_START
+--    on_num_of_case       :=  TO_NUMBER(lv_num_of_case);
+    on_num_of_case       :=  NVL(TO_NUMBER(lv_num_of_case),1);
+--20090408_Ver1.1_T1_0282_SCS.Kikuchi_MOD_END
   EXCEPTION
     WHEN NO_DATA_FOUND THEN
       ov_retcode       := cv_status_warn;
@@ -287,7 +291,10 @@ AS
     INTO   ln_qty
     FROM   xxcop_shipment_results  xsr
     WHERE  xsr.shipment_date      >= TRUNC(id_plan_date_from)
-    AND    xsr.shipment_date      <= TRUNC(id_plan_date_to)
+--20090408_Ver1.1_T1_0284_SCS.Kikuchi_MOD_START
+--    AND    xsr.shipment_date      <= TRUNC(id_plan_date_to)
+    AND    xsr.shipment_date      < TRUNC(id_plan_date_to)
+--20090408_Ver1.1_T1_0284_SCS.Kikuchi_MOD_END
     AND    xsr.item_no             = iv_item_no
     AND    xsr.latest_deliver_from IN (
       SELECT ilm.location
@@ -360,7 +367,10 @@ AS
     AND    msdh.organization_id     = msdd.organization_id
     AND    msdh.attribute1          = cv_ship_plan_type
     AND    msdd.schedule_date      >= id_plan_date_from
-    AND    msdd.schedule_date      <= id_plan_date_to
+--20090408_Ver1.1_T1_0284_SCS.Kikuchi_MOD_START
+--    AND    msdd.schedule_date      <= id_plan_date_to
+    AND    msdd.schedule_date      <  id_plan_date_to
+--20090408_Ver1.1_T1_0284_SCS.Kikuchi_MOD_END
     AND    msdd.inventory_item_id   = in_inventory_item_id
     AND    msdd.schedule_level      = cn_schedule_level
     ;
@@ -421,7 +431,10 @@ AS
     INTO   ln_stock_qty
     FROM   xxcop_stc_trans_v	xstv
     WHERE  xstv.arrival_date        >= id_plan_date_from
-    AND    xstv.arrival_date        <= id_plan_date_to
+--20090408_Ver1.1_T1_0279_SCS.Kikuchi_MOD_START
+--    AND    xstv.arrival_date        <= id_plan_date_to
+    AND    xstv.arrival_date        <  id_plan_date_to
+--20090408_Ver1.1_T1_0279_SCS.Kikuchi_MOD_END
     AND    xstv.organization_id     =  in_organization_id
     AND    xstv.item_no             =  iv_item_no
     AND    xstv.status              =  cv_xstv_status    --1：予定
@@ -639,8 +652,12 @@ AS
     AND    NVL(end_date_active,id_ship_date) >=  id_ship_date
     AND    active_flag = cv_active
     ;
-    on_palette_max_cs_qty    := ln_palette_max_cs_qty;
-    on_palette_max_step_qty  := ln_palette_max_step_qty;
+--20090408_Ver1.1_T1_0272_SCS.Kikuchi_MOD_START
+--    on_palette_max_cs_qty    := ln_palette_max_cs_qty;
+--    on_palette_max_step_qty  := ln_palette_max_step_qty;
+    on_palette_max_cs_qty    := NVL(ln_palette_max_cs_qty,1);
+    on_palette_max_step_qty  := NVL(ln_palette_max_step_qty,1);
+--20090408_Ver1.1_T1_0272_SCS.Kikuchi_MOD_END
   EXCEPTION
     WHEN NO_DATA_FOUND THEN
       ov_retcode       := cv_status_warn;
