@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF011A17C(body)
  * Description      : リース会計基準開示データ出力
  * MD.050           : リース会計基準開示データ出力 MD050_CFF_011_A17
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *                                         ・支払利息相当額、当期支払リース料（控除額）の取得条件修正
  *                                         ・リース契約情報取得カーソルをリース種類で分割
  *  2009/08/28    1.5   SCS 渡辺         [統合テスト障害0001061(PT対応)]
+ *  2011/11/21    1.6   SCSK白川         [E_本稼動_08123] リース解約日設定許可に伴うリース債務残高集計条件の修正
  *
  *****************************************************************************************/
 --
@@ -387,7 +388,10 @@ AS
   PROCEDURE get_pay_planning(
     id_start_date_1st IN     DATE,         -- 1.期首開始日
     id_start_date_now IN     DATE,         -- 2.当期開始日
-    io_csv_rec        IN OUT g_csv_rtype,  -- 3.CSV出力レコード
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD Start
+    iv_period_name    IN     VARCHAR2,     -- 3.会計期間名
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD End
+    io_csv_rec        IN OUT g_csv_rtype,  -- 4.CSV出力レコード
     ov_errbuf         OUT    VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode        OUT    VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg         OUT    VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -590,6 +594,9 @@ AS
 --         AND NOT (xpp.period_name >= TO_CHAR(xcl.cancellation_date,'YYYY-MM') AND
          AND NOT (xpp.period_name > TO_CHAR(xcl.cancellation_date,'YYYY-MM') AND
 -- 0000417 2009/07/17 MOD END --
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD Start
+                  xcl.cancellation_date < LAST_DAY(TO_DATE(iv_period_name, 'YYYY-MM')) + 1 AND
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD End
                   xcl.cancellation_date IS NOT NULL)
       GROUP BY xpp.contract_header_id
       ;
@@ -855,24 +862,40 @@ AS
             ,xch.lease_end_date                 -- リース終了日
             ,xch.payment_frequency              -- 月数
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.second_charge
                     ELSE 0 END)
                  ELSE 0 END) AS monthly_charge  -- 月間リース料
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.gross_charge
                     ELSE 0 END)
                  ELSE 0 END) AS gross_charge    -- リース料総額
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.original_cost
                     ELSE 0 END)
                  ELSE 0 END) AS original_cost   -- 取得価額総額
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       NVL(fds.deprn_reserve,original_cost)
@@ -880,12 +903,20 @@ AS
                  ELSE 0 END) AS deprn_reserve   -- 減価償却累計額相当額
             ,SUM(fds.deprn_amount) AS deprn_amount -- 減価償却相当額
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.second_deduction
                     ELSE 0 END)
                  ELSE 0 END) AS monthly_deduction -- 月間リース料（控除額）
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD Start
+                           (xcl.cancellation_date IS NULL) OR
+                           (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1) OR
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                    xcl.gross_deduction
@@ -959,22 +990,38 @@ AS
             ,xch.lease_start_date               -- リース開始日
             ,xch.lease_end_date                 -- リース終了日
             ,xch.payment_frequency              -- 月数
-            ,SUM(CASE WHEN xcl.cancellation_date IS NULL AND
+-- 2011/11/22 Ver.1.6 A.Shirakawa MOD Start
+--            ,SUM(CASE WHEN xcl.cancellation_date IS NULL AND
+            ,SUM(CASE WHEN ((xcl.cancellation_date IS NULL) OR
+                            (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1)) AND
+-- 2011/11/22 Ver.1.6 A.Shirakawa MOD End
                            xcl.expiration_date IS NULL   THEN
                    xcl.second_charge
                  ELSE 0 END) AS monthly_charge  -- 月間リース料
-            ,SUM(CASE WHEN xcl.cancellation_date IS NULL AND
+-- 2011/11/22 Ver.1.6 A.Shirakawa MOD Start
+--            ,SUM(CASE WHEN xcl.cancellation_date IS NULL AND
+            ,SUM(CASE WHEN ((xcl.cancellation_date IS NULL) OR
+                            (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1)) AND
+-- 2011/11/22 Ver.1.6 A.Shirakawa MOD End
                            xcl.expiration_date IS NULL   THEN
                    xcl.gross_charge
                  ELSE 0 END) AS gross_charge    -- リース料総額
             ,NULL AS original_cost   -- 取得価額総額
             ,NULL AS deprn_reserve   -- 減価償却累計額相当額
             ,NULL AS deprn_amount    -- 減価償却相当額
-            ,SUM(CASE WHEN xcl.cancellation_date IS NULL AND
+-- 2011/11/22 Ver.1.6 A.Shirakawa MOD Start
+--            ,SUM(CASE WHEN xcl.cancellation_date IS NULL AND
+            ,SUM(CASE WHEN ((xcl.cancellation_date IS NULL) OR
+                            (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1)) AND
+-- 2011/11/22 Ver.1.6 A.Shirakawa MOD End
                            xcl.expiration_date IS NULL   THEN
                    xcl.second_deduction
                  ELSE 0 END) AS monthly_deduction -- 月間リース料（控除額）
-            ,SUM(CASE WHEN xcl.cancellation_date IS NULL AND
+-- 2011/11/22 Ver.1.6 A.Shirakawa MOD Start
+--            ,SUM(CASE WHEN xcl.cancellation_date IS NULL AND
+            ,SUM(CASE WHEN ((xcl.cancellation_date IS NULL) OR
+                            (xcl.cancellation_date >= LAST_DAY(TO_DATE(iv_period_to, 'YYYY-MM')) + 1)) AND
+-- 2011/11/22 Ver.1.6 A.Shirakawa MOD End
                            xcl.expiration_date IS NULL   THEN
                    xcl.gross_deduction
                  ELSE 0 END) AS gross_deduction -- リース料総額（控除額）
@@ -1063,6 +1110,9 @@ AS
           get_pay_planning(
              id_start_date_1st
             ,id_start_date_now
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD Start
+            ,iv_period_to
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD End
             ,l_csv_rec
             ,lv_errbuf
             ,lv_retcode
@@ -1134,6 +1184,9 @@ AS
           get_pay_planning(
              id_start_date_1st
             ,id_start_date_now
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD Start
+            ,iv_period_to
+-- 2011/11/22 Ver.1.6 A.Shirakawa ADD End
             ,l_csv_rec
             ,lv_errbuf
             ,lv_retcode
