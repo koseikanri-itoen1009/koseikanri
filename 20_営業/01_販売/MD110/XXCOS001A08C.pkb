@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/04/15    1.11  N.Maeda          [T1_0558] 百貨店預け先保管場所取得条件の変更
  *  2009/04/23    1.12  N.Maeda          [T1_0370_0447_0712] 入金拠点コード取得、販売実績入金拠点コードへの登録の追加
  *                                                 対象データ抽出条件変更
+ *  2009/05/13    1.13  N.Maeda          [T1_0814_0854] 取消訂正区分設定、更新方法の変更及び追加
  *
  *****************************************************************************************/
 --
@@ -574,6 +575,11 @@ AS
   --警告メッセージ出力用
   gt_msg_war_data                 g_tab_msg_war_data;                -- 警告情報(詳細)
 --******************************* 2009/04/23 N.Maeda Var1.12 ADD END ***************************************
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD START ***************************************
+  gt_sales_head_row_id            g_tab_dlv_head_row_id;              --更新対象販売実績行ID
+  gt_set_sales_head_row_id        g_tab_dlv_head_row_id;              --販売実績更新行ID
+  gt_set_head_cancel_cor_cls      g_tab_head_cancel_cor_cls;          --販売実績更新行取消・訂正区分
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD END   ***************************************
 --
 --******************************* 2009/04/23 N.Maeda Var1.12 ADD START ***************************************
   gn_wae_data_num     NUMBER := 0;                        -- 警告データ格納用
@@ -593,6 +599,9 @@ AS
   gv_tkn1             VARCHAR2(5000);                     -- エラーメッセージ用トークン１
   gv_tkn2             VARCHAR2(5000);                     -- エラーメッセージ用トークン２
   gv_tkn3             VARCHAR2(5000);                     -- エラーメッセージ用トークン３
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD START ***************************************
+  gn_set_sales_exp_count          NUMBER :=0 ;            -- 更新販売実績件数カウント
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD END   ***************************************
 --
 --
   /**********************************************************************************
@@ -679,6 +688,31 @@ AS
                                                 cv_tkn_table_name, gv_tkn1, cv_key_data, cv_tkn_null);
         RAISE updata_err_expt;
     END;
+--
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD START ***************************************
+    BEGIN
+--
+      FORALL i IN 1..gt_set_sales_head_row_id.COUNT
+--
+       UPDATE xxcos_sales_exp_headers
+       SET    cancel_correct_class = gt_set_head_cancel_cor_cls( i ), --取消・訂正区分
+              last_updated_by = cn_last_updated_by,                --最終更新者
+              last_update_date = cd_last_update_date,              --最終更新日
+              last_update_login = cn_last_update_login,            --最終更新ﾛｸﾞｲﾝ
+              request_id = cn_request_id,                          --要求ID
+              program_application_id = cn_program_application_id,  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+              program_id = cn_program_id,                          --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+              program_update_date = cd_program_update_date         --ﾌﾟﾛｸﾞﾗﾑ更新日
+       WHERE  ROWID  =  gt_set_sales_head_row_id( i );
+    EXCEPTION
+      WHEN OTHERS THEN
+        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_tab_xxcos_sal_exp_head );
+        gv_tkn2    := xxccp_common_pkg.get_msg( cv_application, cv_msg_update_err,
+                                                cv_tkn_table,gv_tkn1);
+        RAISE updata_err_expt;
+    END;
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD  END  ***************************************
+
 --
   EXCEPTION
     WHEN updata_err_expt THEN
@@ -1129,6 +1163,19 @@ AS
     ln_line_data_count           NUMBER;                                          -- 明細件数(ヘッダ単位)
     lv_dept_hht_div_flg          VARCHAR2(1);                                     -- HHT百貨店区分エラーフラグ
 --******************************* 2009/04/23 N.Maeda Var1.12 ADD END *****************************************
+--******************** 2009/05/13 Var1.13  N.Maeda ADD START ******************************************
+  lt_max_cancel_correct_class     xxcos_vd_column_headers.cancel_correct_class%TYPE;    -- 最新取消・訂正区分
+  lt_min_digestion_ln_number      xxcos_vd_column_headers.digestion_ln_number%TYPE;     -- 枝番最小値
+  ln_sales_exp_count              NUMBER :=0 ;                                          -- 更新対象販売実績件数カウント
+--
+    -- *** ローカル・カーソル ***
+  CURSOR get_sales_exp_cur
+    IS
+      SELECT xseh.ROWID
+      FROM   xxcos_sales_exp_headers xseh
+      WHERE  xseh.order_no_hht = lt_order_no_hht
+  FOR UPDATE NOWAIT;
+--******************** 2009/05/13 Var1.13  N.Maeda ADD START ******************************************
 --
   BEGIN
 --
@@ -2088,7 +2135,10 @@ AS
             --消費税合計積上げ
               ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
             --明細別最大消費税算出
-            IF ( ln_max_tax_data < ABS( lt_tax_amount ) ) THEN
+--******************************* 2009/05/13 N.Maeda Var1.13 MOD START ***************************************
+--            IF ( ln_max_tax_data < ABS( lt_tax_amount ) ) THEN
+            IF ( ABS( ln_max_tax_data ) < ABS( lt_tax_amount ) ) THEN
+--******************************* 2009/05/13 N.Maeda Var1.13 MOD END   ***************************************
               ln_max_tax_data := lt_tax_amount;
 --******************************* 2009/04/23 N.Maeda Var1.12 MOD START ***************************************
 --              ln_max_no_data  := gt_line_set_no;
@@ -2774,6 +2824,87 @@ AS
           lt_tax_amount_sum  := (lt_tax_amount_sum  * ( -1 ) );
         END IF;
 --
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD START ***************************************
+        BEGIN
+          SELECT  dhs.cancel_correct_class
+          INTO    lt_max_cancel_correct_class
+          FROM    xxcos_dlv_headers dhs,            -- 納品ヘッダ
+                  xxcos_dlv_lines dls
+          WHERE   dhs.order_no_hht = dls.order_no_hht
+          AND     dhs.digestion_ln_number = dls.digestion_ln_number
+          AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+          AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
+          AND     dhs.results_forward_flag = cv_untreated_flg
+          AND     dhs.program_application_id IS NULL
+          AND     dls.program_application_id IS NULL
+          AND     dhs.order_no_hht        = lt_order_no_hht
+          AND     dhs.digestion_ln_number = ( SELECT  MAX( dhs.digestion_ln_number)
+                                              FROM    xxcos_dlv_headers dhs,            -- 納品ヘッダ
+                                                      xxcos_dlv_lines dls
+                                              WHERE   dhs.order_no_hht = dls.order_no_hht
+                                              AND     dhs.digestion_ln_number = dls.digestion_ln_number
+                                              AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+                                              AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
+                                              AND     dhs.results_forward_flag = cv_untreated_flg
+                                              AND     dhs.program_application_id IS  NULL
+                                              AND     dls.program_application_id IS  NULL
+                                              AND     dhs.order_no_hht        = lt_order_no_hht )
+          GROUP BY dhs.cancel_correct_class;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            NULL;
+        END;
+--
+        BEGIN
+          SELECT  MIN(dhs.digestion_ln_number)
+          INTO    lt_min_digestion_ln_number
+          FROM    xxcos_dlv_headers dhs,            -- 納品ヘッダ
+                  xxcos_dlv_lines dls
+          WHERE   dhs.order_no_hht = dls.order_no_hht
+          AND     dhs.digestion_ln_number = dls.digestion_ln_number
+          AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+          AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
+          AND     dhs.results_forward_flag = cv_untreated_flg
+          AND     dhs.program_application_id IS NULL
+          AND     dls.program_application_id IS NULL
+          AND     dhs.order_no_hht        = lt_order_no_hht;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            NULL;
+        END;
+--
+        IF ( lt_min_digestion_ln_number IS NOT NULL ) AND ( lt_min_digestion_ln_number <> '0' ) THEN
+          BEGIN
+            -- カーソルOPEN
+            OPEN  get_sales_exp_cur;
+            -- バルクフェッチ
+            FETCH get_sales_exp_cur BULK COLLECT INTO gt_sales_head_row_id;
+            ln_sales_exp_count := get_sales_exp_cur%ROWCOUNT;
+            -- カーソルCLOSE
+            CLOSE get_sales_exp_cur;
+--
+          EXCEPTION
+            WHEN lock_err_expt THEN
+              IF( get_sales_exp_cur%ISOPEN ) THEN
+                CLOSE get_sales_exp_cur;
+              END IF;
+              gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_tab_xxcos_sal_exp_head );
+              lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_loc_err, cv_tkn_table, gv_tkn1 );
+              RAISE;
+          END;
+--
+          IF ( ln_sales_exp_count <> 0 ) THEN
+            <<sales_exp_update_loop>>
+            FOR u in 1..ln_sales_exp_count LOOP
+              gn_set_sales_exp_count := gn_set_sales_exp_count + 1;
+              gt_set_sales_head_row_id( gn_set_sales_exp_count )   := gt_sales_head_row_id(u);
+              gt_set_head_cancel_cor_cls( gn_set_sales_exp_count ) := lt_max_cancel_correct_class;
+            END LOOP sales_exp_update_loop;
+          END IF;
+        END IF;
+--
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD END   ***************************************
+--
         -- 赤・黒の金額換算
         --黒の時
         IF ( lt_red_black_flag = cv_black_flag) THEN
@@ -2814,7 +2945,10 @@ AS
         gt_head_hht_invoice_no( gn_head_no )       := lt_hht_invoice_no;          -- HHT伝票No
         gt_head_order_connection_num( gn_head_no ) := cv_tkn_null;                -- 受注関連番号
         gt_head_dlv_invoice_class( gn_head_no )    := lt_ins_invoice_type;        -- 納品伝票区分
-        gt_head_cancel_cor_cls( gn_head_no )       := lt_cancel_correct_class;    -- 取消・訂正区分
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD START ***************************************
+--        gt_head_cancel_cor_cls( gn_head_no )       := lt_cancel_correct_class;    -- 取消・訂正区分
+        gt_head_cancel_cor_cls( gn_head_no )       := lt_max_cancel_correct_class;  --  取消・訂正区分
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD END   ***************************************
         gt_head_input_class( gn_head_no )          := lt_input_class;             -- 入力区分
         gt_head_system_class( gn_head_no )         := lt_system_class;            -- 業態小分類
         gt_head_dlv_date( gn_head_no )             := lt_dlv_date;                -- 納品日
@@ -3137,6 +3271,19 @@ AS
     lv_dept_hht_div_flg                VARCHAR2(1);                                     -- HHT百貨店区分エラーフラグ
 --******************************* 2009/04/23 N.Maeda Var1.12 ADD END *****************************************
 --
+--******************** 2009/05/13 Var1.13  N.Maeda ADD START ******************************************
+  lt_max_cancel_correct_class     xxcos_vd_column_headers.cancel_correct_class%TYPE;    -- 最新取消・訂正区分
+  lt_min_digestion_ln_number      xxcos_vd_column_headers.digestion_ln_number%TYPE;     -- 枝番最小値
+  ln_sales_exp_count              NUMBER :=0 ;                                          -- 更新対象販売実績件数カウント
+--
+    -- *** ローカル・カーソル ***
+  CURSOR get_sales_exp_cur
+    IS
+      SELECT xseh.ROWID
+      FROM   xxcos_sales_exp_headers xseh
+      WHERE  xseh.order_no_hht = lt_order_no_hht
+  FOR UPDATE NOWAIT;
+--******************** 2009/05/13 Var1.13  N.Maeda ADD START ******************************************
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -3994,7 +4141,10 @@ AS
             --消費税合計積上げ
               ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
             --明細別最大消費税算出
-            IF ( ln_max_tax_data < ABS( lt_tax_amount ) ) THEN
+--******************************* 2009/05/13 N.Maeda Var1.13 MOD START ***************************************
+--            IF ( ln_max_tax_data < ABS( lt_tax_amount ) ) THEN
+            IF ( ABS( ln_max_tax_data ) < ABS( lt_tax_amount ) ) THEN
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD END   ***************************************
               ln_max_tax_data := lt_tax_amount;
 --******************************* 2009/04/21 N.Maeda Var1.10 MOD START ***************************************
 --              ln_max_no_data  := gt_line_set_no;
@@ -4663,6 +4813,86 @@ AS
           -- 消費税金額合計
           lt_set_tax_amount_sum := ( lt_tax_amount_sum * ( -1 ) );
         END IF;
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD START ***************************************
+        BEGIN
+          SELECT  dhs.cancel_correct_class
+          INTO    lt_max_cancel_correct_class
+          FROM    xxcos_dlv_headers dhs,            -- 納品ヘッダ
+                  xxcos_dlv_lines dls
+          WHERE   dhs.order_no_hht = dls.order_no_hht
+          AND     dhs.digestion_ln_number = dls.digestion_ln_number
+          AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+          AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
+          AND     dhs.results_forward_flag = cv_untreated_flg
+          AND     dhs.program_application_id IS NOT NULL
+          AND     dls.program_application_id IS NOT NULL
+          AND     dhs.order_no_hht        = lt_order_no_hht
+          AND     dhs.digestion_ln_number = ( SELECT  MAX( dhs.digestion_ln_number)
+                                              FROM    xxcos_dlv_headers dhs,            -- 納品ヘッダ
+                                                      xxcos_dlv_lines dls
+                                              WHERE   dhs.order_no_hht = dls.order_no_hht
+                                              AND     dhs.digestion_ln_number = dls.digestion_ln_number
+                                              AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+                                              AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
+                                              AND     dhs.results_forward_flag = cv_untreated_flg
+                                              AND     dhs.program_application_id IS NOT NULL
+                                              AND     dls.program_application_id IS NOT NULL
+                                              AND     dhs.order_no_hht        = lt_order_no_hht )
+          GROUP BY dhs.cancel_correct_class;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            NULL;
+        END;
+--
+        BEGIN
+          SELECT  MIN(dhs.digestion_ln_number)
+          INTO    lt_min_digestion_ln_number
+          FROM    xxcos_dlv_headers dhs,            -- 納品ヘッダ
+                  xxcos_dlv_lines dls
+          WHERE   dhs.order_no_hht = dls.order_no_hht
+          AND     dhs.digestion_ln_number = dls.digestion_ln_number
+          AND     dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
+          AND     dhs.input_class  IN ( cv_returns_input, cv_vd_returns_input )
+          AND     dhs.results_forward_flag = cv_untreated_flg
+          AND     dhs.program_application_id IS NOT NULL
+          AND     dls.program_application_id IS NOT NULL
+          AND     dhs.order_no_hht        = lt_order_no_hht;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            NULL;
+        END;
+--
+        IF ( lt_min_digestion_ln_number IS NOT NULL ) AND ( lt_min_digestion_ln_number <> '0' ) THEN
+          BEGIN
+            -- カーソルOPEN
+            OPEN  get_sales_exp_cur;
+            -- バルクフェッチ
+            FETCH get_sales_exp_cur BULK COLLECT INTO gt_sales_head_row_id;
+            ln_sales_exp_count := get_sales_exp_cur%ROWCOUNT;
+            -- カーソルCLOSE
+            CLOSE get_sales_exp_cur;
+--
+          EXCEPTION
+            WHEN lock_err_expt THEN
+              IF( get_sales_exp_cur%ISOPEN ) THEN
+                CLOSE get_sales_exp_cur;
+              END IF;
+              gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_tab_xxcos_sal_exp_head );
+              lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_loc_err, cv_tkn_table, gv_tkn1 );
+              RAISE;
+          END;
+--
+          IF ( ln_sales_exp_count <> 0 ) THEN
+            <<sales_exp_update_loop>>
+            FOR u in 1..ln_sales_exp_count LOOP
+              gn_set_sales_exp_count := gn_set_sales_exp_count + 1;
+              gt_set_sales_head_row_id( gn_set_sales_exp_count )   := gt_sales_head_row_id(u);
+              gt_set_head_cancel_cor_cls( gn_set_sales_exp_count ) := lt_max_cancel_correct_class;
+            END LOOP sales_exp_update_loop;
+          END IF;
+        END IF;
+--
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD END   ***************************************
 --******************************* 2009/04/23 N.Maeda Var1.12 ADD START ***************************************
         --================================
         --販売実績ヘッダID(シーケンス取得)
@@ -4685,7 +4915,10 @@ AS
         gt_head_hht_invoice_no( gn_head_no )       := lt_hht_invoice_no;          --  HHT伝票No
         gt_head_order_connection_num( gn_head_no ) := cv_tkn_null;                --  受注関連番号
         gt_head_dlv_invoice_class( gn_head_no )    := lt_ins_invoice_type;        --  納品伝票区分
-        gt_head_cancel_cor_cls( gn_head_no )       := lt_cancel_correct_class;    --  取消・訂正区分
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD START ***************************************
+--        gt_head_cancel_cor_cls( gn_head_no )       := lt_cancel_correct_class;    --  取消・訂正区分
+        gt_head_cancel_cor_cls( gn_head_no )       := lt_max_cancel_correct_class;  --  取消・訂正区分
+--******************************* 2009/05/13 N.Maeda Var1.13 ADD END   ***************************************
         gt_head_input_class( gn_head_no )          := lt_input_class;             --  入力区分
         gt_head_system_class( gn_head_no )         := lt_system_class;            -- 業態小分類
         gt_head_dlv_date( gn_head_no )             := lt_dlv_date;                -- 納品日
@@ -4941,7 +5174,7 @@ AS
 --      AND     dhs.results_forward_flag = cn_untreated_flg
       AND     dhs.results_forward_flag = cv_untreated_flg
       AND     dhs.program_application_id IS NOT NULL
-      AND     dls.program_application_id IS NOT NULL 
+      AND     dls.program_application_id IS NOT NULL
       GROUP BY dhs.ROWID,dhs.order_no_hht,dhs.digestion_ln_number,dhs.order_no_ebs,
                dhs.base_code,dhs.performance_by_code,dhs.dlv_by_code,dhs.hht_invoice_no,
                dhs.dlv_date,dhs.inspect_date,dhs.sales_classification,dhs.sales_invoice,
