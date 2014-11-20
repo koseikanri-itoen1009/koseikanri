@@ -2,13 +2,13 @@
 ################################################################################
 # $Header: $XXCCP_TOP/$APPLBIN/AZZZGETSVFFILE.prog  $
 # システム名     :
-# ファイル名     :AZZZGETSVFFILE.prog(暫定)
+# ファイル名     :AZZZGETSVFFILE.prog
 # 処理概要       :ファイル転送(取得)と転送元ファイルの削除
-# バージョン     :$Revision: 1.0 $
+# バージョン     :$Revision: 1.1 $
 # 作成日         :2009/01/22 16:00:00 $
 # 作成者         :SCS Common-I/F T.Matsumoto
-# 最終更新日時   :$Modtime: YYYY/MM/DD 24h:mi:ss$
-# 最終更新者     :SCS Team Name
+# 最終更新日時   :2009/05/29 16:00:00 $
+# 最終更新者     :SCS Common-I/F M.Sano
 #
 # $History: AZZZGETSVFFILE.prog $
 # 
@@ -20,6 +20,8 @@
 # ==============================================================================
 # YYYY/MM/DD    Name(Team) 
 # 内容
+# 2009/05/29    M.Sano
+# [T1_0628]FTPログインユーザ・パスワード・ホスト名をSQLにて取得するように修正。
 #
 #################################################################### $NoKeywords:$
 # Execute parameter(For EBS CONCURRENT)
@@ -32,14 +34,11 @@
 #    $3 :UserName
 #    $4 :RequestID
 #    --  $5-$12 PROG INHERENCE PARAMETER  --
-#    $5 :Connect HOST
-#    $6 :Connect User
-#    $7 :Connect Password 
-#    $8 :Access Dir Path
-#    $9 :Local Put File Path
-#    $10:File Name
-#    $11:Local Temp Dir Path
-#    $12:Loacl Temp File Name
+#    $5 :Access Dir Path
+#    $6 :Local Put File Path
+#    $7 :File Name
+#    $8 :Local Temp Dir Path
+#    $9 :Loacl Temp File Name
 #
 #===============================================================================
 #===============================================================================
@@ -61,14 +60,29 @@ exitStatus=${exitNormal}
 # パラメータ設定
 #================================================
 requestID=${4}
-connHostName=${5}
-connUserName=${6}
-connUserPass=${7}
-AccessFileDir=${8}
-putFilePath=${9}
-ftpFileName=${10}
-ftpLogFileDir=${11}
-ftpLogFileName=${12}
+#2009/05/29 Ver1.1 Mod M.Sano Start
+#connHostName=${5}
+#connUserName=${6}
+#connUserPass=${7}
+#AccessFileDir=${8}
+#putFilePath=${9}
+#ftpFileName=${10}
+#ftpLogFileDir=${11}
+#ftpLogFileName=${12}
+oracleLogin=${1}
+AccessFileDir=${5}
+putFilePath=${6}
+ftpFileName=${7}
+ftpLogFileDir=${8}
+ftpLogFileName=${9}
+
+#================================================
+# FTP情報定義
+#================================================
+connHostName=""
+connUserName=""
+connUserPass=""
+#2009/05/29 Ver1.1 Mod M.Sano End
 
 #================================================
 # パラメータ編集
@@ -77,6 +91,9 @@ getFilePath=${AccessFileDir}/${ftpFileName}
 LocalFileDir=`dirname ${9}`
 ftpGetLogPath=${ftpLogFileDir}/${ftpLogFileName}"."${requestID}".${$}.Get.log"
 ftpDelLogPath=${ftpLogFileDir}/${ftpLogFileName}"."${requestID}".${$}.Del.log"
+#2009/05/29 Ver1.1 Add M.Sano Start
+sqlLogPath=${ftpLogFileDir}/${ftpLogFileName}"."${requestID}".${$}.SQL.log"
+#2009/05/29 Ver1.1 Add M.Sano End
 
 #================================================
 #メッセージ定義
@@ -87,15 +104,27 @@ message0002="APP-XXCCP1-30003 INFO : Start FTP transfer process ."
 message0003="APP-XXCCP1-30004 INFO : End FTP transfer process ."
 message0004="APP-XXCCP1-30005 INFO : Start FTP delete process ."
 message0005="APP-XXCCP1-30006 INFO : End FTP delete process ."
+message0006="APP-XXCCP1-30009 INFO : Start PROFILE get process ."
 # エラーメッセージ [1000番台]
 message1001="APP-XXCCP1-10052 ERROR: ForwardingDestinationDirectory is Not Exists ."
 message1002="APP-XXCCP1-10053 ERROR: LogTempDirectory is Not Exists ."
 message1003="APP-XXCCP1-10054 ERROR: FTP Command error ."
 message1004="APP-XXCCP1-10055 ERROR: FTP Conect error ."
 message1005="APP-XXCCP1-10056 ERROR: Shell Command error ."
+message1006="APP-XXCCP1-10057 ERROR: &PROFILE_NAME is Not Exists in Profile ."
 # 終了メッセージ   [9000番台]
 message9000="APP-XXCCP1-30007 INFO : Normal End ${procName} Process ."
 message9001="APP-XXCCP1-30008 INFO : Error End  ${procName} Process ."
+
+#2009/05/29 Ver1.1 Add M.Sano Start
+#================================================
+#EBS関連情報定義
+#================================================
+#データプロファイル名
+pro_svf_host="XXCCP1_SVF_HOST_NAME"
+pro_svf_user="XXCCP1_SVF_LOGIN_USER"
+pro_svf_pass="XXCCP1_SVF_LOGIN_PASSWORD"
+#2009/05/29 Ver1.1 Add M.Sano End
 
 #================================================
 #その他
@@ -118,6 +147,46 @@ MSG_OUT()
     eval msgId='$message'$1
     echo '['`date +"%Y/%m/%d %H:%M:%S"`']:['"${execFile}"']:['${$}']:['"${procStep}"']:'"$msgId"
 }
+#2009/05/29 Ver1.1 Add M.Sano Start
+#\\ プロファイルからFTP情報の取得処理
+PROFILE_VALUE_GET()
+{
+  # ■ プロファイル情報の取得
+  sqlplus -s ${oracleLogin} <<SQLEND >${sqlLogPath}
+    SET HEADING OFF
+    -- FTPHost名
+    SELECT 'connHostName=''' || FND_PROFILE.VALUE('${pro_svf_host}') || ''''
+    FROM   DUAL;
+    -- FTPユーザ
+    SELECT 'connUserName=''' || FND_PROFILE.VALUE('${pro_svf_user}') || ''''
+    FROM   DUAL;
+    -- FTPパスワード
+    SELECT 'connUserPass=''' || FND_PROFILE.VALUE('${pro_svf_pass}') || ''''
+    FROM   DUAL;
+    EXIT
+SQLEND
+  . ${sqlLogPath}
+  # ■ プロファイル:SVFホスト名の取得チェック
+  if [ -z "${connHostName}" ]
+  then
+    message1006=`echo ${message1006} | sed -e "s/&PROFILE_NAME/${pro_svf_host}/"`
+    return ${exitFatal}
+  fi
+  # ■ プロファイル:SVFユーザ名の取得チェック
+  if [ -z "${connUserName}" ]
+  then
+    message1006=`echo ${message1006} | sed -e "s/&PROFILE_NAME/${pro_svf_user}/"`
+    return ${exitFatal}
+  fi
+  # ■ プロファイル:SVFパスワード名の取得チェック
+  if [ -z "${connUserPass}" ]
+  then
+    message1006=`echo ${message1006} | sed -e "s/&PROFILE_NAME/${pro_svf_pass}/"`
+    return ${exitFatal}
+  fi
+  return ${exitNormal}
+}
+#2009/05/29 Ver1.1 Add M.Sano End
 #\\ FTPでのﾌｧｲﾙ取得処理
 #================================================
 # FTP(File GET) Common
@@ -214,6 +283,10 @@ EXIT_PROC()
     # 一時ファイルを削除する
     rm -f ${ftpGetLogPath}  > /dev/null 2>&1
     rm -f ${ftpDelLogPath}  > /dev/null 2>&1
+#2009/05/29 Ver1.1 Add M.Sano Start
+    rm -f ${sqlLogPath}     > /dev/null 2>&1
+#2009/05/29 Ver1.1 Add M.Sano End
+
 
     # 処理を終了する
     return 0
@@ -284,8 +357,10 @@ messageprm04="In Parameter04[Request ID]   =>${4}"
 MSG_OUT prm04
 #messageprmPI="PROG INHERENCE PARAMETER"
 #MSG_OUT prmPI
-messageprm05="In Parameter05[Connect HOST] =>${5}"
-MSG_OUT prm05
+#2009/05/29 Ver1.1 DEL M.Sano Start
+#messageprm05="In Parameter05[Connect HOST] =>${5}"
+#MSG_OUT prm05
+#2009/05/29 Ver1.1 DEL M.Sano Start
 #messageprm06="In Parameter06[Connect USER] =>${6}"
 #MSG_OUT prm06
 #messageprm07="In Parameter07[Connect PASS] =>${7}"
@@ -294,8 +369,12 @@ MSG_OUT prm05
 #MSG_OUT prm08
 #messageprm09="In Parameter09[Out Dir Path] =>${9}"
 #MSG_OUT prm09
-messageprm10="In Parameter10[File Name]    =>${10}"
-MSG_OUT prm10
+#2009/05/29 Ver1.1 UPD M.Sano Start
+#messageprm10="In Parameter10[File Name]    =>${10}"
+#MSG_OUT prm10
+messageprm07="In Parameter07[File Name]    =>${7}"
+MSG_OUT prm07
+#2009/05/29 Ver1.1 UPD M.Sano End
 #messageprm11="In Parameter11[Log Dir Path] =>${11}"
 #MSG_OUT prm11
 #messageprm12="In Parameter12[Log File Name]=>${12}"
@@ -334,6 +413,27 @@ case ${Ret} in
       exit ${exitStatus}
       ;;
 esac  
+
+#2009/05/29 Ver1.1 Add M.Sano Start
+#===============================================================================
+# 1.4 プロファイル情報の取得
+#===============================================================================
+MSG_OUT 0006
+PROFILE_VALUE_GET ${Ret} ${ftpGetLogPath}
+Ret=${?}
+case ${Ret} in
+  # 正常終了時
+  # メッセージを出力して後続処理を実行する
+  0)  messagepro01="In Profile[Connect HOST]     =>${connHostName}"
+      MSG_OUT pro01
+      ;;
+  # 異常終了時
+  # メッセージを出力して異常終了する
+  1)  EXIT_PROC ${exitFatal} 1006
+      exit ${exitStatus}
+      ;;
+esac
+#2009/05/29 Ver1.1 Add M.Sano End
 
 #===============================================================================
 # 2.1 FTPによるファイルの取得を実行

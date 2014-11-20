@@ -6,7 +6,7 @@ AS
  * Package Name           : xxccp_svfcommon_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_CCP_共通関数
- * Version                : 1.6
+ * Version                : 1.7
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -26,6 +26,8 @@ AS
  *  2009-03-23    1.4  Shinya.Kayahara  最終行にスラッシュ追加
  *  2009-04-08    1.5  Masayuki.Sano    ソート処理動作不正対応
  *  2009-05-01    1.6  Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
+ *  2009-05-29    1.7  Masayuki.Sano    障害番号T1_0628対応
+ *                                      ・FTPファイル転送シェルパラメータ変更に伴う修正
  *
  *****************************************************************************************/
 --
@@ -1938,15 +1940,23 @@ AS
     lv_step         := 'STEP 05.01.01';
     lt_ftp_argument.appl    := cv_ftp_app         ;                                               -- アプリケーション名
     lt_ftp_argument.prog    := cv_ftp_prog        ;                                               -- プログラム名
-    lt_ftp_argument.arg001  := lv_svf_host_name   ;                                               -- FTP先のホスト名
-    lt_ftp_argument.arg002  := lv_svf_login_user  ;                                               -- FTP時ログインユーザ
-    lt_ftp_argument.arg003  := lv_svf_login_pass  ;                                               -- FTP時ログインパスワード
+-- 2009/05/29 Ver1.7 Update Start
+--    lt_ftp_argument.arg001  := lv_svf_host_name   ;                                               -- FTP先のホスト名
+--    lt_ftp_argument.arg002  := lv_svf_login_user  ;                                               -- FTP時ログインユーザ
+--    lt_ftp_argument.arg003  := lv_svf_login_pass  ;                                               -- FTP時ログインパスワード
+--    -- SHELLコンカレント用にパスの\\を/に置き換える
+--    lt_ftp_argument.arg004  := REPLACE(lv_svf_spool_dir, cv_part_bs, cv_part_sl) ;                -- SVFサーバPDFファイル格納先
+--    lt_ftp_argument.arg005  := lv_ebs_put_fpath   ;                                               -- EBSサーバ格納PDFファイル絶対パス
+--    lt_ftp_argument.arg006  := iv_file_name       ;                                               -- PDFファイル名
+--    lt_ftp_argument.arg007  := lv_ebs_temp_dir    ;                                               -- EBSサーバTempファイル格納先
+--    lt_ftp_argument.arg008  := lv_ebs_temp_file   ;                                               -- EBSサーバFTPログTempファイル名
     -- SHELLコンカレント用にパスの\\を/に置き換える
-    lt_ftp_argument.arg004  := REPLACE(lv_svf_spool_dir, cv_part_bs, cv_part_sl) ;                -- SVFサーバPDFファイル格納先
-    lt_ftp_argument.arg005  := lv_ebs_put_fpath   ;                                               -- EBSサーバ格納PDFファイル絶対パス
-    lt_ftp_argument.arg006  := iv_file_name       ;                                               -- PDFファイル名
-    lt_ftp_argument.arg007  := lv_ebs_temp_dir    ;                                               -- EBSサーバTempファイル格納先
-    lt_ftp_argument.arg008  := lv_ebs_temp_file   ;                                               -- EBSサーバFTPログTempファイル名
+    lt_ftp_argument.arg001  := REPLACE(lv_svf_spool_dir, cv_part_bs, cv_part_sl) ;                -- SVFサーバPDFファイル格納先
+    lt_ftp_argument.arg002  := lv_ebs_put_fpath   ;                                               -- EBSサーバ格納PDFファイル絶対パス
+    lt_ftp_argument.arg003  := iv_file_name       ;                                               -- PDFファイル名
+    lt_ftp_argument.arg004  := lv_ebs_temp_dir    ;                                               -- EBSサーバTempファイル格納先
+    lt_ftp_argument.arg005  := lv_ebs_temp_file   ;                                               -- EBSサーバFTPログTempファイル名
+-- 2009/05/29 Ver1.7 Update End
     -- 情報ログの出力
     lv_step         := 'STEP 05.01.02';
     output_log(
