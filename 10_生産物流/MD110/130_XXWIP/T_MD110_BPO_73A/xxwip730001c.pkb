@@ -4896,13 +4896,13 @@ AS
     <<req_date_loop>>
     FOR ln_index IN  gt_carcan_info_tab.FIRST.. gt_carcan_info_tab.LAST LOOP
 --
+      -- 依頼No
+      carcan_request_no_tab(ln_index) := gt_carcan_info_tab(ln_index).request_no;
+--
       -- 配車解除の配送No抽出ループ
       <<carcan_data_loop>>
       FOR re_carcan_data IN cu_carcan_data
         ( p_request_no => gt_carcan_info_tab(ln_index).request_no ) LOOP
---
-        -- 依頼No
-        carcan_request_no_tab(ln_index) := gt_carcan_info_tab(ln_index).request_no;
 --
         -- 配送No重複フラグ初期化（重複なし）
         ln_deliv_flg := cv_deliv_n;
