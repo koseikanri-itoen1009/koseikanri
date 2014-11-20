@@ -7,7 +7,7 @@ AS
  * Description            : 在庫照会画面データソースパッケージ(SPEC)
  * MD.050                 : T_MD050_BPO_540_在庫照会Issue1.0.doc
  * MD.070                 : T_MD070_BPO_54A_在庫照会画面Draft1A.doc
- * Version                : 1.6
+ * Version                : 1.8
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -17,10 +17,6 @@ AS
  *  get_parent_item_id      F   NUM   親品目ID取得
  *  get_attribute5          F   VAR   代表倉庫取得
  *  get_organization_id     F   NUM   在庫組織ID取得
- *  get_inv_stock_vol       F   NUM   手持在庫数取得
- *  get_supply_stock_plan   F   NUM   入庫予定数取得
- *  get_take_stock_plan     F   NUM   出庫予定数取得
- *  get_subtractable        F   NUM   引当可能数取得
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -33,6 +29,7 @@ AS
  *  2008/06/13   1.5   Yuko.Kawano      結合テスト不具合対応
  *  2008/06/25   1.6   S.Takemoto       変更要求##93対応
  *  2008/09/03   1.7   N.Yoshida        PT対応(起票なし)
+ *  2008/09/24   1.8   T.Ohashi         PT 1-1_2 指摘39,変更#139対応
  *
  *****************************************************************************************/
 --
@@ -136,46 +133,6 @@ AS
 --
   FUNCTION  get_organization_id(
               in_inventory_location_id  IN xxcmn_item_locations_v.inventory_location_id%TYPE)
-              RETURN NUMBER;
---
-  FUNCTION  get_inv_stock_vol(
-              in_inventory_location_id  IN xxcmn_item_locations_v.inventory_location_id%TYPE,
-              iv_item_no                IN xxcmn_item_mst_v.item_no%TYPE,
-              in_item_id                IN xxcmn_item_mst_v.item_id%TYPE,
-              in_lot_id                 IN ic_lots_mst.lot_id%TYPE,
-              in_loct_onhand            IN ic_loct_inv.loct_onhand%TYPE)
-              RETURN NUMBER;
---
-  FUNCTION  get_supply_stock_plan(
-              iv_segment1               IN xxcmn_item_locations_v.segment1%TYPE,
-              in_inventory_location_id  IN xxcmn_item_locations_v.inventory_location_id%TYPE,
-              iv_item_no                IN xxcmn_item_mst_v.item_no%TYPE,
-              in_item_id                IN xxcmn_item_mst_v.item_id%TYPE,
-              iv_lot_no                 IN ic_lots_mst.lot_no%TYPE,
-              in_lot_id                 IN ic_lots_mst.lot_id%TYPE,
-              id_effective_date         IN DATE,
-              in_loct_onhand            IN ic_loct_inv.loct_onhand%TYPE)
-              RETURN NUMBER;
---
-  FUNCTION  get_take_stock_plan(
-              iv_segment1               IN xxcmn_item_locations_v.segment1%TYPE,
-              in_inventory_location_id  IN xxcmn_item_locations_v.inventory_location_id%TYPE,
-              iv_item_no                IN xxcmn_item_mst_v.item_no%TYPE,
-              in_item_id                IN xxcmn_item_mst_v.item_id%TYPE,
-              in_lot_id                 IN ic_lots_mst.lot_id%TYPE,
-              id_effective_date         IN DATE,
-              in_loct_onhand            IN ic_loct_inv.loct_onhand%TYPE)
-              RETURN NUMBER;
---
-  FUNCTION  get_subtractable(
-              iv_segment1               IN xxcmn_item_locations_v.segment1%TYPE,
-              in_inventory_location_id  IN xxcmn_item_locations_v.inventory_location_id%TYPE,
-              iv_item_no                IN xxcmn_item_mst_v.item_no%TYPE,
-              in_item_id                IN xxcmn_item_mst_v.item_id%TYPE,
-              iv_lot_no                 IN ic_lots_mst.lot_no%TYPE,
-              in_lot_id                 IN ic_lots_mst.lot_id%TYPE,
-              id_effective_date         IN DATE,
-              in_loct_onhand            IN ic_loct_inv.loct_onhand%TYPE)
               RETURN NUMBER;
 --
   --#######################  パッケージファンクション宣言部 END   #######################

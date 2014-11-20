@@ -9,6 +9,7 @@ CREATE TABLE xxcmn.xxcmn_delivery_lt
   end_date_active             DATE,
   delivery_lead_time          NUMBER(2,0),
   consolidated_flag           NUMBER(1,0),
+  leaf_consolidated_flag      NUMBER(1,0),
   drink_lead_time_day         NUMBER(3,0),
   leaf_lead_time_day          NUMBER(3,0),
   receipt_change_lead_time_day    NUMBER(3,0),
@@ -33,10 +34,11 @@ COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.entering_despatching_code2    IS '入出
 COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.start_date_active             IS '適用開始日';
 COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.end_date_active               IS '適用終了日';
 COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.delivery_lead_time            IS '配送リードタイム';
-COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.consolidated_flag             IS '混載許可フラグ';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.consolidated_flag             IS 'ドリンク混載許可フラグ';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.leaf_consolidated_flag        IS 'リーフ混載許可フラグ';
 COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.drink_lead_time_day           IS 'ドリンク生産物流LT';
 COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.leaf_lead_time_day            IS 'リーフ生産物流LT';
-COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.receipt_change_lead_time_day      IS '引取変更LT';
+COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.receipt_change_lead_time_day  IS '引取変更LT';
 COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.created_by                    IS '作成者';
 COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.creation_date                 IS '作成日';
 COMMENT ON COLUMN xxcmn.xxcmn_delivery_lt.last_updated_by               IS '最終更新者';

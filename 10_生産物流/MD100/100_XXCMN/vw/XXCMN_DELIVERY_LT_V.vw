@@ -9,6 +9,7 @@ CREATE OR REPLACE VIEW xxcmn_delivery_lt_v
   lt_end_date_active,
   delivery_lead_time,
   consolidated_flag,
+  leaf_consolidated_flag,
   drink_lead_time_day,
   leaf_lead_time_day,
   receipt_change_lead_time_day,
@@ -32,6 +33,7 @@ AS
           xdl.end_date_active,
           xdl.delivery_lead_time,
           xdl.consolidated_flag,
+          xdl.leaf_consolidated_flag,
           xdl.drink_lead_time_day,
           xdl.leaf_lead_time_day,
           xdl.receipt_change_lead_time_day,
@@ -64,7 +66,8 @@ COMMENT ON COLUMN xxcmn_delivery_lt_v.entering_despatching_code2  IS '入出庫場所
 COMMENT ON COLUMN xxcmn_delivery_lt_v.lt_start_date_active        IS '配送LT適用開始日';
 COMMENT ON COLUMN xxcmn_delivery_lt_v.lt_end_date_active          IS '配送LT適用終了日';
 COMMENT ON COLUMN xxcmn_delivery_lt_v.delivery_lead_time          IS '配送リードタイム';
-COMMENT ON COLUMN xxcmn_delivery_lt_v.consolidated_flag           IS '混載許可フラグ';
+COMMENT ON COLUMN xxcmn_delivery_lt_v.consolidated_flag           IS 'ドリンク混載許可フラグ';
+COMMENT ON COLUMN xxcmn_delivery_lt_v.leaf_consolidated_flag      IS 'リーフ混載許可フラグ';
 COMMENT ON COLUMN xxcmn_delivery_lt_v.drink_lead_time_day         IS 'ドリンク生産物流LT';
 COMMENT ON COLUMN xxcmn_delivery_lt_v.leaf_lead_time_day          IS 'リーフ生産物流LT';
 COMMENT ON COLUMN xxcmn_delivery_lt_v.receipt_change_lead_time_day    IS '引取変更LT';

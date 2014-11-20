@@ -9,6 +9,7 @@ CREATE OR REPLACE VIEW apps.xxcmn_delivery_lt3_v
   lt_end_date_active,
   delivery_lead_time,
   consolidated_flag,
+  leaf_consolidated_flag,
   drink_lead_time_day,
   leaf_lead_time_day,
   receipt_change_lead_time_day
@@ -23,6 +24,7 @@ AS
           xdl.end_date_active,
           xdl.delivery_lead_time,
           xdl.consolidated_flag,
+          xdl.leaf_consolidated_flag,
           xdl.drink_lead_time_day,
           xdl.leaf_lead_time_day,
           xdl.receipt_change_lead_time_day
@@ -37,7 +39,8 @@ COMMENT ON COLUMN xxcmn_delivery_lt3_v.entering_despatching_code2  IS '“üoŒÉê
 COMMENT ON COLUMN xxcmn_delivery_lt3_v.lt_start_date_active        IS '”z‘—LT“K—pŠJn“ú';
 COMMENT ON COLUMN xxcmn_delivery_lt3_v.lt_end_date_active          IS '”z‘—LT“K—pI—¹“ú';
 COMMENT ON COLUMN xxcmn_delivery_lt3_v.delivery_lead_time          IS '”z‘—ƒŠ[ƒhƒ^ƒCƒ€';
-COMMENT ON COLUMN xxcmn_delivery_lt3_v.consolidated_flag           IS '¬Ú‹–‰Âƒtƒ‰ƒO';
+COMMENT ON COLUMN xxcmn_delivery_lt3_v.consolidated_flag           IS 'ƒhƒŠƒ“ƒN¬Ú‹–‰Âƒtƒ‰ƒO';
+COMMENT ON COLUMN xxcmn_delivery_lt3_v.leaf_consolidated_flag      IS 'ƒŠ[ƒt¬Ú‹–‰Âƒtƒ‰ƒO';
 COMMENT ON COLUMN xxcmn_delivery_lt3_v.drink_lead_time_day         IS 'ƒhƒŠƒ“ƒN¶Y•¨—¬LT';
 COMMENT ON COLUMN xxcmn_delivery_lt3_v.leaf_lead_time_day          IS 'ƒŠ[ƒt¶Y•¨—¬LT';
 COMMENT ON COLUMN xxcmn_delivery_lt3_v.receipt_change_lead_time_day    IS 'ˆøæ•ÏXLT';

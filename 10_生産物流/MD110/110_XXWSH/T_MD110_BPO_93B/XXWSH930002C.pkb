@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -105,6 +105,7 @@ AS
  *  2008/10/07    1.19 Oracle 福田 直樹  統合テスト障害#308対応(チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する)
  *  2008/10/08    1.19 Oracle 福田 直樹  統合テスト障害#310対応(入力パラ"対象倉庫"抽出条件が移動入庫/230の場合に入庫倉庫ではなく出庫倉庫になっている)
  *  2008/10/13    1.20 Oracle 福田 直樹  統合テスト障害#314対応(差異チェックで取込報告と比較するトランザクションは実績・指示の順で比較する)
+ *  2008/10/18    1.21 Oracle 福田 直樹  変更一覧#168(課題一覧#62)(受注の指示無し実績登録時、出荷依頼画面に合わせ出荷予定日・着荷予定日にNULLをセット)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -9347,10 +9348,20 @@ AS
     gr_order_h_rec.delivery_no              := gr_interface_info_rec(in_index).delivery_no;
     -- 前回配送no
     gr_order_h_rec.prev_delivery_no         := gv_prev_deliv_no_zero;
+--
+    -- 2008/10/18 変更一覧#168(課題一覧#62) Del Start ------------------------------------
+    ---- 出荷予定日
+    --gr_order_h_rec.schedule_ship_date       := gr_interface_info_rec(in_index).shipped_date;
+    ---- 着荷予定日
+    --gr_order_h_rec.schedule_arrival_date    := gr_interface_info_rec(in_index).arrival_date;
+    -- 2008/10/18 変更一覧#168(課題一覧#62) Del End ------------------------------------
+    -- 2008/10/18 変更一覧#168(課題一覧#62) Add Start ------------------------------------
     -- 出荷予定日
-    gr_order_h_rec.schedule_ship_date       := gr_interface_info_rec(in_index).shipped_date;
+    gr_order_h_rec.schedule_ship_date       := NULL;
     -- 着荷予定日
-    gr_order_h_rec.schedule_arrival_date    := gr_interface_info_rec(in_index).arrival_date;
+    gr_order_h_rec.schedule_arrival_date    := NULL;
+    -- 2008/10/18 変更一覧#168(課題一覧#62) Add End ------------------------------------
+--
     -- パレット回収枚数
     gr_order_h_rec.collected_pallet_qty     := gr_interface_info_rec(in_index).collected_pallet_qty;
     -- 運賃区分

@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *                                         結合指摘#87 出荷停止日エラーログの日付フォーマット修正
  *  2008/10/09    1.14  Oracle 伊藤ひとみ  統合テスト指摘118 1依頼に重複品目がある場合はエラー終了とする。
  *                                         統合テスト指摘240 積載効率チェック(合計値算出)のINパラメータに基準日を追加。
+ *  2008/10/16    1.15  Oracle 丸下        管轄拠点をCSVファイルのコード値を使用するように修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3375,7 +3376,10 @@ AS
       gt_h_deliver_from_id(gn_h_cnt)         := gt_to_plan(in_plan_cnt).ship_id;    -- 出荷元ID
       gt_h_deliver_from(gn_h_cnt)            := gt_to_plan(in_plan_cnt).ship_fr;    -- 出荷元保管場所
       gt_h_Head_sales_branch(gn_h_cnt)       := gt_to_plan(in_plan_cnt).ktn;        -- 管轄拠点
-      gt_h_input_sales_branch(gn_h_cnt)      := gr_param.base;               -- 入力拠点
+--2008/10/16 MOD START
+--      gt_h_input_sales_branch(gn_h_cnt)      := gr_param.base;               -- 入力拠点
+      gt_h_input_sales_branch(gn_h_cnt)      := gt_to_plan(in_plan_cnt).ktn; -- 入力拠点
+--2008/10/16 MOD END
       --gt_h_prod_class(gn_h_cnt)              := gt_to_plan(gn_i).skbn;       -- 商品区分
       gt_h_prod_class(gn_h_cnt)              := gt_to_plan(in_plan_cnt).skbn; -- 商品区分
       gt_h_sum_quantity(gn_h_cnt)            := gn_ttl_amount;               -- 合計数量

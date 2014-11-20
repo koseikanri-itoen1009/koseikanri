@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxinv530001c
+CREATE OR REPLACE PACKAGE BODY APPS.xxinv530001c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 棚卸結果インターフェース
  * MD.050           : 棚卸(T_MD050_BPO_530)
  * MD.070           : 結果インターフェース(T_MD070_BPO_53A)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  *  ----------------------------------------------------------------------------------------
@@ -40,6 +40,8 @@ AS
  *  2008/09/04    1.5   H.Itou           修正(PT 6-3_39指摘#12 動的SQLの変数をバインド変数化)
  *  2008/09/11    1.6   T.Ohashi         修正(PT 6-3_39指摘74 対応)
  *  2008/09/16    1.7   T.Ikehara        修正(不具合ID7対応：重複削除はエラーとしない)
+ *  2008/10/15    1.8   T.Ikehara        修正(不具合ID8対応：重複削除対象データを
+ *                                                           妥当性チェック対象外に修正 )
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1308,68 +1310,6 @@ AS
     FOR i IN 1..inv_if_rec.COUNT LOOP
       --データダンプフラグ初期化
       lb_dump_flag  := FALSE;
-      -- ===============================
-      -- 品目マスタチェック(OPM品目マスタに存在するかチェックします。）
-      -- ===============================
-      BEGIN
---
-        SELECT  itm.item_id item_id,
-                itm.lot_ctl lot_ctl,
-                itm.num_of_cases  num_of_cases,
-                icmt.item_class_code item_type,
-                icmt.prod_class_code product_type
-        INTO    ln_item_id,       --品目ID
-                ln_lot_ctl,       --ロット
-                lv_num_of_cases,  --ケース入数
-                lv_item_type,     --品目区分
-                lv_product_type   --商品区分
---
-        FROM  xxcmn_item_mst_v itm,                   -- 1.OPM品目マスタ(有効期限のみ)
-              xxcmn_item_categories5_v icmt           -- 5.品目カテゴリ、セット
---
-        WHERE itm.item_no = inv_if_rec(i).item_code
-          AND icmt.item_id = itm.item_id;
---
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          ln_item_id      :=  NULL;   --品目ID
-          ln_lot_ctl      :=  NULL;   --ロット
-          lv_num_of_cases :=  NULL;   --ケース入数
-          lv_item_type    :=  NULL;   --品目区分
-          lv_product_type :=  NULL;   --商品区分
-          lb_dump_flag    :=  TRUE;
-          inv_if_rec(i).sts  :=  gv_sts_ng;  --品目マスタ未登録エラー 2
-          --データダンプ取得
-          proc_get_data_dump(
-            if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-           ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-           ,ov_errbuf  => lv_errbuf
-           ,ov_retcode => lv_retcode
-           ,ov_errmsg  => lv_errmsg);
---
-          -- エラーの場合
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_api_expt;
-          ELSE
-            lv_retcode  := gv_status_warn;
-          END IF;
-          -- 警告データダンプPL/SQL表投入
-          gn_err_msg_cnt := gn_err_msg_cnt + 1;
-          warn_dump_tab(gn_err_msg_cnt) := lv_dump;
---
-      -- 警告エラーメッセージ取得(該当データがマスタに存在しません。(マスタ：TABLE，項目：OBJECT)
-          lv_errmsg := xxcmn_common_pkg.get_msg(
-                        iv_application  => gv_xxinv,
-                        iv_name         => 'APP-XXINV-10102',
-                        iv_token_name1  => 'TABLE',
-                        iv_token_value1 => gv_opm_item_name,
-                        iv_token_name2  => 'OBJECT',
-                        iv_token_value2 => inv_if_rec(i).item_code);
---
-          -- 警告メッセージPL/SQL表投入
-          gn_err_msg_cnt := gn_err_msg_cnt + 1;
-          warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-      END;
 --
       -- ===========================================
       -- 重複チェック                              =
@@ -1426,21 +1366,878 @@ AS
 --
       END IF;
 --
-      -- ============================================
-      -- OPM倉庫マスタに存在するかチェックします。  =
-      -- ============================================
-      BEGIN
-        SELECT  iwm.whse_code
-        INTO    lv_whse_code  --倉庫コード
-        FROM  ic_whse_mst iwm -- 1.OPM倉庫マスタ
-        WHERE iwm.whse_code = inv_if_rec(i).invent_whse_code
-          AND ROWNUM  = 1;
+      IF (lb_dup_del_sts != true) THEN
+        -- ===============================
+        -- 品目マスタチェック(OPM品目マスタに存在するかチェックします。）
+        -- ===============================
+        BEGIN
 --
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          inv_if_rec(i).sts  :=  gv_sts_ng;  --倉庫マスタ未登録エラー 8
-          --データダンプ取得
+          SELECT  itm.item_id item_id,
+                  itm.lot_ctl lot_ctl,
+                  itm.num_of_cases  num_of_cases,
+                  icmt.item_class_code item_type,
+                  icmt.prod_class_code product_type
+          INTO    ln_item_id,       --品目ID
+                  ln_lot_ctl,       --ロット
+                  lv_num_of_cases,  --ケース入数
+                  lv_item_type,     --品目区分
+                  lv_product_type   --商品区分
+--
+          FROM  xxcmn_item_mst_v itm,                   -- 1.OPM品目マスタ(有効期限のみ)
+                xxcmn_item_categories5_v icmt           -- 5.品目カテゴリ、セット
+--
+          WHERE itm.item_no = inv_if_rec(i).item_code
+            AND icmt.item_id = itm.item_id;
+--
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_item_id      :=  NULL;   --品目ID
+            ln_lot_ctl      :=  NULL;   --ロット
+            lv_num_of_cases :=  NULL;   --ケース入数
+            lv_item_type    :=  NULL;   --品目区分
+            lv_product_type :=  NULL;   --商品区分
+            lb_dump_flag    :=  TRUE;
+            inv_if_rec(i).sts  :=  gv_sts_ng;  --品目マスタ未登録エラー 2
+            --データダンプ取得
+            proc_get_data_dump(
+              if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+             ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+             ,ov_errbuf  => lv_errbuf
+             ,ov_retcode => lv_retcode
+             ,ov_errmsg  => lv_errmsg);
+--
+            -- エラーの場合
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_api_expt;
+            ELSE
+              lv_retcode  := gv_status_warn;
+            END IF;
+            -- 警告データダンプPL/SQL表投入
+            gn_err_msg_cnt := gn_err_msg_cnt + 1;
+            warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+--
+        -- 警告エラーメッセージ取得(該当データがマスタに存在しません。(マスタ：TABLE，項目：OBJECT)
+            lv_errmsg := xxcmn_common_pkg.get_msg(
+                          iv_application  => gv_xxinv,
+                          iv_name         => 'APP-XXINV-10102',
+                          iv_token_name1  => 'TABLE',
+                          iv_token_value1 => gv_opm_item_name,
+                          iv_token_name2  => 'OBJECT',
+                          iv_token_value2 => inv_if_rec(i).item_code);
+--
+            -- 警告メッセージPL/SQL表投入
+            gn_err_msg_cnt := gn_err_msg_cnt + 1;
+            warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+        END;
+--
+        -- ============================================
+        -- OPM倉庫マスタに存在するかチェックします。  =
+        -- ============================================
+        BEGIN
+          SELECT  iwm.whse_code
+          INTO    lv_whse_code  --倉庫コード
+          FROM  ic_whse_mst iwm -- 1.OPM倉庫マスタ
+          WHERE iwm.whse_code = inv_if_rec(i).invent_whse_code
+            AND ROWNUM  = 1;
+--
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            inv_if_rec(i).sts  :=  gv_sts_ng;  --倉庫マスタ未登録エラー 8
+            --データダンプ取得
+            IF  (lb_dump_flag  = FALSE)  THEN
+              proc_get_data_dump(
+                if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+               ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+               ,ov_errbuf  => lv_errbuf
+               ,ov_retcode => lv_retcode
+               ,ov_errmsg  => lv_errmsg);
+              -- エラーの場合
+              IF (lv_retcode = gv_status_error) THEN
+                RAISE global_api_expt;
+              ELSE
+                lv_retcode  := gv_status_warn;
+              END IF;
+              -- 警告データダンプPL/SQL表投入
+              gn_err_msg_cnt := gn_err_msg_cnt + 1;
+              warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+              lb_dump_flag :=  TRUE;
+            END IF;
+--
+        -- 警告エラーメッセージ取得(該当データがマスタに存在しません。(マスタ：TABLE，項目：OBJECT)
+            lv_errmsg := xxcmn_common_pkg.get_msg(
+                          iv_application  => gv_xxinv,
+                          iv_name         => 'APP-XXINV-10102',
+                          iv_token_name1  => 'TABLE',
+                          iv_token_value1 => gv_invent_whse_name,
+                          iv_token_name2  => 'OBJECT',
+                          iv_token_value2 => inv_if_rec(i).invent_whse_code);
+            -- 警告メッセージPL/SQL表投入
+            gn_err_msg_cnt := gn_err_msg_cnt + 1;
+            warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+        END;
+--
+--
+    --  品目マスタが存在する場合のみチェックする(4-9～4-30)
+        IF  (lv_item_type IS  NOT NULL) THEN
+          -- ===============================
+          -- ロット№マスタに存在するかチェック
+          -- ===============================
+      --
+          --品目区分が製品以外の場合
+          IF (lv_item_type != gv_item_cls_prdct) THEN
+            --ロット管理対象の場合
+            IF  (ln_lot_ctl  = 1) THEN
+              -- ロット№が'0'はエラーとする。
+              IF  (inv_if_rec(i).lot_no = '0' ) THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  --ロット№が'0'はエラーとする。10
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←ロット№）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                              iv_application  => gv_xxinv,
+                              iv_name         => 'APP-XXINV-10104',
+                              iv_token_name1  => 'OBJECT',
+                              iv_token_value1 => gv_lot_no_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+              --ロットマスタチェック
+              BEGIN
+                SELECT  lot.lot_id lot_id           --ロットID
+                        ,lot.attribute1 maker_date  --製造日
+                        ,lot.attribute2 proper_mark --固有記号
+                        ,lot.attribute3 limit_date  --賞味期限
+                INTO     ln_lot_id
+                        ,lv_maker_date
+                        ,lv_proper_mark
+                        ,lv_limit_date
+                FROM  ic_lots_mst lot -- 1.OPMロットマスタ
+                WHERE lot.lot_no = inv_if_rec(i).lot_no
+                  AND lot.item_id = ln_item_id
+                  AND ROWNUM  = 1;
+--
+              EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                  IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
+                    inv_if_rec(i).sts  :=  gv_sts_hr;  --ロットマスタ未登録エラー(保留)  12
+                  END IF;
+                  --データダンプ取得
+                  IF  (lb_dump_flag  = FALSE)  THEN
+                    proc_get_data_dump(
+                      if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                     ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                     ,ov_errbuf  => lv_errbuf
+                     ,ov_retcode => lv_retcode
+                     ,ov_errmsg  => lv_errmsg);
+                    -- エラーの場合
+                    IF (lv_retcode = gv_status_error) THEN
+                      RAISE global_api_expt;
+                    ELSE
+                      lv_retcode  := gv_status_warn;
+                    END IF;
+                    -- 警告データダンプPL/SQL表投入
+                    gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                    warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                    lb_dump_flag :=  TRUE;
+                  END IF;
+--
+            -- 警告エラーメッセージ取得(OPMロットマスタに該当データが存在しません。(項目：OBJECT))
+                  lv_errmsg := xxcmn_common_pkg.get_msg(
+                                iv_application  => gv_xxinv,
+                                iv_name         => 'APP-XXINV-10108',
+                                iv_token_name1  => 'OBJECT',
+                                iv_token_value1 => gv_lot_no_col);
+                  -- 警告メッセージPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END;
+            --ロット管理対象外の場合
+            ELSIF (ln_lot_ctl  != 1)  THEN
+              -- ロット№が'0'以外はエラーとする。
+              IF  (inv_if_rec(i).lot_no != '0' ) THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  --ロット№が'0'以外はエラーとする。14
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 ( 0を指定してください。(項目：OBJECT) )
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                              iv_application  => gv_xxinv,
+                              iv_name         => 'APP-XXINV-10103',
+                              iv_token_name1  => 'OBJECT',
+                              iv_token_value1 => gv_lot_no_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+            END IF;
+          END IF;
+--
+          -- ==================================================
+          -- 製造日、賞味期限、固有記号、ロットマスタチェック =
+          -- ==================================================
+--
+          --品目区分が製品の場合
+          IF (lv_item_type = gv_item_cls_prdct) THEN
+            IF  (lv_product_type  = gv_goods_classe_drink)  THEN  --商品区分＝ドリンクの場合
+              -- 製造日＝'0'の場合のエラー
+              IF  (inv_if_rec(i).maker_date  = '0')  THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  -- 製造日＝'0'の場合のエラー 16
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←製造日）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                              iv_application  => gv_xxinv,
+                              iv_name         => 'APP-XXINV-10104',
+                              iv_token_name1  => 'OBJECT',
+                              iv_token_value1 => gv_maker_date_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+              -- 賞味期限＝'0'の場合のエラー
+              IF  (inv_if_rec(i).limit_date  = '0')  THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  -- 賞味期限＝'0'の場合のエラー 17
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←賞味期限）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                              iv_application  => gv_xxinv,
+                              iv_name         => 'APP-XXINV-10104',
+                              iv_token_name1  => 'OBJECT',
+                              iv_token_value1 => gv_limit_date_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+              -- 固有記号＝'0'の場合のエラー
+              IF  (inv_if_rec(i).proper_mark  = '0')  THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  -- 固有記号＝'0'の場合のエラー 18
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←固有記号）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                              iv_application  => gv_xxinv,
+                              iv_name         => 'APP-XXINV-10104',
+                              iv_token_name1  => 'OBJECT',
+                              iv_token_value1 => gv_proper_mark_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+              --製造日が日付型エラー
+              ld_maker_date := FND_DATE.STRING_TO_DATE(inv_if_rec(i).maker_date, gc_char_d_format);
+              IF  (ld_maker_date IS NULL) THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  --製造日が日付型エラー 20
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (日付形式エラー:製造日）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                               iv_application  => gv_xxinv,
+                               iv_name         => 'APP-XXINV-10105',
+                               iv_token_name1  => 'OBJECT',
+                               iv_token_value1 => gv_maker_date_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+              --賞味期限が日付型エラー
+              ld_limit_date := FND_DATE.STRING_TO_DATE(inv_if_rec(i).limit_date, gc_char_d_format);
+              IF  (ld_limit_date IS NULL) THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  --賞味期限が日付型エラー 21
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (日付形式エラー:賞味期限）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                               iv_application  => gv_xxinv,
+                               iv_name         => 'APP-XXINV-10105',
+                               iv_token_name1  => 'OBJECT',
+                               iv_token_value1 => gv_limit_date_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+              --OPMロットマスタチェック
+              BEGIN
+                ln_lot_id :=  NULL;
+                lv_lot_no :=  NULL;
+                lv_limit_date :=  NULL;
+                SELECT
+                  ilm.lot_id     AS lot_id     -- ロットID
+                 ,ilm.lot_no     AS lot_no     -- ロットNO
+                 ,ilm.attribute3 AS limit_date -- 賞味期限
+                INTO
+                  ln_lot_id
+                 ,lv_lot_no
+                 ,lv_limit_date
+                FROM   ic_lots_mst ilm
+                WHERE ilm.attribute1 = '' || TO_CHAR(ld_maker_date, gc_char_d_format) || ''--製造日
+                AND    ilm.attribute2 = inv_if_rec(i).proper_mark--固有記号
+                AND    ilm.item_id = ln_item_id --品目ID
+                AND ROWNUM  = 1;
+                --
+                IF  (lv_limit_date IS NOT NULL) THEN
+                  IF  (FND_DATE.STRING_TO_DATE(inv_if_rec(i).limit_date, gc_char_d_format) !=
+                       FND_DATE.STRING_TO_DATE(lv_limit_date, gc_char_d_format))  THEN
+                    IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
+                      inv_if_rec(i).sts  :=  gv_sts_hr;  --賞味期限が一致しない (保留)  25
+                    END IF;
+                    --データダンプ取得
+                    IF  (lb_dump_flag  = FALSE)  THEN
+                      proc_get_data_dump(
+                        if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                       ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                       ,ov_errbuf  => lv_errbuf
+                       ,ov_retcode => lv_retcode
+                       ,ov_errmsg  => lv_errmsg);
+                      -- エラーの場合
+                      IF (lv_retcode = gv_status_error) THEN
+                        RAISE global_api_expt;
+                      ELSE
+                        lv_retcode  := gv_status_warn;
+                      END IF;
+                      -- 警告データダンプPL/SQL表投入
+                      gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                      warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                      lb_dump_flag :=  TRUE;
+                    END IF;
+--
+                  -- 警告エラーメッセージ取得(賞味期限が一致しません。(項目：CONTENT))
+                      -- 賞味期限の不一致(保留)
+                      lv_errmsg := xxcmn_common_pkg.get_msg(
+                                    iv_application  => gv_xxinv,
+                                    iv_name         => 'APP-XXINV-10110',
+                                    iv_token_name1  => 'OBEJCT',
+                                    iv_token_value1 => gv_limit_date_col,
+                                    iv_token_name2  => 'CONTENT',
+                                    iv_token_value2 => gv_limit_date_col ||
+                                      gv_msg_part || lv_limit_date);
+                    -- 警告メッセージPL/SQL表投入
+                    gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                    warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+                  END IF;
+                END IF;
+              EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                  IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
+                    inv_if_rec(i).sts  :=  gv_sts_hr;  --ロットマスタ未登録エラー(保留)  23
+                  END IF;
+                  --データダンプ取得
+                  IF  (lb_dump_flag  = FALSE)  THEN
+                    proc_get_data_dump(
+                      if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                     ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                     ,ov_errbuf  => lv_errbuf
+                     ,ov_retcode => lv_retcode
+                     ,ov_errmsg  => lv_errmsg);
+                    -- エラーの場合
+                    IF (lv_retcode = gv_status_error) THEN
+                      RAISE global_api_expt;
+                    ELSE
+                      lv_retcode  := gv_status_warn;
+                    END IF;
+                    -- 警告データダンプPL/SQL表投入
+                    gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                    warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                    lb_dump_flag :=  TRUE;
+                  END IF;
+--
+        -- 警告エラーメッセージ取得(OPMロットマスタに該当データが存在しません。(項目：OBJECT))
+                  lv_msg_col  :=  gv_maker_date_col || '、' || gv_proper_mark_col;
+                  lv_errmsg := xxcmn_common_pkg.get_msg(
+                                iv_application  => gv_xxinv,
+                                iv_name         => 'APP-XXINV-10108',
+                                iv_token_name1  => 'OBJECT',
+                                iv_token_value1 => lv_msg_col);
+                  -- 警告メッセージPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END;
+            END IF;--ドリンク終了
+--
+            IF  (lv_product_type  = gv_goods_classe_reaf)  THEN  --商品区分＝リーフの場合
+              -- 賞味期限＝'0'の場合のエラー
+              IF  (inv_if_rec(i).limit_date  = '0')  THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  --賞味期限＝'0'の場合のエラ 27
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←賞味期限）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                              iv_application  => gv_xxinv,
+                              iv_name         => 'APP-XXINV-10104',
+                              iv_token_name1  => 'OBJECT',
+                              iv_token_value1 => gv_limit_date_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+              -- 固有記号＝'0'の場合のエラー
+              IF  (inv_if_rec(i).proper_mark  = '0')  THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  --固有記号＝'0'の場合のエラ 28
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←固有記号）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                              iv_application  => gv_xxinv,
+                              iv_name         => 'APP-XXINV-10104',
+                              iv_token_name1  => 'OBJECT',
+                              iv_token_value1 => gv_proper_mark_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+              --賞味期限が日付型エラー
+              ld_limit_date := FND_DATE.STRING_TO_DATE(inv_if_rec(i).limit_date, gc_char_d_format);
+              IF  (ld_limit_date IS NULL) THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  --賞味期限が日付型エラー  29
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (日付形式エラー:賞味期限）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                               iv_application  => gv_xxinv,
+                               iv_name         => 'APP-XXINV-10105',
+                               iv_token_name1  => 'OBJECT',
+                               iv_token_value1 => gv_limit_date_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+              --OPMロットマスタチェック
+              BEGIN
+                ln_lot_id :=  NULL;
+                lv_lot_no :=  NULL;
+                lv_limit_date :=  NULL;
+                ld_maker_date :=
+                          FND_DATE.STRING_TO_DATE(inv_if_rec(i).maker_date, gc_char_d_format);
+                SELECT
+                  ilm.lot_id     AS lot_id     -- ロットID
+                 ,ilm.lot_no     AS lot_no     -- ロットNO
+                 ,ilm.attribute3 AS limit_date -- 賞味期限
+                INTO
+                  ln_lot_id
+                 ,lv_lot_no
+                 ,lv_limit_date
+                FROM   ic_lots_mst ilm
+                WHERE  ilm.attribute1 =
+                            '' || TO_CHAR(ld_maker_date, gc_char_d_format) || '' --製造日
+                AND    ilm.attribute2 = inv_if_rec(i).proper_mark --固有記号
+                AND    ilm.item_id = ln_item_id
+                AND ROWNUM  = 1;
+                --ロットマスタが存在する場合に賞味期限が不一致の場合
+                IF  (lv_limit_date IS NOT NULL) THEN
+                  IF  (FND_DATE.STRING_TO_DATE(inv_if_rec(i).limit_date, gc_char_d_format) !=
+                       FND_DATE.STRING_TO_DATE(lv_limit_date, gc_char_d_format))  THEN
+                    IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
+                      inv_if_rec(i).sts  :=  gv_sts_hr;  --賞味期限が不一致  (保留) 32
+                    END IF;
+                    --データダンプ取得
+                    IF  (lb_dump_flag  = FALSE)  THEN
+                      proc_get_data_dump(
+                        if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                       ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                       ,ov_errbuf  => lv_errbuf
+                       ,ov_retcode => lv_retcode
+                       ,ov_errmsg  => lv_errmsg);
+                      -- エラーの場合
+                      IF (lv_retcode = gv_status_error) THEN
+                        RAISE global_api_expt;
+                      ELSE
+                        lv_retcode  := gv_status_warn;
+                      END IF;
+                      -- 警告データダンプPL/SQL表投入
+                      gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                      warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                      lb_dump_flag :=  TRUE;
+                    END IF;
+                  -- 警告エラーメッセージ取得(賞味期限が一致しません。(項目：CONTENT))
+                      -- 賞味期限の不一致(保留)
+                      lv_errmsg := xxcmn_common_pkg.get_msg(
+                                    iv_application  => gv_xxinv,
+                                    iv_name         => 'APP-XXINV-10110',
+                                    iv_token_name1  => 'OBEJCT',
+                                    iv_token_value1 => gv_limit_date_col,
+                                    iv_token_name2  => 'CONTENT',
+                                    iv_token_value2 => gv_limit_date_col ||
+                                      gv_msg_part || lv_limit_date);
+                    -- 警告メッセージPL/SQL表投入
+                    gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                    warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+                  END IF;
+                END IF;
+              EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                  BEGIN
+                    SELECT
+                      ilm.lot_id     AS lot_id     -- ロットID
+                     ,ilm.lot_no     AS lot_no     -- ロットNO
+                     ,ilm.attribute1 AS maker_date -- 製造日
+                    INTO
+                      ln_lot_id
+                     ,lv_lot_no
+                     ,lv_maker_date
+                    FROM   ic_lots_mst ilm
+                    WHERE  ilm.attribute3 =
+                                '' || TO_CHAR(ld_limit_date, gc_char_d_format) || ''--賞味--
+                    AND    ilm.attribute2 = inv_if_rec(i).proper_mark--固有記号
+                    AND    ilm.item_id = ln_item_id; --品目ID
+                  EXCEPTION
+                    WHEN NO_DATA_FOUND THEN
+                      IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
+                        inv_if_rec(i).sts  :=  gv_sts_hr;  --ロットマスタ未登録エラー(保留)  34
+                      END IF;
+                      --データダンプ取得
+                      IF  (lb_dump_flag  = FALSE)  THEN
+                        proc_get_data_dump(
+                          if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                         ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                         ,ov_errbuf  => lv_errbuf
+                         ,ov_retcode => lv_retcode
+                         ,ov_errmsg  => lv_errmsg);
+                        -- エラーの場合
+                        IF (lv_retcode = gv_status_error) THEN
+                          RAISE global_api_expt;
+                        ELSE
+                          lv_retcode  := gv_status_warn;
+                        END IF;
+                        -- 警告データダンプPL/SQL表投入
+                        gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                        warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                        lb_dump_flag :=  TRUE;
+                      END IF;
+              -- 警告エラーメッセージ取得(OPMロットマスタに該当データが存在しません(項目：OBJECT))
+                      lv_msg_col  :=  gv_limit_date_col || '、' || gv_proper_mark_col;
+                      lv_errmsg := xxcmn_common_pkg.get_msg(
+                                    iv_application  => gv_xxinv,
+                                    iv_name         => 'APP-XXINV-10108',
+                                    iv_token_name1  => 'OBJECT',
+                                    iv_token_value1 => lv_msg_col);
+                      -- 警告メッセージPL/SQL表投入
+                      gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                      warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+                    WHEN TOO_MANY_ROWS THEN
+                      IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
+                        inv_if_rec(i).sts  :=  gv_sts_hr;  --ロットマスタ未登録エラー(保留)  35
+                      END IF;
+                      --データダンプ取得
+                      IF  (lb_dump_flag  = FALSE)  THEN
+                        proc_get_data_dump(
+                          if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                         ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                         ,ov_errbuf  => lv_errbuf
+                         ,ov_retcode => lv_retcode
+                         ,ov_errmsg  => lv_errmsg);
+                        -- エラーの場合
+                        IF (lv_retcode = gv_status_error) THEN
+                          RAISE global_api_expt;
+                        ELSE
+                          lv_retcode  := gv_status_warn;
+                        END IF;
+                        -- 警告データダンプPL/SQL表投入
+                        gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                        warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                        lb_dump_flag :=  TRUE;
+                      END IF;
+                      -- OPMロットマスタに複数登録(保留)
+                      lv_errmsg := xxcmn_common_pkg.get_msg(
+                                        iv_application  => gv_xxinv,
+                                        iv_name         => 'APP-XXINV-10109',
+                                        iv_token_name1  => 'OBJECT',
+                                        iv_token_value1 =>
+                                          gv_proper_mark_col ||
+                                          gv_msg_part || inv_if_rec(i).proper_mark ||
+                                          gv_msg_comma ||
+                                          gv_limit_date_col ||
+                                          gv_msg_part || inv_if_rec(i).limit_date);
+                      -- 警告メッセージPL/SQL表投入
+                      gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                      warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+                  END;
+              END;
+            END IF;--リーフ終了
+          END IF;
+--
+          --品目区分が製品以外の場合
+          IF (lv_item_type != gv_item_cls_prdct) THEN
+            --ロット管理対象外の場合
+            IF  (ln_lot_ctl  != 1) THEN
+              -- 製造日が'0'以外の場合のエラー
+              IF  (inv_if_rec(i).maker_date  != '0')  THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  --製造日が'0'以外の場合のエラー   38
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (0を指定してください。(項目：OBJECT←製造日）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                              iv_application  => gv_xxinv,
+                              iv_name         => 'APP-XXINV-10103',
+                              iv_token_name1  => 'OBJECT',
+                              iv_token_value1 => gv_maker_date_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+              -- 賞味期限が'0'以外の場合のエラー
+              IF  (inv_if_rec(i).limit_date  != '0')  THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  --賞味期限が'0'以外の場合のエラー   39
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (0を指定してください。(項目：OBJECT←賞味期限）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                              iv_application  => gv_xxinv,
+                              iv_name         => 'APP-XXINV-10103',
+                              iv_token_name1  => 'OBJECT',
+                              iv_token_value1 => gv_limit_date_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+              -- 固有記号が'0'以外の場合のエラー
+              IF  (inv_if_rec(i).proper_mark  != '0')  THEN
+                inv_if_rec(i).sts  :=  gv_sts_ng;  --固有記号が'0'以外の場合のエラー   40
+                IF  (lb_dump_flag  = FALSE)  THEN
+                  --データダンプ取得
+                  proc_get_data_dump(
+                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                   ,ov_errbuf  => lv_errbuf
+                   ,ov_retcode => lv_retcode
+                   ,ov_errmsg  => lv_errmsg);
+                  -- エラーの場合
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  ELSE
+                    lv_retcode  := gv_status_warn;
+                  END IF;
+                  -- 警告データダンプPL/SQL表投入
+                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                  lb_dump_flag :=  TRUE;
+                END IF;
+                -- 警告エラーメッセージ取得 (0を指定してください。(項目：OBJECT←固有記号）
+                lv_errmsg := xxcmn_common_pkg.get_msg(
+                              iv_application  => gv_xxinv,
+                              iv_name         => 'APP-XXINV-10103',
+                              iv_token_name1  => 'OBJECT',
+                              iv_token_value1 => gv_proper_mark_col);
+                -- 警告メッセージPL/SQL表投入
+                gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+              END IF;
+            END IF;
+          END IF;
+--
+        END IF;
+--
+        -- ======================
+        -- 棚卸ケース数チェック =
+        -- ======================
+        --棚卸ケース数 が０未満の場合のエラー
+        IF  (inv_if_rec(i).case_amt < 0 ) THEN
+          inv_if_rec(i).sts  :=  gv_sts_ng;  --棚卸ケース数 が０未満の場合のエラー  43
           IF  (lb_dump_flag  = FALSE)  THEN
+            --データダンプ取得
             proc_get_data_dump(
               if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
              ,ov_dump    => lv_dump        -- 2.データダンプ文字列
@@ -1458,960 +2255,172 @@ AS
             warn_dump_tab(gn_err_msg_cnt) := lv_dump;
             lb_dump_flag :=  TRUE;
           END IF;
---
-      -- 警告エラーメッセージ取得(該当データがマスタに存在しません。(マスタ：TABLE，項目：OBJECT)
+          -- 警告エラーメッセージ取得 (0以上の値を指定してください。(項目：OBJECT←棚卸ケース）
           lv_errmsg := xxcmn_common_pkg.get_msg(
-                        iv_application  => gv_xxinv,
-                        iv_name         => 'APP-XXINV-10102',
-                        iv_token_name1  => 'TABLE',
-                        iv_token_value1 => gv_invent_whse_name,
-                        iv_token_name2  => 'OBJECT',
-                        iv_token_value2 => inv_if_rec(i).invent_whse_code);
+                                iv_application  => gv_xxinv,
+                                iv_name         => 'APP-XXINV-10106',
+                                iv_token_name1  => 'OBJECT',
+                                iv_token_value1 => gv_case_amt_col);
           -- 警告メッセージPL/SQL表投入
           gn_err_msg_cnt := gn_err_msg_cnt + 1;
           warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-      END;
---
---
-  --  品目マスタが存在する場合のみチェックする(4-9～4-30)
-      IF  (lv_item_type IS  NOT NULL) THEN
-        -- ===============================
-        -- ロット№マスタに存在するかチェック
-        -- ===============================
-    --
-        --品目区分が製品以外の場合
-        IF (lv_item_type != gv_item_cls_prdct) THEN
-          --ロット管理対象の場合
-          IF  (ln_lot_ctl  = 1) THEN
-            -- ロット№が'0'はエラーとする。
-            IF  (inv_if_rec(i).lot_no = '0' ) THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  --ロット№が'0'はエラーとする。10
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←ロット№）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                            iv_application  => gv_xxinv,
-                            iv_name         => 'APP-XXINV-10104',
-                            iv_token_name1  => 'OBJECT',
-                            iv_token_value1 => gv_lot_no_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+        ELSIF
+        --棚卸ケース数 が整数でない場合のエラー
+          (inv_if_rec(i).case_amt  -
+            TRUNC(inv_if_rec(i).case_amt)  !=0)  THEN
+          inv_if_rec(i).sts  :=  gv_sts_ng;  --棚卸ケース数 が整数でない場合のエラー 44
+          IF  (lb_dump_flag  = FALSE)  THEN
+            --データダンプ取得
+            proc_get_data_dump(
+              if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+             ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+             ,ov_errbuf  => lv_errbuf
+             ,ov_retcode => lv_retcode
+             ,ov_errmsg  => lv_errmsg);
+            -- エラーの場合
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_api_expt;
+            ELSE
+              lv_retcode  := gv_status_warn;
             END IF;
-            --ロットマスタチェック
-            BEGIN
-              SELECT  lot.lot_id lot_id           --ロットID
-                      ,lot.attribute1 maker_date  --製造日
-                      ,lot.attribute2 proper_mark --固有記号
-                      ,lot.attribute3 limit_date  --賞味期限
-              INTO     ln_lot_id
-                      ,lv_maker_date
-                      ,lv_proper_mark
-                      ,lv_limit_date
-              FROM  ic_lots_mst lot -- 1.OPMロットマスタ
-              WHERE lot.lot_no = inv_if_rec(i).lot_no
-                AND lot.item_id = ln_item_id
-                AND ROWNUM  = 1;
---
-            EXCEPTION
-              WHEN NO_DATA_FOUND THEN
-                IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
-                  inv_if_rec(i).sts  :=  gv_sts_hr;  --ロットマスタ未登録エラー(保留)  12
-                END IF;
-                --データダンプ取得
-                IF  (lb_dump_flag  = FALSE)  THEN
-                  proc_get_data_dump(
-                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                   ,ov_errbuf  => lv_errbuf
-                   ,ov_retcode => lv_retcode
-                   ,ov_errmsg  => lv_errmsg);
-                  -- エラーの場合
-                  IF (lv_retcode = gv_status_error) THEN
-                    RAISE global_api_expt;
-                  ELSE
-                    lv_retcode  := gv_status_warn;
-                  END IF;
-                  -- 警告データダンプPL/SQL表投入
-                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                  lb_dump_flag :=  TRUE;
-                END IF;
---
-          -- 警告エラーメッセージ取得(OPMロットマスタに該当データが存在しません。(項目：OBJECT))
-                lv_errmsg := xxcmn_common_pkg.get_msg(
-                              iv_application  => gv_xxinv,
-                              iv_name         => 'APP-XXINV-10108',
-                              iv_token_name1  => 'OBJECT',
-                              iv_token_value1 => gv_lot_no_col);
-                -- 警告メッセージPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END;
-          --ロット管理対象外の場合
-          ELSIF (ln_lot_ctl  != 1)  THEN
-            -- ロット№が'0'以外はエラーとする。
-            IF  (inv_if_rec(i).lot_no != '0' ) THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  --ロット№が'0'以外はエラーとする。14
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 ( 0を指定してください。(項目：OBJECT) )
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                            iv_application  => gv_xxinv,
-                            iv_name         => 'APP-XXINV-10103',
-                            iv_token_name1  => 'OBJECT',
-                            iv_token_value1 => gv_lot_no_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END IF;
+            -- 警告データダンプPL/SQL表投入
+            gn_err_msg_cnt := gn_err_msg_cnt + 1;
+            warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+            lb_dump_flag :=  TRUE;
           END IF;
+          -- 警告エラーメッセージ取得 (整数値を指定してください。(項目：OBJECT)T←棚卸ケース）
+          lv_errmsg := xxcmn_common_pkg.get_msg(
+                                iv_application  => gv_xxinv,
+                                iv_name         => 'APP-XXINV-10107',
+                                iv_token_name1  => 'OBJECT',
+                                iv_token_value1 => gv_case_amt_col);
+          -- 警告メッセージPL/SQL表投入
+          gn_err_msg_cnt := gn_err_msg_cnt + 1;
+          warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
         END IF;
 --
-        -- ==================================================
-        -- 製造日、賞味期限、固有記号、ロットマスタチェック =
-        -- ==================================================
---
-        --品目区分が製品の場合
-        IF (lv_item_type = gv_item_cls_prdct) THEN
-          IF  (lv_product_type  = gv_goods_classe_drink)  THEN  --商品区分＝ドリンクの場合
-            -- 製造日＝'0'の場合のエラー
-            IF  (inv_if_rec(i).maker_date  = '0')  THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  -- 製造日＝'0'の場合のエラー 16
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←製造日）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                            iv_application  => gv_xxinv,
-                            iv_name         => 'APP-XXINV-10104',
-                            iv_token_name1  => 'OBJECT',
-                            iv_token_value1 => gv_maker_date_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+        -- ======================
+        -- 棚卸バラ数チェック =
+        -- ======================
+        --棚卸バラ数 が０未満の場合のエラー
+        IF  (inv_if_rec(i).loose_amt < 0 ) THEN
+          inv_if_rec(i).sts  :=  gv_sts_ng;  --棚卸バラ数 が０未満の場合のエラー  46
+          IF  (lb_dump_flag  = FALSE)  THEN
+            --データダンプ取得
+            proc_get_data_dump(
+              if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+             ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+             ,ov_errbuf  => lv_errbuf
+             ,ov_retcode => lv_retcode
+             ,ov_errmsg  => lv_errmsg);
+            -- エラーの場合
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_api_expt;
+            ELSE
+              lv_retcode  := gv_status_warn;
             END IF;
-            -- 賞味期限＝'0'の場合のエラー
-            IF  (inv_if_rec(i).limit_date  = '0')  THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  -- 賞味期限＝'0'の場合のエラー 17
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←賞味期限）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                            iv_application  => gv_xxinv,
-                            iv_name         => 'APP-XXINV-10104',
-                            iv_token_name1  => 'OBJECT',
-                            iv_token_value1 => gv_limit_date_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END IF;
-            -- 固有記号＝'0'の場合のエラー
-            IF  (inv_if_rec(i).proper_mark  = '0')  THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  -- 固有記号＝'0'の場合のエラー 18
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←固有記号）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                            iv_application  => gv_xxinv,
-                            iv_name         => 'APP-XXINV-10104',
-                            iv_token_name1  => 'OBJECT',
-                            iv_token_value1 => gv_proper_mark_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END IF;
-            --製造日が日付型エラー
-            ld_maker_date :=  FND_DATE.STRING_TO_DATE(inv_if_rec(i).maker_date, gc_char_d_format);
-            IF  (ld_maker_date IS NULL) THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  --製造日が日付型エラー 20
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (日付形式エラー:製造日）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                             iv_application  => gv_xxinv,
-                             iv_name         => 'APP-XXINV-10105',
-                             iv_token_name1  => 'OBJECT',
-                             iv_token_value1 => gv_maker_date_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END IF;
-            --賞味期限が日付型エラー
-            ld_limit_date :=  FND_DATE.STRING_TO_DATE(inv_if_rec(i).limit_date, gc_char_d_format);
-            IF  (ld_limit_date IS NULL) THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  --賞味期限が日付型エラー 21
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (日付形式エラー:賞味期限）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                             iv_application  => gv_xxinv,
-                             iv_name         => 'APP-XXINV-10105',
-                             iv_token_name1  => 'OBJECT',
-                             iv_token_value1 => gv_limit_date_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END IF;
-            --OPMロットマスタチェック
-            BEGIN
-              ln_lot_id :=  NULL;
-              lv_lot_no :=  NULL;
-              lv_limit_date :=  NULL;
-              SELECT
-                ilm.lot_id     AS lot_id     -- ロットID
-               ,ilm.lot_no     AS lot_no     -- ロットNO
-               ,ilm.attribute3 AS limit_date -- 賞味期限
-              INTO
-                ln_lot_id
-               ,lv_lot_no
-               ,lv_limit_date
-              FROM   ic_lots_mst ilm
-              WHERE  ilm.attribute1 = '' || TO_CHAR(ld_maker_date, gc_char_d_format) || ''--製造日
-              AND    ilm.attribute2 = inv_if_rec(i).proper_mark--固有記号
-              AND    ilm.item_id = ln_item_id --品目ID
-              AND ROWNUM  = 1;
-              --
-              IF  (lv_limit_date IS NOT NULL) THEN
-                IF  (FND_DATE.STRING_TO_DATE(inv_if_rec(i).limit_date, gc_char_d_format) !=
-                     FND_DATE.STRING_TO_DATE(lv_limit_date, gc_char_d_format))  THEN
-                  IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
-                    inv_if_rec(i).sts  :=  gv_sts_hr;  --賞味期限が一致しない (保留)  25
-                  END IF;
-                  --データダンプ取得
-                  IF  (lb_dump_flag  = FALSE)  THEN
-                    proc_get_data_dump(
-                      if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                     ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                     ,ov_errbuf  => lv_errbuf
-                     ,ov_retcode => lv_retcode
-                     ,ov_errmsg  => lv_errmsg);
-                    -- エラーの場合
-                    IF (lv_retcode = gv_status_error) THEN
-                      RAISE global_api_expt;
-                    ELSE
-                      lv_retcode  := gv_status_warn;
-                    END IF;
-                    -- 警告データダンプPL/SQL表投入
-                    gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                    warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                    lb_dump_flag :=  TRUE;
-                  END IF;
---
-                -- 警告エラーメッセージ取得(賞味期限が一致しません。(項目：CONTENT))
-                    -- 賞味期限の不一致(保留)
-                    lv_errmsg := xxcmn_common_pkg.get_msg(
-                                  iv_application  => gv_xxinv,
-                                  iv_name         => 'APP-XXINV-10110',
-                                  iv_token_name1  => 'OBEJCT',
-                                  iv_token_value1 => gv_limit_date_col,
-                                  iv_token_name2  => 'CONTENT',
-                                  iv_token_value2 => gv_limit_date_col ||
-                                    gv_msg_part || lv_limit_date);
-                  -- 警告メッセージPL/SQL表投入
-                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                  warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-                END IF;
-              END IF;
-            EXCEPTION
-              WHEN NO_DATA_FOUND THEN
-                IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
-                  inv_if_rec(i).sts  :=  gv_sts_hr;  --ロットマスタ未登録エラー(保留)  23
-                END IF;
-                --データダンプ取得
-                IF  (lb_dump_flag  = FALSE)  THEN
-                  proc_get_data_dump(
-                    if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                   ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                   ,ov_errbuf  => lv_errbuf
-                   ,ov_retcode => lv_retcode
-                   ,ov_errmsg  => lv_errmsg);
-                  -- エラーの場合
-                  IF (lv_retcode = gv_status_error) THEN
-                    RAISE global_api_expt;
-                  ELSE
-                    lv_retcode  := gv_status_warn;
-                  END IF;
-                  -- 警告データダンプPL/SQL表投入
-                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                  warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                  lb_dump_flag :=  TRUE;
-                END IF;
---
-      -- 警告エラーメッセージ取得(OPMロットマスタに該当データが存在しません。(項目：OBJECT))
-                lv_msg_col  :=  gv_maker_date_col || '、' || gv_proper_mark_col;
-                lv_errmsg := xxcmn_common_pkg.get_msg(
-                              iv_application  => gv_xxinv,
-                              iv_name         => 'APP-XXINV-10108',
-                              iv_token_name1  => 'OBJECT',
-                              iv_token_value1 => lv_msg_col);
-                -- 警告メッセージPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END;
-          END IF;--ドリンク終了
---
-          IF  (lv_product_type  = gv_goods_classe_reaf)  THEN  --商品区分＝リーフの場合
-            -- 賞味期限＝'0'の場合のエラー
-            IF  (inv_if_rec(i).limit_date  = '0')  THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  --賞味期限＝'0'の場合のエラ 27
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←賞味期限）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                            iv_application  => gv_xxinv,
-                            iv_name         => 'APP-XXINV-10104',
-                            iv_token_name1  => 'OBJECT',
-                            iv_token_value1 => gv_limit_date_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END IF;
-            -- 固有記号＝'0'の場合のエラー
-            IF  (inv_if_rec(i).proper_mark  = '0')  THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  --固有記号＝'0'の場合のエラ 28
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (0以外を指定してください。(項目：OBJECT←固有記号）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                            iv_application  => gv_xxinv,
-                            iv_name         => 'APP-XXINV-10104',
-                            iv_token_name1  => 'OBJECT',
-                            iv_token_value1 => gv_proper_mark_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END IF;
-            --賞味期限が日付型エラー
-            ld_limit_date :=  FND_DATE.STRING_TO_DATE(inv_if_rec(i).limit_date, gc_char_d_format);
-            IF  (ld_limit_date IS NULL) THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  --賞味期限が日付型エラー  29
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (日付形式エラー:賞味期限）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                             iv_application  => gv_xxinv,
-                             iv_name         => 'APP-XXINV-10105',
-                             iv_token_name1  => 'OBJECT',
-                             iv_token_value1 => gv_limit_date_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END IF;
-            --OPMロットマスタチェック
-            BEGIN
-              ln_lot_id :=  NULL;
-              lv_lot_no :=  NULL;
-              lv_limit_date :=  NULL;
-              ld_maker_date :=  FND_DATE.STRING_TO_DATE(inv_if_rec(i).maker_date, gc_char_d_format);--
-              SELECT
-                ilm.lot_id     AS lot_id     -- ロットID
-               ,ilm.lot_no     AS lot_no     -- ロットNO
-               ,ilm.attribute3 AS limit_date -- 賞味期限
-              INTO
-                ln_lot_id
-               ,lv_lot_no
-               ,lv_limit_date
-              FROM   ic_lots_mst ilm
-              WHERE  ilm.attribute1 = '' || TO_CHAR(ld_maker_date, gc_char_d_format) || '' --製造日
-              AND    ilm.attribute2 = inv_if_rec(i).proper_mark --固有記号
-              AND    ilm.item_id = ln_item_id
-              AND ROWNUM  = 1;
-  --          --ロットマスタが存在する場合に賞味期限が不一致の場合
-              IF  (lv_limit_date IS NOT NULL) THEN
-                IF  (FND_DATE.STRING_TO_DATE(inv_if_rec(i).limit_date, gc_char_d_format) !=
-                     FND_DATE.STRING_TO_DATE(lv_limit_date, gc_char_d_format))  THEN
-                  IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
-                    inv_if_rec(i).sts  :=  gv_sts_hr;  --賞味期限が不一致  (保留) 32
-                  END IF;
-                  --データダンプ取得
-                  IF  (lb_dump_flag  = FALSE)  THEN
-                    proc_get_data_dump(
-                      if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                     ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                     ,ov_errbuf  => lv_errbuf
-                     ,ov_retcode => lv_retcode
-                     ,ov_errmsg  => lv_errmsg);
-                    -- エラーの場合
-                    IF (lv_retcode = gv_status_error) THEN
-                      RAISE global_api_expt;
-                    ELSE
-                      lv_retcode  := gv_status_warn;
-                    END IF;
-                    -- 警告データダンプPL/SQL表投入
-                    gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                    warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                    lb_dump_flag :=  TRUE;
-                  END IF;
-                -- 警告エラーメッセージ取得(賞味期限が一致しません。(項目：CONTENT))
-                    -- 賞味期限の不一致(保留)
-                    lv_errmsg := xxcmn_common_pkg.get_msg(
-                                  iv_application  => gv_xxinv,
-                                  iv_name         => 'APP-XXINV-10110',
-                                  iv_token_name1  => 'OBEJCT',
-                                  iv_token_value1 => gv_limit_date_col,
-                                  iv_token_name2  => 'CONTENT',
-                                  iv_token_value2 => gv_limit_date_col ||
-                                    gv_msg_part || lv_limit_date);
-                  -- 警告メッセージPL/SQL表投入
-                  gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                  warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-                END IF;
-              END IF;
-            EXCEPTION
-              WHEN NO_DATA_FOUND THEN
-                BEGIN
-                  SELECT
-                    ilm.lot_id     AS lot_id     -- ロットID
-                   ,ilm.lot_no     AS lot_no     -- ロットNO
-                   ,ilm.attribute1 AS maker_date -- 製造日
-                  INTO
-                    ln_lot_id
-                   ,lv_lot_no
-                   ,lv_maker_date
-                  FROM   ic_lots_mst ilm
-                  WHERE  ilm.attribute3 = '' || TO_CHAR(ld_limit_date, gc_char_d_format) || ''--賞味--
-                  AND    ilm.attribute2 = inv_if_rec(i).proper_mark--固有記号
-                  AND    ilm.item_id = ln_item_id; --品目ID
-                EXCEPTION
-                  WHEN NO_DATA_FOUND THEN
-                    IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
-                      inv_if_rec(i).sts  :=  gv_sts_hr;  --ロットマスタ未登録エラー(保留)  34
-                    END IF;
-                    --データダンプ取得
-                    IF  (lb_dump_flag  = FALSE)  THEN
-                      proc_get_data_dump(
-                        if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                       ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                       ,ov_errbuf  => lv_errbuf
-                       ,ov_retcode => lv_retcode
-                       ,ov_errmsg  => lv_errmsg);
-                      -- エラーの場合
-                      IF (lv_retcode = gv_status_error) THEN
-                        RAISE global_api_expt;
-                      ELSE
-                        lv_retcode  := gv_status_warn;
-                      END IF;
-                      -- 警告データダンプPL/SQL表投入
-                      gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                      warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                      lb_dump_flag :=  TRUE;
-                    END IF;
-            -- 警告エラーメッセージ取得(OPMロットマスタに該当データが存在しません(項目：OBJECT))
-                    lv_msg_col  :=  gv_limit_date_col || '、' || gv_proper_mark_col;
-                    lv_errmsg := xxcmn_common_pkg.get_msg(
-                                  iv_application  => gv_xxinv,
-                                  iv_name         => 'APP-XXINV-10108',
-                                  iv_token_name1  => 'OBJECT',
-                                  iv_token_value1 => lv_msg_col);
-                    -- 警告メッセージPL/SQL表投入
-                    gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                    warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-                  WHEN TOO_MANY_ROWS THEN
-                    IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
-                      inv_if_rec(i).sts  :=  gv_sts_hr;  --ロットマスタ未登録エラー(保留)  35
-                    END IF;
-                    --データダンプ取得
-                    IF  (lb_dump_flag  = FALSE)  THEN
-                      proc_get_data_dump(
-                        if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                       ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                       ,ov_errbuf  => lv_errbuf
-                       ,ov_retcode => lv_retcode
-                       ,ov_errmsg  => lv_errmsg);
-                      -- エラーの場合
-                      IF (lv_retcode = gv_status_error) THEN
-                        RAISE global_api_expt;
-                      ELSE
-                        lv_retcode  := gv_status_warn;
-                      END IF;
-                      -- 警告データダンプPL/SQL表投入
-                      gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                      warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                      lb_dump_flag :=  TRUE;
-                    END IF;
-                    -- OPMロットマスタに複数登録(保留)
-                    lv_errmsg := xxcmn_common_pkg.get_msg(
-                                      iv_application  => gv_xxinv,
-                                      iv_name         => 'APP-XXINV-10109',
-                                      iv_token_name1  => 'OBJECT',
-                                      iv_token_value1 =>
-                                        gv_proper_mark_col ||
-                                        gv_msg_part || inv_if_rec(i).proper_mark ||
-                                        gv_msg_comma ||
-                                        gv_limit_date_col ||
-                                        gv_msg_part || inv_if_rec(i).limit_date);
-                    -- 警告メッセージPL/SQL表投入
-                    gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                    warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-                END;
-            END;
-          END IF;--リーフ終了
-        END IF;
---
-        --品目区分が製品以外の場合
-        IF (lv_item_type != gv_item_cls_prdct) THEN
-          --ロット管理対象外の場合
-          IF  (ln_lot_ctl  != 1) THEN
-            -- 製造日が'0'以外の場合のエラー
-            IF  (inv_if_rec(i).maker_date  != '0')  THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  --製造日が'0'以外の場合のエラー   38
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (0を指定してください。(項目：OBJECT←製造日）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                            iv_application  => gv_xxinv,
-                            iv_name         => 'APP-XXINV-10103',
-                            iv_token_name1  => 'OBJECT',
-                            iv_token_value1 => gv_maker_date_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END IF;
-            -- 賞味期限が'0'以外の場合のエラー
-            IF  (inv_if_rec(i).limit_date  != '0')  THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  --賞味期限が'0'以外の場合のエラー   39
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (0を指定してください。(項目：OBJECT←賞味期限）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                            iv_application  => gv_xxinv,
-                            iv_name         => 'APP-XXINV-10103',
-                            iv_token_name1  => 'OBJECT',
-                            iv_token_value1 => gv_limit_date_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END IF;
-            -- 固有記号が'0'以外の場合のエラー
-            IF  (inv_if_rec(i).proper_mark  != '0')  THEN
-              inv_if_rec(i).sts  :=  gv_sts_ng;  --固有記号が'0'以外の場合のエラー   40
-              IF  (lb_dump_flag  = FALSE)  THEN
-                --データダンプ取得
-                proc_get_data_dump(
-                  if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-                 ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-                 ,ov_errbuf  => lv_errbuf
-                 ,ov_retcode => lv_retcode
-                 ,ov_errmsg  => lv_errmsg);
-                -- エラーの場合
-                IF (lv_retcode = gv_status_error) THEN
-                  RAISE global_api_expt;
-                ELSE
-                  lv_retcode  := gv_status_warn;
-                END IF;
-                -- 警告データダンプPL/SQL表投入
-                gn_err_msg_cnt := gn_err_msg_cnt + 1;
-                warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-                lb_dump_flag :=  TRUE;
-              END IF;
-              -- 警告エラーメッセージ取得 (0を指定してください。(項目：OBJECT←固有記号）
-              lv_errmsg := xxcmn_common_pkg.get_msg(
-                            iv_application  => gv_xxinv,
-                            iv_name         => 'APP-XXINV-10103',
-                            iv_token_name1  => 'OBJECT',
-                            iv_token_value1 => gv_proper_mark_col);
-              -- 警告メッセージPL/SQL表投入
-              gn_err_msg_cnt := gn_err_msg_cnt + 1;
-              warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-            END IF;
+            -- 警告データダンプPL/SQL表投入
+            gn_err_msg_cnt := gn_err_msg_cnt + 1;
+            warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+            lb_dump_flag :=  TRUE;
           END IF;
+          -- 警告エラーメッセージ取得 (0以上の値を指定してください。(項目：OBJECT←棚卸バラ）
+          lv_errmsg := xxcmn_common_pkg.get_msg(
+                                iv_application  => gv_xxinv,
+                                iv_name         => 'APP-XXINV-10106',
+                                iv_token_name1  => 'OBJECT',
+                                iv_token_value1 => gv_loose_amt_col);
+          -- 警告メッセージPL/SQL表投入
+          gn_err_msg_cnt := gn_err_msg_cnt + 1;
+          warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
         END IF;
+        -- ======================
+        -- 入数チェック =
+        -- ======================
+        --入数 が０未満の場合のエラー
+        IF  (inv_if_rec(i).content < 0 ) THEN
+          inv_if_rec(i).sts  :=  gv_sts_ng;  --入数 が０未満の場合のエラー 48
+          IF  (lb_dump_flag  = FALSE)  THEN
+            --データダンプ取得
+            proc_get_data_dump(
+              if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+             ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+             ,ov_errbuf  => lv_errbuf
+             ,ov_retcode => lv_retcode
+             ,ov_errmsg  => lv_errmsg);
+            -- エラーの場合
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_api_expt;
+            ELSE
+              lv_retcode  := gv_status_warn;
+            END IF;
+            -- 警告データダンプPL/SQL表投入
+            gn_err_msg_cnt := gn_err_msg_cnt + 1;
+            warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+            lb_dump_flag :=  TRUE;
+          END IF;
+          -- 警告エラーメッセージ取得 (0以上の値を指定してください。(項目：OBJECT←入数)
+          lv_errmsg := xxcmn_common_pkg.get_msg(
+                                iv_application  => gv_xxinv,
+                                iv_name         => 'APP-XXINV-10106',
+                                iv_token_name1  => 'OBJECT',
+                                iv_token_value1 => gv_content_col);
+          -- 警告メッセージPL/SQL表投入
+          gn_err_msg_cnt := gn_err_msg_cnt + 1;
+          warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+--
+              --品目区分＝製品かつ商品区分＝ドリンクかつ入数≠ケース入数
+        ELSIF (inv_if_rec(i).content != lv_num_of_cases) AND
+              (lv_item_type = gv_item_cls_prdct)  AND          --品目区分＝製品     2008/05/02
+              (lv_product_type  = gv_goods_classe_drink)  THEN  --商品区分＝ドリンク 2008/05/02
+          inv_if_rec(i).sts  :=  gv_sts_ng;  --品目区分＝製品かつ入数≠ケース入数 50
+          IF  (lb_dump_flag  = FALSE)  THEN
+            --データダンプ取得
+            proc_get_data_dump(
+              if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+             ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+             ,ov_errbuf  => lv_errbuf
+             ,ov_retcode => lv_retcode
+             ,ov_errmsg  => lv_errmsg);
+            -- エラーの場合
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_api_expt;
+            ELSE
+              lv_retcode  := gv_status_warn;
+            END IF;
+            -- 警告データダンプPL/SQL表投入
+            gn_err_msg_cnt := gn_err_msg_cnt + 1;
+            warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+            lb_dump_flag :=  TRUE;
+          END IF;
+          -- 警告エラーメッセージ取得 (0以上の値を指定してください。(項目：OBJECT←入数）
+          lv_errmsg := xxcmn_common_pkg.get_msg(
+                        iv_application  => gv_xxinv,
+                        iv_name         => 'APP-XXINV-10110',
+                        iv_token_name1  => 'OBEJCT',
+                        iv_token_value1 => gv_content_col,
+                        iv_token_name2  => 'CONTENT',
+                        iv_token_value2 => gv_num_of_cases_col ||
+                          gv_msg_part || lv_num_of_cases);
+          -- 警告メッセージPL/SQL表投入
+          gn_err_msg_cnt := gn_err_msg_cnt + 1;
+          warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+        END IF;
+--
+        --マスタチェックで取得した項目を配列へ退避
+        inv_if_rec(i).item_id      := ln_item_id;          --品目ID
+        inv_if_rec(i).lot_ctl      := ln_lot_ctl;          --ロット管理区分
+        inv_if_rec(i).num_of_cases := lv_num_of_cases;     --ケース入数
+        inv_if_rec(i).item_type    := lv_item_type;        --品目区分
+        inv_if_rec(i).product_type := lv_product_type ;    --商品区分
+--
+        inv_if_rec(i).lot_id       := ln_lot_id;           --ロットID
+        inv_if_rec(i).lot_no1      := lv_lot_no;           --ロットNo
+        inv_if_rec(i).maker_date1  := lv_maker_date;       --製造年月日
+        inv_if_rec(i).proper_mark1 := lv_proper_mark;      --固有記号
+        inv_if_rec(i).limit_date1  := lv_limit_date;       --賞味期限
 --
       END IF;
---
-      -- ======================
-      -- 棚卸ケース数チェック =
-      -- ======================
-      --棚卸ケース数 が０未満の場合のエラー
-      IF  (inv_if_rec(i).case_amt < 0 ) THEN
-        inv_if_rec(i).sts  :=  gv_sts_ng;  --棚卸ケース数 が０未満の場合のエラー  43
-        IF  (lb_dump_flag  = FALSE)  THEN
-          --データダンプ取得
-          proc_get_data_dump(
-            if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-           ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-           ,ov_errbuf  => lv_errbuf
-           ,ov_retcode => lv_retcode
-           ,ov_errmsg  => lv_errmsg);
-          -- エラーの場合
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_api_expt;
-          ELSE
-            lv_retcode  := gv_status_warn;
-          END IF;
-          -- 警告データダンプPL/SQL表投入
-          gn_err_msg_cnt := gn_err_msg_cnt + 1;
-          warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-          lb_dump_flag :=  TRUE;
-        END IF;
-        -- 警告エラーメッセージ取得 (0以上の値を指定してください。(項目：OBJECT←棚卸ケース）
-        lv_errmsg := xxcmn_common_pkg.get_msg(
-                              iv_application  => gv_xxinv,
-                              iv_name         => 'APP-XXINV-10106',
-                              iv_token_name1  => 'OBJECT',
-                              iv_token_value1 => gv_case_amt_col);
-        -- 警告メッセージPL/SQL表投入
-        gn_err_msg_cnt := gn_err_msg_cnt + 1;
-        warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-      ELSIF
-      --棚卸ケース数 が整数でない場合のエラー
-        (inv_if_rec(i).case_amt  -
-          TRUNC(inv_if_rec(i).case_amt)  !=0)  THEN
-        inv_if_rec(i).sts  :=  gv_sts_ng;  --棚卸ケース数 が整数でない場合のエラー 44
-        IF  (lb_dump_flag  = FALSE)  THEN
-          --データダンプ取得
-          proc_get_data_dump(
-            if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-           ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-           ,ov_errbuf  => lv_errbuf
-           ,ov_retcode => lv_retcode
-           ,ov_errmsg  => lv_errmsg);
-          -- エラーの場合
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_api_expt;
-          ELSE
-            lv_retcode  := gv_status_warn;
-          END IF;
-          -- 警告データダンプPL/SQL表投入
-          gn_err_msg_cnt := gn_err_msg_cnt + 1;
-          warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-          lb_dump_flag :=  TRUE;
-        END IF;
-        -- 警告エラーメッセージ取得 (整数値を指定してください。(項目：OBJECT)T←棚卸ケース）
-        lv_errmsg := xxcmn_common_pkg.get_msg(
-                              iv_application  => gv_xxinv,
-                              iv_name         => 'APP-XXINV-10107',
-                              iv_token_name1  => 'OBJECT',
-                              iv_token_value1 => gv_case_amt_col);
-        -- 警告メッセージPL/SQL表投入
-        gn_err_msg_cnt := gn_err_msg_cnt + 1;
-        warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-      END IF;
---
-      -- ======================
-      -- 棚卸バラ数チェック =
-      -- ======================
-      --棚卸バラ数 が０未満の場合のエラー
-      IF  (inv_if_rec(i).loose_amt < 0 ) THEN
-        inv_if_rec(i).sts  :=  gv_sts_ng;  --棚卸バラ数 が０未満の場合のエラー  46
-        IF  (lb_dump_flag  = FALSE)  THEN
-          --データダンプ取得
-          proc_get_data_dump(
-            if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-           ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-           ,ov_errbuf  => lv_errbuf
-           ,ov_retcode => lv_retcode
-           ,ov_errmsg  => lv_errmsg);
-          -- エラーの場合
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_api_expt;
-          ELSE
-            lv_retcode  := gv_status_warn;
-          END IF;
-          -- 警告データダンプPL/SQL表投入
-          gn_err_msg_cnt := gn_err_msg_cnt + 1;
-          warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-          lb_dump_flag :=  TRUE;
-        END IF;
-        -- 警告エラーメッセージ取得 (0以上の値を指定してください。(項目：OBJECT←棚卸バラ）
-        lv_errmsg := xxcmn_common_pkg.get_msg(
-                              iv_application  => gv_xxinv,
-                              iv_name         => 'APP-XXINV-10106',
-                              iv_token_name1  => 'OBJECT',
-                              iv_token_value1 => gv_loose_amt_col);
-        -- 警告メッセージPL/SQL表投入
-        gn_err_msg_cnt := gn_err_msg_cnt + 1;
-        warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-      END IF;
-      -- ======================
-      -- 入数チェック =
-      -- ======================
-      --入数 が０未満の場合のエラー
-      IF  (inv_if_rec(i).content < 0 ) THEN
-        inv_if_rec(i).sts  :=  gv_sts_ng;  --入数 が０未満の場合のエラー 48
-        IF  (lb_dump_flag  = FALSE)  THEN
-          --データダンプ取得
-          proc_get_data_dump(
-            if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-           ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-           ,ov_errbuf  => lv_errbuf
-           ,ov_retcode => lv_retcode
-           ,ov_errmsg  => lv_errmsg);
-          -- エラーの場合
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_api_expt;
-          ELSE
-            lv_retcode  := gv_status_warn;
-          END IF;
-          -- 警告データダンプPL/SQL表投入
-          gn_err_msg_cnt := gn_err_msg_cnt + 1;
-          warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-          lb_dump_flag :=  TRUE;
-        END IF;
-        -- 警告エラーメッセージ取得 (0以上の値を指定してください。(項目：OBJECT←入数)
-        lv_errmsg := xxcmn_common_pkg.get_msg(
-                              iv_application  => gv_xxinv,
-                              iv_name         => 'APP-XXINV-10106',
-                              iv_token_name1  => 'OBJECT',
-                              iv_token_value1 => gv_content_col);
-        -- 警告メッセージPL/SQL表投入
-        gn_err_msg_cnt := gn_err_msg_cnt + 1;
-        warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
---
-            --品目区分＝製品かつ商品区分＝ドリンクかつ入数≠ケース入数
-      ELSIF (inv_if_rec(i).content != lv_num_of_cases) AND
-            (lv_item_type = gv_item_cls_prdct)  AND          --品目区分＝製品     2008/05/02
-            (lv_product_type  = gv_goods_classe_drink)  THEN  --商品区分＝ドリンク 2008/05/02
-        inv_if_rec(i).sts  :=  gv_sts_ng;  --品目区分＝製品かつ入数≠ケース入数 50
-        IF  (lb_dump_flag  = FALSE)  THEN
-          --データダンプ取得
-          proc_get_data_dump(
-            if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-           ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-           ,ov_errbuf  => lv_errbuf
-           ,ov_retcode => lv_retcode
-           ,ov_errmsg  => lv_errmsg);
-          -- エラーの場合
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_api_expt;
-          ELSE
-            lv_retcode  := gv_status_warn;
-          END IF;
-          -- 警告データダンプPL/SQL表投入
-          gn_err_msg_cnt := gn_err_msg_cnt + 1;
-          warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-          lb_dump_flag :=  TRUE;
-        END IF;
-        -- 警告エラーメッセージ取得 (0以上の値を指定してください。(項目：OBJECT←入数）
-        lv_errmsg := xxcmn_common_pkg.get_msg(
-                      iv_application  => gv_xxinv,
-                      iv_name         => 'APP-XXINV-10110',
-                      iv_token_name1  => 'OBEJCT',
-                      iv_token_value1 => gv_content_col,
-                      iv_token_name2  => 'CONTENT',
-                      iv_token_value2 => gv_num_of_cases_col ||
-                        gv_msg_part || lv_num_of_cases);
-        -- 警告メッセージPL/SQL表投入
-        gn_err_msg_cnt := gn_err_msg_cnt + 1;
-        warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-      END IF;
---
-      --マスタチェックで取得した項目を配列へ退避
-      inv_if_rec(i).item_id      := ln_item_id;          --品目ID
-      inv_if_rec(i).lot_ctl      := ln_lot_ctl;          --ロット管理区分
-      inv_if_rec(i).num_of_cases := lv_num_of_cases;     --ケース入数
-      inv_if_rec(i).item_type    := lv_item_type;        --品目区分
-      inv_if_rec(i).product_type := lv_product_type ;    --商品区分
---
-      inv_if_rec(i).lot_id       := ln_lot_id;           --ロットID
-      inv_if_rec(i).lot_no1      := lv_lot_no;           --ロットNo
-      inv_if_rec(i).maker_date1  := lv_maker_date;       --製造年月日
-      inv_if_rec(i).proper_mark1 := lv_proper_mark;      --固有記号
-      inv_if_rec(i).limit_date1  := lv_limit_date;       --賞味期限
 --
     END LOOP process_loop;
 --
@@ -3329,5 +3338,5 @@ AS
 --
 --###########################  固定部 END   #######################################################
 --
-end xxinv530001c;
+END xxinv530001c;
 /
